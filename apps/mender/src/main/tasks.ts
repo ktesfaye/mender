@@ -1,0 +1,210 @@
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
+import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
+import { app } from 'electron';
+import type { Project, Projects } from './projects';
+import type { MenderRuntimes } from './runtimes';
+
+/**
+ * The tasks, which are the buildings.
+ *
+ * A task is a checkout of its own: its own branch, its own worktree, its own
+ * working tree to leave in a mess without touching anyone else's. That is what
+ * makes a building the right shape for it — it stands on the project's land, it
+ * is its own place, and you can be inside one without being inside the others.
+ *
+ * Cutting the worktree is emdash's, not ours. Its registry owns the pipeline
+ * that inspects the repository, resolves the base, adds the worktree under an
+ * exclusive claim and verifies it, and owns tearing it down again with whatever
+ * was running inside it. We name the thing and say where it goes.
+ */
+export interface Task {
+  readonly id: string;
+  /** The project whose district it stands in. */
+  readonly project: string;
+  /** What it is called out loud. Whatever was written on the board. */
+  readonly name: string;
+  readonly branch: string;
+  /** Which of the district's buildings it stands in. */
+  readonly slot: number;
+  /** The worktree, as the filesystem spells it. */
+  readonly path: string;
+  readonly startedAt: string;
+}
+
+export type TaskError =
+  | { kind: 'no-such-project' }
+  | { kind: 'nameless' }
+  | { kind: 'already-here'; name: string }
+  | { kind: 'taken' }
+  /** The registry refused, and this is what it said. */
+  | { kind: 'refused'; because: string };
+
+export interface Tasks {
+  list(project?: string): Promise<Task[]>;
+  begin(
+    project: string,
+    name: string,
+    slot: number
+  ): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
+  abandon(id: string): Promise<Task[]>;
+}
+
+const KEY = 'tasks';
+
+export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks {
+  const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'tasks.json') });
+
+  const all = async (): Promise<Task[]> => {
+    const loaded = await store.get(KEY);
+    if (!loaded.success || !Array.isArray(loaded.data)) return [];
+    return loaded.data as unknown as Task[];
+  };
+
+  const save = async (tasks: Task[]): Promise<Task[]> => {
+    await store.set(KEY, tasks as unknown as never);
+    return tasks;
+  };
+
+  return {
+    async list(project) {
+      const tasks = await all();
+      return project ? tasks.filter((task) => task.project === project) : tasks;
+    },
+
+    async begin(project, name, slot) {
+      const written = name.trim();
+      if (!written) return fail({ kind: 'nameless' });
+
+      const tasks = await all();
+      const found = (await projects.list()).find((candidate) => candidate.id === project);
+      if (!found) return fail({ kind: 'no-such-project' });
+
+      const branch = branchFor(written);
+      const here = tasks.filter((task) => task.project === project);
+      if (here.some((task) => task.branch === branch)) {
+        return fail({ kind: 'already-here', name: written });
+      }
+      if (here.some((task) => task.slot === slot)) return fail({ kind: 'taken' });
+
+      const repository = await repositoryOf(runtimes, found);
+      if (!repository.success) return repository;
+
+      const parsed = parseNativeAbsolute(found.path);
+      if (!parsed.success) return fail({ kind: 'refused', because: 'that checkout has moved.' });
+      // A task starts from the branch the project calls home, not from whatever
+      // happens to be checked out; HEAD is the fallback for a checkout with no
+      // remote to ask.
+      const asked = await runtimes.git.repository.getDefaultBranch({
+        repository: parsed.data,
+        remote: 'origin',
+      });
+      const baseRef = (asked.success && asked.data.branch) || 'HEAD';
+
+      const path = join(worktreeRoot(), found.name, branch.replaceAll('/', '-'));
+      const made = await runtimes.workspaces.createWorktree(
+        {
+          workspaceId: crypto.randomUUID(),
+          repositoryId: repository.data,
+          branch,
+          baseRef,
+          path,
+          preservePatterns: [],
+        },
+        // Cutting a worktree copies a repository's whole working tree and then
+        // runs whatever that project does to make a checkout usable. On a big
+        // one that is minutes, not seconds.
+        { timeoutMs: 0 }
+      );
+      if (!made.success) {
+        return fail({ kind: 'refused', because: whatItSaid(made.error) });
+      }
+
+      const task: Task = {
+        id: made.data.id,
+        project,
+        name: written,
+        branch,
+        slot,
+        path: made.data.path,
+        startedAt: new Date().toISOString(),
+      };
+      await save([...tasks, task]);
+      return { success: true as const, data: task };
+    },
+
+    async abandon(id) {
+      const tasks = await all();
+      const going = tasks.find((task) => task.id === id);
+      if (going) {
+        // The branch outlives the building. Abandoning a task takes down the
+        // place the work was done, not the work.
+        await runtimes.workspaces.deleteWorktree(
+          { workspaceId: id, deleteBranch: false },
+          { timeoutMs: 0 }
+        );
+      }
+      return await save(tasks.filter((task) => task.id !== id));
+    },
+  };
+}
+
+function fail(error: TaskError): { success: false; error: TaskError } {
+  return { success: false, error };
+}
+
+/**
+ * The registry's id for the project's repository, registering it if this is the
+ * first task on it.
+ *
+ * Registering the same path under the same id twice is a no-op success, so this
+ * is safe to run every time rather than remembering whether it has been done.
+ * If the project's own checkout is a worktree, the repository is its parent —
+ * a worktree cannot be the thing new worktrees are cut from.
+ */
+async function repositoryOf(
+  runtimes: MenderRuntimes,
+  project: Project
+): Promise<{ success: true; data: string } | { success: false; error: TaskError }> {
+  const registered = await runtimes.workspaces.createWorkspace({
+    workspaceId: project.id,
+    path: project.path,
+  });
+  if (!registered.success) return fail({ kind: 'refused', because: whatItSaid(registered.error) });
+  return { success: true as const, data: registered.data.parentId ?? registered.data.id };
+}
+
+/** What the registry actually said, in a sentence rather than a type name. */
+function whatItSaid(error: { type: string; message?: string; path?: string }): string {
+  if (error.message) return error.message;
+  if (error.type === 'path-conflict') return `there is already something at ${error.path}.`;
+  if (error.type === 'path-not-found') return `there is nothing at ${error.path}.`;
+  if (error.type === 'repository-not-found') return 'that checkout is not a repository.';
+  return error.type;
+}
+
+/**
+ * The branch a task's name becomes.
+ *
+ * Under one prefix, so every branch a village made is obvious in `git branch`
+ * and none of them collide with a branch somebody made by hand.
+ */
+export function branchFor(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+  return `mender/${slug || 'work'}`;
+}
+
+/** Where worktrees are cut. Out of the repository, so nothing appears inside it. */
+function worktreeRoot(): string {
+  return process.env.MENDER_WORKTREE_ROOT ?? join(homedir(), 'mender', 'worktrees');
+}
+
+/** Where Mender keeps its own state on this machine. */
+function userDataDir(): string {
+  return process.env.MENDER_DATA_DIR ?? app.getPath('userData');
+}

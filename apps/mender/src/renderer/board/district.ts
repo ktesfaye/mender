@@ -1,19 +1,18 @@
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { shortName, type CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
-import type { Project } from '@shared/projects';
 import type { MenderClient } from '../wire';
 import type { Row, Tone } from './board';
 
 /**
- * What a district's board says.
+ * What a board says about a checkout.
  *
- * A district is a checkout, so what stands on the board is what is true of that
- * checkout right now: which branch it is on, what is uncommitted in it, what
- * was done in it last. The working tree comes off git's live model rather than
- * a read, so the board changes while you are looking at it — save a file in
- * your editor and the line appears. That is the whole reason it is a board in a
- * living village and not a report.
+ * A district is a checkout and so is a task, so the same board serves both:
+ * which branch it is on, what is uncommitted in it, what was done in it last.
+ * The working tree comes off git's live model rather than a read, so the board
+ * changes while you are looking at it — save a file in your editor and the line
+ * appears. That is the whole reason it is a board in a living village and not a
+ * report.
  */
 
 /** Git's own two-letter shorthand, which is what a checkout is read in. */
@@ -50,7 +49,15 @@ type Commits = { commits: { subject: string; date: number }[] };
 const CHANGES = 40;
 const LATELY = 24;
 
-export interface DistrictBoard {
+/** A place with a checkout under it: a district, or a task standing on one. */
+export interface Place {
+  name: string;
+  path: string;
+  /** Whatever this particular place has to say above its working tree. */
+  lines?: Row[];
+}
+
+export interface LiveBoard {
   rows(): Row[];
   close(): Promise<void>;
 }
@@ -61,19 +68,19 @@ export interface DistrictBoard {
  * `changed` is called whenever anything on it moved, which is the renderer's
  * cue to rewrite the wood. Nothing here draws.
  */
-export async function openDistrict(
+export async function openCheckout(
   client: MenderClient,
-  project: Project,
+  place: Place,
   changed: (rows: Row[]) => void
-): Promise<DistrictBoard> {
-  const parsed = parseNativeAbsolute(project.path);
+): Promise<LiveBoard> {
+  const parsed = parseNativeAbsolute(place.path);
   if (!parsed.success) {
     return {
       rows: () => [
-        { kind: 'title', text: project.name },
-        { kind: 'line', text: project.path, tone: 'faded' },
+        { kind: 'title', text: place.name },
+        { kind: 'line', text: place.path, tone: 'faded', keep: 'tail' },
         { kind: 'gap' },
-        { kind: 'line', text: 'This checkout is not where it was.', tone: 'sore' },
+        { kind: 'line', text: 'this checkout is not where it was.', tone: 'sore' },
       ],
       close: async () => {},
     };
@@ -88,13 +95,13 @@ export async function openDistrict(
   const headReplica = new ReplicaState(model.state({ checkout }, 'head'), {
     onChange: (value) => {
       head = value;
-      changed(build(project, head, status, lately));
+      changed(build(place, head, status, lately));
     },
   });
   const statusReplica = new ReplicaState(model.state({ checkout }, 'status'), {
     onChange: (value) => {
       status = value as StatusState;
-      changed(build(project, head, status, lately));
+      changed(build(place, head, status, lately));
     },
   });
 
@@ -105,11 +112,11 @@ export async function openDistrict(
   const log = await client.git.checkout.getLog({ checkout, options: { limit: LATELY } });
   if (log.success && log.data) {
     lately = log.data.commits;
-    changed(build(project, head, status, lately));
+    changed(build(place, head, status, lately));
   }
 
   return {
-    rows: () => build(project, head, status, lately),
+    rows: () => build(place, head, status, lately),
     close: async () => {
       await Promise.all([headReplica.dispose(), statusReplica.dispose()]);
     },
@@ -117,16 +124,17 @@ export async function openDistrict(
 }
 
 function build(
-  project: Project,
+  place: Place,
   head: CheckoutHeadState | undefined,
   status: StatusState | undefined,
   lately: Commits['commits']
 ): Row[] {
   const rows: Row[] = [
-    { kind: 'title', text: project.name },
-    { kind: 'line', text: project.path, tone: 'faded', keep: 'tail' },
+    { kind: 'title', text: place.name },
+    { kind: 'line', text: place.path, tone: 'faded', keep: 'tail' },
     { kind: 'gap' },
     { kind: 'line', text: standing(head) },
+    ...(place.lines ?? []),
     { kind: 'gap' },
   ];
 

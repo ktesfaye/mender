@@ -1,11 +1,12 @@
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Project } from '@shared/projects';
-import { makeBoard, type Board } from './board/board';
-import { openDistrict, type DistrictBoard } from './board/district';
+import type { Task } from '@shared/tasks';
+import { makeBoard, type Board, type Row } from './board/board';
+import { openCheckout, type LiveBoard } from './board/district';
 import { loadLettering } from './board/lettering';
 import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
-import { districtBounds, Ground } from './village/ground';
+import { districtBounds, Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
 import { say } from './village/notice';
 import { buildScene } from './village/scene';
@@ -16,9 +17,9 @@ import { wire, type MenderClient } from './wire';
  *
  * Nothing else is on the screen: no title bar full of buttons, no sidebar, no
  * tab strip. The island is composed in the main process out of the state the
- * app is actually in — which projects exist, how far each has grown — and drawn
- * here. Everything the app can do arrives as something standing on it, and
- * everything it has to say arrives on one wooden board.
+ * app is actually in — which projects exist, which tasks are running in them —
+ * and drawn here. Everything the app can do arrives as something standing on
+ * it, and everything it has to say arrives on one wooden board.
  */
 async function boot(): Promise<void> {
   const pixi = new Application();
@@ -42,57 +43,155 @@ async function boot(): Promise<void> {
     const board = await makeBoard(pixi);
     let drawn = await draw(world, client);
     let projects = await client.projects.list({});
+    let tasks = await client.tasks.list({});
     frame(camera, drawn.island);
     pixi.ticker.add((ticker) => drawn.ground.tick(ticker));
 
-    let focused: District | null = null;
-    let showing: DistrictBoard | null = null;
+    /** The place the board is standing in front of, while it is in. */
+    let open: Aim | null = null;
+    let live: LiveBoard | null = null;
+    /** Set while a name is being written on the wood. */
+    let naming: {
+      district: District;
+      project: Project;
+      slot: number;
+      written: string;
+    } | null = null;
+
+    const projectOn = (district: District): Project | undefined =>
+      projects.find((candidate) => candidate.plot === district.id);
+    const tasksOn = (district: District): Task[] => {
+      const project = projectOn(district);
+      return project ? tasks.filter((task) => task.project === project.id) : [];
+    };
+    /** The task standing in one of a district's buildings, if any is. */
+    const taskIn = (district: District, slot: number): Task | undefined =>
+      tasksOn(district).find((task) => task.slot === slot);
 
     const shut = async (): Promise<void> => {
-      focused = null;
+      open = null;
+      naming = null;
       board.hide();
-      const was = showing;
-      showing = null;
+      const was = live;
+      live = null;
       await was?.close();
+    };
+
+    /** Put a checkout on the board and keep it there until something else is. */
+    const stand = async (aim: Aim, name: string, path: string, lines: Row[]): Promise<void> => {
+      const was = live;
+      live = null;
+      await was?.close();
+
+      open = aim;
+      naming = null;
+      board.show([
+        { kind: 'title', text: name },
+        { kind: 'line', text: path, tone: 'faded', keep: 'tail' },
+        { kind: 'gap' },
+        { kind: 'line', text: 'reading the checkout…', tone: 'faded' },
+      ]);
+
+      const opened = await openCheckout(client, { name, path, lines }, (rows) => {
+        if (open === aim) board.update(rows);
+      });
+      if (open !== aim) {
+        await opened.close();
+        return;
+      }
+      live = opened;
+      board.update(opened.rows());
     };
 
     /* Opening a district is one move with two halves: the camera pulls in on
        its land, aiming at the part of the window the board is about to leave,
        and the board comes in from the right with what is true of that checkout
-       written on it. Neither waits for the other — the board is up with the
-       project's name on it before git has been asked anything. */
-    const openBoard = async (district: District): Promise<void> => {
-      const project = projects.find((candidate) => candidate.plot === district.id);
+       written on it. Neither waits for the other. */
+    const openDistrict = async (aim: Aim): Promise<void> => {
+      const project = projectOn(aim.district);
       if (!project) return;
-      const was = showing;
-      showing = null;
-      await was?.close();
-
-      focused = district;
-      board.show(waiting(project));
-      flyTo(camera, districtBounds(district), { inset: board.inset });
-
-      const opened = await openDistrict(client, project, (rows) => {
-        if (focused === district) board.update(rows);
-      });
-      // Closed, or opened somewhere else, while git was still answering.
-      if (focused !== district) {
-        await opened.close();
-        return;
-      }
-      showing = opened;
-      board.update(opened.rows());
+      flyTo(camera, districtBounds(aim.district), { inset: board.inset });
+      const standing = tasksOn(aim.district);
+      const spare = drawn.ground.room(aim.district) - standing.length;
+      const lines: Row[] = [
+        { kind: 'gap' },
+        { kind: 'heading', text: 'work' },
+        ...(standing.length
+          ? standing.map((task): Row => ({ kind: 'entry', mark: '·', text: task.name }))
+          : [
+              { kind: 'line' as const, text: 'nothing standing here yet.', tone: 'faded' as const },
+            ]),
+        {
+          kind: 'line',
+          text:
+            spare > 0
+              ? 'click an empty building to start something.'
+              : 'every building on this district is taken.',
+          tone: 'faded',
+        },
+      ];
+      await stand(aim, project.name, project.path, lines);
     };
 
-    const picked = async (district: District | null): Promise<void> => {
-      if (!district) {
+    /** A building with a task in it is that task's own checkout. */
+    const openTask = async (aim: Aim, task: Task): Promise<void> => {
+      flyTo(camera, districtBounds(aim.district), { inset: board.inset });
+      // No extra lines: the branch is the first thing the checkout itself says,
+      // and a task's branch is a task's name said twice.
+      await stand(aim, task.name, task.path, []);
+    };
+
+    /** An empty building is a question: what is going to happen in here. */
+    const askName = (aim: Aim & { kind: 'building' }): void => {
+      const project = projectOn(aim.district);
+      if (!project) return;
+      open = aim;
+      naming = { district: aim.district, project, slot: aim.slot, written: '' };
+      flyTo(camera, districtBounds(aim.district), { inset: board.inset });
+      board.show(asking(naming));
+    };
+
+    const wrote = (written: string): void => {
+      if (!naming) return;
+      naming = { ...naming, written };
+      board.update(asking(naming));
+    };
+
+    const begin = async (): Promise<void> => {
+      if (!naming) return;
+      const { project, slot, written } = naming;
+      const aim = open;
+      naming = null;
+      board.update([
+        { kind: 'title', text: written },
+        { kind: 'gap' },
+        { kind: 'line', text: 'cutting a worktree…', tone: 'faded' },
+      ]);
+      // No deadline: a worktree on a big repository is minutes of copying, plus
+      // whatever that project runs to make a checkout usable.
+      const made = await client.tasks.begin(
+        { project: project.id, name: written, slot },
+        { timeoutMs: 0 }
+      );
+      if (!made.success) {
+        say(whyNot(made.error), 6000);
+        await shut();
+        flyOut(camera, drawn.island);
+        return;
+      }
+      tasks = await client.tasks.list({});
+      if (aim) await openTask(aim, made.data);
+    };
+
+    const picked = async (aim: Aim | null): Promise<void> => {
+      if (!aim) {
         await shut();
         flyOut(camera, drawn.island);
         return;
       }
       // The camp is where the island grows from: its fire is the only thing on
       // an empty island, and founding a project is what it is for.
-      if (district.id === CAMP) {
+      if (aim.district.id === CAMP) {
         await found(client, async () => {
           await shut();
           drawn = await draw(world, client);
@@ -101,19 +200,29 @@ async function boot(): Promise<void> {
         });
         return;
       }
-      if (district === focused) {
+      if (open && sameAim(aim, open)) {
         await shut();
         flyOut(camera, drawn.island);
         return;
       }
-      await openBoard(district);
+      if (aim.kind === 'building') {
+        const task = taskIn(aim.district, aim.slot);
+        if (task) await openTask(aim, task);
+        else askName(aim);
+        return;
+      }
+      await openDistrict(aim);
     };
 
     watchPointer(pixi, camera, board, {
       at: (x, y) => drawn.ground.at(x, y),
-      hover: (district) => drawn.ground.hover(district),
-      picked: (district) => void picked(district),
+      hover: (aim) => drawn.ground.hover(aim),
+      picked: (aim) => void picked(aim),
       escaped: () => void picked(null),
+      writing: () => naming !== null,
+      written: () => naming?.written ?? '',
+      wrote,
+      commit: () => void begin(),
     });
   } catch (error) {
     say(error instanceof Error ? error.message : String(error));
@@ -121,14 +230,30 @@ async function boot(): Promise<void> {
   }
 }
 
-/** What the board says in the moment between opening and git answering. */
-function waiting(project: Project): Parameters<Board['show']>[0] {
+function sameAim(a: Aim, b: Aim): boolean {
+  if (a.district !== b.district || a.kind !== b.kind) return false;
+  return a.kind !== 'building' || a.slot === (b as { slot: number }).slot;
+}
+
+/** The board, waiting to be written on. */
+function asking(naming: { district: District; written: string }): Row[] {
   return [
-    { kind: 'title', text: project.name },
-    { kind: 'line', text: project.path, tone: 'faded', keep: 'tail' },
+    { kind: 'title', text: 'a new task' },
+    { kind: 'line', text: `on the ${naming.district.name.toLowerCase()}`, tone: 'faded' },
     { kind: 'gap' },
-    { kind: 'line', text: 'reading the checkout…', tone: 'faded' },
+    { kind: 'line', text: 'what is going to happen in here?' },
+    { kind: 'typed', text: naming.written },
+    { kind: 'gap' },
+    { kind: 'line', text: 'return to begin, escape to leave it empty.', tone: 'faded' },
   ];
+}
+
+function whyNot(error: { kind: string; because?: string; name?: string }): string {
+  if (error.kind === 'refused') return error.because ?? 'the worktree was refused.';
+  if (error.kind === 'taken') return 'something is already standing in that building.';
+  if (error.kind === 'already-here') return `${error.name} is already standing here.`;
+  if (error.kind === 'nameless') return 'a task needs a name.';
+  return 'that district has no project on it.';
 }
 
 interface Drawn {
@@ -140,11 +265,11 @@ interface Drawn {
 async function draw(world: Container, client: MenderClient): Promise<Drawn> {
   say('drawing the island…');
   const map = await client.village.map({});
-  const scene = buildScene(new Document(map.layout).items());
+  const scene = buildScene(new Document(map.layout).items(), map.layout);
   if (scene.missing.length) {
     console.warn(`${scene.missing.length} sprites are not in the kit`, scene.missing.slice(0, 8));
   }
-  const ground = new Ground(map.districts, map.layout);
+  const ground = new Ground(map.districts, map.layout, scene.buildings);
   scene.root.addChildAt(ground.overlay, scene.groundTop);
 
   for (const old of world.removeChildren()) old.destroy({ children: true });
@@ -176,19 +301,27 @@ async function found(client: MenderClient, grown: () => Promise<void>): Promise<
 }
 
 interface Pointing {
-  at(worldX: number, worldY: number): District | null;
-  hover(district: District | null): void;
-  picked(district: District | null): void;
+  at(worldX: number, worldY: number): Aim | null;
+  hover(aim: Aim | null): void;
+  picked(aim: Aim | null): void;
   escaped(): void;
+  /** True while the board is waiting to be written on. */
+  writing(): boolean;
+  written(): string;
+  wrote(text: string): void;
+  commit(): void;
 }
 
 /**
- * Pointing and going.
+ * Pointing, going, and writing.
  *
  * A district lights when the pointer is over it and something happens when you
  * pick it; the open sea takes you back out, and so does escape. The camera is
  * dragged with the same button, so a press that moved is a pan and not a pick —
  * without that, every drag that ends over land takes you somewhere.
+ *
+ * There is no text field anywhere in this app, so while the board is asking for
+ * a name the keyboard simply belongs to the board.
  */
 function watchPointer(
   pixi: Application,
@@ -201,7 +334,7 @@ function watchPointer(
 
   let pressedAt: { x: number; y: number } | null = null;
 
-  const under = (event: FederatedPointerEvent): District | null => {
+  const under = (event: FederatedPointerEvent): Aim | null => {
     const point = camera.toWorld(event.global);
     return pointing.at(point.x, point.y);
   };
@@ -209,9 +342,9 @@ function watchPointer(
   const behind = (event: FederatedPointerEvent): boolean => board.over(event.global.x);
 
   pixi.stage.on('pointermove', (event: FederatedPointerEvent) => {
-    const district = behind(event) ? null : under(event);
-    pointing.hover(district);
-    pixi.canvas.style.cursor = district ? 'pointer' : 'default';
+    const aim = behind(event) ? null : under(event);
+    pointing.hover(aim);
+    pixi.canvas.style.cursor = aim ? 'pointer' : 'default';
   });
 
   pixi.stage.on('pointerdown', (event: FederatedPointerEvent) => {
@@ -227,7 +360,21 @@ function watchPointer(
   });
 
   window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') pointing.escaped();
+    if (event.key === 'Escape') {
+      pointing.escaped();
+      return;
+    }
+    if (!pointing.writing() || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      pointing.commit();
+    } else if (event.key === 'Backspace') {
+      event.preventDefault();
+      pointing.wrote(pointing.written().slice(0, -1));
+    } else if (event.key.length === 1) {
+      event.preventDefault();
+      pointing.wrote(pointing.written() + event.key);
+    }
   });
 }
 

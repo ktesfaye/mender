@@ -52,6 +52,9 @@ export interface VObject {
   prefab_guid?: string;
   name?: string;
   group: string;
+  /** The plot this belongs to, when it belongs to one. Absent on base scenery,
+      which is there at every state. See `state.ts` for the ranges beside it. */
+  plot?: string;
   pos: [number, number, number];
   /** Kept in step with `pos`. `village.py` writes it and `analyze.py` reads it,
       so a stale copy is a silently wrong answer rather than an error. */

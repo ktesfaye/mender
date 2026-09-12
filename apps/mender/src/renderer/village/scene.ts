@@ -1,4 +1,4 @@
-import type { DrawItem } from '@mender/village';
+import type { Layout, Linked } from '@mender/village';
 import { Container, Sprite } from 'pixi.js';
 import { texture } from './kit';
 
@@ -27,8 +27,27 @@ import { texture } from './kit';
  */
 export const SHADOW_TINT = 0xd4baa7;
 
+/**
+ * One building, and the space it takes up on screen.
+ *
+ * A building is several sprites — walls, roof, chimney, the shadow under it —
+ * so its extent is the union of them, measured while they are being made
+ * rather than asked for afterwards: a thousand sprites is a thousand bounds
+ * calculations, and this costs four numbers per sprite as it goes past.
+ */
+export interface Building {
+  /** The plot it stands on, which is the district it belongs to. */
+  plot: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface BuiltScene {
   root: Container;
+  /** Every building on the map, in a stable order per plot. */
+  buildings: Building[];
   drawn: number;
   /** Items whose sprite the kit does not have. Always expect zero. */
   missing: string[];
@@ -50,9 +69,10 @@ export interface BuiltScene {
  * anyway: the real key is (sorting_order, y+z descending, placement), and y+z
  * descending runs the opposite way to zIndex.
  */
-export function buildScene(items: readonly DrawItem[]): BuiltScene {
+export function buildScene(items: readonly Linked[], layout: Layout): BuiltScene {
   const root = new Container();
   const missing: string[] = [];
+  const boxes = new Map<number, Box>();
   let drawn = 0;
   let groundTop = 0;
 
@@ -67,11 +87,56 @@ export function buildScene(items: readonly DrawItem[]): BuiltScene {
     // Terrain runs at a negative sorting order so it stays under everything an
     // object draws at zero; that boundary is where the ground ends.
     if (item.order < 0) groundTop = drawn;
+    if (item.origin.kind === 'object' && !item.multiply) {
+      const object = layout.objects[item.origin.oi];
+      if (object?.group === 'Building') grow(boxes, object.plot ?? '', item, sprite);
+    }
   }
-  return { root, drawn, missing, groundTop };
+  return { root, buildings: buildingsOf(boxes), drawn, missing, groundTop };
 }
 
-function makeSprite(item: DrawItem): Sprite | null {
+interface Box {
+  plot: string;
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/* The shadow under a building is not part of it: it is cast onto the ground
+   beside it, and counting it makes the building's footprint reach several cells
+   further than anything you would point at. */
+function grow(boxes: Map<number, Box>, plot: string, item: Linked, sprite: Sprite): void {
+  if (item.origin.kind !== 'object') return;
+  const left = sprite.x - item.pivotX * item.w;
+  const top = sprite.y - (1 - item.pivotY) * item.h;
+  const held = boxes.get(item.origin.oi);
+  if (!held) {
+    boxes.set(item.origin.oi, { plot, left, top, right: left + item.w, bottom: top + item.h });
+    return;
+  }
+  held.left = Math.min(held.left, left);
+  held.top = Math.min(held.top, top);
+  held.right = Math.max(held.right, left + item.w);
+  held.bottom = Math.max(held.bottom, top + item.h);
+}
+
+/* Sorted north to south, then west to east: the order the map reads in, and
+   the same order every time, because it is what decides which building a task
+   ends up standing in. */
+function buildingsOf(boxes: Map<number, Box>): Building[] {
+  return [...boxes.values()]
+    .sort((a, b) => a.top - b.top || a.left - b.left)
+    .map((box) => ({
+      plot: box.plot,
+      x: box.left,
+      y: box.top,
+      width: box.right - box.left,
+      height: box.bottom - box.top,
+    }));
+}
+
+function makeSprite(item: Linked): Sprite | null {
   const tex = texture(item.file);
   if (!tex) return null;
   const sprite = new Sprite(tex);

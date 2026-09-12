@@ -70,6 +70,13 @@ on it and brings the board in beside it, with that checkout's branch, its
 uncommitted files and its last commits written on the wood, changing as the
 tree changes.
 
+**Tasks are buildings, and they are real.** Emdash's whole runtime chain is up
+underneath: conversations, ACP, the TUI agent runtime, terminals, scripts,
+host settings, and the workspace registry that cuts worktrees. Clicking an
+empty building on a district asks what is going to happen in there; what you
+type on the wood becomes a branch and a worktree, and that building is then
+that task's own checkout, with its own board. Nothing about it is a stand-in.
+
 **Only stages 0 and 4 are used.** A founded project goes straight to a built
 district. The stages below four are sketches that do not stand up beside it,
 and five is so full it leaves the district no room, so nothing grows through
@@ -83,9 +90,10 @@ art is four static placeholder sprites the original artist never used, with no
 walk cycle and no animation, which means "agents are villagers" is a
 from-scratch character commission. Most of the build list waits on it.
 
-Nothing stands on a district yet, because there is no task model. The path
-network that says where a villager may walk is still only in Python. Nothing
-in the UI abandons a project, though the wire will.
+No agent runs in a task yet: the building is cut and standing, and nothing
+has moved into it. The path network that says where a villager may walk is
+still only in Python. Nothing in the UI abandons a project or a task, though
+the wire does both.
 
 The open question nobody has answered yet is how you change what the board is
 showing without a tab strip and without a second board.

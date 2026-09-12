@@ -4,6 +4,8 @@ import { app, BrowserWindow } from 'electron';
 import { createProjects } from './projects';
 import { createProjectsController } from './projects-controller';
 import { startRuntimes } from './runtimes';
+import { createTasks } from './tasks';
+import { createTasksController } from './tasks-controller';
 import { createVillageController } from './village';
 import { installWire } from './wire';
 
@@ -26,9 +28,11 @@ export async function main(): Promise<void> {
 
   const runtimes = startRuntimes(scope);
   const projects = createProjects(runtimes);
+  const tasks = createTasks(runtimes, projects);
   installWire(scope, {
     ...runtimes.controllers,
     projects: createProjectsController(projects),
+    tasks: createTasksController(tasks),
     village: createVillageController({ state: () => projects.stages() }),
   });
 

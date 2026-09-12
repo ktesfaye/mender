@@ -8,7 +8,7 @@ import {
   type FederatedPointerEvent,
   type Texture,
 } from 'pixi.js';
-import { ADVANCE, fitted, LINE, words } from './lettering';
+import { ADVANCE, fitted, GLYPH, LINE, words } from './lettering';
 
 /**
  * The board.
@@ -48,6 +48,8 @@ type Keep = 'front' | 'tail';
 
 export type Row =
   | { kind: 'title'; text: string }
+  /** Being written now, with the cursor after it. */
+  | { kind: 'typed'; text: string }
   | { kind: 'line'; text: string; tone?: Tone; keep?: Keep }
   /** A mark in the margin and the thing itself after it, columns lining up. */
   | { kind: 'entry'; mark: string; text: string; tone?: Tone; keep?: Keep }
@@ -76,6 +78,7 @@ export class Board {
   private readonly writing = new Container();
   private readonly clip = new Graphics();
   private rows: Row[] = [];
+  private readonly cursor = new Graphics();
   private scroll = 0;
   private reach = 0;
 
@@ -90,6 +93,7 @@ export class Board {
     texture: Texture
   ) {
     this.planks = new TilingSprite({ texture, width: art.width, height: art.height });
+    this.writing.addChild(this.cursor);
     this.view.addChild(this.shadow, this.planks, this.writing, this.clip);
     this.writing.mask = this.clip;
     this.view.eventMode = 'static';
@@ -138,7 +142,12 @@ export class Board {
     this.at = window.innerWidth;
     this.lay();
     window.addEventListener('resize', () => this.lay());
-    pixi.ticker.add(() => this.slide());
+    pixi.ticker.add(() => {
+      this.slide();
+      // The cursor blinks, which is the one thing on the board that says it is
+      // waiting for you rather than telling you something.
+      this.cursor.alpha = this.cursor.visible && performance.now() % 1060 < 620 ? 1 : 0;
+    });
   }
 
   show(rows: Row[]): void {
@@ -223,7 +232,11 @@ export class Board {
   }
 
   private write(): void {
-    for (const old of this.writing.removeChildren()) old.destroy({ children: true });
+    for (const old of this.writing.removeChildren()) {
+      if (old !== this.cursor) old.destroy({ children: true });
+    }
+    this.writing.addChild(this.cursor);
+    this.cursor.visible = false;
     const room = this.art.width - PAD_X * 2;
     let y = 0;
     for (const row of this.rows) {
@@ -243,6 +256,17 @@ export class Board {
           const written = words(fitted(row.text, room), FADED);
           written.position.set(PAD_X, y);
           this.writing.addChild(written);
+          y += LINE;
+          break;
+        }
+        case 'typed': {
+          const shown = fitted(row.text, room - ADVANCE * 2, 'tail');
+          const written = words(shown, INK);
+          written.position.set(PAD_X, y);
+          this.writing.addChild(written);
+          this.cursor.clear().rect(PAD_X + shown.length * ADVANCE, y + 1, ADVANCE - 1, GLYPH - 2);
+          this.cursor.fill(INK);
+          this.cursor.visible = true;
           y += LINE;
           break;
         }
