@@ -90,11 +90,10 @@ export async function openWork(
 
 /** Everything that has happened in the building, and the line you answer on. */
 function tail(work: WorkingState, written: string): Row[] {
-  const rows: Row[] = [{ kind: 'gap' }, { kind: 'heading', text: 'in here' }];
-
-  if (!work.lines.length && work.mood !== 'empty') {
-    rows.push({ kind: 'line', text: work.doing, tone: 'faded' });
-  }
+  const rows: Row[] = [{ kind: 'gap' }];
+  // The heading only earns its line when there is something under it: the line
+  // above the cursor already says what is going on in there.
+  if (work.lines.length) rows.push({ kind: 'heading', text: 'in here' });
   for (const line of work.lines) {
     if (line.kind === 'deed') {
       rows.push({
