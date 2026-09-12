@@ -1,6 +1,6 @@
 {
   "planks": "planks.png",
-  "width": 340,
+  "width": 440,
   "height": 94,
   "cap": 12,
   "seams": [0, 10, 19, 28, 37, 46, 55, 64, 74, 84],

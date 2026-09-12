@@ -5,9 +5,9 @@ import type { DistrictBounds } from './ground';
 /**
  * The camera over the world.
  *
- * It pans, it zooms, and it flies to a district when you pick one. When the
- * board is in, the window it aims at is only the part the board has not taken,
- * so the district comes to rest beside it rather than behind it.
+ * It pans, it zooms, and it flies to a district when you pick one. A district
+ * you have picked goes up into the top-left corner of the window and the board
+ * takes everything to the right of it, so the two never stand on each other.
  */
 
 /* THE ZOOM COMES TO REST ON A WHOLE PIXEL.
@@ -102,12 +102,14 @@ function fitScale(viewport: Viewport, box: Extent, padding: number, inset = 0): 
 }
 
 /**
- * Fly until the district fills what is left of the view, and stop on a rung.
+ * Fly until the district is up in the corner and the board has the rest.
  *
- * `inset` is how much of the right of the window the board has taken. The
- * district does not centre on the window, it centres on the gap beside the
- * board — which is what "slides the district aside" is: the land does not move,
- * the camera does, and the board arrives in the space that opens.
+ * It does not centre. The district is pinned to the top-left of the window and
+ * the board comes in over everything to the right of it — which is what
+ * "slides the district aside" is: the land does not move, the camera does, and
+ * the board arrives in the space that opens. `inset` is how much of the right
+ * of the window the board has taken, and it only decides how close in the
+ * camera can get, not where the land ends up.
  */
 export function flyTo(
   viewport: Viewport,
@@ -119,7 +121,10 @@ export function flyTo(
   // see the detail of is not open, it is just selected.
   const scale = Math.max(1, fitScale(viewport, district, padding, inset));
   viewport.animate({
-    position: { x: district.centerX + inset / 2 / scale, y: district.centerY },
+    position: {
+      x: district.x + (viewport.screenWidth / 2 - padding) / scale,
+      y: district.y + (viewport.screenHeight / 2 - padding) / scale,
+    },
     scale,
     time: FLIGHT_MS,
     ease: 'easeInOutSine',

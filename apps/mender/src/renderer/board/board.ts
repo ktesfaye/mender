@@ -67,8 +67,9 @@ export interface BoardArt {
 }
 
 /** About how much of the window the board covers, which is what decides how
-    many times over it is magnified. */
-const SHARE = 0.4;
+    many times over it is magnified. The board is the thing you are reading and
+    the village is what is going on behind it, so it takes the greater half. */
+const SHARE = 0.6;
 /** How long it takes to arrive. Long enough to see it come in from somewhere. */
 const SLIDE_MS = 300;
 
