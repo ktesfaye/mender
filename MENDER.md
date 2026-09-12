@@ -70,10 +70,10 @@ on it and brings the board in beside it, with that checkout's branch, its
 uncommitted files and its last commits written on the wood, changing as the
 tree changes.
 
-**Only stages 0 and 5 are used.** A founded project goes straight to the
-artist's finished settlement. One through four are sketches that do not stand
-up next to it, so nothing grows through them and nothing should be built on
-them until they are drawn.
+**Only stages 0 and 4 are used.** A founded project goes straight to a built
+district. The stages below four are sketches that do not stand up beside it,
+and five is so full it leaves the district no room, so nothing grows through
+any of them and nothing should be built on them until they are drawn.
 
 The board's timber is the dock, widened by `tools/make-board.py` out of the
 artist's own planks, and the writing is Departure Mono under the SIL OFL. That

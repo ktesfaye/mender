@@ -1,7 +1,7 @@
 import { basename, join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
-import { available, MAX_STAGE, type Stages } from '@mender/village';
+import { available, type Stages } from '@mender/village';
 import { app, dialog } from 'electron';
 import type { MenderRuntimes } from './runtimes';
 
@@ -44,6 +44,17 @@ export interface Projects {
 
 const KEY = 'projects';
 
+/**
+ * The stage every district stands at.
+ *
+ * The stages in between are the artist's work in progress: nought is a wild
+ * lane, and the top of the range is a settlement so full it leaves a district
+ * no room to say anything about itself. Four is the last one that is finished
+ * and still has ground to spare. Nothing grows through the others until they
+ * are drawn, so a district is simply built when it is founded.
+ */
+const SETTLED = 4;
+
 export function createProjects(runtimes: MenderRuntimes): Projects {
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'projects.json') });
 
@@ -52,7 +63,7 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
     if (!loaded.success || !Array.isArray(loaded.data)) return [];
     // Everything that is on the island is on it at the stage that is drawn.
     return (loaded.data as unknown as Project[]).map((project) =>
-      project.stage === MAX_STAGE ? project : { ...project, stage: MAX_STAGE }
+      project.stage === SETTLED ? project : { ...project, stage: SETTLED }
     );
   };
 
@@ -102,12 +113,7 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
         name: basename(path),
         path,
         plot: free[0],
-        /* Straight to the finished settlement.
-           The stages in between are the artist's work in progress: nought is a
-           wild lane and five is a settlement he has actually finished, and one
-           through four are sketches that do not yet stand up next to it. A
-           district appears built until those are drawn. */
-        stage: MAX_STAGE,
+        stage: SETTLED,
         foundedAt: new Date().toISOString(),
       };
       await save([...projects, project]);
