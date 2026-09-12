@@ -1,0 +1,113 @@
+{
+  "frames": {
+    "front-0": {
+      "frame": {
+        "x": 1,
+        "y": 1,
+        "w": 14,
+        "h": 27
+      },
+      "sourceSize": {
+        "w": 14,
+        "h": 27
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 27
+      },
+      "rotated": false,
+      "trimmed": false
+    },
+    "front-1": {
+      "frame": {
+        "x": 16,
+        "y": 1,
+        "w": 14,
+        "h": 27
+      },
+      "sourceSize": {
+        "w": 14,
+        "h": 27
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 27
+      },
+      "rotated": false,
+      "trimmed": false
+    },
+    "back-0": {
+      "frame": {
+        "x": 31,
+        "y": 1,
+        "w": 14,
+        "h": 27
+      },
+      "sourceSize": {
+        "w": 14,
+        "h": 27
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 27
+      },
+      "rotated": false,
+      "trimmed": false
+    },
+    "back-1": {
+      "frame": {
+        "x": 46,
+        "y": 1,
+        "w": 14,
+        "h": 27
+      },
+      "sourceSize": {
+        "w": 14,
+        "h": 27
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 27
+      },
+      "rotated": false,
+      "trimmed": false
+    },
+    "shadow": {
+      "frame": {
+        "x": 61,
+        "y": 1,
+        "w": 14,
+        "h": 6
+      },
+      "sourceSize": {
+        "w": 14,
+        "h": 6
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 6
+      },
+      "rotated": false,
+      "trimmed": false
+    }
+  },
+  "meta": {
+    "image": "folk.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 76,
+      "h": 29
+    },
+    "scale": "1"
+  }
+}

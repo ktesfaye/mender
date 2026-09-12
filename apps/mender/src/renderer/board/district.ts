@@ -55,6 +55,8 @@ export interface Place {
   path: string;
   /** Whatever this particular place has to say above its working tree. */
   lines?: Row[];
+  /** And whatever it has to say after it, asked for fresh every rewrite. */
+  tail?: () => Row[];
 }
 
 export interface LiveBoard {
@@ -168,7 +170,7 @@ function build(
       rows.push({ kind: 'entry', mark: since(commit.date), text: commit.subject });
     }
   }
-  return rows;
+  return [...rows, ...(place.tail?.() ?? [])];
 }
 
 /** How long ago, in the width of the margin: two characters and a space. */

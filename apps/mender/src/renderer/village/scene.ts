@@ -28,6 +28,15 @@ import { texture } from './kit';
 export const SHADOW_TINT = 0xd4baa7;
 
 /**
+ * How far out from a building's foot somebody standing at it stands.
+ *
+ * Far enough to be on the ground in front of the door rather than inside the
+ * wall, and to clear whatever the artist put against it — every one of these
+ * houses has a planter or a barrel up against the front.
+ */
+export const DOORSTEP = 9;
+
+/**
  * One building, and the space it takes up on screen.
  *
  * A building is several sprites — walls, roof, chimney, the shadow under it —
@@ -42,6 +51,24 @@ export interface Building {
   y: number;
   width: number;
   height: number;
+  /**
+   * The middle of its front, which is about where its door is.
+   *
+   * Not the middle of the box: a house is a main block plus lean-tos, awnings
+   * and a chimney, and the middle of all of that lands a person against a side
+   * wall. The southernmost piece of a building is its front, so its middle is
+   * the closest thing to a doorway the map actually says.
+   */
+  doorX: number;
+  /**
+   * Where anything standing at this building goes.
+   *
+   * A villager at the door has to draw over its own building and under the
+   * ones south of it, and the scene is depth-sorted by insertion order alone —
+   * so the place in that order is claimed while the map is being built, and
+   * never moves again.
+   */
+  stand: Container;
 }
 
 export interface BuiltScene {
@@ -73,6 +100,10 @@ export function buildScene(items: readonly Linked[], layout: Layout): BuiltScene
   const root = new Container();
   const missing: string[] = [];
   const boxes = new Map<number, Box>();
+  /* Where each child meets the ground, in the order they were added. The list
+     is what decides who draws over whom, and within the things standing on the
+     land it runs north to south — so it can be searched rather than sorted. */
+  const feet: number[] = [];
   let drawn = 0;
   let groundTop = 0;
 
@@ -83,6 +114,7 @@ export function buildScene(items: readonly Linked[], layout: Layout): BuiltScene
       continue;
     }
     root.addChild(sprite);
+    feet.push(sprite.y);
     drawn++;
     // Terrain runs at a negative sorting order so it stays under everything an
     // object draws at zero; that boundary is where the ground ends.
@@ -92,7 +124,7 @@ export function buildScene(items: readonly Linked[], layout: Layout): BuiltScene
       if (object?.group === 'Building') grow(boxes, object.plot ?? '', item, sprite);
     }
   }
-  return { root, buildings: buildingsOf(boxes), drawn, missing, groundTop };
+  return { root, buildings: buildingsOf(root, boxes, feet, groundTop), drawn, missing, groundTop };
 }
 
 interface Box {
@@ -101,6 +133,8 @@ interface Box {
   top: number;
   right: number;
   bottom: number;
+  /** The horizontal middle of the southernmost piece seen so far. */
+  frontX: number;
 }
 
 /* The shadow under a building is not part of it: it is cast onto the ground
@@ -110,22 +144,62 @@ function grow(boxes: Map<number, Box>, plot: string, item: Linked, sprite: Sprit
   if (item.origin.kind !== 'object') return;
   const left = sprite.x - item.pivotX * item.w;
   const top = sprite.y - (1 - item.pivotY) * item.h;
+  const bottom = top + item.h;
   const held = boxes.get(item.origin.oi);
   if (!held) {
-    boxes.set(item.origin.oi, { plot, left, top, right: left + item.w, bottom: top + item.h });
+    boxes.set(item.origin.oi, {
+      plot,
+      left,
+      top,
+      right: left + item.w,
+      bottom,
+      frontX: left + item.w / 2,
+    });
     return;
   }
+  if (bottom >= held.bottom) held.frontX = left + item.w / 2;
   held.left = Math.min(held.left, left);
   held.top = Math.min(held.top, top);
   held.right = Math.max(held.right, left + item.w);
-  held.bottom = Math.max(held.bottom, top + item.h);
+  held.bottom = Math.max(held.bottom, bottom);
+}
+
+/** The first place in the draw order that is south of a ground point. */
+function placeFor(feet: readonly number[], from: number, at: number): number {
+  let low = from;
+  let high = feet.length;
+  while (low < high) {
+    const mid = (low + high) >> 1;
+    if ((feet[mid] ?? 0) <= at) low = mid + 1;
+    else high = mid;
+  }
+  return low;
 }
 
 /* Sorted north to south, then west to east: the order the map reads in, and
    the same order every time, because it is what decides which building a task
    ends up standing in. */
-function buildingsOf(boxes: Map<number, Box>): Building[] {
-  return [...boxes.values()]
+function buildingsOf(
+  root: Container,
+  boxes: Map<number, Box>,
+  feet: readonly number[],
+  groundTop: number
+): Building[] {
+  const found = [...boxes.values()];
+  /* Each building gets an empty container at the place in the draw order its
+     doorstep belongs: after everything standing further north, including the
+     barrels and planters the artist put against its own front wall, and before
+     everything further south. Inserted back to front so an index still to be
+     used never moves. */
+  const places = new Map<Box, number>();
+  for (const box of found) places.set(box, placeFor(feet, groundTop, box.bottom + DOORSTEP));
+  const stands = new Map<Box, Container>();
+  for (const box of [...found].sort((a, b) => (places.get(b) ?? 0) - (places.get(a) ?? 0))) {
+    const stand = new Container();
+    root.addChildAt(stand, Math.min(places.get(box) ?? root.children.length, root.children.length));
+    stands.set(box, stand);
+  }
+  return found
     .sort((a, b) => a.top - b.top || a.left - b.left)
     .map((box) => ({
       plot: box.plot,
@@ -133,6 +207,8 @@ function buildingsOf(boxes: Map<number, Box>): Building[] {
       y: box.top,
       width: box.right - box.left,
       height: box.bottom - box.top,
+      doorX: box.frontX,
+      stand: stands.get(box) as Container,
     }));
 }
 

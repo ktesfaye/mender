@@ -1,11 +1,15 @@
+import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
+import type { Mood } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { makeBoard, type Board, type Row } from './board/board';
 import { openCheckout, type LiveBoard } from './board/district';
 import { loadLettering } from './board/lettering';
+import { answerFor, openWork, type LiveWork } from './board/work';
 import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
+import { Folk, loadFolk, type Standing } from './village/folk';
 import { districtBounds, Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
 import { say } from './village/notice';
@@ -39,17 +43,24 @@ async function boot(): Promise<void> {
 
   try {
     say('waking the village…');
-    const [client] = await Promise.all([wire(), loadKit(), loadLettering()]);
+    const [client] = await Promise.all([wire(), loadKit(), loadFolk(), loadLettering()]);
     const board = await makeBoard(pixi);
     let drawn = await draw(world, client);
     let projects = await client.projects.list({});
     let tasks = await client.tasks.list({});
     frame(camera, drawn.island);
-    pixi.ticker.add((ticker) => drawn.ground.tick(ticker));
+    pixi.ticker.add((ticker) => {
+      drawn.ground.tick(ticker);
+      drawn.folk.tick(ticker);
+    });
 
     /** The place the board is standing in front of, while it is in. */
     let open: Aim | null = null;
     let live: LiveBoard | null = null;
+    /** Set while the board in front of you is a task's, which can be talked to. */
+    let work: LiveWork | null = null;
+    /** The task that board belongs to. */
+    let inside: Task | null = null;
     /** Set while a name is being written on the wood. */
     let naming: {
       district: District;
@@ -71,6 +82,8 @@ async function boot(): Promise<void> {
     const shut = async (): Promise<void> => {
       open = null;
       naming = null;
+      inside = null;
+      work = null;
       board.hide();
       const was = live;
       live = null;
@@ -81,6 +94,8 @@ async function boot(): Promise<void> {
     const stand = async (aim: Aim, name: string, path: string, lines: Row[]): Promise<void> => {
       const was = live;
       live = null;
+      work = null;
+      inside = null;
       await was?.close();
 
       open = aim;
@@ -133,12 +148,40 @@ async function boot(): Promise<void> {
       await stand(aim, project.name, project.path, lines);
     };
 
-    /** A building with a task in it is that task's own checkout. */
+    /**
+     * A building with a task in it is that task's own checkout, and whoever is
+     * working in it. The board opens at the bottom, because the bottom is now.
+     */
     const openTask = async (aim: Aim, task: Task): Promise<void> => {
       flyTo(camera, districtBounds(aim.district), { inset: board.inset });
-      // No extra lines: the branch is the first thing the checkout itself says,
-      // and a task's branch is a task's name said twice.
-      await stand(aim, task.name, task.path, []);
+      const was = live;
+      live = null;
+      work = null;
+      await was?.close();
+
+      open = aim;
+      naming = null;
+      inside = task;
+      board.show(
+        [
+          { kind: 'title', text: task.name },
+          { kind: 'line', text: task.path, tone: 'faded', keep: 'tail' },
+          { kind: 'gap' },
+          { kind: 'line', text: 'looking in…', tone: 'faded' },
+        ],
+        'now'
+      );
+
+      const opened = await openWork(client, task, (rows) => {
+        if (open === aim) board.update(rows);
+      });
+      if (open !== aim) {
+        await opened.close();
+        return;
+      }
+      live = opened;
+      work = opened;
+      board.show(opened.rows(), 'now');
     };
 
     /** An empty building is a question: what is going to happen in here. */
@@ -180,6 +223,7 @@ async function boot(): Promise<void> {
         return;
       }
       tasks = await client.tasks.list({});
+      people();
       if (aim) await openTask(aim, made.data);
     };
 
@@ -196,6 +240,7 @@ async function boot(): Promise<void> {
           await shut();
           drawn = await draw(world, client);
           projects = await client.projects.list({});
+          people();
           frame(camera, drawn.island);
         });
         return;
@@ -214,16 +259,99 @@ async function boot(): Promise<void> {
       await openDistrict(aim);
     };
 
+    /**
+     * Whatever is written on a task's board is said to whoever is in there —
+     * and nothing written, while they are working, calls them off.
+     */
+    const tell = async (): Promise<void> => {
+      const task = inside;
+      const saying = work;
+      if (!task || !saying) return;
+      const text = saying.written().trim();
+      if (!text) {
+        if (saying.working()) await client.agents.hush({ task: task.id });
+        return;
+      }
+      saying.wrote('');
+      const heard = await client.agents.tell({ task: task.id, text }, { timeoutMs: 0 });
+      if (!heard.success) {
+        say(heard.error.kind === 'refused' ? heard.error.because : 'nobody heard that.', 6000);
+      }
+    };
+
+    const answer = async (key: string): Promise<void> => {
+      const task = inside;
+      const asked = work?.asked();
+      if (!task || !asked) return;
+      const optionId = answerFor(asked, key);
+      if (!optionId) return;
+      const given = await client.agents.answer({
+        task: task.id,
+        requestId: asked.requestId,
+        optionId,
+      });
+      if (!given.success && given.error.kind === 'refused') say(given.error.because, 6000);
+    };
+
     watchPointer(pixi, camera, board, {
       at: (x, y) => drawn.ground.at(x, y),
       hover: (aim) => drawn.ground.hover(aim),
       picked: (aim) => void picked(aim),
       escaped: () => void picked(null),
-      writing: () => naming !== null,
-      written: () => naming?.written ?? '',
-      wrote,
-      commit: () => void begin(),
+      /* Three things the keyboard can be doing, and never more than one at a
+         time: naming a building nobody has moved into, answering the villager
+         standing at a door, or saying something to whoever is in there. */
+      typed: (event) => {
+        if (naming) {
+          if (event.key === 'Enter') void begin();
+          else if (event.key === 'Backspace') wrote(naming.written.slice(0, -1));
+          else if (event.key.length === 1) wrote(naming.written + event.key);
+          else return false;
+          return true;
+        }
+        const saying = work;
+        if (!saying) return false;
+        if (saying.asked()) {
+          if (!/^[1-9]$/.test(event.key)) return false;
+          void answer(event.key);
+          return true;
+        }
+        if (event.key === 'Enter') void tell();
+        else if (event.key === 'Backspace') saying.wrote(saying.written().slice(0, -1));
+        else if (event.key.length === 1) saying.wrote(saying.written() + event.key);
+        else return false;
+        return true;
+      },
     });
+
+    /* Who is standing outside which building, kept true by the main process
+       rather than by whatever board happens to be open: a villager is still
+       working while you are looking at another district. */
+    let seen: Record<string, Mood> = {};
+    const people = (): void => {
+      const standing: Standing[] = [];
+      for (const task of tasks) {
+        const mood = seen[task.id];
+        if (!mood || mood === 'empty') continue;
+        const plot = projects.find((project) => project.id === task.project)?.plot;
+        const district = plot ? drawn.districts.get(plot) : undefined;
+        const building = district && drawn.ground.buildingAt(district, task.slot);
+        if (building) standing.push({ id: task.id, building, mood });
+      }
+      drawn.folk.set(standing);
+    };
+    const moods = new ReplicaState<Record<string, Mood>>(
+      client.agents.island.state(undefined, 'moods'),
+      {
+        onChange: (value) => {
+          seen = value;
+          people();
+        },
+      }
+    );
+    await moods.ready;
+    seen = moods.current() ?? {};
+    people();
   } catch (error) {
     say(error instanceof Error ? error.message : String(error));
     throw error;
@@ -258,6 +386,9 @@ function whyNot(error: { kind: string; because?: string; name?: string }): strin
 
 interface Drawn {
   ground: Ground;
+  folk: Folk;
+  /** The districts by plot, which is how a project finds its own land. */
+  districts: Map<string, District>;
   island: Extent;
 }
 
@@ -275,7 +406,12 @@ async function draw(world: Container, client: MenderClient): Promise<Drawn> {
   for (const old of world.removeChildren()) old.destroy({ children: true });
   world.addChild(scene.root);
   say(null);
-  return { ground, island: extentOf(map.layout) };
+  return {
+    ground,
+    folk: new Folk(ground.windows),
+    districts: new Map(map.districts.map((district) => [district.id, district])),
+    island: extentOf(map.layout),
+  };
 }
 
 async function found(client: MenderClient, grown: () => Promise<void>): Promise<void> {
@@ -305,11 +441,8 @@ interface Pointing {
   hover(aim: Aim | null): void;
   picked(aim: Aim | null): void;
   escaped(): void;
-  /** True while the board is waiting to be written on. */
-  writing(): boolean;
-  written(): string;
-  wrote(text: string): void;
-  commit(): void;
+  /** A key that is not escape. True if the board took it. */
+  typed(event: KeyboardEvent): boolean;
 }
 
 /**
@@ -364,17 +497,8 @@ function watchPointer(
       pointing.escaped();
       return;
     }
-    if (!pointing.writing() || event.metaKey || event.ctrlKey || event.altKey) return;
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      pointing.commit();
-    } else if (event.key === 'Backspace') {
-      event.preventDefault();
-      pointing.wrote(pointing.written().slice(0, -1));
-    } else if (event.key.length === 1) {
-      event.preventDefault();
-      pointing.wrote(pointing.written() + event.key);
-    }
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (pointing.typed(event)) event.preventDefault();
   });
 }
 

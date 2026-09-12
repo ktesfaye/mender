@@ -1,6 +1,8 @@
 import { join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
+import { acpApiContract } from '@emdash/core/runtimes/acp/api';
 import { acpWorkerSpec } from '@emdash/core/runtimes/acp/node';
+import { conversationsContract } from '@emdash/core/runtimes/conversations/api';
 import { conversationsWorkerSpec } from '@emdash/core/runtimes/conversations/node';
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { gitWorkerSpec } from '@emdash/core/runtimes/git/node';
@@ -52,6 +54,10 @@ export interface MenderRuntimes {
   git: ReturnType<typeof gitClient>;
   /** The workspace registry: the thing that makes a worktree exist. */
   workspaces: ReturnType<typeof workspacesClient>;
+  /** The host's index of conversations: who has ever been asked to do what. */
+  conversations: ReturnType<typeof conversationsClient>;
+  /** The agent sessions themselves. What a villager actually is. */
+  acp: ReturnType<typeof acpClient>;
 }
 
 function gitClient(ready: Promise<unknown>) {
@@ -60,6 +66,14 @@ function gitClient(ready: Promise<unknown>) {
 
 function workspacesClient(ready: Promise<unknown>) {
   return queuedClient(workspaceRegistryContract, () => ready as Promise<never>);
+}
+
+function conversationsClient(ready: Promise<unknown>) {
+  return queuedClient(conversationsContract, () => ready as Promise<never>);
+}
+
+function acpClient(ready: Promise<unknown>) {
+  return queuedClient(acpApiContract, () => ready as Promise<never>);
 }
 
 export function startRuntimes(scope: Scope): MenderRuntimes {
@@ -228,6 +242,8 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
     },
     git,
     workspaces,
+    conversations: conversationsClient(conversationsReady),
+    acp: acpClient(acpReady),
   };
 }
 

@@ -66,6 +66,8 @@ export class Ground {
 
   private readonly owner = new Map<string, District>();
   private readonly highlight = new Graphics({ blendMode: 'add' });
+  /** Light out of the buildings somebody is working in. Drawn into by the folk. */
+  readonly windows = new Graphics({ blendMode: 'add' });
   /* The island's own outline, as a hole light is allowed through. Light that
      falls past the coast is a haze sitting on the water, and the sea is the one
      surface in the picture nothing is standing on. */
@@ -99,7 +101,8 @@ export class Ground {
     }
     this.onlyLand.fill(0xffffff);
     this.highlight.mask = this.onlyLand;
-    this.overlay.addChild(this.firelight, this.highlight, this.onlyLand);
+    this.windows.mask = this.onlyLand;
+    this.overlay.addChild(this.firelight, this.windows, this.highlight, this.onlyLand);
     this.overlay.eventMode = 'none';
     this.drawFirelight();
   }

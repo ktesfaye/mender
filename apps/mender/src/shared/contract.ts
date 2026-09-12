@@ -1,5 +1,6 @@
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { defineContract } from '@emdash/wire/rpc';
+import { agentsContract } from './agents';
 import { projectsContract } from './projects';
 import { tasksContract } from './tasks';
 import { villageContract } from './village';
@@ -13,6 +14,7 @@ import { villageContract } from './village';
  * are ours, and nothing upstream has an opinion about them.
  */
 export const menderDomainContracts = {
+  agents: agentsContract,
   git: gitContract,
   projects: projectsContract,
   tasks: tasksContract,

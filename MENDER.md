@@ -56,7 +56,7 @@ not split panes, not a tab strip.
 | `AGENTS.md` | upstream's own instructions for working in this codebase. Still true for back-end work |
 | `packages/village/` | the world: what a state of the village is, and the shore pass that cuts a coast round it. Draws nothing, knows nothing about Electron |
 | `apps/mender/` | the app: the Electron shell, the wire to emdash's runtimes, and the Pixi renderer |
-| `apps/mender/assets/` | the world files, the packed sprite kit, the board's timber and the one typeface. `tools/pack-kit.py` and `tools/make-board.py` rebuild the first two from the Cainos art, which is purchased and lives outside both repos |
+| `apps/mender/assets/` | the world files, the packed sprite kit, the board's timber, the villagers and the one typeface. `tools/pack-kit.py` and `tools/make-board.py` rebuild the first two from the Cainos art, which is purchased and lives outside both repos; `tools/make-folk.py` draws the villagers, which are ours |
 | `../a-cozy-agents-village/` | where all of that grew, and still the place the growth stages are authored. The generator, the composer and the editor stay there |
 
 ## What is known and what is not
@@ -77,23 +77,46 @@ empty building on a district asks what is going to happen in there; what you
 type on the wood becomes a branch and a worktree, and that building is then
 that task's own checkout, with its own board. Nothing about it is a stand-in.
 
+**An agent runs in a task, and it is a villager.** Telling a building something
+moves somebody in: the ACP runtime spawns that agent's own CLI in the task's
+worktree, and from then on the building's board is what is happening in there —
+what was said, what was read, what was run, wrapped to the wood and pinned to
+its live edge. The last line of the board is where you write back; there is no
+text field anywhere in this app. An empty line while somebody is working calls
+them off.
+
+From out on the water it is light and posture and nothing else. A building with
+somebody in it is lit, warmer and pulsing when they want you, red when they have
+broken; the villager at its door is turned away while they are working and
+turned towards you when they have stopped. There is no badge, no spinner and no
+coloured dot anywhere.
+
+The agent runs under the Claude settings on this machine, the same ones a
+terminal session gets, so what it asks permission for is what it would ask
+there. When it does ask, the question lands on the board and a number key
+answers it.
+
 **Only stages 0 and 4 are used.** A founded project goes straight to a built
 district. The stages below four are sketches that do not stand up beside it,
 and five is so full it leaves the district no room, so nothing grows through
 any of them and nothing should be built on them until they are drawn.
 
 The board's timber is the dock, widened by `tools/make-board.py` out of the
-artist's own planks, and the writing is Departure Mono under the SIL OFL. That
-is the whole of the UI art, and it is two things: a plank and an alphabet.
-There is still no windmill, no parchment, no frame, no icon. And the character
-art is four static placeholder sprites the original artist never used, with no
-walk cycle and no animation, which means "agents are villagers" is a
-from-scratch character commission. Most of the build list waits on it.
+artist's own planks, and the writing is Departure Mono under the SIL OFL. There
+is still no windmill, no parchment, no frame, no icon.
 
-No agent runs in a task yet: the building is cut and standing, and nothing
-has moved into it. The path network that says where a villager may walk is
-still only in Python. Nothing in the UI abandons a project or a task, though
-the wire does both.
+The villagers are ours and drawn from nothing. The kit's four "character" files
+are an unfinished template — a featureless slab with cat ears, taller than the
+doors of the houses it would stand at, never used in the artist's own demo — so
+`tools/make-folk.py` draws a front, a back and two frames of breath each, in the
+kit's own outline colour and at a height that fits its doorways. Nobody walks
+anywhere: there is no walk cycle and the path network that says where a villager
+could walk is still only in Python.
+
+Nothing in the UI abandons a project or a task, though the wire does both, and
+nothing removes an agent from a building. A permission question has not been
+seen land on the board: the Claude settings on this machine approve everything a
+task has been asked to do so far, so that one branch is wired but unwitnessed.
 
 The open question nobody has answered yet is how you change what the board is
 showing without a tab strip and without a second board.

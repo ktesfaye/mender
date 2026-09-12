@@ -53,6 +53,8 @@ export type Row =
   | { kind: 'line'; text: string; tone?: Tone; keep?: Keep }
   /** A mark in the margin and the thing itself after it, columns lining up. */
   | { kind: 'entry'; mark: string; text: string; tone?: Tone; keep?: Keep }
+  /** Something somebody said, wrapped to the wood rather than cut off at it. */
+  | { kind: 'prose'; text: string; tone?: Tone; mark?: string }
   | { kind: 'heading'; text: string }
   | { kind: 'gap' };
 
@@ -81,6 +83,8 @@ export class Board {
   private readonly cursor = new Graphics();
   private scroll = 0;
   private reach = 0;
+  /** Whether the bottom of the board stays under you as it is written on. */
+  private follow = false;
 
   /** How many times over the wood is magnified. Always a whole number. */
   private times = 2;
@@ -150,12 +154,21 @@ export class Board {
     });
   }
 
-  show(rows: Row[]): void {
+  /**
+   * Put something on the board.
+   *
+   * `at` is which end it opens on. A notice opens at the top because that is
+   * where it begins; a board with something still happening on it opens at the
+   * bottom, because the bottom is now.
+   */
+  show(rows: Row[], at: 'top' | 'now' = 'top'): void {
     this.rows = rows;
-    this.scroll = 0;
     this.open = true;
+    this.follow = at === 'now';
     this.view.visible = true;
     this.write();
+    this.scroll = this.follow ? this.reach : 0;
+    this.writing.y = PAD_Y - Math.round(this.scroll);
   }
 
   /** Rewrite what is on it without moving it: the same board, a new notice. */
@@ -187,6 +200,9 @@ export class Board {
   private scrollBy(by: number): void {
     const was = this.scroll;
     this.scroll = Math.max(0, Math.min(this.reach, this.scroll + by));
+    // Reading back through what happened lets go of the live edge; coming back
+    // down to the bottom takes hold of it again.
+    this.follow = this.scroll >= this.reach - 1;
     if (this.scroll !== was) this.writing.y = PAD_Y - Math.round(this.scroll);
   }
 
@@ -270,6 +286,22 @@ export class Board {
           y += LINE;
           break;
         }
+        case 'prose': {
+          const gutter = row.mark ? GUTTER : 0;
+          const lines = wrapped(row.text, Math.floor(room / ADVANCE) - gutter);
+          if (row.mark) {
+            const mark = words(row.mark, TONES[row.tone ?? 'ink']);
+            mark.position.set(PAD_X, y);
+            this.writing.addChild(mark);
+          }
+          for (const line of lines) {
+            const written = words(line, TONES[row.tone ?? 'ink']);
+            written.position.set(PAD_X + gutter * ADVANCE, y);
+            this.writing.addChild(written);
+            y += LINE;
+          }
+          break;
+        }
         case 'entry': {
           const mark = words(row.mark, TONES[row.tone ?? 'faded']);
           mark.position.set(PAD_X, y);
@@ -288,9 +320,35 @@ export class Board {
       }
     }
     this.reach = Math.max(0, y - (this.planks.height - PAD_Y * 2));
-    this.scroll = Math.min(this.scroll, this.reach);
+    this.scroll = this.follow ? this.reach : Math.min(this.scroll, this.reach);
     this.writing.y = PAD_Y - Math.round(this.scroll);
   }
+}
+
+/**
+ * Prose, broken to the width of the wood.
+ *
+ * Words, not characters: a line cut mid-word reads as damage. A word longer
+ * than the board is cut, because the alternative is a word that runs off it.
+ */
+function wrapped(text: string, columns: number): string[] {
+  const lines: string[] = [];
+  for (const paragraph of text.split('\n')) {
+    let line = '';
+    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+      const piece = word.length > columns ? word.slice(0, columns) : word;
+      if (!line) line = piece;
+      else if (line.length + 1 + piece.length <= columns) line += ` ${piece}`;
+      else {
+        lines.push(line);
+        line = piece;
+      }
+    }
+    lines.push(line);
+  }
+  // A trailing blank paragraph is the writer breathing, not a line.
+  while (lines.length > 1 && !lines[lines.length - 1]) lines.pop();
+  return lines.length ? lines : [''];
 }
 
 /** Take the board out of storage. Its timber is cut by `tools/make-board.py`. */
