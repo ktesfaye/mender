@@ -32,6 +32,15 @@ export interface BuiltScene {
   drawn: number;
   /** Items whose sprite the kit does not have. Always expect zero. */
   missing: string[];
+  /**
+   * The child index where the ground stops and things standing on it begin.
+   *
+   * Anything that belongs to the LAND rather than to the picture as a whole goes
+   * in here: light on a district laid over the top of the trees reads as a sheet
+   * of coloured glass over the app, and the same light slipped under them reads
+   * as the sun coming out on that field.
+   */
+  groundTop: number;
 }
 
 /**
@@ -45,6 +54,7 @@ export function buildScene(items: readonly DrawItem[]): BuiltScene {
   const root = new Container();
   const missing: string[] = [];
   let drawn = 0;
+  let groundTop = 0;
 
   for (const item of items) {
     const sprite = makeSprite(item);
@@ -54,8 +64,11 @@ export function buildScene(items: readonly DrawItem[]): BuiltScene {
     }
     root.addChild(sprite);
     drawn++;
+    // Terrain runs at a negative sorting order so it stays under everything an
+    // object draws at zero; that boundary is where the ground ends.
+    if (item.order < 0) groundTop = drawn;
   }
-  return { root, drawn, missing };
+  return { root, drawn, missing, groundTop };
 }
 
 function makeSprite(item: DrawItem): Sprite | null {

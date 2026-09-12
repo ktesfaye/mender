@@ -6,6 +6,8 @@
    drawing sits in the app, on top of `Document.items()`. */
 
 export { composeState, type ComposedVillage, type VillageWorld } from './compose-state';
+export { boundsOf, districtsOf, standingGround, type District } from './districts';
+export { CELL } from './scene/resolve';
 export { shorePass, type ShorePassOptions } from './shore';
 export {
   ABSENT,

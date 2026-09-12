@@ -43,7 +43,12 @@ export function createVillageController(options: VillageOptions): Controller {
         map = composeState(world, wanted);
         maps.set(key, map);
       }
-      return { layout: map.layout, stages: map.stages, shore: map.shore };
+      return {
+        layout: map.layout,
+        stages: map.stages,
+        shore: map.shore,
+        districts: map.districts,
+      };
     },
   });
 }

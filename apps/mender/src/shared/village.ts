@@ -1,5 +1,5 @@
 import { defineContract, procedure } from '@emdash/wire/rpc';
-import type { Layout } from '@mender/village';
+import type { District, Layout } from '@mender/village';
 import { z } from 'zod';
 
 /** Plot id -> stage, 0..5. A plot not named has no project and is open sea. */
@@ -12,6 +12,7 @@ export const stagesSchema = z.record(z.string(), z.number().int().min(0).max(5))
  * nobody outside this app can put a layout on this channel.
  */
 const layoutSchema = z.custom<Layout>(() => true);
+const districtsSchema = z.custom<readonly District[]>(() => true);
 
 export const villageContract = defineContract({
   map: procedure({
@@ -24,6 +25,8 @@ export const villageContract = defineContract({
       stages: stagesSchema,
       /** The shore pass's own counts, for when the coast comes out wrong. */
       shore: z.record(z.string(), z.number()),
+      /** What is standing on the island, and which cells each one owns. */
+      districts: districtsSchema,
     }),
   }),
 });

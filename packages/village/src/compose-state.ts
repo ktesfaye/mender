@@ -6,6 +6,7 @@
    state is a function call rather than a subprocess and a pair of temp files. */
 
 import type { Atlas } from './brush/redress';
+import { districtsOf, type District } from './districts';
 import type { Layout } from './doc/document';
 import { shorePass } from './shore';
 import { effective, filterLayout, landOf, newOf, toCells, type Plots, type Stages } from './state';
@@ -27,6 +28,8 @@ export interface ComposedVillage {
   readonly stages: Record<string, number>;
   /** The shore pass's own counts, for when the coast comes out wrong. */
   readonly shore: Record<string, number>;
+  /** What is standing on it, and which cells each one owns. */
+  readonly districts: readonly District[];
 }
 
 export function composeState(village: VillageWorld, stages: Stages): ComposedVillage {
@@ -38,5 +41,5 @@ export function composeState(village: VillageWorld, stages: Stages): ComposedVil
     newLand: toCells(newOf(village.plots, drawn)),
     atlas: village.atlas,
   });
-  return { layout, stages: drawn, shore };
+  return { layout, stages: drawn, shore, districts: districtsOf(village.plots, drawn) };
 }

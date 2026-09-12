@@ -1,13 +1,14 @@
 import { Viewport } from 'pixi-viewport';
 import type { Application, Container } from 'pixi.js';
+import type { DistrictBounds } from './ground';
 
 /**
  * The camera over the world.
  *
- * Pan and zoom only, for now. The move that matters — zooming into a district
- * and sliding it aside for the board — is a camera transition this does not
- * have yet, and it goes here when it arrives rather than into whatever opens
- * the board.
+ * It pans, it zooms, and it flies to a district when you pick one. The half of
+ * the move that is still missing is the board: opening a building slides its
+ * district aside to make room for one, and nothing yet has a board to make room
+ * for. The slide goes here when it does.
  */
 
 /* THE ZOOM COMES TO REST ON A WHOLE PIXEL.
@@ -70,6 +71,42 @@ function nearestRung(scale: number): number {
   return RUNGS.reduce((best, rung) =>
     Math.abs(Math.log(rung / scale)) < Math.abs(Math.log(best / scale)) ? rung : best
   );
+}
+
+/** How long the camera takes to go somewhere. Long enough to see where you
+    came from, short enough that it is not a cutscene you sit through. */
+const FLIGHT_MS = 520;
+
+/** Fly until the district fills the view, and stop on a rung. */
+export function flyTo(viewport: Viewport, district: DistrictBounds, padding = 80): void {
+  const fit = Math.min(
+    (viewport.screenWidth - padding * 2) / district.width,
+    (viewport.screenHeight - padding * 2) / district.height
+  );
+  viewport.animate({
+    position: { x: district.centerX, y: district.centerY },
+    scale: nearestRung(fit),
+    time: FLIGHT_MS,
+    ease: 'easeInOutSine',
+    removeOnInterrupt: true,
+  });
+}
+
+/** Fly back out until the whole island is in front of you again. */
+export function flyOut(viewport: Viewport, world: Container, padding = 48): void {
+  const bounds = world.getLocalBounds();
+  if (!bounds.width || !bounds.height) return;
+  const fit = Math.min(
+    (viewport.screenWidth - padding * 2) / bounds.width,
+    (viewport.screenHeight - padding * 2) / bounds.height
+  );
+  viewport.animate({
+    position: { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },
+    scale: nearestRung(fit),
+    time: FLIGHT_MS,
+    ease: 'easeInOutSine',
+    removeOnInterrupt: true,
+  });
 }
 
 /**
