@@ -33,6 +33,28 @@ anything held with Cmd, Ctrl or Alt before it looks at it. Of the 253 ledger
 rows: 11 done, 22 partly done, 34 inherited working from emdash's back end and
 needing no village surface, 13 deliberately cut, and **173 not started**.
 
+## What "not started" actually means
+
+Every one of those 173 rows already works underneath. Emdash's back end is kept
+whole and it is the engine: staging, unstaging, reverting and committing are
+mutations on a live checkout model; push, pull, publish, fetch, the log, a
+commit's files and blame are all procedures we can call today; so are the
+terminal, the file tree, both searches, pull requests, issues, MCP, skills,
+machines over SSH, settings and the updater. Forty-odd domain contracts, none of
+which import Electron or React, all of them registered and running in Mender
+right now.
+
+So "not started" almost never means the capability doesn't exist. It means
+there is no way to reach it in a village: nothing to press, nowhere for it to
+appear on the wood, and in most cases no decision yet about what pressing it
+should look like. That is the work. It is real work, and it is a different
+shape from writing a git client.
+
+The exceptions, where we genuinely are building the thing itself and not just
+its surface: the board and everything drawn on it, the island and its rules, the
+villagers, and the transcript renderer, because emdash's is React and we deleted
+it. Those are ours from nothing.
+
 ## How to read the states
 
 | | |
