@@ -128,6 +128,12 @@ def main() -> None:
         y += band.height
     planks.save(os.path.join(out, "planks.png"))
 
+    # The rail runs the whole width of the window, so it is the board's timber
+    # with the plank ends cut off: an end in the middle of a run reads as two
+    # boards butted together, and there is only one rail.
+    rail = planks.crop((CAP, 0, planks.width - CAP, planks.height))
+    rail.save(os.path.join(out, "rail.png"))
+
     with open(os.path.join(out, "board.json"), "w") as fh:
         json.dump(
             {
@@ -135,6 +141,8 @@ def main() -> None:
                 "width": planks.width,
                 "height": planks.height,
                 "cap": CAP,
+                "rail": "rail.png",
+                "railWidth": planks.width - CAP * 2,
                 # Where the planks meet, measured from the top of the tile. A
                 # board of any height ends on one of these, so it never ends
                 # halfway down a plank.

@@ -3,6 +3,8 @@
   "width": 440,
   "height": 94,
   "cap": 12,
+  "rail": "rail.png",
+  "railWidth": 416,
   "seams": [0, 10, 19, 28, 37, 46, 55, 64, 74, 84],
   "source": "building-parts/TX Village Building - Dock 01 N 01.png"
 }

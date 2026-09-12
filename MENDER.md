@@ -70,12 +70,13 @@ on it and brings the board in beside it, with that checkout's branch, its
 uncommitted files and its last commits written on the wood, changing as the
 tree changes.
 
-**Tasks are buildings, and they are real.** Emdash's whole runtime chain is up
-underneath: conversations, ACP, the TUI agent runtime, terminals, scripts,
-host settings, and the workspace registry that cuts worktrees. Clicking an
-empty building on a district asks what is going to happen in there; what you
-type on the wood becomes a branch and a worktree, and that building is then
-that task's own checkout, with its own board. Nothing about it is a stand-in.
+**Sessions are real, and each one is a checkout of its own.** Emdash's whole
+runtime chain is up underneath: conversations, ACP, the TUI agent runtime,
+terminals, scripts, host settings, and the workspace registry that cuts
+worktrees. Starting a session asks what is going to happen in it; what you type
+on the wood becomes a branch and a worktree, and that session is then its own
+checkout with its own board. Two agents are never loose in one working tree.
+Nothing about any of it is a stand-in.
 
 **An agent runs in a task, and it is a villager.** Telling a building something
 moves somebody in: the ACP runtime spawns that agent's own CLI in the task's
@@ -85,7 +86,18 @@ its live edge. The last line of the board is where you write back; there is no
 text field anywhere in this app. An empty line while somebody is working calls
 them off.
 
-From out on the water it is light and posture and nothing else. A building with
+**The rail is how you get to a session.** A plank is nailed along the bottom of
+the window with a peg for every project on it, and after them the sessions of
+whichever district you are standing in, each under the name it has given
+itself. The last peg is a plus, which starts another one. Pressing the session
+you are already inside is how you call it something else, and a name you write
+yourself is never overwritten by the agent's.
+
+A session is not a building. Buildings light up for the first few sessions in a
+district so the island still says something from the water, but they are
+scenery: a project can easily have more sessions than its district has houses,
+and which house a session stands in means nothing. From out on the water it is
+light and posture and nothing else. A building with
 somebody in it is lit, warmer and pulsing when they want you, red when they have
 broken; the villager at its door is turned away while they are working and
 turned towards you when they have stopped. There is no badge, no spinner and no
@@ -113,8 +125,8 @@ kit's own outline colour and at a height that fits its doorways. Nobody walks
 anywhere: there is no walk cycle and the path network that says where a villager
 could walk is still only in Python.
 
-Nothing in the UI abandons a project or a task, though the wire does both, and
-nothing removes an agent from a building. A permission question has not been
+Nothing in the UI abandons a project or a session, though the wire does both,
+and nothing removes an agent from one. A permission question has not been
 seen land on the board: the Claude settings on this machine approve everything a
 task has been asked to do so far, so that one branch is wired but unwitnessed.
 

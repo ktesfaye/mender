@@ -90,6 +90,20 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
     },
   });
 
+  /* What the agent decided the session is about. Claude's own adapter sends a
+     title over the protocol once it knows one, and that is a better name for a
+     session than the line that happened to start it. His own name for it wins;
+     `retitle` is the one that knows that. */
+  const named = new ReplicaState(runtimes.acp.sessions.state(undefined, 'list'), {
+    onChange: (value) => {
+      for (const [conversation, session] of Object.entries(value)) {
+        if (!session.title) continue;
+        const task = Object.keys(lodgers).find((key) => lodgers[key] === conversation);
+        if (task) void tasks.retitle(task, session.title);
+      }
+    },
+  });
+
   const houseOf = (task: string): House => {
     let house = houses.get(task);
     if (!house) {
@@ -143,7 +157,7 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
           // The agent's own CLI mints the session id; ours is only the record.
           idRegime: 'provider-minted',
           createdAt: Date.now(),
-          title: record.name,
+          title: record.title,
           config: { version: '1', type: 'acp' },
         });
         if (!made.success) return refused(whatItSaid(made.error));
@@ -218,7 +232,7 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
     async dispose() {
       await Promise.all([...houses.values()].map((house) => house.dispose()));
       houses.clear();
-      await index.dispose();
+      await Promise.all([index.dispose(), named.dispose()]);
     },
   };
 }

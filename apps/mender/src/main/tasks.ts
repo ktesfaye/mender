@@ -2,17 +2,24 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
+import { cell, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
 import type { Project, Projects } from './projects';
 import type { MenderRuntimes } from './runtimes';
 
 /**
- * The tasks, which are the buildings.
+ * The tasks, which are the sessions.
  *
  * A task is a checkout of its own: its own branch, its own worktree, its own
- * working tree to leave in a mess without touching anyone else's. That is what
- * makes a building the right shape for it — it stands on the project's land, it
- * is its own place, and you can be inside one without being inside the others.
+ * working tree to leave in a mess without touching anyone else's. That is the
+ * whole reason it is a task and not just a conversation — two agents loose in
+ * one working tree trample each other, and nothing in the village is worth
+ * that.
+ *
+ * It may also stand in one of its district's buildings, and when it does the
+ * island lights up for it. That is decoration. A project can have more
+ * sessions than its district has houses, and a session without one is in no
+ * way lesser.
  *
  * Cutting the worktree is emdash's, not ours. Its registry owns the pipeline
  * that inspects the repository, resolves the base, adds the worktree under an
@@ -23,11 +30,15 @@ export interface Task {
   readonly id: string;
   /** The project whose district it stands in. */
   readonly project: string;
-  /** What it is called out loud. Whatever was written on the board. */
+  /** What it was cut as, which is what the branch is made of. */
   readonly name: string;
+  /** What it is called now: the agent's own name for it, or his. */
+  readonly title: string;
+  /** Set once he has named it himself, so nothing renames it back. */
+  readonly named?: boolean;
   readonly branch: string;
-  /** Which of the district's buildings it stands in. */
-  readonly slot: number;
+  /** Which of the district's buildings it stands in, if it got one. */
+  readonly slot: number | null;
   /** The worktree, as the filesystem spells it. */
   readonly path: string;
   readonly startedAt: string;
@@ -43,11 +54,17 @@ export type TaskError =
 
 export interface Tasks {
   list(project?: string): Promise<Task[]>;
+  /** Every session, as it changes, for whoever is showing them. */
+  watch(): Cell<Task[]>;
   begin(
     project: string,
     name: string,
-    slot: number
+    slot: number | null
   ): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
+  /** Called something else by him, and it sticks. */
+  rename(id: string, title: string): Promise<Task[]>;
+  /** Called something else by whoever is working in it, which his name outranks. */
+  retitle(id: string, title: string): Promise<void>;
   abandon(id: string): Promise<Task[]>;
 }
 
@@ -55,19 +72,33 @@ const KEY = 'tasks';
 
 export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks {
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'tasks.json') });
+  const standing = cell<Task[]>([], { name: 'tasks:all' });
 
   const all = async (): Promise<Task[]> => {
     const loaded = await store.get(KEY);
     if (!loaded.success || !Array.isArray(loaded.data)) return [];
-    return loaded.data as unknown as Task[];
+    // Tasks written before a session had a name of its own still answer to
+    // the one they were cut under.
+    return (loaded.data as unknown as Task[]).map((task) => ({
+      ...task,
+      title: task.title || task.name,
+      slot: task.slot ?? null,
+    }));
   };
 
   const save = async (tasks: Task[]): Promise<Task[]> => {
     await store.set(KEY, tasks as unknown as never);
+    standing.set(tasks);
     return tasks;
   };
 
+  // What is on disk, published once, so anyone watching starts out right
+  // rather than empty until the first thing changes.
+  void all().then((tasks) => standing.set(tasks));
+
   return {
+    watch: () => standing,
+
     async list(project) {
       const tasks = await all();
       return project ? tasks.filter((task) => task.project === project) : tasks;
@@ -86,7 +117,7 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       if (here.some((task) => task.branch === branch)) {
         return fail({ kind: 'already-here', name: written });
       }
-      if (here.some((task) => task.slot === slot)) return fail({ kind: 'taken' });
+      if (slot !== null && here.some((task) => task.slot === slot)) return fail({ kind: 'taken' });
 
       const repository = await repositoryOf(runtimes, found);
       if (!repository.success) return repository;
@@ -125,6 +156,7 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
         id: made.data.id,
         project,
         name: written,
+        title: written,
         branch,
         slot,
         path: made.data.path,
@@ -132,6 +164,26 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       };
       await save([...tasks, task]);
       return { success: true as const, data: task };
+    },
+
+    async rename(id, title) {
+      const written = title.trim();
+      const tasks = await all();
+      if (!written) return tasks;
+      return await save(
+        tasks.map((task) => (task.id === id ? { ...task, title: written, named: true } : task))
+      );
+    },
+
+    /* What the agent calls the session. It only ever lands on a task he has
+       not named himself: his name for a thing is the last word on it. */
+    async retitle(id, title) {
+      const written = title.trim();
+      if (!written) return;
+      const tasks = await all();
+      const task = tasks.find((candidate) => candidate.id === id);
+      if (!task || task.named || task.title === written) return;
+      await save(tasks.map((each) => (each.id === id ? { ...each, title: written } : each)));
     },
 
     async abandon(id) {

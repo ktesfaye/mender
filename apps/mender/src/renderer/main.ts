@@ -7,6 +7,7 @@ import type { Task } from '@shared/tasks';
 import { makeBoard, type Board, type Row } from './board/board';
 import { openCheckout, type LiveBoard } from './board/district';
 import { loadLettering } from './board/lettering';
+import { makeRail, type Rail, type Tag } from './board/rail';
 import { answerFor, openWork, type LiveWork } from './board/work';
 import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
 import { Folk, loadFolk, type Standing } from './village/folk';
@@ -45,9 +46,10 @@ async function boot(): Promise<void> {
     say('waking the village…');
     const [client] = await Promise.all([wire(), loadKit(), loadFolk(), loadLettering()]);
     const board = await makeBoard(pixi);
+    const rail = await makeRail(pixi);
     let drawn = await draw(world, client);
     let projects = await client.projects.list({});
-    let tasks = await client.tasks.list({});
+    let tasks: Task[] = [];
     frame(camera, drawn.island);
     pixi.ticker.add((ticker) => {
       drawn.ground.tick(ticker);
@@ -61,13 +63,17 @@ async function boot(): Promise<void> {
     let work: LiveWork | null = null;
     /** The task that board belongs to. */
     let inside: Task | null = null;
-    /** Set while a name is being written on the wood. */
+    /** Set while a name for something new is being written on the wood. */
     let naming: {
       district: District;
       project: Project;
-      slot: number;
+      slot: number | null;
       written: string;
     } | null = null;
+    /** Set while an existing session is being called something else. */
+    let titling: { task: Task; written: string } | null = null;
+    /** What everybody is doing, as the main process sees it. */
+    let seen: Record<string, Mood> = {};
 
     const projectOn = (district: District): Project | undefined =>
       projects.find((candidate) => candidate.plot === district.id);
@@ -78,13 +84,85 @@ async function boot(): Promise<void> {
     /** The task standing in one of a district's buildings, if any is. */
     const taskIn = (district: District, slot: number): Task | undefined =>
       tasksOn(district).find((task) => task.slot === slot);
+    /** The first building on a district nobody is in, if there is one. */
+    const freeSlot = (district: District): number | null => {
+      const taken = new Set(tasksOn(district).map((task) => task.slot));
+      for (let slot = 0; slot < drawn.ground.room(district); slot += 1) {
+        if (!taken.has(slot)) return slot;
+      }
+      return null;
+    };
+
+    /* The rail carries a peg for every project and, after them, the sessions
+       of whichever district you are standing in. It is the only place in the
+       app that shows you work you are not looking at. */
+    const paintRail = (): void => {
+      const here = open ? projectOn(open.district) : undefined;
+      const tags: Tag[] = projects.map((project) => ({
+        id: `project:${project.id}`,
+        text: project.name,
+        here: project.id === here?.id,
+      }));
+      if (here) {
+        tags.push({ id: 'seam', text: '│', tone: 'faded' });
+        for (const task of tasks.filter((task) => task.project === here.id)) {
+          tags.push({
+            id: `task:${task.id}`,
+            text: task.title,
+            mark: markOf(seen[task.id]),
+            tone: toneOf(seen[task.id]),
+            here: inside?.id === task.id,
+          });
+        }
+        tags.push({ id: 'new', text: '+' });
+      }
+      rail.show(tags);
+    };
+
+    rail.onPick((id) => {
+      if (id === 'new') {
+        const district = open?.district;
+        if (district) askName({ kind: 'district', district }, freeSlot(district));
+        return;
+      }
+      if (id.startsWith('project:')) {
+        const project = projects.find((candidate) => candidate.id === id.slice(8));
+        const district = project && drawn.districts.get(project.plot ?? '');
+        // A peg always takes you to that project, never away from it: pressing
+        // the one you are standing on is how you get back out of a session.
+        if (district) void openDistrict({ kind: 'district', district });
+        return;
+      }
+      if (!id.startsWith('task:')) return;
+      const task = tasks.find((candidate) => candidate.id === id.slice(5));
+      if (!task) return;
+      // Pressing the one you are already inside is how you call it something
+      // else, because there is nothing else to press.
+      if (inside?.id === task.id) {
+        askTitle(task);
+        return;
+      }
+      const district = drawn.districts.get(
+        projects.find((project) => project.id === task.project)?.plot ?? ''
+      );
+      if (district) {
+        void openTask(
+          task.slot === null
+            ? { kind: 'district', district }
+            : { kind: 'building', district, slot: task.slot },
+          task
+        );
+      }
+    });
 
     const shut = async (): Promise<void> => {
       open = null;
       naming = null;
+      titling = null;
       inside = null;
       work = null;
       board.hide();
+      paintRail();
       const was = live;
       live = null;
       await was?.close();
@@ -100,6 +178,8 @@ async function boot(): Promise<void> {
 
       open = aim;
       naming = null;
+      titling = null;
+      paintRail();
       board.show([
         { kind: 'title', text: name },
         { kind: 'line', text: path, tone: 'faded', keep: 'tail' },
@@ -132,7 +212,7 @@ async function boot(): Promise<void> {
         { kind: 'gap' },
         { kind: 'heading', text: 'work' },
         ...(standing.length
-          ? standing.map((task): Row => ({ kind: 'entry', mark: '·', text: task.name }))
+          ? standing.map((task): Row => ({ kind: 'entry', mark: '·', text: task.title }))
           : [
               { kind: 'line' as const, text: 'nothing standing here yet.', tone: 'faded' as const },
             ]),
@@ -140,8 +220,8 @@ async function boot(): Promise<void> {
           kind: 'line',
           text:
             spare > 0
-              ? 'click an empty building to start something.'
-              : 'every building on this district is taken.',
+              ? 'the + on the rail starts another one.'
+              : 'every building on this district is taken, but the + still works.',
           tone: 'faded',
         },
       ];
@@ -161,10 +241,12 @@ async function boot(): Promise<void> {
 
       open = aim;
       naming = null;
+      titling = null;
       inside = task;
+      paintRail();
       board.show(
         [
-          { kind: 'title', text: task.name },
+          { kind: 'title', text: task.title },
           { kind: 'line', text: task.path, tone: 'faded', keep: 'tail' },
           { kind: 'gap' },
           { kind: 'line', text: 'looking in…', tone: 'faded' },
@@ -184,17 +266,33 @@ async function boot(): Promise<void> {
       board.show(opened.rows(), 'now');
     };
 
-    /** An empty building is a question: what is going to happen in here. */
-    const askName = (aim: Aim & { kind: 'building' }): void => {
+    /** A new session is a question: what is going to happen in there. */
+    const askName = (aim: Aim, slot: number | null): void => {
       const project = projectOn(aim.district);
       if (!project) return;
       open = aim;
-      naming = { district: aim.district, project, slot: aim.slot, written: '' };
+      inside = null;
+      work = null;
+      titling = null;
+      naming = { district: aim.district, project, slot, written: '' };
+      paintRail();
       flyTo(camera, districtBounds(aim.district), { inset: board.inset });
       board.show(asking(naming));
     };
 
+    /** Calling a session something else. His name for it outranks the agent's. */
+    const askTitle = (task: Task): void => {
+      naming = null;
+      titling = { task, written: task.title };
+      board.show(retitling(titling));
+    };
+
     const wrote = (written: string): void => {
+      if (titling) {
+        titling = { ...titling, written };
+        board.update(retitling(titling));
+        return;
+      }
       if (!naming) return;
       naming = { ...naming, written };
       board.update(asking(naming));
@@ -222,9 +320,21 @@ async function boot(): Promise<void> {
         flyOut(camera, drawn.island);
         return;
       }
-      tasks = await client.tasks.list({});
-      people();
       if (aim) await openTask(aim, made.data);
+    };
+
+    /** Writing a new name on a session that already has one. */
+    const retitle = async (): Promise<void> => {
+      const asked = titling;
+      if (!asked) return;
+      titling = null;
+      const written = asked.written.trim();
+      if (written && written !== asked.task.title) {
+        await client.tasks.rename({ id: asked.task.id, title: written });
+      }
+      const aim = open;
+      const again = tasks.find((task) => task.id === asked.task.id) ?? asked.task;
+      if (aim) await openTask(aim, again);
     };
 
     const picked = async (aim: Aim | null): Promise<void> => {
@@ -253,7 +363,7 @@ async function boot(): Promise<void> {
       if (aim.kind === 'building') {
         const task = taskIn(aim.district, aim.slot);
         if (task) await openTask(aim, task);
-        else askName(aim);
+        else askName(aim, aim.slot);
         return;
       }
       await openDistrict(aim);
@@ -293,7 +403,7 @@ async function boot(): Promise<void> {
       if (!given.success && given.error.kind === 'refused') say(given.error.because, 6000);
     };
 
-    watchPointer(pixi, camera, board, {
+    watchPointer(pixi, camera, board, rail, {
       at: (x, y) => drawn.ground.at(x, y),
       hover: (aim) => drawn.ground.hover(aim),
       picked: (aim) => void picked(aim),
@@ -302,6 +412,13 @@ async function boot(): Promise<void> {
          time: naming a building nobody has moved into, answering the villager
          standing at a door, or saying something to whoever is in there. */
       typed: (event) => {
+        if (titling) {
+          if (event.key === 'Enter') void retitle();
+          else if (event.key === 'Backspace') wrote(titling.written.slice(0, -1));
+          else if (event.key.length === 1) wrote(titling.written + event.key);
+          else return false;
+          return true;
+        }
         if (naming) {
           if (event.key === 'Enter') void begin();
           else if (event.key === 'Backspace') wrote(naming.written.slice(0, -1));
@@ -327,7 +444,6 @@ async function boot(): Promise<void> {
     /* Who is standing outside which building, kept true by the main process
        rather than by whatever board happens to be open: a villager is still
        working while you are looking at another district. */
-    let seen: Record<string, Mood> = {};
     const people = (): void => {
       const standing: Standing[] = [];
       for (const task of tasks) {
@@ -335,11 +451,22 @@ async function boot(): Promise<void> {
         if (!mood || mood === 'empty') continue;
         const plot = projects.find((project) => project.id === task.project)?.plot;
         const district = plot ? drawn.districts.get(plot) : undefined;
-        const building = district && drawn.ground.buildingAt(district, task.slot);
+        const building =
+          district && task.slot !== null && drawn.ground.buildingAt(district, task.slot);
         if (building) standing.push({ id: task.id, building, mood });
       }
       drawn.folk.set(standing);
+      paintRail();
     };
+    const running = new ReplicaState<Task[]>(client.tasks.all.state(undefined, 'list'), {
+      onChange: (value) => {
+        tasks = value;
+        people();
+      },
+    });
+    await running.ready;
+    tasks = running.current() ?? [];
+
     const moods = new ReplicaState<Record<string, Mood>>(
       client.agents.island.state(undefined, 'moods'),
       {
@@ -366,7 +493,7 @@ function sameAim(a: Aim, b: Aim): boolean {
 /** The board, waiting to be written on. */
 function asking(naming: { district: District; written: string }): Row[] {
   return [
-    { kind: 'title', text: 'a new task' },
+    { kind: 'title', text: 'a new session' },
     { kind: 'line', text: `on the ${naming.district.name.toLowerCase()}`, tone: 'faded' },
     { kind: 'gap' },
     { kind: 'line', text: 'what is going to happen in here?' },
@@ -374,6 +501,35 @@ function asking(naming: { district: District; written: string }): Row[] {
     { kind: 'gap' },
     { kind: 'line', text: 'return to begin, escape to leave it empty.', tone: 'faded' },
   ];
+}
+
+/** The board, asking what to call this instead. */
+function retitling(titling: { task: Task; written: string }): Row[] {
+  return [
+    { kind: 'title', text: titling.task.title },
+    { kind: 'line', text: titling.task.branch, tone: 'faded', keep: 'tail' },
+    { kind: 'gap' },
+    { kind: 'line', text: 'call it what?' },
+    { kind: 'typed', text: titling.written },
+    { kind: 'gap' },
+    { kind: 'line', text: 'return to keep it, escape to leave it alone.', tone: 'faded' },
+  ];
+}
+
+/** The mark a session wears on the rail, which is what it is doing. */
+function markOf(mood: Mood | undefined): string | undefined {
+  if (mood === 'working') return '…';
+  if (mood === 'asking') return '?';
+  if (mood === 'hurt') return '×';
+  if (mood === 'arriving') return '·';
+  if (mood === 'resting') return '·';
+  return undefined;
+}
+
+function toneOf(mood: Mood | undefined): 'keen' | 'sore' | undefined {
+  if (mood === 'asking') return 'keen';
+  if (mood === 'hurt') return 'sore';
+  return undefined;
 }
 
 function whyNot(error: { kind: string; because?: string; name?: string }): string {
@@ -460,6 +616,7 @@ function watchPointer(
   pixi: Application,
   camera: ReturnType<typeof createCamera>,
   board: Board,
+  rail: Rail,
   pointing: Pointing
 ): void {
   pixi.stage.eventMode = 'static';
@@ -471,8 +628,10 @@ function watchPointer(
     const point = camera.toWorld(event.global);
     return pointing.at(point.x, point.y);
   };
-  // Land the board is standing in front of is not land you can point at.
-  const behind = (event: FederatedPointerEvent): boolean => board.over(event.global.x);
+  // Land the board is standing in front of, or the rail is nailed over, is not
+  // land you can point at.
+  const behind = (event: FederatedPointerEvent): boolean =>
+    board.over(event.global.x) || rail.over(event.global.y);
 
   pixi.stage.on('pointermove', (event: FederatedPointerEvent) => {
     const aim = behind(event) ? null : under(event);

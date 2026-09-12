@@ -9,6 +9,7 @@ import {
   type Texture,
 } from 'pixi.js';
 import { ADVANCE, fitted, GLYPH, LINE, words } from './lettering';
+import { RAIL } from './rail';
 
 /**
  * The board.
@@ -60,6 +61,8 @@ export type Row =
 
 export interface BoardArt {
   planks: string;
+  /** The same timber with its plank ends cut off, for the rail to run on. */
+  rail: string;
   width: number;
   height: number;
   /** Offsets, within one tile, where two planks meet. */
@@ -214,7 +217,9 @@ export class Board {
     this.times = Math.max(2, Math.min(4, Math.round((window.innerWidth * SHARE) / this.art.width)));
     this.view.scale.set(this.times);
 
-    const room = Math.floor(window.innerHeight / this.times) - AIR * 2;
+    // The rail is nailed along the bottom, and the board stands on the floor
+    // it leaves rather than behind it.
+    const room = Math.floor(window.innerHeight / this.times) - RAIL - AIR * 2;
     // It has to end where two planks meet. A board that stops halfway down a
     // plank is a board somebody sawed through.
     const tiles = Math.max(1, Math.floor(room / this.art.height));
@@ -232,7 +237,7 @@ export class Board {
       .clear()
       .rect(0, PAD_Y - 3, this.art.width, height - (PAD_Y - 3) * 2)
       .fill(0xffffff);
-    this.view.y = Math.round((window.innerHeight - height * this.times) / 2);
+    this.view.y = Math.round((window.innerHeight - (height + RAIL) * this.times) / 2);
     if (!this.open) this.at = window.innerWidth;
     this.write();
   }
