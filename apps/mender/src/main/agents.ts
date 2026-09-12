@@ -62,7 +62,6 @@ const EMPTY: WorkingState = {
   doing: 'nobody is working in here.',
   lines: [],
   asking: null,
-  listening: true,
 };
 
 const KEY = 'agents';
@@ -344,7 +343,6 @@ class House {
       doing: this.trouble ?? doingOf(mood, this.live),
       lines,
       asking,
-      listening: this.lifecycle?.canSubmit ?? true,
     };
   }
 }
@@ -369,7 +367,11 @@ function moodOf(
   if (lifecycle.lifecycle === 'starting' || lifecycle.lifecycle === 'replaying') return 'arriving';
   if (lifecycle.isGenerating) return 'working';
   if (lifecycle.lastTurnErrored) return 'hurt';
-  if (lifecycle.lifecycle === 'closed') return 'empty';
+  /* A closed or suspended session is somebody who is not at work this second,
+     not an empty building: the village was shut and everyone went home, and
+     saying a word in there brings them back to the same conversation. Only a
+     building nobody has ever been told to work in is empty, and that one never
+     reaches here. */
   return 'resting';
 }
 

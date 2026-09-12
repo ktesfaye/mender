@@ -70,8 +70,13 @@ export class Ground {
   readonly windows = new Graphics({ blendMode: 'add' });
   /* The island's own outline, as a hole light is allowed through. Light that
      falls past the coast is a haze sitting on the water, and the sea is the one
-     surface in the picture nothing is standing on. */
+     surface in the picture nothing is standing on.
+
+     Two of them, because a mask belongs to exactly one thing: handing the same
+     Graphics to both lit layers leaves whichever asked second unmasked, or
+     unmasked and invisible, depending on which way Pixi resolves it. */
   private readonly onlyLand = new Graphics();
+  private readonly alsoLand = new Graphics();
   private readonly firelight = new Graphics();
   private readonly fire: { x: number; y: number } | null;
   private readonly camp: District | null;
@@ -98,11 +103,19 @@ export class Ground {
     for (const key of groundCells(layout)) {
       const [x, y] = key.split(',').map(Number);
       this.onlyLand.rect(x * CELL, -(y + 1) * CELL, CELL, CELL);
+      this.alsoLand.rect(x * CELL, -(y + 1) * CELL, CELL, CELL);
     }
     this.onlyLand.fill(0xffffff);
+    this.alsoLand.fill(0xffffff);
+    this.windows.mask = this.alsoLand;
     this.highlight.mask = this.onlyLand;
-    this.windows.mask = this.onlyLand;
-    this.overlay.addChild(this.firelight, this.windows, this.highlight, this.onlyLand);
+    this.overlay.addChild(
+      this.firelight,
+      this.windows,
+      this.alsoLand,
+      this.highlight,
+      this.onlyLand
+    );
     this.overlay.eventMode = 'none';
     this.drawFirelight();
   }

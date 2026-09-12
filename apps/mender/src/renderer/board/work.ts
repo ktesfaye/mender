@@ -27,8 +27,6 @@ export interface LiveWork extends LiveBoard {
   wrote(text: string): void;
   /** The question at the door, if there is one. */
   asked(): Ask | null;
-  /** Whether what is typed would be heard right now. */
-  listening(): boolean;
   /** Whether somebody in there is busy, and so could be called off. */
   working(): boolean;
 }
@@ -38,7 +36,6 @@ const QUIET: WorkingState = {
   doing: 'nobody is working in here.',
   lines: [],
   asking: null,
-  listening: true,
 };
 
 export async function openWork(
@@ -84,7 +81,6 @@ export async function openWork(
       changed(checkout.rows());
     },
     asked: () => work.asking,
-    listening: () => work.listening,
     working: () => work.mood === 'working',
     close: async () => {
       await Promise.all([replica.dispose(), checkout.close()]);

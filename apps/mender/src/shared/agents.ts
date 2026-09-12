@@ -52,8 +52,6 @@ export const workingStateSchema = z.object({
   doing: z.string(),
   lines: z.array(lineSchema),
   asking: askSchema.nullable(),
-  /** Whether saying something to it would be heard right now. */
-  listening: z.boolean(),
 });
 export type WorkingState = z.infer<typeof workingStateSchema>;
 

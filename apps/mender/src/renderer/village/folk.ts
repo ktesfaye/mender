@@ -51,25 +51,25 @@ const BREATH = 900;
 /**
  * Light in the windows, by what is going on behind them.
  *
- * Per ring, and the rings stack, so the number on the page is about a
- * fourteenth of what lands on the grass. Lamplight through a window at dusk,
+ * Per ring, and the rings stack, so what lands on the grass is a good deal
+ * more than the number on the page. Lamplight through a window at dusk,
  * not a searchlight: a house nobody is busy in should be something you notice
  * on the second look, and the one that wants you should be the only thing on
  * the island that moves.
  */
 const LIGHT: Record<Mood, { color: number; alpha: number; beat: number }> = {
   empty: { color: 0xffdf9e, alpha: 0, beat: 0 },
-  arriving: { color: 0xffdf9e, alpha: 0.008, beat: 0 },
-  working: { color: 0xffdf9e, alpha: 0.019, beat: 0.005 },
-  asking: { color: 0xffc46a, alpha: 0.026, beat: 0.012 },
-  resting: { color: 0xffdf9e, alpha: 0.013, beat: 0 },
-  hurt: { color: 0xff7a52, alpha: 0.022, beat: 0 },
+  arriving: { color: 0xffdf9e, alpha: 0.018, beat: 0 },
+  working: { color: 0xffdf9e, alpha: 0.042, beat: 0.008 },
+  asking: { color: 0xffc46a, alpha: 0.055, beat: 0.022 },
+  resting: { color: 0xffdf9e, alpha: 0.03, beat: 0 },
+  hurt: { color: 0xff7a52, alpha: 0.048, beat: 0 },
 };
 
 /* The same soft-by-stacking rule the ground's own light is built under: a blur
    is the one thing the kit forbids everywhere, so the falloff is enough rings
    that the banding lands under what you would notice. */
-const RINGS = 14;
+const RINGS = 20;
 
 /** Who is standing where, and what they are doing. */
 export interface Standing {
