@@ -53,6 +53,16 @@ const LATELY = 24;
 export interface Place {
   name: string;
   path: string;
+  /**
+   * Where this place's own history starts.
+   *
+   * A district has none: everything ever done in the project is its history,
+   * and that is what `lately` is. A session inherited all of that the moment it
+   * was cut and none of it happened in there, so it measures from the branch it
+   * came off instead, and a session that has committed nothing says nothing.
+   * Null is a session whose base nobody wrote down.
+   */
+  since?: string | null;
   /** Whatever this particular place has to say above its working tree. */
   lines?: Row[];
   /** And whatever it has to say after it, asked for fresh every rewrite. */
@@ -111,10 +121,25 @@ export async function openCheckout(
   head = headReplica.current();
   status = statusReplica.current() as StatusState;
 
-  const log = await client.git.checkout.getLog({ checkout, options: { limit: LATELY } });
-  if (log.success && log.data) {
-    lately = log.data.commits;
-    changed(build(place, head, status, lately));
+  if (place.since !== null) {
+    const log = await client.git.checkout.getLog({
+      checkout,
+      options: {
+        limit: LATELY,
+        ...(place.since
+          ? {
+              base: {
+                kind: 'branch' as const,
+                branch: { type: 'local' as const, branch: place.since },
+              },
+            }
+          : {}),
+      },
+    });
+    if (log.success && log.data) {
+      lately = log.data.commits;
+      changed(build(place, head, status, lately));
+    }
   }
 
   return {
@@ -165,7 +190,10 @@ function build(
   }
 
   if (lately.length) {
-    rows.push({ kind: 'gap' }, { kind: 'heading', text: 'lately' });
+    rows.push(
+      { kind: 'gap' },
+      { kind: 'heading', text: place.since === undefined ? 'lately' : 'committed here' }
+    );
     for (const commit of lately) {
       rows.push({ kind: 'entry', mark: since(commit.date), text: commit.subject });
     }

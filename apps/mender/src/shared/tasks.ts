@@ -15,6 +15,8 @@ export const taskSchema = z.object({
   /** What they think with, when they next start. */
   model: z.string().nullable().optional(),
   branch: z.string(),
+  /** The branch it was cut from, so the board can say what was done in here. */
+  base: z.string().nullable().optional(),
   /** Which of the district's buildings it stands in, if it got one. */
   slot: z.number().int().nonnegative().nullable(),
   path: z.string(),

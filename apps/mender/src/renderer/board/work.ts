@@ -53,6 +53,9 @@ export async function openWork(
     {
       name: task.name,
       path: task.path,
+      // Only what was done in here. The project's whole history came with the
+      // worktree and none of it happened in this session.
+      since: task.base ?? null,
       // No extra lines above the tree: the branch is the first thing the
       // checkout itself says, and a task's branch is its name said twice.
       tail: () => tail(work, written),

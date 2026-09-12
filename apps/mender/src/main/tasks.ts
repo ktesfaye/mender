@@ -41,6 +41,8 @@ export interface Task {
   /** What they think with. Handed to the session when it starts. */
   readonly model?: string | null;
   readonly branch: string;
+  /** What it was cut from. The board measures what was done in here from it. */
+  readonly base?: string | null;
   /** Which of the district's buildings it stands in, if it got one. */
   readonly slot: number | null;
   /** The worktree, as the filesystem spells it. */
@@ -166,6 +168,7 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
         name: written,
         title: written,
         branch,
+        base: baseRef === 'HEAD' ? null : baseRef,
         slot,
         path: made.data.path,
         startedAt: new Date().toISOString(),
