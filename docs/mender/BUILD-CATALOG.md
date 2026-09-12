@@ -4,6 +4,10 @@ Everything we need to do, in one place, organized so tickets can be cut straight
 
 This is a working document, not a pitch. Rows are dense on purpose.
 
+**This file says what could exist. It never says what does.** Progress lives in
+`STATE.md` next to it: every row below carries a state and a wave there, and that
+is the only file allowed to answer "how far along are we".
+
 ---
 
 ## 1. Orientation

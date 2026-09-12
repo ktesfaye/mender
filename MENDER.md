@@ -51,6 +51,7 @@ not split panes, not a tab strip.
 
 | | |
 |---|---|
+| `docs/mender/STATE.md` | how far along this actually is: every ledger row's state and the wave it belongs to. The only thing allowed to answer "how much is left" |
 | `docs/mender/BUILD-CATALOG.md` | the feature ledger, the open design questions, the build list, the art list, the risks |
 | `docs/mender/catalog/` | the nine source audits that document was built from |
 | `AGENTS.md` | upstream's own instructions for working in this codebase. Still true for back-end work |
@@ -170,6 +171,11 @@ task has been asked to do so far, so that one branch is wired but unwitnessed.
 ## House rules
 
 - Work on `main`. Never create branches.
+- `docs/mender/STATE.md` is updated in the same commit as any change to what the
+  app can do, and nothing but that file answers "how far along are we". A row
+  becomes `done` after it has been driven in the running app, never because it
+  compiles. Reporting progress from a list that lives only in a conversation is
+  how a week of small asks got mistaken for the build.
 - Render and look at it. This project's whole history says a model-side check
   passes while the screen is visibly broken.
 - Look at it without taking his screen. `MENDER_DEBUG_PORT=9222 pnpm run dev`
