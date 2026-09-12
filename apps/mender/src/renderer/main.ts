@@ -52,6 +52,14 @@ async function boot(): Promise<void> {
     let projects = await client.projects.list({});
     let tasks: Task[] = [];
     frame(camera, drawn.island);
+    /* The window is not its real size when the renderer starts — it is
+       restored to whatever it was last time a moment later — so the opening
+       shot has to be taken again once it settles, or the island sits small in
+       a corner of a window it was never measured against. Only while nothing
+       is open: once you are looking at something, the camera is yours. */
+    window.addEventListener('resize', () => {
+      if (!open) frame(camera, drawn.island);
+    });
     pixi.ticker.add((ticker) => {
       drawn.ground.tick(ticker);
       drawn.folk.tick(ticker);
