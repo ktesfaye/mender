@@ -1,14 +1,19 @@
 import { join } from 'node:path';
 import { createScope } from '@emdash/shared/concurrency';
 import { app, BrowserWindow } from 'electron';
+import { createIslandState } from './island';
 import { startRuntimes } from './runtimes';
+import { createVillageController } from './village';
 import { installWire } from './wire';
 
 const scope = createScope({ label: 'mender' });
 
 export async function main(): Promise<void> {
-  const controllers = startRuntimes(scope);
-  installWire(scope, controllers);
+  const runtimes = startRuntimes(scope);
+  installWire(scope, {
+    ...runtimes.controllers,
+    village: createVillageController({ state: createIslandState(runtimes.git) }),
+  });
 
   await app.whenReady();
   await openVillageWindow();
@@ -28,8 +33,10 @@ export async function main(): Promise<void> {
 
 async function openVillageWindow(): Promise<void> {
   const window = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    // Room for the island at one screen pixel per world pixel, which is the
+    // only scale this art is drawn for.
+    width: 1480,
+    height: 1020,
     // The village is the whole interface, so the frame carries no app chrome
     // of its own; on macOS the traffic lights float over the world.
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',

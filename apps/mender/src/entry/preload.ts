@@ -8,8 +8,4 @@ declare const window: WindowLike;
 
 contextBridge.exposeInMainWorld('mender', {
   requestWirePort: () => requestWirePort({ ipcRenderer, window }, { channel: MENDER_WIRE_CHANNEL }),
-  // Wave 0 only: the checkout Mender itself was launched from, so the seam
-  // proof has a real repository to ask git about. Real projects arrive over
-  // the wire and this goes away with them.
-  launchedFrom: process.cwd(),
 });

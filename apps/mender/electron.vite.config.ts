@@ -5,7 +5,13 @@ import { menderWorkers } from './src/shared/workers';
 // Workspace packages must be bundled rather than externalized in the main and
 // preload builds: an externalized module is resolved by Node at runtime, where
 // the `development` export condition is off, so dev runs would load stale dists.
-const workspacePackages = ['@emdash/core', '@emdash/plugins', '@emdash/shared', '@emdash/wire'];
+const workspacePackages = [
+  '@emdash/core',
+  '@emdash/plugins',
+  '@emdash/shared',
+  '@emdash/wire',
+  '@mender/village',
+];
 
 function workerBuildInputs(): Record<string, string> {
   return Object.fromEntries(
@@ -38,6 +44,10 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    // The packed sprite kit and the world files are the app's own data, not
+    // renderer source: `assets/` is served at the root in dev and copied beside
+    // the renderer on build, so `/kit/kit.json` means the same thing in both.
+    publicDir: resolve('assets'),
     resolve: {
       alias: { '@renderer': resolve('src/renderer'), '@shared': resolve('src/shared') },
     },

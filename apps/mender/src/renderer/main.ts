@@ -1,11 +1,18 @@
-import { formatAbsolute, parseNativeAbsolute } from '@emdash/core/primitives/path/api';
-import { Application, Container, Graphics, Text } from 'pixi.js';
+import { Document } from '@mender/village';
+import { Application, Container } from 'pixi.js';
+import { createCamera, frame } from './village/camera';
+import { loadKit } from './village/kit';
+import { say } from './village/notice';
+import { buildScene } from './village/scene';
 import { wire } from './wire';
 
 /**
- * Wave 0: the seam, made visible. Pixi owns the window, and the first thing it
- * draws is a real answer from the git runtime running in its own subprocess.
- * When the village replaces this, the connection underneath is the same one.
+ * You open Mender and you see the village.
+ *
+ * Nothing else is on the screen: no title bar full of buttons, no sidebar, no
+ * tab strip. The island is composed in the main process out of the state the
+ * app is actually in — which projects exist, how far each has grown — and drawn
+ * here. Everything the app can do arrives as something standing on it.
  */
 async function boot(): Promise<void> {
   const pixi = new Application();
@@ -14,56 +21,32 @@ async function boot(): Promise<void> {
     background: '#2d5d6b',
     antialias: false,
     roundPixels: true,
+    preference: 'webgl',
   });
+  pixi.renderer.canvas.style.imageRendering = 'pixelated';
   document.body.appendChild(pixi.canvas);
 
-  const stage = new Container();
-  pixi.stage.addChild(stage);
-
-  const plaque = new Graphics();
-  stage.addChild(plaque);
-
-  const label = new Text({
-    text: 'reaching the back end…',
-    style: { fill: '#f2e4c9', fontFamily: 'monospace', fontSize: 16, lineHeight: 24 },
-  });
-  label.x = 40;
-  label.y = 40;
-  stage.addChild(label);
-
-  const draw = (lines: string[]) => {
-    label.text = lines.join('\n');
-    plaque
-      .clear()
-      .roundRect(24, 24, label.width + 32, label.height + 32, 6)
-      .fill({ color: 0x3d2b1c, alpha: 0.85 });
-  };
+  const camera = createCamera(pixi);
+  const world = new Container();
+  camera.addChild(world);
 
   try {
-    const path = parseNativeAbsolute(window.mender.launchedFrom);
-    if (!path.success) {
-      draw(['could not read the repo path:', '', JSON.stringify(path.error, null, 2)]);
-      return;
+    say('waking the village…');
+    const [village] = await Promise.all([wire().then((w) => w.village), loadKit()]);
+
+    say('drawing the island…');
+    const map = await village.map({});
+    const scene = buildScene(new Document(map.layout).items());
+    if (scene.missing.length) {
+      console.warn(`${scene.missing.length} sprites are not in the kit`, scene.missing.slice(0, 8));
     }
-    const git = (await wire()).git;
-    const inspection = await git.inspectPath({ path: path.data });
-    draw(
-      inspection.success
-        ? [
-            'wire is up, git runtime answered.',
-            '',
-            `kind      ${inspection.data.kind}`,
-            ...(inspection.data.kind === 'repository'
-              ? [
-                  `root      ${formatAbsolute(inspection.data.rootPath)}`,
-                  `base ref  ${inspection.data.baseRef}`,
-                ]
-              : []),
-          ]
-        : ['git answered with an error:', '', JSON.stringify(inspection.error, null, 2)]
-    );
+
+    world.addChild(scene.root);
+    frame(camera, world);
+    say(null);
   } catch (error) {
-    draw(['the wire never came up:', '', error instanceof Error ? error.message : String(error)]);
+    say(error instanceof Error ? error.message : String(error));
+    throw error;
   }
 }
 

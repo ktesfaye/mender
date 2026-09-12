@@ -54,15 +54,20 @@ not split panes, not a tab strip.
 | `docs/mender/BUILD-CATALOG.md` | the feature ledger, the open design questions, the build list, the art list, the risks |
 | `docs/mender/catalog/` | the nine source audits that document was built from |
 | `AGENTS.md` | upstream's own instructions for working in this codebase. Still true for back-end work |
-| `../a-cozy-agents-village/` | the village art pipeline: the sprite kit, the atlas, the critic, the editor's renderer and brushes. Source of truth for the world until we decide what moves here |
+| `packages/village/` | the world: what a state of the village is, and the shore pass that cuts a coast round it. Draws nothing, knows nothing about Electron |
+| `apps/mender/` | the app: the Electron shell, the wire to emdash's runtimes, and the Pixi renderer |
+| `apps/mender/assets/` | the world files and the packed sprite kit. `tools/pack-kit.py` rebuilds the kit from the Cainos art, which is purchased and lives outside both repos |
+| `../a-cozy-agents-village/` | where all of that grew, and still the place the growth stages are authored. The generator, the composer and the editor stay there |
 
 ## What is known and what is not
 
-The renderer is not a rebuild. The village editor in the other repo already
-draws the whole world live at speed, with a scene graph, accurate picking and
-villagers that path around obstacles. What does not exist is the camera: smooth
-zoom, the slide, the transition. And the sprites load as a thousand loose files,
-which needs packing before we fly between districts.
+The island draws. The state rules and the shore pass are ported out of Python
+and produce a map byte-identical to the one the village repo's own pipeline
+produces, the kit is packed into one texture, and the camera pans and zooms and
+comes to rest on whole pixels. What does not exist is the move that matters:
+zooming into a district, sliding it aside, bringing in the board. Nor does
+picking — you cannot yet click anything — and the path network that says where
+a villager may walk is still only in Python.
 
 The art is the blocking problem, not the code. There is no windmill in the kit.
 There are no UI surfaces at all: no panels, no parchment, no chalkboard, no

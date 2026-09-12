@@ -7,11 +7,11 @@ import {
   type DomPortLike,
 } from '@emdash/wire/rpc';
 import { MENDER_WIRE_CHANNEL } from '@shared/channels';
-import { menderDomainContracts, menderWireContract } from '@shared/contract';
+import { menderWireContract, type menderDomainContracts } from '@shared/contract';
 
 declare global {
   interface Window {
-    mender: { requestWirePort: () => Promise<void>; launchedFrom: string };
+    mender: { requestWirePort: () => Promise<void> };
   }
 }
 

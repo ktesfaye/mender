@@ -25,15 +25,25 @@ import { app } from 'electron';
 import { menderWorkerPath } from './worker-paths';
 
 /**
- * Starts the core runtime workers Mender needs and returns their controllers,
- * keyed by the domain name the renderer-facing contract uses.
+ * Starts the core runtime workers Mender needs.
  *
  * Each runtime is the same subprocess emdash runs: the component specs and
  * entry files live in @emdash/core, so this is wiring, not a reimplementation.
  * Wave 0 starts the two the village needs to prove the seam (fs-watch backs
  * git's working-tree watches); the rest slot in beside them the same way.
  */
-export function startRuntimes(scope: Scope): Record<string, Controller> {
+export interface MenderRuntimes {
+  /** Wire controllers, keyed by the domain name the renderer-facing contract uses. */
+  controllers: Record<string, Controller>;
+  /** The git runtime, for main-process code that needs to ask it something. */
+  git: ReturnType<typeof gitClient>;
+}
+
+function gitClient(ready: Promise<unknown>) {
+  return queuedClient(gitContract, () => ready as Promise<never>);
+}
+
+export function startRuntimes(scope: Scope): MenderRuntimes {
   const workerScope = scope.child('runtimes');
   const host = createWireWorkerHost({
     scope: workerScope,
@@ -80,14 +90,10 @@ export function startRuntimes(scope: Scope): Record<string, Controller> {
 
   // Queued clients accept calls before their worker finishes booting, so the
   // window opens and talks to git without waiting on a readiness gate.
+  const git = gitClient(gitReady);
   return {
-    git: createController(
-      gitContract,
-      forwardContractImpl(
-        gitContract,
-        queuedClient(gitContract, () => gitReady)
-      )
-    ),
+    controllers: { git: createController(gitContract, forwardContractImpl(gitContract, git)) },
+    git,
   };
 }
 

@@ -1,16 +1,18 @@
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { defineContract } from '@emdash/wire/rpc';
+import { villageContract } from './village';
 
 /**
  * Mender's renderer-facing contract.
  *
- * Wave 0 is the seam proof: one real runtime domain reaching the village
- * renderer over wire. Domains are added here as each wave needs them; the
- * runtime ones are forwarded straight through from @emdash/core, and the
- * village's own domains (projects, tasks, plots) land alongside them.
+ * Two kinds of domain sit here and always will. The runtime ones are emdash's,
+ * forwarded straight through from @emdash/core to the subprocess that serves
+ * them. The village's own — what is on the island and what state it is in —
+ * are ours, and nothing upstream has an opinion about them.
  */
 export const menderDomainContracts = {
   git: gitContract,
+  village: villageContract,
 } as const;
 
 export const menderWireContract = defineContract(menderDomainContracts);

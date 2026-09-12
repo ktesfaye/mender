@@ -309,6 +309,9 @@ importers:
       '@emdash/wire':
         specifier: workspace:*
         version: link:../../packages/wire
+      '@mender/village':
+        specifier: workspace:*
+        version: link:../../packages/village
       '@parcel/watcher':
         specifier: ^2.5.6
         version: 2.5.6
@@ -318,6 +321,9 @@ importers:
       pixi.js:
         specifier: ^8.6.6
         version: 8.20.1
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@types/node':
         specifier: ^24.13.1
@@ -869,6 +875,15 @@ importers:
       vitest:
         specifier: ^4.1.0
         version: 4.1.8(@types/node@20.19.42)(@vitest/browser-playwright@4.1.8)(@vitest/browser-preview@4.1.8)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@7.1.11(@types/node@20.19.42)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/village:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.1
+        version: 24.13.1
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20260609.1
+        version: 7.0.0-dev.20260609.1
 
   packages/wire:
     dependencies:
