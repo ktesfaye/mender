@@ -15,14 +15,19 @@
     "typecheck": "tsgo --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@agentclientprotocol/sdk": "^1.1.0",
     "@emdash/core": "workspace:*",
     "@emdash/plugins": "workspace:*",
     "@emdash/shared": "workspace:*",
     "@emdash/wire": "workspace:*",
     "@mender/village": "workspace:*",
     "@parcel/watcher": "^2.5.6",
+    "better-sqlite3": "^12.6.0",
+    "drizzle-orm": "^0.32.1",
+    "node-pty": "1.1.0",
     "pixi-viewport": "^6.0.3",
     "pixi.js": "^8.6.6",
+    "smol-toml": "^1.6.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

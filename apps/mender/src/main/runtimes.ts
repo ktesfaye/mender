@@ -1,7 +1,16 @@
 import { join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
+import { acpWorkerSpec } from '@emdash/core/runtimes/acp/node';
+import { conversationsWorkerSpec } from '@emdash/core/runtimes/conversations/node';
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { gitWorkerSpec } from '@emdash/core/runtimes/git/node';
+import { hostSettingsWorkerSpec } from '@emdash/core/runtimes/host-settings/node';
+import { scriptsWorkerSpec } from '@emdash/core/runtimes/scripts/node';
+import { terminalsWorkerSpec } from '@emdash/core/runtimes/terminals/node';
+import { tuiAgentsWorkerSpec } from '@emdash/core/runtimes/tui-agents/node';
+import { workspaceRegistryContract } from '@emdash/core/runtimes/workspace-registry/api';
+import { workspaceRegistryWorkerSpec } from '@emdash/core/runtimes/workspace-registry/node';
+import { buildDescriptorFromProvider } from '@emdash/core/services/agent-plugins/api/plugins';
 import { NodeExecutionContext } from '@emdash/core/services/exec/api';
 import { fsWatchWorkerSpec } from '@emdash/core/services/fs-watch/node';
 import {
@@ -12,6 +21,7 @@ import {
   createShellEnvManager,
   createUserShellEnvController,
 } from '@emdash/core/services/shell-env/node';
+import { pluginRegistry } from '@emdash/plugins/agents';
 import type { Scope } from '@emdash/shared/concurrency';
 import {
   createController,
@@ -29,18 +39,27 @@ import { menderWorkerPath } from './worker-paths';
  *
  * Each runtime is the same subprocess emdash runs: the component specs and
  * entry files live in @emdash/core, so this is wiring, not a reimplementation.
- * Wave 0 starts the two the village needs to prove the seam (fs-watch backs
- * git's working-tree watches); the rest slot in beside them the same way.
+ *
+ * The shape of it is a dependency chain, and the workspace registry is at the
+ * end of it — it is the one that cuts worktrees, and it will not start until
+ * the session runtimes it has to be able to sweep are up, because tearing a
+ * workspace down means killing whatever was running inside it.
  */
 export interface MenderRuntimes {
   /** Wire controllers, keyed by the domain name the renderer-facing contract uses. */
   controllers: Record<string, Controller>;
   /** The git runtime, for main-process code that needs to ask it something. */
   git: ReturnType<typeof gitClient>;
+  /** The workspace registry: the thing that makes a worktree exist. */
+  workspaces: ReturnType<typeof workspacesClient>;
 }
 
 function gitClient(ready: Promise<unknown>) {
   return queuedClient(gitContract, () => ready as Promise<never>);
+}
+
+function workspacesClient(ready: Promise<unknown>) {
+  return queuedClient(workspaceRegistryContract, () => ready as Promise<never>);
 }
 
 export function startRuntimes(scope: Scope): MenderRuntimes {
@@ -49,14 +68,15 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
     scope: workerScope,
     processSpawner: childProcessSpawner(),
   });
+  const data = (name: string): string => join(userDataDir(), name);
 
   const shellEnv = createShellEnvManager();
   const userEnv = createUserShellEnvController(() => shellEnv.current());
 
+  // Not a worker: what is installed on this machine is asked for in-process,
+  // and every runtime that has to find a binary is handed this resolver.
   const hostDependencies = createHostDependenciesComponent({
-    store: createJsonFileKeyValueStore({
-      path: join(userDataDir(), 'host-dependencies.json'),
-    }),
+    store: createJsonFileKeyValueStore({ path: data('host-dependencies.json') }),
     exec: new NodeExecutionContext({
       env: process.env,
       refreshShellEnv: () => shellEnv.refresh(),
@@ -64,12 +84,70 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
   }).create({
     scope: workerScope,
     dependencies: {},
-    config: { hostId: 'local', definitions: [...CORE_DEPENDENCIES] },
+    config: {
+      hostId: 'local',
+      definitions: [
+        ...CORE_DEPENDENCIES,
+        ...pluginRegistry.getAll().map(buildDescriptorFromProvider),
+      ],
+    },
   });
+  const resolver = hostDependencies.client.resolver;
 
   const watcherReady = observed(
     host
       .create(...fsWatchWorkerSpec({ executable: menderWorkerPath('fs-watch'), env: process.env }))
+      .ready()
+  );
+
+  const conversationsReady = observed(
+    host
+      .create(
+        ...conversationsWorkerSpec({
+          executable: menderWorkerPath('conversations'),
+          env: process.env,
+          databasePath: data('conversations.db'),
+        })
+      )
+      .ready()
+  );
+
+  const terminalsReady = observed(
+    host
+      .create(
+        ...terminalsWorkerSpec({
+          executable: menderWorkerPath('terminals'),
+          env: process.env,
+          userEnv,
+          // A terminal in the village outlives whoever is looking at it: the
+          // building it belongs to is still standing when you walk away.
+          lifecycle: { terminal: { kind: 'always' } },
+        })
+      )
+      .ready()
+  );
+
+  const scriptsReady = observed(
+    host
+      .create(
+        ...scriptsWorkerSpec({
+          executable: menderWorkerPath('scripts'),
+          env: process.env,
+          userEnv,
+        })
+      )
+      .ready()
+  );
+
+  const hostSettingsReady = observed(
+    host
+      .create(
+        ...hostSettingsWorkerSpec({
+          executable: menderWorkerPath('host-settings'),
+          env: process.env,
+          settingsPath: data('host-settings.json'),
+        })
+      )
       .ready()
   );
 
@@ -81,7 +159,59 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
         ...gitWorkerSpec({
           executable: menderWorkerPath('git'),
           env: process.env,
-          dependencies: { watcher, hostDependencies: hostDependencies.client.resolver, userEnv },
+          dependencies: { watcher, hostDependencies: resolver, userEnv },
+        })
+      );
+      return await worker.ready();
+    })
+  );
+
+  const acpReady = observed(
+    conversationsReady.then(async (conversations) => {
+      const worker = host.create(
+        ...acpWorkerSpec({
+          pluginRegistry,
+          executable: menderWorkerPath('acp'),
+          env: process.env,
+          dependencies: { hostDependencies: resolver, conversations, userEnv },
+          attachmentsDir: data('acp-attachments'),
+          intentsFilePath: data('acp-intents.json'),
+        })
+      );
+      return await worker.ready();
+    })
+  );
+
+  const tuiAgentsReady = observed(
+    conversationsReady.then(async (conversations) => {
+      const worker = host.create(
+        ...tuiAgentsWorkerSpec({
+          pluginRegistry,
+          executable: menderWorkerPath('tui-agents'),
+          env: process.env,
+          dependencies: { hostDependencies: resolver, conversations, userEnv },
+          intentsFilePath: data('tui-agent-intents.json'),
+        })
+      );
+      return await worker.ready();
+    })
+  );
+
+  const workspacesReady = observed(
+    Promise.all([
+      watcherReady,
+      acpReady,
+      terminalsReady,
+      tuiAgentsReady,
+      scriptsReady,
+      hostSettingsReady,
+    ]).then(async ([watcher, acp, terminals, tuiAgents, scripts, hostSettings]) => {
+      const worker = host.create(
+        ...workspaceRegistryWorkerSpec({
+          executable: menderWorkerPath('workspace-registry'),
+          env: process.env,
+          dependencies: { watcher, acp, terminals, tuiAgents, scripts, hostSettings, userEnv },
+          databasePath: data('workspaces.db'),
         })
       );
       return await worker.ready();
@@ -91,9 +221,13 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
   // Queued clients accept calls before their worker finishes booting, so the
   // window opens and talks to git without waiting on a readiness gate.
   const git = gitClient(gitReady);
+  const workspaces = workspacesClient(workspacesReady);
   return {
-    controllers: { git: createController(gitContract, forwardContractImpl(gitContract, git)) },
+    controllers: {
+      git: createController(gitContract, forwardContractImpl(gitContract, git)),
+    },
     git,
+    workspaces,
   };
 }
 
