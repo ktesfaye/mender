@@ -10,6 +10,8 @@ export const projectSchema = z.object({
   foundedAt: z.string(),
 });
 
+export type Project = z.infer<typeof projectSchema>;
+
 export const foundErrorSchema = z.discriminatedUnion('kind', [
   /** The folder picker was dismissed. Not a failure, just nothing to do. */
   z.object({ kind: z.literal('cancelled') }),

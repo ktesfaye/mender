@@ -56,25 +56,36 @@ not split panes, not a tab strip.
 | `AGENTS.md` | upstream's own instructions for working in this codebase. Still true for back-end work |
 | `packages/village/` | the world: what a state of the village is, and the shore pass that cuts a coast round it. Draws nothing, knows nothing about Electron |
 | `apps/mender/` | the app: the Electron shell, the wire to emdash's runtimes, and the Pixi renderer |
-| `apps/mender/assets/` | the world files and the packed sprite kit. `tools/pack-kit.py` rebuilds the kit from the Cainos art, which is purchased and lives outside both repos |
+| `apps/mender/assets/` | the world files, the packed sprite kit, the board's timber and the one typeface. `tools/pack-kit.py` and `tools/make-board.py` rebuild the first two from the Cainos art, which is purchased and lives outside both repos |
 | `../a-cozy-agents-village/` | where all of that grew, and still the place the growth stages are authored. The generator, the composer and the editor stay there |
 
 ## What is known and what is not
 
-The island draws. The state rules and the shore pass are ported out of Python
-and produce a map byte-identical to the one the village repo's own pipeline
-produces, the kit is packed into one texture, and the camera pans and zooms and
-comes to rest on whole pixels. What does not exist is the move that matters:
-zooming into a district, sliding it aside, bringing in the board. Nor does
-picking — you cannot yet click anything — and the path network that says where
-a villager may walk is still only in Python.
+The island draws, it grows, and it opens. The state rules and the shore pass
+are ported out of Python and produce a map byte-identical to the one the
+village repo's own pipeline produces; the kit is packed into one texture; the
+camera pans and zooms and comes to rest on whole pixels; founding a project
+cuts a new district into the coast; and picking a district pulls the camera in
+on it and brings the board in beside it, with that checkout's branch, its
+uncommitted files and its last commits written on the wood, changing as the
+tree changes.
 
-The art is the blocking problem, not the code. There is no windmill in the kit.
-There are no UI surfaces at all: no panels, no parchment, no chalkboard, no
-frames, no icons. And the character art is four static placeholder sprites the
-original artist never used, with no walk cycle and no animation, which means
-"agents are villagers" is a from-scratch character commission. Most of the
-build list waits on it.
+**Only stages 0 and 5 are used.** A founded project goes straight to the
+artist's finished settlement. One through four are sketches that do not stand
+up next to it, so nothing grows through them and nothing should be built on
+them until they are drawn.
+
+The board's timber is the dock, widened by `tools/make-board.py` out of the
+artist's own planks, and the writing is Departure Mono under the SIL OFL. That
+is the whole of the UI art, and it is two things: a plank and an alphabet.
+There is still no windmill, no parchment, no frame, no icon. And the character
+art is four static placeholder sprites the original artist never used, with no
+walk cycle and no animation, which means "agents are villagers" is a
+from-scratch character commission. Most of the build list waits on it.
+
+Nothing stands on a district yet, because there is no task model. The path
+network that says where a villager may walk is still only in Python. Nothing
+in the UI abandons a project, though the wire will.
 
 The open question nobody has answered yet is how you change what the board is
 showing without a tab strip and without a second board.
@@ -84,4 +95,7 @@ showing without a tab strip and without a second board.
 - Work on `main`. Never create branches.
 - Render and look at it. This project's whole history says a model-side check
   passes while the screen is visibly broken.
+- Look at it without taking his screen. `MENDER_DEBUG_PORT=9222 pnpm run dev`
+  opens the window's debug port; clicks, keys, wheels and screenshots go
+  through it while the window sits in the background and he carries on working.
 - A change is not delivered until the app Kirubel opens is running it.

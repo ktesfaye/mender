@@ -1,11 +1,15 @@
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
+import type { Project } from '@shared/projects';
+import { makeBoard, type Board } from './board/board';
+import { openDistrict, type DistrictBoard } from './board/district';
+import { loadLettering } from './board/lettering';
 import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
 import { districtBounds, Ground } from './village/ground';
 import { loadKit } from './village/kit';
 import { say } from './village/notice';
 import { buildScene } from './village/scene';
-import { wire } from './wire';
+import { wire, type MenderClient } from './wire';
 
 /**
  * You open Mender and you see the village.
@@ -13,7 +17,8 @@ import { wire } from './wire';
  * Nothing else is on the screen: no title bar full of buttons, no sidebar, no
  * tab strip. The island is composed in the main process out of the state the
  * app is actually in — which projects exist, how far each has grown — and drawn
- * here. Everything the app can do arrives as something standing on it.
+ * here. Everything the app can do arrives as something standing on it, and
+ * everything it has to say arrives on one wooden board.
  */
 async function boot(): Promise<void> {
   const pixi = new Application();
@@ -33,16 +38,55 @@ async function boot(): Promise<void> {
 
   try {
     say('waking the village…');
-    const [client] = await Promise.all([wire(), loadKit()]);
+    const [client] = await Promise.all([wire(), loadKit(), loadLettering()]);
+    const board = await makeBoard(pixi);
     let drawn = await draw(world, client);
+    let projects = await client.projects.list({});
     frame(camera, drawn.island);
     pixi.ticker.add((ticker) => drawn.ground.tick(ticker));
 
     let focused: District | null = null;
+    let showing: DistrictBoard | null = null;
+
+    const shut = async (): Promise<void> => {
+      focused = null;
+      board.hide();
+      const was = showing;
+      showing = null;
+      await was?.close();
+    };
+
+    /* Opening a district is one move with two halves: the camera pulls in on
+       its land, aiming at the part of the window the board is about to leave,
+       and the board comes in from the right with what is true of that checkout
+       written on it. Neither waits for the other — the board is up with the
+       project's name on it before git has been asked anything. */
+    const openBoard = async (district: District): Promise<void> => {
+      const project = projects.find((candidate) => candidate.plot === district.id);
+      if (!project) return;
+      const was = showing;
+      showing = null;
+      await was?.close();
+
+      focused = district;
+      board.show(waiting(project));
+      flyTo(camera, districtBounds(district), { inset: board.inset });
+
+      const opened = await openDistrict(client, project, (rows) => {
+        if (focused === district) board.update(rows);
+      });
+      // Closed, or opened somewhere else, while git was still answering.
+      if (focused !== district) {
+        await opened.close();
+        return;
+      }
+      showing = opened;
+      board.update(opened.rows());
+    };
 
     const picked = async (district: District | null): Promise<void> => {
       if (!district) {
-        focused = null;
+        await shut();
         flyOut(camera, drawn.island);
         return;
       }
@@ -50,21 +94,22 @@ async function boot(): Promise<void> {
       // an empty island, and founding a project is what it is for.
       if (district.id === CAMP) {
         await found(client, async () => {
+          await shut();
           drawn = await draw(world, client);
+          projects = await client.projects.list({});
           frame(camera, drawn.island);
         });
         return;
       }
       if (district === focused) {
-        focused = null;
+        await shut();
         flyOut(camera, drawn.island);
         return;
       }
-      focused = district;
-      flyTo(camera, districtBounds(district));
+      await openBoard(district);
     };
 
-    watchPointer(pixi, camera, {
+    watchPointer(pixi, camera, board, {
       at: (x, y) => drawn.ground.at(x, y),
       hover: (district) => drawn.ground.hover(district),
       picked: (district) => void picked(district),
@@ -76,7 +121,15 @@ async function boot(): Promise<void> {
   }
 }
 
-type Client = Awaited<ReturnType<typeof wire>>;
+/** What the board says in the moment between opening and git answering. */
+function waiting(project: Project): Parameters<Board['show']>[0] {
+  return [
+    { kind: 'title', text: project.name },
+    { kind: 'line', text: project.path, tone: 'faded', keep: 'tail' },
+    { kind: 'gap' },
+    { kind: 'line', text: 'reading the checkout…', tone: 'faded' },
+  ];
+}
 
 interface Drawn {
   ground: Ground;
@@ -84,7 +137,7 @@ interface Drawn {
 }
 
 /** Compose the island for the state the app is in, and put it on screen. */
-async function draw(world: Container, client: Client): Promise<Drawn> {
+async function draw(world: Container, client: MenderClient): Promise<Drawn> {
   say('drawing the island…');
   const map = await client.village.map({});
   const scene = buildScene(new Document(map.layout).items());
@@ -100,7 +153,7 @@ async function draw(world: Container, client: Client): Promise<Drawn> {
   return { ground, island: extentOf(map.layout) };
 }
 
-async function found(client: Client, grown: () => Promise<void>): Promise<void> {
+async function found(client: MenderClient, grown: () => Promise<void>): Promise<void> {
   // No deadline on this one. The call is open for exactly as long as someone is
   // looking through their folders for the right checkout, and wire's default
   // half minute is a perfectly reasonable amount of time to spend doing that.
@@ -140,6 +193,7 @@ interface Pointing {
 function watchPointer(
   pixi: Application,
   camera: ReturnType<typeof createCamera>,
+  board: Board,
   pointing: Pointing
 ): void {
   pixi.stage.eventMode = 'static';
@@ -151,21 +205,23 @@ function watchPointer(
     const point = camera.toWorld(event.global);
     return pointing.at(point.x, point.y);
   };
+  // Land the board is standing in front of is not land you can point at.
+  const behind = (event: FederatedPointerEvent): boolean => board.over(event.global.x);
 
   pixi.stage.on('pointermove', (event: FederatedPointerEvent) => {
-    const district = under(event);
+    const district = behind(event) ? null : under(event);
     pointing.hover(district);
     pixi.canvas.style.cursor = district ? 'pointer' : 'default';
   });
 
   pixi.stage.on('pointerdown', (event: FederatedPointerEvent) => {
-    pressedAt = { x: event.global.x, y: event.global.y };
+    pressedAt = behind(event) ? null : { x: event.global.x, y: event.global.y };
   });
 
   pixi.stage.on('pointerup', (event: FederatedPointerEvent) => {
     const from = pressedAt;
     pressedAt = null;
-    if (!from) return;
+    if (!from || behind(event)) return;
     if (Math.hypot(event.global.x - from.x, event.global.y - from.y) > 4) return;
     pointing.picked(under(event));
   });

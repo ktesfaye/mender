@@ -15,7 +15,7 @@ declare global {
   }
 }
 
-type MenderClient = ContractClient<typeof menderDomainContracts>;
+export type MenderClient = ContractClient<typeof menderDomainContracts>;
 
 let cached: Promise<MenderClient> | null = null;
 

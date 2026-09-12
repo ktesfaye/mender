@@ -49,4 +49,5 @@ export {
   type LogStore,
   type ReplicaLogOptions,
 } from './replica/log';
+export { ReplicaState, type ReplicaStateOptions } from './replica/state';
 export { type StateStore } from './replica/store';

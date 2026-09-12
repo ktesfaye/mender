@@ -5,10 +5,9 @@ import type { DistrictBounds } from './ground';
 /**
  * The camera over the world.
  *
- * It pans, it zooms, and it flies to a district when you pick one. The half of
- * the move that is still missing is the board: opening a building slides its
- * district aside to make room for one, and nothing yet has a board to make room
- * for. The slide goes here when it does.
+ * It pans, it zooms, and it flies to a district when you pick one. When the
+ * board is in, the window it aims at is only the part the board has not taken,
+ * so the district comes to rest beside it rather than behind it.
  */
 
 /* THE ZOOM COMES TO REST ON A WHOLE PIXEL.
@@ -94,19 +93,34 @@ export interface Extent {
  * number to land on between a half and one, and the alternative to a slightly
  * uneven island is an island you cannot see all of. So below 1:1 it fits
  * exactly and takes the unevenness. */
-function fitScale(viewport: Viewport, box: Extent, padding: number): number {
+function fitScale(viewport: Viewport, box: Extent, padding: number, inset = 0): number {
   const fit = Math.min(
-    (viewport.screenWidth - padding * 2) / box.width,
+    (viewport.screenWidth - inset - padding * 2) / box.width,
     (viewport.screenHeight - padding * 2) / box.height
   );
   return fit >= 1 ? nearestRung(fit) : fit;
 }
 
-/** Fly until the district fills the view, and stop on a rung. */
-export function flyTo(viewport: Viewport, district: DistrictBounds, padding = 80): void {
+/**
+ * Fly until the district fills what is left of the view, and stop on a rung.
+ *
+ * `inset` is how much of the right of the window the board has taken. The
+ * district does not centre on the window, it centres on the gap beside the
+ * board — which is what "slides the district aside" is: the land does not move,
+ * the camera does, and the board arrives in the space that opens.
+ */
+export function flyTo(
+  viewport: Viewport,
+  district: DistrictBounds,
+  { padding = 48, inset = 0 }: { padding?: number; inset?: number } = {}
+): void {
+  // Never further away than the art is drawn for. Opening a district is
+  // walking up to it, and a district you have walked up to and still cannot
+  // see the detail of is not open, it is just selected.
+  const scale = Math.max(1, fitScale(viewport, district, padding, inset));
   viewport.animate({
-    position: { x: district.centerX, y: district.centerY },
-    scale: fitScale(viewport, district, padding),
+    position: { x: district.centerX + inset / 2 / scale, y: district.centerY },
+    scale,
     time: FLIGHT_MS,
     ease: 'easeInOutSine',
     removeOnInterrupt: true,

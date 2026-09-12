@@ -15,6 +15,15 @@ export async function main(): Promise<void> {
   // a scoped folder named after the thing we forked.
   app.setName('Mender');
 
+  /* A way to look at the village without standing in front of it.
+     Verifying a change here means driving the real window and reading real
+     pixels, and doing that through the mouse means taking over the screen of
+     whoever is sitting at it. With this on, the window can be clicked and
+     photographed over the debug port while it sits in the background. Off
+     unless asked for. */
+  const debugPort = process.env.MENDER_DEBUG_PORT;
+  if (debugPort) app.commandLine.appendSwitch('remote-debugging-port', debugPort);
+
   const runtimes = startRuntimes(scope);
   const projects = createProjects(runtimes);
   installWire(scope, {
@@ -53,10 +62,23 @@ async function openVillageWindow(): Promise<void> {
     webPreferences: {
       preload: join(app.getAppPath(), 'out', 'preload', 'index.mjs'),
       sandbox: false,
+      // The village does not stop when you look away. Chromium winds a window's
+      // frame loop right down as soon as it is not the one in front, which here
+      // means the fire stops breathing and any move already under way crawls to
+      // a halt and finishes minutes later, in the corner of your eye.
+      backgroundThrottling: false,
     },
   });
 
   window.once('ready-to-show', () => {
+    // With the debug port open somebody is driving this window from outside
+    // while working in another one, and a village that jumps in front of them
+    // every time the app restarts is worse than no village. So it comes up
+    // where it is and stays behind.
+    if (process.env.MENDER_DEBUG_PORT) {
+      window.showInactive();
+      return;
+    }
     window.show();
     window.focus();
   });

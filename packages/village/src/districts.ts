@@ -81,36 +81,16 @@ export function boundsOf(district: District): {
   };
 }
 
-/* Which layers of a tilemap are the ground itself, and how high each one
-   stacks. A cell's ground is whatever its topmost one of these draws. */
-const GROUND_LAYERS: Record<string, number> = {
-  Dirt: 0,
-  'Layer 01': 1,
-  'Layer 02': 2,
-  'Layer 03': 3,
-  'Layer 04': 4,
-};
+/* Which layers of a tilemap are the ground itself. Everything else in a scene
+   stands on these; a cell with none of them is open sea. */
+const GROUND_LAYERS = new Set(['Dirt', 'Layer 01', 'Layer 02', 'Layer 03', 'Layer 04']);
 
-/**
- * The cells you stand on: the ones whose topmost ground tile is meadow or
- * worked earth rather than stone.
- *
- * This is the shore pass's own definition of land, and it is the difference
- * between light that falls on a field and light that climbs the cliff face at
- * its edge. A cell with a lip drawn over it is a coast, not a place.
- */
-export function standingGround(layout: Layout): Set<string> {
-  const top = new Map<string, [number, string]>();
-  for (const tile of layout.tiles) {
-    const level = GROUND_LAYERS[tile.layer];
-    if (!tile.file || level === undefined) continue;
-    const key = `${tile.cell[0]},${tile.cell[1]}`;
-    const held = top.get(key);
-    if (!held || level >= held[0]) top.set(key, [level, tile.file]);
-  }
+/** Every cell the island is made of, coast and cliff top included. */
+export function groundCells(layout: Layout): Set<string> {
   const out = new Set<string>();
-  for (const [key, [, file]] of top) {
-    if (!file.startsWith('terrain-tiles/')) out.add(key);
+  for (const tile of layout.tiles) {
+    if (!tile.file || !GROUND_LAYERS.has(tile.layer)) continue;
+    out.add(`${tile.cell[0]},${tile.cell[1]}`);
   }
   return out;
 }

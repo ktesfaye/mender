@@ -3,7 +3,7 @@ import {
   campfireOf,
   CAMP,
   CELL,
-  standingGround,
+  groundCells,
   type District,
   type Layout,
 } from '@mender/village';
@@ -34,6 +34,12 @@ export interface DistrictBounds {
   centerY: number;
 }
 
+/* Soft by stacking, not by blurring: a blur is the one thing the kit forbids
+   everywhere else, and a handful of circles reads as a handful of circles, so
+   the falloff is built out of enough of them that the banding lands below what
+   you would notice. */
+const RINGS = 18;
+
 /** How far from the fire still counts as the fire. */
 const FIRE_REACH = CELL * 2.2;
 const FIRE_GLOW = CELL * 3.4;
@@ -43,8 +49,11 @@ export class Ground {
   readonly overlay = new Container();
 
   private readonly owner = new Map<string, District>();
-  private readonly standing: ReadonlySet<string>;
-  private readonly highlight = new Graphics();
+  private readonly highlight = new Graphics({ blendMode: 'add' });
+  /* The island's own outline, as a hole light is allowed through. Light that
+     falls past the coast is a haze sitting on the water, and the sea is the one
+     surface in the picture nothing is standing on. */
+  private readonly onlyLand = new Graphics();
   private readonly firelight = new Graphics();
   private readonly fire: { x: number; y: number } | null;
   private readonly camp: District | null;
@@ -60,8 +69,13 @@ export class Ground {
     }
     this.camp = districts.find((district) => district.id === CAMP) ?? null;
     this.fire = campfireOf(layout);
-    this.standing = standingGround(layout);
-    this.overlay.addChild(this.firelight, this.highlight);
+    for (const key of groundCells(layout)) {
+      const [x, y] = key.split(',').map(Number);
+      this.onlyLand.rect(x * CELL, -(y + 1) * CELL, CELL, CELL);
+    }
+    this.onlyLand.fill(0xffffff);
+    this.highlight.mask = this.onlyLand;
+    this.overlay.addChild(this.firelight, this.highlight, this.onlyLand);
     this.overlay.eventMode = 'none';
     this.drawFirelight();
   }
@@ -98,16 +112,21 @@ export class Ground {
     this.over = district;
     this.highlight.clear();
     if (!district || district.id === CAMP) return;
-    // The footprint includes the stone ring that holds it up, and light laid
-    // over a cliff face is a bright square hanging in the sea. Only the ground
-    // you could walk on takes it.
-    for (const [y, x0, x1] of district.cells) {
-      for (let x = x0; x <= x1; x++) {
-        if (!this.standing.has(`${x},${y}`)) continue;
-        this.highlight.rect(x * CELL, -(y + 1) * CELL, CELL, CELL);
-      }
+    /* The same light the fire gives, over a whole district.
+       Filling its cells was the obvious thing and it was wrong twice over: a
+       district is a third of the island, so a flat lift over all of it is an
+       enormous pale rectangle rather than a thing being pointed at, and a
+       tile-shaped edge on light reads as a selection box from a different kind
+       of app. Light has no edges. This falls off. */
+    const box = boundsOf(district);
+    const cx = box.x + box.width / 2;
+    const cy = -(box.y + box.height / 2);
+    const rx = (box.width / 2) * 1.15;
+    const ry = (box.height / 2) * 1.15;
+    for (let i = 0; i < RINGS; i++) {
+      const at = 1 - i / RINGS;
+      this.highlight.ellipse(cx, cy, rx * at, ry * at).fill({ color: 0xffdf9e, alpha: 0.015 });
     }
-    this.highlight.fill({ color: 0xffe9b0, alpha: 0.16 });
   }
 
   /**
@@ -128,11 +147,6 @@ export class Ground {
 
   private drawFirelight(): void {
     if (!this.fire) return;
-    /* Soft by stacking, not by blurring. A blur is the one thing the kit forbids
-       everywhere else, and a handful of circles reads as a handful of circles,
-       so the falloff is built out of enough of them that the banding lands below
-       what you notice: each ring adds a little and the alpha compounds inward. */
-    const RINGS = 18;
     for (let i = 0; i < RINGS; i++) {
       const radius = FIRE_GLOW * (1 - i / RINGS);
       this.firelight.circle(this.fire.x, this.fire.y, radius).fill({

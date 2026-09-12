@@ -1,7 +1,7 @@
 import { basename, join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
-import { available, type Stages } from '@mender/village';
+import { available, MAX_STAGE, type Stages } from '@mender/village';
 import { app, dialog } from 'electron';
 import type { MenderRuntimes } from './runtimes';
 
@@ -50,7 +50,10 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
   const list = async (): Promise<Project[]> => {
     const loaded = await store.get(KEY);
     if (!loaded.success || !Array.isArray(loaded.data)) return [];
-    return loaded.data as unknown as Project[];
+    // Everything that is on the island is on it at the stage that is drawn.
+    return (loaded.data as unknown as Project[]).map((project) =>
+      project.stage === MAX_STAGE ? project : { ...project, stage: MAX_STAGE }
+    );
   };
 
   const save = async (projects: Project[]): Promise<Project[]> => {
@@ -99,9 +102,12 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
         name: basename(path),
         path,
         plot: free[0],
-        // A district that has just been founded has a lane, a yard and nothing
-        // built on it yet. It grows when there is work standing on it.
-        stage: 1,
+        /* Straight to the finished settlement.
+           The stages in between are the artist's work in progress: nought is a
+           wild lane and five is a settlement he has actually finished, and one
+           through four are sketches that do not yet stand up next to it. A
+           district appears built until those are drawn. */
+        stage: MAX_STAGE,
         foundedAt: new Date().toISOString(),
       };
       await save([...projects, project]);

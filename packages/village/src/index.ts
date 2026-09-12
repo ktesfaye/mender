@@ -11,7 +11,7 @@ export {
   campfireOf,
   districtsOf,
   extentOf,
-  standingGround,
+  groundCells,
   type District,
 } from './districts';
 export { CELL } from './scene/resolve';
