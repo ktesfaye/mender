@@ -95,6 +95,20 @@ export const knackSchema = z.object({
   from: z.enum(['everywhere', 'here']),
 });
 
+/**
+ * One of the slash commands the agent itself advertises.
+ *
+ * Not a list anybody here keeps: the CLI says what it answers to when it
+ * starts, and on Claude that is where its own commands and the skills it has
+ * been taught come from.
+ */
+export const orderSchema = z.object({
+  name: z.string(),
+  about: z.string(),
+  /** What it expects after the name, in the agent's own words. */
+  takes: z.string().optional(),
+});
+
 /** Everything a session works with, and everything it could work with. */
 export const kitSchema = z.object({
   hand: z.string(),
@@ -107,6 +121,7 @@ export const kitSchema = z.object({
   efforts: z.array(choiceSchema),
   tools: z.array(toolSchema),
   knacks: z.array(knackSchema),
+  orders: z.array(orderSchema),
   /** True once the session has started and the agent has said what it offers. */
   awake: z.boolean(),
 });
@@ -115,6 +130,7 @@ export type Hand = z.infer<typeof handSchema>;
 export type Choice = z.infer<typeof choiceSchema>;
 export type Tool = z.infer<typeof toolSchema>;
 export type Knack = z.infer<typeof knackSchema>;
+export type Order = z.infer<typeof orderSchema>;
 export type Kit = z.infer<typeof kitSchema>;
 
 export const agentsContract = defineContract({
@@ -145,6 +161,20 @@ export const agentsContract = defineContract({
     states: {
       state: liveState({ data: workingStateSchema }),
     },
+  }),
+  /**
+   * Start whoever lives in there, without saying anything to them.
+   *
+   * A session that has been spoken to before keeps its branch, its worktree
+   * and its transcript across a restart, but the agent itself is not running
+   * until something wakes it, and until it is running it cannot say what
+   * models it has or what commands it answers to. Opening the board is enough
+   * of a reason.
+   */
+  wake: fallible({
+    input: z.object({ task: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
   }),
   /** Say something to whoever is in there, moving somebody in if nobody is. */
   tell: fallible({

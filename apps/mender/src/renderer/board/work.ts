@@ -1,9 +1,10 @@
 import { ReplicaState } from '@emdash/wire/live';
-import type { Ask, WorkingState } from '@shared/agents';
+import type { Ask, Kit, WorkingState } from '@shared/agents';
 import type { Task } from '@shared/tasks';
 import type { MenderClient } from '../wire';
 import type { Row } from './board';
 import { openCheckout, type LiveBoard } from './district';
+import { Palette } from './palette';
 
 /**
  * A task's board: the checkout, and whoever is working in it.
@@ -25,6 +26,8 @@ export interface LiveWork extends LiveBoard {
   /** What is being written to whoever is in there. */
   written(): string;
   wrote(text: string): void;
+  /** What the slash on the line has opened, if there is one. */
+  readonly slash: Palette;
   /** The question at the door, if there is one. */
   asked(): Ask | null;
   /** Whether somebody in there is busy, and so could be called off. */
@@ -45,23 +48,38 @@ export async function openWork(
 ): Promise<LiveWork> {
   let work = QUIET;
   let written = '';
+  const slash = new Palette();
 
   // The checkout first, so the session — which can speak the moment it is
   // subscribed to — always has a board to be written on.
   const checkout = await openCheckout(
     client,
     {
-      name: task.name,
+      // What it is called now, which is the agent's own name for it unless he
+      // has written one himself. The name it was cut under is the branch.
+      name: task.title,
       path: task.path,
       // Only what was done in here. The project's whole history came with the
       // worktree and none of it happened in this session.
       since: task.base ?? null,
+      // The name at the top turns the board over to what the session works
+      // with, the same as writing /agent on it.
+      turn: 'card',
       // No extra lines above the tree: the branch is the first thing the
       // checkout itself says, and a task's branch is its name said twice.
-      tail: () => tail(work, written),
+      tail: () => tail(work, written, slash),
     },
     changed
   );
+
+  const kit = new ReplicaState<Kit>(client.agents.kit.state({ task: task.id }, 'state'), {
+    onChange: (value) => {
+      slash.told(value);
+      if (written.startsWith('/')) changed(checkout.rows());
+    },
+  });
+  await kit.ready;
+  slash.told(kit.current() ?? null);
 
   const replica = new ReplicaState<WorkingState>(
     client.agents.work.state({ task: task.id }, 'state'),
@@ -77,22 +95,24 @@ export async function openWork(
   changed(checkout.rows());
 
   return {
+    slash,
     rows: () => checkout.rows(),
     written: () => written,
     wrote: (text) => {
       written = text;
+      slash.typed(text);
       changed(checkout.rows());
     },
     asked: () => work.asking,
     working: () => work.mood === 'working',
     close: async () => {
-      await Promise.all([replica.dispose(), checkout.close()]);
+      await Promise.all([replica.dispose(), kit.dispose(), checkout.close()]);
     },
   };
 }
 
 /** Everything that has happened in the building, and the line you answer on. */
-function tail(work: WorkingState, written: string): Row[] {
+function tail(work: WorkingState, written: string, slash: Palette): Row[] {
   const rows: Row[] = [{ kind: 'gap' }];
   // The heading only earns its line when there is something under it: the line
   // above the cursor already says what is going on in there.
@@ -134,6 +154,9 @@ function tail(work: WorkingState, written: string): Row[] {
     rows.push({ kind: 'line', text: 'return on an empty line stops it.', tone: 'faded' });
   }
   rows.push({ kind: 'typed', text: written });
+  // Whatever the slash on that line could mean, written under it. Nothing
+  // floats in this app, so a picker is only ever more lines on the wood.
+  rows.push(...slash.rows());
   return rows;
 }
 

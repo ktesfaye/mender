@@ -47,6 +47,8 @@ export interface Agents {
   tool(task: string, name: string, on: boolean): Promise<Told>;
   /** Every building with somebody in it, for the island. */
   moods(): Cell<Record<string, Mood>>;
+  /** Start whoever lives in there, so they can say what they work with. */
+  wake(task: string): Promise<Told>;
   tell(task: string, text: string): Promise<Told>;
   answer(task: string, requestId: string, optionId: string): Promise<Told>;
   hush(task: string): Promise<Told>;
@@ -172,6 +174,31 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
     async tool(task, name, on) {
       const done = await kits.tool(task, name, on);
       return done.success ? { success: true, data: undefined } : done;
+    },
+
+    async wake(task) {
+      await loaded;
+      const conversation = lodgers[task];
+      if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
+      const record = (await tasks.list()).find((candidate) => candidate.id === task);
+      if (!record) return { success: false, error: { kind: 'no-such-task' } };
+      const house = houseOf(task);
+      await Promise.all([house.settle(conversation), kits.settle(task, conversation)]);
+      const started = await runtimes.acp.launch(
+        {
+          conversationId: conversation,
+          providerId: record.agent ?? PROVIDER,
+          cwd: record.path,
+          sessionId: records[conversation]?.providerSessionId ?? null,
+          model: record.model ?? null,
+        },
+        { timeoutMs: 0 }
+      );
+      if (!started.success) {
+        house.broke(whatItSaid(started.error));
+        return refused(whatItSaid(started.error));
+      }
+      return { success: true, data: undefined };
     },
 
     async tell(task, text) {

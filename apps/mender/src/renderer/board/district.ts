@@ -48,6 +48,9 @@ type Commits = { commits: { subject: string; date: number }[] };
 /** How many changed files and how many commits the board has room to name. */
 const CHANGES = 40;
 const LATELY = 24;
+/** A project's board is about what is running on it, so its history is a
+    footnote: enough to know the place is alive, not enough to read. */
+const BRIEF = 5;
 
 /** A place with a checkout under it: a district, or a task standing on one. */
 export interface Place {
@@ -63,8 +66,11 @@ export interface Place {
    * Null is a session whose base nobody wrote down.
    */
   since?: string | null;
-  /** Whatever this particular place has to say above its working tree. */
-  lines?: Row[];
+  /** Whatever this particular place has to say above its working tree, asked
+      for fresh every rewrite so it can change while you are looking at it. */
+  lines?: () => Row[];
+  /** What pressing the name at the top of the board means, if anything. */
+  turn?: string;
   /** And whatever it has to say after it, asked for fresh every rewrite. */
   tail?: () => Row[];
 }
@@ -125,7 +131,7 @@ export async function openCheckout(
     const log = await client.git.checkout.getLog({
       checkout,
       options: {
-        limit: LATELY,
+        limit: place.since === undefined ? BRIEF : LATELY,
         ...(place.since
           ? {
               base: {
@@ -157,11 +163,13 @@ function build(
   lately: Commits['commits']
 ): Row[] {
   const rows: Row[] = [
-    { kind: 'title', text: place.name },
+    { kind: 'title', text: place.name, ...(place.turn ? { pick: place.turn } : {}) },
     { kind: 'line', text: place.path, tone: 'faded', keep: 'tail' },
+    // What is happening here comes before what the checkout looks like: you
+    // opened a project to get at the work in it, not to read its git status.
+    ...(place.lines?.() ?? []),
     { kind: 'gap' },
     { kind: 'line', text: standing(head) },
-    ...(place.lines ?? []),
     { kind: 'gap' },
   ];
 

@@ -36,6 +36,7 @@ const NOTHING: Kit = {
   efforts: [],
   tools: [],
   knacks: [],
+  orders: [],
   awake: false,
 };
 
@@ -233,6 +234,11 @@ class Card {
       efforts: choicesOf(this.config?.efforts?.available),
       tools,
       knacks,
+      orders: (this.config?.availableCommands ?? []).map((command) => ({
+        name: command.name,
+        about: command.description,
+        ...(command.inputHint ? { takes: command.inputHint } : {}),
+      })),
       awake,
     });
   }

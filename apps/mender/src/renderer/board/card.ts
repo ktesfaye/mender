@@ -72,7 +72,7 @@ const OFF = '·';
 
 function written(task: Task, kit: Kit | null): Row[] {
   const rows: Row[] = [
-    { kind: 'title', text: task.title },
+    { kind: 'title', text: task.title, pick: 'card' },
     { kind: 'line', text: task.branch, tone: 'faded', keep: 'tail' },
   ];
   if (!kit) {

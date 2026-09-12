@@ -8,7 +8,8 @@ import { makeBoard, type Board, type Row } from './board/board';
 import { openCard, type LiveCard } from './board/card';
 import { openCheckout, type LiveBoard } from './board/district';
 import { loadLettering } from './board/lettering';
-import { makeRail, type Rail, type Tag } from './board/rail';
+import type { Meant } from './board/palette';
+import { makeRail, type Peg, type Rail } from './board/rail';
 import { answerFor, openWork, type LiveWork } from './board/work';
 import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
 import { Folk, loadFolk, type Standing } from './village/folk';
@@ -104,49 +105,41 @@ async function boot(): Promise<void> {
       return null;
     };
 
-    /* The rail carries a peg for every project and, after them, the sessions
-       of whichever district you are standing in. It is the only place in the
-       app that shows you work you are not looking at. */
+    /* The rail carries one peg per project and nothing else. Where the work
+       is happening is the project's own board to say; this is only how you
+       walk from one village to the next. */
     const paintRail = (): void => {
       const here = open ? projectOn(open.district) : undefined;
-      const tags: Tag[] = projects.map((project) => ({
-        id: `project:${project.id}`,
-        text: project.name,
-        here: project.id === here?.id,
-      }));
-      if (here) {
-        tags.push({ id: 'seam', text: '│', tone: 'faded' });
-        for (const task of tasks.filter((task) => task.project === here.id)) {
-          tags.push({
-            id: `task:${task.id}`,
-            text: task.title,
-            mark: markOf(seen[task.id]),
-            tone: toneOf(seen[task.id]),
-            here: inside?.id === task.id,
-          });
-        }
-        tags.push({ id: 'new', text: '+' });
-        if (inside) {
-          tags.push({ id: 'seam2', text: '│', tone: 'faded' });
-          tags.push({
-            id: 'card',
-            text: inside.agent ?? 'claude',
-            here: Boolean(card),
-          });
-        }
-      }
-      rail.show(tags);
+      rail.show(
+        projects.map((project): Peg => {
+          const moods = tasks
+            .filter((task) => task.project === project.id)
+            .map((task) => seen[task.id]);
+          const tone = moods.includes('hurt')
+            ? ('sore' as const)
+            : moods.includes('asking')
+              ? ('keen' as const)
+              : undefined;
+          return {
+            id: `project:${project.id}`,
+            mark: project.name.slice(0, 1).toUpperCase(),
+            name: project.name,
+            here: project.id === here?.id,
+            ...(tone ? { tone } : {}),
+          };
+        })
+      );
     };
 
-    rail.onPick((id) => {
-      if (id === 'card') {
-        const task = inside;
-        const aim = open;
-        if (!task || !aim) return;
-        if (card) void openTask(aim, task);
-        else void showCard(aim, task);
-        return;
-      }
+    /**
+     * What a pressed thing means, wherever it was pressed.
+     *
+     * A peg on the rail and a line on the board say the same words, so they
+     * are answered in the same place: a project takes you to its board, a
+     * session opens it, and the one you are already inside is how you call it
+     * something else.
+     */
+    const go = (id: string): void => {
       if (id === 'new') {
         const district = open?.district;
         if (district) askName({ kind: 'district', district }, freeSlot(district));
@@ -163,9 +156,7 @@ async function boot(): Promise<void> {
       if (!id.startsWith('task:')) return;
       const task = tasks.find((candidate) => candidate.id === id.slice(5));
       if (!task) return;
-      // Pressing the one you are already inside is how you call it something
-      // else, because there is nothing else to press.
-      if (inside?.id === task.id) {
+      if (inside?.id === task.id && !card) {
         askTitle(task);
         return;
       }
@@ -180,7 +171,9 @@ async function boot(): Promise<void> {
           task
         );
       }
-    });
+    };
+
+    rail.onPick(go);
 
     const shut = async (): Promise<void> => {
       open = null;
@@ -199,7 +192,12 @@ async function boot(): Promise<void> {
     };
 
     /** Put a checkout on the board and keep it there until something else is. */
-    const stand = async (aim: Aim, name: string, path: string, lines: Row[]): Promise<void> => {
+    const stand = async (
+      aim: Aim,
+      name: string,
+      path: string,
+      lines: () => Row[]
+    ): Promise<void> => {
       const was = live;
       live = null;
       work = null;
@@ -228,34 +226,52 @@ async function boot(): Promise<void> {
       board.update(opened.rows());
     };
 
+    /**
+     * What a project's board is: everything running in it.
+     *
+     * You open a district to get at the work, so the work is what is on the
+     * wood — every session in it under the name it gave itself, what each one
+     * is doing, and a line that starts another. The checkout underneath is a
+     * footnote at the bottom, because the folder is not the point.
+     */
+    const roster = (district: District): Row[] => {
+      const standing = tasksOn(district);
+      const rows: Row[] = [{ kind: 'gap' }, { kind: 'heading', text: 'sessions' }];
+      if (!standing.length) {
+        rows.push({
+          kind: 'prose',
+          text: 'nothing is running here yet. say what you want doing and it gets its own branch, its own checkout and somebody to do it.',
+          tone: 'faded',
+        });
+      }
+      for (const task of standing) {
+        rows.push({
+          kind: 'entry',
+          mark: markOf(seen[task.id]) ?? '·',
+          text: task.title,
+          tone: toneOf(seen[task.id]) ?? 'ink',
+          pick: `task:${task.id}`,
+        });
+      }
+      rows.push({
+        kind: 'entry',
+        mark: '+',
+        text: standing.length ? 'start another one' : 'start one',
+        tone: 'faded',
+        pick: 'new',
+      });
+      return rows;
+    };
+
     /* Opening a district is one move with two halves: the camera pulls in on
        its land, aiming at the part of the window the board is about to leave,
-       and the board comes in from the right with what is true of that checkout
+       and the board comes in from the right with everything running in there
        written on it. Neither waits for the other. */
     const openDistrict = async (aim: Aim): Promise<void> => {
       const project = projectOn(aim.district);
       if (!project) return;
       flyTo(camera, districtBounds(aim.district), { inset: board.inset });
-      const standing = tasksOn(aim.district);
-      const spare = drawn.ground.room(aim.district) - standing.length;
-      const lines: Row[] = [
-        { kind: 'gap' },
-        { kind: 'heading', text: 'work' },
-        ...(standing.length
-          ? standing.map((task): Row => ({ kind: 'entry', mark: '·', text: task.title }))
-          : [
-              { kind: 'line' as const, text: 'nothing standing here yet.', tone: 'faded' as const },
-            ]),
-        {
-          kind: 'line',
-          text:
-            spare > 0
-              ? 'the + on the rail starts another one.'
-              : 'every building on this district is taken, but the + still works.',
-          tone: 'faded',
-        },
-      ];
-      await stand(aim, project.name, project.path, lines);
+      await stand(aim, project.name, project.path, () => roster(aim.district));
     };
 
     /**
@@ -327,6 +343,11 @@ async function boot(): Promise<void> {
       live = opened;
       work = opened;
       board.show(opened.rows(), 'now');
+      /* And wake whoever lives in there. A session keeps its checkout and its
+         transcript across a restart but the agent is not running, and a
+         sleeping agent cannot say what it can do — so opening the board is
+         what starts it, not the first thing you say. */
+      void client.agents.wake({ task: task.id }, { timeoutMs: 0 });
     };
 
     /** A new session is a question: what is going to happen in there. */
@@ -469,7 +490,54 @@ async function boot(): Promise<void> {
       if (!given.success && given.error.kind === 'refused') say(given.error.because, 6000);
     };
 
+    /**
+     * What a slash meant.
+     *
+     * The village's own commands never reach the agent as words: picking a
+     * model is a setting on a running session, not a sentence, so it is done
+     * to the session and the line it was written on is wiped.
+     */
+    const obey = async (meant: Meant): Promise<void> => {
+      const task = inside;
+      const saying = work;
+      const aim = open;
+      if (!task || !saying) return;
+      if (meant.does === 'write') {
+        saying.wrote(meant.text);
+        return;
+      }
+      if (meant.does === 'card') {
+        saying.wrote('');
+        if (aim) await showCard(aim, task);
+        return;
+      }
+      if (meant.does !== 'set') return;
+      saying.wrote('');
+      const done = await client.agents.choose(
+        { task: task.id, what: meant.what, id: meant.id },
+        { timeoutMs: 0 }
+      );
+      if (!done.success) {
+        say(done.error.kind === 'refused' ? done.error.because : 'that would not take.', 6000);
+      } else say(`${meant.name}.`, 3000);
+    };
+
     board.onPick((pick) => {
+      if (pick.startsWith('slash:')) {
+        const meant = work?.slash.meant(pick);
+        if (meant) void obey(meant);
+        return;
+      }
+      if (pick === 'card') {
+        const task = inside;
+        const aim = open;
+        if (task && aim) void (card ? openTask(aim, task) : showCard(aim, task));
+        return;
+      }
+      if (pick === 'new' || pick.startsWith('project:') || pick.startsWith('task:')) {
+        go(pick);
+        return;
+      }
       const task = inside;
       const meant = card?.meant(pick);
       if (!task || !meant) return;
@@ -489,7 +557,22 @@ async function boot(): Promise<void> {
       at: (x, y) => drawn.ground.at(x, y),
       hover: (aim) => drawn.ground.hover(aim),
       picked: (aim) => void picked(aim),
-      escaped: () => void picked(null),
+      /* Escape lets go of one thing at a time: what you are writing first,
+         then the board. */
+      escaped: () => {
+        const saying = work;
+        if (saying?.written()) {
+          saying.wrote('');
+          return;
+        }
+        // Then the session, back to the project it belongs to, and only then
+        // the board itself.
+        if (inside && open) {
+          void openDistrict({ kind: 'district', district: open.district });
+          return;
+        }
+        void picked(null);
+      },
       /* Three things the keyboard can be doing, and never more than one at a
          time: naming a building nobody has moved into, answering the villager
          standing at a door, or saying something to whoever is in there. */
@@ -515,6 +598,26 @@ async function boot(): Promise<void> {
           void answer(event.key);
           return true;
         }
+        /* A slash on the line takes the keys off the conversation: up and
+           down walk what it could mean, and return picks rather than sends. */
+        if (saying.slash.open) {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            saying.slash.moved(event.key === 'ArrowDown' ? 1 : -1);
+            saying.wrote(saying.written());
+            return true;
+          }
+          if (event.key === 'Tab' || event.key === 'Enter') {
+            const meant = saying.slash.chosen();
+            if (!meant) return false;
+            if (meant.does === 'write') {
+              saying.wrote(meant.text);
+              // A command that takes nothing is finished the moment it is
+              // picked, so return says it rather than only writing it.
+              if (event.key === 'Enter' && !meant.text.endsWith(' ')) void tell();
+            } else void obey(meant);
+            return true;
+          }
+        }
         if (event.key === 'Enter') void tell();
         else if (event.key === 'Backspace') saying.wrote(saying.written().slice(0, -1));
         else if (event.key.length === 1) saying.wrote(saying.written() + event.key);
@@ -539,6 +642,9 @@ async function boot(): Promise<void> {
       }
       drawn.folk.set(standing);
       paintRail();
+      // The roster is a live thing: a session that starts working changes its
+      // mark on the board you are looking at, without you touching anything.
+      if (live && !work && !card && !naming && !titling) board.update(live.rows());
     };
     const running = new ReplicaState<Task[]>(client.tasks.all.state(undefined, 'list'), {
       onChange: (value) => {

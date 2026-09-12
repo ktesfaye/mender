@@ -86,15 +86,29 @@ its live edge. The last line of the board is where you write back; there is no
 text field anywhere in this app. An empty line while somebody is working calls
 them off.
 
-**The rail is how you get to a session.** A plank is nailed along the bottom of
-the window with a peg for every project on it, and after them the sessions of
-whichever district you are standing in, each under the name it has given
-itself. The last peg is a plus, which starts another one. Pressing the session
-you are already inside is how you call it something else, and a name you write
-yourself is never overwritten by the agent's.
+**A project's board is the work in it.** Opening a district puts every session
+in that project on the wood, each under the name it gave itself and with a mark
+for what it is doing, and a line at the end that starts another. Pressing one
+opens it; pressing the one you are already in is how you call it something
+else, and a name you write yourself is never overwritten by the agent's. The
+checkout the project sits on is a footnote under all of that, because the
+folder is not what you came for.
 
-**A session is a real agent, configured.** Pressing the peg with the agent's
-name on it turns the board into that session's card: who is working in there
+**The rail is only how you get between projects.** A plank along the bottom
+carries one nailed tag per project and nothing else. No session names live on
+it: a session belongs to a project and there is room to say what it is on the
+project's own board. Escape lets go of one thing at a time — what you are
+writing, then the session, then the board.
+
+**A slash on the line is how a session is worked.** Writing one turns the lines
+under it into everything you could mean, and most of it is the agent's own:
+whatever its CLI advertises when it starts, which on Claude is its commands and
+every skill it has been taught. Four are the village's and never reach the
+agent as words, because picking a model is a setting on a running session and
+not a sentence: `/model`, `/mode` and `/effort` list what that agent itself says
+it offers and set it there and then, and `/agent` turns the board over.
+
+**A session is a real agent, configured.** The card is who is working in there
 and who else on this machine could, what they are thinking with, how they work,
 how hard they think, what they can reach out in the world, and what they have
 been taught. Every line on it is pressable and pressing one does the thing.
@@ -104,9 +118,15 @@ read out of the agent's own config file, and the skills are read from where the
 agent actually looks for them. Changing who works in a building sends the one
 who was there home, because a different agent is a different villager.
 
+**Opening a session starts it.** A session keeps its branch, its worktree and
+its transcript across a restart, but the agent itself is not running, and a
+sleeping agent cannot say what models it has or what it answers to. So opening
+the board wakes it rather than the first thing you say, and everything on the
+card and behind the slash is true the moment you are looking at it.
+
 That card is also the answer to the question this file has been asking. One
-board still shows one thing, and the rail is the only thing that changes which
-thing it is.
+board still shows one thing, and what changes which thing is the rail, the
+roster and the slash, all of them writing on the same wood.
 
 A session is not a building. Buildings light up for the first few sessions in a
 district so the island still says something from the water, but they are
