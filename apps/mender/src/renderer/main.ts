@@ -7,6 +7,7 @@ import type { Task } from '@shared/tasks';
 import { makeBoard, type Board, type Row } from './board/board';
 import { openCard, type LiveCard } from './board/card';
 import { openCheckout, type LiveBoard } from './board/district';
+import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
 import { loadLettering } from './board/lettering';
 import type { Meant } from './board/palette';
 import { makeRail, type Peg, type Rail } from './board/rail';
@@ -84,8 +85,45 @@ async function boot(): Promise<void> {
     } | null = null;
     /** Set while an existing session is being called something else. */
     let titling: { task: Task; written: string } | null = null;
+    /** Set while the board is the finder, and what has been typed into it. */
+    let looking: { written: string; from: Spot } | null = null;
     /** What everybody is doing, as the main process sees it. */
     let seen: Record<string, Mood> = {};
+
+    /* Where you have been, so you can go back. One list, one finger on it:
+       arriving somewhere new cuts off whatever you had gone back from, which
+       is the only behaviour anybody has ever expected of this. */
+    let trail: Spot[] = [{ kind: 'island' }];
+    let step = 0;
+    /** Set while the trail is walking itself, so it does not record its own
+        footsteps as new places. */
+    let retracing = false;
+
+    /** Where you are standing, which decides what there is to do. */
+    const standing = (): Where =>
+      card ? 'card' : inside ? 'session' : open ? 'district' : 'island';
+
+    const spot = (): Spot =>
+      inside
+        ? { kind: 'task', id: inside.id, card: Boolean(card) }
+        : open
+          ? { kind: 'project', id: projectOn(open.district)?.id ?? '' }
+          : { kind: 'island' };
+
+    const arrived = (): void => {
+      if (retracing || looking) return;
+      const now = spot();
+      if (same(trail[step], now)) return;
+      trail = [...trail.slice(0, step + 1), now].slice(-40);
+      step = trail.length - 1;
+      // And the app opens where you left it. Closing an app is not the same as
+      // being finished with what was on the screen.
+      try {
+        localStorage.setItem('mender.where', JSON.stringify(now));
+      } catch {
+        // A window with no storage is a window that opens on the island.
+      }
+    };
 
     const projectOn = (district: District): Project | undefined =>
       projects.find((candidate) => candidate.plot === district.id);
@@ -140,9 +178,49 @@ async function boot(): Promise<void> {
      * something else.
      */
     const go = (id: string): void => {
+      // The finder is a board like any other, so picking something on it is
+      // picking that thing: it steps out of the way first and then answers.
+      if (looking && id !== FIND) looking = null;
       if (id === 'new') {
         const district = open?.district;
         if (district) askName({ kind: 'district', district }, freeSlot(district));
+        return;
+      }
+      if (id === FIND) {
+        look();
+        return;
+      }
+      if (id === 'do:found') {
+        void settle();
+        return;
+      }
+      if (id === 'do:out') {
+        void (async () => {
+          await shut();
+          flyOut(camera, drawn.island);
+          arrived();
+        })();
+        return;
+      }
+      if (id === 'do:back' || id === 'do:forward') {
+        void retrace(id === 'do:back' ? -1 : 1);
+        return;
+      }
+      if (id === 'do:rename') {
+        if (inside) askTitle(inside);
+        return;
+      }
+      // Turning the board over, which is the same move whichever way it is
+      // facing: it is one board showing one of two things about one session.
+      if (id === 'card') {
+        const task = inside;
+        const aim = open;
+        if (task && aim) void (card ? openTask(aim, task) : showCard(aim, task));
+        return;
+      }
+      if (id.startsWith('rail:')) {
+        const project = projects[Number(id.slice(5))];
+        if (project) go(`project:${project.id}`);
         return;
       }
       if (id.startsWith('project:')) {
@@ -156,10 +234,6 @@ async function boot(): Promise<void> {
       if (!id.startsWith('task:')) return;
       const task = tasks.find((candidate) => candidate.id === id.slice(5));
       if (!task) return;
-      if (inside?.id === task.id && !card) {
-        askTitle(task);
-        return;
-      }
       const district = drawn.districts.get(
         projects.find((project) => project.id === task.project)?.plot ?? ''
       );
@@ -173,12 +247,87 @@ async function boot(): Promise<void> {
       }
     };
 
+    /** Open the finder over whatever you were looking at. */
+    const look = (): void => {
+      looking = { written: '', from: spot() };
+      board.show(finding('', { projects, tasks, moods: seen, where: standing() }));
+      board.walk(1);
+    };
+
+    /** Put the board back on whatever the finder was opened over. */
+    const unlook = async (): Promise<void> => {
+      const was = looking;
+      looking = null;
+      if (was) await visit(was.from);
+    };
+
+    /** Walk the trail one step, without laying a new one. */
+    const retrace = async (by: number): Promise<void> => {
+      const next = step + by;
+      const going = trail[next];
+      if (!going) return;
+      step = next;
+      retracing = true;
+      try {
+        await visit(going);
+      } finally {
+        retracing = false;
+      }
+    };
+
+    /** Stand somewhere the trail remembers, or somewhere it was told. */
+    const visit = async (going: Spot): Promise<void> => {
+      if (going.kind === 'island') {
+        await shut();
+        flyOut(camera, drawn.island);
+        return;
+      }
+      if (going.kind === 'project') {
+        const project = projects.find((each) => each.id === going.id);
+        const district = project && drawn.districts.get(project.plot ?? '');
+        if (district) await openDistrict({ kind: 'district', district });
+        else {
+          await shut();
+          flyOut(camera, drawn.island);
+        }
+        return;
+      }
+      const task = tasks.find((each) => each.id === going.id);
+      const district =
+        task && drawn.districts.get(projects.find((p) => p.id === task.project)?.plot ?? '');
+      // Somewhere that is not there any more puts you back out on the water,
+      // rather than leaving you looking at whatever was already on the board.
+      if (!task || !district) {
+        await shut();
+        flyOut(camera, drawn.island);
+        return;
+      }
+      const aim: Aim =
+        task.slot === null
+          ? { kind: 'district', district }
+          : { kind: 'building', district, slot: task.slot };
+      await openTask(aim, task);
+      if (going.card) await showCard(aim, task);
+    };
+
     rail.onPick(go);
+
+    /** Put a checkout on the island. The one thing the campfire is for. */
+    const settle = async (): Promise<void> => {
+      await found(client, async () => {
+        await shut();
+        drawn = await draw(world, client);
+        projects = await client.projects.list({});
+        people();
+        frame(camera, drawn.island);
+      });
+    };
 
     const shut = async (): Promise<void> => {
       open = null;
       naming = null;
       titling = null;
+      looking = null;
       inside = null;
       work = null;
       const shown = card;
@@ -272,6 +421,7 @@ async function boot(): Promise<void> {
       if (!project) return;
       flyTo(camera, districtBounds(aim.district), { inset: board.inset });
       await stand(aim, project.name, project.path, () => roster(aim.district));
+      arrived();
     };
 
     /**
@@ -302,6 +452,7 @@ async function boot(): Promise<void> {
       card = opened;
       paintRail();
       board.show(opened.rows());
+      arrived();
     };
 
     /**
@@ -343,6 +494,7 @@ async function boot(): Promise<void> {
       live = opened;
       work = opened;
       board.show(opened.rows(), 'now');
+      arrived();
       /* And wake whoever lives in there. A session keeps its checkout and its
          transcript across a restart but the agent is not running, and a
          sleeping agent cannot say what it can do — so opening the board is
@@ -372,6 +524,14 @@ async function boot(): Promise<void> {
     };
 
     const wrote = (written: string): void => {
+      if (looking) {
+        looking = { ...looking, written };
+        board.update(finding(written, { projects, tasks, moods: seen, where: standing() }));
+        // The finder always has something under the keyboard, so return means
+        // the obvious thing without you having to aim first.
+        if (!board.chosen()) board.walk(1);
+        return;
+      }
       if (titling) {
         titling = { ...titling, written };
         board.update(retitling(titling));
@@ -428,23 +588,19 @@ async function boot(): Promise<void> {
       if (!aim) {
         await shut();
         flyOut(camera, drawn.island);
+        arrived();
         return;
       }
       // The camp is where the island grows from: its fire is the only thing on
       // an empty island, and founding a project is what it is for.
       if (aim.district.id === CAMP) {
-        await found(client, async () => {
-          await shut();
-          drawn = await draw(world, client);
-          projects = await client.projects.list({});
-          people();
-          frame(camera, drawn.island);
-        });
+        await settle();
         return;
       }
       if (open && sameAim(aim, open)) {
         await shut();
         flyOut(camera, drawn.island);
+        arrived();
         return;
       }
       if (aim.kind === 'building') {
@@ -528,13 +684,11 @@ async function boot(): Promise<void> {
         if (meant) void obey(meant);
         return;
       }
-      if (pick === 'card') {
-        const task = inside;
-        const aim = open;
-        if (task && aim) void (card ? openTask(aim, task) : showCard(aim, task));
+      if (pick === 'card' || pick === 'new' || pick.startsWith('do:')) {
+        go(pick);
         return;
       }
-      if (pick === 'new' || pick.startsWith('project:') || pick.startsWith('task:')) {
+      if (pick.startsWith('project:') || pick.startsWith('task:') || pick.startsWith('rail:')) {
         go(pick);
         return;
       }
@@ -558,8 +712,38 @@ async function boot(): Promise<void> {
       hover: (aim) => drawn.ground.hover(aim),
       picked: (aim) => void picked(aim),
       /* Escape lets go of one thing at a time: what you are writing first,
-         then the board. */
+         then the board. Every half-written thing counts, not just a message to
+         an agent — a name you were giving a session is work too, and throwing
+         it away to close a board nobody asked to close is the app taking
+         something from you. */
       escaped: () => {
+        if (looking) {
+          if (looking.written) {
+            wrote('');
+            return;
+          }
+          void unlook();
+          return;
+        }
+        if (titling) {
+          if (titling.written) {
+            wrote('');
+            return;
+          }
+          titling = null;
+          const task = inside;
+          if (task && open) void openTask(open, task);
+          return;
+        }
+        if (naming) {
+          if (naming.written) {
+            wrote('');
+            return;
+          }
+          naming = null;
+          if (open) void openDistrict({ kind: 'district', district: open.district });
+          return;
+        }
         const saying = work;
         if (saying?.written()) {
           saying.wrote('');
@@ -573,10 +757,36 @@ async function boot(): Promise<void> {
         }
         void picked(null);
       },
+      /** A key held with command. One table says what it means. */
+      ordered: (event) => {
+        const meant = chordFor(event.key, standing(), projects.length);
+        if (!meant) return false;
+        go(meant);
+        return true;
+      },
       /* Three things the keyboard can be doing, and never more than one at a
          time: naming a building nobody has moved into, answering the villager
          standing at a door, or saying something to whoever is in there. */
       typed: (event) => {
+        /* The finder is a board you type into and walk at the same time, which
+           is the whole point of it: the letters narrow it and the arrows pick
+           out of what is left. */
+        if (looking) {
+          if (event.key === 'Enter') {
+            const chose = board.chosen();
+            if (chose) go(chose);
+            else void unlook();
+            return true;
+          }
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            board.walk(event.key === 'ArrowDown' ? 1 : -1);
+            return true;
+          }
+          if (event.key === 'Backspace') wrote(looking.written.slice(0, -1));
+          else if (event.key.length === 1) wrote(looking.written + event.key);
+          else return board.scrolled(event.key);
+          return true;
+        }
         if (titling) {
           if (event.key === 'Enter') void retitle();
           else if (event.key === 'Backspace') wrote(titling.written.slice(0, -1));
@@ -592,7 +802,22 @@ async function boot(): Promise<void> {
           return true;
         }
         const saying = work;
-        if (!saying) return false;
+        /* Any other board is a list of things you can press, so the arrows
+           walk it and return goes where you are standing. A session's board is
+           the exception: it is mostly a conversation, and walking a transcript
+           line by line is not what anybody wants from an arrow key there. */
+        if (!saying) {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            return board.walk(event.key === 'ArrowDown' ? 1 : -1) || board.scrolled(event.key);
+          }
+          if (event.key === 'Enter') {
+            const chose = board.chosen();
+            if (!chose) return false;
+            go(chose);
+            return true;
+          }
+          return board.scrolled(event.key);
+        }
         if (saying.asked()) {
           if (!/^[1-9]$/.test(event.key)) return false;
           void answer(event.key);
@@ -644,7 +869,7 @@ async function boot(): Promise<void> {
       paintRail();
       // The roster is a live thing: a session that starts working changes its
       // mark on the board you are looking at, without you touching anything.
-      if (live && !work && !card && !naming && !titling) board.update(live.rows());
+      if (live && !work && !card && !naming && !titling && !looking) board.update(live.rows());
     };
     const running = new ReplicaState<Task[]>(client.tasks.all.state(undefined, 'list'), {
       onChange: (value) => {
@@ -667,6 +892,24 @@ async function boot(): Promise<void> {
     await moods.ready;
     seen = moods.current() ?? {};
     people();
+
+    /* And open on whatever you were looking at. Closing the app is not the
+       same as being done with the session that was on the board, and coming
+       back to a view of the whole island every time makes it feel like the app
+       forgot you were in the middle of something. */
+    const was = lastly();
+    if (was && was.kind !== 'island') {
+      retracing = true;
+      try {
+        await visit(was);
+      } finally {
+        retracing = false;
+      }
+      // The island stays underneath whatever you came back to, so going back
+      // from a restored session is the same move it was before you closed it.
+      trail = [{ kind: 'island' }, was];
+      step = 1;
+    }
   } catch (error) {
     say(error instanceof Error ? error.message : String(error));
     throw error;
@@ -703,7 +946,11 @@ function retitling(titling: { task: Task; written: string }): Row[] {
     { kind: 'line', text: 'call it what?' },
     { kind: 'typed', text: titling.written },
     { kind: 'gap' },
-    { kind: 'line', text: 'return to keep it, escape to leave it alone.', tone: 'faded' },
+    {
+      kind: 'line',
+      text: 'return to keep it. escape clears it, again to leave it alone.',
+      tone: 'faded',
+    },
   ];
 }
 
@@ -788,8 +1035,36 @@ interface Pointing {
   hover(aim: Aim | null): void;
   picked(aim: Aim | null): void;
   escaped(): void;
-  /** A key that is not escape. True if the board took it. */
+  /** A key held with command. True if it meant something. */
+  ordered(event: KeyboardEvent): boolean;
+  /** A key that is not escape and not a chord. True if the board took it. */
   typed(event: KeyboardEvent): boolean;
+}
+
+/** Somewhere you have been, small enough to write down and come back to. */
+type Spot =
+  | { kind: 'island' }
+  | { kind: 'project'; id: string }
+  | { kind: 'task'; id: string; card: boolean };
+
+function same(a: Spot | undefined, b: Spot): boolean {
+  if (!a || a.kind !== b.kind) return false;
+  if (a.kind === 'island') return true;
+  if (a.kind === 'project') return a.id === (b as { id: string }).id;
+  const other = b as { id: string; card: boolean };
+  return a.id === other.id && a.card === other.card;
+}
+
+/** Where the app was when it was last closed, if it wrote it down. */
+function lastly(): Spot | null {
+  try {
+    const kept = localStorage.getItem('mender.where');
+    if (!kept) return null;
+    const read = JSON.parse(kept) as Spot;
+    return read.kind === 'island' || read.kind === 'project' || read.kind === 'task' ? read : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -842,13 +1117,22 @@ function watchPointer(
     pointing.picked(under(event));
   });
 
+  /* One listener, and it is the only one in the app.
+     Everything that reads a key reads it from here, in an order, and the first
+     thing with a claim on it takes it. Two listeners on the same key is how an
+     arrow ends up both walking a list and scrolling the board under it. */
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       pointing.escaped();
+      event.preventDefault();
       return;
     }
-    if (event.metaKey || event.ctrlKey || event.altKey) return;
-    if (pointing.typed(event)) event.preventDefault();
+    if (event.metaKey || event.ctrlKey) {
+      if (pointing.ordered(event)) event.preventDefault();
+      return;
+    }
+    if (event.altKey) return;
+    if (pointing.typed(event) || board.scrolled(event.key)) event.preventDefault();
   });
 }
 

@@ -90,10 +90,15 @@ export class Board {
   private readonly clip = new Graphics();
   private rows: Row[] = [];
   private readonly cursor = new Graphics();
+  /** The lit plank under whichever row the keyboard is standing on. */
+  private readonly standing = new Graphics();
   private scroll = 0;
   private reach = 0;
   /** Where each row you can press ended up, so a press can find it again. */
   private hits: { from: number; to: number; pick: string }[] = [];
+  /** Which of them the keyboard is on, remembered by what it is rather than
+      by where it was: a board that rewrites under you must not move it. */
+  private marked: string | null = null;
   private picked: ((pick: string) => void) | null = null;
   /** Whether the bottom of the board stays under you as it is written on. */
   private follow = false;
@@ -109,7 +114,7 @@ export class Board {
     texture: Texture
   ) {
     this.planks = new TilingSprite({ texture, width: art.width, height: art.height });
-    this.writing.addChild(this.cursor);
+    this.writing.addChild(this.standing, this.cursor);
     this.view.addChild(this.shadow, this.planks, this.writing, this.clip);
     this.writing.mask = this.clip;
     this.view.eventMode = 'static';
@@ -122,7 +127,11 @@ export class Board {
     this.view.on('pointertap', (event: FederatedPointerEvent) => {
       const y = (event.global.y - this.view.y) / this.times - this.writing.y;
       const hit = this.hits.find((row) => y >= row.from && y < row.to);
-      if (hit) this.picked?.(hit.pick);
+      if (!hit) return;
+      // A press also puts the keyboard where the hand was, so the two are
+      // never standing in different places.
+      this.marked = hit.pick;
+      this.picked?.(hit.pick);
     });
     /* The wheel is taken before anything else sees it. The camera does not read
        wheels through the scene graph — it puts its own listener on the canvas —
@@ -139,26 +148,6 @@ export class Board {
       },
       { capture: true, passive: false }
     );
-
-    // And the keys, for the same reason the wheel is here: reading a long
-    // board should not need a pointer on it.
-    window.addEventListener('keydown', (event: KeyboardEvent) => {
-      if (!this.open) return;
-      const page = this.planks.height - LINE * 2;
-      const by =
-        event.key === 'ArrowDown'
-          ? LINE
-          : event.key === 'ArrowUp'
-            ? -LINE
-            : event.key === 'PageDown'
-              ? page
-              : event.key === 'PageUp'
-                ? -page
-                : 0;
-      if (!by) return;
-      event.preventDefault();
-      this.scrollBy(by);
-    });
 
     this.at = window.innerWidth;
     this.lay();
@@ -183,6 +172,9 @@ export class Board {
     this.open = true;
     this.follow = at === 'now';
     this.view.visible = true;
+    // A new thing on the board is a new thing: the keyboard steps off whatever
+    // it was standing on rather than landing somewhere arbitrary.
+    this.marked = null;
     this.write();
     this.scroll = this.follow ? this.reach : 0;
     this.writing.y = PAD_Y - Math.round(this.scroll);
@@ -191,6 +183,78 @@ export class Board {
   /** Whoever wants to know which line was pressed. */
   onPick(picked: (pick: string) => void): void {
     this.picked = picked;
+  }
+
+  /**
+   * Reading a long board without a pointer on it.
+   *
+   * Nothing in here listens for keys itself. One place in the app decides what
+   * a key means and calls this last, after everything with a better claim on it
+   * has passed, so a board can never quietly answer a key something else is
+   * already using.
+   */
+  scrolled(key: string): boolean {
+    if (!this.open) return false;
+    const page = this.planks.height - LINE * 2;
+    const by =
+      key === 'ArrowDown'
+        ? LINE
+        : key === 'ArrowUp'
+          ? -LINE
+          : key === 'PageDown'
+            ? page
+            : key === 'PageUp'
+              ? -page
+              : 0;
+    if (!by) return false;
+    this.scrollBy(by);
+    return true;
+  }
+
+  /** Whether there is anything on this board to stand on. */
+  get pickable(): boolean {
+    return this.open && this.hits.length > 0;
+  }
+
+  /**
+   * Walk the keyboard down the board, one pressable line at a time.
+   *
+   * Every board is a list of things you can press, so every board is walkable:
+   * the roster, the card, the finder. Nothing on the wood is reachable by hand
+   * and not by key.
+   */
+  walk(by: number): boolean {
+    if (!this.pickable) return false;
+    const was = this.hits.findIndex((hit) => hit.pick === this.marked);
+    const many = this.hits.length;
+    // Stepping onto a board you were not standing on starts at whichever end
+    // you came in from, rather than jumping to the middle.
+    const next = was < 0 ? (by > 0 ? 0 : many - 1) : (was + by + many) % many;
+    this.marked = this.hits[next]?.pick ?? null;
+    this.look();
+    this.write();
+    return true;
+  }
+
+  /** What the keyboard is standing on, if anything. */
+  chosen(): string | null {
+    return this.pickable ? this.marked : null;
+  }
+
+  /** Stand on something by name, or on nothing. */
+  stand(pick: string | null): void {
+    this.marked = pick;
+    this.look();
+    this.write();
+  }
+
+  /* Keep whatever is marked on the wood you can actually see. */
+  private look(): void {
+    const hit = this.hits.find((row) => row.pick === this.marked);
+    if (!hit) return;
+    const shown = this.planks.height - PAD_Y * 2;
+    if (hit.from < this.scroll) this.scrollBy(hit.from - this.scroll);
+    else if (hit.to > this.scroll + shown) this.scrollBy(hit.to - shown - this.scroll);
   }
 
   /** Rewrite what is on it without moving it: the same board, a new notice. */
@@ -273,10 +337,11 @@ export class Board {
 
   private write(): void {
     for (const old of this.writing.removeChildren()) {
-      if (old !== this.cursor) old.destroy({ children: true });
+      if (old !== this.cursor && old !== this.standing) old.destroy({ children: true });
     }
-    this.writing.addChild(this.cursor);
+    this.writing.addChild(this.standing, this.cursor);
     this.cursor.visible = false;
+    this.standing.clear();
     const room = this.art.width - PAD_X * 2;
     this.hits = [];
     let y = 0;
@@ -344,8 +409,20 @@ export class Board {
           y += LINE;
         }
       }
-      if (row.pick) this.hits.push({ from, to: y, pick: row.pick });
+      if (row.pick) {
+        this.hits.push({ from, to: y, pick: row.pick });
+        /* Standing on a line is a plank catching the light, not a box drawn
+           round it: the wood is the thing, and a rectangle on top of it reads
+           as a widget that wandered in from another app. */
+        if (row.pick === this.marked) {
+          this.standing
+            .rect(PAD_X - 5, from - 1, this.art.width - (PAD_X - 5) * 2, y - from)
+            .fill({ color: 0xffffff, alpha: 0.16 });
+        }
+      }
     }
+    // Something that is no longer on the board is not somewhere to stand.
+    if (this.marked && !this.hits.some((hit) => hit.pick === this.marked)) this.marked = null;
     this.reach = Math.max(0, y - (this.planks.height - PAD_Y * 2));
     this.scroll = this.follow ? this.reach : Math.min(this.scroll, this.reach);
     this.writing.y = PAD_Y - Math.round(this.scroll);

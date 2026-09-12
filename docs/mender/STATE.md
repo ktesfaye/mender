@@ -26,16 +26,17 @@ and sets the model, mode and effort of the running session; and the card behind
 `/agent` shows what that session works with. That is roughly the first three
 phases of the catalog, which is all plumbing, camera and board.
 
-Almost everything a person actually does with a coding tool is still missing.
-There is no git beyond reading status, no diff, no file, no terminal, no pull
-request, no settings, and no shortcut on any modifier key: the app drops
-anything held with Cmd, Ctrl or Alt before it looks at it. Of the 253 ledger
-rows: 11 done, 22 partly done, 34 inherited working from emdash's back end and
-needing no village surface, 13 deliberately cut, and **173 not started**.
+It answers to the keyboard now: a chord for everything you do often, a finder
+over every session and project, arrows that walk any board, and it reopens where
+you left it. But almost everything a person actually does with a coding tool is
+still missing. There is no git beyond reading status, no diff, no file, no
+terminal, no pull request, no settings. Of the 253 ledger rows: 18 done, 23
+partly done, 34 inherited working from emdash's back end and needing no village
+surface, 13 deliberately cut, and **165 not started**.
 
 ## What "not started" actually means
 
-Every one of those 173 rows already works underneath. Emdash's back end is kept
+Every one of those 165 rows already works underneath. Emdash's back end is kept
 whole and it is the engine: staging, unstaging, reverting and committing are
 mutations on a live checkout model; push, pull, publish, fetch, the log, a
 commit's files and blame are all procedures we can call today; so are the
@@ -69,27 +70,22 @@ it. Those are ours from nothing.
 
 Found by auditing every line of the app against what it claims to do. These are
 not missing features, they are things that exist and are wrong, which makes them
-worse. All of them are W1 unless noted.
+worse. Struck-through ones are fixed.
 
-- **Renaming a session cannot be reached.** The whole path is built, board,
-  typed line, commit, and the one condition that opens it can never be true,
-  because showing a roster clears the record of which session you are inside
-  before you can press one. Dead code as written.
+- ~~**Renaming a session cannot be reached.**~~ Fixed in W1: it is a doing with
+  its own key rather than a condition that could never be true.
 - **Nothing abandons anything.** Abandoning a project and abandoning a session
   are both implemented end to end, worktree deletion included, and neither is
   called from anywhere in the front end. (W7.)
-- **Arrow keys do two things at once.** The board's own scrolling and the slash
-  palette's selection are separate listeners on the same key, so moving through
-  the palette also scrolls the wood under it.
-- **Escape throws away what you are writing.** It is supposed to let go of one
-  thing at a time, and it does that for a message to an agent, but while naming
-  or renaming a session it skips straight to closing the board and the draft is
-  gone without asking.
+- ~~**Arrow keys do two things at once.**~~ Fixed in W1: there is now exactly
+  one key listener in the app and everything reads keys through it, in an order.
+- ~~**Escape throws away what you are writing.**~~ Fixed in W1: it clears a
+  half-written name or search first, and only backs out on the second press.
 - **Clicking empty land looks pressable and isn't.** Bare plots glow under the
   pointer exactly like a founded district, then do nothing at all when clicked.
   No message, no reason. (W7.)
-- **The card is mouse-only.** Every row on it, switching agent, model, mode,
-  effort, toggling a server, needs a click. No key reaches any of it.
+- ~~**The card is mouse-only.**~~ Fixed in W1, and more generally: every board
+  is a list of pressable lines, the arrows walk any of them and return picks.
 - **The permission question has never been seen.** The whole path is built,
   including the number keys that answer it, but this machine's Claude settings
   approve everything a session has asked for so far, so it has never fired.
@@ -101,22 +97,27 @@ Ordered by what you can open and judge at the end of each one, not by
 architectural layer. Art is never a gate: anything blocked on a commission gets
 a plain stand-in and ships anyway.
 
-### W1 — it answers to the keyboard
+### W1 — it answers to the keyboard · mostly done
 
-Right now the app ignores every modifier combination outright. Everything is a
-mouse click on a line of wood, and nothing tells you which lines are pressable.
+Command and a letter now means something: T starts a session, K opens the
+finder, I turns a session's board over, R renames it, N founds a project, W
+backs out, the brackets go back and forward, and a number goes to that project
+on the rail. The finder lists every session, project and doing, narrowing as you
+type. The arrows walk any board's pressable lines and return picks one. There is
+one key listener in the whole app. The app reopens on whatever you last had
+open.
 
-Closes UI-17, UI-18, UI-21, UI-22, UI-23, UI-25, UI-26, ST-08, ST-33, WS-21,
-FS-15, AG-53, and four of the seven broken things above: the arrow collision,
-Escape eating a draft, the rename nobody can reach and the mouse-only card. Plus
-a driven harness over the real feature set, so that class of thing gets caught
-here rather than by you.
+Left in it: rebinding, and the conflict model that goes with it, which needs
+somewhere to live and so waits for the settings island in W8. Filename search
+(FS-15) waits for files in W5, since there is nothing to search yet. Shift and
+return for a newline (AG-53) still needs the line to hold more than one.
 
-Done when: a key starts a session from anywhere, a key finds any project,
-session or command by typing part of its name, a key steps back and forward
-through where you have been, every pressable line has a key that reaches it, the
-app reopens on what you last had open, and the whole set is rebindable with
-conflicts reported.
+Closed UI-17, UI-18, UI-21, UI-22, UI-23, UI-25, WS-21, and four of the seven
+broken things above: the arrow collision, Escape eating a draft, the rename
+nobody could reach and the mouse-only card. Still open in it: UI-26 and ST-33
+(the chord table exists, rebinding and conflicts do not), ST-08 and FS-15 and
+AG-53 as above, and the driven harness over the real feature set (B6-03), which
+is the next thing in this wave.
 
 ### W2 — a session reads like a real conversation
 
@@ -371,7 +372,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-18 | Worktree path derivation | kept |  |
 | WS-19 | Worktree creation/removal execution (git ops) | part | W7 |
 | WS-20 | Task lifecycle actions | part | W7 |
-| WS-21 | Task palette |  | W1 |
+| WS-21 | Task palette | done | W1 |
 | WS-22 | Activity badge (workspace lifecycle) |  | W7 |
 | WS-23 | Delete Task modal — informed preflight |  | W7 |
 | WS-24 | Workspaces tab (per project or per machine) |  | W7 |
@@ -502,7 +503,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-30 | Three ways to connect GitHub |  | W8 |
 | ST-31 | Other issue-tracker integrations (12 providers) |  | W8 |
 | ST-32 | SSH machine connections (form + validation) |  | W10 |
-| ST-33 | Full keybinding catalog & conflict model |  | W1 |
+| ST-33 | Full keybinding catalog & conflict model | part | W1 |
 | ST-34 | App self-update flow |  | W11 |
 | ST-35 | Telemetry consent |  | W11 |
 | ST-36 | `.emdash.json` (the one per-repo config file) | kept |  |
@@ -522,16 +523,16 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-14 | Task view — non-ready states (creating/provisioning/missing/teardown) |  | W7 |
 | UI-15 | Automations view |  | W10 |
 | UI-16 | Settings view |  | W8 |
-| UI-17 | Typed view router (5 views) | part | W1 |
-| UI-18 | Back/forward history |  | W1 |
+| UI-17 | Typed view router (5 views) | done | W1 |
+| UI-18 | Back/forward history | done | W1 |
 | UI-19 | Sidebar tree for projects/tasks | cut |  |
 | UI-20 | Tabs for multi-session work inside a task | cut |  |
-| UI-21 | Command palette as navigation shortcut |  | W1 |
-| UI-22 | In-app deep linking (tab-scoped location) |  | W1 |
-| UI-23 | Redirects on missing id |  | W1 |
+| UI-21 | Command palette as navigation shortcut | done | W1 |
+| UI-22 | In-app deep linking (tab-scoped location) | done | W1 |
+| UI-23 | Redirects on missing id | done | W1 |
 | UI-24 | No OS deep-link scheme (confirmed absent) | cut |  |
-| UI-25 | Command palette (`cmdk`-based) |  | W1 |
-| UI-26 | Keyboard shortcuts (full default set) |  | W1 |
+| UI-25 | Command palette (`cmdk`-based) | done | W1 |
+| UI-26 | Keyboard shortcuts (full default set) | part | W1 |
 | UI-27 | Native application menu |  | W11 |
 | UI-28 | System tray |  | W11 |
 | UI-29 | Window management (per-platform titlebar/frame) | part | W11 |
