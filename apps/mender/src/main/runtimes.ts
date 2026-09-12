@@ -2,6 +2,8 @@ import { join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { acpApiContract } from '@emdash/core/runtimes/acp/api';
 import { acpWorkerSpec } from '@emdash/core/runtimes/acp/node';
+import { agentConfigContract } from '@emdash/core/runtimes/agent-config/api';
+import { agentConfigWorkerSpec } from '@emdash/core/runtimes/agent-config/node';
 import { conversationsContract } from '@emdash/core/runtimes/conversations/api';
 import { conversationsWorkerSpec } from '@emdash/core/runtimes/conversations/node';
 import { gitContract } from '@emdash/core/runtimes/git/api';
@@ -58,7 +60,16 @@ export interface MenderRuntimes {
   conversations: ReturnType<typeof conversationsClient>;
   /** The agent sessions themselves. What a villager actually is. */
   acp: ReturnType<typeof acpClient>;
+  /** What each agent is configured with: its servers and what it has been taught. */
+  agentConfig: ReturnType<typeof agentConfigClient>;
+  /** What is installed on this machine, which says who can work at all. */
+  host: HostDependencies;
 }
+
+/** The in-process host-dependency component's own client. */
+type HostDependencies = ReturnType<
+  ReturnType<typeof createHostDependenciesComponent>['create']
+>['client'];
 
 function gitClient(ready: Promise<unknown>) {
   return queuedClient(gitContract, () => ready as Promise<never>);
@@ -74,6 +85,10 @@ function conversationsClient(ready: Promise<unknown>) {
 
 function acpClient(ready: Promise<unknown>) {
   return queuedClient(acpApiContract, () => ready as Promise<never>);
+}
+
+function agentConfigClient(ready: Promise<unknown>) {
+  return queuedClient(agentConfigContract, () => ready as Promise<never>);
 }
 
 export function startRuntimes(scope: Scope): MenderRuntimes {
@@ -196,6 +211,19 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
     })
   );
 
+  const agentConfigReady = observed(
+    host
+      .create(
+        ...agentConfigWorkerSpec({
+          pluginRegistry,
+          executable: menderWorkerPath('agent-config'),
+          env: process.env,
+          dependencies: { hostDependencies: resolver, userEnv },
+        })
+      )
+      .ready()
+  );
+
   const tuiAgentsReady = observed(
     conversationsReady.then(async (conversations) => {
       const worker = host.create(
@@ -244,6 +272,8 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
     workspaces,
     conversations: conversationsClient(conversationsReady),
     acp: acpClient(acpReady),
+    agentConfig: agentConfigClient(agentConfigReady),
+    host: hostDependencies.client,
   };
 }
 

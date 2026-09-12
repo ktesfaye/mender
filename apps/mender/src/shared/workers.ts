@@ -19,6 +19,7 @@ export const menderWorkers = {
   'host-settings': `${core}/runtimes/host-settings/node/runtime-entry.ts`,
   'workspace-registry': `${core}/runtimes/workspace-registry/node/runtime-entry.ts`,
   acp: 'src/main/entries/acp.ts',
+  'agent-config': 'src/main/entries/agent-config.ts',
   'tui-agents': 'src/main/entries/tui-agents.ts',
 } as const;
 

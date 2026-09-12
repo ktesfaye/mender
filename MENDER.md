@@ -93,6 +93,21 @@ itself. The last peg is a plus, which starts another one. Pressing the session
 you are already inside is how you call it something else, and a name you write
 yourself is never overwritten by the agent's.
 
+**A session is a real agent, configured.** Pressing the peg with the agent's
+name on it turns the board into that session's card: who is working in there
+and who else on this machine could, what they are thinking with, how they work,
+how hard they think, what they can reach out in the world, and what they have
+been taught. Every line on it is pressable and pressing one does the thing.
+None of it is a list anyone here keeps: the models and the modes are whatever
+that agent says it offers over the protocol when it starts, the servers are
+read out of the agent's own config file, and the skills are read from where the
+agent actually looks for them. Changing who works in a building sends the one
+who was there home, because a different agent is a different villager.
+
+That card is also the answer to the question this file has been asking. One
+board still shows one thing, and the rail is the only thing that changes which
+thing it is.
+
 A session is not a building. Buildings light up for the first few sessions in a
 district so the island still says something from the water, but they are
 scenery: a project can easily have more sessions than its district has houses,
@@ -103,10 +118,12 @@ broken; the villager at its door is turned away while they are working and
 turned towards you when they have stopped. There is no badge, no spinner and no
 coloured dot anywhere.
 
-The agent runs under the Claude settings on this machine, the same ones a
-terminal session gets, so what it asks permission for is what it would ask
-there. When it does ask, the question lands on the board and a number key
-answers it.
+The agent runs under its own settings on this machine, the same ones a terminal
+session gets, so what it asks permission for is what it would ask there. When
+it does ask, the question lands on the board and a number key answers it.
+
+Nothing yet adds a server or teaches a skill: the card shows what is there and
+turns a server on or off, and the rest is still done in the agent's own files.
 
 **Only stages 0 and 4 are used.** A founded project goes straight to a built
 district. The stages below four are sketches that do not stand up beside it,
@@ -129,9 +146,6 @@ Nothing in the UI abandons a project or a session, though the wire does both,
 and nothing removes an agent from one. A permission question has not been
 seen land on the board: the Claude settings on this machine approve everything a
 task has been asked to do so far, so that one branch is wired but unwitnessed.
-
-The open question nobody has answered yet is how you change what the board is
-showing without a tab strip and without a second board.
 
 ## House rules
 

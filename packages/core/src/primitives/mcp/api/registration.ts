@@ -57,7 +57,10 @@ export function mcpServerToRegistration(server: McpServer): McpServerRegistratio
   return {
     name: server.name,
     transport: server.transport,
-    ...(server.transport === 'http' ? { type: 'http' as const } : {}),
+    /* Always, not only for http. Agents whose config file is passed straight
+       through — Claude's among them — spell this `type`, so a stdio server
+       that went in with `type: 'stdio'` came back out without it. */
+    type: server.transport === 'http' ? 'http' : 'stdio',
     command: server.command,
     args: server.args,
     url: server.url,

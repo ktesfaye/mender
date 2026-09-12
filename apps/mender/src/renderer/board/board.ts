@@ -47,7 +47,10 @@ const TONES: Record<Tone, number> = { ink: INK, faded: FADED, keen: KEEN, sore: 
 /** Which end of a line survives when it is too long for the board. */
 type Keep = 'front' | 'tail';
 
-export type Row =
+/** What a row does when it is pressed, if it does anything. */
+type Pick = { pick?: string };
+
+export type Row = (
   | { kind: 'title'; text: string }
   /** Being written now, with the cursor after it. */
   | { kind: 'typed'; text: string }
@@ -57,7 +60,9 @@ export type Row =
   /** Something somebody said, wrapped to the wood rather than cut off at it. */
   | { kind: 'prose'; text: string; tone?: Tone; mark?: string }
   | { kind: 'heading'; text: string }
-  | { kind: 'gap' };
+  | { kind: 'gap' }
+) &
+  Pick;
 
 export interface BoardArt {
   planks: string;
@@ -87,6 +92,9 @@ export class Board {
   private readonly cursor = new Graphics();
   private scroll = 0;
   private reach = 0;
+  /** Where each row you can press ended up, so a press can find it again. */
+  private hits: { from: number; to: number; pick: string }[] = [];
+  private picked: ((pick: string) => void) | null = null;
   /** Whether the bottom of the board stays under you as it is written on. */
   private follow = false;
 
@@ -111,6 +119,11 @@ export class Board {
     // wood pans the island behind it, which reads as the board being a picture
     // of a board rather than a board.
     this.view.on('pointerdown', (event: FederatedPointerEvent) => event.stopPropagation());
+    this.view.on('pointertap', (event: FederatedPointerEvent) => {
+      const y = (event.global.y - this.view.y) / this.times - this.writing.y;
+      const hit = this.hits.find((row) => y >= row.from && y < row.to);
+      if (hit) this.picked?.(hit.pick);
+    });
     /* The wheel is taken before anything else sees it. The camera does not read
        wheels through the scene graph — it puts its own listener on the canvas —
        so a wheel over the board would scroll the board AND zoom the village
@@ -173,6 +186,11 @@ export class Board {
     this.write();
     this.scroll = this.follow ? this.reach : 0;
     this.writing.y = PAD_Y - Math.round(this.scroll);
+  }
+
+  /** Whoever wants to know which line was pressed. */
+  onPick(picked: (pick: string) => void): void {
+    this.picked = picked;
   }
 
   /** Rewrite what is on it without moving it: the same board, a new notice. */
@@ -260,8 +278,10 @@ export class Board {
     this.writing.addChild(this.cursor);
     this.cursor.visible = false;
     const room = this.art.width - PAD_X * 2;
+    this.hits = [];
     let y = 0;
     for (const row of this.rows) {
+      const from = y;
       switch (row.kind) {
         case 'gap':
           y += Math.round(LINE / 2);
@@ -324,6 +344,7 @@ export class Board {
           y += LINE;
         }
       }
+      if (row.pick) this.hits.push({ from, to: y, pick: row.pick });
     }
     this.reach = Math.max(0, y - (this.planks.height - PAD_Y * 2));
     this.scroll = this.follow ? this.reach : Math.min(this.scroll, this.reach);

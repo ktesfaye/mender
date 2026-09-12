@@ -10,7 +10,8 @@ import type { ConversationRecords } from '@emdash/core/runtimes/conversations/ap
 import { ReplicaState } from '@emdash/wire/live';
 import { cell, peek, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
-import type { Ask, Line, Mood, WorkingState } from '@shared/agents';
+import type { Ask, Kit, Line, Mood, WorkingState } from '@shared/agents';
+import { createKits } from './kit';
 import type { MenderRuntimes } from './runtimes';
 import type { Tasks } from './tasks';
 
@@ -29,7 +30,7 @@ import type { Tasks } from './tasks';
  * the rest.
  */
 
-/** Who moves in. One agent for now, and it is the one running this. */
+/** Who moves in when nobody has said otherwise. */
 const PROVIDER = 'claude';
 
 /** How much of what happened the board keeps behind it. */
@@ -40,6 +41,10 @@ const BACKWARD = 12;
 export interface Agents {
   /** The live state of one building, for the board to subscribe to. */
   working(task: string): Cell<WorkingState>;
+  /** What that session works with, for the card. */
+  kit(task: string): Cell<Kit>;
+  choose(task: string, what: 'hand' | 'model' | 'mode' | 'effort', id: string): Promise<Told>;
+  tool(task: string, name: string, on: boolean): Promise<Told>;
   /** Every building with somebody in it, for the island. */
   moods(): Cell<Record<string, Mood>>;
   tell(task: string, text: string): Promise<Told>;
@@ -79,6 +84,9 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
 
   const houses = new Map<string, House>();
   const island = cell<Record<string, Mood>>({}, { name: 'agents:island' });
+  /* Changing who works in a building empties it: a different agent is a
+     different villager, not the same one with a new hat. */
+  const kits = createKits(runtimes, tasks, (task) => evict(task));
 
   /* The host's conversation index, held open for the life of the app. It is
      where the provider's own session id lands when a session starts, which is
@@ -111,7 +119,11 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
         island.set(moodsOf(houses));
       });
       houses.set(task, house);
-      void loaded.then(() => house?.settle(lodgers[task]));
+      void loaded.then(async () => {
+        const conversation = lodgers[task];
+        if (!conversation) return;
+        await Promise.all([house?.settle(conversation), kits.settle(task, conversation)]);
+      });
     }
     return house;
   };
@@ -133,9 +145,34 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
     error: { kind: 'refused', because },
   });
 
+  const evict = async (task: string): Promise<void> => {
+    await loaded;
+    const conversation = lodgers[task];
+    await houses.get(task)?.dispose();
+    houses.delete(task);
+    island.set(moodsOf(houses));
+    if (!conversation) return;
+    await runtimes.acp.terminate({ conversationId: conversation });
+    await runtimes.conversations.delete({ conversationId: conversation });
+    const { [task]: _gone, ...rest } = lodgers;
+    lodgers = rest;
+    await store.set(KEY, lodgers as unknown as never);
+  };
+
   return {
     working: (task) => houseOf(task).state,
+    kit: (task) => kits.kit(task),
     moods: () => island,
+
+    async choose(task, what, id) {
+      const done = await kits.choose(task, what, id);
+      return done.success ? { success: true, data: undefined } : done;
+    },
+
+    async tool(task, name, on) {
+      const done = await kits.tool(task, name, on);
+      return done.success ? { success: true, data: undefined } : done;
+    },
 
     async tell(task, text) {
       const said = text.trim();
@@ -150,7 +187,7 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
         conversation = crypto.randomUUID();
         const made = await runtimes.conversations.create({
           conversationId: conversation,
-          provider: PROVIDER,
+          provider: record.agent ?? PROVIDER,
           type: 'acp',
           cwd: record.path,
           workspacePath: record.path,
@@ -163,6 +200,7 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
         if (!made.success) return refused(whatItSaid(made.error));
         await put(task, conversation);
         await house.settle(conversation);
+        await kits.settle(task, conversation);
       }
 
       house.arriving();
@@ -172,10 +210,10 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
       const started = await runtimes.acp.launch(
         {
           conversationId: conversation,
-          providerId: PROVIDER,
+          providerId: record.agent ?? PROVIDER,
           cwd: record.path,
           sessionId: records[conversation]?.providerSessionId ?? null,
-          model: null,
+          model: record.model ?? null,
         },
         { timeoutMs: 0 }
       );
@@ -215,24 +253,12 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
       return done.success ? { success: true, data: undefined } : refused(whatItSaid(done.error));
     },
 
-    async evict(task) {
-      await loaded;
-      const conversation = lodgers[task];
-      await houses.get(task)?.dispose();
-      houses.delete(task);
-      island.set(moodsOf(houses));
-      if (!conversation) return;
-      await runtimes.acp.terminate({ conversationId: conversation });
-      await runtimes.conversations.delete({ conversationId: conversation });
-      const { [task]: _gone, ...rest } = lodgers;
-      lodgers = rest;
-      await store.set(KEY, lodgers as unknown as never);
-    },
+    evict,
 
     async dispose() {
       await Promise.all([...houses.values()].map((house) => house.dispose()));
       houses.clear();
-      await Promise.all([index.dispose(), named.dispose()]);
+      await Promise.all([index.dispose(), named.dispose(), kits.dispose()]);
     },
   };
 }

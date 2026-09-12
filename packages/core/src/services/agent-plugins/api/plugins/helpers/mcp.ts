@@ -213,7 +213,9 @@ export function passthroughMcpAdapter(configPath: string, legacyReadPaths?: stri
     format: 'json',
     serversKey: 'mcpServers',
     toNative(s) {
-      const { name: _n, ...rest } = s;
+      const { name: _n, transport: _t, ...rest } = s;
+      // `transport` is our word for it and `type` is the file's. Writing both
+      // leaves a key behind in a config file we do not own.
       return rest as Record<string, unknown>;
     },
     fromNative(name, raw) {

@@ -5,6 +5,7 @@ import type { Mood } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { makeBoard, type Board, type Row } from './board/board';
+import { openCard, type LiveCard } from './board/card';
 import { openCheckout, type LiveBoard } from './board/district';
 import { loadLettering } from './board/lettering';
 import { makeRail, type Rail, type Tag } from './board/rail';
@@ -63,6 +64,8 @@ async function boot(): Promise<void> {
     let work: LiveWork | null = null;
     /** The task that board belongs to. */
     let inside: Task | null = null;
+    /** Set while the board is showing what that session works with. */
+    let card: LiveCard | null = null;
     /** Set while a name for something new is being written on the wood. */
     let naming: {
       district: District;
@@ -115,11 +118,27 @@ async function boot(): Promise<void> {
           });
         }
         tags.push({ id: 'new', text: '+' });
+        if (inside) {
+          tags.push({ id: 'seam2', text: '│', tone: 'faded' });
+          tags.push({
+            id: 'card',
+            text: inside.agent ?? 'claude',
+            here: Boolean(card),
+          });
+        }
       }
       rail.show(tags);
     };
 
     rail.onPick((id) => {
+      if (id === 'card') {
+        const task = inside;
+        const aim = open;
+        if (!task || !aim) return;
+        if (card) void openTask(aim, task);
+        else void showCard(aim, task);
+        return;
+      }
       if (id === 'new') {
         const district = open?.district;
         if (district) askName({ kind: 'district', district }, freeSlot(district));
@@ -161,6 +180,9 @@ async function boot(): Promise<void> {
       titling = null;
       inside = null;
       work = null;
+      const shown = card;
+      card = null;
+      await shown?.close();
       board.hide();
       paintRail();
       const was = live;
@@ -229,6 +251,36 @@ async function boot(): Promise<void> {
     };
 
     /**
+     * What the session works with, on the same board the conversation was on.
+     *
+     * This is the whole answer to how the board shows something else: the rail
+     * does it, the same way it changes which session you are looking at. There
+     * is still one board and it is still showing one thing.
+     */
+    const showCard = async (aim: Aim, task: Task): Promise<void> => {
+      const was = live;
+      live = null;
+      work = null;
+      await was?.close();
+      const shown = card;
+      card = null;
+      await shown?.close();
+
+      open = aim;
+      inside = task;
+      const opened = await openCard(client, task, (rows) => {
+        if (open === aim && card) board.update(rows);
+      });
+      if (open !== aim) {
+        await opened.close();
+        return;
+      }
+      card = opened;
+      paintRail();
+      board.show(opened.rows());
+    };
+
+    /**
      * A building with a task in it is that task's own checkout, and whoever is
      * working in it. The board opens at the bottom, because the bottom is now.
      */
@@ -238,6 +290,9 @@ async function boot(): Promise<void> {
       live = null;
       work = null;
       await was?.close();
+      const shown = card;
+      card = null;
+      await shown?.close();
 
       open = aim;
       naming = null;
@@ -320,6 +375,9 @@ async function boot(): Promise<void> {
         flyOut(camera, drawn.island);
         return;
       }
+      // The first thing written in a new session is the first thing said in
+      // it. There is no separate step where you name it and then start it.
+      void client.agents.tell({ task: made.data.id, text: written }, { timeoutMs: 0 });
       if (aim) await openTask(aim, made.data);
     };
 
@@ -402,6 +460,22 @@ async function boot(): Promise<void> {
       });
       if (!given.success && given.error.kind === 'refused') say(given.error.because, 6000);
     };
+
+    board.onPick((pick) => {
+      const task = inside;
+      const meant = card?.meant(pick);
+      if (!task || !meant) return;
+      void (async () => {
+        const done =
+          meant.does === 'choose'
+            ? await client.agents.choose(
+                { task: task.id, what: meant.what, id: meant.id },
+                { timeoutMs: 0 }
+              )
+            : await client.agents.tool({ task: task.id, name: meant.name, on: meant.on });
+        if (!done.success && done.error.kind === 'refused') say(done.error.because, 6000);
+      })();
+    });
 
     watchPointer(pixi, camera, board, rail, {
       at: (x, y) => drawn.ground.at(x, y),
@@ -490,16 +564,19 @@ function sameAim(a: Aim, b: Aim): boolean {
   return a.kind !== 'building' || a.slot === (b as { slot: number }).slot;
 }
 
-/** The board, waiting to be written on. */
+/** An empty board with a cursor on it, which is all a new session is. */
 function asking(naming: { district: District; written: string }): Row[] {
   return [
     { kind: 'title', text: 'a new session' },
     { kind: 'line', text: `on the ${naming.district.name.toLowerCase()}`, tone: 'faded' },
     { kind: 'gap' },
-    { kind: 'line', text: 'what is going to happen in here?' },
-    { kind: 'typed', text: naming.written },
+    {
+      kind: 'prose',
+      text: 'say what you want doing. it gets its own branch, and it will name itself.',
+      tone: 'faded',
+    },
     { kind: 'gap' },
-    { kind: 'line', text: 'return to begin, escape to leave it empty.', tone: 'faded' },
+    { kind: 'typed', text: naming.written },
   ];
 }
 

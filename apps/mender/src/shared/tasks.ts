@@ -10,6 +10,10 @@ export const taskSchema = z.object({
   title: z.string(),
   /** Set once you have named it yourself, so nothing renames it back. */
   named: z.boolean().optional(),
+  /** Who works in here. */
+  agent: z.string().optional(),
+  /** What they think with, when they next start. */
+  model: z.string().nullable().optional(),
   branch: z.string(),
   /** Which of the district's buildings it stands in, if it got one. */
   slot: z.number().int().nonnegative().nullable(),

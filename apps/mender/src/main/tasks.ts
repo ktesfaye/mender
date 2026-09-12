@@ -36,6 +36,10 @@ export interface Task {
   readonly title: string;
   /** Set once he has named it himself, so nothing renames it back. */
   readonly named?: boolean;
+  /** Who works in here. Whoever it was when it started, until he says otherwise. */
+  readonly agent?: string;
+  /** What they think with. Handed to the session when it starts. */
+  readonly model?: string | null;
   readonly branch: string;
   /** Which of the district's buildings it stands in, if it got one. */
   readonly slot: number | null;
@@ -65,6 +69,10 @@ export interface Tasks {
   rename(id: string, title: string): Promise<Task[]>;
   /** Called something else by whoever is working in it, which his name outranks. */
   retitle(id: string, title: string): Promise<void>;
+  /** Somebody else works here now. */
+  rehand(id: string, agent: string): Promise<Task[]>;
+  /** What whoever is in here thinks with, next time they start. */
+  remodel(id: string, model: string | null): Promise<Task[]>;
   abandon(id: string): Promise<Task[]>;
 }
 
@@ -184,6 +192,20 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       const task = tasks.find((candidate) => candidate.id === id);
       if (!task || task.named || task.title === written) return;
       await save(tasks.map((each) => (each.id === id ? { ...each, title: written } : each)));
+    },
+
+    async rehand(id, agent) {
+      const tasks = await all();
+      // A different agent has a different list of models, so the old choice
+      // means nothing to them.
+      return await save(
+        tasks.map((task) => (task.id === id ? { ...task, agent, model: null } : task))
+      );
+    },
+
+    async remodel(id, model) {
+      const tasks = await all();
+      return await save(tasks.map((task) => (task.id === id ? { ...task, model } : task)));
     },
 
     async abandon(id) {

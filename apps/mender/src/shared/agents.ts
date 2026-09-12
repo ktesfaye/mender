@@ -64,7 +64,81 @@ export const agentErrorSchema = z.discriminatedUnion('kind', [
 ]);
 export type AgentError = z.infer<typeof agentErrorSchema>;
 
+/** Somebody who could move in: an agent whose CLI speaks the protocol. */
+export const handSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  /** Whether their CLI is actually on this machine. */
+  here: z.boolean(),
+});
+
+/** One of the things a session can be set to. */
+export const choiceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  about: z.string().optional(),
+});
+
+/** Something out in the world the session can reach. */
+export const toolSchema = z.object({
+  name: z.string(),
+  on: z.boolean(),
+  /** What went wrong when it was started, if anything did. */
+  trouble: z.string().nullable(),
+});
+
+/** Something the agent knows how to do, written down where it can find it. */
+export const knackSchema = z.object({
+  name: z.string(),
+  about: z.string(),
+  /** Where it is kept: everywhere, or only in this checkout. */
+  from: z.enum(['everywhere', 'here']),
+});
+
+/** Everything a session works with, and everything it could work with. */
+export const kitSchema = z.object({
+  hand: z.string(),
+  hands: z.array(handSchema),
+  model: z.string().nullable(),
+  models: z.array(choiceSchema),
+  mode: z.string().nullable(),
+  modes: z.array(choiceSchema),
+  effort: z.string().nullable(),
+  efforts: z.array(choiceSchema),
+  tools: z.array(toolSchema),
+  knacks: z.array(knackSchema),
+  /** True once the session has started and the agent has said what it offers. */
+  awake: z.boolean(),
+});
+
+export type Hand = z.infer<typeof handSchema>;
+export type Choice = z.infer<typeof choiceSchema>;
+export type Tool = z.infer<typeof toolSchema>;
+export type Knack = z.infer<typeof knackSchema>;
+export type Kit = z.infer<typeof kitSchema>;
+
 export const agentsContract = defineContract({
+  /** What one session works with, as it changes. */
+  kit: liveModel({
+    key: z.object({ task: z.string() }),
+    states: { state: liveState({ data: kitSchema }) },
+  }),
+  /** Set one of the things on the kit. */
+  choose: fallible({
+    input: z.object({
+      task: z.string(),
+      what: z.enum(['hand', 'model', 'mode', 'effort']),
+      id: z.string(),
+    }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** Turn one of the session's tools on or off. */
+  tool: fallible({
+    input: z.object({ task: z.string(), name: z.string(), on: z.boolean() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
   /** What is going on in one building, as it goes on. */
   work: liveModel({
     key: z.object({ task: z.string() }),
