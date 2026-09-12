@@ -1,5 +1,5 @@
 import { ReplicaState } from '@emdash/wire/live';
-import type { Ask, Kit, WorkingState } from '@shared/agents';
+import type { Ask, Kit, Line, WorkingState } from '@shared/agents';
 import type { Task } from '@shared/tasks';
 import type { MenderClient } from '../wire';
 import type { Row } from './board';
@@ -32,7 +32,15 @@ export interface LiveWork extends LiveBoard {
   asked(): Ask | null;
   /** Whether somebody in there is busy, and so could be called off. */
   working(): boolean;
+  /** Open or close what is underneath one line of the transcript. */
+  fold(id: string): void;
 }
+
+/** What a line with something under it wears, closed and open. */
+const SHUT = '↓';
+const OPEN = '↑';
+/** How far one level of nesting moves a line in, in characters. */
+const IN = 2;
 
 const QUIET: WorkingState = {
   mood: 'empty',
@@ -49,6 +57,9 @@ export async function openWork(
   let work = QUIET;
   let written = '';
   const slash = new Palette();
+  /* What you have opened up. Held by what it is rather than where it was, so a
+     thing you opened while it was still running stays open as it finishes. */
+  const opened = new Set<string>();
 
   // The checkout first, so the session — which can speak the moment it is
   // subscribed to — always has a board to be written on.
@@ -67,7 +78,7 @@ export async function openWork(
       turn: 'card',
       // No extra lines above the tree: the branch is the first thing the
       // checkout itself says, and a task's branch is its name said twice.
-      tail: () => tail(work, written, slash),
+      tail: () => tail(work, written, slash, opened),
     },
     changed
   );
@@ -105,6 +116,10 @@ export async function openWork(
     },
     asked: () => work.asking,
     working: () => work.mood === 'working',
+    fold: (id) => {
+      if (!opened.delete(id)) opened.add(id);
+      changed(checkout.rows());
+    },
     close: async () => {
       await Promise.all([replica.dispose(), kit.dispose(), checkout.close()]);
     },
@@ -112,20 +127,31 @@ export async function openWork(
 }
 
 /** Everything that has happened in the building, and the line you answer on. */
-function tail(work: WorkingState, written: string, slash: Palette): Row[] {
+function tail(
+  work: WorkingState,
+  written: string,
+  slash: Palette,
+  opened: ReadonlySet<string>
+): Row[] {
   const rows: Row[] = [{ kind: 'gap' }];
   // The heading only earns its line when there is something under it: the line
   // above the cursor already says what is going on in there.
   if (work.lines.length) rows.push({ kind: 'heading', text: 'in here' });
   for (const line of work.lines) {
-    if (line.kind === 'deed') {
+    if (line.kind === 'deed' || line.kind === 'thought') {
+      const has = Boolean(line.id && line.body?.length);
+      const out = Boolean(line.id && opened.has(line.id));
       rows.push({
         kind: 'entry',
-        mark: line.mark,
-        text: line.text,
+        // Work done inside other work is written inside it, so you can see
+        // whose it was without having to be told.
+        mark: has ? (line.tone === 'sore' ? line.mark : out ? OPEN : SHUT) : line.mark,
+        text: ' '.repeat((line.depth ?? 0) * IN) + line.text,
         tone: line.tone,
         keep: line.keep ?? 'tail',
+        ...(has ? { pick: `fold:${line.id}` } : {}),
       });
+      if (has && out) rows.push(...under(line, (line.depth ?? 0) + 1));
     } else if (line.kind === 'note') {
       rows.push({ kind: 'line', text: line.text, tone: line.tone });
     } else {
@@ -157,6 +183,33 @@ function tail(work: WorkingState, written: string, slash: Palette): Row[] {
   // Whatever the slash on that line could mean, written under it. Nothing
   // floats in this app, so a picker is only ever more lines on the wood.
   rows.push(...slash.rows());
+  return rows;
+}
+
+/**
+ * What is written under a line you have opened.
+ *
+ * A command's output is what it printed; an edit is the lines that actually
+ * changed, and nothing else, because the part of the file that stayed the same
+ * is not the edit. Added and removed lean on the same two tones the working
+ * tree already uses, so a change reads the same wherever you meet it.
+ */
+function under(line: Line, depth: number): Row[] {
+  const pad = ' '.repeat(depth * IN);
+  const rows: Row[] = (line.body ?? []).map((text): Row => {
+    if (line.bodyKind !== 'diff') {
+      return { kind: 'line', text: pad + text, tone: 'faded', keep: 'front' };
+    }
+    return {
+      kind: 'line',
+      text: pad + text,
+      tone: text.startsWith('+') ? 'keen' : 'sore',
+      keep: 'front',
+    };
+  });
+  if (line.more) {
+    rows.push({ kind: 'line', text: `${pad}and ${line.more} more lines.`, tone: 'faded' });
+  }
   return rows;
 }
 

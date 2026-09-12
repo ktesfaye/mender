@@ -30,13 +30,13 @@ It answers to the keyboard now: a chord for everything you do often, a finder
 over every session and project, arrows that walk any board, and it reopens where
 you left it. But almost everything a person actually does with a coding tool is
 still missing. There is no git beyond reading status, no diff, no file, no
-terminal, no pull request, no settings. Of the 253 ledger rows: 18 done, 23
+terminal, no pull request, no settings. Of the 253 ledger rows: 23 done, 23
 partly done, 34 inherited working from emdash's back end and needing no village
-surface, 13 deliberately cut, and **165 not started**.
+surface, 13 deliberately cut, and **160 not started**.
 
 ## What "not started" actually means
 
-Every one of those 165 rows already works underneath. Emdash's back end is kept
+Every one of those 160 rows already works underneath. Emdash's back end is kept
 whole and it is the engine: staging, unstaging, reverting and committing are
 mutations on a live checkout model; push, pull, publish, fetch, the log, a
 commit's files and blame are all procedures we can call today; so are the
@@ -119,11 +119,23 @@ nobody could reach and the mouse-only card. Still open in it: UI-26 and ST-33
 AG-53 as above, and the driven harness over the real feature set (B6-03), which
 is the next thing in this wave.
 
-### W2 — a session reads like a real conversation
+### W2 — a session reads like a real conversation · started
 
-The transcript today has three kinds of line: something said, something done,
-and the village talking. Claude emits fifteen. Everything structured it sends
-arrives flattened.
+The transcript no longer throws things away. What a command printed, what an
+edit actually changed, and work done inside other work all come across and are
+written on the wood: a line with something under it wears an arrow, pressing it
+opens it, and a file change reads as the lines that changed and nothing else.
+Paths are said the way somebody standing in that checkout would say them.
+
+One thing built and unverified: thinking. The line is written and the runtime
+maps it, but Claude's own CLI has never once sent a thought over the protocol
+here, at any effort setting, so nothing has ever rendered. It stays `part` until
+a real thought lands on the board.
+
+Still open: the plan and todo card, resource links, markdown and diagrams, the
+composer's queue, attachments and mentions, the context meter, waking every
+session at boot rather than the one you open, and the permission question,
+which has still never fired.
 
 Closes AG-02, AG-13, AG-14, AG-20, AG-22 through AG-40, AG-43, AG-45 through
 AG-51, FS-29, UI-31, UI-43.
@@ -324,13 +336,13 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-24 | Composer placement (centered vs docked) | cut |  |
 | AG-25 | Pin the active user message while scrolling |  | W2 |
 | AG-26 | User message card | part | W2 |
-| AG-27 | Generic tool call row | part | W2 |
-| AG-28 | Hierarchical tool grouping (subagents) |  | W2 |
+| AG-27 | Generic tool call row | done | W2 |
+| AG-28 | Hierarchical tool grouping (subagents) | done | W2 |
 | AG-29 | Subagent card |  | W2 |
-| AG-30 | Diff card (file edit preview) |  | W2 |
-| AG-31 | Execute card (shell command + live output) |  | W2 |
-| AG-32 | File operation card (read/edit/delete/move) |  | W2 |
-| AG-33 | Thinking/reasoning card |  | W2 |
+| AG-30 | Diff card (file edit preview) | done | W2 |
+| AG-31 | Execute card (shell command + live output) | done | W2 |
+| AG-32 | File operation card (read/edit/delete/move) | done | W2 |
+| AG-33 | Thinking/reasoning card | part | W2 |
 | AG-34 | Plan/todo-list card |  | W2 |
 | AG-35 | Resource link card |  | W2 |
 | AG-36 | Turn outcome / filler rows | part | W2 |

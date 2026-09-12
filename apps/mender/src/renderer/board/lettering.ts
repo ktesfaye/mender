@@ -66,6 +66,11 @@ export function widthOf(text: string): number {
  * `apps/mender/src/` says nothing at all, so a path keeps its tail.
  */
 export function fitted(text: string, room: number, keep: 'front' | 'tail' = 'front'): string {
+  /* A line is one line. Anything with a break in it — a heredoc somebody ran, a
+     commit subject with a body stuck to it — would otherwise draw as several
+     lines in the space of one and overlap whatever is under it, which is the
+     kind of thing that only shows up on the real thing at full size. */
+  text = text.includes('\n') ? text.replaceAll(/\s*\n\s*/g, ' ') : text;
   const chars = Math.floor(room / ADVANCE);
   if (text.length <= chars) return text;
   if (chars <= 1) return text.slice(0, Math.max(0, chars));

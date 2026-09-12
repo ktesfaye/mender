@@ -85,6 +85,13 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
   })();
 
   const houses = new Map<string, House>();
+  /* Where each session's checkout is, so a path written on the board can be
+     the path inside it rather than the whole way from the root of the disk. */
+  const wheres = new Map<string, string>();
+  const learn = async (): Promise<void> => {
+    for (const record of await tasks.list()) wheres.set(record.id, record.path);
+  };
+  void learn();
   const island = cell<Record<string, Mood>>({}, { name: 'agents:island' });
   /* Changing who works in a building empties it: a different agent is a
      different villager, not the same one with a new hat. */
@@ -117,9 +124,14 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
   const houseOf = (task: string): House => {
     let house = houses.get(task);
     if (!house) {
-      house = new House(task, runtimes, () => {
-        island.set(moodsOf(houses));
-      });
+      house = new House(
+        task,
+        runtimes,
+        () => {
+          island.set(moodsOf(houses));
+        },
+        () => wheres.get(task)
+      );
       houses.set(task, house);
       void loaded.then(async () => {
         const conversation = lodgers[task];
@@ -311,7 +323,9 @@ class House {
   constructor(
     private readonly task: string,
     private readonly runtimes: MenderRuntimes,
-    private readonly moved: () => void
+    private readonly moved: () => void,
+    /** Where this session's checkout is, when anybody has said. */
+    private readonly where: () => string | undefined
   ) {
     this.state = cell<WorkingState>(EMPTY, { name: `agent:${task}` });
   }
@@ -402,7 +416,7 @@ class House {
   private read(): WorkingState {
     if (!this.conversation) return EMPTY;
     const turns = this.live ? [...this.before, this.live] : this.before;
-    const lines = linesOf(turns).slice(-KEPT);
+    const lines = linesOf(turns, this.where()).slice(-KEPT);
     const asking = askOf(this.lifecycle?.pendingPermissions?.[0]);
     const mood = moodOf(this.lifecycle, asking, this.trouble);
     return {
@@ -465,22 +479,22 @@ function lastMove(turn: TranscriptTurn): string | undefined {
   return move;
 }
 
-function runningIn(node: ToolNode): string | undefined {
+function runningIn(node: ToolNode, root?: string): string | undefined {
   if (node.kind === 'tool-group') {
     for (const child of [...node.children].reverse()) {
-      const found = runningIn(child);
+      const found = runningIn(child, root);
       if (found) return found;
     }
     return undefined;
   }
-  return node.status === 'running' ? deedOf(node) : undefined;
+  return node.status === 'running' ? deedOf(node, root) : undefined;
 }
 
 function askOf(request: AcpPermissionRequest | undefined): Ask | null {
   if (!request) return null;
   return {
     requestId: request.requestId,
-    text: deedOf(request.toolCall),
+    text: deedOf(request.toolCall, undefined),
     options: request.options.map((option) => ({
       optionId: option.optionId,
       name: option.name.toLowerCase(),
@@ -488,8 +502,16 @@ function askOf(request: AcpPermissionRequest | undefined): Ask | null {
   };
 }
 
-/** Every turn, flattened into the lines a board can hold. */
-function linesOf(turns: readonly TranscriptTurn[]): Line[] {
+/**
+ * Every turn, written out as the lines a board can hold.
+ *
+ * Not flattened: what an agent sends is a tree of work with real content
+ * hanging off it, and the board gets all of it. What a command printed, what an
+ * edit changed, what it was thinking on the way, and which piece of work was
+ * done inside which other piece. The board decides how much of that to show;
+ * this only decides what there is.
+ */
+function linesOf(turns: readonly TranscriptTurn[], root: string | undefined): Line[] {
   const lines: Line[] = [];
   for (const turn of turns) {
     for (const item of turn.items) {
@@ -501,8 +523,11 @@ function linesOf(turns: readonly TranscriptTurn[]): Line[] {
             ? { kind: 'said', mark: '>', text, tone: 'faded' }
             : { kind: 'said', mark: '', text, tone: 'ink' }
         );
-      } else if (item.kind !== 'thinking') {
-        pushDeeds(lines, item);
+      } else if (item.kind === 'thinking') {
+        const thought = thoughtOf(item);
+        if (thought) lines.push(thought);
+      } else {
+        pushDeeds(lines, item, 0, root);
       }
     }
     const outcome = turn.outcome;
@@ -520,34 +545,145 @@ function linesOf(turns: readonly TranscriptTurn[]): Line[] {
   return lines;
 }
 
-function pushDeeds(lines: Line[], node: ToolNode): void {
+/** As many lines of a tool's own output as are worth carrying to a board. */
+const SPOKE = 40;
+/** A thought is long and is not the thing you came to read. */
+const MUSED = 60;
+
+function markFor(status: string): string {
+  return status === 'running' ? '…' : status === 'error' ? '✗' : '·';
+}
+
+function pushDeeds(lines: Line[], node: ToolNode, depth: number, root: string | undefined): void {
   if (node.kind === 'tool-group') {
-    for (const child of node.children) pushDeeds(lines, child);
+    // A group is a thing in its own right, and its children happened inside it.
+    lines.push({
+      kind: 'deed',
+      mark: markFor(node.status),
+      text: node.label,
+      tone: node.status === 'error' ? 'sore' : 'faded',
+      depth,
+    });
+    for (const child of node.children) pushDeeds(lines, child, depth + 1, root);
     return;
   }
+  const shown = bodyOf(node);
   lines.push({
     kind: 'deed',
-    mark: node.status === 'running' ? '…' : node.status === 'error' ? '×' : '·',
-    text: deedOf(node),
+    mark: markFor(node.status),
+    text: deedOf(node, root),
     tone: node.status === 'error' ? 'sore' : 'faded',
     // A command says what it is at its front; a path says what it is at its end.
     keep: node.kind === 'execute-tool-call' ? 'front' : 'tail',
+    depth,
+    ...(shown ? { id: node.id, ...shown } : {}),
   });
+  // An agent sent off to do something has its own work under it, at its depth.
+  for (const child of node.children ?? []) pushDeeds(lines, child, depth + 1, root);
+}
+
+/** What a tool actually produced, if it produced anything worth reading. */
+function bodyOf(
+  node: Exclude<ToolNode, { kind: 'tool-group' }>
+): Pick<Line, 'body' | 'bodyKind' | 'more'> | null {
+  if (node.kind === 'execute-tool-call') return plainly(node.outputText);
+  if (node.kind === 'create-file-tool-call') return plainly(node.content);
+  if (node.kind === 'modify-file-tool-call') {
+    const changed = changes(node.oldText, node.newText);
+    if (!changed.length) return null;
+    return {
+      body: changed.slice(0, SPOKE),
+      bodyKind: 'diff',
+      ...(changed.length > SPOKE ? { more: changed.length - SPOKE } : {}),
+    };
+  }
+  return null;
+}
+
+function plainly(text: string | undefined): Pick<Line, 'body' | 'bodyKind' | 'more'> | null {
+  const written = (text ?? '').replaceAll('\r\n', '\n').replace(/\s+$/, '');
+  if (!written) return null;
+  const all = written.split('\n');
+  return {
+    body: all.slice(0, SPOKE),
+    bodyKind: 'plain',
+    ...(all.length > SPOKE ? { more: all.length - SPOKE } : {}),
+  };
+}
+
+/**
+ * What changed between two versions of a file, as marked lines.
+ *
+ * The common head and tail are dropped because they are the part that did not
+ * change, and a diff that shows you the whole file is not showing you the edit.
+ * No cleverness beyond that: this is a board, not a review tool.
+ */
+function changes(before: string, after: string): string[] {
+  const was = before.replaceAll('\r\n', '\n').split('\n');
+  const now = after.replaceAll('\r\n', '\n').split('\n');
+  let head = 0;
+  while (head < was.length && head < now.length && was[head] === now[head]) head += 1;
+  let tail = 0;
+  while (
+    tail < was.length - head &&
+    tail < now.length - head &&
+    was[was.length - 1 - tail] === now[now.length - 1 - tail]
+  ) {
+    tail += 1;
+  }
+  const gone = was.slice(head, was.length - tail);
+  const came = now.slice(head, now.length - tail);
+  return [...gone.map((line) => `-${line}`), ...came.map((line) => `+${line}`)];
+}
+
+/**
+ * What it was thinking, which until now was thrown away entirely.
+ *
+ * It arrives as a stream of reasoning nobody asked to read in full, so the line
+ * says how long it went on for and the reasoning itself is underneath it.
+ */
+function thoughtOf(item: {
+  id: string;
+  text: string;
+  status: string;
+  startedAt: number;
+  durationMs?: number;
+}): Line | null {
+  const text = item.text.trim();
+  if (!text) return null;
+  const spent = item.durationMs ?? Math.max(0, Date.now() - item.startedAt);
+  const all = text.split('\n');
+  return {
+    kind: 'thought',
+    mark: item.status === 'done' ? '·' : '…',
+    text: item.status === 'done' ? `thought for ${clock(spent)}` : 'thinking',
+    tone: 'faded',
+    id: item.id,
+    body: all.slice(0, MUSED),
+    bodyKind: 'plain',
+    ...(all.length > MUSED ? { more: all.length - MUSED } : {}),
+  };
+}
+
+function clock(ms: number): string {
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
 /** One thing done, said the way you would say it out loud. */
-function deedOf(node: Exclude<ToolNode, { kind: 'tool-group' }>): string {
+function deedOf(node: Exclude<ToolNode, { kind: 'tool-group' }>, root?: string): string {
   switch (node.kind) {
     case 'execute-tool-call':
       return node.command ?? node.title;
     case 'read-tool-call':
-      return `read ${where(node.locations) ?? node.title}`;
+      return `read ${inside(where(node.locations) ?? node.title, root)}`;
     case 'create-file-tool-call':
-      return `wrote ${node.path}`;
+      return `wrote ${inside(node.path, root)}`;
     case 'modify-file-tool-call':
-      return `changed ${node.path}`;
+      return `changed ${inside(node.path, root)}`;
     case 'delete-file-tool-call':
-      return `removed ${node.path}`;
+      return `removed ${inside(node.path, root)}`;
     case 'search-tool-call':
       return `looked for ${node.query}`;
     case 'web-fetch-tool-call':
@@ -565,6 +701,21 @@ function deedOf(node: Exclude<ToolNode, { kind: 'tool-group' }>): string {
 
 function where(locations: { path: string }[] | undefined): string | undefined {
   return locations?.[0]?.path;
+}
+
+/**
+ * A path said the way somebody working in that checkout would say it.
+ *
+ * The whole way from the root of the disk is the same for every file in a
+ * session and so tells you nothing, and on a board this narrow it pushes the
+ * part that does tell you something off the end.
+ */
+function inside(path: string, root: string | undefined): string {
+  if (root && path.startsWith(root)) {
+    const rest = path.slice(root.length).replace(/^[/\\]+/, '');
+    if (rest) return rest;
+  }
+  return path;
 }
 
 /** A runtime's reason, as a sentence rather than a symbol. */

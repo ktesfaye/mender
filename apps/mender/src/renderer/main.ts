@@ -206,6 +206,12 @@ async function boot(): Promise<void> {
         void retrace(id === 'do:back' ? -1 : 1);
         return;
       }
+      // Opening up what a piece of work actually did, which is the one pick a
+      // session's own board offers besides turning it over.
+      if (id.startsWith('fold:')) {
+        work?.fold(id.slice(5));
+        return;
+      }
       if (id === 'do:rename') {
         if (inside) askTitle(inside);
         return;
@@ -688,7 +694,12 @@ async function boot(): Promise<void> {
         go(pick);
         return;
       }
-      if (pick.startsWith('project:') || pick.startsWith('task:') || pick.startsWith('rail:')) {
+      if (
+        pick.startsWith('project:') ||
+        pick.startsWith('task:') ||
+        pick.startsWith('rail:') ||
+        pick.startsWith('fold:')
+      ) {
         go(pick);
         return;
       }
@@ -821,6 +832,22 @@ async function boot(): Promise<void> {
         if (saying.asked()) {
           if (!/^[1-9]$/.test(event.key)) return false;
           void answer(event.key);
+          return true;
+        }
+        /* A session's board is mostly a conversation, so the arrows scroll it
+           rather than walking it — except that what a piece of work did is
+           opened by pressing it, and nothing should need a pointer. Holding
+           shift walks the openable lines instead of scrolling. */
+        if (event.shiftKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+          return board.walk(event.key === 'ArrowDown' ? 1 : -1);
+        }
+        // Tab opens whatever the shift-arrows landed on. Return is spoken for
+        // here: it says what you wrote, or calls them off when you wrote
+        // nothing, and shift and return has a newline coming.
+        if (event.key === 'Tab') {
+          const chose = board.chosen();
+          if (!chose) return false;
+          go(chose);
           return true;
         }
         /* A slash on the line takes the keys off the conversation: up and

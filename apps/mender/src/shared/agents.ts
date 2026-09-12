@@ -29,12 +29,34 @@ export const toneSchema = z.enum(['ink', 'faded', 'keen', 'sore']);
  * margin; `note` is the village talking rather than the agent.
  */
 export const lineSchema = z.object({
-  kind: z.enum(['said', 'deed', 'note']),
+  kind: z.enum(['said', 'deed', 'note', 'thought']),
   mark: z.string(),
   text: z.string(),
   tone: toneSchema,
   /** Which end survives when the board is narrower than the line. */
   keep: z.enum(['front', 'tail']).optional(),
+  /**
+   * How deep inside other work this sits.
+   *
+   * An agent that sends another agent off, or a run of edits gathered under one
+   * heading, is a tree and not a list. Flattening it loses who did what.
+   */
+  depth: z.number().int().optional(),
+  /** Stable identity, so a thing you opened stays open while it is still running. */
+  id: z.string().optional(),
+  /**
+   * What is written underneath when it is opened.
+   *
+   * Everything a tool actually produced — what a command printed, what a file
+   * edit changed, what it was thinking — comes across whether or not anybody is
+   * looking at it, because the board decides what is shown and the main process
+   * has no business knowing what is open.
+   */
+  body: z.array(z.string()).optional(),
+  /** Whether the body is plain writing or a change to a file. */
+  bodyKind: z.enum(['plain', 'diff']).optional(),
+  /** How much more there was than the body carries. */
+  more: z.number().int().optional(),
 });
 export type Line = z.infer<typeof lineSchema>;
 
