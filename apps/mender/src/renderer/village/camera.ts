@@ -1,5 +1,5 @@
 import { Viewport } from 'pixi-viewport';
-import type { Application, Container } from 'pixi.js';
+import type { Application } from 'pixi.js';
 import type { DistrictBounds } from './ground';
 
 /**
@@ -77,15 +77,36 @@ function nearestRung(scale: number): number {
     came from, short enough that it is not a cutscene you sit through. */
 const FLIGHT_MS = 520;
 
+/** A rectangle in the world, as the renderer places things. */
+export interface Extent {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/* FITTING IS NOT THE SAME PROBLEM ABOVE AND BELOW 1:1.
+ *
+ * Scaling this art UP by a fraction is the thing it must never do — half the
+ * rows come out one pixel tall and half two, and the whole island crawls — so a
+ * view that wants more than 1:1 takes a whole number and lets a little of the
+ * shore run off the edge. Scaling DOWN is the opposite trade: there is no whole
+ * number to land on between a half and one, and the alternative to a slightly
+ * uneven island is an island you cannot see all of. So below 1:1 it fits
+ * exactly and takes the unevenness. */
+function fitScale(viewport: Viewport, box: Extent, padding: number): number {
+  const fit = Math.min(
+    (viewport.screenWidth - padding * 2) / box.width,
+    (viewport.screenHeight - padding * 2) / box.height
+  );
+  return fit >= 1 ? nearestRung(fit) : fit;
+}
+
 /** Fly until the district fills the view, and stop on a rung. */
 export function flyTo(viewport: Viewport, district: DistrictBounds, padding = 80): void {
-  const fit = Math.min(
-    (viewport.screenWidth - padding * 2) / district.width,
-    (viewport.screenHeight - padding * 2) / district.height
-  );
   viewport.animate({
     position: { x: district.centerX, y: district.centerY },
-    scale: nearestRung(fit),
+    scale: fitScale(viewport, district, padding),
     time: FLIGHT_MS,
     ease: 'easeInOutSine',
     removeOnInterrupt: true,
@@ -93,16 +114,11 @@ export function flyTo(viewport: Viewport, district: DistrictBounds, padding = 80
 }
 
 /** Fly back out until the whole island is in front of you again. */
-export function flyOut(viewport: Viewport, world: Container, padding = 48): void {
-  const bounds = world.getLocalBounds();
-  if (!bounds.width || !bounds.height) return;
-  const fit = Math.min(
-    (viewport.screenWidth - padding * 2) / bounds.width,
-    (viewport.screenHeight - padding * 2) / bounds.height
-  );
+export function flyOut(viewport: Viewport, island: Extent, padding = 48): void {
+  if (!island.width || !island.height) return;
   viewport.animate({
-    position: { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },
-    scale: nearestRung(fit),
+    position: { x: island.x + island.width / 2, y: island.y + island.height / 2 },
+    scale: fitScale(viewport, island, padding),
     time: FLIGHT_MS,
     ease: 'easeInOutSine',
     removeOnInterrupt: true,
@@ -118,13 +134,8 @@ export function flyOut(viewport: Viewport, world: Container, padding = 48): void
  * in the middle of an empty sea. A few rows of shore running off the bottom
  * edge is the better picture, and you can pan.
  */
-export function frame(viewport: Viewport, world: Container, padding = 48): void {
-  const bounds = world.getLocalBounds();
-  if (!bounds.width || !bounds.height) return;
-  const fit = Math.min(
-    (window.innerWidth - padding * 2) / bounds.width,
-    (window.innerHeight - padding * 2) / bounds.height
-  );
-  viewport.setZoom(nearestRung(fit), true);
-  viewport.moveCenter(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+export function frame(viewport: Viewport, island: Extent, padding = 48): void {
+  if (!island.width || !island.height) return;
+  viewport.setZoom(fitScale(viewport, island, padding), true);
+  viewport.moveCenter(island.x + island.width / 2, island.y + island.height / 2);
 }

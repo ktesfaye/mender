@@ -114,3 +114,53 @@ export function standingGround(layout: Layout): Set<string> {
   }
   return out;
 }
+
+/**
+ * How much sea the island takes up, in the pixels the renderer places in.
+ *
+ * Measured off the tiles rather than off what is drawn: a scene graph's own
+ * bounds also carry whatever empty containers are hanging in it at the origin,
+ * and the island sits a long way from the origin, so the camera framed itself
+ * on a rectangle stretching back to a point where nothing is.
+ */
+export function extentOf(layout: Layout): { x: number; y: number; width: number; height: number } {
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (const tile of layout.tiles) {
+    if (!tile.file) continue;
+    const [x, y] = tile.cell;
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
+  if (!Number.isFinite(x0)) return { x: 0, y: 0, width: 0, height: 0 };
+  // Screen y runs down and the world's runs up, so the top of the island is its
+  // highest cell.
+  return {
+    x: x0 * CELL,
+    y: -(y1 + 1) * CELL,
+    width: (x1 - x0 + 1) * CELL,
+    height: (y1 - y0 + 1) * CELL,
+  };
+}
+
+/** The prefab the camp is built around. There is exactly one on the island. */
+const CAMPFIRE = 'PF Village Props - Campfire 01';
+
+/**
+ * Where the fire is, in the pixels the renderer places in.
+ *
+ * The camp owns a stretch of ground, but the camp is not what you point at: the
+ * fire is. A plot-shaped wash over the middle of the island says nothing about
+ * what would happen if you clicked it, and the fire says exactly what it is.
+ */
+export function campfireOf(layout: Layout): { x: number; y: number } | null {
+  for (const object of layout.objects) {
+    if (object.prefab !== CAMPFIRE) continue;
+    return { x: object.pos[0] * CELL, y: -object.pos[1] * CELL };
+  }
+  return null;
+}

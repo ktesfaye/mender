@@ -1,6 +1,6 @@
-import { Document, type District } from '@mender/village';
+import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
-import { createCamera, flyOut, flyTo, frame } from './village/camera';
+import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
 import { districtBounds, Ground } from './village/ground';
 import { loadKit } from './village/kit';
 import { say } from './village/notice';
@@ -33,56 +33,128 @@ async function boot(): Promise<void> {
 
   try {
     say('waking the village…');
-    const [village] = await Promise.all([wire().then((w) => w.village), loadKit()]);
+    const [client] = await Promise.all([wire(), loadKit()]);
+    let drawn = await draw(world, client);
+    frame(camera, drawn.island);
+    pixi.ticker.add((ticker) => drawn.ground.tick(ticker));
 
-    say('drawing the island…');
-    const map = await village.map({});
-    const scene = buildScene(new Document(map.layout).items());
-    if (scene.missing.length) {
-      console.warn(`${scene.missing.length} sprites are not in the kit`, scene.missing.slice(0, 8));
-    }
+    let focused: District | null = null;
 
-    world.addChild(scene.root);
-    const ground = new Ground(map.districts, map.layout);
-    scene.root.addChildAt(ground.overlay, scene.groundTop);
-    frame(camera, world);
-    say(null);
+    const picked = async (district: District | null): Promise<void> => {
+      if (!district) {
+        focused = null;
+        flyOut(camera, drawn.island);
+        return;
+      }
+      // The camp is where the island grows from: its fire is the only thing on
+      // an empty island, and founding a project is what it is for.
+      if (district.id === CAMP) {
+        await found(client, async () => {
+          drawn = await draw(world, client);
+          frame(camera, drawn.island);
+        });
+        return;
+      }
+      if (district === focused) {
+        focused = null;
+        flyOut(camera, drawn.island);
+        return;
+      }
+      focused = district;
+      flyTo(camera, districtBounds(district));
+    };
 
-    watchPointer(pixi, camera, world, ground);
+    watchPointer(pixi, camera, {
+      at: (x, y) => drawn.ground.at(x, y),
+      hover: (district) => drawn.ground.hover(district),
+      picked: (district) => void picked(district),
+      escaped: () => void picked(null),
+    });
   } catch (error) {
     say(error instanceof Error ? error.message : String(error));
     throw error;
   }
 }
 
+type Client = Awaited<ReturnType<typeof wire>>;
+
+interface Drawn {
+  ground: Ground;
+  island: Extent;
+}
+
+/** Compose the island for the state the app is in, and put it on screen. */
+async function draw(world: Container, client: Client): Promise<Drawn> {
+  say('drawing the island…');
+  const map = await client.village.map({});
+  const scene = buildScene(new Document(map.layout).items());
+  if (scene.missing.length) {
+    console.warn(`${scene.missing.length} sprites are not in the kit`, scene.missing.slice(0, 8));
+  }
+  const ground = new Ground(map.districts, map.layout);
+  scene.root.addChildAt(ground.overlay, scene.groundTop);
+
+  for (const old of world.removeChildren()) old.destroy({ children: true });
+  world.addChild(scene.root);
+  say(null);
+  return { ground, island: extentOf(map.layout) };
+}
+
+async function found(client: Client, grown: () => Promise<void>): Promise<void> {
+  // No deadline on this one. The call is open for exactly as long as someone is
+  // looking through their folders for the right checkout, and wire's default
+  // half minute is a perfectly reasonable amount of time to spend doing that.
+  const result = await client.projects.found({}, { timeoutMs: 0 });
+  if (result.success) {
+    await grown();
+    say(`${result.data.name} has moved in.`, 4000);
+    return;
+  }
+  const error = result.error;
+  if (error.kind === 'cancelled') return;
+  say(
+    error.kind === 'not-a-repository'
+      ? 'That folder is not a checkout, so nothing can be built on it.'
+      : error.kind === 'already-founded'
+        ? 'There is already a district on that checkout.'
+        : 'Every plot on the island is taken.',
+    5000
+  );
+}
+
+interface Pointing {
+  at(worldX: number, worldY: number): District | null;
+  hover(district: District | null): void;
+  picked(district: District | null): void;
+  escaped(): void;
+}
+
 /**
  * Pointing and going.
  *
- * A district lights when the pointer is over it and the camera flies to it when
- * you pick it; the open sea takes you back out, and so does escape. The camera
- * is also dragged with the same button, so a press that moved is a pan and not
- * a pick — without that, every drag that ends over land flies you somewhere.
+ * A district lights when the pointer is over it and something happens when you
+ * pick it; the open sea takes you back out, and so does escape. The camera is
+ * dragged with the same button, so a press that moved is a pan and not a pick —
+ * without that, every drag that ends over land takes you somewhere.
  */
 function watchPointer(
   pixi: Application,
   camera: ReturnType<typeof createCamera>,
-  world: Container,
-  ground: Ground
+  pointing: Pointing
 ): void {
   pixi.stage.eventMode = 'static';
   pixi.stage.hitArea = pixi.screen;
 
   let pressedAt: { x: number; y: number } | null = null;
-  let focused: District | null = null;
 
   const under = (event: FederatedPointerEvent): District | null => {
     const point = camera.toWorld(event.global);
-    return ground.at(point.x, point.y);
+    return pointing.at(point.x, point.y);
   };
 
   pixi.stage.on('pointermove', (event: FederatedPointerEvent) => {
     const district = under(event);
-    ground.hover(district);
+    pointing.hover(district);
     pixi.canvas.style.cursor = district ? 'pointer' : 'default';
   });
 
@@ -94,23 +166,12 @@ function watchPointer(
     const from = pressedAt;
     pressedAt = null;
     if (!from) return;
-    const dragged = Math.hypot(event.global.x - from.x, event.global.y - from.y) > 4;
-    if (dragged) return;
-
-    const district = under(event);
-    if (!district || district === focused) {
-      focused = null;
-      flyOut(camera, world);
-      return;
-    }
-    focused = district;
-    flyTo(camera, districtBounds(district));
+    if (Math.hypot(event.global.x - from.x, event.global.y - from.y) > 4) return;
+    pointing.picked(under(event));
   });
 
   window.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !focused) return;
-    focused = null;
-    flyOut(camera, world);
+    if (event.key === 'Escape') pointing.escaped();
   });
 }
 

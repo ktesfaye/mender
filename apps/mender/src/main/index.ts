@@ -1,7 +1,8 @@
 import { join } from 'node:path';
 import { createScope } from '@emdash/shared/concurrency';
 import { app, BrowserWindow } from 'electron';
-import { createIslandState } from './island';
+import { createProjects } from './projects';
+import { createProjectsController } from './projects-controller';
 import { startRuntimes } from './runtimes';
 import { createVillageController } from './village';
 import { installWire } from './wire';
@@ -9,10 +10,17 @@ import { installWire } from './wire';
 const scope = createScope({ label: 'mender' });
 
 export async function main(): Promise<void> {
+  // Before anything asks for a path: userData is derived from the app's name,
+  // and the package is called @emdash/mender, which would put his village under
+  // a scoped folder named after the thing we forked.
+  app.setName('Mender');
+
   const runtimes = startRuntimes(scope);
+  const projects = createProjects(runtimes);
   installWire(scope, {
     ...runtimes.controllers,
-    village: createVillageController({ state: createIslandState(runtimes.git) }),
+    projects: createProjectsController(projects),
+    village: createVillageController({ state: () => projects.stages() }),
   });
 
   await app.whenReady();
