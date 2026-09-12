@@ -1,0 +1,33 @@
+{
+  "name": "@emdash/mender",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Mender — an agentic coding environment that is a village",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "node ../../tooling/scripts/ensure-packages-built.mjs && LOG_LEVEL=debug electron-vite dev",
+    "build": "electron-vite build",
+    "lint": "oxlint .",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "typecheck": "tsgo --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@emdash/core": "workspace:*",
+    "@emdash/plugins": "workspace:*",
+    "@emdash/shared": "workspace:*",
+    "@emdash/wire": "workspace:*",
+    "@parcel/watcher": "^2.5.6",
+    "pixi-viewport": "^6.0.3",
+    "pixi.js": "^8.6.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.1",
+    "electron": "40.10.2",
+    "electron-vite": "^5.0.0",
+    "typescript": "^6.0.2",
+    "vite": "^6.4.1"
+  }
+}

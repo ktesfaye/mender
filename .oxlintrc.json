@@ -101,6 +101,7 @@
     {
       "files": [
         "apps/emdash-desktop/src/entry/**/*.{ts,tsx}",
+        "apps/mender/src/entry/**/*.{ts,tsx}",
         "apps/emdash-desktop/src/main/**/*.{ts,tsx}",
         "apps/emdash-desktop/src/renderer/**/*.{ts,tsx}"
       ],
@@ -158,6 +159,7 @@
     {
       "files": [
         "apps/emdash-desktop/src/entry/**/*.{ts,tsx}",
+        "apps/mender/src/entry/**/*.{ts,tsx}",
         "apps/emdash-desktop/src/main/bootstrap/**/*.{ts,tsx}",
         "apps/emdash-desktop/src/main/host/recovery/**/*.{ts,tsx}",
         "apps/emdash-desktop/scripts/**",
