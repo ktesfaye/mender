@@ -32,6 +32,9 @@ const INK = 0x3a1d0c;
 const FADED = 0x5c3d24;
 const KEEN = 0x2f4a26;
 const SORE = 0x71301c;
+/** Said exactly as it was written: a name, a path, a flag. Cool against the
+    wood so it reads as a thing rather than a word, without shouting. */
+const QUOTED = 0x2c3b47;
 
 const PAD_X = 15;
 const PAD_Y = 14;
@@ -40,9 +43,22 @@ const AIR = 26;
 /** The margin an entry's mark sits in, in characters. */
 const GUTTER = 4;
 
-export type Tone = 'ink' | 'faded' | 'keen' | 'sore';
+export type Tone = 'ink' | 'faded' | 'keen' | 'sore' | 'quoted';
 
-const TONES: Record<Tone, number> = { ink: INK, faded: FADED, keen: KEEN, sore: SORE };
+const TONES: Record<Tone, number> = {
+  ink: INK,
+  faded: FADED,
+  keen: KEEN,
+  sore: SORE,
+  quoted: QUOTED,
+};
+
+/** A stretch of writing inside a line that is written differently from the
+    rest of it. A whole line is one run; anything quoted inside it is another. */
+export interface Run {
+  text: string;
+  tone?: Tone;
+}
 
 /** Which end of a line survives when it is too long for the board. */
 type Keep = 'front' | 'tail';
@@ -57,8 +73,14 @@ export type Row = (
   | { kind: 'line'; text: string; tone?: Tone; keep?: Keep }
   /** A mark in the margin and the thing itself after it, columns lining up. */
   | { kind: 'entry'; mark: string; text: string; tone?: Tone; keep?: Keep }
-  /** Something somebody said, wrapped to the wood rather than cut off at it. */
-  | { kind: 'prose'; text: string; tone?: Tone; mark?: string }
+  /**
+   * Something somebody said, wrapped to the wood rather than cut off at it.
+   *
+   * `runs` is for writing that changes partway along — a name quoted inside a
+   * sentence. `in` moves the whole thing right, which is how a list inside a
+   * list is told from the list it is inside.
+   */
+  | { kind: 'prose'; text: string; tone?: Tone; mark?: string; runs?: Run[]; in?: number }
   | { kind: 'heading'; text: string }
   | { kind: 'gap' }
 ) &
@@ -378,17 +400,26 @@ export class Board {
           break;
         }
         case 'prose': {
-          const gutter = row.mark ? GUTTER : 0;
-          const lines = wrapped(row.text, Math.floor(room / ADVANCE) - gutter);
+          const step = row.in ?? 0;
+          const gutter = (row.mark ? GUTTER : 0) + step;
+          const tone = TONES[row.tone ?? 'ink'];
+          const lines = wrapped(
+            row.runs ?? [{ text: row.text, tone: row.tone }],
+            Math.floor(room / ADVANCE) - gutter
+          );
           if (row.mark) {
-            const mark = words(row.mark, TONES[row.tone ?? 'ink']);
-            mark.position.set(PAD_X, y);
+            const mark = words(row.mark, tone);
+            mark.position.set(PAD_X + step * ADVANCE, y);
             this.writing.addChild(mark);
           }
           for (const line of lines) {
-            const written = words(line, TONES[row.tone ?? 'ink']);
-            written.position.set(PAD_X + gutter * ADVANCE, y);
-            this.writing.addChild(written);
+            let at = PAD_X + gutter * ADVANCE;
+            for (const run of line) {
+              const written = words(run.text, run.tone ? TONES[run.tone] : tone);
+              written.position.set(at, y);
+              this.writing.addChild(written);
+              at += run.text.length * ADVANCE;
+            }
             y += LINE;
           }
           break;
@@ -433,37 +464,72 @@ export class Board {
  * Prose, broken to the width of the wood.
  *
  * Words, not characters: a line cut mid-word reads as damage. A word longer
- * than the board is cut, because the alternative is a word that runs off it.
+ * than the board is carried on to the next line rather than having its end cut
+ * off, because the end is usually the part that says which one it is.
+ *
+ * It wraps over runs rather than over one string, so a name quoted in the
+ * middle of a sentence keeps its own writing across a line break instead of
+ * losing it at the edge of the board.
  */
-function wrapped(text: string, columns: number): string[] {
-  const lines: string[] = [];
-  for (const paragraph of text.split('\n')) {
-    let line = '';
-    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
-      let piece = word;
-      /* Something with no spaces in it that is wider than the board — a path,
-         a url — is carried on to the next line rather than having its end cut
-         off, because the end is usually the part that says which one it is. */
-      while (piece.length > columns) {
-        if (line) {
-          lines.push(line);
-          line = '';
-        }
-        lines.push(piece.slice(0, columns));
-        piece = piece.slice(columns);
-      }
-      if (!line) line = piece;
-      else if (line.length + 1 + piece.length <= columns) line += ` ${piece}`;
-      else {
-        lines.push(line);
-        line = piece;
-      }
-    }
+function wrapped(runs: readonly Run[], columns: number): Run[][] {
+  const lines: Run[][] = [];
+  let line: Run[] = [];
+  let width = 0;
+  const done = (): void => {
     lines.push(line);
+    line = [];
+    width = 0;
+  };
+  const put = (text: string, tone: Tone | undefined): void => {
+    const last = line[line.length - 1];
+    if (last && last.tone === tone) last.text += text;
+    else line.push({ text, tone });
+    width += text.length;
+  };
+
+  /* Whether the writing so far ended mid-word. Runs are cut where the writing
+     changes, which is not always between words: `foo`s is one word in two
+     runs, and putting a space in it would be putting a space in a name. */
+  let tight = false;
+
+  for (const run of runs) {
+    const paragraphs = run.text.split('\n');
+    let joined = tight && !/^\s/.test(run.text);
+    tight = !/\s$/.test(run.text);
+    paragraphs.forEach((paragraph, at) => {
+      // A break inside a run is a break on the board, and the run picks up
+      // again underneath rather than starting a new one.
+      if (at > 0) {
+        done();
+        joined = false;
+      }
+      for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+        let piece = word;
+        while (piece.length > columns) {
+          if (width) done();
+          put(piece.slice(0, columns), run.tone);
+          done();
+          piece = piece.slice(columns);
+          joined = false;
+        }
+        const glue = joined && width > 0;
+        joined = false;
+        if (glue) {
+          if (width + piece.length > columns) done();
+          put(piece, run.tone);
+        } else if (!width) put(piece, run.tone);
+        else if (width + 1 + piece.length <= columns) put(` ${piece}`, run.tone);
+        else {
+          done();
+          put(piece, run.tone);
+        }
+      }
+    });
   }
+  done();
   // A trailing blank paragraph is the writer breathing, not a line.
-  while (lines.length > 1 && !lines[lines.length - 1]) lines.pop();
-  return lines.length ? lines : [''];
+  while (lines.length > 1 && !lines[lines.length - 1]?.length) lines.pop();
+  return lines.length ? lines : [[]];
 }
 
 /** Take the board out of storage. Its timber is cut by `tools/make-board.py`. */

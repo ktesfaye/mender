@@ -5,6 +5,7 @@ import type { MenderClient } from '../wire';
 import type { Row } from './board';
 import { openCheckout, type LiveBoard } from './district';
 import { Palette } from './palette';
+import { saying } from './writing';
 
 /**
  * A task's board: the checkout, and whoever is working in it.
@@ -163,7 +164,7 @@ function tail(
       rows.push({ kind: 'line', text: line.text, tone: line.tone });
     } else {
       rows.push({ kind: 'gap' });
-      rows.push({ kind: 'prose', text: line.text, tone: line.tone, mark: line.mark || undefined });
+      rows.push(...saying(line.text, line.mark || undefined, line.tone));
     }
   }
 

@@ -83,7 +83,10 @@ Nothing about any of it is a stand-in.
 moves somebody in: the ACP runtime spawns that agent's own CLI in the task's
 worktree, and from then on the building's board is what is happening in there —
 what was said, what was read, what was run, wrapped to the wood and pinned to
-its live edge. The last line of the board is where you write back; there is no
+its live edge. Agents write in markdown whether or not anybody asked, so it is
+read rather than shown: there is no second weight here to set anything bold in,
+and the gutter, the indent, the gap and the tone carry headings, lists, quotes,
+rules, tables and code without one. The last line of the board is where you write back; there is no
 text field anywhere in this app. An empty line while somebody is working calls
 them off.
 

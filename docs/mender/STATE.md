@@ -30,12 +30,13 @@ It answers to the keyboard now: a chord for everything you do often, a finder
 over every session and project, arrows that walk any board, and it reopens where
 you left it. A session reads like a conversation: what a command printed, what an
 edit changed, what it means to do next, what you said while it was busy, and how
-much room it has left to think in are all on the wood, and when it comes to the
-door to ask something a number key answers it. But almost everything a person
+much room it has left to think in are all on the wood, the markdown an agent
+writes in is read rather than shown, and when it comes to the door to ask
+something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 29 done, 21 partly done, 34 inherited working from emdash's back end
-and needing no village surface, 13 deliberately cut, and **156 not started**.
+ledger rows: 29 done, 22 partly done, 34 inherited working from emdash's back end
+and needing no village surface, 13 deliberately cut, and **155 not started**.
 
 ## What "not started" actually means
 
@@ -163,10 +164,28 @@ the app opens costs a process each for nothing: a session that was working when
 you quit does not survive the quit anyway. A session comes back resting, lit, and
 wakes when you walk in.
 
-Still open: resource links, markdown and diagrams, attachments, and @ mentions.
+Markdown is read rather than shown. Agents write in it whether or not anybody
+asked, and the board was drawing the asterisks and backticks and hashes instead
+of the shape they were meant to make. There is one typeface at one size here and
+no second weight, so nothing is set in bold; what the board has instead is the
+gutter, the indent, the gap and the tone, and those carry headings, lists,
+quotes, rules and code perfectly well. A heading is set in capitals with air
+above it, which is what a heading was before anybody had two weights to choose
+from. Something quoted exactly — a name, a path, a flag — is written cool against
+the wood so it reads as a thing rather than a word, and it keeps that across a
+line break. A table is measured and padded into real columns, because markdown
+tables are written by hand and almost never line up in the source. Emphasis loses
+its marks and keeps its words, which is the right way round.
 
-Closes AG-02, AG-13, AG-14, AG-20, AG-22 through AG-40, AG-43, AG-45 through
-AG-51, FS-29, UI-31, UI-43.
+Diagrams moved to W9. A mermaid diagram is the one thing here with no answer
+yet: a pan-and-zoom viewer is a second surface, which this app does not have, and
+the village answer is to draw it on the wood in the same lines everything else is
+drawn in. That is drawing, not wiring, so it goes with the rest of the drawing.
+
+Still open: resource links, attachments, and @ mentions.
+
+Closes AG-02, AG-13, AG-14, AG-20, AG-22 through AG-37, AG-39, AG-40, AG-43,
+AG-45 through AG-51, UI-31, UI-43.
 
 Done when: a full turn with tool calls, a diff, a thought and a plan reads
 properly on the wood; nested subagents fold and unfold; you can stop a turn
@@ -241,10 +260,12 @@ written; and accounts connect.
 Mostly art and behaviour rather than ledger rows, and the one wave whose payoff
 is purely how it feels.
 
-Closes AG-18, AG-40, and the unnumbered work: villagers that walk and carry a
-session's identity, the four growth stages that were never drawn, what happens
-when a project has more sessions than its district has houses or the island has
-more projects than plots, and land that retracts when a project is abandoned.
+Closes AG-18, AG-38, AG-40, FS-29, and the unnumbered work: a diagram drawn on
+the wood in the same lines everything else is drawn in, villagers that walk and
+carry a session's identity, the four growth stages that were never drawn, what
+happens when a project has more sessions than its district has houses or the
+island has more projects than plots, and land that retracts when a project is
+abandoned.
 
 Done when: you can tell from the water who is working, who is stuck and who is
 waiting for you, without opening anything.
@@ -372,8 +393,8 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-34 | Plan/todo-list card | part | W2 |
 | AG-35 | Resource link card |  | W2 |
 | AG-36 | Turn outcome / filler rows | part | W2 |
-| AG-37 | Markdown rendering (headings, tables, code, Mermaid, GFM, math) |  | W2 |
-| AG-38 | Mermaid diagram pan/zoom viewer |  | W2 |
+| AG-37 | Markdown rendering (headings, tables, code, Mermaid, GFM, math) | part | W2 |
+| AG-38 | Mermaid diagram pan/zoom viewer |  | W9 |
 | AG-39 | Copy-to-clipboard affordance |  | W2 |
 | AG-40 | Agent status glyph (inline indicator) | cut | W9 |
 | AG-41 | Agent selector | done |  |
@@ -502,7 +523,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-26 | Stacked multi-file diff view |  | W3 |
 | FS-27 | Image diff view |  | W3 |
 | FS-28 | Binary diff fallback |  | W3 |
-| FS-29 | Mermaid inline + standalone viewer |  | W2 |
+| FS-29 | Mermaid inline + standalone viewer |  | W9 |
 | FS-30 | Image viewer (contained/expandable/standalone/zoom-pan chassis) |  | W5 |
 | FS-31 | Shared file-watching service | kept |  |
 | FS-32 | Exclusion policy settings UI |  | W8 |
