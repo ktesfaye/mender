@@ -35,8 +35,8 @@ writes in is read rather than shown, and when it comes to the door to ask
 something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 31 done, 22 partly done, 34 inherited working from emdash's back end
-and needing no village surface, 13 deliberately cut, and **153 not started**.
+ledger rows: 33 done, 22 partly done, 34 inherited working from emdash's back end
+and needing no village surface, 15 deliberately cut, and **149 not started**.
 
 ## What "not started" actually means
 
@@ -200,7 +200,28 @@ handed it over, because otherwise a picture leaves no trace of having gone.
 Anything that is not a picture is refused out loud rather than silently, and
 dropping one on the island says so too, since nothing out there has hands.
 
-Still open: resource links.
+Anything else dropped on the wood is written on the line as where it is. A
+picture is the only thing an agent can be shown, but a file has a path, and a
+path is the one thing about a file you cannot say any other way: it lands on
+the line you are writing on, quoted if it has a space in it, and goes with
+whatever you say about it. Dragged from anywhere on this machine, not only from
+the checkout.
+
+A block of code comes off the board. It is the one thing written on the wood
+that you want out of it and cannot retype, so pressing it puts it on the
+clipboard and the village says it did; the whole block lights as one thing
+rather than the row your hand landed on. It is reached by key as well as by
+hand, because a line you can press and cannot walk to is only half there, and
+fixing that turned out to fix the same hole under the carried pictures and the
+session card, which the keyboard had never been able to press at all.
+
+Two things are cut on purpose. A resource link never arrives: neither CLI ever
+sends one back, both of them turn a file reference into ordinary writing on the
+way out, and the one place a link does appear is inside a tool call that already
+says which file it read. And pinning what you asked to the top of the board
+while you scroll is a panel floating over the wood, which is the thing this app
+does not do; the question is directly above the answer, and scrolling back to it
+is the honest way to see it again.
 
 Closes AG-02, AG-13, AG-14, AG-20, AG-22 through AG-37, AG-39, AG-40, AG-43,
 AG-45 through AG-51, UI-31, UI-43.
@@ -399,7 +420,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-22 | Transcript row kinds (message, tool, subagent, thinking, file-op, execute, diff, resource-link, plan, working, turn-outcome) | part | W2 |
 | AG-23 | Virtualized, auto-growing transcript scroll | part | W2 |
 | AG-24 | Composer placement (centered vs docked) | cut |  |
-| AG-25 | Pin the active user message while scrolling |  | W2 |
+| AG-25 | Pin the active user message while scrolling | cut | W2 |
 | AG-26 | User message card | done | W2 |
 | AG-27 | Generic tool call row | done | W2 |
 | AG-28 | Hierarchical tool grouping (subagents) | done | W2 |
@@ -409,11 +430,11 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-32 | File operation card (read/edit/delete/move) | done | W2 |
 | AG-33 | Thinking/reasoning card | part | W2 |
 | AG-34 | Plan/todo-list card | part | W2 |
-| AG-35 | Resource link card |  | W2 |
+| AG-35 | Resource link card | cut | W2 |
 | AG-36 | Turn outcome / filler rows | part | W2 |
 | AG-37 | Markdown rendering (headings, tables, code, Mermaid, GFM, math) | part | W2 |
 | AG-38 | Mermaid diagram pan/zoom viewer |  | W9 |
-| AG-39 | Copy-to-clipboard affordance |  | W2 |
+| AG-39 | Copy-to-clipboard affordance | done | W2 |
 | AG-40 | Agent status glyph (inline indicator) | cut | W9 |
 | AG-41 | Agent selector | done |  |
 | AG-42 | Model selector with hover-detail card | done |  |
@@ -614,7 +635,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-28 | System tray |  | W11 |
 | UI-29 | Window management (per-platform titlebar/frame) | part | W11 |
 | UI-30 | Drag and drop — OS folder → sidebar |  | W7 |
-| UI-31 | Drag and drop — workspace file → composer/tree |  | W2 |
+| UI-31 | Drag and drop — workspace file → composer/tree | done | W2 |
 | UI-32 | Drag and drop — tabs | cut |  |
 | UI-33 | Drag and drop — terminal tabs | cut |  |
 | UI-34 | System notifications |  | W11 |

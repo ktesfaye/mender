@@ -699,7 +699,15 @@ async function boot(): Promise<void> {
       } else say(`${meant.name}.`, 3000);
     };
 
-    board.onPick((pick) => {
+    /* Pressing something on the wood, whether by hand or by key. One way in,
+       because a line you can press and cannot reach with the keyboard is a
+       line that is only half there. */
+    const press = (pick: string): void => {
+      if (pick.startsWith('keep:')) {
+        window.mender.keep(pick.slice(5));
+        say('copied.', 2000);
+        return;
+      }
       if (pick.startsWith('putdown:')) {
         work?.putDown(pick.slice(8));
         return;
@@ -742,12 +750,17 @@ async function boot(): Promise<void> {
             : await client.agents.tool({ task: task.id, name: meant.name, on: meant.on });
         if (!done.success && done.error.kind === 'refused') say(done.error.because, 6000);
       })();
-    });
+    };
+    board.onPick(press);
 
-    /* A picture dropped on the wood, or pasted onto it.
+    /* A file dropped on the wood, or pasted onto it.
        There is one place for it to go: whoever is working in the building you
        have open. Dropped anywhere else it does nothing, because nothing else
-       in the village has hands. */
+       in the village has hands.
+
+       A picture is carried, because an agent can be shown one. Anything else
+       is written on the line as where it is, which is what you would have said
+       about it anyway and the one thing the agent can act on. */
     const carry = async (files: readonly File[]): Promise<void> => {
       const saying = work;
       if (!files.length) return;
@@ -756,8 +769,15 @@ async function boot(): Promise<void> {
         return;
       }
       const pictures = files.filter((file) => CARRIED.includes(file.type));
-      if (!pictures.length) {
-        say('the village only carries pictures.', 4000);
+      const elsewhere = files
+        .filter((file) => !CARRIED.includes(file.type))
+        .map((file) => window.mender.pathOf(file))
+        .filter((path) => path.length > 0);
+      if (elsewhere.length) saying.wrote(alongside(saying.written(), elsewhere));
+      if (!pictures.length && !elsewhere.length) {
+        // Pasted bytes with no file behind them: a picture would have been
+        // carried, and there is nothing to say about the rest.
+        say('that is not a picture and it is nowhere.', 4000);
         return;
       }
       for (const picture of pictures) {
@@ -885,7 +905,7 @@ async function boot(): Promise<void> {
           if (event.key === 'Enter') {
             const chose = board.chosen();
             if (!chose) return false;
-            go(chose);
+            press(chose);
             return true;
           }
           return board.scrolled(event.key);
@@ -943,7 +963,7 @@ async function boot(): Promise<void> {
         if (event.key === 'Tab') {
           const chose = board.chosen();
           if (!chose) return false;
-          go(chose);
+          press(chose);
           return true;
         }
         if (event.key === 'Enter') void tell();
@@ -1017,6 +1037,17 @@ async function boot(): Promise<void> {
     say(error instanceof Error ? error.message : String(error));
     throw error;
   }
+}
+
+/**
+ * Where a dropped file is, written onto the end of what is already being said.
+ * A path with a space in it is a path and half a word to anybody reading the
+ * line, so it is quoted; nothing else is touched.
+ */
+function alongside(written: string, paths: readonly string[]): string {
+  const said = paths.map((path) => (path.includes(' ') ? `"${path}"` : path)).join(' ');
+  const before = written.trimEnd();
+  return before ? `${before} ${said} ` : `${said} `;
 }
 
 function sameAim(a: Aim, b: Aim): boolean {

@@ -441,7 +441,12 @@ export class Board {
         }
       }
       if (row.pick) {
-        this.hits.push({ from, to: y, pick: row.pick });
+        /* Several rows that press the same thing are one place to stand: a
+           block of code is one thing, and walking the keyboard through it a
+           row at a time would be walking on the spot. */
+        const last = this.hits[this.hits.length - 1];
+        if (last && last.pick === row.pick && last.to === from) last.to = y;
+        else this.hits.push({ from, to: y, pick: row.pick });
         /* Standing on a line is a plank catching the light, not a box drawn
            round it: the wood is the thing, and a rectangle on top of it reads
            as a widget that wandered in from another app. */

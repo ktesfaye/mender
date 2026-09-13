@@ -11,7 +11,13 @@ import { menderWireContract, type menderDomainContracts } from '@shared/contract
 
 declare global {
   interface Window {
-    mender: { requestWirePort: () => Promise<void> };
+    mender: {
+      requestWirePort: () => Promise<void>;
+      /** Where a dropped file came from on this machine, or '' if nowhere. */
+      pathOf: (file: File) => string;
+      /** Put something on this machine's clipboard. */
+      keep: (text: string) => void;
+    };
   }
 }
 

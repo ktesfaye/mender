@@ -125,10 +125,18 @@ goes with what you say; pressing it puts it down again. It is never drawn on the
 board, because the board is writing, so what the board says is that you have it
 and afterwards that you handed it over.
 
+Anything else dropped on it is written on the line as where it is: a picture is
+the only thing an agent can be shown, but any file has a path, and that is the
+one thing about it you cannot get across by describing it.
+
 **An @ names a file in that checkout.** A path is the one thing you cannot get
 across by describing it, so writing an @ turns the lines under it into what is
 actually in there, narrowing as you type, and picking one writes the whole path
 where the @ was. The same wood and the same keys as the slash.
+
+**A block of code is pressed and it is yours.** Writing on the wood is read, not
+selected, so the one thing you cannot retype comes off it by being pressed: the
+whole block lights up and it is on the clipboard. By key as much as by hand.
 
 **A session is a real agent, configured.** The card is who is working in there
 and who else on this machine could, what they are thinking with, how they work,
