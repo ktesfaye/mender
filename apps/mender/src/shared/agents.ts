@@ -68,12 +68,44 @@ export const askSchema = z.object({
 });
 export type Ask = z.infer<typeof askSchema>;
 
+/**
+ * One step of what a session says it means to do.
+ *
+ * Not the village's list and not a task: it is the agent's own plan, replaced
+ * whole every time it changes its mind, which is why nothing here is kept.
+ */
+export const stepSchema = z.object({
+  text: z.string(),
+  /** Behind them, under their hands, or still ahead of them. */
+  state: z.enum(['done', 'doing', 'ahead']),
+});
+export type Step = z.infer<typeof stepSchema>;
+
+/** Something said while somebody was busy, still waiting its turn. */
+export const waitingSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+});
+export type Waiting = z.infer<typeof waitingSchema>;
+
 export const workingStateSchema = z.object({
   mood: moodSchema,
   /** One line for what is happening right now. */
   doing: z.string(),
   lines: z.array(lineSchema),
   asking: askSchema.nullable(),
+  /** What it says it is going to do, when it has said. */
+  plan: z.array(stepSchema),
+  /** What you said while it was busy, in the order it will hear it. */
+  queued: z.array(waitingSchema),
+  /**
+   * How much room is left to think in, from one down to nothing.
+   *
+   * An agent has a finite amount it can hold in mind at once and it gets no
+   * warning of its own when that runs out; the conversation simply starts
+   * losing its beginning. Null until the agent says, which not all of them do.
+   */
+  room: z.number().nullable(),
 });
 export type WorkingState = z.infer<typeof workingStateSchema>;
 
@@ -207,6 +239,12 @@ export const agentsContract = defineContract({
   /** Answer the question it came to the door with. */
   answer: fallible({
     input: z.object({ task: z.string(), requestId: z.string(), optionId: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** Take back something you said while it was busy, before it is heard. */
+  unsay: fallible({
+    input: z.object({ task: z.string(), id: z.string() }),
     data: z.void(),
     error: agentErrorSchema,
   }),

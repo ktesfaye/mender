@@ -2,7 +2,9 @@ import { join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import type {
   AcpPermissionRequest,
+  PlanState,
   SessionState,
+  SessionUsage,
   ToolNode,
   TranscriptTurn,
 } from '@emdash/core/runtimes/acp/api';
@@ -10,7 +12,7 @@ import type { ConversationRecords } from '@emdash/core/runtimes/conversations/ap
 import { ReplicaState } from '@emdash/wire/live';
 import { cell, peek, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
-import type { Ask, Kit, Line, Mood, WorkingState } from '@shared/agents';
+import type { Ask, Kit, Line, Mood, Step, Waiting, WorkingState } from '@shared/agents';
 import { createKits } from './kit';
 import type { MenderRuntimes } from './runtimes';
 import type { Tasks } from './tasks';
@@ -51,6 +53,8 @@ export interface Agents {
   wake(task: string): Promise<Told>;
   tell(task: string, text: string): Promise<Told>;
   answer(task: string, requestId: string, optionId: string): Promise<Told>;
+  /** Take back something said while it was busy, before it is heard. */
+  unsay(task: string, id: string): Promise<Told>;
   hush(task: string): Promise<Told>;
   /** Whoever is in there moves out with the building. */
   evict(task: string): Promise<void>;
@@ -69,6 +73,9 @@ const EMPTY: WorkingState = {
   doing: 'nobody is working in here.',
   lines: [],
   asking: null,
+  plan: [],
+  queued: [],
+  room: null,
 };
 
 const KEY = 'agents';
@@ -284,6 +291,14 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
       return done.success ? { success: true, data: undefined } : refused(whatItSaid(done.error));
     },
 
+    async unsay(task, id) {
+      await loaded;
+      const conversation = lodgers[task];
+      if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
+      const done = await runtimes.acp.deleteQueuedPrompt({ conversationId: conversation, id });
+      return done.success ? { success: true, data: undefined } : refused(whatItSaid(done.error));
+    },
+
     async hush(task) {
       await loaded;
       const conversation = lodgers[task];
@@ -315,6 +330,8 @@ class House {
 
   private conversation: string | undefined;
   private lifecycle: SessionState | undefined;
+  private plan: PlanState | null = null;
+  private usage: SessionUsage | null = null;
   private live: TranscriptTurn | null = null;
   private before: TranscriptTurn[] = [];
   private replicas: ReplicaState<unknown>[] = [];
@@ -354,11 +371,40 @@ class House {
         },
       }
     );
-    this.replicas = [lifecycle as ReplicaState<unknown>, turn as ReplicaState<unknown>];
+    /* What it says it is going to do, and how much room it has left to think
+       in. Both are slices of the session rather than things that happened in
+       it, which is why neither is in the transcript: a plan is replaced whole
+       every time it changes, and the room only ever means right now. */
+    const plan = new ReplicaState<PlanState | null>(
+      model.state({ conversationId: conversation }, 'plan'),
+      {
+        onChange: (value) => {
+          this.plan = value;
+          this.publish();
+        },
+      }
+    );
+    const usage = new ReplicaState<SessionUsage | null>(
+      model.state({ conversationId: conversation }, 'usage'),
+      {
+        onChange: (value) => {
+          this.usage = value;
+          this.publish();
+        },
+      }
+    );
+    this.replicas = [
+      lifecycle as ReplicaState<unknown>,
+      turn as ReplicaState<unknown>,
+      plan as ReplicaState<unknown>,
+      usage as ReplicaState<unknown>,
+    ];
 
-    await Promise.all([lifecycle.ready, turn.ready]);
+    await Promise.all([lifecycle.ready, turn.ready, plan.ready, usage.ready]);
     this.lifecycle = lifecycle.current();
     this.turned(turn.current());
+    this.plan = plan.current() ?? null;
+    this.usage = usage.current() ?? null;
     this.publish();
 
     /* Everything said in here before the village was looking. A suspended
@@ -417,13 +463,16 @@ class House {
     if (!this.conversation) return EMPTY;
     const turns = this.live ? [...this.before, this.live] : this.before;
     const lines = linesOf(turns, this.where()).slice(-KEPT);
-    const asking = askOf(this.lifecycle?.pendingPermissions?.[0]);
+    const asking = askOf(this.lifecycle?.pendingPermissions?.[0], this.where());
     const mood = moodOf(this.lifecycle, asking, this.trouble);
     return {
       mood,
       doing: this.trouble ?? doingOf(mood, this.live),
       lines,
       asking,
+      plan: stepsOf(this.plan),
+      queued: waitingOf(this.lifecycle),
+      room: roomOf(this.usage),
     };
   }
 }
@@ -490,11 +539,47 @@ function runningIn(node: ToolNode, root?: string): string | undefined {
   return node.status === 'running' ? deedOf(node, root) : undefined;
 }
 
-function askOf(request: AcpPermissionRequest | undefined): Ask | null {
+/**
+ * What it says it is going to do.
+ *
+ * The agent's own plan, and it replaces the whole thing every time it changes,
+ * so there is nothing to merge and nothing to keep: what is here is what it
+ * thinks now.
+ */
+function stepsOf(plan: PlanState | null): Step[] {
+  if (!plan) return [];
+  return plan.entries.map((entry) => ({
+    text: entry.content,
+    state:
+      entry.status === 'completed' ? 'done' : entry.status === 'in_progress' ? 'doing' : 'ahead',
+  }));
+}
+
+/** What was said to it while it was busy, in the order it will be heard. */
+function waitingOf(lifecycle: SessionState | undefined): Waiting[] {
+  if (!lifecycle) return [];
+  return lifecycle.queuedPrompts.map((prompt) => ({ id: prompt.id, text: prompt.text }));
+}
+
+/**
+ * How much room is left to think in.
+ *
+ * An agent holds a fixed amount in mind at once and gets no warning of its own
+ * when that fills: the conversation quietly starts losing its beginning. So it
+ * is worth being able to see it coming, and it is one number between a full
+ * room and none.
+ */
+function roomOf(usage: SessionUsage | null): number | null {
+  if (!usage || usage.contextSize <= 0) return null;
+  const left = 1 - usage.contextUsed / usage.contextSize;
+  return Math.min(1, Math.max(0, left));
+}
+
+function askOf(request: AcpPermissionRequest | undefined, root: string | undefined): Ask | null {
   if (!request) return null;
   return {
     requestId: request.requestId,
-    text: deedOf(request.toolCall, undefined),
+    text: deedOf(request.toolCall, root),
     options: request.options.map((option) => ({
       optionId: option.optionId,
       name: option.name.toLowerCase(),
@@ -514,16 +599,32 @@ function askOf(request: AcpPermissionRequest | undefined): Ask | null {
 function linesOf(turns: readonly TranscriptTurn[], root: string | undefined): Line[] {
   const lines: Line[] = [];
   for (const turn of turns) {
+    /* Whether the thing just written was somebody talking, so the next piece
+       of the same speech joins it rather than starting again. */
+    let said = false;
     for (const item of turn.items) {
       if (item.kind === 'message') {
         const text = item.text.trim();
         if (!text) continue;
+        const mark = item.role === 'user' ? '>' : '';
+        /* One person talking without stopping is one thing said. The protocol
+           breaks a reply into as many pieces as it likes, and each piece drawn
+           as its own block puts a hole in the middle of a sentence. */
+        const before = lines[lines.length - 1];
+        if (said && before?.kind === 'said' && before.mark === mark) {
+          before.text = `${before.text} ${text}`;
+          continue;
+        }
         lines.push(
           item.role === 'user'
-            ? { kind: 'said', mark: '>', text, tone: 'faded' }
-            : { kind: 'said', mark: '', text, tone: 'ink' }
+            ? { kind: 'said', mark, text, tone: 'faded' }
+            : { kind: 'said', mark, text, tone: 'ink' }
         );
-      } else if (item.kind === 'thinking') {
+        said = true;
+        continue;
+      }
+      said = false;
+      if (item.kind === 'thinking') {
         const thought = thoughtOf(item);
         if (thought) lines.push(thought);
       } else {

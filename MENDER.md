@@ -87,6 +87,13 @@ its live edge. The last line of the board is where you write back; there is no
 text field anywhere in this app. An empty line while somebody is working calls
 them off.
 
+**The bottom of the board is what is coming.** Under everything that has
+happened, and above the line you write on, is what the session says it means to
+do next, then how much room it has left to think in, then anything you said
+while it was busy and it has not heard yet, which you can take back by pressing
+it. Nothing warns an agent that it is running out of room; it simply starts
+losing the beginning of the conversation, so the village says it instead.
+
 **A project's board is the work in it.** Opening a district puts every session
 in that project on the wood, each under the name it gave itself and with a mark
 for what it is doing, and a line at the end that starts another. Pressing one
@@ -164,9 +171,9 @@ anywhere: there is no walk cycle and the path network that says where a villager
 could walk is still only in Python.
 
 Nothing in the UI abandons a project or a session, though the wire does both,
-and nothing removes an agent from one. A permission question has not been
-seen land on the board: the Claude settings on this machine approve everything a
-task has been asked to do so far, so that one branch is wired but unwitnessed.
+and nothing removes an agent from one. A permission question does land on the
+board, and a number key answers it; it takes setting the session to ask first,
+because otherwise the Claude on this machine answers its own.
 
 ## House rules
 

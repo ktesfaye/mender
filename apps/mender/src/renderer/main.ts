@@ -212,6 +212,13 @@ async function boot(): Promise<void> {
         work?.fold(id.slice(5));
         return;
       }
+      // Taking back something you said while it was busy. It never reached the
+      // agent, so nothing has to be undone — it just stops waiting.
+      if (id.startsWith('unsay:')) {
+        const task = inside;
+        if (task) void client.agents.unsay({ task: task.id, id: id.slice(6) });
+        return;
+      }
       if (id === 'do:rename') {
         if (inside) askTitle(inside);
         return;
@@ -698,7 +705,8 @@ async function boot(): Promise<void> {
         pick.startsWith('project:') ||
         pick.startsWith('task:') ||
         pick.startsWith('rail:') ||
-        pick.startsWith('fold:')
+        pick.startsWith('fold:') ||
+        pick.startsWith('unsay:')
       ) {
         go(pick);
         return;

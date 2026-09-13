@@ -12,6 +12,7 @@ export function createAgentsController(agents: Agents): Controller {
     wake: ({ task }) => agents.wake(task),
     tell: ({ task, text }) => agents.tell(task, text),
     answer: ({ task, requestId, optionId }) => agents.answer(task, requestId, optionId),
+    unsay: ({ task, id }) => agents.unsay(task, id),
     hush: ({ task }) => agents.hush(task),
     choose: ({ task, what, id }) => agents.choose(task, what, id),
     tool: ({ task, name, on }) => agents.tool(task, name, on),

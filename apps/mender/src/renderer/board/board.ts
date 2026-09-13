@@ -440,7 +440,18 @@ function wrapped(text: string, columns: number): string[] {
   for (const paragraph of text.split('\n')) {
     let line = '';
     for (const word of paragraph.split(/\s+/).filter(Boolean)) {
-      const piece = word.length > columns ? word.slice(0, columns) : word;
+      let piece = word;
+      /* Something with no spaces in it that is wider than the board — a path,
+         a url — is carried on to the next line rather than having its end cut
+         off, because the end is usually the part that says which one it is. */
+      while (piece.length > columns) {
+        if (line) {
+          lines.push(line);
+          line = '';
+        }
+        lines.push(piece.slice(0, columns));
+        piece = piece.slice(columns);
+      }
       if (!line) line = piece;
       else if (line.length + 1 + piece.length <= columns) line += ` ${piece}`;
       else {

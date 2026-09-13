@@ -1,5 +1,5 @@
 import { ReplicaState } from '@emdash/wire/live';
-import type { Ask, Kit, Line, WorkingState } from '@shared/agents';
+import type { Ask, Kit, Line, Step, Waiting, WorkingState } from '@shared/agents';
 import type { Task } from '@shared/tasks';
 import type { MenderClient } from '../wire';
 import type { Row } from './board';
@@ -39,6 +39,10 @@ export interface LiveWork extends LiveBoard {
 /** What a line with something under it wears, closed and open. */
 const SHUT = '↓';
 const OPEN = '↑';
+/** How wide the room bar is drawn, in characters. */
+const ROOM = 20;
+/** Below this much room left, it stops being a footnote. */
+const TIGHT = 0.15;
 /** How far one level of nesting moves a line in, in characters. */
 const IN = 2;
 
@@ -47,6 +51,9 @@ const QUIET: WorkingState = {
   doing: 'nobody is working in here.',
   lines: [],
   asking: null,
+  plan: [],
+  queued: [],
+  room: null,
 };
 
 export async function openWork(
@@ -160,6 +167,8 @@ function tail(
     }
   }
 
+  rows.push(...planning(work.plan));
+
   rows.push({ kind: 'gap' });
   const asking = work.asking;
   if (asking) {
@@ -174,15 +183,82 @@ function tail(
   }
 
   rows.push({ kind: 'line', text: work.doing, tone: work.mood === 'hurt' ? 'sore' : 'faded' });
+  if (work.room !== null) rows.push(roomLeft(work.room));
   // Nothing written and somebody working is the one case where an empty line
   // means something: it is how you call them off without a button to press.
   if (work.mood === 'working' && !written) {
     rows.push({ kind: 'line', text: 'return on an empty line stops it.', tone: 'faded' });
   }
+  rows.push(...still(work.queued));
   rows.push({ kind: 'typed', text: written });
   // Whatever the slash on that line could mean, written under it. Nothing
   // floats in this app, so a picker is only ever more lines on the wood.
   rows.push(...slash.rows());
+  return rows;
+}
+
+/**
+ * What it says it is going to do.
+ *
+ * The agent's own plan, not the village's, and it is written where a plan
+ * belongs: under everything that has happened and above the line you write on,
+ * because it is about what comes next.
+ */
+function planning(plan: readonly Step[]): Row[] {
+  if (!plan.length) return [];
+  const rows: Row[] = [{ kind: 'gap' }, { kind: 'heading', text: 'the plan' }];
+  for (const step of plan) {
+    rows.push({
+      kind: 'entry',
+      mark: step.state === 'done' ? '✓' : step.state === 'doing' ? '…' : '·',
+      text: step.text,
+      tone: step.state === 'doing' ? 'ink' : 'faded',
+      keep: 'front',
+    });
+  }
+  return rows;
+}
+
+/**
+ * How much room is left to think in.
+ *
+ * Nothing tells an agent it is running out; the conversation just starts
+ * quietly losing its own beginning. So the board says it, filled for what is
+ * left, and stops being a footnote when there is barely any.
+ */
+function roomLeft(room: number): Row {
+  const full = Math.round(room * ROOM);
+  const bar = '■'.repeat(full) + '─'.repeat(ROOM - full);
+  return {
+    kind: 'line',
+    text: room < TIGHT ? `room to think ${bar} nearly gone.` : `room to think ${bar}`,
+    tone: room < TIGHT ? 'sore' : 'faded',
+  };
+}
+
+/**
+ * What you said while it was busy and it has not heard yet.
+ *
+ * It goes just above the line you are writing on, because that is where it
+ * came from and where it is going. Pressing one takes it back.
+ */
+function still(queued: readonly Waiting[]): Row[] {
+  if (!queued.length) return [];
+  const rows: Row[] = [
+    { kind: 'gap' },
+    { kind: 'heading', text: 'still to say, press to take one back' },
+  ];
+  for (const waiting of queued) {
+    rows.push({
+      kind: 'entry',
+      mark: '·',
+      text: waiting.text,
+      tone: 'ink',
+      keep: 'front',
+      pick: `unsay:${waiting.id}`,
+    });
+  }
+  rows.push({ kind: 'gap' });
   return rows;
 }
 

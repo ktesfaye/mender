@@ -28,11 +28,14 @@ phases of the catalog, which is all plumbing, camera and board.
 
 It answers to the keyboard now: a chord for everything you do often, a finder
 over every session and project, arrows that walk any board, and it reopens where
-you left it. But almost everything a person actually does with a coding tool is
-still missing. There is no git beyond reading status, no diff, no file, no
-terminal, no pull request, no settings. Of the 253 ledger rows: 23 done, 23
-partly done, 34 inherited working from emdash's back end and needing no village
-surface, 13 deliberately cut, and **160 not started**.
+you left it. A session reads like a conversation: what a command printed, what an
+edit changed, what it means to do next, what you said while it was busy, and how
+much room it has left to think in are all on the wood, and when it comes to the
+door to ask something a number key answers it. But almost everything a person
+actually does with a coding tool is still missing. There is no git beyond reading
+status, no diff, no file, no terminal, no pull request, no settings. Of the 253
+ledger rows: 29 done, 21 partly done, 34 inherited working from emdash's back end
+and needing no village surface, 13 deliberately cut, and **156 not started**.
 
 ## What "not started" actually means
 
@@ -86,10 +89,12 @@ worse. Struck-through ones are fixed.
   No message, no reason. (W7.)
 - ~~**The card is mouse-only.**~~ Fixed in W1, and more generally: every board
   is a list of pressable lines, the arrows walk any of them and return picks.
-- **The permission question has never been seen.** The whole path is built,
-  including the number keys that answer it, but this machine's Claude settings
-  approve everything a session has asked for so far, so it has never fired.
-  (W2, and it needs to be forced in a test before it counts.)
+- ~~**The permission question has never been seen.**~~ Fixed in W2: it fires,
+  it lands on the wood, and a number key answers it. It had never been seen
+  because this machine's Claude answers its own permission questions; setting a
+  session to ask first, through `/mode`, is what forced it. What it is asking
+  about is now said the way somebody standing in that checkout would say it,
+  rather than as the whole path from the root of the disk.
 
 ## The waves
 
@@ -132,20 +137,41 @@ maps it, but Claude's own CLI has never once sent a thought over the protocol
 here, at any effort setting, so nothing has ever rendered. It stays `part` until
 a real thought lands on the board.
 
-Still open: the plan and todo card, resource links, markdown and diagrams, the
-composer's queue, attachments and mentions, the context meter, waking every
-session at boot rather than the one you open, and the permission question,
-which has still never fired.
+The board now says what is coming as well as what happened. What it means to do
+next is written under the transcript and above the line you write on, marked for
+behind them, under their hands, and still ahead. How much room it has left to
+think in is a bar under that, because nothing warns an agent when it is running
+out and the conversation just quietly starts losing its own beginning. Anything
+said while somebody is busy waits in the open where you can see it and take it
+back before it is heard. And a reply broken into pieces by the protocol is drawn
+as one thing said, rather than with a hole in the middle of the sentence.
+
+The permission question fires. It had never been seen because this machine's
+Claude answers its own; setting a session to ask first is what forced it, and the
+question, the three answers and the number keys all work on the wood.
+
+Two things are built and unverified, for the same reason both times: Claude never
+sends them. Thinking has never crossed the protocol here at any effort. The plan
+only ever comes from the agent's own task tools, and this Claude has neither a
+todo tool nor the task tools in an ACP session, so it has never published one.
+Both were driven with real data of the right shape and looked at before being
+written down as `part`; neither is claimed as working.
+
+Waking every session at boot was dropped on purpose. Opening a session starts it,
+which is what `MENDER.md` says, and spawning a CLI for every session the moment
+the app opens costs a process each for nothing: a session that was working when
+you quit does not survive the quit anyway. A session comes back resting, lit, and
+wakes when you walk in.
+
+Still open: resource links, markdown and diagrams, attachments, and @ mentions.
 
 Closes AG-02, AG-13, AG-14, AG-20, AG-22 through AG-40, AG-43, AG-45 through
 AG-51, FS-29, UI-31, UI-43.
 
-Done when: a full turn with tool calls, a diff, a thought and a todo list reads
+Done when: a full turn with tool calls, a diff, a thought and a plan reads
 properly on the wood; nested subagents fold and unfold; you can stop a turn
 mid-flight and queue the next thing behind it; an image dropped on the board
-goes in as context; a file or an issue can be named inline; a permission
-question lands and a number key answers it; and every session comes back running
-after a restart, not just the one you open.
+goes in as context; and a file or an issue can be named inline.
 
 ### W3 — you can finish a piece of work without a terminal
 
@@ -335,7 +361,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-23 | Virtualized, auto-growing transcript scroll | part | W2 |
 | AG-24 | Composer placement (centered vs docked) | cut |  |
 | AG-25 | Pin the active user message while scrolling |  | W2 |
-| AG-26 | User message card | part | W2 |
+| AG-26 | User message card | done | W2 |
 | AG-27 | Generic tool call row | done | W2 |
 | AG-28 | Hierarchical tool grouping (subagents) | done | W2 |
 | AG-29 | Subagent card |  | W2 |
@@ -343,7 +369,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-31 | Execute card (shell command + live output) | done | W2 |
 | AG-32 | File operation card (read/edit/delete/move) | done | W2 |
 | AG-33 | Thinking/reasoning card | part | W2 |
-| AG-34 | Plan/todo-list card |  | W2 |
+| AG-34 | Plan/todo-list card | part | W2 |
 | AG-35 | Resource link card |  | W2 |
 | AG-36 | Turn outcome / filler rows | part | W2 |
 | AG-37 | Markdown rendering (headings, tables, code, Mermaid, GFM, math) |  | W2 |
@@ -354,12 +380,12 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-42 | Model selector with hover-detail card | done |  |
 | AG-43 | Permission mode & collaboration mode selectors | part | W2 |
 | AG-44 | Session MCP servers indicator | done |  |
-| AG-45 | Context-window usage indicator |  | W2 |
+| AG-45 | Context-window usage indicator | done | W2 |
 | AG-46 | Attachments (image drag/drop/paste) |  | W2 |
-| AG-47 | Send/stop/queue button | part | W2 |
+| AG-47 | Send/stop/queue button | done | W2 |
 | AG-48 | Notice band (session-state banners) | part | W2 |
-| AG-49 | Permission request band | part | W2 |
-| AG-50 | Queued prompts band |  | W2 |
+| AG-49 | Permission request band | done | W2 |
+| AG-50 | Queued prompts band | done | W2 |
 | AG-51 | @ mentions (files/issues/symbols/custom) |  | W2 |
 | AG-52 | / slash commands | done |  |
 | AG-53 | Submit keybindings & multiline editing | part | W1 |
@@ -561,5 +587,5 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-40 | Preview-server pills (titlebar) |  | W6 |
 | UI-41 | Connection status dot |  | W10 |
 | UI-42 | Update indicator (sidebar footer) |  | W11 |
-| UI-43 | Context-usage indicator (composer) |  | W2 |
+| UI-43 | Context-usage indicator (composer) | done | W2 |
 | UI-44 | Boot/crash telemetry (not user-facing) | kept |  |
