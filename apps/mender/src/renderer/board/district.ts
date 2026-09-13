@@ -75,8 +75,17 @@ export interface Place {
   tail?: () => Row[];
 }
 
+/** One file that is not as it was committed, as the board says it. */
+export interface Changed {
+  path: string;
+  /** Git's own two letters: what is staged, then what is not. */
+  mark: string;
+}
+
 export interface LiveBoard {
   rows(): Row[];
+  /** What is uncommitted in here right now, for whoever wants to act on it. */
+  changed(): Changed[];
   close(): Promise<void>;
 }
 
@@ -100,6 +109,7 @@ export async function openCheckout(
         { kind: 'gap' },
         { kind: 'line', text: 'this checkout is not where it was.', tone: 'sore' },
       ],
+      changed: () => [],
       close: async () => {},
     };
   }
@@ -114,6 +124,8 @@ export async function openCheckout(
     onChange: (value) => {
       head = value;
       changed(build(place, head, status, lately));
+      // A new commit moves the head, and what was done here just changed.
+      void readLog();
     },
   });
   const statusReplica = new ReplicaState(model.state({ checkout }, 'status'), {
@@ -127,7 +139,11 @@ export async function openCheckout(
   head = headReplica.current();
   status = statusReplica.current() as StatusState;
 
-  if (place.since !== null) {
+  await readLog();
+
+  async function readLog(): Promise<void> {
+    // A session with no base written down has no history of its own to read.
+    if (place.since === null) return;
     const log = await client.git.checkout.getLog({
       checkout,
       options: {
@@ -150,6 +166,7 @@ export async function openCheckout(
 
   return {
     rows: () => build(place, head, status, lately),
+    changed: () => changedIn(status),
     close: async () => {
       await Promise.all([headReplica.dispose(), statusReplica.dispose()]);
     },
@@ -182,21 +199,22 @@ function build(
   } else if (!entries.length) {
     rows.push({ kind: 'line', text: 'nothing. the tree is clean.', tone: 'faded' });
   } else {
-    for (const [path, file] of entries.slice(0, CHANGES)) {
-      const mark = `${MARKS[file.index] ?? ' '}${MARKS[file.worktree] ?? ' '}`.trimEnd();
+    for (const file of changedIn(status).slice(0, CHANGES)) {
       rows.push({
         kind: 'entry',
-        mark,
-        text: path,
-        tone: TONE[mark.trim()[0] ?? ''] ?? 'faded',
+        mark: file.mark,
+        text: file.path,
+        tone: toneOf(file.mark),
         keep: 'tail',
         // Pressing a file that has changed is how the change is read.
-        pick: `change:${path}`,
+        pick: `change:${file.path}`,
       });
     }
     if (entries.length > CHANGES) {
       rows.push({ kind: 'line', text: `and ${entries.length - CHANGES} more.`, tone: 'faded' });
     }
+    // And the one thing you can do with all of it at once.
+    rows.push({ kind: 'entry', mark: '+', text: 'write a commit', pick: 'commit' });
   }
 
   if (lately.length) {
@@ -209,6 +227,20 @@ function build(
     }
   }
   return [...rows, ...(place.tail?.() ?? [])];
+}
+
+/** What is not as it was committed, in the order git lists it. */
+function changedIn(status: StatusState | undefined): Changed[] {
+  if (!status || status.kind === 'error' || status.kind === 'too-many-files') return [];
+  return Object.entries(status.entries ?? {}).map(([path, file]) => ({
+    path,
+    mark: `${MARKS[file.index] ?? ' '}${MARKS[file.worktree] ?? ' '}`.trimEnd(),
+  }));
+}
+
+/** What a file's mark says about it: something new, something lost, or a change. */
+export function toneOf(mark: string): Tone {
+  return TONE[mark.trim()[0] ?? ''] ?? 'faded';
 }
 
 /** How long ago, in the width of the margin: two characters and a space. */

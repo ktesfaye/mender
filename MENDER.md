@@ -144,6 +144,12 @@ those files turns the board into what changed: what went in, what came out, a
 little of what is around it, and a line saying how much unchanged writing went
 by. Escape steps back out. Nothing is staged or committed from there yet.
 
+**A commit is written on the board too.** Under what is uncommitted, a line
+that says write a commit turns the board into what is about to go in. Everything
+that changed goes in to begin with; pressing a file holds it back and pressing
+it again puts it in, and nothing happens to the checkout until you press return.
+There is no staging area here and no word for one.
+
 **A session is a real agent, configured.** The card is who is working in there
 and who else on this machine could, what they are thinking with, how they work,
 how hard they think, what they can reach out in the world, and what they have

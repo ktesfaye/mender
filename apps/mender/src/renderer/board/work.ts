@@ -141,6 +141,7 @@ export async function openWork(
     slash,
     names,
     rows: () => checkout.rows(),
+    changed: () => checkout.changed(),
     written: () => written,
     wrote: (text) => {
       written = text;

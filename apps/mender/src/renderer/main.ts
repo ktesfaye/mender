@@ -1,3 +1,5 @@
+import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
+import type { GitFilePath } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
@@ -7,11 +9,13 @@ import type { Task } from '@shared/tasks';
 import { makeBoard, type Board, type Row } from './board/board';
 import { openCard, type LiveCard } from './board/card';
 import { opening, readOut, unreadable } from './board/changed';
+import { committing } from './board/committing';
 import { openCheckout, type LiveBoard } from './board/district';
 import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
 import { loadLettering } from './board/lettering';
 import type { Meant } from './board/palette';
 import { makeRail, type Peg, type Rail } from './board/rail';
+import { trouble } from './board/trouble';
 import { answerFor, openWork, type LiveWork } from './board/work';
 import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
 import { Folk, loadFolk, type Standing } from './village/folk';
@@ -84,6 +88,15 @@ async function boot(): Promise<void> {
        The checkout board underneath stays open and stays live; it is simply
        not what the wood is showing. */
     let reading: { aim: Aim; path: string } | null = null;
+    /* The commit being written, if one is. Nothing is staged and nothing is
+       committed until return: what is held back lives here until then. */
+    let writing: {
+      aim: Aim;
+      checkout: string;
+      name: string;
+      held: Set<string>;
+      written: string;
+    } | null = null;
     /** Set while a name for something new is being written on the wood. */
     let naming: {
       district: District;
@@ -272,6 +285,7 @@ async function boot(): Promise<void> {
     const look = (): void => {
       looking = { written: '', from: spot() };
       reading = null;
+      writing = null;
       board.show(finding('', { projects, tasks, moods: seen, where: standing() }));
       board.walk(1);
     };
@@ -353,6 +367,7 @@ async function boot(): Promise<void> {
       inside = null;
       work = null;
       reading = null;
+      writing = null;
       const shown = card;
       card = null;
       await shown?.close();
@@ -374,6 +389,7 @@ async function boot(): Promise<void> {
       live = null;
       work = null;
       reading = null;
+      writing = null;
       inside = null;
       await was?.close();
 
@@ -460,6 +476,7 @@ async function boot(): Promise<void> {
       live = null;
       work = null;
       reading = null;
+      writing = null;
       await was?.close();
       const shown = card;
       card = null;
@@ -497,9 +514,96 @@ async function boot(): Promise<void> {
       board.show(got.success ? readOut(got.data) : unreadable(path, whyNot(got.error)));
     };
 
+    /**
+     * Writing a commit, on the board the checkout was on.
+     *
+     * Everything that changed goes in to begin with, because that is what
+     * somebody about to commit almost always means, and holding one back is a
+     * press rather than a mode.
+     */
+    const openCommit = (): void => {
+      const aim = open;
+      const place = inside ?? (aim ? projectOn(aim.district) : undefined);
+      if (!aim || !place || !live) return;
+      reading = null;
+      writing = null;
+      writing = {
+        aim,
+        checkout: place.path,
+        name: 'title' in place ? place.title : place.name,
+        held: new Set(),
+        written: '',
+      };
+      board.show(rowsForCommit());
+    };
+
+    const rowsForCommit = (): Row[] =>
+      writing
+        ? committing({
+            name: writing.name,
+            files: live?.changed() ?? [],
+            held: writing.held,
+            written: writing.written,
+          })
+        : [];
+
+    /** Hold one file back out of the commit, or put it back in. */
+    const holding = (path: string, back: boolean): void => {
+      if (!writing) return;
+      if (back) writing.held.add(path);
+      else writing.held.delete(path);
+      board.update(rowsForCommit());
+    };
+
+    /** Say it. Everything not held back is staged, and then it is a commit. */
+    const commit = async (): Promise<void> => {
+      const said = writing;
+      if (!said) return;
+      const message = said.written.trim();
+      if (!message) {
+        say('a commit with nothing written on it is not a commit.', 4000);
+        return;
+      }
+      const files = live?.changed() ?? [];
+      const going = files.filter((file) => !said.held.has(file.path)).map((file) => file.path);
+      if (!going.length) {
+        say('nothing is going in.', 4000);
+        return;
+      }
+      const parsed = parseNativeAbsolute(said.checkout);
+      if (!parsed.success) return;
+      const checkout = parsed.data;
+      const model = client.git.checkout.model;
+      const paths = (list: string[]) => list.map((path) => path as GitFilePath);
+
+      const held = files.filter((file) => said.held.has(file.path)).map((file) => file.path);
+      // What is held back has to leave the index as well: git commits what is
+      // in there, not what is on the board.
+      if (held.length) {
+        await model.mutate('unstage', { key: { checkout }, input: { paths: paths(held) } });
+      }
+      const staged = await model.mutate('stage', {
+        key: { checkout },
+        input: { paths: paths(going) },
+      });
+      if (!staged.success) {
+        say(trouble(staged.error), 6000);
+        return;
+      }
+      const made = await model.mutate('commit', { key: { checkout }, input: { message } });
+      if (!made.success) {
+        say(trouble(made.error), 6000);
+        return;
+      }
+      writing = null;
+      if (live) board.show(live.rows());
+      say('committed.', 3000);
+    };
+
     /** Back out of a change, onto the board it was opened from. */
     const stopReading = (): void => {
       reading = null;
+      writing = null;
       if (!live) return;
       /* Back at the top, which is where the file was pressed: a session's
          board is pinned to now, but you did not come from now. */
@@ -516,6 +620,7 @@ async function boot(): Promise<void> {
       live = null;
       work = null;
       reading = null;
+      writing = null;
       await was?.close();
       const shown = card;
       card = null;
@@ -559,6 +664,7 @@ async function boot(): Promise<void> {
       const project = projectOn(aim.district);
       if (!project) return;
       reading = null;
+      writing = null;
       open = aim;
       inside = null;
       work = null;
@@ -573,11 +679,17 @@ async function boot(): Promise<void> {
     const askTitle = (task: Task): void => {
       naming = null;
       reading = null;
+      writing = null;
       titling = { task, written: task.title };
       board.show(retitling(titling));
     };
 
     const wrote = (written: string): void => {
+      if (writing) {
+        writing = { ...writing, written };
+        board.update(rowsForCommit());
+        return;
+      }
       if (looking) {
         looking = { ...looking, written };
         board.update(finding(written, { projects, tasks, moods: seen, where: standing() }));
@@ -741,6 +853,18 @@ async function boot(): Promise<void> {
        because a line you can press and cannot reach with the keyboard is a
        line that is only half there. */
     const press = (pick: string): void => {
+      if (pick === 'commit') {
+        openCommit();
+        return;
+      }
+      if (pick.startsWith('hold:')) {
+        holding(pick.slice(5), true);
+        return;
+      }
+      if (pick.startsWith('putin:')) {
+        holding(pick.slice(6), false);
+        return;
+      }
       if (pick.startsWith('change:')) {
         void openChange(pick.slice(7));
         return;
@@ -859,6 +983,15 @@ async function boot(): Promise<void> {
           void unlook();
           return;
         }
+        if (writing) {
+          if (writing.written) {
+            wrote('');
+            return;
+          }
+          writing = null;
+          if (live) board.show(live.rows());
+          return;
+        }
         if (reading) {
           stopReading();
           return;
@@ -923,6 +1056,15 @@ async function boot(): Promise<void> {
           if (event.key === 'Backspace') wrote(looking.written.slice(0, -1));
           else if (event.key.length === 1) wrote(looking.written + event.key);
           else return board.scrolled(event.key);
+          return true;
+        }
+        if (writing) {
+          if (event.key === 'Enter') void commit();
+          else if (event.key === 'Backspace') wrote(writing.written.slice(0, -1));
+          else if (event.key.length === 1) wrote(writing.written + event.key);
+          else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            board.walk(event.key === 'ArrowDown' ? 1 : -1);
+          } else return false;
           return true;
         }
         if (titling) {
@@ -1038,7 +1180,8 @@ async function boot(): Promise<void> {
       paintRail();
       // The roster is a live thing: a session that starts working changes its
       // mark on the board you are looking at, without you touching anything.
-      if (live && !work && !card && !naming && !titling && !looking && !reading) {
+      if (writing) board.update(rowsForCommit());
+      else if (live && !work && !card && !naming && !titling && !looking && !reading) {
         board.update(live.rows());
       }
     };

@@ -35,8 +35,8 @@ writes in is read rather than shown, and when it comes to the door to ask
 something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 37 done, 22 partly done, 34 inherited working from emdash's back end
-and needing no village surface, 15 deliberately cut, and **145 not started**.
+ledger rows: 39 done, 24 partly done, 34 inherited working from emdash's back end
+and needing no village surface, 15 deliberately cut, and **141 not started**.
 
 ## What "not started" actually means
 
@@ -263,6 +263,19 @@ function with it. It was checked against git's own output on real files in a
 real checkout and comes out line for line the same, hunk boundaries and counts
 included. A file that is not writing at all says so instead of drawing its
 bytes.
+
+A commit is written on the same wood. Under what is uncommitted there is a line
+that says write a commit, and pressing it turns the board into what is about to
+go in: every changed file, and a line at the bottom to say what it does. There
+is no staging area here and no word for one. Everything goes in to begin with,
+pressing a file holds it back, pressing it again puts it in, and nothing at all
+happens to the checkout until return. Then what is held back leaves git's index,
+the rest goes into it, and it is a commit; the board it came from says so a
+moment later, because what was done in here is read again when the head moves.
+
+Git's failures have their own words now, one sentence each, and where git's own
+message is the useful part — a hook's complaint, a server's refusal — it is kept
+inside the sentence rather than replaced. Only the commit path uses them so far.
 
 Closes WS-29 through WS-31, WS-35 through WS-42, WS-44, FS-24 through FS-28,
 ST-15, UI-09, UI-35, UI-39.
@@ -507,18 +520,18 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-26 | Bulk "Delete workspaces" |  | W7 |
 | WS-27 | Workspace removal / path-issue / script-issue states |  | W7 |
 | WS-28 | Observation freshness (fresh/stale/offline) |  | W7 |
-| WS-29 | Checkout store (stage/unstage/discard/commit/push/pull/publish) |  | W3 |
+| WS-29 | Checkout store (stage/unstage/discard/commit/push/pull/publish) | part | W3 |
 | WS-30 | Git action toasts |  | W3 |
-| WS-31 | Git error vocabulary |  | W3 |
+| WS-31 | Git error vocabulary | part | W3 |
 | WS-32 | Repository store (branches/remotes/provider identity) | kept |  |
 | WS-33 | Repository-level wire contract (worktrees/refs/remotes/fetch) | kept |  |
 | WS-34 | Branch reference model | kept |  |
 | WS-35 | Branch selector components |  | W3 |
-| WS-36 | Staged/Unstaged sections |  | W3 |
+| WS-36 | Staged/Unstaged sections | done | W3 |
 | WS-37 | Floating action card on selection |  | W3 |
 | WS-38 | Preview vs pinned diff tabs |  | W3 |
 | WS-39 | Prefetched diff models on hover |  | W3 |
-| WS-40 | Commit card |  | W3 |
+| WS-40 | Commit card | done | W3 |
 | WS-41 | Diff main panel | done | W3 |
 | WS-42 | Commit history / blame |  | W3 |
 | WS-43 | CI check runs |  | W4 |
