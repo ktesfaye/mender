@@ -35,8 +35,8 @@ writes in is read rather than shown, and when it comes to the door to ask
 something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 30 done, 22 partly done, 34 inherited working from emdash's back end
-and needing no village surface, 13 deliberately cut, and **154 not started**.
+ledger rows: 31 done, 22 partly done, 34 inherited working from emdash's back end
+and needing no village surface, 13 deliberately cut, and **153 not started**.
 
 ## What "not started" actually means
 
@@ -191,7 +191,16 @@ is emdash's file-search runtime, wired in here for the first time; asking is wha
 builds it, and the root is held open from the first question so the answer to the
 second keystroke arrives before the third.
 
-Still open: resource links and attachments.
+A picture dropped on the wood or pasted onto it is carried. It cannot be drawn
+on the board, so what the board says is that you have it: it waits by the line
+you are writing on, it goes with whatever you say next, and pressing it puts it
+down. Handing one over with no words at all counts as something said, which is
+the one place the empty-line rule bends. Afterwards the transcript says you
+handed it over, because otherwise a picture leaves no trace of having gone.
+Anything that is not a picture is refused out loud rather than silently, and
+dropping one on the island says so too, since nothing out there has hands.
+
+Still open: resource links.
 
 Closes AG-02, AG-13, AG-14, AG-20, AG-22 through AG-37, AG-39, AG-40, AG-43,
 AG-45 through AG-51, UI-31, UI-43.
@@ -411,7 +420,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-43 | Permission mode & collaboration mode selectors | part | W2 |
 | AG-44 | Session MCP servers indicator | done |  |
 | AG-45 | Context-window usage indicator | done | W2 |
-| AG-46 | Attachments (image drag/drop/paste) |  | W2 |
+| AG-46 | Attachments (image drag/drop/paste) | done | W2 |
 | AG-47 | Send/stop/queue button | done | W2 |
 | AG-48 | Notice band (session-state banners) | part | W2 |
 | AG-49 | Permission request band | done | W2 |

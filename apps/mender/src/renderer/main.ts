@@ -20,6 +20,9 @@ import { say } from './village/notice';
 import { buildScene } from './village/scene';
 import { wire, type MenderClient } from './wire';
 
+/** The kinds of picture an agent can actually be shown. */
+const CARRIED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+
 /**
  * You open Mender and you see the village.
  *
@@ -634,12 +637,17 @@ async function boot(): Promise<void> {
       const saying = work;
       if (!task || !saying) return;
       const text = saying.written().trim();
-      if (!text) {
+      const carrying = [...saying.carrying()];
+      if (!text && !carrying.length) {
         if (saying.working()) await client.agents.hush({ task: task.id });
         return;
       }
       saying.wrote('');
-      const heard = await client.agents.tell({ task: task.id, text }, { timeoutMs: 0 });
+      saying.handed();
+      const heard = await client.agents.tell(
+        { task: task.id, text, ...(carrying.length ? { carrying } : {}) },
+        { timeoutMs: 0 }
+      );
       if (!heard.success) {
         say(heard.error.kind === 'refused' ? heard.error.because : 'nobody heard that.', 6000);
       }
@@ -692,6 +700,10 @@ async function boot(): Promise<void> {
     };
 
     board.onPick((pick) => {
+      if (pick.startsWith('putdown:')) {
+        work?.putDown(pick.slice(8));
+        return;
+      }
       if (pick.startsWith('name:')) {
         const saying = work;
         const line = saying?.names.named(saying.written(), pick);
@@ -730,6 +742,41 @@ async function boot(): Promise<void> {
             : await client.agents.tool({ task: task.id, name: meant.name, on: meant.on });
         if (!done.success && done.error.kind === 'refused') say(done.error.because, 6000);
       })();
+    });
+
+    /* A picture dropped on the wood, or pasted onto it.
+       There is one place for it to go: whoever is working in the building you
+       have open. Dropped anywhere else it does nothing, because nothing else
+       in the village has hands. */
+    const carry = async (files: readonly File[]): Promise<void> => {
+      const saying = work;
+      if (!files.length) return;
+      if (!saying) {
+        say('open a building first, and somebody can take it.', 4000);
+        return;
+      }
+      const pictures = files.filter((file) => CARRIED.includes(file.type));
+      if (!pictures.length) {
+        say('the village only carries pictures.', 4000);
+        return;
+      }
+      for (const picture of pictures) {
+        const trouble = await saying.pickUp(picture);
+        if (trouble) say(trouble, 6000);
+      }
+    };
+
+    // Without this the window navigates to the file and the village vanishes.
+    window.addEventListener('dragover', (event) => event.preventDefault());
+    window.addEventListener('drop', (event) => {
+      event.preventDefault();
+      void carry([...(event.dataTransfer?.files ?? [])]);
+    });
+    window.addEventListener('paste', (event) => {
+      const files = [...(event.clipboardData?.files ?? [])];
+      if (!files.length) return;
+      event.preventDefault();
+      void carry(files);
     });
 
     watchPointer(pixi, camera, board, rail, {

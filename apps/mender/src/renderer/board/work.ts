@@ -1,5 +1,5 @@
 import { ReplicaState } from '@emdash/wire/live';
-import type { Ask, Kit, Line, Step, Waiting, WorkingState } from '@shared/agents';
+import type { Ask, Carried, Kit, Line, Step, Waiting, WorkingState } from '@shared/agents';
 import type { Task } from '@shared/tasks';
 import type { MenderClient } from '../wire';
 import type { Row } from './board';
@@ -38,6 +38,14 @@ export interface LiveWork extends LiveBoard {
   working(): boolean;
   /** Open or close what is underneath one line of the transcript. */
   fold(id: string): void;
+  /** What has been picked up off the wood and not yet handed over. */
+  carrying(): readonly Carried[];
+  /** Pick a picture up. What comes back is what went wrong, or nothing. */
+  pickUp(file: File): Promise<string | null>;
+  /** Put one down again. */
+  putDown(id: string): void;
+  /** Everything carried went with what was just said. */
+  handed(): void;
 }
 
 /** What a line with something under it wears, closed and open. */
@@ -78,6 +86,10 @@ export async function openWork(
   /* What you have opened up. Held by what it is rather than where it was, so a
      thing you opened while it was still running stays open as it finishes. */
   const opened = new Set<string>();
+  /* Pictures dropped on the wood, waiting by the line for you to say something.
+     They live here rather than in the main process because until you say
+     something they are not part of the conversation, only of your hands. */
+  let held: Carried[] = [];
 
   // The checkout first, so the session — which can speak the moment it is
   // subscribed to — always has a board to be written on.
@@ -96,7 +108,7 @@ export async function openWork(
       turn: 'card',
       // No extra lines above the tree: the branch is the first thing the
       // checkout itself says, and a task's branch is its name said twice.
-      tail: () => tail(work, written, slash, names, opened),
+      tail: () => tail(work, written, slash, names, held, opened),
     },
     changed
   );
@@ -142,6 +154,37 @@ export async function openWork(
       if (!opened.delete(id)) opened.add(id);
       changed(checkout.rows());
     },
+    carrying: () => held,
+    pickUp: async (file) => {
+      const picked = await client.agents.carry(
+        { task: task.id },
+        // Spelled out rather than handed over whole: what the wire wants a file
+        // to call its kind is not what the browser calls it.
+        {
+          name: file.name,
+          mimeType: file.type,
+          size: file.size,
+          lastModified: file.lastModified,
+          source: file.stream(),
+        },
+        { timeoutMs: 0 }
+      );
+      if (!picked.success) {
+        return picked.error.kind === 'refused' ? picked.error.because : 'that would not go.';
+      }
+      held = [...held, picked.data];
+      changed(checkout.rows());
+      return null;
+    },
+    putDown: (id) => {
+      held = held.filter((each) => each.id !== id);
+      changed(checkout.rows());
+      void client.agents.putDown({ task: task.id, id });
+    },
+    handed: () => {
+      held = [];
+      changed(checkout.rows());
+    },
     close: async () => {
       await Promise.all([replica.dispose(), kit.dispose(), checkout.close()]);
     },
@@ -154,6 +197,7 @@ function tail(
   written: string,
   slash: Palette,
   names: Naming,
+  held: readonly Carried[],
   opened: ReadonlySet<string>
 ): Row[] {
   const rows: Row[] = [{ kind: 'gap' }];
@@ -206,6 +250,7 @@ function tail(
     rows.push({ kind: 'line', text: 'return on an empty line stops it.', tone: 'faded' });
   }
   rows.push(...still(work.queued));
+  rows.push(...holding(held));
   rows.push({ kind: 'typed', text: written });
   // Whatever the slash on that line could mean, written under it. Nothing
   // floats in this app, so a picker is only ever more lines on the wood.
@@ -275,6 +320,33 @@ function still(queued: readonly Waiting[]): Row[] {
       tone: 'ink',
       keep: 'front',
       pick: `unsay:${waiting.id}`,
+    });
+  }
+  rows.push({ kind: 'gap' });
+  return rows;
+}
+
+/**
+ * What you are carrying and have not handed over.
+ *
+ * A picture cannot be written on the wood, so what the board says is that you
+ * have it: it sits by the line you are writing on until you say something, and
+ * goes with whatever you say. Pressing one puts it down.
+ */
+function holding(held: readonly Carried[]): Row[] {
+  if (!held.length) return [];
+  const rows: Row[] = [
+    { kind: 'gap' },
+    { kind: 'heading', text: 'carrying, press to put one down' },
+  ];
+  for (const each of held) {
+    rows.push({
+      kind: 'entry',
+      mark: '■',
+      text: each.name,
+      tone: 'ink',
+      keep: 'tail',
+      pick: `putdown:${each.id}`,
     });
   }
   rows.push({ kind: 'gap' });

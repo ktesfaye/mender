@@ -119,6 +119,12 @@ agent as words, because picking a model is a setting on a running session and
 not a sentence: `/model`, `/mode` and `/effort` list what that agent itself says
 it offers and set it there and then, and `/agent` turns the board over.
 
+**A picture dropped on the wood is carried.** Drop or paste one on a session's
+board and it waits by the line you are writing on until you say something, then
+goes with what you say; pressing it puts it down again. It is never drawn on the
+board, because the board is writing, so what the board says is that you have it
+and afterwards that you handed it over.
+
 **An @ names a file in that checkout.** A path is the one thing you cannot get
 across by describing it, so writing an @ turns the lines under it into what is
 actually in there, narrowing as you type, and picking one writes the whole path

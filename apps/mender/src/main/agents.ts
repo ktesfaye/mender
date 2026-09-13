@@ -10,9 +10,10 @@ import type {
 } from '@emdash/core/runtimes/acp/api';
 import type { ConversationRecords } from '@emdash/core/runtimes/conversations/api';
 import { ReplicaState } from '@emdash/wire/live';
+import type { WireFile } from '@emdash/wire/rpc';
 import { cell, peek, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
-import type { Ask, Kit, Line, Mood, Step, Waiting, WorkingState } from '@shared/agents';
+import type { Ask, Carried, Kit, Line, Mood, Step, Waiting, WorkingState } from '@shared/agents';
 import { createKits } from './kit';
 import type { MenderRuntimes } from './runtimes';
 import type { Tasks } from './tasks';
@@ -51,7 +52,14 @@ export interface Agents {
   moods(): Cell<Record<string, Mood>>;
   /** Start whoever lives in there, so they can say what they work with. */
   wake(task: string): Promise<Told>;
-  tell(task: string, text: string): Promise<Told>;
+  tell(task: string, text: string, carrying?: readonly Carried[]): Promise<Told>;
+  /** Pick a picture up off the wood, into the session's own store. */
+  carry(
+    task: string,
+    file: WireFile
+  ): Promise<{ success: true; data: Carried } | { success: false; error: TellError }>;
+  /** Put one down again, before it goes anywhere. */
+  putDown(task: string, id: string): Promise<Told>;
   answer(task: string, requestId: string, optionId: string): Promise<Told>;
   /** Take back something said while it was busy, before it is heard. */
   unsay(task: string, id: string): Promise<Told>;
@@ -61,12 +69,12 @@ export interface Agents {
   dispose(): Promise<void>;
 }
 
-type Told =
-  | { success: true; data: void }
-  | {
-      success: false;
-      error: { kind: 'no-such-task' } | { kind: 'nothing' } | { kind: 'refused'; because: string };
-    };
+type TellError =
+  | { kind: 'no-such-task' }
+  | { kind: 'nothing' }
+  | { kind: 'refused'; because: string };
+
+type Told = { success: true; data: void } | { success: false; error: TellError };
 
 const EMPTY: WorkingState = {
   mood: 'empty',
@@ -161,10 +169,43 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
     await store.set(KEY, lodgers as unknown as never);
   };
 
-  const refused = (because: string): Told => ({
-    success: false,
-    error: { kind: 'refused', because },
+  /**
+   * The conversation living in a building, starting one if none is.
+   *
+   * A conversation is the thing a session's transcript, its settings and its
+   * attachments all hang off, so anything that hands something to a building
+   * needs one to exist first, not only saying something.
+   */
+  const moveIn = async (
+    task: string,
+    record: { agent?: string; path: string; title: string }
+  ): Promise<{ success: true; data: string } | { success: false; error: TellError }> => {
+    const already = lodgers[task];
+    if (already) return { success: true as const, data: already };
+    const conversation = crypto.randomUUID();
+    const made = await runtimes.conversations.create({
+      conversationId: conversation,
+      provider: record.agent ?? PROVIDER,
+      type: 'acp',
+      cwd: record.path,
+      workspacePath: record.path,
+      // The agent's own CLI mints the session id; ours is only the record.
+      idRegime: 'provider-minted',
+      createdAt: Date.now(),
+      title: record.title,
+      config: { version: '1', type: 'acp' },
+    });
+    if (!made.success) return refusal(whatItSaid(made.error));
+    await put(task, conversation);
+    await Promise.all([houseOf(task).settle(conversation), kits.settle(task, conversation)]);
+    return { success: true as const, data: conversation };
+  };
+
+  const refusal = (because: string) => ({
+    success: false as const,
+    error: { kind: 'refused' as const, because },
   });
+  const refused = (because: string): Told => refusal(because);
 
   const evict = async (task: string): Promise<void> => {
     await loaded;
@@ -220,34 +261,18 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
       return { success: true, data: undefined };
     },
 
-    async tell(task, text) {
+    async tell(task, text, carrying) {
       const said = text.trim();
-      if (!said) return { success: false, error: { kind: 'nothing' } };
+      // A picture handed over without a word is still something said.
+      if (!said && !carrying?.length) return { success: false, error: { kind: 'nothing' } };
       await loaded;
       const record = (await tasks.list()).find((candidate) => candidate.id === task);
       if (!record) return { success: false, error: { kind: 'no-such-task' } };
 
       const house = houseOf(task);
-      let conversation = lodgers[task];
-      if (!conversation) {
-        conversation = crypto.randomUUID();
-        const made = await runtimes.conversations.create({
-          conversationId: conversation,
-          provider: record.agent ?? PROVIDER,
-          type: 'acp',
-          cwd: record.path,
-          workspacePath: record.path,
-          // The agent's own CLI mints the session id; ours is only the record.
-          idRegime: 'provider-minted',
-          createdAt: Date.now(),
-          title: record.title,
-          config: { version: '1', type: 'acp' },
-        });
-        if (!made.success) return refused(whatItSaid(made.error));
-        await put(task, conversation);
-        await house.settle(conversation);
-        await kits.settle(task, conversation);
-      }
+      const moved = await moveIn(task, record);
+      if (!moved.success) return moved;
+      const conversation = moved.data;
 
       house.arriving();
       // No deadline on either: starting an agent means spawning its CLI and
@@ -269,7 +294,23 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
       }
 
       const sent = await runtimes.acp.sendPrompt(
-        { conversationId: conversation, promptId: crypto.randomUUID(), prompt: { text: said } },
+        {
+          conversationId: conversation,
+          promptId: crypto.randomUUID(),
+          prompt: {
+            text: said,
+            ...(carrying?.length
+              ? {
+                  attachments: carrying.map((each) => ({
+                    type: 'attachment' as const,
+                    id: each.id,
+                    mimeType: each.mime,
+                    name: each.name,
+                  })),
+                }
+              : {}),
+          },
+        },
         { timeoutMs: 0 }
       );
       if (!sent.success) {
@@ -289,6 +330,37 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
         optionId,
       });
       return done.success ? { success: true, data: undefined } : refused(whatItSaid(done.error));
+    },
+
+    async carry(task, file) {
+      await loaded;
+      const record = (await tasks.list()).find((candidate) => candidate.id === task);
+      if (!record) return { success: false, error: { kind: 'no-such-task' } };
+      // A picture belongs to the conversation it was handed to, so there has
+      // to be one: dropping something on an empty building moves somebody in.
+      const moved = await moveIn(task, record);
+      if (!moved.success) return moved;
+      const held = await runtimes.acp.uploadAttachment(
+        { conversationId: moved.data },
+        file,
+        // A picture off a phone is not small, and none of this is on a deadline.
+        { timeoutMs: 0 }
+      );
+      if (!held.success) return refusal(whatItSaid(held.error));
+      const mime = pictured(held.data.mimeType);
+      if (!mime) return refusal('the village only carries pictures.');
+      return { success: true as const, data: { id: held.data.id, name: held.data.name, mime } };
+    },
+
+    async putDown(task, id) {
+      await loaded;
+      const conversation = lodgers[task];
+      if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
+      const gone = await runtimes.acp.deleteAttachment({
+        conversationId: conversation,
+        attachmentId: id,
+      });
+      return gone.success ? { success: true, data: undefined } : refused(whatItSaid(gone.error));
     },
 
     async unsay(task, id) {
@@ -546,6 +618,16 @@ function runningIn(node: ToolNode, root?: string): string | undefined {
  * so there is nothing to merge and nothing to keep: what is here is what it
  * thinks now.
  */
+/** Whether a kind of file is one the agent can actually be shown. */
+function pictured(mime: string): Carried['mime'] | null {
+  return mime === 'image/png' ||
+    mime === 'image/jpeg' ||
+    mime === 'image/gif' ||
+    mime === 'image/webp'
+    ? mime
+    : null;
+}
+
 function stepsOf(plan: PlanState | null): Step[] {
   if (!plan) return [];
   return plan.entries.map((entry) => ({
@@ -605,7 +687,20 @@ function linesOf(turns: readonly TranscriptTurn[], root: string | undefined): Li
     for (const item of turn.items) {
       if (item.kind === 'message') {
         const text = item.text.trim();
-        if (!text) continue;
+        /* What was handed over with it. A picture cannot be written on the
+           wood, so what stays in the transcript is that you gave them one. */
+        const handed = item.attachments?.length
+          ? item.attachments.map((each) => each.name).join(', ')
+          : null;
+        if (!text && !handed) continue;
+        if (handed) {
+          if (text) {
+            lines.push({ kind: 'said', mark: '>', text, tone: 'faded' });
+          }
+          lines.push({ kind: 'note', mark: '', text: `you handed over ${handed}.`, tone: 'faded' });
+          said = false;
+          continue;
+        }
         const mark = item.role === 'user' ? '>' : '';
         /* One person talking without stopping is one thing said. The protocol
            breaks a reply into as many pieces as it likes, and each piece drawn

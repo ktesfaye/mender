@@ -1,4 +1,4 @@
-import { defineContract, fallible, liveModel, liveState } from '@emdash/wire/rpc';
+import { defineContract, fallible, liveModel, liveState, uploadFile } from '@emdash/wire/rpc';
 import { z } from 'zod';
 
 /**
@@ -80,6 +80,19 @@ export const stepSchema = z.object({
   state: z.enum(['done', 'doing', 'ahead']),
 });
 export type Step = z.infer<typeof stepSchema>;
+
+/**
+ * A picture picked up and not yet handed over.
+ *
+ * Dropped on the wood or pasted onto it, it waits by the line you are writing
+ * on until you say something, and goes with whatever you say.
+ */
+export const carriedSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  mime: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp']),
+});
+export type Carried = z.infer<typeof carriedSchema>;
 
 /** Something said while somebody was busy, still waiting its turn. */
 export const waitingSchema = z.object({
@@ -232,7 +245,30 @@ export const agentsContract = defineContract({
   }),
   /** Say something to whoever is in there, moving somebody in if nobody is. */
   tell: fallible({
-    input: z.object({ task: z.string(), text: z.string() }),
+    input: z.object({
+      task: z.string(),
+      text: z.string(),
+      /** Whatever was picked up off the wood, handed over with it. */
+      carrying: z.array(carriedSchema).optional(),
+    }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /**
+   * Pick a picture up off the wood.
+   *
+   * It goes to the session's own store rather than anywhere of ours, because
+   * it belongs to that conversation and dies with it.
+   */
+  carry: uploadFile({
+    input: z.object({ task: z.string() }),
+    accept: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+    result: carriedSchema,
+    error: agentErrorSchema,
+  }),
+  /** Put one down again, before it goes anywhere. */
+  putDown: fallible({
+    input: z.object({ task: z.string(), id: z.string() }),
     data: z.void(),
     error: agentErrorSchema,
   }),
