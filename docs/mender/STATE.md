@@ -233,6 +233,11 @@ while you scroll is a panel floating over the wood, which is the thing this app
 does not do; the question is directly above the answer, and scrolling back to it
 is the honest way to see it again.
 
+Nothing is left in W2 that this machine can reach. A thought and a plan are
+built and have never rendered, because Claude has never sent either one over the
+protocol at any setting, and naming an issue on the line waits for the trackers
+in W4.
+
 Closes AG-02, AG-13, AG-14, AG-20, AG-22 through AG-37, AG-39, AG-40, AG-43,
 AG-45 through AG-51, UI-31, UI-43.
 
