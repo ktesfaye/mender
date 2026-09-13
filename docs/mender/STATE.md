@@ -35,8 +35,8 @@ writes in is read rather than shown, and when it comes to the door to ask
 something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 29 done, 22 partly done, 34 inherited working from emdash's back end
-and needing no village surface, 13 deliberately cut, and **155 not started**.
+ledger rows: 30 done, 22 partly done, 34 inherited working from emdash's back end
+and needing no village surface, 13 deliberately cut, and **154 not started**.
 
 ## What "not started" actually means
 
@@ -182,7 +182,16 @@ yet: a pan-and-zoom viewer is a second surface, which this app does not have, an
 the village answer is to draw it on the wood in the same lines everything else is
 drawn in. That is drawing, not wiring, so it goes with the rest of the drawing.
 
-Still open: resource links, attachments, and @ mentions.
+A file can be named on the line you write on. An @ turns the lines under it into
+what is actually in that checkout, narrowing as you type, and picking one writes
+the whole path where the @ was — name first and the folder after it, because a
+checkout is full of files with the same name in different folders and written
+whole they all truncate to the same middle of the same path. The index behind it
+is emdash's file-search runtime, wired in here for the first time; asking is what
+builds it, and the root is held open from the first question so the answer to the
+second keystroke arrives before the third.
+
+Still open: resource links and attachments.
 
 Closes AG-02, AG-13, AG-14, AG-20, AG-22 through AG-37, AG-39, AG-40, AG-43,
 AG-45 through AG-51, UI-31, UI-43.
@@ -407,7 +416,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-48 | Notice band (session-state banners) | part | W2 |
 | AG-49 | Permission request band | done | W2 |
 | AG-50 | Queued prompts band | done | W2 |
-| AG-51 | @ mentions (files/issues/symbols/custom) |  | W2 |
+| AG-51 | @ mentions (files/issues/symbols/custom) | done | W2 |
 | AG-52 | / slash commands | done |  |
 | AG-53 | Submit keybindings & multiline editing | part | W1 |
 | AG-54 | Prompt editor imperative API | cut |  |

@@ -6,6 +6,8 @@ import { agentConfigContract } from '@emdash/core/runtimes/agent-config/api';
 import { agentConfigWorkerSpec } from '@emdash/core/runtimes/agent-config/node';
 import { conversationsContract } from '@emdash/core/runtimes/conversations/api';
 import { conversationsWorkerSpec } from '@emdash/core/runtimes/conversations/node';
+import { fileSearchContract } from '@emdash/core/runtimes/file-search/api';
+import { fileSearchWorkerSpec } from '@emdash/core/runtimes/file-search/node';
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { gitWorkerSpec } from '@emdash/core/runtimes/git/node';
 import { hostSettingsWorkerSpec } from '@emdash/core/runtimes/host-settings/node';
@@ -54,6 +56,8 @@ export interface MenderRuntimes {
   controllers: Record<string, Controller>;
   /** The git runtime, for main-process code that needs to ask it something. */
   git: ReturnType<typeof gitClient>;
+  /** What is in a checkout, by name, so a file can be named on the line. */
+  files: ReturnType<typeof filesClient>;
   /** The workspace registry: the thing that makes a worktree exist. */
   workspaces: ReturnType<typeof workspacesClient>;
   /** The host's index of conversations: who has ever been asked to do what. */
@@ -77,6 +81,10 @@ function gitClient(ready: Promise<unknown>) {
 
 function workspacesClient(ready: Promise<unknown>) {
   return queuedClient(workspaceRegistryContract, () => ready as Promise<never>);
+}
+
+function filesClient(ready: Promise<unknown>) {
+  return queuedClient(fileSearchContract, () => ready as Promise<never>);
 }
 
 function conversationsClient(ready: Promise<unknown>) {
@@ -195,6 +203,22 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
     })
   );
 
+  // The index of what is in a checkout. It takes the watcher for the same
+  // reason git does: a worktree somebody is working in changes under it.
+  const filesReady = observed(
+    watcherReady.then(async (watcher) => {
+      const worker = host.create(
+        ...fileSearchWorkerSpec({
+          executable: menderWorkerPath('file-search'),
+          env: process.env,
+          dependencies: { watcher, userEnv },
+          databasePath: data('file-search.db'),
+        })
+      );
+      return await worker.ready();
+    })
+  );
+
   const acpReady = observed(
     conversationsReady.then(async (conversations) => {
       const worker = host.create(
@@ -269,6 +293,7 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
       git: createController(gitContract, forwardContractImpl(gitContract, git)),
     },
     git,
+    files: filesClient(filesReady),
     workspaces,
     conversations: conversationsClient(conversationsReady),
     acp: acpClient(acpReady),

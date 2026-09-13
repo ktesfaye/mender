@@ -33,6 +33,7 @@ export async function main(): Promise<void> {
   const tasks = createTasks(runtimes, projects);
   const agents = createAgents(runtimes, tasks);
   scope.add(() => agents.dispose());
+  scope.add(() => tasks.dispose());
   installWire(scope, {
     ...runtimes.controllers,
     agents: createAgentsController(agents),

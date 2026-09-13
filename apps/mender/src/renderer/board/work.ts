@@ -4,6 +4,7 @@ import type { Task } from '@shared/tasks';
 import type { MenderClient } from '../wire';
 import type { Row } from './board';
 import { openCheckout, type LiveBoard } from './district';
+import { Naming } from './naming';
 import { Palette } from './palette';
 import { saying } from './writing';
 
@@ -29,6 +30,8 @@ export interface LiveWork extends LiveBoard {
   wrote(text: string): void;
   /** What the slash on the line has opened, if there is one. */
   readonly slash: Palette;
+  /** What the @ on the line has opened, if there is one. */
+  readonly names: Naming;
   /** The question at the door, if there is one. */
   asked(): Ask | null;
   /** Whether somebody in there is busy, and so could be called off. */
@@ -65,6 +68,13 @@ export async function openWork(
   let work = QUIET;
   let written = '';
   const slash = new Palette();
+  /* The board does not exist yet when the @ is built, and an answer from the
+     checkout can land at any moment after it does. */
+  let redraw = (): void => {};
+  const names = new Naming(
+    (like) => client.tasks.files({ id: task.id, like }),
+    () => redraw()
+  );
   /* What you have opened up. Held by what it is rather than where it was, so a
      thing you opened while it was still running stays open as it finishes. */
   const opened = new Set<string>();
@@ -86,10 +96,12 @@ export async function openWork(
       turn: 'card',
       // No extra lines above the tree: the branch is the first thing the
       // checkout itself says, and a task's branch is its name said twice.
-      tail: () => tail(work, written, slash, opened),
+      tail: () => tail(work, written, slash, names, opened),
     },
     changed
   );
+
+  redraw = () => changed(checkout.rows());
 
   const kit = new ReplicaState<Kit>(client.agents.kit.state({ task: task.id }, 'state'), {
     onChange: (value) => {
@@ -115,11 +127,13 @@ export async function openWork(
 
   return {
     slash,
+    names,
     rows: () => checkout.rows(),
     written: () => written,
     wrote: (text) => {
       written = text;
       slash.typed(text);
+      names.typed(text);
       changed(checkout.rows());
     },
     asked: () => work.asking,
@@ -139,6 +153,7 @@ function tail(
   work: WorkingState,
   written: string,
   slash: Palette,
+  names: Naming,
   opened: ReadonlySet<string>
 ): Row[] {
   const rows: Row[] = [{ kind: 'gap' }];
@@ -195,6 +210,9 @@ function tail(
   // Whatever the slash on that line could mean, written under it. Nothing
   // floats in this app, so a picker is only ever more lines on the wood.
   rows.push(...slash.rows());
+  // An @ and a slash cannot both be open: one is the start of the line and the
+  // other is somewhere in the middle of it.
+  rows.push(...names.rows());
   return rows;
 }
 

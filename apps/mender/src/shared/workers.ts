@@ -13,6 +13,7 @@ const core = '../../packages/core/src';
 export const menderWorkers = {
   'fs-watch': `${core}/services/fs-watch/node/runtime-entry.ts`,
   git: `${core}/runtimes/git/node/runtime-entry.ts`,
+  'file-search': `${core}/runtimes/file-search/node/runtime-entry.ts`,
   conversations: `${core}/runtimes/conversations/node/runtime-entry.ts`,
   terminals: `${core}/runtimes/terminals/node/runtime-entry.ts`,
   scripts: `${core}/runtimes/scripts/node/runtime-entry.ts`,

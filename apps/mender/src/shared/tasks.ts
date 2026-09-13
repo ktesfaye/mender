@@ -57,6 +57,16 @@ export const tasksContract = defineContract({
     data: taskSchema,
     error: taskErrorSchema,
   }),
+  /**
+   * What is in that checkout, by name.
+   *
+   * An @ on the line you write on is how a file is named to whoever is working
+   * in there, and this is what that @ is asking.
+   */
+  files: procedure({
+    input: z.object({ id: z.string(), like: z.string() }),
+    output: z.array(z.string()),
+  }),
   /** Call it something else, and mean it. */
   rename: procedure({
     input: z.object({ id: z.string(), title: z.string() }),

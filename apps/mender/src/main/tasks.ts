@@ -2,6 +2,8 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
+import type { ActiveRootStatus } from '@emdash/core/runtimes/file-search/api';
+import { ReplicaState } from '@emdash/wire/live';
 import { cell, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
 import type { Project, Projects } from './projects';
@@ -67,6 +69,13 @@ export interface Tasks {
     name: string,
     slot: number | null
   ): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
+  /**
+   * What is in that checkout, by name, nearest first.
+   *
+   * For naming a file on the line you write on rather than typing the whole
+   * way to it from memory.
+   */
+  files(id: string, like: string): Promise<string[]>;
   /** Called something else by him, and it sticks. */
   rename(id: string, title: string): Promise<Task[]>;
   /** Called something else by whoever is working in it, which his name outranks. */
@@ -76,13 +85,20 @@ export interface Tasks {
   /** What whoever is in here thinks with, next time they start. */
   remodel(id: string, model: string | null): Promise<Task[]>;
   abandon(id: string): Promise<Task[]>;
+  dispose(): Promise<void>;
 }
+
+/** How many names a checkout offers up at once. */
+const NAMES = 12;
 
 const KEY = 'tasks';
 
 export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks {
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'tasks.json') });
   const standing = cell<Task[]>([], { name: 'tasks:all' });
+  /* Which checkouts have had their contents read. Holding one of these open is
+     what keeps that worktree's index alive and watched. */
+  const indexed = new Map<string, ReplicaState<ActiveRootStatus>>();
 
   const all = async (): Promise<Task[]> => {
     const loaded = await store.get(KEY);
@@ -177,6 +193,38 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       return { success: true as const, data: task };
     },
 
+    async files(id, like) {
+      const tasks = await all();
+      const task = tasks.find((candidate) => candidate.id === id);
+      if (!task) return [];
+      const parsed = parseNativeAbsolute(task.path);
+      if (!parsed.success) return [];
+      const root = parsed.data;
+
+      /* Asking is what builds the index, and building it takes a moment, so
+         the root is held open from the first question onwards: the answer to
+         the second keystroke has to arrive before the third. */
+      let held = indexed.get(id);
+      if (!held) {
+        held = new ReplicaState<ActiveRootStatus>(
+          runtimes.files.activeRoot.state({ root }, 'status'),
+          { onChange: () => {} }
+        );
+        indexed.set(id, held);
+        await held.ready;
+      }
+
+      const found = await runtimes.files.searchPaths({
+        root,
+        query: like,
+        kinds: ['file'],
+        limit: NAMES,
+      });
+      // A checkout still being read is not an error worth saying out loud; the
+      // next letter typed asks again, and by then it usually knows.
+      return found.success ? found.data.hits.map((hit) => hit.path) : [];
+    },
+
     async rename(id, title) {
       const written = title.trim();
       const tasks = await all();
@@ -222,7 +270,14 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
           { timeoutMs: 0 }
         );
       }
+      indexed.get(id)?.dispose();
+      indexed.delete(id);
       return await save(tasks.filter((task) => task.id !== id));
+    },
+
+    async dispose() {
+      await Promise.all([...indexed.values()].map((held) => held.dispose()));
+      indexed.clear();
     },
   };
 }

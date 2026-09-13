@@ -692,6 +692,12 @@ async function boot(): Promise<void> {
     };
 
     board.onPick((pick) => {
+      if (pick.startsWith('name:')) {
+        const saying = work;
+        const line = saying?.names.named(saying.written(), pick);
+        if (saying && line !== null && line !== undefined) saying.wrote(line);
+        return;
+      }
       if (pick.startsWith('slash:')) {
         const meant = work?.slash.meant(pick);
         if (meant) void obey(meant);
@@ -849,14 +855,20 @@ async function boot(): Promise<void> {
         if (event.shiftKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
           return board.walk(event.key === 'ArrowDown' ? 1 : -1);
         }
-        // Tab opens whatever the shift-arrows landed on. Return is spoken for
-        // here: it says what you wrote, or calls them off when you wrote
-        // nothing, and shift and return has a newline coming.
-        if (event.key === 'Tab') {
-          const chose = board.chosen();
-          if (!chose) return false;
-          go(chose);
-          return true;
+        /* An @ in the middle of the line takes the keys the same way a slash
+           does, and writes the whole path where the @ was. */
+        if (saying.names.open) {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            saying.names.moved(event.key === 'ArrowDown' ? 1 : -1);
+            saying.wrote(saying.written());
+            return true;
+          }
+          if (event.key === 'Tab' || event.key === 'Enter') {
+            const line = saying.names.chosen(saying.written());
+            if (line === null) return false;
+            saying.wrote(line);
+            return true;
+          }
         }
         /* A slash on the line takes the keys off the conversation: up and
            down walk what it could mean, and return picks rather than sends. */
@@ -877,6 +889,15 @@ async function boot(): Promise<void> {
             } else void obey(meant);
             return true;
           }
+        }
+        // Tab opens whatever the shift-arrows landed on. Return is spoken for
+        // here: it says what you wrote, or calls them off when you wrote
+        // nothing, and shift and return has a newline coming.
+        if (event.key === 'Tab') {
+          const chose = board.chosen();
+          if (!chose) return false;
+          go(chose);
+          return true;
         }
         if (event.key === 'Enter') void tell();
         else if (event.key === 'Backspace') saying.wrote(saying.written().slice(0, -1));

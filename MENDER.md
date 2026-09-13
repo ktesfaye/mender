@@ -119,6 +119,11 @@ agent as words, because picking a model is a setting on a running session and
 not a sentence: `/model`, `/mode` and `/effort` list what that agent itself says
 it offers and set it there and then, and `/agent` turns the board over.
 
+**An @ names a file in that checkout.** A path is the one thing you cannot get
+across by describing it, so writing an @ turns the lines under it into what is
+actually in there, narrowing as you type, and picking one writes the whole path
+where the @ was. The same wood and the same keys as the slash.
+
 **A session is a real agent, configured.** The card is who is working in there
 and who else on this machine could, what they are thinking with, how they work,
 how hard they think, what they can reach out in the world, and what they have
