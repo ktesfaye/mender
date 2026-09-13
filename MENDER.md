@@ -150,6 +150,12 @@ that changed goes in to begin with; pressing a file holds it back and pressing
 it again puts it in, and nothing happens to the checkout until you press return.
 There is no staging area here and no word for one.
 
+**A branch goes up and comes down from there too.** Under the line that says
+where the checkout stands are the things you can do about it: publish a branch
+nobody has seen, send up what has run ahead, bring down whatever is new. Nothing
+here goes and asks the other end what it has, so bringing it down is also how
+you find out.
+
 **A session is a real agent, configured.** The card is who is working in there
 and who else on this machine could, what they are thinking with, how they work,
 how hard they think, what they can reach out in the world, and what they have

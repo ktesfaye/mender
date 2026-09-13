@@ -1,5 +1,5 @@
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
-import type { GitFilePath } from '@emdash/core/runtimes/git/api';
+import { gitContract, type GitFilePath } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
@@ -17,6 +17,7 @@ import type { Meant } from './board/palette';
 import { makeRail, type Peg, type Rail } from './board/rail';
 import { trouble } from './board/trouble';
 import { answerFor, openWork, type LiveWork } from './board/work';
+import { ran } from './job';
 import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
 import { Folk, loadFolk, type Standing } from './village/folk';
 import { districtBounds, Ground, type Aim } from './village/ground';
@@ -600,6 +601,52 @@ async function boot(): Promise<void> {
       say('committed.', 3000);
     };
 
+    /**
+     * Sending what is here somewhere else, or bringing down what is there.
+     *
+     * All three are the same shape: say what is happening, wait for the other
+     * end, and then say what came of it in git's own terms.
+     */
+    const errand = async (what: 'push' | 'pull' | 'publish'): Promise<void> => {
+      const place = inside ?? (open ? projectOn(open.district) : undefined);
+      if (!place) return;
+      const parsed = parseNativeAbsolute(place.path);
+      if (!parsed.success) return;
+      const checkout = parsed.data;
+      const checkouts = client.git.checkout;
+
+      if (what === 'pull') {
+        say('bringing it down…', 60000);
+        const came = await ran(gitContract.checkout.pull, checkouts.pull, { checkout });
+        say(came.success ? 'brought down.' : trouble(came.error ?? {}), 6000);
+        return;
+      }
+      if (what === 'push') {
+        say('sending it up…', 60000);
+        const sent = await ran(gitContract.checkout.push, checkouts.push, { checkout });
+        say(sent.success ? 'sent up.' : trouble(sent.error ?? {}), 6000);
+        return;
+      }
+
+      /* Publishing needs somewhere to publish to, and a checkout does not know
+         its own remotes: the repository it belongs to does. */
+      const remotes = await client.git.repository.model
+        .state({ repository: checkout }, 'remotes')
+        .snapshot();
+      const named = remotes.data.remotes;
+      const remote = named.find((each) => each.name === 'origin') ?? named[0];
+      if (!remote) {
+        say('this checkout has nowhere to push to.', 6000);
+        return;
+      }
+      say(`sending it up to ${remote.name}…`, 60000);
+      const put = await ran(gitContract.checkout.publish, checkouts.publish, {
+        checkout,
+        remote: remote.name,
+      });
+      say(put.success ? 'sent up.' : trouble(put.error ?? {}), 6000);
+    };
+
     /** Back out of a change, onto the board it was opened from. */
     const stopReading = (): void => {
       reading = null;
@@ -855,6 +902,10 @@ async function boot(): Promise<void> {
     const press = (pick: string): void => {
       if (pick === 'commit') {
         openCommit();
+        return;
+      }
+      if (pick === 'push' || pick === 'pull' || pick === 'publish') {
+        void errand(pick);
         return;
       }
       if (pick.startsWith('hold:')) {

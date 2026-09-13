@@ -187,6 +187,7 @@ function build(
     ...(place.lines?.() ?? []),
     { kind: 'gap' },
     { kind: 'line', text: standing(head) },
+    ...sending(head),
     { kind: 'gap' },
   ];
 
@@ -255,6 +256,48 @@ function since(at: number): string {
   if (weeks < 9) return `${Math.floor(weeks)}w`;
   const months = days / 30.4;
   return months < 12 ? `${Math.floor(months)}mo` : `${Math.floor(days / 365)}y`;
+}
+
+/**
+ * What you can do about where the checkout stands, if anything.
+ *
+ * A branch nobody else has seen is published; one that has run ahead is sent
+ * up; one that has fallen behind is brought down. Nothing is offered that is
+ * not actually possible right now, which is why these are lines that come and
+ * go rather than buttons that grey out.
+ */
+function sending(head: CheckoutHeadState | undefined): Row[] {
+  if (!head || head.kind === 'detached' || head.kind === 'unborn') return [];
+  if (head.upstream.kind === 'none') {
+    return [{ kind: 'entry', mark: '+', text: 'send this branch up', pick: 'publish' }];
+  }
+  const tracking = head.upstream.tracking;
+  if (tracking.kind !== 'resolved') return [];
+  const rows: Row[] = [];
+  if (tracking.ahead) {
+    rows.push({
+      kind: 'entry',
+      mark: '+',
+      text: `send ${counted(tracking.ahead, 'commit')} up`,
+      pick: 'push',
+    });
+  }
+  /* Always offered, because nothing here goes and asks the other end what it
+     has: behind is only ever as true as the last time somebody looked, and
+     bringing it down is what looking is. */
+  rows.push({
+    kind: 'entry',
+    mark: '+',
+    text: tracking.behind
+      ? `bring ${counted(tracking.behind, 'commit')} down`
+      : 'bring down anything new',
+    pick: 'pull',
+  });
+  return rows;
+}
+
+function counted(many: number, thing: string): string {
+  return many === 1 ? `the one ${thing}` : `all ${many} ${thing}s`;
 }
 
 /** The one line that says where the checkout stands. */

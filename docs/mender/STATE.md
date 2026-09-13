@@ -35,8 +35,8 @@ writes in is read rather than shown, and when it comes to the door to ask
 something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 39 done, 24 partly done, 34 inherited working from emdash's back end
-and needing no village surface, 15 deliberately cut, and **141 not started**.
+ledger rows: 41 done, 23 partly done, 34 inherited working from emdash's back end
+and needing no village surface, 15 deliberately cut, and **140 not started**.
 
 ## What "not started" actually means
 
@@ -275,7 +275,20 @@ moment later, because what was done in here is read again when the head moves.
 
 Git's failures have their own words now, one sentence each, and where git's own
 message is the useful part — a hook's complaint, a server's refusal — it is kept
-inside the sentence rather than replaced. Only the commit path uses them so far.
+inside the sentence rather than replaced.
+
+And a branch goes up and comes down. Under the line saying where the checkout
+stands are the things you can actually do about it right now: send a branch
+nobody has seen anywhere yet, send the commits that have run ahead, and bring
+down whatever is new. The last of those is always offered rather than only when
+the board knows it is behind, because nothing here goes and asks the other end
+what it has, so behind is only ever as true as the last time somebody looked and
+bringing it down is what looking is.
+
+All three were driven against a local bare repository rather than his own
+remotes: a commit made on the board, sent up, a commit pushed in from elsewhere
+and brought down, and a branch with no upstream published. Nothing was sent
+anywhere outside this machine.
 
 Closes WS-29 through WS-31, WS-35 through WS-42, WS-44, FS-24 through FS-28,
 ST-15, UI-09, UI-35, UI-39.
@@ -521,8 +534,8 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-27 | Workspace removal / path-issue / script-issue states |  | W7 |
 | WS-28 | Observation freshness (fresh/stale/offline) |  | W7 |
 | WS-29 | Checkout store (stage/unstage/discard/commit/push/pull/publish) | part | W3 |
-| WS-30 | Git action toasts |  | W3 |
-| WS-31 | Git error vocabulary | part | W3 |
+| WS-30 | Git action toasts | done | W3 |
+| WS-31 | Git error vocabulary | done | W3 |
 | WS-32 | Repository store (branches/remotes/provider identity) | kept |  |
 | WS-33 | Repository-level wire contract (worktrees/refs/remotes/fetch) | kept |  |
 | WS-34 | Branch reference model | kept |  |
