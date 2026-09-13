@@ -6,6 +6,7 @@ import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { makeBoard, type Board, type Row } from './board/board';
 import { openCard, type LiveCard } from './board/card';
+import { opening, readOut, unreadable } from './board/changed';
 import { openCheckout, type LiveBoard } from './board/district';
 import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
 import { loadLettering } from './board/lettering';
@@ -79,6 +80,10 @@ async function boot(): Promise<void> {
     let inside: Task | null = null;
     /** Set while the board is showing what that session works with. */
     let card: LiveCard | null = null;
+    /* Which file's change is on the board, over the checkout it came from.
+       The checkout board underneath stays open and stays live; it is simply
+       not what the wood is showing. */
+    let reading: { aim: Aim; path: string } | null = null;
     /** Set while a name for something new is being written on the wood. */
     let naming: {
       district: District;
@@ -266,6 +271,7 @@ async function boot(): Promise<void> {
     /** Open the finder over whatever you were looking at. */
     const look = (): void => {
       looking = { written: '', from: spot() };
+      reading = null;
       board.show(finding('', { projects, tasks, moods: seen, where: standing() }));
       board.walk(1);
     };
@@ -346,6 +352,7 @@ async function boot(): Promise<void> {
       looking = null;
       inside = null;
       work = null;
+      reading = null;
       const shown = card;
       card = null;
       await shown?.close();
@@ -366,6 +373,7 @@ async function boot(): Promise<void> {
       const was = live;
       live = null;
       work = null;
+      reading = null;
       inside = null;
       await was?.close();
 
@@ -381,7 +389,7 @@ async function boot(): Promise<void> {
       ]);
 
       const opened = await openCheckout(client, { name, path, lines }, (rows) => {
-        if (open === aim) board.update(rows);
+        if (open === aim && !reading) board.update(rows);
       });
       if (open !== aim) {
         await opened.close();
@@ -451,6 +459,7 @@ async function boot(): Promise<void> {
       const was = live;
       live = null;
       work = null;
+      reading = null;
       await was?.close();
       const shown = card;
       card = null;
@@ -472,6 +481,32 @@ async function boot(): Promise<void> {
     };
 
     /**
+     * One file's change, on the same board its checkout was on.
+     *
+     * The checkout board stays open underneath and stays live: a change is
+     * something you look at and step back out of, not somewhere you go.
+     */
+    const openChange = async (path: string): Promise<void> => {
+      const aim = open;
+      const checkout = inside?.path ?? (aim ? projectOn(aim.district)?.path : undefined);
+      if (!aim || !checkout) return;
+      reading = { aim, path };
+      board.show(opening(path));
+      const got = await client.changes.file({ checkout, path });
+      if (reading?.aim !== aim || reading.path !== path) return;
+      board.show(got.success ? readOut(got.data) : unreadable(path, whyNot(got.error)));
+    };
+
+    /** Back out of a change, onto the board it was opened from. */
+    const stopReading = (): void => {
+      reading = null;
+      if (!live) return;
+      /* Back at the top, which is where the file was pressed: a session's
+         board is pinned to now, but you did not come from now. */
+      board.show(live.rows());
+    };
+
+    /**
      * A building with a task in it is that task's own checkout, and whoever is
      * working in it. The board opens at the bottom, because the bottom is now.
      */
@@ -480,6 +515,7 @@ async function boot(): Promise<void> {
       const was = live;
       live = null;
       work = null;
+      reading = null;
       await was?.close();
       const shown = card;
       card = null;
@@ -501,7 +537,7 @@ async function boot(): Promise<void> {
       );
 
       const opened = await openWork(client, task, (rows) => {
-        if (open === aim) board.update(rows);
+        if (open === aim && !reading) board.update(rows);
       });
       if (open !== aim) {
         await opened.close();
@@ -522,6 +558,7 @@ async function boot(): Promise<void> {
     const askName = (aim: Aim, slot: number | null): void => {
       const project = projectOn(aim.district);
       if (!project) return;
+      reading = null;
       open = aim;
       inside = null;
       work = null;
@@ -535,6 +572,7 @@ async function boot(): Promise<void> {
     /** Calling a session something else. His name for it outranks the agent's. */
     const askTitle = (task: Task): void => {
       naming = null;
+      reading = null;
       titling = { task, written: task.title };
       board.show(retitling(titling));
     };
@@ -703,6 +741,10 @@ async function boot(): Promise<void> {
        because a line you can press and cannot reach with the keyboard is a
        line that is only half there. */
     const press = (pick: string): void => {
+      if (pick.startsWith('change:')) {
+        void openChange(pick.slice(7));
+        return;
+      }
       if (pick.startsWith('keep:')) {
         window.mender.keep(pick.slice(5));
         say('copied.', 2000);
@@ -815,6 +857,10 @@ async function boot(): Promise<void> {
             return;
           }
           void unlook();
+          return;
+        }
+        if (reading) {
+          stopReading();
           return;
         }
         if (titling) {
@@ -992,7 +1038,9 @@ async function boot(): Promise<void> {
       paintRail();
       // The roster is a live thing: a session that starts working changes its
       // mark on the board you are looking at, without you touching anything.
-      if (live && !work && !card && !naming && !titling && !looking) board.update(live.rows());
+      if (live && !work && !card && !naming && !titling && !looking && !reading) {
+        board.update(live.rows());
+      }
     };
     const running = new ReplicaState<Task[]>(client.tasks.all.state(undefined, 'list'), {
       onChange: (value) => {

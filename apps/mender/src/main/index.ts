@@ -3,6 +3,8 @@ import { createScope } from '@emdash/shared/concurrency';
 import { app, BrowserWindow } from 'electron';
 import { createAgents } from './agents';
 import { createAgentsController } from './agents-controller';
+import { createChanges } from './changes';
+import { createChangesController } from './changes-controller';
 import { createProjects } from './projects';
 import { createProjectsController } from './projects-controller';
 import { startRuntimes } from './runtimes';
@@ -32,11 +34,13 @@ export async function main(): Promise<void> {
   const projects = createProjects(runtimes);
   const tasks = createTasks(runtimes, projects);
   const agents = createAgents(runtimes, tasks);
+  const changes = createChanges(runtimes);
   scope.add(() => agents.dispose());
   scope.add(() => tasks.dispose());
   installWire(scope, {
     ...runtimes.controllers,
     agents: createAgentsController(agents),
+    changes: createChangesController(changes),
     projects: createProjectsController(projects),
     tasks: createTasksController(tasks),
     village: createVillageController({ state: () => projects.stages() }),

@@ -35,8 +35,8 @@ writes in is read rather than shown, and when it comes to the door to ask
 something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 34 done, 22 partly done, 34 inherited working from emdash's back end
-and needing no village surface, 15 deliberately cut, and **148 not started**.
+ledger rows: 37 done, 22 partly done, 34 inherited working from emdash's back end
+and needing no village surface, 15 deliberately cut, and **145 not started**.
 
 ## What "not started" actually means
 
@@ -246,9 +246,23 @@ properly on the wood; nested subagents fold and unfold; you can stop a turn
 mid-flight and queue the next thing behind it; an image dropped on the board
 goes in as context; and a file or an issue can be named inline.
 
-### W3 — you can finish a piece of work without a terminal
+### W3 — you can finish a piece of work without a terminal · started
 
 Today a session ends by leaving Mender. That is the single biggest hole.
+
+A change is read on the wood. Pressing an uncommitted file on any checkout
+board, a project's or a session's, turns the board into what changed in that
+file: what went in reads warm, what came out reads sore, a few lines either
+side are there to say where you are, and a long stretch nobody touched says how
+many lines went by rather than making you scroll through them. Escape steps back
+out onto the board you pressed it from, at the top, where you were.
+
+The diff is ours and it is Myers', the same shortest-edit-script git itself
+uses, so a moved line reads as a moved line rather than dragging the rest of the
+function with it. It was checked against git's own output on real files in a
+real checkout and comes out line for line the same, hunk boundaries and counts
+included. A file that is not writing at all says so instead of drawing its
+bytes.
 
 Closes WS-29 through WS-31, WS-35 through WS-42, WS-44, FS-24 through FS-28,
 ST-15, UI-09, UI-35, UI-39.
@@ -505,7 +519,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-38 | Preview vs pinned diff tabs |  | W3 |
 | WS-39 | Prefetched diff models on hover |  | W3 |
 | WS-40 | Commit card |  | W3 |
-| WS-41 | Diff main panel |  | W3 |
+| WS-41 | Diff main panel | done | W3 |
 | WS-42 | Commit history / blame |  | W3 |
 | WS-43 | CI check runs |  | W4 |
 | WS-44 | Draft line comments (agent-directed notes) |  | W3 |
@@ -572,11 +586,11 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-21 | Monaco text editor |  | W5 |
 | FS-22 | CSV renderer |  | W5 |
 | FS-23 | Markdown/HTML/SVG/image renderers |  | W5 |
-| FS-24 | Text diff (Monaco diff editor) |  | W3 |
+| FS-24 | Text diff (Monaco diff editor) | done | W3 |
 | FS-25 | Inline review comments on diff lines |  | W3 |
 | FS-26 | Stacked multi-file diff view |  | W3 |
 | FS-27 | Image diff view |  | W3 |
-| FS-28 | Binary diff fallback |  | W3 |
+| FS-28 | Binary diff fallback | done | W3 |
 | FS-29 | Mermaid inline + standalone viewer |  | W9 |
 | FS-30 | Image viewer (contained/expandable/standalone/zoom-pan chassis) |  | W5 |
 | FS-31 | Shared file-watching service | kept |  |

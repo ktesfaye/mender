@@ -1,6 +1,7 @@
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { defineContract } from '@emdash/wire/rpc';
 import { agentsContract } from './agents';
+import { changesContract } from './changes';
 import { projectsContract } from './projects';
 import { tasksContract } from './tasks';
 import { villageContract } from './village';
@@ -15,6 +16,7 @@ import { villageContract } from './village';
  */
 export const menderDomainContracts = {
   agents: agentsContract,
+  changes: changesContract,
   git: gitContract,
   projects: projectsContract,
   tasks: tasksContract,

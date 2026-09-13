@@ -190,6 +190,8 @@ function build(
         text: path,
         tone: TONE[mark.trim()[0] ?? ''] ?? 'faded',
         keep: 'tail',
+        // Pressing a file that has changed is how the change is read.
+        pick: `change:${path}`,
       });
     }
     if (entries.length > CHANGES) {

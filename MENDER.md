@@ -138,6 +138,12 @@ where the @ was. The same wood and the same keys as the slash.
 selected, so the one thing you cannot retype comes off it by being pressed: the
 whole block lights up and it is on the clipboard. By key as much as by hand.
 
+**A file that changed is read on the board.** Every checkout board, a project's
+and a session's alike, lists what is uncommitted in it, and pressing one of
+those files turns the board into what changed: what went in, what came out, a
+little of what is around it, and a line saying how much unchanged writing went
+by. Escape steps back out. Nothing is staged or committed from there yet.
+
 **A session is a real agent, configured.** The card is who is working in there
 and who else on this machine could, what they are thinking with, how they work,
 how hard they think, what they can reach out in the world, and what they have
