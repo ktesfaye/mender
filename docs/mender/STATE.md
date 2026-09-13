@@ -35,8 +35,8 @@ writes in is read rather than shown, and when it comes to the door to ask
 something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 33 done, 22 partly done, 34 inherited working from emdash's back end
-and needing no village surface, 15 deliberately cut, and **149 not started**.
+ledger rows: 34 done, 22 partly done, 34 inherited working from emdash's back end
+and needing no village surface, 15 deliberately cut, and **148 not started**.
 
 ## What "not started" actually means
 
@@ -214,6 +214,16 @@ rather than the row your hand landed on. It is reached by key as well as by
 hand, because a line you can press and cannot walk to is only half there, and
 fixing that turned out to fix the same hole under the carried pictures and the
 session card, which the keyboard had never been able to press at all.
+
+Somebody sent off to do something says what they were sent to do. The name on a
+subagent is the tool's and it is the same word every time, so the board says the
+errand instead, which the agent writes out itself, and the work done out there
+is folded under it and opens. A command is said from inside the checkout it ran
+in, like every other path on the board: an agent writes out the whole absolute
+path because that is what it was handed, and forty characters of it are the same
+forty characters every time, pushing the part you wanted off the end of the
+line. One thing about it is not fixed: a restart loses the fold, because the
+replay the agent sends back does not carry what happened inside a subagent.
 
 Two things are cut on purpose. A resource link never arrives: neither CLI ever
 sends one back, both of them turn a file reference into ordinary writing on the
@@ -424,7 +434,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-26 | User message card | done | W2 |
 | AG-27 | Generic tool call row | done | W2 |
 | AG-28 | Hierarchical tool grouping (subagents) | done | W2 |
-| AG-29 | Subagent card |  | W2 |
+| AG-29 | Subagent card | done | W2 |
 | AG-30 | Diff card (file edit preview) | done | W2 |
 | AG-31 | Execute card (shell command + live output) | done | W2 |
 | AG-32 | File operation card (read/edit/delete/move) | done | W2 |

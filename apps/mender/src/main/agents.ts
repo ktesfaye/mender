@@ -871,7 +871,7 @@ function clock(ms: number): string {
 function deedOf(node: Exclude<ToolNode, { kind: 'tool-group' }>, root?: string): string {
   switch (node.kind) {
     case 'execute-tool-call':
-      return node.command ?? node.title;
+      return standing(node.command ?? node.title, root);
     case 'read-tool-call':
       return `read ${inside(where(node.locations) ?? node.title, root)}`;
     case 'create-file-tool-call':
@@ -885,7 +885,7 @@ function deedOf(node: Exclude<ToolNode, { kind: 'tool-group' }>, root?: string):
     case 'web-fetch-tool-call':
       return `read ${node.pageTitle ?? node.url}`;
     case 'spawn-subagent-tool-call':
-      return `sent ${node.name} off`;
+      return sent(node.name, node.inputSummary);
     case 'create-plan-tool-call':
       return 'made a plan';
     case 'mcp-tool-call':
@@ -906,6 +906,30 @@ function where(locations: { path: string }[] | undefined): string | undefined {
  * session and so tells you nothing, and on a board this narrow it pushes the
  * part that does tell you something off the end.
  */
+/**
+ * A command, said from inside the checkout it was run in.
+ *
+ * An agent writes absolute paths because that is what it was handed, and on the
+ * wood they are mostly the same forty characters over and over, pushing the
+ * part you wanted off the end of the line.
+ */
+function standing(command: string, root: string | undefined): string {
+  if (!root) return command;
+  return command.replaceAll(`${root}/`, '').replaceAll(root, '.');
+}
+
+/**
+ * Somebody sent off to do one thing.
+ *
+ * The name is the tool's, not a person's — it is `Agent` every time — so what
+ * is worth saying is the errand, which the agent writes out itself.
+ */
+function sent(name: string, errand: string | undefined): string {
+  const who = name === 'Agent' || name === 'Task' ? 'somebody' : name;
+  if (!errand) return `sent ${who} off`;
+  return `sent ${who} off to ${errand.charAt(0).toLowerCase()}${errand.slice(1)}`;
+}
+
 function inside(path: string, root: string | undefined): string {
   if (root && path.startsWith(root)) {
     const rest = path.slice(root.length).replace(/^[/\\]+/, '');
