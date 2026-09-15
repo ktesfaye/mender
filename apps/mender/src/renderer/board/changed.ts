@@ -9,7 +9,7 @@ import type { Row } from './board';
  * went in reads warm, what came out reads sore, and everything around it is
  * there to tell you where you are rather than to be read.
  */
-export function readOut(change: Change): Row[] {
+export function readOut(change: Change, undoing?: 'offered' | 'asked'): Row[] {
   const rows: Row[] = [
     { kind: 'title', text: name(change.path) },
     ...where(change.path),
@@ -37,7 +37,42 @@ export function readOut(change: Change): Row[] {
       { kind: 'line', text: `and ${change.more} more lines.`, tone: 'faded' }
     );
   }
+  if (undoing) rows.push({ kind: 'gap' }, undo(change, undoing));
   return rows;
+}
+
+/**
+ * Undoing it, which takes two presses.
+ *
+ * There is no undoing the undo: git keeps nothing it was never given, so what
+ * this throws away is gone off the machine. Everything else in the village
+ * happens on one press because everything else in the village can be pressed
+ * again; this asks twice, and the second line says plainly what is about to
+ * stop existing rather than asking whether you are sure.
+ */
+function undo(change: Change, undoing: 'offered' | 'asked'): Row {
+  const away = change.kind === 'new';
+  if (undoing === 'offered') {
+    return {
+      kind: 'entry',
+      mark: '✗',
+      text: away ? 'throw this file away' : 'put this file back the way it was',
+      tone: 'faded',
+      pick: 'undo',
+    };
+  }
+  return {
+    kind: 'entry',
+    mark: '✗',
+    text: away ? 'press again and this file is gone' : `press again and ${counted(change)} gone`,
+    tone: 'sore',
+    pick: 'undo!',
+  };
+}
+
+function counted(change: Change): string {
+  const many = change.added + change.taken;
+  return many === 1 ? 'that one line is' : `those ${many} lines are`;
 }
 
 /** While git is still being asked. */

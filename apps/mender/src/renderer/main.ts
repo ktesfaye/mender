@@ -9,7 +9,7 @@ import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Mood } from '@shared/agents';
-import type { At } from '@shared/changes';
+import type { At, Change } from '@shared/changes';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { makeBoard, type Board, type Row } from './board/board';
@@ -95,7 +95,13 @@ async function boot(): Promise<void> {
     /* Which file's change is on the board, over the checkout it came from.
        The checkout board underneath stays open and stays live; it is simply
        not what the wood is showing. */
-    let reading: { aim: Aim; path: string; at?: At } | null = null;
+    let reading: {
+      aim: Aim;
+      path: string;
+      at?: At;
+      change?: Change;
+      asked?: boolean;
+    } | null = null;
     /* Which commit is on the board, over the checkout it came from. A commit
        is stepped into the same way a change is, and a file pressed inside one
        reads the change that commit made to it. */
@@ -529,10 +535,54 @@ async function boot(): Promise<void> {
       const checkout = inside?.path ?? (aim ? projectOn(aim.district)?.path : undefined);
       if (!aim || !checkout) return;
       reading = { aim, path, ...(at ? { at } : {}) };
+      const mine = reading;
       board.show(opening(path));
       const got = await client.changes.file({ checkout, path, ...(at ? { at } : {}) });
-      if (reading?.aim !== aim || reading.path !== path) return;
-      board.show(got.success ? readOut(got.data) : unreadable(path, whyNot(got.error)));
+      if (reading !== mine) return;
+      if (!got.success) {
+        board.show(unreadable(path, whyNot(got.error)));
+        return;
+      }
+      reading.change = got.data;
+      board.show(rowsForChange());
+    };
+
+    /* A committed change is history and there is nothing to undo about it; one
+       in the working tree is the only thing in the village that can be thrown
+       away, so it is the only place that offers it. */
+    const rowsForChange = (): Row[] => {
+      if (!reading?.change) return [];
+      if (reading.at) return readOut(reading.change);
+      return readOut(reading.change, reading.asked ? 'asked' : 'offered');
+    };
+
+    /**
+     * Throwing a change away, on the second press.
+     *
+     * Nothing else in the village asks twice, because nothing else in the
+     * village cannot be pressed again. This one is off the machine afterwards.
+     */
+    const undo = async (sure: boolean): Promise<void> => {
+      const read = reading;
+      if (!read?.change || read.at) return;
+      if (!sure) {
+        read.asked = true;
+        board.update(rowsForChange());
+        return;
+      }
+      const place = inside ?? (open ? projectOn(open.district) : undefined);
+      const parsed = place ? parseNativeAbsolute(place.path) : undefined;
+      if (!parsed?.success) return;
+      const thrown = await client.git.checkout.model.mutate('revert', {
+        key: { checkout: parsed.data },
+        input: { paths: [read.path as GitFilePath] },
+      });
+      if (!thrown.success) {
+        say(trouble(thrown.error), 6000);
+        return;
+      }
+      stopReading();
+      say(read.change.kind === 'new' ? 'thrown away.' : 'put back.', 3000);
     };
 
     /**
@@ -991,6 +1041,10 @@ async function boot(): Promise<void> {
         void openChange(pick.slice(7));
         return;
       }
+      if (pick === 'undo' || pick === 'undo!') {
+        void undo(pick === 'undo!');
+        return;
+      }
       if (pick.startsWith('made:')) {
         void openMade(pick.slice(5));
         return;
@@ -1126,6 +1180,12 @@ async function boot(): Promise<void> {
           return;
         }
         if (reading) {
+          // Asked whether to throw it away, escape is the answer no.
+          if (reading.asked) {
+            reading.asked = false;
+            board.update(rowsForChange());
+            return;
+          }
           // A file read inside a commit steps back onto that commit, not past it.
           if (reading.at && looked?.commit) {
             reading = null;

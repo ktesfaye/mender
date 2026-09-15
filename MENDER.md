@@ -144,6 +144,14 @@ those files turns the board into what changed: what went in, what came out, a
 little of what is around it, and a line saying how much unchanged writing went
 by. Escape steps back out. Nothing is staged or committed from there yet.
 
+**A change is thrown away with two presses.** At the bottom of a change is the
+one thing you can do about it: put the file back the way it was, or throw it
+away entirely when git has never seen it. Pressing it does not do it; it turns
+the line into what is about to stop existing, and the second press does. Escape
+is no. It is the only thing in the village that asks, because it is the only
+thing that cannot be pressed again, and there is no line anywhere that throws
+everything away at once.
+
 **A commit is written on the board too.** Under what is uncommitted, a line
 that says write a commit turns the board into what is about to go in. Everything
 that changed goes in to begin with; pressing a file holds it back and pressing

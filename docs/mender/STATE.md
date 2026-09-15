@@ -35,7 +35,7 @@ writes in is read rather than shown, and when it comes to the door to ask
 something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 41 done, 24 partly done, 34 inherited working from emdash's back end
+ledger rows: 42 done, 23 partly done, 34 inherited working from emdash's back end
 and needing no village surface, 15 deliberately cut, and **139 not started**.
 
 ## What "not started" actually means
@@ -311,6 +311,20 @@ half empty.
 Blame is not in this: who last touched a line is a thing you ask of a file you
 are reading, and there is still no way to read a file. It waits for W5.
 
+A change can also be thrown away, and it is the only thing in the village that
+asks twice. Reading an uncommitted file ends in a line that offers to put it
+back the way it was, or to throw it away entirely when git has never seen it;
+pressing that turns the line into what is about to stop existing, and only the
+second press does it. Escape is the answer no. Nothing else here asks, because
+nothing else here cannot be pressed again, and this one is off the machine
+afterwards. There is deliberately no line that throws everything away at once:
+each file is its own decision and the one-press version of that is the most
+dangerous thing in git.
+
+Both were driven: a line added to a tracked file, read on the board, put back,
+and git agreeing the file was clean again; and an untracked file thrown away
+and gone off the disk.
+
 The counts on a commit were checked against git's own numbers on real commits
 in this checkout, file by file and in total. A file a commit deleted comes back
 from git as missing, the same as a file deleted in the working tree, so it
@@ -560,7 +574,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-26 | Bulk "Delete workspaces" |  | W7 |
 | WS-27 | Workspace removal / path-issue / script-issue states |  | W7 |
 | WS-28 | Observation freshness (fresh/stale/offline) |  | W7 |
-| WS-29 | Checkout store (stage/unstage/discard/commit/push/pull/publish) | part | W3 |
+| WS-29 | Checkout store (stage/unstage/discard/commit/push/pull/publish) | done | W3 |
 | WS-30 | Git action toasts | done | W3 |
 | WS-31 | Git error vocabulary | done | W3 |
 | WS-32 | Repository store (branches/remotes/provider identity) | kept |  |
