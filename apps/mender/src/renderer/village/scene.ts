@@ -45,8 +45,8 @@ export const DOORSTEP = 9;
  * calculations, and this costs four numbers per sprite as it goes past.
  */
 export interface Building {
-  /** The plot it stands on, which is the district it belongs to. */
-  plot: string;
+  /** The district it stands on. */
+  district: string;
   x: number;
   y: number;
   width: number;
@@ -73,7 +73,7 @@ export interface Building {
 
 export interface BuiltScene {
   root: Container;
-  /** Every building on the map, in a stable order per plot. */
+  /** Every building on the map, in a stable order per district. */
   buildings: Building[];
   drawn: number;
   /** Items whose sprite the kit does not have. Always expect zero. */
@@ -121,14 +121,14 @@ export function buildScene(items: readonly Linked[], layout: Layout): BuiltScene
     if (item.order < 0) groundTop = drawn;
     if (item.origin.kind === 'object' && !item.multiply) {
       const object = layout.objects[item.origin.oi];
-      if (object?.group === 'Building') grow(boxes, object.plot ?? '', item, sprite);
+      if (object?.group === 'Building') grow(boxes, object.district ?? '', item, sprite);
     }
   }
   return { root, buildings: buildingsOf(root, boxes, feet, groundTop), drawn, missing, groundTop };
 }
 
 interface Box {
-  plot: string;
+  district: string;
   left: number;
   top: number;
   right: number;
@@ -140,7 +140,7 @@ interface Box {
 /* The shadow under a building is not part of it: it is cast onto the ground
    beside it, and counting it makes the building's footprint reach several cells
    further than anything you would point at. */
-function grow(boxes: Map<number, Box>, plot: string, item: Linked, sprite: Sprite): void {
+function grow(boxes: Map<number, Box>, district: string, item: Linked, sprite: Sprite): void {
   if (item.origin.kind !== 'object') return;
   const left = sprite.x - item.pivotX * item.w;
   const top = sprite.y - (1 - item.pivotY) * item.h;
@@ -148,7 +148,7 @@ function grow(boxes: Map<number, Box>, plot: string, item: Linked, sprite: Sprit
   const held = boxes.get(item.origin.oi);
   if (!held) {
     boxes.set(item.origin.oi, {
-      plot,
+      district,
       left,
       top,
       right: left + item.w,
@@ -202,7 +202,7 @@ function buildingsOf(
   return found
     .sort((a, b) => a.top - b.top || a.left - b.left)
     .map((box) => ({
-      plot: box.plot,
+      district: box.district,
       x: box.left,
       y: box.top,
       width: box.right - box.left,

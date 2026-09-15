@@ -1,5 +1,5 @@
-import { snapToTread } from './brush/compose';
 import { redress, verge, relegalise, resurface, type Atlas } from './brush/redress';
+import { snapToTread } from './brush/shape';
 import { Ground } from './brush/terrainBrush';
 /* The shore pass: take a layout and the set of cells that are LAND, erase every
    other cell to open water, and dress the shoreline that exposes with the
@@ -24,6 +24,22 @@ export interface ShorePassOptions {
   readonly redressMode?: 'band' | 'all' | 'none';
   /** Skip the tread snap. Only the shore tests want this. */
   readonly rawShape?: boolean;
+  /** Do not reach across the cut for a neighbour's shore stone.
+
+      A footprint drawn on the meadow has no stone of its own and needs his
+      ring; his own partition gives every one of his cells to exactly one
+      district, the shore ring included, so claiming a neighbour's stone here
+      does not rescue his coast — it drags in the face of the terrace next
+      door, which then stands at the water with nothing behind it. */
+  readonly noRing?: boolean;
+  /** Water the caller says must stay water.
+
+      A thing that moves brings its own sea with it: the islet's bridge is
+      drawn with the strait showing through its arch, and berthed over ground
+      that used to be a crop field the finish put that ground back, so the arch
+      was drawn over solid land with a hole of sea in the middle of it. These
+      cells are refused to every pass that can lay land. */
+  readonly wet?: readonly (readonly [number, number])[];
   /** Cells to trace through every lap, for debugging the pass. */
   readonly watch?: readonly (readonly [number, number])[];
 }
@@ -92,7 +108,7 @@ export function shorePass(layout: Layout, opts: ShorePassOptions): Record<string
      face came out as two bare squares with nothing above them. */
     let grown = 0;
     const ring1 = new Set<string>();
-    for (const k of asked) {
+    for (const k of opts.noRing ? [] : asked) {
       if (stoneTop.has(k) || !top.has(k)) continue;
       const [x, y] = k.split(',').map(Number);
       // At a side, never a diagonal: a diagonal reaches the lip of the land
@@ -380,6 +396,24 @@ export function shorePass(layout: Layout, opts: ShorePassOptions): Record<string
    landed as grass with a cliff face under it. Stone that stands where it
    stood is not land the gesture may lay. */
   for (const k of stoneTop) if (!gone.has(k)) forbid.add(k);
+  /* AND THE CALLER'S OWN WATER STAYS WATER. Emptied here, before the finish
+   rather than after it: the finish, the regrow and the seal all read the
+   ground as it stands, and a cell taken back to water afterwards leaves the
+   grass beside it holding the piece it chose for a neighbour that is no
+   longer there. */
+  const staysWet = new Set<string>((opts.wet ?? []).map(([x, y]) => K(x, y)));
+  for (const k of staysWet) forbid.add(k);
+  {
+    let n = 0;
+    for (const t of doc.layout.tiles) {
+      if (t.file && staysWet.has(K(t.cell[0], t.cell[1]))) {
+        t.file = null;
+        n++;
+      }
+    }
+    if (n) g.reindex();
+    out.kept_wet = staysWet.size;
+  }
   out.finished = g.finishStroke(forbid, keep);
   g.reindex();
   /* WHAT THE FINISH PUT BACK IS LAID AGAIN AS LAND. Completing a block, the

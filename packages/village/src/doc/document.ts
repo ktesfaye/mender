@@ -52,9 +52,11 @@ export interface VObject {
   prefab_guid?: string;
   name?: string;
   group: string;
-  /** The plot this belongs to, when it belongs to one. Absent on base scenery,
-      which is there at every state. See `state.ts` for the ranges beside it. */
-  plot?: string;
+  /** Which of his districts this belongs to. Ours, not his: the partition says
+      it and `his.ts` writes it on as it composes, so the renderer can group a
+      district's buildings without carrying the partition too. Absent on the
+      water backdrop, which belongs to nobody. */
+  district?: string;
   pos: [number, number, number];
   /** Kept in step with `pos`. `village.py` writes it and `analyze.py` reads it,
       so a stale copy is a silently wrong answer rather than an error. */

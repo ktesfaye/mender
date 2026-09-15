@@ -58,7 +58,7 @@ not split panes, not a tab strip.
 | `packages/village/` | the world: what a state of the village is, and the shore pass that cuts a coast round it. Draws nothing, knows nothing about Electron |
 | `apps/mender/` | the app: the Electron shell, the wire to emdash's runtimes, and the Pixi renderer |
 | `apps/mender/assets/` | the world files, the packed sprite kit, the board's timber, the villagers and the one typeface. `tools/pack-kit.py` and `tools/make-board.py` rebuild the first two from the Cainos art, which is purchased and lives outside both repos; `tools/make-folk.py` draws the villagers, which are ours |
-| `../a-cozy-agents-village/` | where all of that grew, and still the place the growth stages are authored. The generator, the composer and the editor stay there |
+| `../a-cozy-agents-village/` | the artist's map, his partition of it, and `world/his.py`, which is what this app's composer is gated against. The editor and the brush live there |
 
 ## What is known and what is not
 
@@ -255,10 +255,23 @@ afterwards.
 Nothing yet adds a server or teaches a skill: the card shows what is there and
 turns a server on or off, and the rest is still done in the agent's own files.
 
-**Only stages 0 and 4 are used.** A founded project goes straight to a built
-district. The stages below four are sketches that do not stand up beside it,
-and five is so full it leaves the district no room, so nothing grows through
-any of them and nothing should be built on them until they are drawn.
+**A district is the artist's, or it is sea. Nothing grows.** The map is his
+`base-layout.json`, untouched, and his own partition of it into thirteen
+places. A project takes one whole and it appears exactly as he drew it, tile
+for tile; a district with nobody on it is open water, and the coastline that
+exposes between the two is dressed by the editor's own brush. There is no stage,
+no half-built district and no growth model anywhere in this app: the five-stage
+pipeline that used to draw them is gone, and what replaced it is measured
+against `world/his.py` in the village repo, tile for tile, at every state.
+
+**The order they come on in is measured, not chosen.** Every state has to be one
+piece of land walkable from the fire, and from there the district that comes next
+is the one leaving the island roundest, over every walk the geography allows.
+Shape is the whole of what the island says from out on the water: a village that
+grows along one arm reads as a sandbar, and the camera has to pull back to hold
+it, so everything on it gets smaller. The camp and the islet are common ground
+and are never off; the islet is moored rather than anchored and sails its bridge
+to whatever coast there is.
 
 **It is an app you install.** `pnpm run package` makes a Mender.app and a dmg;
 what comes out of the Applications folder is the whole village with everything

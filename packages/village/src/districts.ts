@@ -7,52 +7,77 @@
    the renderer rather than asking over the wire per pointer move. */
 
 import type { Layout } from './doc/document';
+import { COMMON, type CellRun, type DistrictId, type VillageWorld } from './his';
 import { CELL } from './scene/resolve';
-import type { CellRun, Plots, Stages } from './state';
 
 export interface District {
-  /** Plot id, or CAMP. */
-  readonly id: string;
+  /** One of his thirteen. */
+  readonly id: DistrictId;
   /** What it is called out loud: "Crop farm", "Camp". */
   readonly name: string;
-  /** The cell the approach lane arrives at, and where the camera looks. */
+  /** The middle of its own land, which is where the camera looks. */
   readonly core: readonly [number, number];
-  /** Its land in this state, as runs of cells: `[y, x0, x1]`, ends inclusive. */
+  /** Its land, as runs of cells: `[x, y0, y1]`, ends inclusive. */
   readonly cells: readonly CellRun[];
-  /** Whether a project stands here, or it is common ground. */
+  /** Whether a checkout stands here, or it is common ground. */
   readonly kind: 'project' | 'common';
-  /** How far it has grown, 0..5. The camp has no stage. */
-  readonly stage?: number;
 }
 
-/** Every district standing in this state, the camp included. */
-export function districtsOf(plots: Plots, stages: Stages): District[] {
+/**
+ * Every district standing in this state.
+ *
+ * A district that is on is exactly the shape he drew it, so its land is the
+ * same land at every state it appears in; the only thing that changes is
+ * whether it is there at all. The islet is the exception and moves with its
+ * mooring, which is why the offset comes in here.
+ */
+export function districtsOf(
+  world: VillageWorld,
+  on: Iterable<string>,
+  moored: readonly [number, number] = [0, 0]
+): District[] {
+  const present = new Set(on);
   const out: District[] = [];
-  const camp = plots.camp as Plots['camp'] & { name?: string; core?: [number, number] };
-  out.push({
-    id: camp.id,
-    name: camp.name ?? 'Camp',
-    core: camp.core ?? [0, 0],
-    cells: camp.cells,
-    kind: 'common',
-  });
-  for (const rec of plots.plots) {
-    const stage = stages[rec.id];
-    if (stage === undefined) continue;
-    const plot = rec as typeof rec & { name?: string; core?: [number, number] };
+  for (const spec of world.districts) {
+    if (!present.has(spec.id)) continue;
+    const common = COMMON.includes(spec.id);
+    /* Only the islet sails; everything else of his stands where he put it. */
+    const shifted =
+      spec.id === 'ISLAND' && (moored[0] || moored[1])
+        ? spec.cells.map(
+            ([x, y0, y1]) => [x + moored[0], y0 + moored[1], y1 + moored[1]] as CellRun
+          )
+        : spec.cells;
     out.push({
-      id: rec.id,
-      name: plot.name ?? rec.id,
-      core: plot.core ?? [0, 0],
-      // Its land at the stage it is at, not every cell it will ever claim: a
-      // young district should not be clickable out in the water it has not
-      // grown into yet.
-      cells: rec.land[String(stage)] ?? [],
-      kind: 'project',
-      stage,
+      id: spec.id,
+      name: spec.name,
+      core: middleOf(shifted),
+      cells: shifted,
+      kind: common ? 'common' : 'project',
     });
   }
   return out;
+}
+
+/**
+ * The middle of a district's own land, in cells.
+ *
+ * Not the middle of its bounding box: his crop farm reaches a long arm north
+ * around the hay farm, and the box's middle sits out in a field nobody built
+ * on. The mean of the cells themselves lands where the district actually is.
+ */
+function middleOf(cells: readonly CellRun[]): [number, number] {
+  let n = 0;
+  let sx = 0;
+  let sy = 0;
+  for (const [x, y0, y1] of cells) {
+    const rows = y1 - y0 + 1;
+    n += rows;
+    sx += x * rows;
+    sy += ((y0 + y1) / 2) * rows;
+  }
+  if (!n) return [0, 0];
+  return [Math.round(sx / n), Math.round(sy / n)];
 }
 
 /** A district's extent in world pixels, as the renderer places things. */
@@ -66,16 +91,17 @@ export function boundsOf(district: District): {
   let x1 = -Infinity;
   let y0 = Infinity;
   let y1 = -Infinity;
-  for (const [y, a, b] of district.cells) {
-    if (a < x0) x0 = a;
-    if (b > x1) x1 = b;
-    if (y < y0) y0 = y;
-    if (y > y1) y1 = y;
+  for (const [x, a, b] of district.cells) {
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (a < y0) y0 = a;
+    if (b > y1) y1 = b;
   }
   if (!Number.isFinite(x0)) return { x: 0, y: 0, width: 0, height: 0 };
+  // Screen y runs down and the world's runs up.
   return {
     x: x0 * CELL,
-    y: y0 * CELL,
+    y: -(y1 + 1) * CELL,
     width: (x1 - x0 + 1) * CELL,
     height: (y1 - y0 + 1) * CELL,
   };
@@ -134,8 +160,9 @@ const CAMPFIRE = 'PF Village Props - Campfire 01';
  * Where the fire is, in the pixels the renderer places in.
  *
  * The camp owns a stretch of ground, but the camp is not what you point at: the
- * fire is. A plot-shaped wash over the middle of the island says nothing about
- * what would happen if you clicked it, and the fire says exactly what it is.
+ * fire is. A district-shaped wash over the middle of the island says nothing
+ * about what would happen if you clicked it, and the fire says exactly what it
+ * is.
  */
 export function campfireOf(layout: Layout): { x: number; y: number } | null {
   for (const object of layout.objects) {

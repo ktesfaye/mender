@@ -5,8 +5,8 @@ export const projectSchema = z.object({
   id: z.string(),
   name: z.string(),
   path: z.string(),
-  plot: z.string(),
-  stage: z.number().int().min(0).max(5),
+  /** Which of his thirteen it stands on. */
+  district: z.string(),
   foundedAt: z.string(),
 });
 
@@ -17,7 +17,7 @@ export const foundErrorSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('cancelled') }),
   z.object({ kind: z.literal('not-a-repository'), path: z.string() }),
   z.object({ kind: z.literal('already-founded'), path: z.string() }),
-  /** Twelve plots, and every one of them taken. */
+  /** Eleven districts, and every one of them taken. */
   z.object({ kind: z.literal('island-full') }),
 ]);
 

@@ -88,17 +88,17 @@ export class Ground {
   constructor(districts: readonly District[], layout: Layout, buildings: readonly Building[]) {
     for (const district of districts) {
       if (district.id === CAMP) continue;
-      for (const [y, x0, x1] of district.cells) {
-        for (let x = x0; x <= x1; x++) this.owner.set(`${x},${y}`, district);
+      for (const [x, y0, y1] of district.cells) {
+        for (let y = y0; y <= y1; y++) this.owner.set(`${x},${y}`, district);
       }
     }
     this.camp = districts.find((district) => district.id === CAMP) ?? null;
     this.fire = campfireOf(layout);
     for (const building of buildings) {
-      if (!building.plot || building.plot === CAMP) continue;
-      const held = this.standing.get(building.plot);
+      if (!building.district || building.district === CAMP) continue;
+      const held = this.standing.get(building.district);
       if (held) held.push(building);
-      else this.standing.set(building.plot, [building]);
+      else this.standing.set(building.district, [building]);
     }
     for (const key of groundCells(layout)) {
       const [x, y] = key.split(',').map(Number);

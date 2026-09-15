@@ -191,7 +191,7 @@ async function boot(): Promise<void> {
     };
 
     const projectOn = (district: District): Project | undefined =>
-      projects.find((candidate) => candidate.plot === district.id);
+      projects.find((candidate) => candidate.district === district.id);
     const tasksOn = (district: District): Task[] => {
       const project = projectOn(district);
       return project ? tasks.filter((task) => task.project === project.id) : [];
@@ -303,7 +303,7 @@ async function boot(): Promise<void> {
       }
       if (id.startsWith('project:')) {
         const project = projects.find((candidate) => candidate.id === id.slice(8));
-        const district = project && drawn.districts.get(project.plot ?? '');
+        const district = project && drawn.districts.get(project.district ?? '');
         // A peg always takes you to that project, never away from it: pressing
         // the one you are standing on is how you get back out of a session.
         if (district) void openDistrict({ kind: 'district', district });
@@ -313,7 +313,7 @@ async function boot(): Promise<void> {
       const task = tasks.find((candidate) => candidate.id === id.slice(5));
       if (!task) return;
       const district = drawn.districts.get(
-        projects.find((project) => project.id === task.project)?.plot ?? ''
+        projects.find((project) => project.id === task.project)?.district ?? ''
       );
       if (district) {
         void openTask(
@@ -368,7 +368,7 @@ async function boot(): Promise<void> {
       }
       if (going.kind === 'project') {
         const project = projects.find((each) => each.id === going.id);
-        const district = project && drawn.districts.get(project.plot ?? '');
+        const district = project && drawn.districts.get(project.district ?? '');
         if (district) await openDistrict({ kind: 'district', district });
         else {
           await shut();
@@ -378,7 +378,7 @@ async function boot(): Promise<void> {
       }
       const task = tasks.find((each) => each.id === going.id);
       const district =
-        task && drawn.districts.get(projects.find((p) => p.id === task.project)?.plot ?? '');
+        task && drawn.districts.get(projects.find((p) => p.id === task.project)?.district ?? '');
       // Somewhere that is not there any more puts you back out on the water,
       // rather than leaving you looking at whatever was already on the board.
       if (!task || !district) {
@@ -2233,8 +2233,8 @@ async function boot(): Promise<void> {
       for (const task of tasks) {
         const mood = seen[task.id];
         if (!mood || mood === 'empty') continue;
-        const plot = projects.find((project) => project.id === task.project)?.plot;
-        const district = plot ? drawn.districts.get(plot) : undefined;
+        const where = projects.find((project) => project.id === task.project)?.district;
+        const district = where ? drawn.districts.get(where) : undefined;
         const building =
           district && task.slot !== null && drawn.ground.buildingAt(district, task.slot);
         if (building) standing.push({ id: task.id, building, mood });

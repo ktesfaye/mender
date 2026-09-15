@@ -2,51 +2,56 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createController, type Controller } from '@emdash/wire/rpc';
 import {
-  composeState,
+  createVillage,
+  districtsOf,
   parseLayout,
-  stateKey,
   type Atlas,
-  type ComposedVillage,
+  type Composed,
+  type District,
+  type DistrictSpec,
   type Layout,
-  type Plots,
-  type Stages,
+  type Village,
   type VillageWorld,
 } from '@mender/village';
 import { app } from 'electron';
 import { villageContract } from '@shared/village';
 
 export interface VillageOptions {
-  /** What is on the island right now: plot id -> stage. */
-  state: () => Promise<Stages>;
+  /** Which districts have a checkout standing on them right now. */
+  state: () => Promise<string[]>;
 }
 
 /**
- * The world, and the map of it for any state.
+ * The artist's world, and the map of it for any state.
  *
- * Composing costs about a second: filtering ten megabytes of tagged world down
- * to one state, then erasing everything outside that state's footprints to the
- * sea and dressing the coast that exposes. It happens here rather than in the
+ * Composing costs about a second: erasing everything outside the standing
+ * districts to the sea, sailing the islet to whatever coast there is, and
+ * dressing the coastline that exposes. It happens here rather than in the
  * renderer because the world files are on disk, and because a second of work is
  * a second the village would otherwise spend frozen mid-pan.
  */
 export function createVillageController(options: VillageOptions): Controller {
-  let world: VillageWorld | undefined;
-  const maps = new Map<string, ComposedVillage>();
+  let village: Village | undefined;
+  const maps = new Map<string, { composed: Composed; districts: District[] }>();
 
   return createController(villageContract, {
-    async map({ stages }) {
-      const wanted = stages ?? (await options.state());
-      const key = stateKey(wanted);
+    async map({ on }) {
+      village ??= createVillage(loadWorld());
+      const wanted = on ?? (await options.state());
+      const key = village.stateKey(village.connected(wanted));
       let map = maps.get(key);
       if (!map) {
-        world ??= loadWorld();
-        map = composeState(world, wanted);
+        const composed = village.compose(wanted);
+        map = {
+          composed,
+          districts: districtsOf(village.world, composed.on, composed.moored),
+        };
         maps.set(key, map);
       }
       return {
-        layout: map.layout,
-        stages: map.stages,
-        shore: map.shore,
+        layout: map.composed.layout,
+        on: map.composed.on,
+        shore: map.composed.shore,
         districts: map.districts,
       };
     },
@@ -57,10 +62,10 @@ function loadWorld(): VillageWorld {
   const dir = join(app.getAppPath(), 'assets', 'village');
   const read = (name: string) => readFileSync(join(dir, name), 'utf8');
   return {
-    // `parseLayout`, not `JSON.parse`: 116 of the world's objects carry a Unity
+    // `parseLayout`, not `JSON.parse`: 116 of his objects carry a Unity
     // instance id larger than 2^53, and a plain parse silently rewrites them.
-    world: parseLayout<Layout>(read('world.json')),
-    plots: JSON.parse(read('plots.json')) as Plots,
+    base: parseLayout<Layout>(read('base-layout.json')),
+    districts: (JSON.parse(read('districts.json')) as { districts: DistrictSpec[] }).districts,
     atlas: JSON.parse(read('atlas.json')) as Atlas,
   };
 }

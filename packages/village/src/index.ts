@@ -1,11 +1,15 @@
-/* The village: a world that can be drawn at any state of itself.
+/* The village: the artist's map, with any set of his districts standing.
 
    Lifted out of `../a-cozy-agents-village`, where it grew. Everything here is
    transport-agnostic and draws nothing — no Pixi, no DOM, no Electron — so the
    map for a state can be composed wherever it is cheapest to compose it. The
-   drawing sits in the app, on top of `Document.items()`. */
+   drawing sits in the app, on top of `Document.items()`.
 
-export { composeState, type ComposedVillage, type VillageWorld } from './compose-state';
+   THE ARTIST DRAWS EVERY DISTRICT AND NOTHING HERE DRAWS ANY OF THEM. There is
+   no growth model in this package: a district is on the map exactly as he laid
+   it, or it is open sea. What this composes is which of the thirteen are
+   standing, where the coast between them runs, and where the islet is moored. */
+
 export {
   boundsOf,
   campfireOf,
@@ -14,33 +18,23 @@ export {
   groundCells,
   type District,
 } from './districts';
-export { CELL } from './scene/resolve';
-export { shorePass, type ShorePassOptions } from './shore';
 export {
-  ABSENT,
-  available,
   CAMP,
-  cellsOf,
-  effective,
-  filterLayout,
-  landOf,
-  MAX_STAGE,
-  newOf,
-  ORDER,
-  PARENT,
-  parseState,
-  PLOTS,
-  plotAt,
-  stateKey,
-  toCells,
-  visible,
+  COMMON,
+  createPlan,
+  createVillage,
+  DISTRICTS,
   type Cell,
   type CellRun,
-  type PlotId,
-  type PlotRecord,
-  type Plots,
-  type Stages,
-} from './state';
+  type Composed,
+  type DistrictId,
+  type DistrictSpec,
+  type Plan,
+  type Village,
+  type VillageWorld,
+} from './his';
+export { CELL } from './scene/resolve';
+export { shorePass, type ShorePassOptions } from './shore';
 export {
   compareItems,
   Document,

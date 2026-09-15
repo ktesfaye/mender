@@ -45,6 +45,17 @@ first. An agent who is not on this machine is brought here. And it packages: a
 Mender.app that runs out of the Applications folder with the whole village
 behind it.
 
+And the island is the artist's own. The growth model is gone: the five-stage
+pipeline, the per-stage footprints, the world file it baked and the three
+thousand lines of composer behind it are all deleted, and what draws now is his
+`base-layout.json` untouched plus his own partition of it into thirteen places,
+switched on one at a time. The order they come on in is measured off that
+partition rather than chosen, so every state is one piece of land walked to from
+the fire and as round as the geography allows; the camp and the islet are always
+there, and the islet sails its bridge to whatever coast exists. Every state the
+app can reach was composed in both this app and `world/his.py` and compared tile
+for tile: identical, mooring and all.
+
 Of the 253 ledger rows: 54 done, 22 partly done, 34 inherited working from
 emdash's back end and needing no village surface, 43 deliberately cut, and
 **100 not started**.
@@ -651,10 +662,9 @@ is purely how it feels.
 
 Closes AG-18, AG-38, AG-40, FS-29, and the unnumbered work: a diagram drawn on
 the wood in the same lines everything else is drawn in, villagers that walk and
-carry a session's identity, the four growth stages that were never drawn, what
-happens when a project has more sessions than its district has houses or the
-island has more projects than plots, and land that retracts when a project is
-abandoned.
+carry a session's identity, what happens when a project has more sessions than
+its district has houses or the island has more projects than districts, and land
+that retracts when a project is abandoned.
 
 Done when: you can tell from the water who is working, who is stuck and who is
 waiting for you, without opening anything.
@@ -775,8 +785,7 @@ Not started, and each one is real work:
 | Sprite atlas packing and scoped loading — 1,031 loose files today (B2-06, B2-07) | W9 |
 | Villagers that walk: per-session identity, spawn and despawn, directable goals (B1-06, B5-01 through B5-03, B5-05) | W9 |
 | Status legible from the water, whatever Q-STATUS lands on (B5-04) | W9 |
-| Growth stages 1, 2, 3 and 5 — only 0 and 4 are drawn, so nothing grows | W9 |
-| Overflow: more projects than plots, more sessions than houses (Q-PLOT-CAPACITY, Q-TASK-DENSITY) | W9 |
+| Overflow: more projects than districts, more sessions than houses (Q-PLOT-CAPACITY, Q-TASK-DENSITY) | W9 |
 | Land retraction when a project is abandoned (Q-RETRACT) | W9 |
 | The character sprite set — idle, walk, working, sleeping, distressed. A full commission, not a recolour (art batch 1) | W9 |
 | Status overlays (art batch 2) | W9 |

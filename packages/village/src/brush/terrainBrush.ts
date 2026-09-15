@@ -20,7 +20,7 @@
    along the edge of every stroke, because the fringe resolves against a shape
    that never existed. */
 
-import { legaliseOutline, snapToTread, TREAD } from './compose';
+import { legaliseOutline, snapToTread, TREAD } from './shape';
 import { around, dressCoast, fillIn } from './weave';
 
 /** How far past its own cells a stroke's outline reaches. The stroke's cells

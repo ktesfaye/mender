@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
-import { available, type Stages } from '@mender/village';
+import { COMMON, createPlan, type DistrictSpec } from '@mender/village';
 import { app, dialog } from 'electron';
 import type { MenderRuntimes } from './runtimes';
 
@@ -20,10 +21,8 @@ export interface Project {
   readonly name: string;
   /** The checkout, as the filesystem spells it. */
   readonly path: string;
-  /** Which plot it took. Plots are handed out from the camp outward. */
-  readonly plot: string;
-  /** How far the district has grown, 0..5. */
-  readonly stage: number;
+  /** Which of his districts it took. They are handed out from the fire outward. */
+  readonly district: string;
   readonly foundedAt: string;
 }
 
@@ -40,22 +39,30 @@ export interface Projects {
   abandon(id: string): Promise<Project[]>;
   /** Who takes a project's sessions down when the project is forgotten. */
   sweeps(sweep: (project: string) => Promise<void>): void;
-  /** The village state these projects make: plot -> stage. */
-  stages(): Promise<Stages>;
+  /** The state these projects make: the districts that are standing. */
+  standing(): Promise<string[]>;
 }
 
 const KEY = 'projects';
 
 /**
- * The stage every district stands at.
+ * Which districts a checkout can stand on.
  *
- * The stages in between are the artist's work in progress: nought is a wild
- * lane, and the top of the range is a settlement so full it leaves a district
- * no room to say anything about itself. Four is the last one that is finished
- * and still has ground to spare. Nothing grows through the others until they
- * are drawn, so a district is simply built when it is founded.
+ * Not the camp and not the islet: those are common ground and are on the map
+ * from the first moment, with or without a project. Everything else is one of
+ * his eleven, and a project takes one whole.
  */
-const SETTLED = 4;
+function plan(): ReturnType<typeof createPlan> {
+  cached ??= createPlan(
+    (
+      JSON.parse(readFileSync(join(assetsDir(), 'districts.json'), 'utf8')) as {
+        districts: DistrictSpec[];
+      }
+    ).districts
+  );
+  return cached;
+}
+let cached: ReturnType<typeof createPlan> | undefined;
 
 export function createProjects(runtimes: MenderRuntimes): Projects {
   let sweeping: ((project: string) => Promise<void>) | null = null;
@@ -64,9 +71,15 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
   const list = async (): Promise<Project[]> => {
     const loaded = await store.get(KEY);
     if (!loaded.success || !Array.isArray(loaded.data)) return [];
-    // Everything that is on the island is on it at the stage that is drawn.
-    return (loaded.data as unknown as Project[]).map((project) =>
-      project.stage === SETTLED ? project : { ...project, stage: SETTLED }
+    /* A project founded before the growth model went says `plot` and carries a
+       stage. The id is the same id, so it keeps its district; the stage is
+       dropped, because a district is either his or it is sea and there was
+       never anything in between. */
+    return (loaded.data as unknown as (Project & { plot?: string; stage?: number })[]).map(
+      ({ stage: _stage, plot, ...project }) => ({
+        ...project,
+        district: project.district ?? plot ?? '',
+      })
     );
   };
 
@@ -75,17 +88,32 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
     return projects;
   };
 
-  const stagesOf = (projects: readonly Project[]): Stages =>
-    Object.fromEntries(projects.map((project) => [project.plot, project.stage]));
+  const standingIn = (projects: readonly Project[]): string[] => [
+    ...COMMON,
+    ...projects.map((project) => project.district),
+  ];
 
   return {
     list,
-    stages: async () => stagesOf(await list()),
+    standing: async () => standingIn(await list()),
 
     async found() {
       const projects = await list();
-      const free = available(stagesOf(projects));
-      // Twelve plots, and the last one is an island of its own across the water.
+      /* The next district is the first one his growth order offers that nobody
+         is on and that can be walked to from what is already there. The order
+         is measured off his own partition, so the island fills out round the
+         middle rather than growing an arm. */
+      const taken = new Set(projects.map((project) => project.district));
+      const here = new Set(standingIn(projects));
+      const free = plan()
+        .order()
+        .filter(
+          (district) =>
+            !COMMON.includes(district) &&
+            !taken.has(district) &&
+            plan().reachable(here).includes(district)
+        );
+      // Eleven districts, and every one of them taken.
       if (!free.length) return { success: false, error: { kind: 'island-full' } };
 
       const chosen = await dialog.showOpenDialog({
@@ -115,8 +143,7 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
         id: crypto.randomUUID(),
         name: basename(path),
         path,
-        plot: free[0],
-        stage: SETTLED,
+        district: free[0],
         foundedAt: new Date().toISOString(),
       };
       await save([...projects, project]);
@@ -139,6 +166,11 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
       sweeping = sweep;
     },
   };
+}
+
+/** Where the artist's map and his partition are kept. */
+function assetsDir(): string {
+  return join(app.getAppPath(), 'assets', 'village');
 }
 
 /** Where Mender keeps its own state on this machine. */

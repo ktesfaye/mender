@@ -30,7 +30,16 @@ export async function main(): Promise<void> {
      photographed over the debug port while it sits in the background. Off
      unless asked for. */
   const debugPort = process.env.MENDER_DEBUG_PORT;
-  if (debugPort) app.commandLine.appendSwitch('remote-debugging-port', debugPort);
+  if (debugPort) {
+    app.commandLine.appendSwitch('remote-debugging-port', debugPort);
+    /* AND THE APP ITSELF DOES NOT COME TO THE FRONT. Showing the window
+       without focus is not enough on macOS: launching an app activates the
+       PROCESS, so every restart pulled the whole desktop over to the village
+       whatever the window did. As an accessory it has no dock tile and never
+       becomes the active app, so a run that restarts it a dozen times to
+       photograph a dozen states goes by without him noticing. */
+    if (process.platform === 'darwin') app.setActivationPolicy('accessory');
+  }
 
   const runtimes = startRuntimes(scope);
   const projects = createProjects(runtimes);
@@ -50,7 +59,7 @@ export async function main(): Promise<void> {
     finding: createFindingController(finding),
     projects: createProjectsController(projects),
     tasks: createTasksController(tasks),
-    village: createVillageController({ state: () => projects.stages() }),
+    village: createVillageController({ state: () => projects.standing() }),
   });
 
   await app.whenReady();
@@ -92,11 +101,20 @@ async function openVillageWindow(): Promise<void> {
   });
 
   window.once('ready-to-show', () => {
-    // With the debug port open somebody is driving this window from outside
-    // while working in another one, and a village that jumps in front of them
-    // every time the app restarts is worse than no village. So it comes up
-    // where it is and stays behind.
+    /* WITH THE DEBUG PORT OPEN THE WINDOW IS NEVER ON HIS SCREEN AT ALL.
+       Somebody is driving this from outside while working in another app, and
+       a village that lands on top of what they are doing every time it
+       restarts is worse than no village.
+
+       Not focus. `showInactive` leaves it unfocused and still drawn over
+       everything, and neither does moving it away help: macOS clamps a window
+       back until part of it is on a display, so it always leaves a strip. What
+       does work is drawing it at nothing and refusing the mouse, because the
+       screenshots and the clicks go over the port and never through the glass.
+       The page composites exactly as it would in front of him. */
     if (process.env.MENDER_DEBUG_PORT) {
+      window.setOpacity(0);
+      window.setIgnoreMouseEvents(true);
       window.showInactive();
       return;
     }
