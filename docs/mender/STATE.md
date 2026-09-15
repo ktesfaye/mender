@@ -32,11 +32,26 @@ you left it. A session reads like a conversation: what a command printed, what a
 edit changed, what it means to do next, what you said while it was busy, and how
 much room it has left to think in are all on the wood, the markdown an agent
 writes in is read rather than shown, and when it comes to the door to ask
-something a number key answers it. But almost everything a person
-actually does with a coding tool is still missing. There is no git beyond reading
-status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 44 done, 22 partly done, 34 inherited working from emdash's back end
-and needing no village surface, 25 deliberately cut, and **128 not started**.
+something a number key answers it.
+
+And a whole day's work can now be done without leaving it. A change is read on
+the wood and thrown away from there, a commit is written and read, a branch goes
+up and comes down, and a pull request is opened, watched and put in. The
+checkout is a place you walk into: its folders, its files read and edited a line
+at a time, who last touched them, and both kinds of looking for something.
+There is a real shell in it that outlives the window. A session is taken down
+from its card and a project forgotten from its board, each saying what it costs
+first. An agent who is not on this machine is brought here. And it packages: a
+Mender.app that runs out of the Applications folder with the whole village
+behind it.
+
+Of the 253 ledger rows: 54 done, 22 partly done, 34 inherited working from
+emdash's back end and needing no village surface, 43 deliberately cut, and
+**100 not started**.
+
+What is still genuinely missing: the settings island and everything that would
+live on it, other machines over SSH, work that runs itself, and the wave that
+makes the island say from the water who is working and who is stuck.
 
 ## What "not started" actually means
 
@@ -697,6 +712,28 @@ tells you when something wants you while you are elsewhere, and updates itself.
 ## What was cut on purpose
 
 Kept here so none of it quietly returns as a panel.
+- Everything in the file tree that is a tree widget rather than a way to reach a
+  file: multi-select (FS-05), a context menu (FS-08), dragging things around
+  inside it (FS-09), a flat-mode toggle (FS-12), icons by extension (FS-14) and
+  preview-versus-pinned opening (FS-06). You stand in one folder and press a
+  thing; there is nothing to select, nothing to right-click and no second way to
+  list it.
+- Opening a file in another application (FS-01, FS-03). Twenty-nine apps in a
+  dropdown is somebody else's idea of what you meant.
+- Monaco (FS-21), because the board has one typeface and no cursor. Reading a
+  file and rewriting a line of it is done; a code editor inside the wood is not
+  what the wood is.
+- The image viewer (FS-30), for the reason the board already gives.
+- Everything in the terminal that is a pane manager: resizing a grid of them
+  (TR-02), keeping them warm off-screen for instant tab switching (TR-03), and
+  the drawer they would live in (UI-12). One board shows one thing, and the
+  shell is on it.
+- The preview-server pill and the titlebar it sits in (TR-11, UI-40), and the
+  in-app browser (TR-12). There is no titlebar, and a browser is a browser.
+- Pull requests as a list to filter (WS-46) and as a panel inside the changes
+  view (WS-47). A pull request belongs to the branch you are on, and that is
+  where the village asks about it.
+
 
 - The split-pane workbench, its tab strips and its terminal drawer (UI-11,
   UI-12's drawer form, UI-13, UI-20, UI-32, UI-33). One board shows one thing.
@@ -873,13 +910,13 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-40 | Commit card | done | W3 |
 | WS-41 | Diff main panel | done | W3 |
 | WS-42 | Commit history / blame | done | W3 |
-| WS-43 | CI check runs |  | W4 |
+| WS-43 | CI check runs | done | W4 |
 | WS-44 | Draft line comments (agent-directed notes) | cut | W3 |
 | WS-45 | PR data model | kept |  |
-| WS-46 | PR list/filtering (project level) |  | W4 |
-| WS-47 | PR entry (inside a task's Changes panel) |  | W4 |
-| WS-48 | Merge footer (3 strategies + bypass) |  | W4 |
-| WS-49 | Create PR modal |  | W4 |
+| WS-46 | PR list/filtering (project level) | cut | W4 |
+| WS-47 | PR entry (inside a task's Changes panel) | cut | W4 |
+| WS-48 | Merge footer (3 strategies + bypass) | done | W4 |
+| WS-49 | Create PR modal | done | W4 |
 | WS-50 | PR-checkout association / drift / sync coordination | kept |  |
 | WS-51 | Credential-helper loopback channel | kept |  |
 | WS-52 | Three session credential modes |  | W7 |
@@ -889,18 +926,18 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-56 | Issue linking UI |  | W4 |
 | WS-57 | PR selector (linking a PR to a task) |  | W4 |
 | WS-58 | Shared exclusion-policy engine | kept |  |
-| TR-01 | Interactive terminal panes |  | W6 |
-| TR-02 | Terminal grid sizing (multi-pane resize) |  | W6 |
-| TR-03 | Off-screen terminal host / instant tab switching |  | W6 |
-| TR-04 | Terminal persistence via tmux |  | W6 |
+| TR-01 | Interactive terminal panes | done | W6 |
+| TR-02 | Terminal grid sizing (multi-pane resize) | cut | W6 |
+| TR-03 | Off-screen terminal host / instant tab switching | cut | W6 |
+| TR-04 | Terminal persistence via tmux | done | W6 |
 | TR-05 | Terminal exit/kill semantics | kept |  |
 | TR-06 | Shell resolution & selection |  | W6 |
 | TR-07 | Terminal appearance & behavior settings |  | W8 |
 | TR-08 | Terminal environment (theme signaling, agent env) | kept |  |
 | TR-09 | Automatic dev-server URL detection |  | W6 |
 | TR-10 | Manual port forwarding (SSH workspaces) |  | W6 |
-| TR-11 | Preview server pill (task titlebar) |  | W6 |
-| TR-12 | In-app browser (Emdash Browser) |  | W6 |
+| TR-11 | Preview server pill (task titlebar) | cut | W6 |
+| TR-12 | In-app browser (Emdash Browser) | cut | W6 |
 | TR-13 | Add/edit/connect a machine |  | W10 |
 | TR-14 | Machine status indicator |  | W10 |
 | TR-15 | Host settings (per-machine defaults) |  | W10 |
@@ -915,27 +952,27 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | TR-24 | Script status indicator |  | W7 |
 | TR-25 | Stepped loader |  | W7 |
 | TR-26 | Runtime broker & host runtime contract | kept |  |
-| FS-01 | "Open In ▾" catalog (29 apps) |  | W5 |
+| FS-01 | "Open In ▾" catalog (29 apps) | cut | W5 |
 | FS-02 | Per-app detection & launch strategy | kept |  |
-| FS-03 | "Open path with OS default" |  | W5 |
-| FS-04 | Virtualized file/folder tree |  | W5 |
-| FS-05 | Multi-select (click/Cmd/Shift) |  | W5 |
-| FS-06 | Preview vs pinned file open |  | W5 |
-| FS-07 | Create/rename inline draft rows |  | W5 |
-| FS-08 | File tree context menu |  | W5 |
-| FS-09 | Internal drag & drop (move) |  | W5 |
+| FS-03 | "Open path with OS default" | cut | W5 |
+| FS-04 | Virtualized file/folder tree | done | W5 |
+| FS-05 | Multi-select (click/Cmd/Shift) | cut | W5 |
+| FS-06 | Preview vs pinned file open | cut | W5 |
+| FS-07 | Create/rename inline draft rows | done | W5 |
+| FS-08 | File tree context menu | cut | W5 |
+| FS-09 | Internal drag & drop (move) | cut | W5 |
 | FS-10 | External drag-in (import) |  | W5 |
 | FS-11 | Drag-out to compose/elsewhere |  | W5 |
-| FS-12 | Flat-mode listing |  | W5 |
+| FS-12 | Flat-mode listing | cut | W5 |
 | FS-13 | Row decoration (git-status badges, tone) |  | W5 |
-| FS-14 | File icons by extension |  | W5 |
-| FS-15 | Filename / quick-open search |  | W1 |
-| FS-16 | Content ("find in files") search |  | W5 |
-| FS-17 | Search-results tree |  | W5 |
+| FS-14 | File icons by extension | cut | W5 |
+| FS-15 | Filename / quick-open search | done | W1 |
+| FS-16 | Content ("find in files") search | done | W5 |
+| FS-17 | Search-results tree | done | W5 |
 | FS-18 | Files RPC contract (fs.*, tree, content) | kept |  |
 | FS-19 | Open-file store (editor tab lifecycle) | kept |  |
 | FS-20 | File-kind renderer routing (text/csv/markdown/html/svg/image/too-large/binary) |  | W5 |
-| FS-21 | Monaco text editor |  | W5 |
+| FS-21 | Monaco text editor | cut | W5 |
 | FS-22 | CSV renderer |  | W5 |
 | FS-23 | Markdown/HTML/SVG/image renderers |  | W5 |
 | FS-24 | Text diff (Monaco diff editor) | done | W3 |
@@ -944,7 +981,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-27 | Image diff view | cut | W3 |
 | FS-28 | Binary diff fallback | done | W3 |
 | FS-29 | Mermaid inline + standalone viewer |  | W9 |
-| FS-30 | Image viewer (contained/expandable/standalone/zoom-pan chassis) |  | W5 |
+| FS-30 | Image viewer (contained/expandable/standalone/zoom-pan chassis) | cut | W5 |
 | FS-31 | Shared file-watching service | kept |  |
 | FS-32 | Exclusion policy settings UI |  | W8 |
 | FS-33 | Disk usage measurement | kept |  |
@@ -997,7 +1034,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-09 | Task titlebar — breadcrumb + git popover | cut | W3 |
 | UI-10 | Task titlebar — activity/preview/open-in/drawer-toggle/sidebar-toggle |  | W7 |
 | UI-11 | Task main column — split-pane tab workbench | cut |  |
-| UI-12 | Task main column — bottom terminal drawer |  | W6 |
+| UI-12 | Task main column — bottom terminal drawer | cut | W6 |
 | UI-13 | Task sidebar — 3-way toggle (Conversations/Changes/Files) | cut |  |
 | UI-14 | Task view — non-ready states (creating/provisioning/missing/teardown) |  | W7 |
 | UI-15 | Automations view |  | W10 |
@@ -1025,7 +1062,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-37 | Agent status dots (sidebar) | cut |  |
 | UI-38 | Activity badge (workspace lifecycle) |  | W7 |
 | UI-39 | Diff stats and PR badges (sidebar rows) | cut | W3 |
-| UI-40 | Preview-server pills (titlebar) |  | W6 |
+| UI-40 | Preview-server pills (titlebar) | cut | W6 |
 | UI-41 | Connection status dot |  | W10 |
 | UI-42 | Update indicator (sidebar footer) |  | W11 |
 | UI-43 | Context-usage indicator (composer) | done | W2 |
