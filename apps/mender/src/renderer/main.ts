@@ -460,7 +460,7 @@ async function boot(): Promise<void> {
         { kind: 'line', text: 'reading the checkout…', tone: 'faded' },
       ]);
 
-      const opened = await openCheckout(client, { name, path, lines }, (rows) => {
+      const opened = await openCheckout(client, { name, path, lines, tail: leaving }, (rows) => {
         if (open === aim && !reading && !looked && !walking && !talking && !sending) {
           board.update(rows);
         }
@@ -481,6 +481,11 @@ async function boot(): Promise<void> {
      * is doing, and a line that starts another. The checkout underneath is a
      * footnote at the bottom, because the folder is not the point.
      */
+    /* Whether the project board is asking about being forgotten. Nothing on
+       the board keeps this: it is a question, and a question you walked away
+       from is not one. */
+    let forgetting = false;
+
     const roster = (district: District): Row[] => {
       const standing = tasksOn(district);
       const rows: Row[] = [{ kind: 'gap' }, { kind: 'heading', text: 'sessions' }];
@@ -993,6 +998,68 @@ async function boot(): Promise<void> {
     };
 
     /**
+     * The one thing a project's board offers about the project itself.
+     *
+     * At the very bottom, under everything it is, because forgetting a place
+     * is not something you should meet on your way to the work in it.
+     */
+    const leaving = (): Row[] => {
+      const standing = open ? tasksOn(open.district) : [];
+      const rows: Row[] = [{ kind: 'gap' }];
+      if (!forgetting) {
+        return [
+          ...rows,
+          {
+            kind: 'entry',
+            mark: '✗',
+            text: 'forget this project',
+            tone: 'faded',
+            pick: 'forget',
+          },
+        ];
+      }
+      rows.push({
+        kind: 'line',
+        text: standing.length
+          ? `${standing.length === 1 ? 'the one session' : `all ${standing.length} sessions`} in here would be taken down. the folder stays.`
+          : 'the folder stays exactly where it is.',
+        tone: standing.length ? 'sore' : 'faded',
+      });
+      return [
+        ...rows,
+        {
+          kind: 'entry',
+          mark: '✗',
+          text: 'press again and the village forgets it',
+          tone: 'sore',
+          pick: 'forget!',
+        },
+      ];
+    };
+
+    /**
+     * Forgetting a project, which also takes two presses.
+     *
+     * The village forgets it; the folder stays exactly where it is. What does
+     * go is every session cut from it, because a project forgotten with its
+     * worktrees still on the disk leaves them somewhere nothing here can reach.
+     */
+    const forget = async (sure: boolean): Promise<void> => {
+      const project = open ? projectOn(open.district) : null;
+      if (!project) return;
+      if (!sure) {
+        forgetting = true;
+        if (live) board.update(live.rows());
+        return;
+      }
+      forgetting = false;
+      say('forgetting it…', 30000);
+      await client.projects.abandon({ id: project.id }, { timeoutMs: 0 });
+      say('forgotten. the folder is still where it was.', 5000);
+      void picked(null);
+    };
+
+    /**
      * The end of a session, which takes two presses like everything that
      * cannot be pressed again.
      *
@@ -1471,6 +1538,10 @@ async function boot(): Promise<void> {
         void talk();
         return;
       }
+      if (pick === 'forget' || pick === 'forget!') {
+        void forget(pick === 'forget!');
+        return;
+      }
       if (pick === 'end' || pick === 'end!') {
         void ending(pick === 'end!');
         return;
@@ -1646,6 +1717,11 @@ async function boot(): Promise<void> {
           }
           writing = null;
           if (live) board.show(live.rows());
+          return;
+        }
+        if (forgetting) {
+          forgetting = false;
+          if (live) board.update(live.rows());
           return;
         }
         if (card?.ending()?.asked) {

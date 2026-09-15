@@ -38,6 +38,8 @@ export interface Projects {
   /** Ask for a folder and put a district on it. */
   found(): Promise<{ success: true; data: Project } | { success: false; error: FoundError }>;
   abandon(id: string): Promise<Project[]>;
+  /** Who takes a project's sessions down when the project is forgotten. */
+  sweeps(sweep: (project: string) => Promise<void>): void;
   /** The village state these projects make: plot -> stage. */
   stages(): Promise<Stages>;
 }
@@ -56,6 +58,7 @@ const KEY = 'projects';
 const SETTLED = 4;
 
 export function createProjects(runtimes: MenderRuntimes): Projects {
+  let sweeping: ((project: string) => Promise<void>) | null = null;
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'projects.json') });
 
   const list = async (): Promise<Project[]> => {
@@ -122,7 +125,18 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
 
     async abandon(id) {
       const projects = await list();
+      /* Whoever is working in there goes home first. A project forgotten with
+         its sessions still cut leaves worktrees on the disk that nothing in
+         the village can reach any more, which is the worst of both. */
+      await sweeping?.(id);
       return await save(projects.filter((project) => project.id !== id));
+    },
+
+    /* Who takes the sessions down. Set after construction because the tasks
+       need the projects to exist and the projects need this: one of the two
+       has to be told about the other afterwards, and it is this one. */
+    sweeps(sweep) {
+      sweeping = sweep;
     },
   };
 }

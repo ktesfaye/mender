@@ -85,6 +85,8 @@ export interface Tasks {
   /** What whoever is in here thinks with, next time they start. */
   remodel(id: string, model: string | null): Promise<Task[]>;
   abandon(id: string): Promise<Task[]>;
+  /** Take down every session in one project, for when the project is forgotten. */
+  sweep(project: string): Promise<void>;
   dispose(): Promise<void>;
 }
 
@@ -273,6 +275,21 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       indexed.get(id)?.dispose();
       indexed.delete(id);
       return await save(tasks.filter((task) => task.id !== id));
+    },
+
+    /** Take down every session in one project, worktrees and all. */
+    async sweep(project) {
+      const tasks = await all();
+      const going = tasks.filter((task) => task.project === project);
+      for (const task of going) {
+        await runtimes.workspaces.deleteWorktree(
+          { workspaceId: task.id, deleteBranch: false },
+          { timeoutMs: 0 }
+        );
+        indexed.get(task.id)?.dispose();
+        indexed.delete(task.id);
+      }
+      if (going.length) await save(tasks.filter((task) => task.project !== project));
     },
 
     async dispose() {

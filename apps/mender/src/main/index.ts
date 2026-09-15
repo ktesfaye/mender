@@ -35,6 +35,9 @@ export async function main(): Promise<void> {
   const runtimes = startRuntimes(scope);
   const projects = createProjects(runtimes);
   const tasks = createTasks(runtimes, projects);
+  /* Forgetting a project sends everybody in it home, which means the projects
+     have to be able to reach the tasks and the tasks already reach back. */
+  projects.sweeps((project) => tasks.sweep(project));
   const agents = createAgents(runtimes, tasks);
   const changes = createChanges(runtimes);
   const finding = createFinding(runtimes);

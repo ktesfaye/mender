@@ -539,9 +539,20 @@ in; what was committed in it is still on the branch afterwards. That was
 driven: a session started, its card read, taken down in two presses, the
 worktree gone from git's list and the branch still there.
 
-Not here yet: abandoning a project, cloning or creating a repository rather
-than pointing at one, relinking, choosing how a worktree is cut, project
-settings, and a checkout's trouble showing on the district.
+A project can be forgotten too, at the very bottom of its board under
+everything it is, because forgetting a place is not something you should meet
+on the way to the work in it. Two presses again, and the line in between says
+what it costs: the folder stays exactly where it is, and every session cut from
+it is taken down, because a project forgotten with its worktrees still on the
+disk leaves them somewhere nothing in the village can reach.
+
+The offer, the question and escaping out of it were driven. The second press
+was not: founding a project to throw away needs the native folder picker, which
+needs his hands, and forgetting his real one to prove it works is not a test.
+
+Not here yet: cloning or creating a repository rather than pointing at one,
+relinking, choosing how a worktree is cut, project settings, and a checkout's
+trouble showing on the district.
 
 ### W7 — the rest of it
 
