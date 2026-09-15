@@ -9,11 +9,40 @@ import type {
   TranscriptTurn,
 } from '@emdash/core/runtimes/acp/api';
 import type { ConversationRecords } from '@emdash/core/runtimes/conversations/api';
-import { ReplicaState } from '@emdash/wire/live';
+import { hostDependenciesContract } from '@emdash/core/services/host-dependencies/api';
+import { pluginRegistry } from '@emdash/plugins/agents';
+import { createLiveJobReplicaCache, LiveJobFailedError, ReplicaState } from '@emdash/wire/live';
 import type { WireFile } from '@emdash/wire/rpc';
 import { cell, peek, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
 import type { Ask, Carried, Kit, Line, Mood, Step, Waiting, WorkingState } from '@shared/agents';
+
+/**
+ * Why an install left them not here, in its own words.
+ *
+ * A shrug is the least useful thing a failed install can say, and the host
+ * already knows: a command that exited badly, a path nobody may write to, or
+ * nothing to run at all on this machine.
+ */
+function said(error: { type?: string; message?: string; exitCode?: number | null } | undefined) {
+  if (!error) return 'nothing said what went wrong.';
+  if (error.type === 'permission-denied') {
+    return `it is not allowed to write where that goes${error.message ? `: ${error.message}` : '.'}`;
+  }
+  if (error.message) return error.message;
+  return error.type ? error.type.replaceAll('-', ' ') : 'nothing said what went wrong.';
+}
+
+/** What came of putting an agent on this machine. */
+type Fetched =
+  | { success: true; data: { here: boolean } }
+  | {
+      success: false;
+      error:
+        | { kind: 'no-such-agent' }
+        | { kind: 'nothing-to-run' }
+        | { kind: 'refused'; because: string };
+    };
 import { createKits } from './kit';
 import type { MenderRuntimes } from './runtimes';
 import type { Tasks } from './tasks';
@@ -48,6 +77,8 @@ export interface Agents {
   kit(task: string): Cell<Kit>;
   choose(task: string, what: 'hand' | 'model' | 'mode' | 'effort', id: string): Promise<Told>;
   tool(task: string, name: string, on: boolean): Promise<Told>;
+  /** Put an agent's CLI on this machine, so somebody else could work here. */
+  fetch(hand: string): Promise<Fetched>;
   /** Every building with somebody in it, for the island. */
   moods(): Cell<Record<string, Mood>>;
   /** Start whoever lives in there, so they can say what they work with. */
@@ -229,6 +260,54 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
     async choose(task, what, id) {
       const done = await kits.choose(task, what, id);
       return done.success ? { success: true, data: undefined } : done;
+    },
+
+    /**
+     * Bring an agent onto the machine.
+     *
+     * The install command is the plugin's own, resolved by the same host
+     * dependency service that decides whether it is here at all, so this is
+     * running what that agent says installs it rather than a recipe the village
+     * keeps. Nothing is chosen for you afterwards: the card lists whoever is
+     * here, and who works in a building is still a press.
+     */
+    async fetch(hand) {
+      const plugin = pluginRegistry.getAll().find((each) => each.metadata.id === hand);
+      if (!plugin) return { success: false, error: { kind: 'no-such-agent' } };
+      /* The dependency the host tracks is keyed by the plugin's own id, which
+         is also how the card decides whether it is here. */
+      const id = plugin.metadata.id;
+
+      const jobs = createLiveJobReplicaCache(
+        hostDependenciesContract.runInstallCommand,
+        runtimes.host.runInstallCommand
+      );
+      const lease = await jobs.start({ id, commandKind: 'install' });
+      try {
+        const job = await lease.ready();
+        const view = await job.result;
+        // A refresh is what makes the card's "not installed here" go away.
+        await runtimes.host.snapshot.mutate('refresh', { key: undefined, input: { id } });
+        const here = view.status === 'available';
+        /* An install that ran and left them not here is the interesting case,
+           and the only thing that helps is what it actually said. */
+        return {
+          success: true,
+          data: here ? { here } : { here, because: said(view.error) },
+        };
+      } catch (error) {
+        if (error instanceof LiveJobFailedError) {
+          const said = error.error as { message?: string };
+          return {
+            success: false,
+            error: { kind: 'refused', because: said.message ?? 'it would not install.' },
+          };
+        }
+        throw error;
+      } finally {
+        await lease.release();
+        await jobs.dispose();
+      }
     },
 
     async tool(task, name, on) {

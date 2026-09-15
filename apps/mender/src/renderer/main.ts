@@ -807,6 +807,37 @@ async function boot(): Promise<void> {
       say('renamed.', 3000);
     };
 
+    /**
+     * Putting an agent on this machine.
+     *
+     * Running what that agent itself says installs it, which is a real
+     * install of a real command line tool and takes as long as it takes.
+     * Nothing is chosen for you afterwards: who works in a building is a
+     * press, and this only makes the press possible.
+     */
+    const bring = async (hand: string): Promise<void> => {
+      say('bringing them here…', 600000);
+      /* An install is a real command on a real machine and it can fall over in
+         ways nothing here modelled. Whatever happens, the line that said it
+         was happening has to stop saying it. */
+      const came = await client.agents
+        .fetch({ hand }, { timeoutMs: 0 })
+        .catch((error: unknown) => ({
+          success: false as const,
+          error: { kind: 'refused' as const, because: String(error) },
+        }));
+      if (!came.success) {
+        say(whyNot(came.error), 8000);
+        return;
+      }
+      say(
+        came.data.here
+          ? 'they are here now.'
+          : `it ran and they are still not here. ${came.data.because ?? ''}`.trim(),
+        10000
+      );
+    };
+
     /** Who last touched each run of lines in the file that is open. */
     const blamed = async (): Promise<void> => {
       const file = opened;
@@ -1688,6 +1719,15 @@ async function boot(): Promise<void> {
         }
         return;
       }
+      if (pick === 'elsewhere') {
+        card?.show(true);
+        if (card) board.update(card.rows());
+        return;
+      }
+      if (pick.startsWith('bring:')) {
+        void bring(pick.slice(6));
+        return;
+      }
       if (pick === 'blame') {
         void blamed();
         return;
@@ -1841,6 +1881,11 @@ async function boot(): Promise<void> {
         }
         if (card?.ending()?.asked) {
           card.ask(false);
+          board.update(card.rows());
+          return;
+        }
+        if (card?.showing()) {
+          card.show(false);
           board.update(card.rows());
           return;
         }

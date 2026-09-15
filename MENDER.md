@@ -247,6 +247,11 @@ The agent runs under its own settings on this machine, the same ones a terminal
 session gets, so what it asks permission for is what it would ask there. When
 it does ask, the question lands on the board and a number key answers it.
 
+An agent who is not on this machine is brought here from the same card. The
+line saying how many more speak the protocol opens all of them, and pressing
+one runs what that agent itself says installs it. Nothing is chosen for you
+afterwards.
+
 Nothing yet adds a server or teaches a skill: the card shows what is there and
 turns a server on or off, and the rest is still done in the agent's own files.
 

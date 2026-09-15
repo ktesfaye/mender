@@ -217,6 +217,26 @@ export const agentsContract = defineContract({
     error: agentErrorSchema,
   }),
   /** Turn one of the session's tools on or off. */
+  /**
+   * Put an agent's CLI on this machine.
+   *
+   * The village knows every agent that speaks the protocol and which of them
+   * are actually installed, and that has been a fact you could only read. This
+   * is it being a thing you can do instead.
+   */
+  fetch: fallible({
+    input: z.object({ hand: z.string() }),
+    data: z.object({
+      here: z.boolean(),
+      /** What the install command said, when it ran and left them not here. */
+      because: z.string().optional(),
+    }),
+    error: z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('no-such-agent') }),
+      z.object({ kind: z.literal('nothing-to-run') }),
+      z.object({ kind: z.literal('refused'), because: z.string() }),
+    ]),
+  }),
   tool: fallible({
     input: z.object({ task: z.string(), name: z.string(), on: z.boolean() }),
     data: z.void(),

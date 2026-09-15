@@ -25,6 +25,9 @@ export interface LiveCard {
   ending(): Ending | undefined;
   /** Ask, or stop asking, whether to take it down. */
   ask(asked: boolean): void;
+  /** Show, or fold away, everyone who could work here but is not installed. */
+  show(showing: boolean): void;
+  showing(): boolean;
   /** What a pressed line means, or nothing if it was only a heading. */
   meant(pick: string): Meant | null;
   close(): Promise<void>;
@@ -44,11 +47,13 @@ export async function openCard(
      board reads: a preflight computed once and then gone stale is a preflight
      that lies. */
   let ending: Ending = { uncommitted: 0, unsent: 0, asked: false };
+  /** Whether the agents who are not on this machine are folded open. */
+  let showing = false;
 
   const replica = new ReplicaState<Kit>(client.agents.kit.state({ task: task.id }, 'state'), {
     onChange: (value) => {
       kit = value;
-      changed(written(task, value, ending));
+      changed(written(task, value, ending, showing));
     },
   });
 
@@ -61,7 +66,7 @@ export async function openCard(
         {
           onChange: (value) => {
             ending = { ...ending, uncommitted: Object.keys(value.entries ?? {}).length };
-            changed(written(task, kit, ending));
+            changed(written(task, kit, ending, showing));
           },
         }
       )
@@ -70,7 +75,7 @@ export async function openCard(
     ? new ReplicaState<CheckoutHeadState>(model.state({ checkout }, 'head'), {
         onChange: (value) => {
           ending = { ...ending, unsent: unsentIn(value) };
-          changed(written(task, kit, ending));
+          changed(written(task, kit, ending, showing));
         },
       })
     : null;
@@ -84,7 +89,11 @@ export async function openCard(
   };
 
   return {
-    rows: () => written(task, kit, ending),
+    rows: () => written(task, kit, ending, showing),
+    show: (open) => {
+      showing = open;
+    },
+    showing: () => showing,
     ending: () => ending,
     ask: (asked) => {
       ending = { ...ending, asked };
@@ -116,7 +125,7 @@ function read(pick: string, kit: Kit | null): Meant | null {
 const ON = '●';
 const OFF = '·';
 
-function written(task: Task, kit: Kit | null, ending?: Ending): Row[] {
+function written(task: Task, kit: Kit | null, ending?: Ending, showing?: boolean): Row[] {
   const rows: Row[] = [
     { kind: 'title', text: task.title, pick: 'card' },
     { kind: 'line', text: task.branch, tone: 'faded', keep: 'tail' },
@@ -139,12 +148,31 @@ function written(task: Task, kit: Kit | null, ending?: Ending): Row[] {
       pick: `hand:${hand.id}`,
     });
   }
-  const elsewhere = kit.hands.length - could.length;
+  /* Everyone who speaks the protocol and is not on this machine. Folded away
+     until asked for, because two dozen agents you have never installed is a
+     list rather than a choice; opened, each one offers to be put here. */
+  const away = kit.hands.filter((hand) => !hand.here && hand.id !== kit.hand);
+  if (showing) {
+    for (const hand of away) {
+      rows.push({
+        kind: 'entry',
+        mark: '+',
+        text: `${hand.name}, not here yet`,
+        tone: 'faded',
+        pick: `bring:${hand.id}`,
+      });
+    }
+  }
+  const elsewhere = showing ? 0 : away.length;
   if (elsewhere) {
+    /* Not a list, a fact you can act on: everyone who speaks the protocol and
+       is not here yet, each offering to be put on the machine. */
     rows.push({
-      kind: 'line',
-      text: `${elsewhere} more speak the protocol but are not installed here.`,
+      kind: 'entry',
+      mark: '+',
+      text: `${elsewhere} more speak the protocol. press to bring one here`,
       tone: 'faded',
+      pick: 'elsewhere',
     });
   }
   rows.push({
@@ -162,7 +190,9 @@ function written(task: Task, kit: Kit | null, ending?: Ending): Row[] {
         tone: 'faded',
       }
     );
-    return rows;
+    /* A sleeping session still ends, and a session nobody has spoken to is
+       exactly the one you are most likely to want rid of. */
+    return [...rows, ...over(ending)];
   }
 
   choices(rows, 'thinking with', 'model', kit.model, kit.models);

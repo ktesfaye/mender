@@ -589,7 +589,35 @@ getting a fresh branch; set a project's worktree root, default branch, remotes,
 account, scripts and environment; and every kind of trouble a checkout can be in
 shows as a state on the district instead of silence.
 
-### W8 — the settings island
+### W8 — the settings island · started, and not where it will live
+
+There is no settings island and this wave still needs one. What has landed is
+one of its capabilities on a board that already exists, because it belongs to a
+session as much as to the app: who could work in a building.
+
+The card used to say "21 more speak the protocol but are not installed here",
+which is a fact you can only read. Pressing that line now opens all of them,
+each offering to be brought here, and pressing one runs what that agent itself
+says installs it. Nothing is chosen for you afterwards: who works in a building
+is still a press, and this only makes the press possible.
+
+Driven in the running app, and the proof is the card rather than a notice: two
+agents were brought here and moved out of "not here yet" into who works here
+with the count dropping, and when they were uninstalled again from a terminal
+the card put them back without being touched. Both were removed afterwards, so
+the machine is as it was.
+
+One thing was wrong and is fixed: a session nobody had spoken to yet had no way
+to be taken down, because the card stopped drawing at the line explaining why
+it could not say what the agent thinks with. A session nobody has spoken to is
+exactly the one you are most likely to want rid of.
+
+Still needed here, and needing the island: everything app-wide, updating and
+authenticating agents rather than only installing them, adding and editing MCP
+servers rather than switching them on and off, installing and writing skills,
+and connecting accounts.
+
+### W8 — the island itself
 
 There is no settings island. No windmill, no workshop, nowhere for any of it.
 
