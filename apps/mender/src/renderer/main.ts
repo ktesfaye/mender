@@ -807,6 +807,25 @@ async function boot(): Promise<void> {
       say('renamed.', 3000);
     };
 
+    /** Who last touched each run of lines in the file that is open. */
+    const blamed = async (): Promise<void> => {
+      const file = opened;
+      const place = onPlace();
+      const parsed = place ? parseNativeAbsolute(place.path) : undefined;
+      if (!file || !parsed?.success) return;
+      const said = await client.git.checkout.blame({
+        checkout: parsed.data,
+        path: file.path as GitFilePath,
+      });
+      if (opened !== file) return;
+      if (!said.success) {
+        say(trouble(said.error), 6000);
+        return;
+      }
+      file.blame = said.data.hunks;
+      board.show(read(file));
+    };
+
     /** And throwing one away, which takes the second press. */
     const binned = async (sure: boolean): Promise<void> => {
       const file = opened;
@@ -1669,6 +1688,10 @@ async function boot(): Promise<void> {
         }
         return;
       }
+      if (pick === 'blame') {
+        void blamed();
+        return;
+      }
       if (pick === 'bin' || pick === 'bin!') {
         void binned(pick === 'bin!');
         return;
@@ -1855,6 +1878,12 @@ async function boot(): Promise<void> {
         }
         if (walking && !opened && walking.naming() !== undefined) {
           walking.name(undefined);
+          return;
+        }
+        if (opened?.blame) {
+          // Back to reading the file rather than out of it.
+          opened.blame = undefined;
+          board.show(read(opened));
           return;
         }
         if (opened?.renaming !== undefined) {

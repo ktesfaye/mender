@@ -1,4 +1,5 @@
 import type { FileContentModel } from '@emdash/core/runtimes/files/api';
+import type { BlameHunk } from '@emdash/core/runtimes/git/api';
 import type { Row } from './board';
 
 /**
@@ -26,6 +27,8 @@ export interface Read {
   renaming?: string;
   /** Set once it has been offered to throw the file away and asked twice. */
   asked?: boolean;
+  /** Who last touched each run of lines, when that is what is being read. */
+  blame?: readonly BlameHunk[];
 }
 
 export function read(state: Read): Row[] {
@@ -51,6 +54,8 @@ export function read(state: Read): Row[] {
   const lines = content.content.split('\n');
   // A file ending in a newline has no empty last line; it has an end.
   if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+
+  if (state.blame) return [...rows, ...whose(state.blame, lines)];
 
   rows.push({ kind: 'line', text: how(lines.length, content.readonly), tone: 'faded' });
   rows.push({ kind: 'gap' });
@@ -85,7 +90,7 @@ export function read(state: Read): Row[] {
  * again; renaming does not, because a name is put back by typing the old one.
  */
 function over(state: Read, readonly: boolean): Row[] {
-  if (readonly) return [];
+  if (readonly || state.blame) return [];
   const rows: Row[] = [{ kind: 'gap' }];
   if (state.renaming !== undefined) {
     rows.push(
@@ -94,6 +99,13 @@ function over(state: Read, readonly: boolean): Row[] {
     );
     return rows;
   }
+  rows.push({
+    kind: 'entry',
+    mark: '→',
+    text: 'who last touched it',
+    tone: 'faded',
+    pick: 'blame',
+  });
   rows.push({
     kind: 'entry',
     mark: '→',
@@ -113,6 +125,52 @@ function over(state: Read, readonly: boolean): Row[] {
       : { kind: 'entry', mark: '✗', text: 'throw this file away', tone: 'faded', pick: 'bin' }
   );
   return rows;
+}
+
+/**
+ * Who last touched each run of lines.
+ *
+ * Not a name in the margin of every line. Writing is done in runs — twelve
+ * lines somebody put in on a Tuesday, then four somebody else changed since —
+ * and saying it once over the run is both the truth and far easier to read
+ * than the same name stamped twelve times down the side of a board.
+ */
+function whose(hunks: readonly BlameHunk[], lines: readonly string[]): Row[] {
+  const rows: Row[] = [
+    { kind: 'line', text: 'who last touched it. escape goes back to reading it.', tone: 'faded' },
+  ];
+  if (!hunks.length) {
+    rows.push(
+      { kind: 'gap' },
+      { kind: 'line', text: 'nobody: it is not committed.', tone: 'faded' }
+    );
+    return rows;
+  }
+  for (const hunk of hunks) {
+    rows.push({ kind: 'gap' }, { kind: 'heading', text: by(hunk) });
+    const from = Math.max(0, hunk.startLine - 1);
+    for (const line of lines.slice(from, from + hunk.lineCount)) {
+      rows.push({ kind: 'line', text: line, tone: 'faded', keep: 'front' });
+    }
+  }
+  return rows;
+}
+
+function by(hunk: BlameHunk): string {
+  const said = [`${hunk.author}, ${ago(hunk.date)}`];
+  if (hunk.summary.trim()) said.push(hunk.summary.trim());
+  return said.join(' · ');
+}
+
+/** How long ago, as somebody would say it rather than as a date. */
+function ago(at: number): string {
+  const days = (Date.now() - at) / 86400000;
+  if (days < 1) return 'today';
+  if (days < 2) return 'yesterday';
+  if (days < 14) return `${Math.floor(days)} days ago`;
+  if (days < 60) return `${Math.floor(days / 7)} weeks ago`;
+  if (days < 730) return `${Math.floor(days / 30.4)} months ago`;
+  return `${Math.floor(days / 365)} years ago`;
 }
 
 /** While the file is still being fetched. */

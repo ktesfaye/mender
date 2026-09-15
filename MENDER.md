@@ -183,6 +183,10 @@ this. Another line switches to the other question, where is this written, and
 carries what you typed across. Both answer with files you press, the matching
 lines under each.
 
+**Who last touched it is on the same board.** Not a name beside every line:
+writing happens in runs, so it says it once over each run, with who, how long
+ago and what they were doing.
+
 **A file is made, renamed and thrown away there too.** The folder offers to put
 something new in it and you name it on the line, a slash at the end making a
 folder instead. At the bottom of a file are the two things you can do to the

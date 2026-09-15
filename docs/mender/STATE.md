@@ -35,7 +35,7 @@ writes in is read rather than shown, and when it comes to the door to ask
 something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 43 done, 23 partly done, 34 inherited working from emdash's back end
+ledger rows: 44 done, 22 partly done, 34 inherited working from emdash's back end
 and needing no village surface, 25 deliberately cut, and **128 not started**.
 
 ## What "not started" actually means
@@ -434,8 +434,14 @@ disk, appearing in the folder live; opened, renamed, and the folder showing the
 new name without a reload; then found by name, opened again and thrown away,
 gone from the disk.
 
-Not here yet: blame, and reading an image or a table as anything other than the
-bytes it is.
+Who last touched it is on the same board, under the same line that offers to
+rename it. It is not a name in the margin of every line: writing is done in
+runs, twelve lines somebody put in on a Tuesday and then four somebody else
+changed since, so it says it once over the run with who, how long ago and what
+they were doing. Escape goes back to reading the file rather than out of it.
+
+Not here yet: reading an image or a table as anything other than the bytes it
+is.
 
 ### W4 — you can ship it · started
 
@@ -838,7 +844,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-39 | Prefetched diff models on hover | cut | W3 |
 | WS-40 | Commit card | done | W3 |
 | WS-41 | Diff main panel | done | W3 |
-| WS-42 | Commit history / blame | part | W3 |
+| WS-42 | Commit history / blame | done | W3 |
 | WS-43 | CI check runs |  | W4 |
 | WS-44 | Draft line comments (agent-directed notes) | cut | W3 |
 | WS-45 | PR data model | kept |  |
