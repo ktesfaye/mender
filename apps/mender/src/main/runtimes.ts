@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { DEFAULT_WATCHER_EXCLUDE } from '@emdash/core/primitives/exclusion-policy/api';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { acpApiContract } from '@emdash/core/runtimes/acp/api';
 import { acpWorkerSpec } from '@emdash/core/runtimes/acp/node';
@@ -236,6 +237,10 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
           executable: menderWorkerPath('files'),
           env: process.env,
           dependencies: { watcher },
+          /* Watching a checkout recursively means watching everything in it,
+             and what is in a checkout is mostly node_modules and git's object
+             store. Left in, the first walk into a project hangs. */
+          watchIgnore: [...DEFAULT_WATCHER_EXCLUDE],
         })
       );
       return await worker.ready();

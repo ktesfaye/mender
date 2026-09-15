@@ -177,6 +177,12 @@ name is where it is, and pressing that walks into the folder: what is in it,
 folders first, each one walked into the same way a district is. Escape walks
 back up. Pressing a file reads the whole thing on the wood.
 
+**Or looked in rather than walked.** A line at the top of the folder turns the
+board into one question with one line to write it on: where is the file called
+this. Another line switches to the other question, where is this written, and
+carries what you typed across. Both answer with files you press, the matching
+lines under each.
+
 **And a file is edited one line at a time.** There is one place you write in
 this app, so changing a line means taking that line into the writing: press it,
 it turns to full ink with the cursor after it, rewrite it where it sits, and

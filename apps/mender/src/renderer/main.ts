@@ -24,6 +24,7 @@ import { openCheckout, type LiveBoard } from './board/district';
 import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
 import { openTree, type LiveTree } from './board/inside';
 import { loadLettering } from './board/lettering';
+import { hunting, type Hunt } from './board/looking';
 import { made, unmade, unread } from './board/made';
 import type { Meant } from './board/palette';
 import { makeRail, type Peg, type Rail } from './board/rail';
@@ -115,6 +116,8 @@ async function boot(): Promise<void> {
        it, and which file of it is open over that. */
     let walking: LiveTree | null = null;
     let opened: Read | null = null;
+    /* Set while the checkout is being searched rather than walked. */
+    let hunt: (Hunt & { checkout: string; asked: number }) | null = null;
     let looked: {
       aim: Aim;
       checkout: string;
@@ -726,11 +729,69 @@ async function boot(): Promise<void> {
       say('written.', 2000);
     };
 
+    /**
+     * Looking for something in the checkout rather than walking to it.
+     *
+     * Same board, same line, two questions: where is the file called this, and
+     * where is this written. One line switches between them and takes what you
+     * have typed with it, because you rarely know which question you had until
+     * the first one has failed.
+     */
+    const hunted = (inside: boolean): void => {
+      const place = onPlace();
+      if (!place) return;
+      opened = null;
+      hunt = {
+        checkout: place.path,
+        name: 'title' in place ? place.title : place.name,
+        written: hunt?.written ?? '',
+        inside,
+        found: [],
+        asking: false,
+        unread: false,
+        asked: 0,
+      };
+      board.show(hunting(hunt));
+      if (hunt.written) void lookFor();
+    };
+
+    /** What is on the line, asked of the index, with stale answers dropped. */
+    const lookFor = async (): Promise<void> => {
+      const mine = hunt;
+      if (!mine) return;
+      const like = mine.written;
+      if (!like) {
+        mine.found = [];
+        mine.asking = false;
+        mine.unread = false;
+        board.update(hunting(mine));
+        return;
+      }
+      const when = ++mine.asked;
+      mine.asking = true;
+      board.update(hunting(mine));
+      const got = mine.inside
+        ? await client.finding.written({ checkout: mine.checkout, like })
+        : await client.finding.named({ checkout: mine.checkout, like });
+      // A letter typed since is a different question, and this is its answer.
+      if (hunt !== mine || mine.asked !== when) return;
+      mine.asking = false;
+      mine.found = got.success ? got.data.found : [];
+      mine.unread = !got.success && got.error.kind === 'still-reading';
+      board.update(hunting(mine));
+      if (!got.success && got.error.kind === 'no-way-to-look') say(got.error.because, 5000);
+    };
+
+    /** Where the board is standing, whether that is a session or a project. */
+    const onPlace = (): Task | Project | null =>
+      inside ?? (open ? (projectOn(open.district) ?? null) : null);
+
     /** Closing whatever of the checkout you had walked into. */
     const stopWalking = (): void => {
       const was = walking;
       walking = null;
       opened = null;
+      hunt = null;
       void was?.close();
     };
 
@@ -1159,6 +1220,14 @@ async function boot(): Promise<void> {
         void walkIn();
         return;
       }
+      if (pick === 'hunt') {
+        hunted(false);
+        return;
+      }
+      if (pick === 'flip') {
+        hunted(!hunt?.inside);
+        return;
+      }
       if (pick.startsWith('into:')) {
         void walking?.walk(pick.slice(5));
         return;
@@ -1309,6 +1378,17 @@ async function boot(): Promise<void> {
           if (live) board.show(live.rows());
           return;
         }
+        if (hunt && !opened) {
+          if (hunt.written) {
+            hunt.written = '';
+            void lookFor();
+            return;
+          }
+          hunt = null;
+          if (walking) board.show(walking.rows());
+          else if (live) board.show(live.rows());
+          return;
+        }
         if (opened) {
           // A line half rewritten is work: let go of that before the file.
           if (opened.fixing) {
@@ -1317,7 +1397,9 @@ async function boot(): Promise<void> {
             return;
           }
           opened = null;
-          if (walking) board.show(walking.rows());
+          if (hunt) board.show(hunting(hunt));
+          else if (walking) board.show(walking.rows());
+          else if (live) board.show(live.rows());
           return;
         }
         if (walking) {
@@ -1412,6 +1494,24 @@ async function boot(): Promise<void> {
           if (event.key === 'Backspace') wrote(looking.written.slice(0, -1));
           else if (event.key.length === 1) wrote(looking.written + event.key);
           else return board.scrolled(event.key);
+          return true;
+        }
+        /* Looking for something in the checkout: letters narrow it, arrows
+           walk what is left, the same as the finder. */
+        if (hunt && !opened) {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            board.walk(event.key === 'ArrowDown' ? 1 : -1);
+            return true;
+          }
+          if (event.key === 'Enter') {
+            const chose = board.chosen();
+            if (chose) press(chose);
+            return true;
+          }
+          if (event.key === 'Backspace') hunt.written = hunt.written.slice(0, -1);
+          else if (event.key.length === 1) hunt.written += event.key;
+          else return board.scrolled(event.key);
+          void lookFor();
           return true;
         }
         /* A line of a file taken down to the bottom of the board. The only

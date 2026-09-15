@@ -399,9 +399,30 @@ The runtime under all of this is emdash's files runtime, which Mender was not
 starting: it is now a worker like git and the search index, and it brings the
 live folder, the live file and the etag-pinned write with it.
 
-Not here yet: searching by name and by content on a board of their own, making
-a file, renaming one, and reading an image or a table as anything other than
-the bytes it is. Blame lands here too, now that a file can be read at all.
+A checkout is also looked in rather than walked. At the top of the folder is a
+line that says so, and pressing it turns the board into one question with one
+line to write it on: where is the file called this. A line at the top switches
+to the other question, where is this written, and takes what you have already
+typed with it, because you rarely know which question you had until the first
+one has come back empty. The answer to both is a list of files you press, with
+the lines that matched under each when there are any, and pressing one reads
+the file. Escape clears what you typed, then steps back to the folder.
+
+Two things had to be true for that to be honest. An index that has not read the
+checkout yet answers nothing, which is indistinguishable from nothing matching
+and is a lie, so the question waits for the index instead and says it is still
+reading. And nothing on this machine had a real ripgrep — only a shell function
+of the same name — so searching inside files silently found nothing; ripgrep is
+installed now and that is a host dependency, not a code change.
+
+Walking into a checkout used to hang for half a minute on a repository with
+node_modules in it, because the tree watches recursively and a checkout is
+mostly things nobody put there. It now carries the same exclusions emdash's own
+watcher uses.
+
+Not here yet: making a file, renaming one, and reading an image or a table as
+anything other than the bytes it is. Blame lands here too, now that a file can
+be read at all.
 
 ### W4 — you can ship it
 

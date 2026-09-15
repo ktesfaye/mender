@@ -1,3 +1,4 @@
+import { DEFAULT_WATCHER_EXCLUDE } from '@emdash/core/primitives/exclusion-policy/api';
 import { parseNativeAbsolute, type HostAbsolutePath } from '@emdash/core/primitives/path/api';
 import type { FileEntry, FileTreeModel } from '@emdash/core/runtimes/files/api';
 import { ReplicaState } from '@emdash/wire/live';
@@ -43,7 +44,13 @@ export async function openTree(
   let tree: FileTreeModel | undefined;
 
   const model = client.files.tree.model;
-  const key = { root, sessionId: `village:${checkout}` };
+  /* The same exclusions the watcher uses. A checkout is mostly things nobody
+     put there, and reading them is what makes walking into one slow. */
+  const key = {
+    root,
+    sessionId: `village:${checkout}`,
+    exclusions: [...DEFAULT_WATCHER_EXCLUDE],
+  };
   const replica = new ReplicaState(model.state(key, 'tree'), {
     onChange: (value) => {
       tree = value;
@@ -64,6 +71,9 @@ export async function openTree(
     const rows: Row[] = [
       { kind: 'title', text: here ? lastOf(here) : name },
       { kind: 'line', text: here ? here : checkout, tone: 'faded', keep: 'tail' },
+      { kind: 'gap' },
+      // Walking to a file you can already name is the long way round.
+      { kind: 'entry', mark: '→', text: 'look for something in here', tone: 'faded', pick: 'hunt' },
       { kind: 'gap' },
     ];
     if (!entry) {
