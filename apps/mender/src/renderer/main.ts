@@ -992,6 +992,31 @@ async function boot(): Promise<void> {
       await openSent();
     };
 
+    /**
+     * The end of a session, which takes two presses like everything that
+     * cannot be pressed again.
+     *
+     * The branch outlives the building. What goes is the worktree the work was
+     * done in, along with whatever in it was never committed, and the card
+     * says how much that is before it asks rather than afterwards.
+     */
+    const ending = async (sure: boolean): Promise<void> => {
+      const task = inside;
+      const shown = card;
+      if (!task || !shown) return;
+      if (!sure) {
+        shown.ask(true);
+        board.update(shown.rows());
+        return;
+      }
+      const aim = open;
+      shown.ask(false);
+      say('sending everybody home…', 30000);
+      await client.tasks.abandon({ id: task.id }, { timeoutMs: 0 });
+      say('taken down.', 3000);
+      if (aim) void openDistrict({ kind: 'district', district: aim.district });
+    };
+
     /** Closing whatever of the checkout you had walked into. */
     const stopWalking = (): void => {
       const was = walking;
@@ -1446,6 +1471,10 @@ async function boot(): Promise<void> {
         void talk();
         return;
       }
+      if (pick === 'end' || pick === 'end!') {
+        void ending(pick === 'end!');
+        return;
+      }
       if (pick === 'sent') {
         void openSent();
         return;
@@ -1617,6 +1646,11 @@ async function boot(): Promise<void> {
           }
           writing = null;
           if (live) board.show(live.rows());
+          return;
+        }
+        if (card?.ending()?.asked) {
+          card.ask(false);
+          board.update(card.rows());
           return;
         }
         if (sending) {

@@ -520,7 +520,30 @@ Closes TR-01 through TR-04, TR-06, TR-09 through TR-12, UI-12, UI-40.
 Done when: a real shell runs on the board, survives the app closing, and a dev
 server it starts is reachable without you hunting for the port.
 
-### W7 — a project is fully yours
+### W7 — a project is fully yours · started
+
+A session can be taken down, which is the first thing in this app that removes
+anything. It is at the bottom of the card, because the card is what that
+session is and ending it is the last thing about it, and it takes two presses
+like everything else here that cannot be pressed again.
+
+Above the offer is what it would cost, worked out from the same live checkout
+the board reads rather than computed once and left to go stale: how many files
+in there nobody committed, and how far the branch has run ahead of whatever it
+is following. A branch following nothing says that instead of a number, because
+how much is on it cannot be counted from here and a guess printed as a fact is
+the worst thing a preflight can do.
+
+The branch outlives the building. What goes is the worktree the work happened
+in; what was committed in it is still on the branch afterwards. That was
+driven: a session started, its card read, taken down in two presses, the
+worktree gone from git's list and the branch still there.
+
+Not here yet: abandoning a project, cloning or creating a repository rather
+than pointing at one, relinking, choosing how a worktree is cut, project
+settings, and a checkout's trouble showing on the district.
+
+### W7 — the rest of it
 
 The largest wave, and the least glamorous. Everything about founding, naming,
 configuring and disposing of projects and sessions.

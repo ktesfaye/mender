@@ -257,8 +257,11 @@ kit's own outline colour and at a height that fits its doorways. Nobody walks
 anywhere: there is no walk cycle and the path network that says where a villager
 could walk is still only in Python.
 
-Nothing in the UI abandons a project or a session, though the wire does both,
-and nothing removes an agent from one. A permission question does land on the
+A session is taken down from the bottom of its card, in two presses, with what
+it would cost written above the offer: what is uncommitted in there and how far
+the branch has run ahead. The branch outlives the building. Nothing in the UI
+abandons a project yet, though the wire does, and nothing removes an agent from
+a session. A permission question does land on the
 board, and a number key answers it; it takes setting the session to ask first,
 because otherwise the Claude on this machine answers its own.
 
