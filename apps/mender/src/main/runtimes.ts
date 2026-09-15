@@ -15,6 +15,7 @@ import { gitContract } from '@emdash/core/runtimes/git/api';
 import { gitWorkerSpec } from '@emdash/core/runtimes/git/node';
 import { hostSettingsWorkerSpec } from '@emdash/core/runtimes/host-settings/node';
 import { scriptsWorkerSpec } from '@emdash/core/runtimes/scripts/node';
+import { terminalsContract } from '@emdash/core/runtimes/terminals/api';
 import { terminalsWorkerSpec } from '@emdash/core/runtimes/terminals/node';
 import { tuiAgentsWorkerSpec } from '@emdash/core/runtimes/tui-agents/node';
 import { workspaceRegistryContract } from '@emdash/core/runtimes/workspace-registry/api';
@@ -63,6 +64,8 @@ export interface MenderRuntimes {
   files: ReturnType<typeof filesClient>;
   /** The files themselves: what is in a folder, and what is in a file. */
   disk: ReturnType<typeof diskClient>;
+  /** Real shells, which outlive the window they were opened from. */
+  terminals: ReturnType<typeof terminalsClient>;
   /** The workspace registry: the thing that makes a worktree exist. */
   workspaces: ReturnType<typeof workspacesClient>;
   /** The host's index of conversations: who has ever been asked to do what. */
@@ -90,6 +93,10 @@ function workspacesClient(ready: Promise<unknown>) {
 
 function filesClient(ready: Promise<unknown>) {
   return queuedClient(fileSearchContract, () => ready as Promise<never>);
+}
+
+function terminalsClient(ready: Promise<unknown>) {
+  return queuedClient(terminalsContract, () => ready as Promise<never>);
 }
 
 function diskClient(ready: Promise<unknown>) {
@@ -317,14 +324,20 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
   const git = gitClient(gitReady);
   const workspaces = workspacesClient(workspacesReady);
   const disk = diskClient(diskReady);
+  const terminals = terminalsClient(terminalsReady);
   return {
     controllers: {
       git: createController(gitContract, forwardContractImpl(gitContract, git)),
       files: createController(filesContract, forwardContractImpl(filesContract, disk)),
+      terminals: createController(
+        terminalsContract,
+        forwardContractImpl(terminalsContract, terminals)
+      ),
     },
     git,
     files: filesClient(filesReady),
     disk,
+    terminals,
     workspaces,
     conversations: conversationsClient(conversationsReady),
     acp: acpClient(acpReady),

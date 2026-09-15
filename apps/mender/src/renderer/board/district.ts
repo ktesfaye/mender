@@ -191,6 +191,9 @@ function build(
     { kind: 'line', text: standing(head) },
     ...sending(head),
     { kind: 'gap' },
+    // The one thing a checkout is for that git has no word for.
+    { kind: 'entry', mark: '→', text: 'open a shell in here', tone: 'faded', pick: 'shell' },
+    { kind: 'gap' },
   ];
 
   rows.push({ kind: 'heading', text: 'uncommitted' });

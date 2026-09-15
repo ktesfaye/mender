@@ -189,6 +189,13 @@ it turns to full ink with the cursor after it, rewrite it where it sits, and
 return writes the file. Escape puts it back. Nothing is written if the file
 changed underneath you while you had a line of it down.
 
+**There is a real shell in the checkout.** A line under where the checkout
+stands opens one, and it is the same board: you type at the bottom, return
+hands it the line, what it says comes back above. It lives outside the window,
+so closing the app leaves it running and coming back walks into it with
+everything it said still there. Full-screen programs draw but are only legible,
+not usable, because the board has no cursor of its own.
+
 **A session is a real agent, configured.** The card is who is working in there
 and who else on this machine could, what they are thinking with, how they work,
 how hard they think, what they can reach out in the world, and what they have

@@ -29,6 +29,8 @@ import { made, unmade, unread } from './board/made';
 import type { Meant } from './board/palette';
 import { makeRail, type Peg, type Rail } from './board/rail';
 import { read, unopened, type Read } from './board/reading';
+import { shell } from './board/shell';
+import { openShell, type LiveShell } from './board/talking';
 import { trouble, unwritten } from './board/trouble';
 import { answerFor, openWork, type LiveWork } from './board/work';
 import { ran } from './job';
@@ -118,6 +120,8 @@ async function boot(): Promise<void> {
     let opened: Read | null = null;
     /* Set while the checkout is being searched rather than walked. */
     let hunt: (Hunt & { checkout: string; asked: number }) | null = null;
+    /* The shell running in this checkout, while its board is the one open. */
+    let talking: { shell: LiveShell | null; name: string; written: string } | null = null;
     let looked: {
       aim: Aim;
       checkout: string;
@@ -324,6 +328,7 @@ async function boot(): Promise<void> {
       writing = null;
       looked = null;
       stopWalking();
+      stopTalking();
       board.show(finding('', { projects, tasks, moods: seen, where: standing() }));
       board.walk(1);
     };
@@ -408,6 +413,7 @@ async function boot(): Promise<void> {
       writing = null;
       looked = null;
       stopWalking();
+      stopTalking();
       const shown = card;
       card = null;
       await shown?.close();
@@ -432,6 +438,7 @@ async function boot(): Promise<void> {
       writing = null;
       looked = null;
       stopWalking();
+      stopTalking();
       inside = null;
       await was?.close();
 
@@ -447,7 +454,7 @@ async function boot(): Promise<void> {
       ]);
 
       const opened = await openCheckout(client, { name, path, lines }, (rows) => {
-        if (open === aim && !reading && !looked && !walking) board.update(rows);
+        if (open === aim && !reading && !looked && !walking && !talking) board.update(rows);
       });
       if (open !== aim) {
         await opened.close();
@@ -521,6 +528,7 @@ async function boot(): Promise<void> {
       writing = null;
       looked = null;
       stopWalking();
+      stopTalking();
       await was?.close();
       const shown = card;
       card = null;
@@ -786,6 +794,64 @@ async function boot(): Promise<void> {
     const onPlace = (): Task | Project | null =>
       inside ?? (open ? (projectOn(open.district) ?? null) : null);
 
+    /**
+     * A real shell in this checkout, on the board.
+     *
+     * The board already is a scrolling column of writing with one line at the
+     * bottom you type into, which is what a terminal is, so a shell needs no
+     * new shape at all. It only needs the bytes read down to lines, because
+     * what a shell writes is meant for a screen that has colour and a cursor
+     * and this one has neither.
+     */
+    const talk = async (): Promise<void> => {
+      const place = onPlace();
+      if (!place || !open) return;
+      const aim = open;
+      stopTalking();
+      stopWalking();
+      const name = 'title' in place ? place.title : place.name;
+      talking = { shell: null, name, written: '' };
+      const mine = talking;
+      board.show(shell({ name, lines: [], written: '', running: false }));
+      const running = await openShell(client, place.path, () => {
+        if (talking === mine && open === aim) board.update(rowsForShell());
+      });
+      if (talking !== mine || open !== aim) {
+        await running?.close();
+        return;
+      }
+      if (!running) {
+        board.show(
+          shell({
+            name,
+            lines: [],
+            written: '',
+            running: true,
+            stopped: 'no shell would start here.',
+          })
+        );
+        return;
+      }
+      mine.shell = running;
+      board.show(rowsForShell());
+    };
+
+    const rowsForShell = (): Row[] =>
+      talking
+        ? shell({
+            name: talking.name,
+            lines: talking.shell?.lines() ?? [],
+            written: talking.written,
+            running: Boolean(talking.shell),
+          })
+        : [];
+
+    const stopTalking = (): void => {
+      const was = talking;
+      talking = null;
+      void was?.shell?.close();
+    };
+
     /** Closing whatever of the checkout you had walked into. */
     const stopWalking = (): void => {
       const was = walking;
@@ -816,6 +882,7 @@ async function boot(): Promise<void> {
       writing = null;
       looked = null;
       stopWalking();
+      stopTalking();
       writing = {
         aim,
         checkout: place.path,
@@ -941,6 +1008,7 @@ async function boot(): Promise<void> {
       writing = null;
       looked = null;
       stopWalking();
+      stopTalking();
       if (!live) return;
       /* Back at the top, which is where the file was pressed: a session's
          board is pinned to now, but you did not come from now. */
@@ -960,6 +1028,7 @@ async function boot(): Promise<void> {
       writing = null;
       looked = null;
       stopWalking();
+      stopTalking();
       await was?.close();
       const shown = card;
       card = null;
@@ -981,7 +1050,7 @@ async function boot(): Promise<void> {
       );
 
       const opened = await openWork(client, task, (rows) => {
-        if (open === aim && !reading && !looked && !walking) board.update(rows);
+        if (open === aim && !reading && !looked && !walking && !talking) board.update(rows);
       });
       if (open !== aim) {
         await opened.close();
@@ -1006,6 +1075,7 @@ async function boot(): Promise<void> {
       writing = null;
       looked = null;
       stopWalking();
+      stopTalking();
       open = aim;
       inside = null;
       work = null;
@@ -1023,6 +1093,7 @@ async function boot(): Promise<void> {
       writing = null;
       looked = null;
       stopWalking();
+      stopTalking();
       titling = { task, written: task.title };
       board.show(retitling(titling));
     };
@@ -1224,6 +1295,10 @@ async function boot(): Promise<void> {
         hunted(false);
         return;
       }
+      if (pick === 'shell') {
+        void talk();
+        return;
+      }
       if (pick === 'flip') {
         hunted(!hunt?.inside);
         return;
@@ -1378,6 +1453,17 @@ async function boot(): Promise<void> {
           if (live) board.show(live.rows());
           return;
         }
+        if (talking) {
+          // What you have half typed at a shell is yours before the shell is.
+          if (talking.written) {
+            talking.written = '';
+            board.update(rowsForShell());
+            return;
+          }
+          stopTalking();
+          if (live) board.show(live.rows());
+          return;
+        }
         if (hunt && !opened) {
           if (hunt.written) {
             hunt.written = '';
@@ -1494,6 +1580,19 @@ async function boot(): Promise<void> {
           if (event.key === 'Backspace') wrote(looking.written.slice(0, -1));
           else if (event.key.length === 1) wrote(looking.written + event.key);
           else return board.scrolled(event.key);
+          return true;
+        }
+        /* Talking to a shell. Return hands it the line and a newline, which
+           is the whole protocol: everything else it says back comes as bytes. */
+        if (talking) {
+          const said = talking;
+          if (event.key === 'Enter') {
+            void said.shell?.say(`${said.written}\n`);
+            said.written = '';
+          } else if (event.key === 'Backspace') said.written = said.written.slice(0, -1);
+          else if (event.key.length === 1) said.written += event.key;
+          else return board.scrolled(event.key);
+          board.update(rowsForShell());
           return true;
         }
         /* Looking for something in the checkout: letters narrow it, arrows
@@ -1657,7 +1756,8 @@ async function boot(): Promise<void> {
         !looking &&
         !reading &&
         !looked &&
-        !walking
+        !walking &&
+        !talking
       ) {
         board.update(live.rows());
       }
