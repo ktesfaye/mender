@@ -41,7 +41,10 @@ import {
 } from '@emdash/wire/rpc';
 import { createWireWorkerHost } from '@emdash/wire/worker';
 import { childProcessSpawner } from '@emdash/wire/worker/node';
+import { pullRequestsContract } from '@upstream/services/pull-requests/api/contract';
+import { pullRequestsComponent } from '@upstream/services/pull-requests/node';
 import { app } from 'electron';
+import { createGitHubAuth } from './github';
 import { menderWorkerPath } from './worker-paths';
 
 /**
@@ -66,6 +69,8 @@ export interface MenderRuntimes {
   disk: ReturnType<typeof diskClient>;
   /** Real shells, which outlive the window they were opened from. */
   terminals: ReturnType<typeof terminalsClient>;
+  /** What is open against the other end, and what its checks think of it. */
+  pulls: ReturnType<typeof pullsClient>;
   /** The workspace registry: the thing that makes a worktree exist. */
   workspaces: ReturnType<typeof workspacesClient>;
   /** The host's index of conversations: who has ever been asked to do what. */
@@ -97,6 +102,10 @@ function filesClient(ready: Promise<unknown>) {
 
 function terminalsClient(ready: Promise<unknown>) {
   return queuedClient(terminalsContract, () => ready as Promise<never>);
+}
+
+function pullsClient(ready: Promise<unknown>) {
+  return queuedClient(pullRequestsContract, () => ready as Promise<never>);
 }
 
 function diskClient(ready: Promise<unknown>) {
@@ -254,6 +263,21 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
     })
   );
 
+  /* Pull requests. Who the village is to GitHub is answered in-process by
+     asking the `gh` on this machine for the token it already holds, rather
+     than by keeping a second place to be signed in. */
+  const pullsReady = observed(
+    host
+      .create(pullRequestsComponent, {
+        name: 'pull-requests',
+        executable: menderWorkerPath('pull-requests'),
+        env: process.env,
+        dependencies: { githubAuth: createGitHubAuth() },
+        config: { databasePath: data('pull-requests.db'), incrementalIntervalMs: 60_000 },
+      })
+      .ready()
+  );
+
   const acpReady = observed(
     conversationsReady.then(async (conversations) => {
       const worker = host.create(
@@ -325,6 +349,7 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
   const workspaces = workspacesClient(workspacesReady);
   const disk = diskClient(diskReady);
   const terminals = terminalsClient(terminalsReady);
+  const pulls = pullsClient(pullsReady);
   return {
     controllers: {
       git: createController(gitContract, forwardContractImpl(gitContract, git)),
@@ -333,11 +358,16 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
         terminalsContract,
         forwardContractImpl(terminalsContract, terminals)
       ),
+      pulls: createController(
+        pullRequestsContract,
+        forwardContractImpl(pullRequestsContract, pulls)
+      ),
     },
     git,
     files: filesClient(filesReady),
     disk,
     terminals,
+    pulls,
     workspaces,
     conversations: conversationsClient(conversationsReady),
     acp: acpClient(acpReady),

@@ -424,7 +424,45 @@ Not here yet: making a file, renaming one, and reading an image or a table as
 anything other than the bytes it is. Blame lands here too, now that a file can
 be read at all.
 
-### W4 — you can ship it
+### W4 — you can ship it · started
+
+A piece of work ends in the village now. Under where the checkout stands is a
+line asking what is open for this branch, and pressing it goes and finds out:
+what the pull request is for, which branch is going where, what has been
+written about it, what the machines think of it, whether anybody has looked,
+and the ways it can go in. Nothing is open yet says so and offers to open one,
+and what you write on the line is what it is called.
+
+What the checks say is a count rather than a list. Twenty green checks is one
+fact and takes one line; the ones that failed are what you came to read and get
+a line each, and anything still running says so. The same rule as the checkout
+board applies to the actions: squashing, merging and rebasing only appear when
+they are actually possible, and a draft offers to say it is ready instead.
+
+Who the village is to GitHub is answered by asking the `gh` on this machine for
+the token it already holds. Emdash keeps its own account store, its own
+device-code flow and its own keychain entries, and the village wants none of
+it: a second place to be signed in is a second place to be signed out of, and
+anybody working here is already signed in to `gh`. Nothing is stored or written
+down; the token is fetched when a request needs it.
+
+The service underneath is emdash's and it is real: its own worker, its own
+cache, its own sync. It lives in emdash's app rather than in a package, which
+is only where it happens to sit — it imports neither Electron nor React and is
+back end by every rule this fork has — so Mender reaches it through an
+`@upstream` alias that says exactly which parts of that app are back end.
+
+Driven in the running app as far as it honestly can be: the board asked GitHub
+about this checkout's branch, authenticated through `gh`, and came back with
+the right answer. Opening, merging and marking ready are wired and typed but
+have not been driven, because driving them means opening a real pull request on
+his GitHub and there is no branch here to open one from.
+
+Not here yet: the pull request's own files and comments on the board, issues
+and linking a session to one, and noticing a pull request somebody else opened
+for a session's branch.
+
+### W4 — the rest of shipping
 
 Closes WS-43, WS-46 through WS-49, WS-54, WS-56, WS-57.
 

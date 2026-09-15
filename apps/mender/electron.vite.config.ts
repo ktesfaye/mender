@@ -31,7 +31,15 @@ export default defineConfig({
       },
     },
     resolve: {
-      alias: { '@main': resolve('src/main'), '@shared': resolve('src/shared') },
+      alias: {
+        '@main': resolve('src/main'),
+        '@shared': resolve('src/shared'),
+        // Emdash's portable services. We keep its back end; some of it lives
+        // in its app rather than in a package, and this says which parts.
+        '@upstream': resolve('../emdash-desktop/src/core'),
+        // Upstream's own alias, so its internal imports resolve from here.
+        '@core': resolve('../emdash-desktop/src/core'),
+      },
     },
   },
   preload: {
@@ -40,7 +48,13 @@ export default defineConfig({
       externalizeDeps: { exclude: workspacePackages },
       rollupOptions: { input: { index: resolve('src/entry/preload.ts') } },
     },
-    resolve: { alias: { '@shared': resolve('src/shared') } },
+    resolve: {
+      alias: {
+        '@shared': resolve('src/shared'),
+        '@upstream': resolve('../emdash-desktop/src/core'),
+        '@core': resolve('../emdash-desktop/src/core'),
+      },
+    },
   },
   renderer: {
     root: 'src/renderer',
@@ -49,7 +63,12 @@ export default defineConfig({
     // the renderer on build, so `/kit/kit.json` means the same thing in both.
     publicDir: resolve('assets'),
     resolve: {
-      alias: { '@renderer': resolve('src/renderer'), '@shared': resolve('src/shared') },
+      alias: {
+        '@renderer': resolve('src/renderer'),
+        '@shared': resolve('src/shared'),
+        '@upstream': resolve('../emdash-desktop/src/core'),
+        '@core': resolve('../emdash-desktop/src/core'),
+      },
     },
     server: { port: 3100 },
   },

@@ -5,6 +5,7 @@ import {
 } from '@emdash/core/primitives/path/api';
 import {
   gitContract,
+  shortName,
   type Commit,
   type FileChange,
   type GitFilePath,
@@ -29,9 +30,10 @@ import { made, unmade, unread } from './board/made';
 import type { Meant } from './board/palette';
 import { makeRail, type Peg, type Rail } from './board/rail';
 import { read, unopened, type Read } from './board/reading';
+import { sent, type Sent } from './board/sent';
 import { shell } from './board/shell';
 import { openShell, type LiveShell } from './board/talking';
-import { trouble, unwritten } from './board/trouble';
+import { refused, trouble, unwritten } from './board/trouble';
 import { answerFor, openWork, type LiveWork } from './board/work';
 import { ran } from './job';
 import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
@@ -122,6 +124,8 @@ async function boot(): Promise<void> {
     let hunt: (Hunt & { checkout: string; asked: number }) | null = null;
     /* The shell running in this checkout, while its board is the one open. */
     let talking: { shell: LiveShell | null; name: string; written: string } | null = null;
+    /* What is open against the other end for this checkout's branch. */
+    let sending: (Sent & { repository: string; number?: number }) | null = null;
     let looked: {
       aim: Aim;
       checkout: string;
@@ -329,6 +333,7 @@ async function boot(): Promise<void> {
       looked = null;
       stopWalking();
       stopTalking();
+      sending = null;
       board.show(finding('', { projects, tasks, moods: seen, where: standing() }));
       board.walk(1);
     };
@@ -414,6 +419,7 @@ async function boot(): Promise<void> {
       looked = null;
       stopWalking();
       stopTalking();
+      sending = null;
       const shown = card;
       card = null;
       await shown?.close();
@@ -439,6 +445,7 @@ async function boot(): Promise<void> {
       looked = null;
       stopWalking();
       stopTalking();
+      sending = null;
       inside = null;
       await was?.close();
 
@@ -454,7 +461,9 @@ async function boot(): Promise<void> {
       ]);
 
       const opened = await openCheckout(client, { name, path, lines }, (rows) => {
-        if (open === aim && !reading && !looked && !walking && !talking) board.update(rows);
+        if (open === aim && !reading && !looked && !walking && !talking && !sending) {
+          board.update(rows);
+        }
       });
       if (open !== aim) {
         await opened.close();
@@ -529,6 +538,7 @@ async function boot(): Promise<void> {
       looked = null;
       stopWalking();
       stopTalking();
+      sending = null;
       await was?.close();
       const shown = card;
       card = null;
@@ -852,6 +862,136 @@ async function boot(): Promise<void> {
       void was?.shell?.close();
     };
 
+    /**
+     * What is open against the other end for this branch, and what to do.
+     *
+     * A pull request is the end of a piece of work, and the village is where
+     * the work happened, so it ends here rather than in a browser. What is on
+     * the wood is the four things that decide whether it lands: what it is,
+     * who has looked, what the machines think, and the way in.
+     */
+    const openSent = async (): Promise<void> => {
+      const place = onPlace();
+      if (!place || !open) return;
+      const aim = open;
+      const parsed = parseNativeAbsolute(place.path);
+      if (!parsed.success) return;
+      const checkout = parsed.data;
+      stopWalking();
+      stopTalking();
+      const name = 'title' in place ? place.title : place.name;
+
+      board.show(sent({ name, branch: '', waiting: 'asking the other end…' }));
+
+      const head = await client.git.checkout.model.state({ checkout }, 'head').snapshot();
+      const on = head.data;
+      if (!on || on.kind === 'detached' || on.kind === 'unborn') {
+        say('this checkout is not on a branch.', 5000);
+        if (live) board.show(live.rows());
+        return;
+      }
+      const branch = shortName(on.ref);
+
+      const remotes = await client.git.repository.model
+        .state({ repository: checkout }, 'remotes')
+        .snapshot();
+      const named = remotes.data.remotes;
+      const remote = named.find((each) => each.name === 'origin') ?? named[0];
+      if (!remote) {
+        say('this checkout has nowhere to send anything.', 5000);
+        if (live) board.show(live.rows());
+        return;
+      }
+      const repository = remote.url;
+
+      /* The cache has to be told which repository it is looking after before
+         it will say anything about it, and then told to go and look. */
+      await client.pulls.registerRepository({ repositoryUrl: repository });
+      await client.pulls.sync({ repositoryUrl: repository });
+      const found = await client.pulls.getPullRequestsForHead({
+        repositoryUrl: repository,
+        headRepositoryUrl: repository,
+        headRefName: branch,
+      });
+      if (open !== aim) return;
+
+      const pull = found.success ? found.data.prs[0] : undefined;
+      sending = {
+        name,
+        branch,
+        repository,
+        ...(pull ? { pull, number: numberOf(pull.url) } : { written: undefined }),
+      };
+      board.show(sent(sending));
+    };
+
+    /** The number at the end of a pull request's url, which is its name to git. */
+    const numberOf = (url: string): number | undefined => {
+      const at = /\/(\d+)(?:$|[?#])/.exec(url);
+      return at?.[1] ? Number(at[1]) : undefined;
+    };
+
+    /** Opening one, once it has been said what it is for. */
+    const openIt = async (): Promise<void> => {
+      const mine = sending;
+      if (!mine) return;
+      const title = (mine.written ?? '').trim();
+      if (!title) {
+        say('a pull request with nothing written on it is not one.', 4000);
+        return;
+      }
+      const place = onPlace();
+      const parsed = place ? parseNativeAbsolute(place.path) : undefined;
+      if (!parsed?.success) return;
+      /* Where it is going. The repository knows what its remote calls its
+         default branch, which is a different question from what this checkout
+         happens to be on. */
+      const named = await client.git.repository.getDefaultBranch({
+        repository: parsed.data,
+        remote: 'origin',
+      });
+      const onto = (named.success ? named.data.branch : null) ?? 'main';
+
+      sending = { ...mine, waiting: 'opening it…' };
+      board.update(sent(sending));
+      const made = await client.pulls.createPullRequest({
+        repositoryUrl: mine.repository,
+        head: mine.branch,
+        base: onto,
+        title,
+        draft: false,
+      });
+      if (!made.success) {
+        say(refused(made.error), 6000);
+        sending = { ...mine, written: title };
+        board.update(sent(sending));
+        return;
+      }
+      say('opened.', 3000);
+      await openSent();
+    };
+
+    /** And the two things you can do to one that is already open. */
+    const doneWith = async (what: 'ready' | 'squash' | 'merge' | 'rebase'): Promise<void> => {
+      const mine = sending;
+      if (!mine?.number) return;
+      sending = { ...mine, waiting: what === 'ready' ? 'saying so…' : 'putting it in…' };
+      board.update(sent(sending));
+      const at = { repositoryUrl: mine.repository, number: mine.number };
+      const done =
+        what === 'ready'
+          ? await client.pulls.markReadyForReview(at)
+          : await client.pulls.mergePullRequest({ ...at, options: { strategy: what } });
+      if (!done.success) {
+        say(refused(done.error), 6000);
+        sending = mine;
+        board.update(sent(sending));
+        return;
+      }
+      say(what === 'ready' ? 'said.' : 'it went in.', 3000);
+      await openSent();
+    };
+
     /** Closing whatever of the checkout you had walked into. */
     const stopWalking = (): void => {
       const was = walking;
@@ -883,6 +1023,7 @@ async function boot(): Promise<void> {
       looked = null;
       stopWalking();
       stopTalking();
+      sending = null;
       writing = {
         aim,
         checkout: place.path,
@@ -1009,6 +1150,7 @@ async function boot(): Promise<void> {
       looked = null;
       stopWalking();
       stopTalking();
+      sending = null;
       if (!live) return;
       /* Back at the top, which is where the file was pressed: a session's
          board is pinned to now, but you did not come from now. */
@@ -1029,6 +1171,7 @@ async function boot(): Promise<void> {
       looked = null;
       stopWalking();
       stopTalking();
+      sending = null;
       await was?.close();
       const shown = card;
       card = null;
@@ -1050,7 +1193,9 @@ async function boot(): Promise<void> {
       );
 
       const opened = await openWork(client, task, (rows) => {
-        if (open === aim && !reading && !looked && !walking && !talking) board.update(rows);
+        if (open === aim && !reading && !looked && !walking && !talking && !sending) {
+          board.update(rows);
+        }
       });
       if (open !== aim) {
         await opened.close();
@@ -1076,6 +1221,7 @@ async function boot(): Promise<void> {
       looked = null;
       stopWalking();
       stopTalking();
+      sending = null;
       open = aim;
       inside = null;
       work = null;
@@ -1094,6 +1240,7 @@ async function boot(): Promise<void> {
       looked = null;
       stopWalking();
       stopTalking();
+      sending = null;
       titling = { task, written: task.title };
       board.show(retitling(titling));
     };
@@ -1299,6 +1446,25 @@ async function boot(): Promise<void> {
         void talk();
         return;
       }
+      if (pick === 'sent') {
+        void openSent();
+        return;
+      }
+      if (pick === 'open-pull') {
+        if (sending) {
+          sending = { ...sending, written: '' };
+          board.update(sent(sending));
+        }
+        return;
+      }
+      if (pick === 'ready-pull') {
+        void doneWith('ready');
+        return;
+      }
+      if (pick.startsWith('merge-pull:')) {
+        void doneWith(pick.slice(11) as 'squash' | 'merge' | 'rebase');
+        return;
+      }
       if (pick === 'flip') {
         hunted(!hunt?.inside);
         return;
@@ -1453,6 +1619,16 @@ async function boot(): Promise<void> {
           if (live) board.show(live.rows());
           return;
         }
+        if (sending) {
+          if (sending.written) {
+            sending = { ...sending, written: '' };
+            board.update(sent(sending));
+            return;
+          }
+          sending = null;
+          if (live) board.show(live.rows());
+          return;
+        }
         if (talking) {
           // What you have half typed at a shell is yours before the shell is.
           if (talking.written) {
@@ -1580,6 +1756,18 @@ async function boot(): Promise<void> {
           if (event.key === 'Backspace') wrote(looking.written.slice(0, -1));
           else if (event.key.length === 1) wrote(looking.written + event.key);
           else return board.scrolled(event.key);
+          return true;
+        }
+        /* Saying what a pull request is for, before opening it. */
+        if (sending?.written !== undefined) {
+          const mine = sending;
+          if (event.key === 'Enter') void openIt();
+          else if (event.key === 'Backspace') {
+            sending = { ...mine, written: (mine.written ?? '').slice(0, -1) };
+          } else if (event.key.length === 1) {
+            sending = { ...mine, written: (mine.written ?? '') + event.key };
+          } else return board.scrolled(event.key);
+          if (sending) board.update(sent(sending));
           return true;
         }
         /* Talking to a shell. Return hands it the line and a newline, which
@@ -1757,7 +1945,8 @@ async function boot(): Promise<void> {
         !reading &&
         !looked &&
         !walking &&
-        !talking
+        !talking &&
+        !sending
       ) {
         board.update(live.rows());
       }

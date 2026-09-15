@@ -196,6 +196,13 @@ so closing the app leaves it running and coming back walks into it with
 everything it said still there. Full-screen programs draw but are only legible,
 not usable, because the board has no cursor of its own.
 
+**And a piece of work ends here rather than in a browser.** A line under the
+checkout asks what is open for this branch: what it is for, which branch is
+going where, what the machines think, whether anybody has looked, and the ways
+it can go in. Nothing open yet offers to open one. The checks are a count, not
+a list, except the ones that failed, which are what you came to read. Who the
+village is to GitHub is whoever `gh` on this machine is already signed in as.
+
 **A session is a real agent, configured.** The card is who is working in there
 and who else on this machine could, what they are thinking with, how they work,
 how hard they think, what they can reach out in the world, and what they have

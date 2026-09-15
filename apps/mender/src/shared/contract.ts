@@ -2,6 +2,7 @@ import { filesContract } from '@emdash/core/runtimes/files/api';
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { terminalsContract } from '@emdash/core/runtimes/terminals/api';
 import { defineContract } from '@emdash/wire/rpc';
+import { pullRequestsContract } from '@upstream/services/pull-requests/api/contract';
 import { agentsContract } from './agents';
 import { changesContract } from './changes';
 import { findingContract } from './finding';
@@ -24,6 +25,7 @@ export const menderDomainContracts = {
   finding: findingContract,
   git: gitContract,
   projects: projectsContract,
+  pulls: pullRequestsContract,
   tasks: tasksContract,
   terminals: terminalsContract,
   village: villageContract,

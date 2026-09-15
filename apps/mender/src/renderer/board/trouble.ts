@@ -80,3 +80,38 @@ export function unwritten(error: { type?: string; message?: string }): string {
       return error.message ? error.message : 'it could not be written.';
   }
 }
+
+/**
+ * What the other end said about a pull request, said the way somebody would.
+ *
+ * The same rule as git's failures: every distinct thing that can go wrong gets
+ * its own sentence, because the next move is different in each case. Where
+ * GitHub's own words are the useful part they are kept inside the sentence.
+ */
+export function refused(error: { type?: string; message?: string; reason?: string }): string {
+  const said = (error.message ?? error.reason ?? '').trim();
+  switch (error.type) {
+    case 'invalid_repository':
+      return 'that remote is not a github repository this can talk to.';
+    case 'remote_not_ready':
+      return 'the branch is not up there yet. send it up first.';
+    case 'cross_host_pr':
+      return 'the two ends are on different githubs.';
+    case 'host_unreachable':
+      return 'it could not reach github.';
+    case 'auth_required':
+      return 'nothing on this machine is signed in to github. run `gh auth login`.';
+    case 'forbidden':
+      return 'that account is not allowed to do this here.';
+    case 'not_found':
+      return 'github says there is no such thing.';
+    case 'rate_limited':
+      return 'github has had enough questions for now. try again shortly.';
+    case 'merge_conflict':
+      return 'it and the other end have both moved since they agreed.';
+    case 'not_mergeable':
+      return said ? `github will not put it in: ${said}` : 'github will not put it in yet.';
+    default:
+      return said || 'github would not say what went wrong.';
+  }
+}

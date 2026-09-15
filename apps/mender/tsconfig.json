@@ -15,7 +15,9 @@
     "paths": {
       "@main/*": ["./src/main/*"],
       "@shared/*": ["./src/shared/*"],
-      "@renderer/*": ["./src/renderer/*"]
+      "@renderer/*": ["./src/renderer/*"],
+      "@upstream/*": ["../emdash-desktop/src/core/*"],
+      "@core/*": ["../emdash-desktop/src/core/*"]
     }
   },
   "include": ["src/**/*", "electron.vite.config.ts"],

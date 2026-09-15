@@ -20,6 +20,11 @@ export const menderWorkers = {
   scripts: `${core}/runtimes/scripts/node/runtime-entry.ts`,
   'host-settings': `${core}/runtimes/host-settings/node/runtime-entry.ts`,
   'workspace-registry': `${core}/runtimes/workspace-registry/node/runtime-entry.ts`,
+  /* Upstream's, but it lives in its app rather than in a package: the pull
+     request service imports neither Electron nor React and is back end by
+     every rule this fork has, it simply was never moved. */
+  'pull-requests':
+    '../emdash-desktop/src/core/services/pull-requests/node/entries/pull-requests.ts',
   acp: 'src/main/entries/acp.ts',
   'agent-config': 'src/main/entries/agent-config.ts',
   'tui-agents': 'src/main/entries/tui-agents.ts',
