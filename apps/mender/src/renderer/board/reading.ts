@@ -22,6 +22,10 @@ export interface Read {
   content: FileContentModel;
   /** Which line is being rewritten, if one is, and what it says so far. */
   fixing?: { at: number; written: string };
+  /** What it would be called instead, while it is being renamed. */
+  renaming?: string;
+  /** Set once it has been offered to throw the file away and asked twice. */
+  asked?: boolean;
 }
 
 export function read(state: Read): Row[] {
@@ -70,6 +74,44 @@ export function read(state: Read): Row[] {
       { kind: 'line', text: `and ${lines.length - LINES} more lines.`, tone: 'faded' }
     );
   }
+  return [...rows, ...over(state, content.readonly)];
+}
+
+/**
+ * The two things you can do to a file rather than to its writing.
+ *
+ * At the bottom, under everything the file says, because you came here to read
+ * it. Throwing one away asks twice like everything else that cannot be pressed
+ * again; renaming does not, because a name is put back by typing the old one.
+ */
+function over(state: Read, readonly: boolean): Row[] {
+  if (readonly) return [];
+  const rows: Row[] = [{ kind: 'gap' }];
+  if (state.renaming !== undefined) {
+    rows.push(
+      { kind: 'line', text: 'call it something else. return does it.', tone: 'faded' },
+      { kind: 'typed', text: state.renaming }
+    );
+    return rows;
+  }
+  rows.push({
+    kind: 'entry',
+    mark: '→',
+    text: 'call it something else',
+    tone: 'faded',
+    pick: 'rename',
+  });
+  rows.push(
+    state.asked
+      ? {
+          kind: 'entry',
+          mark: '✗',
+          text: 'press again and this file is gone',
+          tone: 'sore',
+          pick: 'bin!',
+        }
+      : { kind: 'entry', mark: '✗', text: 'throw this file away', tone: 'faded', pick: 'bin' }
+  );
   return rows;
 }
 

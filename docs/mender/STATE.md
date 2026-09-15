@@ -420,9 +420,22 @@ node_modules in it, because the tree watches recursively and a checkout is
 mostly things nobody put there. It now carries the same exclusions emdash's own
 watcher uses.
 
-Not here yet: making a file, renaming one, and reading an image or a table as
-anything other than the bytes it is. Blame lands here too, now that a file can
-be read at all.
+A file is also made, renamed and thrown away. The folder you are standing in
+offers to put something new in it and you name it on the line; a name ending in
+a slash makes a folder, which is the only way to say which of the two you meant
+without being asked twice. At the bottom of a file, under everything it says
+because that is what you came for, are the two things you can do to the file
+rather than to its writing: call it something else, and throw it away. Renaming
+does not ask twice, because a name is put back by typing the old one. Throwing
+away does.
+
+All of it was driven end to end: a file made from the board and found on the
+disk, appearing in the folder live; opened, renamed, and the folder showing the
+new name without a reload; then found by name, opened again and thrown away,
+gone from the disk.
+
+Not here yet: blame, and reading an image or a table as anything other than the
+bytes it is.
 
 ### W4 — you can ship it · started
 

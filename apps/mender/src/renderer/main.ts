@@ -752,6 +752,82 @@ async function boot(): Promise<void> {
       say('written.', 2000);
     };
 
+    /** Where a path in the checkout you are walking sits on the disk. */
+    const onDisk = (path: string) => {
+      const place = onPlace();
+      const parsed = place ? parseNativeAbsolute(place.path) : undefined;
+      if (!parsed?.success) return null;
+      const whole = joinAbsolute(parsed.data, path as PortableRelativePath);
+      return whole.success ? whole.data : null;
+    };
+
+    /**
+     * Making something in the folder you are standing in.
+     *
+     * A name ending in a slash is a folder, which is the only way to say which
+     * of the two you meant without asking you twice.
+     */
+    const makeIt = async (): Promise<void> => {
+      const tree = walking;
+      const written = tree?.naming()?.trim();
+      if (!tree || !written) return;
+      const folder = written.endsWith('/');
+      const name = folder ? written.slice(0, -1) : written;
+      const where = tree.at() ? `${tree.at()}/${name}` : name;
+      const whole = onDisk(where);
+      if (!whole) return;
+      const done = folder
+        ? await client.files.fs.createDirectory({ path: whole })
+        : await client.files.fs.createFile({ path: whole });
+      if (!done.success) {
+        say(unwritten(done.error), 6000);
+        return;
+      }
+      tree.name(undefined);
+      say(folder ? 'made.' : 'made. press it to write in it.', 3000);
+    };
+
+    /** Calling a file something else, which is a move on the disk. */
+    const renamed = async (): Promise<void> => {
+      const file = opened;
+      const written = file?.renaming?.trim();
+      if (!file || !written) return;
+      const cut = file.path.lastIndexOf('/');
+      const to = cut === -1 ? written : `${file.path.slice(0, cut)}/${written}`;
+      const from = onDisk(file.path);
+      const onto = onDisk(to);
+      if (!from || !onto) return;
+      const done = await client.files.fs.rename({ from, to: onto });
+      if (!done.success) {
+        say(unwritten(done.error), 6000);
+        return;
+      }
+      opened = null;
+      if (walking) board.show(walking.rows());
+      say('renamed.', 3000);
+    };
+
+    /** And throwing one away, which takes the second press. */
+    const binned = async (sure: boolean): Promise<void> => {
+      const file = opened;
+      if (!file) return;
+      if (!sure) {
+        file.asked = true;
+        board.update(read(file));
+        return;
+      }
+      const whole = onDisk(file.path);
+      if (!whole) return;
+      const done = await client.files.fs.delete({ path: whole });
+      if (!done.success) {
+        say(unwritten(done.error), 6000);
+        return;
+      }
+      opened = null;
+      if (walking) board.show(walking.rows());
+      say('thrown away.', 3000);
+    };
+
     /**
      * Looking for something in the checkout rather than walking to it.
      *
@@ -1581,6 +1657,22 @@ async function boot(): Promise<void> {
         fixLine(Number(pick.slice(5)));
         return;
       }
+      if (pick === 'make') {
+        walking?.name('');
+        return;
+      }
+      if (pick === 'rename') {
+        if (opened) {
+          const cut = opened.path.lastIndexOf('/');
+          opened.renaming = cut === -1 ? opened.path : opened.path.slice(cut + 1);
+          board.update(read(opened));
+        }
+        return;
+      }
+      if (pick === 'bin' || pick === 'bin!') {
+        void binned(pick === 'bin!');
+        return;
+      }
       if (pick === 'undo' || pick === 'undo!') {
         void undo(pick === 'undo!');
         return;
@@ -1761,6 +1853,20 @@ async function boot(): Promise<void> {
           else if (live) board.show(live.rows());
           return;
         }
+        if (walking && !opened && walking.naming() !== undefined) {
+          walking.name(undefined);
+          return;
+        }
+        if (opened?.renaming !== undefined) {
+          opened.renaming = undefined;
+          board.update(read(opened));
+          return;
+        }
+        if (opened?.asked) {
+          opened.asked = false;
+          board.update(read(opened));
+          return;
+        }
         if (opened) {
           // A line half rewritten is work: let go of that before the file.
           if (opened.fixing) {
@@ -1909,6 +2015,25 @@ async function boot(): Promise<void> {
           else if (event.key.length === 1) hunt.written += event.key;
           else return board.scrolled(event.key);
           void lookFor();
+          return true;
+        }
+        /* Naming something new in the folder you are standing in. */
+        if (walking && !opened && walking.naming() !== undefined) {
+          const written = walking.naming() ?? '';
+          if (event.key === 'Enter') void makeIt();
+          else if (event.key === 'Backspace') walking.name(written.slice(0, -1));
+          else if (event.key.length === 1) walking.name(written + event.key);
+          else return board.scrolled(event.key);
+          return true;
+        }
+        /* Calling a file something else. */
+        if (opened?.renaming !== undefined) {
+          const file = opened;
+          if (event.key === 'Enter') void renamed();
+          else if (event.key === 'Backspace') file.renaming = (file.renaming ?? '').slice(0, -1);
+          else if (event.key.length === 1) file.renaming = (file.renaming ?? '') + event.key;
+          else return board.scrolled(event.key);
+          if (opened) board.update(read(opened));
           return true;
         }
         /* A line of a file taken down to the bottom of the board. The only

@@ -21,6 +21,10 @@ export interface LiveTree {
   /** Where you are standing, as a checkout-relative path. '' is the top. */
   at(): string;
   rows(): Row[];
+  /** Start, change or abandon naming something new in this folder. */
+  name(written: string | undefined): void;
+  /** What is being named right now, if anything. */
+  naming(): string | undefined;
   /** Walk into a folder, or back up. Returns false at the top. */
   walk(into: string): Promise<void>;
   up(): Promise<boolean>;
@@ -42,6 +46,8 @@ export async function openTree(
 
   let here = '';
   let tree: FileTreeModel | undefined;
+  /** What is being named, when something new is being made in here. */
+  let making: string | undefined;
 
   const model = client.files.tree.model;
   /* The same exclusions the watcher uses. A checkout is mostly things nobody
@@ -74,8 +80,26 @@ export async function openTree(
       { kind: 'gap' },
       // Walking to a file you can already name is the long way round.
       { kind: 'entry', mark: '→', text: 'look for something in here', tone: 'faded', pick: 'hunt' },
-      { kind: 'gap' },
     ];
+    /* Making something is a thing you do to the folder you are standing in,
+       so it is offered by the folder and nowhere else. A name ending in a
+       slash is a folder, which is the only way to say which you meant. */
+    if (making === undefined) {
+      rows.push({
+        kind: 'entry',
+        mark: '+',
+        text: 'put something new in here',
+        tone: 'faded',
+        pick: 'make',
+      });
+      rows.push({ kind: 'gap' });
+    } else {
+      rows.push(
+        { kind: 'line', text: 'name it. a slash at the end makes a folder.', tone: 'faded' },
+        { kind: 'typed', text: making },
+        { kind: 'gap' }
+      );
+    }
     if (!entry) {
       rows.push({ kind: 'line', text: 'reading it…', tone: 'faded' });
       return rows;
@@ -127,12 +151,19 @@ export async function openTree(
   return {
     at: () => here,
     rows: build,
+    name: (written) => {
+      making = written;
+      changed(build());
+    },
+    naming: () => making,
     walk: async (into) => {
+      making = undefined;
       here = into;
       changed(build());
       await open(into);
     },
     up: async () => {
+      making = undefined;
       if (!here) return false;
       const cut = here.lastIndexOf('/');
       here = cut === -1 ? '' : here.slice(0, cut);

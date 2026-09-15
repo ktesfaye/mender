@@ -183,6 +183,12 @@ this. Another line switches to the other question, where is this written, and
 carries what you typed across. Both answer with files you press, the matching
 lines under each.
 
+**A file is made, renamed and thrown away there too.** The folder offers to put
+something new in it and you name it on the line, a slash at the end making a
+folder instead. At the bottom of a file are the two things you can do to the
+file rather than to its writing. Renaming does not ask twice; throwing away
+does.
+
 **And a file is edited one line at a time.** There is one place you write in
 this app, so changing a line means taking that line into the writing: press it,
 it turns to full ink with the cursor after it, rewrite it where it sits, and
