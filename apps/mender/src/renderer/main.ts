@@ -1,9 +1,15 @@
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
-import { gitContract, type GitFilePath } from '@emdash/core/runtimes/git/api';
+import {
+  gitContract,
+  type Commit,
+  type FileChange,
+  type GitFilePath,
+} from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Mood } from '@shared/agents';
+import type { At } from '@shared/changes';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { makeBoard, type Board, type Row } from './board/board';
@@ -13,6 +19,7 @@ import { committing } from './board/committing';
 import { openCheckout, type LiveBoard } from './board/district';
 import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
 import { loadLettering } from './board/lettering';
+import { made, unmade, unread } from './board/made';
 import type { Meant } from './board/palette';
 import { makeRail, type Peg, type Rail } from './board/rail';
 import { trouble } from './board/trouble';
@@ -88,7 +95,16 @@ async function boot(): Promise<void> {
     /* Which file's change is on the board, over the checkout it came from.
        The checkout board underneath stays open and stays live; it is simply
        not what the wood is showing. */
-    let reading: { aim: Aim; path: string } | null = null;
+    let reading: { aim: Aim; path: string; at?: At } | null = null;
+    /* Which commit is on the board, over the checkout it came from. A commit
+       is stepped into the same way a change is, and a file pressed inside one
+       reads the change that commit made to it. */
+    let looked: {
+      aim: Aim;
+      checkout: string;
+      commit: Commit | null;
+      files: readonly FileChange[] | undefined;
+    } | null = null;
     /* The commit being written, if one is. Nothing is staged and nothing is
        committed until return: what is held back lives here until then. */
     let writing: {
@@ -287,6 +303,7 @@ async function boot(): Promise<void> {
       looking = { written: '', from: spot() };
       reading = null;
       writing = null;
+      looked = null;
       board.show(finding('', { projects, tasks, moods: seen, where: standing() }));
       board.walk(1);
     };
@@ -369,6 +386,7 @@ async function boot(): Promise<void> {
       work = null;
       reading = null;
       writing = null;
+      looked = null;
       const shown = card;
       card = null;
       await shown?.close();
@@ -391,6 +409,7 @@ async function boot(): Promise<void> {
       work = null;
       reading = null;
       writing = null;
+      looked = null;
       inside = null;
       await was?.close();
 
@@ -406,7 +425,7 @@ async function boot(): Promise<void> {
       ]);
 
       const opened = await openCheckout(client, { name, path, lines }, (rows) => {
-        if (open === aim && !reading) board.update(rows);
+        if (open === aim && !reading && !looked) board.update(rows);
       });
       if (open !== aim) {
         await opened.close();
@@ -478,6 +497,7 @@ async function boot(): Promise<void> {
       work = null;
       reading = null;
       writing = null;
+      looked = null;
       await was?.close();
       const shown = card;
       card = null;
@@ -504,15 +524,61 @@ async function boot(): Promise<void> {
      * The checkout board stays open underneath and stays live: a change is
      * something you look at and step back out of, not somewhere you go.
      */
-    const openChange = async (path: string): Promise<void> => {
+    const openChange = async (path: string, at?: At): Promise<void> => {
       const aim = open;
       const checkout = inside?.path ?? (aim ? projectOn(aim.district)?.path : undefined);
       if (!aim || !checkout) return;
-      reading = { aim, path };
+      reading = { aim, path, ...(at ? { at } : {}) };
       board.show(opening(path));
-      const got = await client.changes.file({ checkout, path });
+      const got = await client.changes.file({ checkout, path, ...(at ? { at } : {}) });
       if (reading?.aim !== aim || reading.path !== path) return;
       board.show(got.success ? readOut(got.data) : unreadable(path, whyNot(got.error)));
+    };
+
+    /**
+     * One commit, on the board the checkout was on.
+     *
+     * What it was for, who did it, and which files it moved. Pressing one of
+     * those files reads the change that commit made to it, which is the same
+     * board a working change is read on: a change is a change wherever you
+     * meet it, and the only difference is which two versions are being held up
+     * against each other.
+     */
+    const openMade = async (hash: string): Promise<void> => {
+      const aim = open;
+      const place = inside ?? (aim ? projectOn(aim.district) : undefined);
+      if (!aim || !place) return;
+      const parsed = parseNativeAbsolute(place.path);
+      if (!parsed.success) return;
+      const checkout = parsed.data;
+      reading = null;
+      writing = null;
+      looked = { aim, checkout: place.path, commit: null, files: undefined };
+      const mine = looked;
+      board.show(unread());
+
+      const [got, touched] = await Promise.all([
+        client.git.checkout.getCommit({ checkout, hash }),
+        client.git.checkout.getCommitFiles({ checkout, hash }),
+      ]);
+      if (looked !== mine) return;
+      if (!got.success) {
+        board.show(unmade(trouble(got.error)));
+        return;
+      }
+      if (!got.data.commit) {
+        board.show(unmade('that commit is not in this checkout any more.'));
+        return;
+      }
+      looked.commit = got.data.commit;
+      looked.files = touched.success ? touched.data.files : [];
+      board.show(made(looked.commit, looked.files));
+    };
+
+    /** Step back from a file inside a commit onto the commit it was in. */
+    const showMade = (): void => {
+      if (!looked?.commit) return;
+      board.show(made(looked.commit, looked.files));
     };
 
     /**
@@ -528,6 +594,7 @@ async function boot(): Promise<void> {
       if (!aim || !place || !live) return;
       reading = null;
       writing = null;
+      looked = null;
       writing = {
         aim,
         checkout: place.path,
@@ -651,6 +718,7 @@ async function boot(): Promise<void> {
     const stopReading = (): void => {
       reading = null;
       writing = null;
+      looked = null;
       if (!live) return;
       /* Back at the top, which is where the file was pressed: a session's
          board is pinned to now, but you did not come from now. */
@@ -668,6 +736,7 @@ async function boot(): Promise<void> {
       work = null;
       reading = null;
       writing = null;
+      looked = null;
       await was?.close();
       const shown = card;
       card = null;
@@ -689,7 +758,7 @@ async function boot(): Promise<void> {
       );
 
       const opened = await openWork(client, task, (rows) => {
-        if (open === aim && !reading) board.update(rows);
+        if (open === aim && !reading && !looked) board.update(rows);
       });
       if (open !== aim) {
         await opened.close();
@@ -712,6 +781,7 @@ async function boot(): Promise<void> {
       if (!project) return;
       reading = null;
       writing = null;
+      looked = null;
       open = aim;
       inside = null;
       work = null;
@@ -727,6 +797,7 @@ async function boot(): Promise<void> {
       naming = null;
       reading = null;
       writing = null;
+      looked = null;
       titling = { task, written: task.title };
       board.show(retitling(titling));
     };
@@ -920,6 +991,17 @@ async function boot(): Promise<void> {
         void openChange(pick.slice(7));
         return;
       }
+      if (pick.startsWith('made:')) {
+        void openMade(pick.slice(5));
+        return;
+      }
+      if (pick.startsWith('in:')) {
+        const commit = looked?.commit;
+        if (commit) {
+          void openChange(pick.slice(3), { sha: commit.hash, from: commit.parents[0] ?? null });
+        }
+        return;
+      }
       if (pick.startsWith('keep:')) {
         window.mender.keep(pick.slice(5));
         say('copied.', 2000);
@@ -1044,7 +1126,18 @@ async function boot(): Promise<void> {
           return;
         }
         if (reading) {
+          // A file read inside a commit steps back onto that commit, not past it.
+          if (reading.at && looked?.commit) {
+            reading = null;
+            showMade();
+            return;
+          }
           stopReading();
+          return;
+        }
+        if (looked) {
+          looked = null;
+          if (live) board.show(live.rows());
           return;
         }
         if (titling) {
@@ -1232,7 +1325,7 @@ async function boot(): Promise<void> {
       // The roster is a live thing: a session that starts working changes its
       // mark on the board you are looking at, without you touching anything.
       if (writing) board.update(rowsForCommit());
-      else if (live && !work && !card && !naming && !titling && !looking && !reading) {
+      else if (live && !work && !card && !naming && !titling && !looking && !reading && !looked) {
         board.update(live.rows());
       }
     };

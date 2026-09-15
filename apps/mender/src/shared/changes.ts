@@ -31,9 +31,22 @@ export const changeErrorSchema = z.discriminatedUnion('kind', [
 
 export type ChangeError = z.infer<typeof changeErrorSchema>;
 
+/**
+ * Which two versions of the file are being compared.
+ *
+ * Left out, it is the committed one against the one on the disk, which is what
+ * "changed" means while you are working. Given a commit, it is that commit
+ * against the one before it, which is what "changed" meant when it was made.
+ * The parent comes from the caller because the caller already read the commit
+ * and a root commit genuinely has none.
+ */
+export const atSchema = z.object({ sha: z.string(), from: z.string().nullable() });
+
+export type At = z.infer<typeof atSchema>;
+
 export const changesContract = defineContract({
   file: fallible({
-    input: z.object({ checkout: z.string(), path: z.string() }),
+    input: z.object({ checkout: z.string(), path: z.string(), at: atSchema.optional() }),
     data: changeSchema,
     error: changeErrorSchema,
   }),

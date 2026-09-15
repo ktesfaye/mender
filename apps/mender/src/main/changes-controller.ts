@@ -5,6 +5,6 @@ import type { Changes } from './changes';
 /** What is different about one file, as the village asks for it. */
 export function createChangesController(changes: Changes): Controller {
   return createController(changesContract, {
-    file: ({ checkout, path }) => changes.file(checkout, path),
+    file: ({ checkout, path, at }) => changes.file(checkout, path, at),
   });
 }

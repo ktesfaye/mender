@@ -35,8 +35,8 @@ writes in is read rather than shown, and when it comes to the door to ask
 something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 41 done, 23 partly done, 34 inherited working from emdash's back end
-and needing no village surface, 15 deliberately cut, and **140 not started**.
+ledger rows: 41 done, 24 partly done, 34 inherited working from emdash's back end
+and needing no village surface, 15 deliberately cut, and **139 not started**.
 
 ## What "not started" actually means
 
@@ -289,6 +289,33 @@ All three were driven against a local bare repository rather than his own
 remotes: a commit made on the board, sent up, a commit pushed in from elsewhere
 and brought down, and a branch with no upstream published. Nothing was sent
 anywhere outside this machine.
+
+And a commit is read the same way a change is. The commits already listed at
+the bottom of every checkout board are pressable now, and pressing one turns
+the board into that commit: what it was for, whatever else was written under
+it, who did it and when, whether anybody else has it yet, and the files it
+moved with what went in and out of each. Pressing one of those files reads the
+change that commit made to it, on the same board a working change is read on,
+because a change is a change wherever you meet it and the only difference is
+which two versions are being held up against each other. Escape steps back one
+at a time, from the file onto the commit and from the commit onto the checkout.
+
+Two things are taken off a commit message on the way to the wood, and the same
+two everywhere a commit is written. The trailers at the bottom are filing, not
+writing, and so is the `feat(scope):` at the front of a subject: what is left
+is the sentence somebody wrote about what they did, which is both what you came
+to read and what fits. Git's own hard wrapping inside a paragraph is undone
+too, because wrapping writing that is already wrapped leaves every other line
+half empty.
+
+Blame is not in this: who last touched a line is a thing you ask of a file you
+are reading, and there is still no way to read a file. It waits for W5.
+
+The counts on a commit were checked against git's own numbers on real commits
+in this checkout, file by file and in total. A file a commit deleted comes back
+from git as missing, the same as a file deleted in the working tree, so it
+reads as gone; that is the one branch here confirmed at git rather than on the
+board, since nothing in the village reaches back far enough to press one.
 
 Closes WS-29 through WS-31, WS-35 through WS-42, WS-44, FS-24 through FS-28,
 ST-15, UI-09, UI-35, UI-39.
@@ -546,7 +573,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-39 | Prefetched diff models on hover |  | W3 |
 | WS-40 | Commit card | done | W3 |
 | WS-41 | Diff main panel | done | W3 |
-| WS-42 | Commit history / blame |  | W3 |
+| WS-42 | Commit history / blame | part | W3 |
 | WS-43 | CI check runs |  | W4 |
 | WS-44 | Draft line comments (agent-directed notes) |  | W3 |
 | WS-45 | PR data model | kept |  |

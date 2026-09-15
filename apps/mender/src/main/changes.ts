@@ -5,19 +5,23 @@ import {
   parseNativeAbsolute,
   parsePortableRelativePath,
 } from '@emdash/core/primitives/path/api';
-import type { Change, ChangeError } from '@shared/changes';
+import type { GitFileSource } from '@emdash/core/runtimes/git/api';
+import type { At, Change, ChangeError } from '@shared/changes';
 import { changedLines, type Edit } from './diff';
 import type { MenderRuntimes } from './runtimes';
 
 /**
  * What is different about one file, ready to be read on a board.
  *
- * Two sides: what git has committed, and what is on the disk now. Git serves
- * the first out of its object store and the second is simply the file, so this
- * is the one place in the village that reads a working tree directly.
+ * Two sides. Ordinarily what git has committed and what is on the disk now,
+ * which is what changed means while you are still working; git serves the
+ * first out of its object store and the second is simply the file, so this is
+ * the one place in the village that reads a working tree directly. Name a
+ * commit instead and both sides come out of the object store: that commit and
+ * the one before it, which is what changed meant when it was made.
  */
 export interface Changes {
-  file(checkout: string, path: string): Promise<Read>;
+  file(checkout: string, path: string, at?: At): Promise<Read>;
 }
 
 type Read = { success: true; data: Change } | { success: false; error: ChangeError };
@@ -33,7 +37,7 @@ const HUGE = 4 * 1024 * 1024;
 
 export function createChanges(runtimes: MenderRuntimes): Changes {
   return {
-    async file(checkout, path) {
+    async file(checkout, path, at) {
       const root = parseNativeAbsolute(checkout);
       if (!root.success) return { success: false, error: { kind: 'not-a-checkout' } };
       const relative = parsePortableRelativePath(path);
@@ -41,19 +45,40 @@ export function createChanges(runtimes: MenderRuntimes): Changes {
       const whole = joinAbsolute(root.data, relative.data);
       if (!whole.success) return { success: false, error: { kind: 'not-in-the-checkout' } };
 
-      /* What git last committed. A file that is not in HEAD at all comes back
-         as nothing, which is the same answer as an empty file and has to be
-         told apart from it: null means the file is new. */
-      const committed = await runtimes.git.checkout.getFile({
-        checkout: root.data,
-        path: relative.data,
-        source: { kind: 'head' },
-      });
-      if (!committed.success) {
-        return { success: false, error: { kind: 'unreadable', because: said(committed.error) } };
+      /* A file that is not in the older side at all comes back as nothing,
+         which is the same answer as an empty file and has to be told apart
+         from it: null means the file is new. */
+      const version = async (source: GitFileSource): Promise<string | null | Wrong> => {
+        const got = await runtimes.git.checkout.getFile({
+          checkout: root.data,
+          path: relative.data,
+          source,
+        });
+        if (!got.success) return { because: said(got.error) };
+        return got.data.content;
+      };
+
+      /* A commit with no parent is a root commit: there was nothing before it,
+         so every line in it went in. */
+      const older =
+        at && !at.from ? null : await version(at ? outOf(at.from ?? '') : { kind: 'head' });
+      if (wrong(older)) {
+        return { success: false, error: { kind: 'unreadable', because: older.because } };
       }
-      const before = committed.data.content;
-      const after = await onDisk(formatAbsolute(whole.data));
+      const before = older;
+
+      const newer = at ? await version(outOf(at.sha)) : undefined;
+      if (wrong(newer)) {
+        return { success: false, error: { kind: 'unreadable', because: newer.because } };
+      }
+      const after: OnDisk =
+        newer === undefined
+          ? await onDisk(formatAbsolute(whole.data))
+          : newer === null
+            ? { kind: 'gone' }
+            : binary(newer)
+              ? { kind: 'binary' }
+              : { kind: 'text', text: newer };
       if (after.kind === 'trouble') {
         return { success: false, error: { kind: 'unreadable', because: after.because } };
       }
@@ -83,7 +108,7 @@ export function createChanges(runtimes: MenderRuntimes): Changes {
               : 'same';
 
       // Nothing changed: the lines of a file nobody changed are not a change.
-      const read = kind === 'same' ? [] : worth(edits);
+      const marked = kind === 'same' ? [] : worth(edits);
       return {
         success: true,
         data: {
@@ -91,12 +116,26 @@ export function createChanges(runtimes: MenderRuntimes): Changes {
           kind,
           added,
           taken,
-          lines: read.slice(0, LINES),
-          ...(read.length > LINES ? { more: read.length - LINES } : {}),
+          lines: marked.slice(0, LINES),
+          ...(marked.length > LINES ? { more: marked.length - LINES } : {}),
         },
       };
     },
   };
+}
+
+/** Something git would not hand over, carried back rather than thrown. */
+interface Wrong {
+  because: string;
+}
+
+function wrong(got: string | null | Wrong | undefined): got is Wrong {
+  return typeof got === 'object' && got !== null;
+}
+
+/** One commit, as git names a thing to read a file out of. */
+function outOf(sha: string): GitFileSource {
+  return { kind: 'revision', revision: { kind: 'commit', sha } };
 }
 
 type OnDisk =

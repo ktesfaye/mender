@@ -150,6 +150,14 @@ that changed goes in to begin with; pressing a file holds it back and pressing
 it again puts it in, and nothing happens to the checkout until you press return.
 There is no staging area here and no word for one.
 
+**A commit is read the same way.** The commits at the bottom of a checkout
+board are pressed too, and pressing one turns the board into that commit: what
+it was for, what else was written under it, who did it and when, and the files
+it moved. Pressing one of those reads the change that commit made to it, on the
+same wood a working change is read on. What is filing rather than writing comes
+off on the way: the trailers at the bottom of a message, and the `feat(scope):`
+at the front of its first line.
+
 **A branch goes up and comes down from there too.** Under the line that says
 where the checkout stands are the things you can do about it: publish a branch
 nobody has seen, send up what has run ahead, bring down whatever is new. Nothing

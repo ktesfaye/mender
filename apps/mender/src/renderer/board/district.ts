@@ -3,6 +3,7 @@ import { shortName, type CheckoutHeadState } from '@emdash/core/runtimes/git/api
 import { ReplicaState } from '@emdash/wire/live';
 import type { MenderClient } from '../wire';
 import type { Row, Tone } from './board';
+import { saying } from './made';
 
 /**
  * What a board says about a checkout.
@@ -43,7 +44,7 @@ type StatusState = {
   message?: string;
 };
 
-type Commits = { commits: { subject: string; date: number }[] };
+type Commits = { commits: { hash: string; subject: string; date: number }[] };
 
 /** How many changed files and how many commits the board has room to name. */
 const CHANGES = 40;
@@ -224,7 +225,13 @@ function build(
       { kind: 'heading', text: place.since === undefined ? 'lately' : 'committed here' }
     );
     for (const commit of lately) {
-      rows.push({ kind: 'entry', mark: since(commit.date), text: commit.subject });
+      rows.push({
+        kind: 'entry',
+        mark: since(commit.date),
+        text: saying(commit.subject),
+        // Pressing a commit is how what was done in it is read.
+        pick: `made:${commit.hash}`,
+      });
     }
   }
   return [...rows, ...(place.tail?.() ?? [])];
