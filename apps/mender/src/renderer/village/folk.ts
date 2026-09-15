@@ -39,7 +39,7 @@ const folk = new Map<string, Texture>();
 
 export async function loadFolk(): Promise<number> {
   if (folk.size) return folk.size;
-  const sheet = await Assets.load<Spritesheet>('/folk/folk.json');
+  const sheet = await Assets.load<Spritesheet>('./folk/folk.json');
   sheet.textureSource.scaleMode = 'nearest';
   for (const [name, texture] of Object.entries(sheet.textures)) folk.set(name, texture);
   return folk.size;

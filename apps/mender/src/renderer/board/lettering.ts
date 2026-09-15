@@ -32,7 +32,10 @@ let ready: Promise<void> | undefined;
 
 export function loadLettering(): Promise<void> {
   ready ??= (async () => {
-    const face = new FontFace(FAMILY, `url(/font/DepartureMono-Regular.woff2)`);
+    /* Beside the page, not at the root of a filesystem: packaged, the page is a
+       file:// document and a leading slash means the disk's own root. */
+    const where = new URL('./font/DepartureMono-Regular.woff2', document.baseURI).href;
+    const face = new FontFace(FAMILY, `url(${where})`);
     await face.load();
     document.fonts.add(face);
     BitmapFont.install({

@@ -58,6 +58,9 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    /* Packaged, the page is loaded off the disk rather than served, so every
+       url it emits has to be relative to itself. */
+    base: './',
     // The packed sprite kit and the world files are the app's own data, not
     // renderer source: `assets/` is served at the root in dev and copied beside
     // the renderer on build, so `/kit/kit.json` means the same thing in both.

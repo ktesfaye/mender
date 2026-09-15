@@ -156,8 +156,8 @@ export class Rail {
 
 /** Nail the rail up. Its timber is the board's, cut by `tools/make-board.py`. */
 export async function makeRail(pixi: Application): Promise<Rail> {
-  const art = (await Assets.load<BoardArt>('/board/board.json')) as BoardArt;
-  const texture = await Assets.load<Texture>('/board/' + art.rail);
+  const art = (await Assets.load<BoardArt>('./board/board.json')) as BoardArt;
+  const texture = await Assets.load<Texture>('./board/' + art.rail);
   texture.source.scaleMode = 'nearest';
   const rail = new Rail(art, texture);
   pixi.stage.addChild(rail.view);

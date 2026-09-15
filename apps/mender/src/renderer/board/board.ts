@@ -539,8 +539,8 @@ function wrapped(runs: readonly Run[], columns: number): Run[][] {
 
 /** Take the board out of storage. Its timber is cut by `tools/make-board.py`. */
 export async function makeBoard(pixi: Application): Promise<Board> {
-  const art = (await Assets.load<BoardArt>('/board/board.json')) as BoardArt;
-  const texture = await Assets.load<Texture>('/board/' + art.planks);
+  const art = (await Assets.load<BoardArt>('./board/board.json')) as BoardArt;
+  const texture = await Assets.load<Texture>('./board/' + art.planks);
   texture.source.scaleMode = 'nearest';
   const board = new Board(pixi, art, texture);
   pixi.stage.addChild(board.view);

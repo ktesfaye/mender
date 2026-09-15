@@ -108,3 +108,9 @@ packages/plugins/src/agents/impl/*/fixtures/acp-transcript.json
 # Nx local cache and workspace data
 .nx/cache
 .nx/workspace-data
+
+# Mender's packaging output and the generated pieces of its icon.
+apps/mender/release/
+apps/mender/build/icon.icns
+apps/mender/build/icon.png
+apps/mender/build/icon.iconset/

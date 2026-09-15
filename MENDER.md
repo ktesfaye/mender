@@ -245,6 +245,12 @@ district. The stages below four are sketches that do not stand up beside it,
 and five is so full it leaves the district no room, so nothing grows through
 any of them and nothing should be built on them until they are drawn.
 
+**It is an app you install.** `pnpm run package` makes a Mender.app and a dmg;
+what comes out of the Applications folder is the whole village with everything
+running behind it. The icon is a square cut out of the island as the app itself
+draws it, because that is what the app is. No publishing, no update channel and
+no notarisation: there is nobody to release to yet.
+
 The board's timber is the dock, widened by `tools/make-board.py` out of the
 artist's own planks, and the writing is Departure Mono under the SIL OFL. There
 is still no windmill, no parchment, no frame, no icon.

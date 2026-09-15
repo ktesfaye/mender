@@ -604,7 +604,42 @@ Closes WS-04, TR-13 through TR-20, ST-22, ST-32, UI-15, UI-41.
 Done when: a remote host can be added and a session run on it end to end, and a
 session can be scheduled to start without you.
 
-### W11 — it is an app you install
+### W11 — it is an app you install · started
+
+It is one. `pnpm run package` from `apps/mender` makes a signed Mender.app and
+a dmg you drag into Applications, and the thing that comes out of Applications
+is the whole village: the island draws, a district opens, its board reads git,
+and everything behind it is running.
+
+Three things had to be fixed to get there, and each of them was invisible until
+the packaged app was actually opened.
+
+The renderer asked for its art from the root of the disk. `/kit/kit.json` is
+the right answer when a dev server is serving the page and completely wrong
+when the page is a file, so every asset path is relative to the page now and
+the build emits its own urls the same way. The world's own files also had to
+be put in the package at all; only the built code was.
+
+And nothing behind the village started, because the file watcher had been
+pulled out of the archive and the things it imports had not. Electron reads its
+own archive perfectly well, so the fix was to stop taking packages out of it:
+only the compiled binaries are unpacked now, because an operating system will
+not load one out of an archive, and everything that is javascript stays in.
+A package half in and half out resolves to half of itself, which looks exactly
+like a village with nothing behind it.
+
+There is an icon now, and it is a picture of the village, because that is what
+the app is. It is a square cut out of the island as the app's own renderer
+draws it, and `tools/make-icon.py` turns that into what macOS wants. Drawing it
+a second way out of the same kit but by different rules would give something
+that looks almost like the app and not quite, which is worse than no icon.
+
+Deliberately not here: publishing, an update channel, notarisation. This is his
+own village on his own machine, and a release pipeline is for when there is
+somebody to release to.
+
+Not here yet: recovering from a bad boot, and telling him something wants him
+while he is looking at something else.
 
 Closes UI-01 through UI-04, UI-27 through UI-29, UI-34, UI-42, ST-09, ST-34,
 ST-35, TR-23.

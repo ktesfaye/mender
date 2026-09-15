@@ -10,7 +10,7 @@ import { Assets, type Spritesheet, type Texture } from 'pixi.js';
  * kit-relative paths the layout's `file` fields use.
  */
 
-const KIT = '/kit/';
+const KIT = './kit/';
 
 const textures = new Map<string, Texture>();
 
