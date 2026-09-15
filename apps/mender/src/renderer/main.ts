@@ -1,4 +1,8 @@
-import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
+import {
+  joinAbsolute,
+  parseNativeAbsolute,
+  type PortableRelativePath,
+} from '@emdash/core/primitives/path/api';
 import {
   gitContract,
   type Commit,
@@ -18,11 +22,13 @@ import { opening, readOut, unreadable } from './board/changed';
 import { committing } from './board/committing';
 import { openCheckout, type LiveBoard } from './board/district';
 import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
+import { openTree, type LiveTree } from './board/inside';
 import { loadLettering } from './board/lettering';
 import { made, unmade, unread } from './board/made';
 import type { Meant } from './board/palette';
 import { makeRail, type Peg, type Rail } from './board/rail';
-import { trouble } from './board/trouble';
+import { read, unopened, type Read } from './board/reading';
+import { trouble, unwritten } from './board/trouble';
 import { answerFor, openWork, type LiveWork } from './board/work';
 import { ran } from './job';
 import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
@@ -105,6 +111,10 @@ async function boot(): Promise<void> {
     /* Which commit is on the board, over the checkout it came from. A commit
        is stepped into the same way a change is, and a file pressed inside one
        reads the change that commit made to it. */
+    /* Which folder of the checkout is on the board, if you have walked into
+       it, and which file of it is open over that. */
+    let walking: LiveTree | null = null;
+    let opened: Read | null = null;
     let looked: {
       aim: Aim;
       checkout: string;
@@ -310,6 +320,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      stopWalking();
       board.show(finding('', { projects, tasks, moods: seen, where: standing() }));
       board.walk(1);
     };
@@ -393,6 +404,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      stopWalking();
       const shown = card;
       card = null;
       await shown?.close();
@@ -416,6 +428,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      stopWalking();
       inside = null;
       await was?.close();
 
@@ -431,7 +444,7 @@ async function boot(): Promise<void> {
       ]);
 
       const opened = await openCheckout(client, { name, path, lines }, (rows) => {
-        if (open === aim && !reading && !looked) board.update(rows);
+        if (open === aim && !reading && !looked && !walking) board.update(rows);
       });
       if (open !== aim) {
         await opened.close();
@@ -504,6 +517,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      stopWalking();
       await was?.close();
       const shown = card;
       card = null;
@@ -625,6 +639,101 @@ async function boot(): Promise<void> {
       board.show(made(looked.commit, looked.files));
     };
 
+    /**
+     * Walking into the checkout itself.
+     *
+     * A project's board is the work in it and the checkout is a footnote, so
+     * what is actually in the folder is one step further in: a place you go
+     * rather than a tree propped open beside everything else.
+     */
+    const walkIn = async (): Promise<void> => {
+      const place = inside ?? (open ? projectOn(open.district) : undefined);
+      if (!place || !open) return;
+      const aim = open;
+      stopWalking();
+      const name = 'title' in place ? place.title : place.name;
+      board.show([
+        { kind: 'title', text: name },
+        { kind: 'line', text: 'reading it…', tone: 'faded' },
+      ]);
+      const tree = await openTree(client, place.path, name, (rows) => {
+        if (walking && open === aim && !opened) board.update(rows);
+      });
+      if (!tree || open !== aim) {
+        await tree?.close();
+        return;
+      }
+      walking = tree;
+      board.show(tree.rows());
+    };
+
+    /** Opening one file of it, live, so an agent writing to it shows. */
+    const openFile = async (path: string): Promise<void> => {
+      const place = inside ?? (open ? projectOn(open.district) : undefined);
+      const parsed = place ? parseNativeAbsolute(place.path) : undefined;
+      if (!parsed?.success) return;
+      const whole = joinAbsolute(parsed.data, path as PortableRelativePath);
+      if (!whole.success) return;
+      opened = null;
+      board.show(unopened(path));
+      const got = await client.files.content.state({ path: whole.data }, 'content').snapshot();
+      if (!walking) return;
+      opened = { path, content: got.data };
+      board.show(read(opened));
+    };
+
+    /** Taking one line of it down to the line you write on. */
+    const fixLine = (at: number): void => {
+      const file = opened;
+      if (!file || file.content.kind !== 'text' || file.content.readonly) return;
+      const lines = file.content.content.split('\n');
+      file.fixing = { at, written: lines[at] ?? '' };
+      board.update(read(file));
+    };
+
+    /** And putting it back, which writes the file. */
+    const wroteLine = async (): Promise<void> => {
+      const file = opened;
+      if (!file || !file.fixing || file.content.kind !== 'text') return;
+      const { at, written } = file.fixing;
+      const lines = file.content.content.split('\n');
+      if (lines[at] === written) {
+        file.fixing = undefined;
+        board.update(read(file));
+        return;
+      }
+      lines[at] = written;
+      const place = inside ?? (open ? projectOn(open.district) : undefined);
+      const parsed = place ? parseNativeAbsolute(place.path) : undefined;
+      if (!parsed?.success) return;
+      const whole = joinAbsolute(parsed.data, file.path as PortableRelativePath);
+      if (!whole.success) return;
+      const put = await client.files.content.mutate('write', {
+        key: { path: whole.data },
+        input: {
+          content: lines.join('\n'),
+          precondition: { kind: 'etag', etag: file.content.etag },
+        },
+      });
+      if (!put.success) {
+        say(unwritten(put.error), 6000);
+        return;
+      }
+      const again = await client.files.content.state({ path: whole.data }, 'content').snapshot();
+      if (opened !== file) return;
+      opened = { path: file.path, content: again.data };
+      board.show(read(opened));
+      say('written.', 2000);
+    };
+
+    /** Closing whatever of the checkout you had walked into. */
+    const stopWalking = (): void => {
+      const was = walking;
+      walking = null;
+      opened = null;
+      void was?.close();
+    };
+
     /** Step back from a file inside a commit onto the commit it was in. */
     const showMade = (): void => {
       if (!looked?.commit) return;
@@ -645,6 +754,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      stopWalking();
       writing = {
         aim,
         checkout: place.path,
@@ -769,6 +879,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      stopWalking();
       if (!live) return;
       /* Back at the top, which is where the file was pressed: a session's
          board is pinned to now, but you did not come from now. */
@@ -787,6 +898,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      stopWalking();
       await was?.close();
       const shown = card;
       card = null;
@@ -808,7 +920,7 @@ async function boot(): Promise<void> {
       );
 
       const opened = await openWork(client, task, (rows) => {
-        if (open === aim && !reading && !looked) board.update(rows);
+        if (open === aim && !reading && !looked && !walking) board.update(rows);
       });
       if (open !== aim) {
         await opened.close();
@@ -832,6 +944,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      stopWalking();
       open = aim;
       inside = null;
       work = null;
@@ -848,6 +961,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      stopWalking();
       titling = { task, written: task.title };
       board.show(retitling(titling));
     };
@@ -1041,6 +1155,22 @@ async function boot(): Promise<void> {
         void openChange(pick.slice(7));
         return;
       }
+      if (pick === 'inside') {
+        void walkIn();
+        return;
+      }
+      if (pick.startsWith('into:')) {
+        void walking?.walk(pick.slice(5));
+        return;
+      }
+      if (pick.startsWith('open:')) {
+        void openFile(pick.slice(5));
+        return;
+      }
+      if (pick.startsWith('line:')) {
+        fixLine(Number(pick.slice(5)));
+        return;
+      }
       if (pick === 'undo' || pick === 'undo!') {
         void undo(pick === 'undo!');
         return;
@@ -1179,6 +1309,28 @@ async function boot(): Promise<void> {
           if (live) board.show(live.rows());
           return;
         }
+        if (opened) {
+          // A line half rewritten is work: let go of that before the file.
+          if (opened.fixing) {
+            opened.fixing = undefined;
+            board.update(read(opened));
+            return;
+          }
+          opened = null;
+          if (walking) board.show(walking.rows());
+          return;
+        }
+        if (walking) {
+          /* Up a folder if there is one above, and out of the checkout
+             altogether from the top of it. */
+          void (async () => {
+            const went = await walking?.up();
+            if (went) return;
+            stopWalking();
+            if (live) board.show(live.rows());
+          })();
+          return;
+        }
         if (reading) {
           // Asked whether to throw it away, escape is the answer no.
           if (reading.asked) {
@@ -1260,6 +1412,17 @@ async function boot(): Promise<void> {
           if (event.key === 'Backspace') wrote(looking.written.slice(0, -1));
           else if (event.key.length === 1) wrote(looking.written + event.key);
           else return board.scrolled(event.key);
+          return true;
+        }
+        /* A line of a file taken down to the bottom of the board. The only
+           place in the village where what you write lands on the disk. */
+        if (opened?.fixing) {
+          const fixing = opened.fixing;
+          if (event.key === 'Enter') void wroteLine();
+          else if (event.key === 'Backspace') fixing.written = fixing.written.slice(0, -1);
+          else if (event.key.length === 1) fixing.written += event.key;
+          else return board.scrolled(event.key);
+          if (opened) board.update(read(opened));
           return true;
         }
         if (writing) {
@@ -1385,7 +1548,17 @@ async function boot(): Promise<void> {
       // The roster is a live thing: a session that starts working changes its
       // mark on the board you are looking at, without you touching anything.
       if (writing) board.update(rowsForCommit());
-      else if (live && !work && !card && !naming && !titling && !looking && !reading && !looked) {
+      else if (
+        live &&
+        !work &&
+        !card &&
+        !naming &&
+        !titling &&
+        !looking &&
+        !reading &&
+        !looked &&
+        !walking
+      ) {
         board.update(live.rows());
       }
     };

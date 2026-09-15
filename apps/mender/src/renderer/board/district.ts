@@ -182,7 +182,8 @@ function build(
 ): Row[] {
   const rows: Row[] = [
     { kind: 'title', text: place.name, ...(place.turn ? { pick: place.turn } : {}) },
-    { kind: 'line', text: place.path, tone: 'faded', keep: 'tail' },
+    // Where it is, and the way in to what is actually in there.
+    { kind: 'line', text: place.path, tone: 'faded', keep: 'tail', pick: 'inside' },
     // What is happening here comes before what the checkout looks like: you
     // opened a project to get at the work in it, not to read its git status.
     ...(place.lines?.() ?? []),

@@ -373,6 +373,36 @@ and every distinct git failure says its own distinct thing rather than
 collapsing into one apology. All of that is true. Blame is the one thing named
 in this wave that is not here, and it waits for a file being readable at all.
 
+### W5 — you can read and edit the code · started
+
+The checkout is a place you can walk into. The path under a project's or a
+session's name is pressable, and pressing it puts what is actually in that
+folder on the wood: its folders first with an arrow each, then its files. A
+folder is walked into the same way a district is, escape walks back up one and
+out of the checkout from the top. It is live, so a file an agent writes while
+you are standing in the folder appears in it.
+
+Pressing a file reads it: the whole thing on the wood in the writing everything
+else is read in, with a line at the top saying how long it is. A file that is
+not writing says how big it is instead of drawing its bytes, and one too large
+for a board says so rather than half-drawing.
+
+And a file is edited a line at a time, which is the village's answer to having
+exactly one place you write. Pressing a line takes it into the writing: the
+line turns to full ink with the cursor after it, you rewrite it where it sits
+rather than at the bottom, and return writes the whole file back. Escape puts
+it back the way it was. The write is pinned to what was read, so if anything
+else changed the file in between nothing is written and the board says so
+rather than quietly overwriting somebody.
+
+The runtime under all of this is emdash's files runtime, which Mender was not
+starting: it is now a worker like git and the search index, and it brings the
+live folder, the live file and the etag-pinned write with it.
+
+Not here yet: searching by name and by content on a board of their own, making
+a file, renaming one, and reading an image or a table as anything other than
+the bytes it is. Blame lands here too, now that a file can be read at all.
+
 ### W4 — you can ship it
 
 Closes WS-43, WS-46 through WS-49, WS-54, WS-56, WS-57.

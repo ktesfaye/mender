@@ -52,3 +52,31 @@ function lowered(said: string): string {
   const first = said.split('\n')[0] ?? said;
   return /^[A-Z][a-z]/.test(first) ? `${first[0]?.toLowerCase()}${first.slice(1)}` : first;
 }
+
+/**
+ * What the filesystem said, said the way somebody would say it.
+ *
+ * The one that earns its own sentence is a stale write: somebody else changed
+ * the file while you had a line of it down on the board, and overwriting them
+ * silently is how work disappears.
+ */
+export function unwritten(error: { type?: string; message?: string }): string {
+  switch (error.type) {
+    case 'etag-mismatch':
+      return 'the file changed underneath you, so nothing was written. open it again.';
+    case 'not-found':
+      return 'that file is not there any more.';
+    case 'permission-denied':
+      return 'this machine will not let anybody write it.';
+    case 'is-a-directory':
+      return 'that is a folder, not a file.';
+    case 'not-a-directory':
+      return 'something on the way there is a file, not a folder.';
+    case 'already-exists':
+      return 'there is already something there.';
+    case 'invalid-path':
+      return 'that is not a path this checkout can hold.';
+    default:
+      return error.message ? error.message : 'it could not be written.';
+  }
+}

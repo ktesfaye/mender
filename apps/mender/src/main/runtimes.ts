@@ -8,6 +8,8 @@ import { conversationsContract } from '@emdash/core/runtimes/conversations/api';
 import { conversationsWorkerSpec } from '@emdash/core/runtimes/conversations/node';
 import { fileSearchContract } from '@emdash/core/runtimes/file-search/api';
 import { fileSearchWorkerSpec } from '@emdash/core/runtimes/file-search/node';
+import { filesContract } from '@emdash/core/runtimes/files/api';
+import { filesWorkerSpec } from '@emdash/core/runtimes/files/node';
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { gitWorkerSpec } from '@emdash/core/runtimes/git/node';
 import { hostSettingsWorkerSpec } from '@emdash/core/runtimes/host-settings/node';
@@ -58,6 +60,8 @@ export interface MenderRuntimes {
   git: ReturnType<typeof gitClient>;
   /** What is in a checkout, by name, so a file can be named on the line. */
   files: ReturnType<typeof filesClient>;
+  /** The files themselves: what is in a folder, and what is in a file. */
+  disk: ReturnType<typeof diskClient>;
   /** The workspace registry: the thing that makes a worktree exist. */
   workspaces: ReturnType<typeof workspacesClient>;
   /** The host's index of conversations: who has ever been asked to do what. */
@@ -85,6 +89,10 @@ function workspacesClient(ready: Promise<unknown>) {
 
 function filesClient(ready: Promise<unknown>) {
   return queuedClient(fileSearchContract, () => ready as Promise<never>);
+}
+
+function diskClient(ready: Promise<unknown>) {
+  return queuedClient(filesContract, () => ready as Promise<never>);
 }
 
 function conversationsClient(ready: Promise<unknown>) {
@@ -219,6 +227,21 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
     })
   );
 
+  // Reading and writing the files themselves, which is a different question
+  // from finding them by name and answered by a different runtime.
+  const diskReady = observed(
+    watcherReady.then(async (watcher) => {
+      const worker = host.create(
+        ...filesWorkerSpec({
+          executable: menderWorkerPath('files'),
+          env: process.env,
+          dependencies: { watcher },
+        })
+      );
+      return await worker.ready();
+    })
+  );
+
   const acpReady = observed(
     conversationsReady.then(async (conversations) => {
       const worker = host.create(
@@ -288,12 +311,15 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
   // window opens and talks to git without waiting on a readiness gate.
   const git = gitClient(gitReady);
   const workspaces = workspacesClient(workspacesReady);
+  const disk = diskClient(diskReady);
   return {
     controllers: {
       git: createController(gitContract, forwardContractImpl(gitContract, git)),
+      files: createController(filesContract, forwardContractImpl(filesContract, disk)),
     },
     git,
     files: filesClient(filesReady),
+    disk,
     workspaces,
     conversations: conversationsClient(conversationsReady),
     acp: acpClient(acpReady),

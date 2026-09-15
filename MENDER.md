@@ -172,6 +172,17 @@ nobody has seen, send up what has run ahead, bring down whatever is new. Nothing
 here goes and asks the other end what it has, so bringing it down is also how
 you find out.
 
+**The checkout is a place you walk into.** Under a project's or a session's
+name is where it is, and pressing that walks into the folder: what is in it,
+folders first, each one walked into the same way a district is. Escape walks
+back up. Pressing a file reads the whole thing on the wood.
+
+**And a file is edited one line at a time.** There is one place you write in
+this app, so changing a line means taking that line into the writing: press it,
+it turns to full ink with the cursor after it, rewrite it where it sits, and
+return writes the file. Escape puts it back. Nothing is written if the file
+changed underneath you while you had a line of it down.
+
 **A session is a real agent, configured.** The card is who is working in there
 and who else on this machine could, what they are thinking with, how they work,
 how hard they think, what they can reach out in the world, and what they have
