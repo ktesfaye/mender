@@ -35,8 +35,8 @@ writes in is read rather than shown, and when it comes to the door to ask
 something a number key answers it. But almost everything a person
 actually does with a coding tool is still missing. There is no git beyond reading
 status, no diff, no file, no terminal, no pull request, no settings. Of the 253
-ledger rows: 42 done, 23 partly done, 34 inherited working from emdash's back end
-and needing no village surface, 15 deliberately cut, and **139 not started**.
+ledger rows: 43 done, 23 partly done, 34 inherited working from emdash's back end
+and needing no village surface, 25 deliberately cut, and **128 not started**.
 
 ## What "not started" actually means
 
@@ -246,7 +246,7 @@ properly on the wood; nested subagents fold and unfold; you can stop a turn
 mid-flight and queue the next thing behind it; an image dropped on the board
 goes in as context; and a file or an issue can be named inline.
 
-### W3 — you can finish a piece of work without a terminal · started
+### W3 — you can finish a piece of work without a terminal · done
 
 Today a session ends by leaving Mender. That is the single biggest hole.
 
@@ -331,13 +331,47 @@ from git as missing, the same as a file deleted in the working tree, so it
 reads as gone; that is the one branch here confirmed at git rather than on the
 board, since nothing in the village reaches back far enough to press one.
 
-Closes WS-29 through WS-31, WS-35 through WS-42, WS-44, FS-24 through FS-28,
-ST-15, UI-09, UI-35, UI-39.
+What is cut from this wave, and why. Every one of them is a shape emdash's
+front end has and this one does not, so building them would be importing the
+thing the fork exists to avoid.
 
-Done when: you can read any diff on the board, stage and unstage by line or
-file, write a commit, push it, pull, publish a branch, see the history and who
-last touched a line, and every distinct git failure says its own distinct thing
-rather than collapsing into one apology.
+A floating action card on a selection (WS-37) has nothing to float over: the
+board is read, not selected, and what you can do about a change is a line at
+the bottom of it. Preview against pinned diff tabs (WS-38) and a stacked
+multi-file diff (FS-26) are both several diffs at once, and one board shows one
+thing; you step into a file and escape back out, and the stack is the list you
+came from. Prefetching diffs on hover (WS-39) presumes a pointer resting on a
+row it has not pressed, and the board is walked as much by key as by hand.
+A setting for whether changes list flat or as a tree (ST-15) is a layout
+preference, and there are none here. A titlebar breadcrumb with a git popover
+(UI-09) needs a titlebar. Diff stats and PR badges on sidebar rows (UI-39)
+needs a sidebar; the counts live on the change and on the commit, which is
+where you are when you want them.
+
+Image diff (FS-27) is cut for the reason the board already gives: a picture is
+never drawn on the wood, because the wood is writing. A changed image says it
+changed and by how many bytes, and looking at it is a thing you do where images
+are looked at.
+
+Inline review comments on diff lines (FS-25, WS-44) are cut as a shape and not
+as a capability. Telling an agent about a particular line is real and wanted;
+doing it by threading notes into a diff gutter is a code-review tool's answer,
+and the village already has a better one, which is that you write to the agent
+on the line at the bottom of its board and an @ names the file. If pointing at
+a specific line turns out to need more than that, it comes back as a way of
+writing rather than a layer over the diff.
+
+WS-35, the branch selector, moves to W8 with the rest of rebinding a session to
+a different branch: which branch a checkout is on is a thing you change about a
+session, not a thing you do while reading its changes.
+
+Closes WS-29 through WS-31, WS-36, WS-40 through WS-42, FS-24, FS-28, UI-35.
+
+Done when: you can read any diff on the board, throw a change away, write a
+commit, push it, pull, publish a branch, read any commit and what it touched,
+and every distinct git failure says its own distinct thing rather than
+collapsing into one apology. All of that is true. Blame is the one thing named
+in this wave that is not here, and it waits for a file being readable at all.
 
 ### W4 — you can ship it
 
@@ -434,6 +468,17 @@ Kept here so none of it quietly returns as a panel.
   (AG-54). The last line of the board is where you write, always.
 - An OS deep-link scheme (UI-24), which emdash does not have either.
 - The workspace-server artifact URL (ST-16), which stays build configuration.
+- The whole diff-review apparatus: a floating action card on a selection
+  (WS-37), preview against pinned diff tabs (WS-38), prefetched diffs on hover
+  (WS-39), a stacked multi-file diff (FS-26), a flat-or-tree setting for the
+  changes list (ST-15), a titlebar breadcrumb and git popover (UI-09), and diff
+  stats on sidebar rows (UI-39). Each needs a selection, a tab strip, a pointer
+  that rests, a settings surface, a titlebar or a sidebar, and there are none.
+- Image diff (FS-27). A picture is never drawn on the wood; a changed image
+  says that it changed.
+- Inline review comments on diff lines (FS-25, WS-44), as a shape rather than
+  as a capability. Telling an agent about a line is wanted and the village's
+  answer is writing to it with an @, not threading notes into a gutter.
 
 ## The work that has no ledger number
 
@@ -580,16 +625,16 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-32 | Repository store (branches/remotes/provider identity) | kept |  |
 | WS-33 | Repository-level wire contract (worktrees/refs/remotes/fetch) | kept |  |
 | WS-34 | Branch reference model | kept |  |
-| WS-35 | Branch selector components |  | W3 |
+| WS-35 | Branch selector components |  | W8 |
 | WS-36 | Staged/Unstaged sections | done | W3 |
-| WS-37 | Floating action card on selection |  | W3 |
-| WS-38 | Preview vs pinned diff tabs |  | W3 |
-| WS-39 | Prefetched diff models on hover |  | W3 |
+| WS-37 | Floating action card on selection | cut | W3 |
+| WS-38 | Preview vs pinned diff tabs | cut | W3 |
+| WS-39 | Prefetched diff models on hover | cut | W3 |
 | WS-40 | Commit card | done | W3 |
 | WS-41 | Diff main panel | done | W3 |
 | WS-42 | Commit history / blame | part | W3 |
 | WS-43 | CI check runs |  | W4 |
-| WS-44 | Draft line comments (agent-directed notes) |  | W3 |
+| WS-44 | Draft line comments (agent-directed notes) | cut | W3 |
 | WS-45 | PR data model | kept |  |
 | WS-46 | PR list/filtering (project level) |  | W4 |
 | WS-47 | PR entry (inside a task's Changes panel) |  | W4 |
@@ -654,9 +699,9 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-22 | CSV renderer |  | W5 |
 | FS-23 | Markdown/HTML/SVG/image renderers |  | W5 |
 | FS-24 | Text diff (Monaco diff editor) | done | W3 |
-| FS-25 | Inline review comments on diff lines |  | W3 |
-| FS-26 | Stacked multi-file diff view |  | W3 |
-| FS-27 | Image diff view |  | W3 |
+| FS-25 | Inline review comments on diff lines | cut | W3 |
+| FS-26 | Stacked multi-file diff view | cut | W3 |
+| FS-27 | Image diff view | cut | W3 |
 | FS-28 | Binary diff fallback | done | W3 |
 | FS-29 | Mermaid inline + standalone viewer |  | W9 |
 | FS-30 | Image viewer (contained/expandable/standalone/zoom-pan chassis) |  | W5 |
@@ -679,7 +724,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-12 | `interface` settings (task-hover action, auto-right-sidebar, 3× show-left-sidebar-metadata switches, hide-context-bar) |  | W8 |
 | ST-13 | `terminal` settings (font family/size, auto-copy, mac-option-as-meta, default shell) |  | W8 |
 | ST-14 | `browserPreview` / `browser` settings (profiles, CORS relax, clear-data) |  | W8 |
-| ST-15 | `changesViewMode` setting (flat/tree per section) |  | W3 |
+| ST-15 | `changesViewMode` setting (flat/tree per section) | cut | W3 |
 | ST-16 | `remoteMachine` install-source setting | cut |  |
 | ST-17 | Per-agent-provider config (extra CLI args, env vars) |  | W8 |
 | ST-18 | Per-agent executable override |  | W8 |
@@ -709,7 +754,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-06 | Project view — header & actions menu |  | W7 |
 | UI-07 | Project view — section tabs (Tasks/PRs/Workspaces/Settings) | cut |  |
 | UI-08 | Project view — non-ready states (creating/hydrating/context-error) |  | W7 |
-| UI-09 | Task titlebar — breadcrumb + git popover |  | W3 |
+| UI-09 | Task titlebar — breadcrumb + git popover | cut | W3 |
 | UI-10 | Task titlebar — activity/preview/open-in/drawer-toggle/sidebar-toggle |  | W7 |
 | UI-11 | Task main column — split-pane tab workbench | cut |  |
 | UI-12 | Task main column — bottom terminal drawer |  | W6 |
@@ -735,11 +780,11 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-32 | Drag and drop — tabs | cut |  |
 | UI-33 | Drag and drop — terminal tabs | cut |  |
 | UI-34 | System notifications |  | W11 |
-| UI-35 | Toasts |  | W3 |
+| UI-35 | Toasts | done | W3 |
 | UI-36 | The full modal catalog (30 modals) |  | W7 |
 | UI-37 | Agent status dots (sidebar) | cut |  |
 | UI-38 | Activity badge (workspace lifecycle) |  | W7 |
-| UI-39 | Diff stats and PR badges (sidebar rows) |  | W3 |
+| UI-39 | Diff stats and PR badges (sidebar rows) | cut | W3 |
 | UI-40 | Preview-server pills (titlebar) |  | W6 |
 | UI-41 | Connection status dot |  | W10 |
 | UI-42 | Update indicator (sidebar footer) |  | W11 |
