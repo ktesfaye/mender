@@ -46,8 +46,11 @@ export function shell(state: Shell): Row[] {
     return rows;
   }
 
+  /* A terminal is a grid somebody wrote on. Everything it says means what it
+     means because of which column it is in, so the whole screen and the line
+     you answer it on are the type. */
   for (const line of state.lines.slice(-LINES)) {
-    rows.push({ kind: 'line', text: line, tone: 'faded', keep: 'front' });
+    rows.push({ kind: 'line', text: line, tone: 'faded', keep: 'front', face: 'type' });
   }
-  return [...rows, { kind: 'typed', text: state.written }];
+  return [...rows, { kind: 'typed', text: state.written, face: 'type' }];
 }

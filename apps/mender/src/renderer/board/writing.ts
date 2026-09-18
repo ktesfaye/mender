@@ -56,7 +56,14 @@ export function saying(text: string, mark: string | undefined, tone?: Tone): Row
          presses the same thing, so the whole block lights up as one. */
       const pick = `keep:${block.join('\n')}`;
       for (const written of block) {
-        rows.push({ kind: 'line', text: EDGE + written, tone: 'faded', keep: 'front', pick });
+        rows.push({
+          kind: 'line',
+          text: EDGE + written,
+          tone: 'faded',
+          keep: 'front',
+          face: 'type',
+          pick,
+        });
       }
       continue;
     }
@@ -69,7 +76,7 @@ export function saying(text: string, mark: string | undefined, tone?: Tone): Row
     }
 
     if (RULED.test(line)) {
-      rows.push({ kind: 'line', text: '─'.repeat(RULE), tone: 'faded' });
+      rows.push({ kind: 'line', text: '─'.repeat(RULE), tone: 'faded', face: 'type' });
       continue;
     }
 
@@ -157,8 +164,9 @@ function plain(line: string): boolean {
  *
  * Markdown tables are written by hand and almost never line up in the source,
  * so leaving one as it came gives you a column of pipes in the wrong places.
- * The board is monospaced, which means the columns can simply be measured and
- * padded, and then it is a table rather than a row of punctuation.
+ * Measured and padded it is a table rather than a row of punctuation — and it
+ * is one of the few things on this board set in the type rather than the hand,
+ * because the padding is only worth anything if every character is a column.
  */
 function tabled(block: readonly string[]): Row[] {
   const grid = block
@@ -188,10 +196,16 @@ function tabled(block: readonly string[]): Row[] {
 
   const rows: Row[] = [];
   const head = laid[0] ?? '';
-  rows.push({ kind: 'line', text: head, tone: 'ink', keep: 'front' });
-  rows.push({ kind: 'line', text: '─'.repeat(head.length), tone: 'faded', keep: 'front' });
+  rows.push({ kind: 'line', text: head, tone: 'ink', keep: 'front', face: 'type' });
+  rows.push({
+    kind: 'line',
+    text: '─'.repeat(head.length),
+    tone: 'faded',
+    keep: 'front',
+    face: 'type',
+  });
   for (const line of laid.slice(1)) {
-    rows.push({ kind: 'line', text: line, tone: 'ink', keep: 'front' });
+    rows.push({ kind: 'line', text: line, tone: 'ink', keep: 'front', face: 'type' });
   }
   return rows;
 }

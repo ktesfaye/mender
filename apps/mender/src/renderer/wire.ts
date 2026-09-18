@@ -6,7 +6,7 @@ import {
   type ContractClient,
   type DomPortLike,
 } from '@emdash/wire/rpc';
-import { MENDER_WIRE_CHANNEL } from '@shared/channels';
+import { MENDER_WIRE_CHANNEL, type Watching } from '@shared/channels';
 import { menderWireContract, type menderDomainContracts } from '@shared/contract';
 
 declare global {
@@ -17,6 +17,8 @@ declare global {
       pathOf: (file: File) => string;
       /** Put something on this machine's clipboard. */
       keep: (text: string) => void;
+      /** Whether anybody can see the village, which only the host knows. */
+      watching: (to: (now: Watching) => void) => void;
     };
   }
 }

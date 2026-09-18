@@ -62,14 +62,17 @@ export function read(state: Read): Row[] {
 
   for (let at = 0; at < Math.min(lines.length, LINES); at++) {
     if (state.fixing?.at === at) {
-      rows.push({ kind: 'typed', text: state.fixing.written });
+      rows.push({ kind: 'typed', text: state.fixing.written, face: 'type' });
       continue;
     }
+    /* A file is read in the type, whatever is in it: indentation is what tells
+       you the shape of the thing, and a proportional face throws it away. */
     rows.push({
       kind: 'line',
       text: lines[at] ?? '',
       tone: 'faded',
       keep: 'front',
+      face: 'type',
       ...(content.readonly ? {} : { pick: `line:${at}` }),
     });
   }

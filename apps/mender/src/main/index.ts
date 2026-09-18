@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { createScope } from '@emdash/shared/concurrency';
 import { app, BrowserWindow } from 'electron';
+import { MENDER_WATCH_CHANNEL, type Watching } from '../shared/channels';
 import { createAgents } from './agents';
 import { createAgentsController } from './agents-controller';
 import { createChanges } from './changes';
@@ -122,6 +123,8 @@ async function openVillageWindow(): Promise<void> {
     window.focus();
   });
 
+  tellItWhoIsLooking(window);
+
   // Renderer failures are invisible otherwise: electron-vite's dev output only
   // carries the build, so surface the village's own console in the terminal.
   window.webContents.on('console-message', (_event, _level, message, line, source) => {
@@ -134,4 +137,48 @@ async function openVillageWindow(): Promise<void> {
   const devServer = process.env.ELECTRON_RENDERER_URL;
   if (devServer) await window.loadURL(devServer);
   else await window.loadFile(join(app.getAppPath(), 'out', 'renderer', 'index.html'));
+}
+
+/**
+ * Tell the village whether anybody can actually see it.
+ *
+ * It draws itself at a rate worth the moment, and the biggest saving by far is
+ * the one where the answer is nobody: he does not close this app, he leaves it
+ * behind a terminal for a day at a time, and an island being drawn sixty times
+ * a second into a window that is not on the screen is pure battery.
+ *
+ * The page is not allowed to work this out on its own. Background throttling is
+ * off for this window on purpose — the wire underneath has to keep its own time
+ * when the window is away, or a move already under way finishes minutes later in
+ * the corner of your eye — and the price of that switch is a page which believes
+ * it is visible forever. So the window itself says, because the window knows.
+ *
+ * Behind is not gone. Half of what this app is for is glanceable: the village
+ * sitting beside the thing he is really working in, with a light on in a house
+ * where somebody wants him. That has to keep moving. It just does not have to
+ * keep moving sixty times a second.
+ */
+function tellItWhoIsLooking(window: BrowserWindow): void {
+  let said: Watching | null = null;
+  const say = (now: Watching): void => {
+    if (now === said || window.isDestroyed()) return;
+    said = now;
+    window.webContents.send(MENDER_WATCH_CHANNEL, now);
+  };
+  const look = (): void => {
+    if (!window.isVisible() || window.isMinimized()) return say('gone');
+    say(window.isFocused() ? 'front' : 'behind');
+  };
+  window.on('focus', look);
+  window.on('blur', look);
+  window.on('show', look);
+  window.on('hide', look);
+  window.on('minimize', look);
+  window.on('restore', look);
+  /* And once the page is there to hear it, because everything above is an
+     edge and the renderer misses every one that fired before it loaded. */
+  window.webContents.on('did-finish-load', () => {
+    said = null;
+    look();
+  });
 }

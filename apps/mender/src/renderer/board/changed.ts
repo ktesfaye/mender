@@ -24,11 +24,14 @@ export function readOut(change: Change, undoing?: 'offered' | 'asked'): Row[] {
       continue;
     }
     const mark = line[0];
+    /* A diff is columns: what went in has to sit directly above what came out
+       or it is not a diff, it is two paragraphs. So it is set in the type. */
     rows.push({
       kind: 'line',
       text: line,
       tone: mark === '+' ? 'keen' : mark === '-' ? 'sore' : 'faded',
       keep: 'front',
+      face: 'type',
     });
   }
   if (change.more) {

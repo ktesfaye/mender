@@ -71,6 +71,11 @@ const LIGHT: Record<Mood, { color: number; alpha: number; beat: number }> = {
    that the banding lands under what you would notice. */
 const RINGS = 20;
 
+/* How much a light has to move before the wash is worth cutting again. Well
+   under one step of the twenty it is stacked out of, so nothing visible is ever
+   sat on; far enough above nothing that an ease which has arrived stops asking. */
+const STEP = 0.0004;
+
 /** Who is standing where, and what they are doing. */
 export interface Standing {
   /** The task, which is what makes two villagers different people. */
@@ -86,6 +91,8 @@ class Person {
   private readonly shade = new Sprite();
   private frame = 0;
   private lit = 0;
+  /** What this one's light was worth the last time the shape was cut. */
+  private cut = -1;
 
   constructor(
     building: Building,
@@ -107,10 +114,13 @@ class Person {
     this.turn();
   }
 
-  set(mood: Mood): void {
-    if (mood === this.mood) return;
+  /** Says whether this actually changed anything, because the colour of the
+      light is the mood and a colour is not something an ease can notice. */
+  set(mood: Mood): boolean {
+    if (mood === this.mood) return false;
     this.mood = mood;
     this.turn();
+    return true;
   }
 
   /**
@@ -129,12 +139,26 @@ class Person {
     this.turn();
   }
 
-  /** How much light this one is throwing right now, eased. */
-  glow(now: number, by: number): { color: number; alpha: number } {
+  /**
+   * Ease this one's light on, and say whether it moved far enough to see.
+   *
+   * The easing has to run every frame or a house lighting up would take as long
+   * as the frames are apart. Whether the SHAPE gets cut again is a different
+   * question, and mostly the answer is no: a house that has finished arriving at
+   * its own brightness sits there, and the only light in the village that never
+   * settles is the one belonging to somebody who wants you.
+   */
+  glow(now: number, by: number): boolean {
     const light = LIGHT[this.mood];
     const want = light.alpha + light.beat * (0.5 + 0.5 * Math.sin(now / 420));
     this.lit += (want - this.lit) * by;
-    return { color: light.color, alpha: this.lit };
+    return Math.abs(this.lit - this.cut) > STEP;
+  }
+
+  /** The light as it is about to be cut, remembered so the next frame can tell. */
+  settled(): { color: number; alpha: number } {
+    this.cut = this.lit;
+    return { color: LIGHT[this.mood].color, alpha: this.lit };
   }
 
   private turn(): void {
@@ -151,6 +175,8 @@ class Person {
 export class Folk {
   private readonly people = new Map<string, Person>();
   private readonly boxes = new Map<string, Building>();
+  /** Somebody arrived or left, so the wash has to be laid out again regardless. */
+  private recut = true;
 
   /** `windows` is the ground's own lit layer: light belongs under the trees. */
   constructor(private readonly windows: Graphics) {}
@@ -162,30 +188,48 @@ export class Folk {
       here.add(one.id);
       const had = this.people.get(one.id);
       if (had) {
-        had.set(one.mood);
+        if (had.set(one.mood)) this.recut = true;
         continue;
       }
       const person = new Person(one.building, one.mood);
       one.building.stand.addChild(person.view);
       this.people.set(one.id, person);
       this.boxes.set(one.id, one.building);
+      this.recut = true;
     }
     for (const [id, person] of this.people) {
       if (here.has(id)) continue;
       person.view.destroy({ children: true });
       this.people.delete(id);
       this.boxes.delete(id);
+      this.recut = true;
     }
   }
 
+  /**
+   * The light out of the windows, re-cut only when it has actually changed.
+   *
+   * Twenty stacked ellipses per lit house, and this used to tear all of them
+   * down and lay them out again on every single frame — a whole new piece of
+   * geometry, sixty times a second, to arrive back at exactly the picture that
+   * was already on the screen. An island where nobody is working rebuilt an
+   * empty shape forever. The eases still run every frame, because a house
+   * lighting up should not wait for anything; the cutting does not.
+   */
   tick(ticker: Ticker): void {
     const now = performance.now();
     const by = Math.min(1, ticker.deltaTime * 0.08);
+    let moved = this.recut;
+    for (const person of this.people.values()) {
+      person.tick(now);
+      if (person.glow(now, by)) moved = true;
+    }
+    if (!moved) return;
+    this.recut = false;
     this.windows.clear();
     for (const [id, person] of this.people) {
-      person.tick(now);
       const box = this.boxes.get(id);
-      const light = person.glow(now, by);
+      const light = person.settled();
       if (!box || light.alpha <= 0.001) continue;
       this.spill(box, light.color, light.alpha);
     }

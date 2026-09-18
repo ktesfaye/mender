@@ -9,7 +9,7 @@ import {
   type Texture,
 } from 'pixi.js';
 import type { BoardArt } from './board';
-import { ADVANCE, GLYPH, words } from './lettering';
+import { widthOf, words } from './lettering';
 
 /**
  * The rail.
@@ -35,6 +35,8 @@ const SORE = 0x71301c;
 const PEG = 20;
 /** The gap between pegs, and the gap at the end of the rail. */
 const GAP = 5;
+/** How tall a carved letter stands, for centring it in its peg. */
+const CARVE = 11;
 
 /** What one project on the rail is. */
 export interface Peg {
@@ -140,11 +142,14 @@ export class Rail {
         this.cut.rect(nail, top + 3, 1, 1).fill({ color: INK, alpha: 0.5 });
       }
 
+      /* Carved into the plank, so it is the type rather than the hand: the
+         rail is timber and a peg is a tag somebody cut a letter into, not a
+         note somebody wrote. */
       const mark = peg.mark.slice(0, 2);
-      const carved = words(mark, TONES[peg.tone ?? (peg.here ? 'ink' : 'faded')]);
+      const carved = words(mark, TONES[peg.tone ?? (peg.here ? 'ink' : 'faded')], 'type');
       carved.position.set(
-        x + Math.round((PEG - mark.length * ADVANCE) / 2),
-        top + Math.round((PEG - GLYPH) / 2) - 1
+        x + Math.round((PEG - widthOf(mark, 'type')) / 2),
+        top + Math.round((PEG - CARVE) / 2) - 1
       );
       this.carving.addChild(carved);
 
@@ -154,7 +159,7 @@ export class Rail {
   }
 }
 
-/** Nail the rail up. Its timber is the board's, cut by `tools/make-board.py`. */
+/** Nail the rail up. Its timber is cut by `tools/make-scroll.py`. */
 export async function makeRail(pixi: Application): Promise<Rail> {
   const art = (await Assets.load<BoardArt>('./board/board.json')) as BoardArt;
   const texture = await Assets.load<Texture>('./board/' + art.rail);

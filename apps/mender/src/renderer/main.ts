@@ -36,6 +36,7 @@ import { openShell, type LiveShell } from './board/talking';
 import { refused, trouble, unwritten } from './board/trouble';
 import { answerFor, openWork, type LiveWork } from './board/work';
 import { ran } from './job';
+import { setPace } from './pace';
 import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
 import { Folk, loadFolk, type Standing } from './village/folk';
 import { districtBounds, Ground, type Aim } from './village/ground';
@@ -64,7 +65,13 @@ async function boot(): Promise<void> {
     antialias: false,
     roundPixels: true,
     preference: 'webgl',
+    /* ONE ANIMATION LOOP, NOT TWO. Pixi gives an application a ticker of its
+       own unless told otherwise, and pixi-viewport puts its update on the
+       shared one — so the default here was two independent loops running the
+       island side by side forever. */
+    sharedTicker: true,
   });
+  setPace(pixi);
   pixi.renderer.canvas.style.imageRendering = 'pixelated';
   document.body.appendChild(pixi.canvas);
 

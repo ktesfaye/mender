@@ -81,12 +81,18 @@ export function hunting(hunt: Hunt): Row[] {
           tone: 'faded',
           // A line of code reads from its start; cutting the front hides it.
           keep: 'front',
+          face: 'type',
           pick: `open:${file.path}`,
         });
       }
       const over = (file.lines?.length ?? 0) - SHOWN;
       if (over > 0) {
-        rows.push({ kind: 'line', text: `    and ${over} more in it`, tone: 'faded' });
+        rows.push({
+          kind: 'line',
+          text: `    and ${over} more in it`,
+          tone: 'faded',
+          face: 'type',
+        });
       }
     }
   }

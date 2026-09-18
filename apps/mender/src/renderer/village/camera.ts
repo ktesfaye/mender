@@ -1,5 +1,6 @@
 import { Viewport } from 'pixi-viewport';
 import type { Application } from 'pixi.js';
+import { stir } from '../pace';
 import type { DistrictBounds } from './ground';
 
 /**
@@ -40,8 +41,15 @@ export function createCamera(pixi: Application): Viewport {
   viewport.drag().pinch().wheel({ smooth: 3 }).decelerate({ friction: 0.9 });
   viewport.clampZoom({ minScale: RUNGS[0], maxScale: RUNGS[RUNGS.length - 1] });
 
+  /* A camera that is going somewhere is the one thing in the village that has
+     to be drawn every frame, and it keeps going long after the hand comes off
+     the trackpad — a flick decelerates, a pick flies. So the movement says so
+     itself rather than being guessed at from the input that started it. */
+  viewport.on('moved', stir);
+
   let settle: ReturnType<typeof setTimeout> | undefined;
   viewport.on('zoomed', () => {
+    stir();
     clearTimeout(settle);
     settle = setTimeout(() => snapToRung(viewport), SETTLE_MS);
   });
