@@ -1390,6 +1390,39 @@ single call that does not return until the worktree is there. And a new session
 is started with a name and nothing else: the five ways emdash can set up a
 workspace are not offered because the call does not take them.
 
+### A full audit, driven against a scratch checkout
+
+Every board and every doing driven end to end against a throwaway repo with a
+remote and dirty state, on a real Claude session, over the window's debug port.
+The spine holds: the island draws and opens, the finder walks, a change reads,
+a commit is written and lands in git, a branch offers to publish, a session
+cuts its own worktree and starts a real agent that answers and commits on its
+own branch, the slash reaches the agent's own skills, the card reads its live
+model, mode, effort and servers, a file is read and blamed, and a session is
+taken down with its worktree gone and its branch kept. Six things were wrong
+underneath it, all found only by driving it.
+
+The shell took no keys at all. Its input lands in the shell's own buffer
+through the one window listener, but the line at the foot of the board owns
+Return and handed an empty one to the agent instead, so every command sat in
+the buffer forever and nothing ever ran. Return reaches the shell now.
+
+The escape ladder skipped whole rungs. The line handles Escape when it has the
+keyboard and let the same press bubble on to the window listener, so a file
+backed out twice and landed on the island in one keystroke. And the ladder had
+no rung for a live checkout or for the card, so even a clean step went from a
+change, or from the card, straight to open water rather than back to the
+checkout or the transcript it belonged to. It steps one level at a time now.
+
+The finder could not be walked. Its empty narrowing box was drawn transparent
+rather than hidden, which trapped the keyboard inside an empty list; and
+reopening it inherited the mark from wherever it was last left, landing two or
+three rows down a list it had just drawn fresh. It hides the box until it has
+something to show and stands on the first row every time.
+
+The time gutter wrapped: a three-letter age like `now` broke over two lines
+because the mark margin was a single character wide.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour
