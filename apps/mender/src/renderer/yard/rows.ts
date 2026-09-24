@@ -175,6 +175,11 @@ const HEADING = [
   'padding:12px 0 4px',
 ].join(';');
 
-const BODY = ["font-family:'Josefin Sans',sans-serif", 'font-size:15px', 'line-height:1.45'].join(
-  ';'
-);
+const BODY = [
+  "font-family:'Josefin Sans',sans-serif",
+  'font-size:15px',
+  'line-height:1.45',
+  /* Everything wraps. A board whose lines run off the edge is a board that
+     has quietly decided what you are allowed to read. */
+  'overflow-wrap:anywhere',
+].join(';');

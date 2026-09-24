@@ -68,6 +68,21 @@ const SHOWN = 8;
 const HERE = '>';
 const ON = '●';
 
+/**
+ * As much of what a command says about itself as is worth a line.
+ *
+ * An agent's own catalogue is written for another program to read: a skill
+ * will happily describe itself in two hundred words. What the line under the
+ * one you are writing on needs is enough to tell two of them apart, so it is
+ * cut at the first sentence and then at a width, and nothing is lost that was
+ * not already unreadable at a glance.
+ */
+function hint(about: string): string {
+  const first = about.split(/(?<=[.!?])\s/)[0] ?? about;
+  const said = first.replace(/\s+/g, ' ').trim();
+  return said.length > 92 ? `${said.slice(0, 91)}…` : said;
+}
+
 export class Palette {
   private kit: Kit | null = null;
   private text = '';
@@ -108,7 +123,7 @@ export class Palette {
       rows.push({
         kind: 'entry',
         mark: here ? HERE : match.on ? ON : ' ',
-        text: match.about ? `${match.name} · ${match.about}` : match.name,
+        text: match.about ? `${match.name} · ${hint(match.about)}` : match.name,
         tone: here ? 'ink' : 'faded',
         pick: `slash:${match.name}`,
       });

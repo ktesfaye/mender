@@ -148,9 +148,27 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   const hands = box({}, 'position:relative;display:flex;align-items:center;gap:8px;flex:none');
   writing.appendChild(hands);
   const line = makeLine(writing);
-  /* And what a slash or an @ has opened goes under the line, which is where
-     the lines it is narrowing actually are. Nothing here floats. */
-  const under = box({ left: 0, right: 0, bottom: 0, height: 140 }, 'overflow:hidden');
+  /* And what a slash or an @ has opened sits just above the line, growing
+     upward from it. It is under the line in the sense that matters — it is
+     what the line has opened and it goes away when the line does — and it is
+     drawn above it because below it is the rail and then the edge of the
+     screen. Nothing here floats over anything. */
+  const under = box(
+    { left: 0, right: 0, bottom: 190 },
+    [
+      'max-height:280px',
+      'overflow-y:auto',
+      'display:flex',
+      'flex-direction:column',
+      'justify-content:flex-end',
+      /* The same wash everything read over the yard sits on, because this is
+         read over the yard too and the village behind would otherwise be
+         showing through the middle of a list of file names. */
+      'background:rgba(72,37,16,.72)',
+      'padding:10px 0',
+      'pointer-events:auto',
+    ].join(';')
+  );
   const opened = makeRows(under, does.press);
   stage.appendChild(under);
   line.onSay((text) => does.say(text));
@@ -249,10 +267,10 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     show,
     narrowing: (rows) => {
       opened.write(rows);
-      /* The line sits above whatever it opened, so the board gives the room
-         back the moment there is nothing under it. */
-      under.style.height = rows.length ? '140px' : '0';
-      writing.style.bottom = rows.length ? '186px' : '146px';
+      under.style.display = rows.length ? 'flex' : 'none';
+      /* Whatever it opened is read from the bottom up, because the thing it is
+         narrowing towards is the nearest one to the line. */
+      opened.root.scrollTop = opened.root.scrollHeight;
     },
     asks: (what) => line.asks(what),
     walk,
