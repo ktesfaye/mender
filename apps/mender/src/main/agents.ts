@@ -643,16 +643,22 @@ class House {
   /**
    * The wall-clock time this house first saw an item, stamping it if new.
    *
-   * Nothing is dated until the first batch has gone out, because until then
-   * every item on the turns is something that already happened, possibly days
-   * ago, and stamping it now would have the board say a week-old conversation
-   * was this minute. Nought is the honest answer to when, and the board says
-   * so in words rather than putting a time on it.
+   * The protocol carries no clock, so the only time anything here has is when
+   * the village noticed it. That is the truth for something happening while
+   * you watch and a lie for everything else: a session comes back with its
+   * whole history, and stamping that now would have a week-old conversation
+   * say it was this minute, which is worse than saying nothing.
+   *
+   * `over` is the exact test rather than a guess about timing. A turn that had
+   * already finished the first time this house laid eyes on it finished before
+   * anybody was looking, however it arrived — replayed off the disk, or sent
+   * again by an agent picking up where it left off. Nought is the honest
+   * answer to when, and the board says so in words.
    */
-  private time(id: string): number {
+  private time(id: string, over: boolean): number {
     const had = this.seen.get(id);
     if (had !== undefined) return had;
-    const now = this.settled ? Date.now() : 0;
+    const now = over || !this.settled ? 0 : Date.now();
     this.seen.set(id, now);
     return now;
   }
@@ -705,7 +711,7 @@ class House {
       mood,
       doing: this.trouble ?? doingOf(mood, this.live),
       lines,
-      told: toldOf(turns, this.where(), (id) => this.time(id)),
+      told: toldOf(turns, this.where(), (id, over) => this.time(id, over)),
       asking,
       plan: stepsOf(this.plan),
       queued: waitingOf(this.lifecycle),
@@ -920,7 +926,7 @@ function linesOf(turns: readonly TranscriptTurn[], root: string | undefined): Li
 function toldOf(
   turns: readonly TranscriptTurn[],
   root: string | undefined,
-  stamp: (id: string) => number
+  stamp: (id: string, over: boolean) => number
 ): ToldState {
   const flat = flatten(turns);
 
@@ -952,11 +958,11 @@ function toldOf(
 
   flat.forEach((item, i) => {
     if (item.kind === 'note') {
-      const at = stamp(item.id);
+      const at = stamp(item.id, item.hasOutcome);
       earliest(at);
       notes.push({ id: item.id, said: item.text, at, answered: answered[i] });
     } else if (item.kind === 'said') {
-      const at = stamp(item.id);
+      const at = stamp(item.id, item.hasOutcome);
       earliest(at);
       thoughts.push({ id: item.id, said: item.text, at });
     } else if (item.kind === 'thinking') {
@@ -969,7 +975,7 @@ function toldOf(
         ...(item.item.status === 'thinking' ? { since: item.item.startedAt } : {}),
       });
     } else {
-      toldFrom(item.node, root, stamp, earliest, deeds, errands, written);
+      toldFrom(item.node, item.hasOutcome, root, stamp, earliest, deeds, errands, written);
     }
   });
 
@@ -992,9 +998,9 @@ function toldOf(
 /** One chronological item, flattened out of the turn/message/tool tree. */
 type Flat =
   | { kind: 'note'; id: string; text: string; hasOutcome: boolean }
-  | { kind: 'said'; id: string; text: string }
+  | { kind: 'said'; id: string; text: string; hasOutcome: boolean }
   | { kind: 'thinking'; item: TranscriptThinking }
-  | { kind: 'tool'; node: ToolNode };
+  | { kind: 'tool'; node: ToolNode; hasOutcome: boolean };
 
 function flatten(turns: readonly TranscriptTurn[]): Flat[] {
   const flat: Flat[] = [];
@@ -1007,12 +1013,12 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
         flat.push(
           item.role === 'user'
             ? { kind: 'note', id: item.id, text, hasOutcome }
-            : { kind: 'said', id: item.id, text }
+            : { kind: 'said', id: item.id, text, hasOutcome }
         );
       } else if (item.kind === 'thinking') {
         if (item.text.trim()) flat.push({ kind: 'thinking', item });
       } else {
-        flat.push({ kind: 'tool', node: item });
+        flat.push({ kind: 'tool', node: item, hasOutcome });
       }
     }
   }
@@ -1030,8 +1036,9 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
  */
 function toldFrom(
   node: ToolNode,
+  over: boolean,
   root: string | undefined,
-  stamp: (id: string) => number,
+  stamp: (id: string, over: boolean) => number,
   earliest: (at: number) => void,
   deeds: Deed[],
   errands: Errand[],
@@ -1039,11 +1046,11 @@ function toldFrom(
 ): void {
   if (node.kind === 'tool-group') {
     for (const child of node.children)
-      toldFrom(child, root, stamp, earliest, deeds, errands, written);
+      toldFrom(child, over, root, stamp, earliest, deeds, errands, written);
     return;
   }
 
-  const at = stamp(node.id);
+  const at = stamp(node.id, over);
   earliest(at);
 
   if (node.kind === 'spawn-subagent-tool-call') {
@@ -1051,7 +1058,7 @@ function toldFrom(
       id: node.id,
       errand: node.inputSummary ?? node.name,
       running: node.status === 'running',
-      since: at,
+      ...(at ? { since: at } : {}),
     });
     return;
   }
@@ -1081,7 +1088,7 @@ function toldFrom(
   });
 
   for (const child of node.children ?? []) {
-    toldFrom(child, root, stamp, earliest, deeds, errands, written);
+    toldFrom(child, over, root, stamp, earliest, deeds, errands, written);
   }
 }
 
