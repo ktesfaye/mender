@@ -128,12 +128,14 @@ in the top right, over both the island and the yard, one slot each with the
 project's own face in it, its app icon or its logo, and a prop from the kit
 until it has one, and no names until you hover. It folds away.
 
-**A project's name is the way into the project itself.** Pressing it lays the
-project's page over the yard: what it looks like on the rack, picked from the
-pictures already in its checkout or brought from anywhere, what it is called,
+**A project's name opens its settings, in a window of their own.** Settings
+are about the place, not the work, so they are the one thing that is not laid
+over the yard: a window pops up over everything with a close mark, and it goes
+on a click outside it or Escape, leaving the session under it untouched. In it
+is the icon it wears on the rack, picked from the images already in its
+checkout or chosen from anywhere, its name, typed straight into the window,
 what every new session carries into its worktree that git would leave behind,
-where it is, and forgetting it. Nothing about the place lives anywhere else,
-and a project that has just moved in is shown this page first.
+where it is, and removing it. A project that has just moved in opens it first.
 
 **Everything else is laid over the yard, never instead of it.** A file, a
 change, a commit, a folder, a search, a shell, a pull request, the card behind
@@ -142,7 +144,7 @@ brown wash down over the middle and the right, with what you asked for written
 on it. The gatepost keeps its column and the rail keeps its strip, so while you
 read you can still see what you asked for and who else is working. The way home
 is written across the top, one gold step per level, and Escape walks the same
-steps one at a time.
+steps one at a time. A click anywhere outside what is open closes it.
 
 **Gold is pressable and pressable is gold.** Nothing else anywhere is gold, and
 a pressable thing carries no underline, no arrow and no box. The result of

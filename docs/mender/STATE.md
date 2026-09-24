@@ -596,25 +596,34 @@ projects in a data folder of its own: the district went back to sea and its
 slot came off the rack there and then. It used to stay drawn on both until the
 app was restarted.
 
-**A project has a page of its own.** Pressing its name, top left of its yard,
-lays it over the yard like anything else. What it looks like on the rack comes
-first: every picture in the checkout is looked through, the likeliest to be
-its own logo laid out first in the rack's own slots, one of each however many
-sizes and copies of it the repository keeps, with the kit's stand-in beside
-them and a line for one from anywhere else on the machine. Picking one copies
-it in, so it outlives wherever it came from, and the rack wears it at once.
-Under that it can be called something else (the folder keeps its name, and so
-do its worktrees), every new session can be sent into its worktree with
-whatever git ignores that it would otherwise be missing (the `.env`, the local
-keys, `node_modules`), it can be shown in the Finder, and it can be forgotten.
-A project that has just moved in lands on this page first.
+**A project has settings, in a window of their own.** Pressing its name, top
+left of its yard, pops a window up over everything: settings are about the
+place and not the work, so this is the one thing not laid over the yard, and
+it closes on its mark, on Escape, or on a click anywhere outside it, with the
+session underneath exactly as it was. The icon comes first: every image in the
+checkout is looked through and the ones named like a face (an icon, a logo, a
+launcher) are laid out in the rack's own slots, one of each however many sizes
+and copies the repository keeps, with the kit's default beside them, a button
+to show the rest and one to choose a file from anywhere. Picking one copies it
+in, so it outlives wherever it came from, and the rack wears it at once. Its
+name is typed straight into the window (the folder keeps its name, and so do
+its worktrees). Every new session can be sent into its worktree with whatever
+git ignores that it would otherwise be missing (the `.env`, the local keys,
+`node_modules`), ticked off a list. It can be shown in the Finder and removed,
+the second of which takes two clicks. A project that has just moved in opens it
+first.
 
-Driven on a copy of his projects: aurio's page found its Android launcher icon
-first, picking it put it on the rack, renaming it rewrote the yard's header,
-sending `.claude/` along was written into the registry's own config for that
-repository, Escape walked out one step at a time. Not driven: the picker for a
-picture from elsewhere and founding itself, which both need the native dialog,
-and a session actually cut with something sent along.
+And anything laid over the yard now closes on a click outside it. It used to
+swallow every click that was not on something gold, so Escape was the only way
+out and nothing said so.
+
+Driven on a copy of his projects: aurio's window found its launcher icon
+first, picking it put it on the rack, renaming it from the window rewrote the
+yard's header and the rack, ticking `.claude/` was written into the registry's
+own config for that repository, and the window and the checkout board both
+closed on a click outside them. Not driven: choosing a file from elsewhere and
+founding itself, which both need the native dialog, and a session actually cut
+with something sent along.
 
 Not here yet: cloning or creating a repository rather than pointing at one,
 relinking, choosing what a worktree is cut from, and a checkout's trouble

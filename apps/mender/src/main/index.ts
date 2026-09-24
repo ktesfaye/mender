@@ -10,6 +10,7 @@ import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
 import { createProjects } from './projects';
 import { createProjectsController } from './projects-controller';
+import { createPromptsController } from './prompts';
 import { startRuntimes } from './runtimes';
 import { createTasks } from './tasks';
 import { createTasksController } from './tasks-controller';
@@ -63,6 +64,7 @@ export async function main(): Promise<void> {
     changes: createChangesController(changes),
     finding: createFindingController(finding),
     projects: createProjectsController(projects),
+    prompts: createPromptsController(),
     tasks: createTasksController(tasks),
     village: createVillageController({ state: () => projects.standing() }),
   });

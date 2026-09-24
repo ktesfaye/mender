@@ -295,6 +295,9 @@ export const kitSchema = z.object({
   modes: z.array(choiceSchema),
   effort: z.string().nullable(),
   efforts: z.array(choiceSchema),
+  /** How it goes about the work, where the agent has more than one way (Codex: Default or Plan). */
+  collab: z.string().nullable(),
+  collabs: z.array(choiceSchema),
   tools: z.array(toolSchema),
   knacks: z.array(knackSchema),
   orders: z.array(orderSchema),
@@ -319,7 +322,7 @@ export const agentsContract = defineContract({
   choose: fallible({
     input: z.object({
       task: z.string(),
-      what: z.enum(['hand', 'model', 'mode', 'effort']),
+      what: z.enum(['hand', 'model', 'mode', 'effort', 'collab']),
       id: z.string(),
     }),
     data: z.void(),

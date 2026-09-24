@@ -34,7 +34,7 @@ export interface LiveCard {
 }
 
 export type Meant =
-  | { does: 'choose'; what: 'hand' | 'model' | 'mode' | 'effort'; id: string }
+  | { does: 'choose'; what: 'hand' | 'model' | 'mode' | 'effort' | 'collab'; id: string }
   | { does: 'tool'; name: string; on: boolean };
 
 export async function openCard(
@@ -111,7 +111,13 @@ function read(pick: string, kit: Kit | null): Meant | null {
   if (cut === -1) return null;
   const kind = pick.slice(0, cut);
   const id = pick.slice(cut + 1);
-  if (kind === 'hand' || kind === 'model' || kind === 'mode' || kind === 'effort') {
+  if (
+    kind === 'hand' ||
+    kind === 'model' ||
+    kind === 'mode' ||
+    kind === 'effort' ||
+    kind === 'collab'
+  ) {
     return { does: 'choose', what: kind, id };
   }
   if (kind === 'tool') {
@@ -198,6 +204,7 @@ function written(task: Task, kit: Kit | null, ending?: Ending, showing?: boolean
   choices(rows, 'thinking with', 'model', kit.model, kit.models);
   choices(rows, 'how it works', 'mode', kit.mode, kit.modes);
   choices(rows, 'how hard it thinks', 'effort', kit.effort, kit.efforts);
+  choices(rows, 'how it goes about it', 'collab', kit.collab, kit.collabs);
 
   rows.push({ kind: 'gap' }, { kind: 'heading', text: 'what it can reach' });
   if (!kit.tools.length) {

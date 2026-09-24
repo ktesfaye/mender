@@ -7,6 +7,7 @@ import { agentsContract } from './agents';
 import { changesContract } from './changes';
 import { findingContract } from './finding';
 import { projectsContract } from './projects';
+import { promptsContract } from './prompts';
 import { tasksContract } from './tasks';
 import { villageContract } from './village';
 
@@ -25,6 +26,7 @@ export const menderDomainContracts = {
   finding: findingContract,
   git: gitContract,
   projects: projectsContract,
+  prompts: promptsContract,
   pulls: pullRequestsContract,
   tasks: tasksContract,
   terminals: terminalsContract,

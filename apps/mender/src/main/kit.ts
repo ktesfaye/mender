@@ -34,6 +34,8 @@ const NOTHING: Kit = {
   modes: [],
   effort: null,
   efforts: [],
+  collab: null,
+  collabs: [],
   tools: [],
   knacks: [],
   orders: [],
@@ -45,7 +47,7 @@ export interface Kits {
   kit(task: string): Cell<Kit>;
   /** The conversation a session is holding, once it has one. */
   settle(task: string, conversation: string): Promise<void>;
-  choose(task: string, what: 'hand' | 'model' | 'mode' | 'effort', id: string): Promise<Wrong>;
+  choose(task: string, what: 'hand' | 'model' | 'mode' | 'effort' | 'collab', id: string): Promise<Wrong>;
   tool(task: string, name: string, on: boolean): Promise<Wrong>;
   forget(task: string): Promise<void>;
   dispose(): Promise<void>;
@@ -108,7 +110,14 @@ export function createKits(
       if (!conversation || !card.awake) return refused('nobody is working in here yet.');
       const done = await runtimes.acp.setOption({
         conversationId: conversation,
-        key: what === 'model' ? 'model' : what === 'mode' ? 'mode' : 'effort',
+        key:
+          what === 'model'
+            ? 'model'
+            : what === 'mode'
+              ? 'mode'
+              : what === 'collab'
+                ? 'collaborationMode'
+                : 'effort',
         value: id,
       });
       if (!done.success) return refused(said(done.error));
@@ -232,6 +241,8 @@ class Card {
       modes: choicesOf(this.config?.modeOptions?.available),
       effort: this.config?.efforts?.selected ?? null,
       efforts: choicesOf(this.config?.efforts?.available),
+      collab: this.config?.collaborationModeOptions?.selected ?? null,
+      collabs: choicesOf(this.config?.collaborationModeOptions?.available),
       tools,
       knacks,
       orders: (this.config?.availableCommands ?? []).map((command) => ({

@@ -144,7 +144,14 @@ export async function picturesIn(
 
   /* Only the likeliest are opened: a game's worth of sprites is thousands of
      files, and none of them is the one being looked for. */
-  const sifted: { path: string; score: number; image: NativeImage; w: number; h: number }[] = [];
+  const sifted: {
+    path: string;
+    score: number;
+    named: number;
+    image: NativeImage;
+    w: number;
+    h: number;
+  }[] = [];
   const window = Math.max(SIFTED, many * 3);
   for (const one of ranked.slice(0, window)) {
     const { image, w, h } = await looked(join(checkout, one.path));
@@ -155,7 +162,7 @@ export async function picturesIn(
     else if (Math.abs(w - h) / long > 0.4) score -= 20;
     if (long < 32) score -= 30;
     else if (long >= 128) score += 6;
-    sifted.push({ ...one, score, image, w, h });
+    sifted.push({ ...one, named: one.score, score, image, w, h });
   }
 
   /* One of each family, the largest; then one of each picture, whatever it
@@ -178,16 +185,27 @@ export async function picturesIn(
     kept.push(one);
   }
 
+  /* The first look is only what is named like a face: an icon, a logo, a
+     launcher. Everything else in a repository is a picture of something, and
+     a play button from a media library is not what anybody is looking for.
+     Asking for more is asking for all of it. */
+  const faces = kept.filter((one) => one.named >= FACE);
+  const chosen = many <= FIRST && faces.length ? faces.slice(0, many) : kept.slice(0, many);
   return {
-    pictures: kept.slice(0, many).map((one) => ({
+    pictures: chosen.map((one) => ({
       path: one.path,
       src: one.image.toDataURL(),
       wide: one.w,
       tall: one.h,
     })),
-    more: Math.max(0, kept.length - many) + Math.max(0, ranked.length - window),
+    more: Math.max(0, kept.length - chosen.length) + Math.max(0, ranked.length - window),
   };
 }
+
+/** What a name has to score to be offered before anybody asks for more. */
+const FACE = 20;
+/** How many the first look asks for. */
+const FIRST = 12;
 
 /**
  * A picture reduced to a thumbnail's thumbnail, for telling the same logo at

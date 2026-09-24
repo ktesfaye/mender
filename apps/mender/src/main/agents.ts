@@ -94,7 +94,7 @@ export interface Agents {
   working(task: string): Cell<WorkingState>;
   /** What that session works with, for the card. */
   kit(task: string): Cell<Kit>;
-  choose(task: string, what: 'hand' | 'model' | 'mode' | 'effort', id: string): Promise<Told>;
+  choose(task: string, what: 'hand' | 'model' | 'mode' | 'effort' | 'collab', id: string): Promise<Told>;
   tool(task: string, name: string, on: boolean): Promise<Told>;
   /** Put an agent's CLI on this machine, so somebody else could work here. */
   fetch(hand: string): Promise<Fetched>;

@@ -15,7 +15,7 @@ import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Mood } from '@shared/agents';
 import type { At, Change } from '@shared/changes';
-import type { PictureFrom, Project } from '@shared/projects';
+import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { openCard, type LiveCard } from './board/card';
 import { opening, readOut, unreadable } from './board/changed';
@@ -31,7 +31,6 @@ import type { Row } from './board/row';
 import { sent, type Sent } from './board/sent';
 import { shell } from './board/shell';
 import { openShell, type LiveShell } from './board/talking';
-import { FACES, tended, type Tending } from './board/tending';
 import { refused, trouble, unwritten } from './board/trouble';
 import { answerFor } from './board/work';
 import { ran } from './job';
@@ -46,6 +45,7 @@ import { buildScene } from './village/scene';
 import { wire, type MenderClient } from './wire';
 import { dim, makeLayer } from './yard/frame';
 import { openYard, type Watching } from './yard/live';
+import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
 import { makeYard } from './yard/yard';
@@ -101,7 +101,7 @@ async function boot(): Promise<void> {
         /* One line, and whatever is open decides what is being written on it:
            a name for a new session, a new name for this one, a commit message,
            something to look for, or something to say to the agent. */
-        if (naming || titling || writing || looking || hunt || tending?.renaming !== undefined) {
+        if (naming || titling || writing || looking || hunt) {
           wrote(text);
           return;
         }
@@ -115,10 +115,6 @@ async function boot(): Promise<void> {
         }
         if (titling) {
           void retitle();
-          return;
-        }
-        if (tending?.renaming !== undefined) {
-          void rename();
           return;
         }
         if (writing) {
@@ -197,9 +193,6 @@ async function boot(): Promise<void> {
          Anything opened from the island has no yard to be laid over, so for
          the moment it is still drawn on wood. That is the last of the board
          left, and it goes when the island's own boards come across. */
-      /* Only one thing is ever laid over the yard, so anything else being
-         written on the wash means the project's own page has gone. */
-      if (!tendingNow) tending = null;
       dim(pixi.canvas, 'reading');
       /* Out on the island there is no yard to lay anything over, so only the
          line and the wash come up. The village behind stays the whole picture
@@ -277,7 +270,6 @@ async function boot(): Promise<void> {
       !naming &&
       !titling &&
       !looking &&
-      !tending &&
       !card;
 
     /**
@@ -289,7 +281,6 @@ async function boot(): Promise<void> {
      * the thing you have just closed.
      */
     const home = (): void => {
-      tending = null;
       if (live) {
         const was = live;
         live = null;
@@ -325,8 +316,6 @@ async function boot(): Promise<void> {
       if (talking) steps.push({ said: talking.name, go: back });
       if (sending) steps.push({ said: 'what is open', go: back });
       if (card) steps.push({ said: 'who works here', go: back });
-      if (tending) steps.push({ said: tending.project.name.toLowerCase(), go: back });
-      if (tending?.renaming !== undefined) steps.push({ said: 'its name', go: back });
       if (reading) steps.push({ said: shortly(reading.path), go: back });
       if (opened) steps.push({ said: shortly(opened.path), go: back });
       const last = steps.at(-1);
@@ -364,11 +353,8 @@ async function boot(): Promise<void> {
     let inside: Task | null = null;
     /** Set while the board is showing what that session works with. */
     let card: LiveCard | null = null;
-    /** Set while the board is the project itself: its face, its name, what it carries. */
-    let tending: Tending | null = null;
-    /** Set for the moment the project's page is being written, so writing it
-        is not mistaken for something else taking its place. */
-    let tendingNow = false;
+    /** A project's settings, while that window is up over everything. */
+    let settings: { ui: Settings; state: SettingsState } | null = null;
     /* Which file's change is on the board, over the checkout it came from.
        The checkout board underneath stays open and stays live; it is simply
        not what the wood is showing. */
@@ -667,12 +653,11 @@ async function boot(): Promise<void> {
       if (!moved || !district) return;
       await openDistrict({ kind: 'district', district });
       const project = projects.find((one) => one.id === moved.id);
-      if (project) tend(project, true);
+      if (project) configure(project, true);
     };
 
     const shut = async (): Promise<void> => {
       open = null;
-      tending = null;
       naming = null;
       titling = null;
       looking = null;
@@ -707,7 +692,6 @@ async function boot(): Promise<void> {
      * than a board sliding over it.
      */
     const showYard = async (aim: Aim, project: Project, here?: Task): Promise<void> => {
-      tending = null;
       const was = live;
       live = null;
       reading = null;
@@ -744,16 +728,7 @@ async function boot(): Promise<void> {
           ...(here ? { here } : {}),
         },
         (now) => {
-          if (
-            open === aim &&
-            !reading &&
-            !looked &&
-            !walking &&
-            !talking &&
-            !sending &&
-            !card &&
-            !tending
-          ) {
+          if (open === aim && !reading && !looked && !walking && !talking && !sending && !card) {
             yard.show(now);
             yard.narrowing(narrowing());
             /* A place nobody has touched for days is darker than one somebody
@@ -847,108 +822,133 @@ async function boot(): Promise<void> {
     };
 
     /**
-     * The project itself, laid over its yard.
+     * A project's settings, in a window of their own over everything.
      *
-     * Pressing its name is how you get here, because the name is the project.
-     * The board is written at once with what is already known and filled in as
-     * the checkout answers: the pictures in it take a moment to find and read.
+     * Not laid over the yard like the rest, because it is not about the work
+     * in there: nothing under it moves, and closing it leaves you exactly
+     * where you were. It opens at once with what is known and fills in as the
+     * checkout answers, since reading every picture in it takes a moment.
      */
-    const tend = (project: Project, fresh = false): void => {
-      const at = projects.findIndex((one) => one.id === project.id);
-      const mine: Tending = {
+    const configure = (project: Project, fresh = false): void => {
+      settings?.ui.close();
+      const state: SettingsState = {
         project,
-        at: Math.max(0, at),
+        at: Math.max(
+          0,
+          projects.findIndex((one) => one.id === project.id)
+        ),
         pictures: null,
         more: 0,
         carrying: null,
         sessions: tasks.filter((task) => task.project === project.id).length,
         ...(fresh ? { fresh } : {}),
       };
-      tending = mine;
-      showTending();
-      yard.walk.stand(null);
-      void lookAround(mine, FACES);
+      let shown = FACES;
+      const redraw = (): void => {
+        if (settings?.state === state) settings.ui.update(state);
+      };
+      const look = async (many: number): Promise<void> => {
+        const found = await client.projects.pictures({ id: project.id, many }, { timeoutMs: 0 });
+        state.pictures = found.pictures;
+        state.more = found.more;
+        redraw();
+      };
+      /* The project changed under the window: the rack wears it at once, and
+         so does the name at the top of the yard underneath. */
+      const refreshed = async (): Promise<void> => {
+        projects = await client.projects.list({});
+        paintRail();
+        const now = projects.find((one) => one.id === project.id);
+        if (!now) return;
+        state.project = now;
+        const here = open ? projectOn(open.district) : undefined;
+        if (watching && here?.id === now.id) {
+          watching.moved({
+            project: now,
+            tasks: tasks.filter((task) => task.project === now.id),
+            moods: seen,
+          });
+        }
+        redraw();
+      };
+      const ui = openSettings(state, {
+        face: async (from) => {
+          const done = await client.projects.picture({ id: project.id, from }, { timeoutMs: 0 });
+          if (!done.success) {
+            if (done.error.kind === 'cancelled') return null;
+            return done.error.kind === 'unreadable'
+              ? `${done.error.path.split('/').at(-1)} would not open as an image.`
+              : 'That project is not here any more.';
+          }
+          await refreshed();
+          return null;
+        },
+        more: () => {
+          shown = (state.pictures?.length ?? shown) + 24;
+          void look(shown);
+        },
+        rename: async (name) => {
+          await client.projects.rename({ id: project.id, name });
+          await refreshed();
+        },
+        carry: (path, on) =>
+          void (async () => {
+            state.carrying = await client.projects.carry(
+              { id: project.id, path, on },
+              { timeoutMs: 0 }
+            );
+            redraw();
+          })(),
+        show: () => window.mender.showIt(project.path),
+        forget: async () => {
+          const went = await forget(project.id);
+          say('said' in went ? went.said : went.wrong, 4000);
+        },
+        closed: () => {
+          if (settings?.ui === ui) settings = null;
+          yard.line.take();
+        },
+      });
+      settings = { ui, state };
+      void look(shown);
       void (async () => {
-        const carrying = await client.projects.carrying({ id: project.id }, { timeoutMs: 0 });
-        if (tending !== mine) return;
-        mine.carrying = carrying;
-        showTending();
+        state.carrying = await client.projects.carrying({ id: project.id }, { timeoutMs: 0 });
+        redraw();
       })();
     };
 
-    /** Write the project's page, whatever it says now. */
-    const showTending = (): void => {
-      const mine = tending;
-      if (!mine) return;
-      tendingNow = true;
-      try {
-        if (yard.open) rewrite(tended(mine));
-        else wood(tended(mine));
-      } finally {
-        tendingNow = false;
-      }
-    };
-
-    /** Look through the checkout for pictures, as many as asked for. */
-    const lookAround = async (mine: Tending, many: number): Promise<void> => {
-      const found = await client.projects.pictures({ id: mine.project.id, many }, { timeoutMs: 0 });
-      if (tending !== mine) return;
-      mine.pictures = found.pictures;
-      mine.more = found.more;
-      showTending();
-    };
-
-    /* The project has changed under the page: a new face, a new name. The
-       rack and the page both say so, and so does the header of the yard. */
-    const retended = async (id: string): Promise<void> => {
-      projects = await client.projects.list({});
-      paintRail();
-      const project = projects.find((one) => one.id === id);
-      const mine = tending;
-      if (!project || !mine || mine.project.id !== id) return;
-      mine.project = project;
-      showTending();
-    };
-
-    const facing = async (from: PictureFrom): Promise<void> => {
-      const mine = tending;
-      if (!mine) return;
-      delete mine.trouble;
-      const done = await client.projects.picture({ id: mine.project.id, from }, { timeoutMs: 0 });
-      if (!done.success) {
-        if (done.error.kind === 'cancelled') return;
-        mine.trouble =
-          done.error.kind === 'unreadable'
-            ? `${done.error.path.split('/').at(-1)} would not open as a picture.`
-            : 'that project is not here any more.';
-        showTending();
+    /**
+     * Getting out of whatever is laid over the yard, by clicking outside it.
+     *
+     * Escape walks out one step at a time; a click on the world is the other
+     * way everybody expects out of anything, and it takes you all the way
+     * back to the yard. A session's card turns back to the session, and a
+     * name half written is let go, because you clicked away from it.
+     */
+    const dismiss = (): void => {
+      if (looking) {
+        void unlook();
         return;
       }
-      await retended(mine.project.id);
-    };
-
-    /** A new name for the project, written on the line. */
-    const rename = async (): Promise<void> => {
-      const mine = tending;
-      if (!mine || mine.renaming === undefined) return;
-      const written = mine.renaming.trim();
-      delete mine.renaming;
-      yard.asks('say');
-      yard.line.write('');
-      if (written && written !== mine.project.name) {
-        await client.projects.rename({ id: mine.project.id, name: written });
-        projects = await client.projects.list({});
-        const project = projects.find((one) => one.id === mine.project.id);
+      if (card || titling) {
+        titling = null;
+        const task = inside;
         const aim = open;
-        /* The yard wrote the old name in its header when it was opened, so it
-           is stood in again under the new one and the page laid back over it. */
-        if (project && aim) {
-          await showYard(aim, project, inside ?? undefined);
-          tend(project);
-          return;
-        }
+        if (task && aim) void openTask(aim, task);
+        return;
       }
-      showTending();
+      if (naming) {
+        naming = null;
+        if (open) void openDistrict({ kind: 'district', district: open.district });
+        return;
+      }
+      reading = null;
+      writing = null;
+      looked = null;
+      stopWalking();
+      stopTalking();
+      sending = null;
+      home();
     };
 
     /**
@@ -1538,8 +1538,8 @@ async function boot(): Promise<void> {
      * go is every session cut from it, because a project forgotten with its
      * worktrees still on the disk leaves them somewhere nothing here can reach.
      */
-    const forget = async (): Promise<{ said: string } | { wrong: string }> => {
-      const project = open ? projectOn(open.district) : null;
+    const forget = async (id: string): Promise<{ said: string } | { wrong: string }> => {
+      const project = projects.find((one) => one.id === id);
       if (!project) return { wrong: 'there is nothing open to forget' };
       await client.projects.abandon({ id: project.id }, { timeoutMs: 0 });
       /* Its district goes back to sea and its slot comes off the rack, the
@@ -1824,11 +1824,6 @@ async function boot(): Promise<void> {
     };
 
     const wrote = (written: string): void => {
-      if (tending?.renaming !== undefined) {
-        tending.renaming = written;
-        showTending();
-        return;
-      }
       if (writing) {
         writing = { ...writing, written };
         rewrite(rowsForCommit());
@@ -2019,63 +2014,7 @@ async function boot(): Promise<void> {
     const press = (pick: string): void => {
       if (pick === 'tend') {
         const project = open ? projectOn(open.district) : undefined;
-        if (project) tend(project);
-        return;
-      }
-      if (pick.startsWith('face:') && tending) {
-        const what = pick.slice(5);
-        if (what === 'more') {
-          void lookAround(tending, (tending.pictures?.length ?? FACES) + 24);
-          return;
-        }
-        if (what === 'kept') return;
-        void facing(
-          what === 'none'
-            ? { kind: 'none' }
-            : what === 'own'
-              ? { kind: 'own' }
-              : { kind: 'in', path: what.slice(3) }
-        );
-        return;
-      }
-      if (pick.startsWith('carry:') && tending) {
-        const mine = tending;
-        const on = pick.startsWith('carry:on:');
-        const path = pick.slice(on ? 9 : 10);
-        void (async () => {
-          const carrying = await client.projects.carry(
-            { id: mine.project.id, path, on },
-            { timeoutMs: 0 }
-          );
-          if (tending !== mine) return;
-          mine.carrying = carrying;
-          showTending();
-        })();
-        return;
-      }
-      if (pick === 'tend:rename' && tending) {
-        tending.renaming = tending.project.name;
-        yard.asks('name');
-        yard.line.write(tending.project.name);
-        showTending();
-        yard.line.take();
-        return;
-      }
-      if (pick === 'tend:show' && tending) {
-        window.mender.showIt(tending.project.path);
-        return;
-      }
-      if (pick === 'tend:forget' && tending) {
-        tending.asked = true;
-        showTending();
-        return;
-      }
-      if (pick === 'tend:forget!' && tending) {
-        tending = null;
-        void (async () => {
-          const went = await forget();
-          say('said' in went ? went.said : went.wrong, 4000);
-        })();
+        if (project) configure(project);
         return;
       }
       if (pick === 'commit') {
@@ -2300,6 +2239,22 @@ async function boot(): Promise<void> {
 
     const hand: Pointing = {
       at: (x, y) => drawn.ground.at(x, y),
+      aside: () => {
+        if (yard.open) dismiss();
+      },
+      held: (event) => {
+        const up = settings;
+        if (!up) return false;
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          up.ui.escaped();
+          return true;
+        }
+        /* Keys meant for the window go to it as a browser would send them;
+           anything else is kept off the session behind it. */
+        if (!up.ui.holds(event) && event.key !== 'Tab') event.preventDefault();
+        return true;
+      },
       hover: (aim) => drawn.ground.hover(aim),
       picked: (aim) => void picked(aim),
       /* Escape lets go of one thing at a time: what you are writing first,
@@ -2322,26 +2277,6 @@ async function boot(): Promise<void> {
             return;
           }
           writing = null;
-          home();
-          return;
-        }
-        if (tending) {
-          if (tending.renaming !== undefined) {
-            if (tending.renaming) {
-              wrote('');
-              yard.line.write('');
-              return;
-            }
-            delete tending.renaming;
-            yard.asks('say');
-            showTending();
-            return;
-          }
-          if (tending.asked) {
-            tending.asked = false;
-            showTending();
-            return;
-          }
           home();
           return;
         }
@@ -2846,6 +2781,10 @@ async function found(client: MenderClient, grown: () => Promise<void>): Promise<
 
 interface Pointing {
   at(worldX: number, worldY: number): Aim | null;
+  /** A click on the world where something written covers it: a way out. */
+  aside(): void;
+  /** Whether a window over everything has the keyboard. */
+  held(event: KeyboardEvent): boolean;
   hover(aim: Aim | null): void;
   picked(aim: Aim | null): void;
   escaped(): void;
@@ -2925,15 +2864,23 @@ function watchPointer(
     pixi.canvas.style.cursor = aim ? 'pointer' : 'default';
   });
 
+  let pressedBehind = false;
   pixi.stage.on('pointerdown', (event: FederatedPointerEvent) => {
-    pressedAt = behind(event) ? null : { x: event.global.x, y: event.global.y };
+    pressedAt = { x: event.global.x, y: event.global.y };
+    pressedBehind = behind(event);
   });
 
   pixi.stage.on('pointerup', (event: FederatedPointerEvent) => {
     const from = pressedAt;
     pressedAt = null;
-    if (!from || behind(event)) return;
+    if (!from) return;
     if (Math.hypot(event.global.x - from.x, event.global.y - from.y) > 4) return;
+    /* A click that lands on the world behind the writing, rather than on
+       anything written, is a click away from whatever is open. */
+    if (pressedBehind || behind(event)) {
+      if (pressedBehind && behind(event)) pointing.aside();
+      return;
+    }
     pointing.picked(under(event));
   });
 
@@ -2942,6 +2889,7 @@ function watchPointer(
      thing with a claim on it takes it. Two listeners on the same key is how an
      arrow ends up both walking a list and scrolling the board under it. */
   window.addEventListener('keydown', (event) => {
+    if (pointing.held(event)) return;
     if (event.key === 'Escape') {
       pointing.escaped();
       event.preventDefault();
