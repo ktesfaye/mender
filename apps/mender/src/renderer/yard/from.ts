@@ -188,7 +188,10 @@ function thoughtsOf(told: Told | undefined): Thought[] {
   return all.map((one, at) => ({
     id: one.id,
     said: one.said,
-    when: one.at ? agoOf(Date.now() - one.at) : '',
+    /* Nothing was written down about when this happened, because it was read
+       off the disk rather than watched happening. Saying so is better than
+       putting a time on it. */
+    when: one.at ? agoOf(Date.now() - one.at) : 'before this',
     ...(one.since ? { live: true, at: longFor(Date.now() - one.since) } : {}),
     ...(at === all.length - 1 && !one.since ? { live: true } : {}),
   }));

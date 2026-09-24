@@ -529,6 +529,10 @@ class House {
    * we do not have. Cleared with the house.
    */
   private seen = new Map<string, number>();
+  /* Whether anybody was watching yet. Until the first batch of turns has been
+     published, everything on them is history rather than something happening,
+     and history that was read off the disk has no honest clock on it. */
+  private settled = false;
 
   constructor(
     private readonly task: string,
@@ -600,6 +604,7 @@ class House {
     this.usage = usage.current() ?? null;
     this.seedSeen();
     this.publish();
+    this.settled = true;
 
     /* Everything said in here before the village was looking. A suspended
        session has none to give — its history lives with the running process —
@@ -614,6 +619,7 @@ class House {
       this.before = [...back.data.turns.filter((had) => !known.has(had.id)), ...this.before];
       this.seedSeen();
       this.publish();
+      this.settled = true;
     }
   }
 
@@ -625,6 +631,7 @@ class House {
    * here on — the ones that arrive while somebody is watching.
    */
   private seedSeen(): void {
+    this.settled = false;
     for (const turn of this.live ? [...this.before, this.live] : this.before) {
       for (const item of turn.items) {
         if (item.kind === 'thinking') continue; // it carries its own clock.
@@ -633,11 +640,19 @@ class House {
     }
   }
 
-  /** The wall-clock time this house first saw an item, stamping it if new. */
+  /**
+   * The wall-clock time this house first saw an item, stamping it if new.
+   *
+   * Nothing is dated until the first batch has gone out, because until then
+   * every item on the turns is something that already happened, possibly days
+   * ago, and stamping it now would have the board say a week-old conversation
+   * was this minute. Nought is the honest answer to when, and the board says
+   * so in words rather than putting a time on it.
+   */
   private time(id: string): number {
     const had = this.seen.get(id);
     if (had !== undefined) return had;
-    const now = Date.now();
+    const now = this.settled ? Date.now() : 0;
     this.seen.set(id, now);
     return now;
   }
