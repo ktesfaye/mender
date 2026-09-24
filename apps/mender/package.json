@@ -2,7 +2,7 @@
   "name": "@emdash/mender",
   "version": "0.0.1",
   "private": true,
-  "description": "Mender — an agentic coding environment that is a village",
+  "description": "Mender \u2014 an agentic coding environment that is a village",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./out/main/index.js",
@@ -17,6 +17,8 @@
     "package": "pnpm run build && electron-builder --mac --config electron-builder.config.ts"
   },
   "dependencies": {
+    "@agentclientprotocol/claude-agent-acp": "^0.73.0",
+    "@agentclientprotocol/codex-acp": "^1.7.0",
     "@agentclientprotocol/sdk": "^1.1.0",
     "@emdash/core": "workspace:*",
     "@emdash/plugins": "workspace:*",
