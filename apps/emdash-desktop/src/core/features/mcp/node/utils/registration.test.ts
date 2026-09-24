@@ -31,6 +31,7 @@ describe('MCP registration conversion', () => {
     expect(mcpServerToRegistration(server)).toEqual({
       name: 'inherited',
       transport: 'stdio',
+      type: 'stdio',
       enabled: false,
       cwd: './mcp',
       timeout: 10_000,

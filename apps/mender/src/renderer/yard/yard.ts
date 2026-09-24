@@ -193,7 +193,11 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     [
       'max-height:280px',
       'overflow-y:auto',
-      'display:flex',
+      /* Born hidden: it holds nothing yet, and an empty box that is merely
+         transparent still traps the keyboard's walk inside it and draws a
+         bare strip of wash over whatever is open. `narrowing` turns it to
+         flex the moment it has lines to show. */
+      'display:none',
       'flex-direction:column',
       'justify-content:flex-end',
       /* The same wash everything read over the yard sits on, because this is

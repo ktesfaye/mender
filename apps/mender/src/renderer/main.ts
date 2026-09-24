@@ -121,6 +121,17 @@ async function boot(): Promise<void> {
           void commit();
           return;
         }
+        /* A shell reads its keys through the one window listener, into its own
+           buffer, but the line at the foot of the board still owns Return and
+           hands it here first. Without this the line sent an empty Return on to
+           the agent and the command sat in the shell's buffer forever. */
+        if (talking) {
+          const shell = talking;
+          void shell.shell?.say(`${shell.written}\n`);
+          shell.written = '';
+          rewrite(rowsForShell());
+          return;
+        }
         void tell(text);
       },
       leave: () => void backOut(),
@@ -562,6 +573,11 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       wood(finding('', { projects, tasks, moods: seen, where: standing() }));
+      /* From nowhere, every time. The mark outlives a board on purpose, so
+         without this the finder opens standing on whatever row it was left on
+         last time and steps one further from there, which lands it two or
+         three rows down a list it just drew fresh. */
+      yard.walk.stand(null);
       yard.walk.step(1);
     };
 
@@ -2220,6 +2236,14 @@ async function boot(): Promise<void> {
         }
         if (yard.line.written()) {
           said('');
+          return;
+        }
+        /* The checkout board is laid over the yard it belongs to, so backing
+           out of it drops it and reveals that yard rather than flying all the
+           way to the island. Without this rung a file's Escape ladder ran
+           checkout → open water in one step, past the project it was in. */
+        if (live) {
+          home();
           return;
         }
         /* And then out.

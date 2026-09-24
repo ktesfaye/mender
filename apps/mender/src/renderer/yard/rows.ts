@@ -29,8 +29,11 @@ const INK: Record<Tone, string> = {
 
 /** How far one level of nesting moves a line in. */
 const IN = 18;
-/** The margin the marks live in, which is fixed so the words line up. */
-const GUTTER = 26;
+/** The margin the marks live in, which is fixed so the words line up.
+    Wide enough for the longest thing written in it — a `??`, a `→`, an age
+    like `11mo` — because a mark that wraps turns `now` into a `no` over a
+    `w`, which reads as two different words. */
+const GUTTER = 38;
 
 export interface Written {
   readonly root: HTMLElement;
@@ -101,7 +104,7 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
     case 'entry': {
       line.style.cssText = `${BODY};display:flex;gap:8px`;
       const mark = document.createElement('span');
-      mark.style.cssText = `width:${GUTTER}px;flex:none;color:${INK.faded};text-align:right`;
+      mark.style.cssText = `width:${GUTTER}px;flex:none;color:${INK.faded};text-align:right;white-space:nowrap`;
       mark.textContent = row.mark;
       const said = document.createElement('span');
       said.style.color = ink(row.tone);
@@ -114,7 +117,7 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
     case 'prose': {
       line.style.cssText = `${BODY};display:flex;gap:8px`;
       const mark = document.createElement('span');
-      mark.style.cssText = `width:${GUTTER}px;flex:none;color:${INK.faded};text-align:right`;
+      mark.style.cssText = `width:${GUTTER}px;flex:none;color:${INK.faded};text-align:right;white-space:nowrap`;
       mark.textContent = row.mark ?? '';
       const said = document.createElement('span');
       said.style.marginLeft = `${(row.in ?? 0) * IN}px`;

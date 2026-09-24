@@ -184,6 +184,13 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
         typed('');
         return;
       }
+      /* The line has the keyboard, so its listener sees Escape before the one
+         window listener does. Backing out is the window listener's job, and
+         `empty` reaches it, so the event must stop here: letting it bubble on
+         means the same Escape backs out twice, which walked a file straight
+         past its checkout and out to the island. */
+      event.preventDefault();
+      event.stopPropagation();
       empty();
     }
   });
