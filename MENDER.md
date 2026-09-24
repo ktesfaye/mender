@@ -124,8 +124,16 @@ along the bottom hangs one lantern per session in the project you are in: lit
 means somebody is awake in there, the one you are standing in hangs lowest and
 brightest, and the one that wants you flickers. At the end of the beam is one
 empty hook, which is how a new session is started. The projects moved to a rack
-of tools in the top right, over both the island and the yard, one slot each
-with a prop standing in it and no names until you hover. It folds away.
+in the top right, over both the island and the yard, one slot each with the
+project's own face in it, its app icon or its logo, and a prop from the kit
+until it has one, and no names until you hover. It folds away.
+
+**A project's name is the way into the project itself.** Pressing it lays the
+project's page over the yard: what it looks like on the rack, picked from the
+pictures already in its checkout or brought from anywhere, what it is called,
+what every new session carries into its worktree that git would leave behind,
+where it is, and forgetting it. Nothing about the place lives anywhere else,
+and a project that has just moved in is shown this page first.
 
 **Everything else is laid over the yard, never instead of it.** A file, a
 change, a commit, a folder, a search, a shell, a pull request, the card behind
@@ -340,9 +348,9 @@ could walk is still only in Python.
 
 A session is taken down from the bottom of its card, in two presses, with what
 it would cost written above the offer: what is uncommitted in there and how far
-the branch has run ahead. The branch outlives the building. Nothing in the UI
-abandons a project yet, though the wire does, and nothing removes an agent from
-a session. A permission question does land on the
+the branch has run ahead. The branch outlives the building. A project is
+forgotten from the bottom of its own page the same way, and nothing removes an
+agent from a session. A permission question does land on the
 board, and a number key answers it; it takes setting the session to ask first,
 because otherwise the Claude on this machine answers its own.
 

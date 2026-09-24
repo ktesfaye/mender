@@ -4,7 +4,8 @@
  * The plank along the bottom used to carry one tag per project. The designs
  * give that plank to the sessions of whatever project you are in, so the
  * projects needed somewhere else, and a rack of tools on the wall is what they
- * got: one slot each, a prop from the kit standing in it, no names.
+ * got: one slot each, its own picture or a prop from the kit standing in it,
+ * no names.
  *
  * It sits over everything, the island and the yard alike, so it is the one
  * thing in this app that is always within reach. Hovering a slot says which
@@ -17,32 +18,9 @@
  * the wood follows the rule.
  */
 
-import { cutOf, KIT_NAMES, sprite } from './sprite';
+import { slot, toolFor } from './face';
 import { box } from './write';
 
-/**
- * What a project can be, in order.
- *
- * Handed out rather than chosen, so founding a project never stops to ask you
- * what it looks like. The order is fixed and the shelf runs through it, so a
- * project keeps the same tool for as long as it exists.
- */
-const TOOLS = [
-  KIT_NAMES.anvil,
-  KIT_NAMES.sign,
-  KIT_NAMES.barrel,
-  KIT_NAMES.sack,
-  KIT_NAMES.bucket,
-  KIT_NAMES.crate,
-  KIT_NAMES.pot,
-  KIT_NAMES.rack,
-  KIT_NAMES.roadSign,
-  KIT_NAMES.table,
-  KIT_NAMES.lanternOn,
-  KIT_NAMES.cart,
-] as const;
-
-const SLOT = 44;
 const PAD = 6;
 
 export interface OnShelf {
@@ -50,6 +28,8 @@ export interface OnShelf {
   name: string;
   /** Which tool stands for it, by where it came in the island's own order. */
   at: number;
+  /** Its own picture, which outranks the tool whenever it has one. */
+  icon?: string;
   here: boolean;
 }
 
@@ -87,32 +67,22 @@ export function makeShelf(at: HTMLElement, open: (id: string) => void): Shelf {
     if (away) return;
 
     for (const project of projects) {
-      const slot = document.createElement('div');
-      slot.style.cssText = project.here ? SLOT_HERE : SLOT_EMPTY;
-      slot.dataset.project = project.id;
-      slot.title = project.name;
-      slot.addEventListener('pointerenter', () => {
+      const one = slot(
+        { tool: toolFor(project.at), ...(project.icon ? { icon: project.icon } : {}) },
+        project.here
+      );
+      one.dataset.project = project.id;
+      one.title = project.name;
+      one.addEventListener('pointerenter', () => {
         label.textContent = project.name;
         label.style.color = '#f4e3c0';
       });
-      slot.addEventListener('pointerleave', () => {
+      one.addEventListener('pointerleave', () => {
         label.textContent = resting;
         label.style.color = '#c4b186';
       });
-      slot.addEventListener('click', () => open(project.id));
-
-      const tool = TOOLS[project.at % TOOLS.length] ?? TOOLS[0];
-      const cut = cutOf(tool);
-      /* Whole multiples only, and the biggest one that still fits the slot, so
-         a small prop is not lost in the middle of it. */
-      const times = cut
-        ? (Math.max(1, Math.min(3, Math.floor((SLOT - 10) / Math.max(cut.w, cut.h)))) as 1 | 2 | 3)
-        : 1;
-      const prop = sprite(tool, times);
-      prop.style.position = 'relative';
-      prop.style.margin = 'auto';
-      slot.appendChild(prop);
-      root.appendChild(slot);
+      one.addEventListener('click', () => open(project.id));
+      root.appendChild(one);
     }
   }
 
@@ -152,17 +122,3 @@ const LABEL = [
   `padding-right:${PAD}px`,
   'cursor:default',
 ].join(';');
-
-const SLOT_EMPTY = [
-  `width:${SLOT}px`,
-  `height:${SLOT}px`,
-  'display:flex',
-  'background:#a48961',
-  'border:2px solid #482510',
-  'box-sizing:border-box',
-  'cursor:default',
-].join(';');
-
-/* The project you are in is the filled slot, in the same thatch gold the
-   keyboard's own mark uses, because they mean the same thing: you are here. */
-const SLOT_HERE = SLOT_EMPTY.replace('background:#a48961', 'background:#e0b56a');

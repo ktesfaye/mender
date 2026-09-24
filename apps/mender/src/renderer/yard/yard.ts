@@ -23,7 +23,7 @@ import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
 import { makeLine, type Asking as Prompting, type Line } from './line';
 import { forgetInk, ink, keyed, measure, play } from './motion';
-import { pressing, twice } from './press';
+import { pressing } from './press';
 import { makeRows } from './rows';
 import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, sprite } from './sprite';
@@ -88,8 +88,6 @@ export interface Doings {
   say(said: string): void;
   /** Escape with nothing left on the line to throw away. */
   leave(): void;
-  /** The village forgets this project. Only ever reached by two presses. */
-  forget(): Promise<{ said: string } | { wrong: string; because?: string }>;
 }
 
 export interface Standing {
@@ -305,12 +303,12 @@ export function makeYard(layer: Layer, does: Doings): Standing {
        So it says the one true thing and lets the district behind it do the
        rest; the line at the bottom is already asking what to build. */
     if (yard.session) {
-      asked(root, columns.asked, yard, floor, layer.cramped(), does);
+      asked(root, columns.asked, yard, floor, layer.cramped());
       thinking(covered, columns.thinking, yard, floor, does, walkedIn, sinceOf(yard));
       made(covered, columns.made, yard, floor);
       still(stillAt, yard, does);
     } else {
-      nobody(root, columns.asked, columns.made, yard, floor, does);
+      nobody(root, columns.asked, columns.made, yard, floor);
       stillAt.replaceChildren();
     }
     said_line(root, layer.edge());
@@ -536,8 +534,16 @@ function scrims(root: HTMLElement): void {
    been going and how much of that was turns. To the right, the two things
    that are true of the agent rather than of the work. */
 function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
+  /* The name is the project, so pressing it opens the project: what it looks
+     like on the rack, what it is called, what its sessions take with them,
+     and forgetting it. Nothing about the place itself lives anywhere else. */
   const title = box({ left: edge, top: HEAD.title }, TITLE);
-  title.textContent = yard.project.name;
+  title.appendChild(
+    astop(
+      pressing(yard.project.name, () => does.press('tend')),
+      'head:project'
+    )
+  );
   root.appendChild(title);
 
   /* The head of the board is pressable wherever it leads somewhere. Where the
@@ -674,14 +680,13 @@ function asked(
   at: { x: number; wide: number },
   yard: Yard,
   floor: number,
-  cramped: boolean,
-  does: Doings
+  cramped: boolean
 ): void {
   root.appendChild(label('what you asked', { left: at.x, top: HEAD.label }));
 
   /* The glance at the other sessions sits at the foot of the column, so the
      post and the notes on it get everything above that and no more. */
-  const under = elsewhere(root, at, yard, floor, does);
+  const under = elsewhere(root, at, yard, floor);
   const room = under - 20 - HEAD.top;
 
   /* The post is only as long as what is nailed to it, plus a little bare wood
@@ -814,19 +819,16 @@ function elsewhere(
   root: HTMLElement,
   at: { x: number; wide: number },
   yard: Yard,
-  floor: number,
-  does: Doings
+  floor: number
 ): number {
   const others = yard.rail.filter((one) => !one.here).slice(0, 3);
-  const tall = 30 + others.length * 23 + 34;
+  /* Only when there is an elsewhere. One session in a project is not
+     "elsewhere in" anything, and the gatepost can have the room. */
+  if (!others.length) return floor;
+  const tall = 30 + others.length * 23;
   const top = floor - tall;
   root.appendChild(rule({ left: at.x, top: top - 20, width: at.wide - 20 }));
-  /* Only when there is an elsewhere. One session in a project is not
-     "elsewhere in" anything, and the line under it is about the project
-     rather than about the work. */
-  if (others.length) {
-    root.appendChild(label(`elsewhere in ${yard.project.name.toLowerCase()}`, { left: at.x, top }));
-  }
+  root.appendChild(label(`elsewhere in ${yard.project.name.toLowerCase()}`, { left: at.x, top }));
 
   const list = stack({ left: at.x, top: top + 30, width: at.wide }, 9);
   list.style.fontSize = '14px';
@@ -844,20 +846,6 @@ function elsewhere(
   }
   root.appendChild(list);
 
-  /* The one thing this board offers about the project rather than about the
-     work in it, at the very bottom, under everything, because forgetting a
-     place is not something you should meet on your way into it. */
-  const go = box({ left: at.x, top: top + 30 + others.length * 23 + 14 });
-  go.appendChild(
-    astop(
-      twice('forget this project', yard.project.costs ?? 'it goes', {
-        while: 'forgetting',
-        run: does.forget,
-      }),
-      'forget'
-    )
-  );
-  root.appendChild(go);
   return top;
 }
 
@@ -1272,8 +1260,7 @@ function nobody(
   at: { x: number; wide: number },
   patch: { x: number; wide: number },
   yard: Yard,
-  floor: number,
-  does: Doings
+  floor: number
 ): void {
   const line = box({ left: at.x, top: HEAD.top + 6, width: 520 }, EMPTY);
   line.textContent = 'nobody has worked in here yet.';
@@ -1287,7 +1274,7 @@ function nobody(
      same place it sits when there is work here, so it does not move when the
      first session arrives. Nothing else: an empty project has no ground worth
      framing, no cart and nothing to have done. */
-  elsewhere(root, at, yard, floor, does);
+  elsewhere(root, at, yard, floor);
 }
 
 /**

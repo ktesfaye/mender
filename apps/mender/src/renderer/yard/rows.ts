@@ -14,6 +14,7 @@
  */
 
 import type { Row, Tone } from '../board/row';
+import { slot } from './face';
 import { astop } from './walk';
 
 /** What each tone is, in the light of the yard rather than on a plank. */
@@ -80,6 +81,38 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
     case 'gap':
       line.style.height = '14px';
       return line;
+
+    case 'faces': {
+      /* A row of slots and, under it, what the one under your hand is. The
+         one already chosen says so when nothing is. */
+      const strip = document.createElement('div');
+      strip.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;padding:4px 2px 0';
+      const caption = document.createElement('div');
+      caption.style.cssText = `${BODY};font-family:'Courier Prime',monospace;font-size:12px;color:${INK.faded};min-height:18px;padding-top:6px`;
+      const resting = row.faces.find((face) => face.here)?.said ?? '';
+      caption.textContent = resting;
+      for (const face of row.faces) {
+        const one = slot(
+          { tool: face.tool, ...(face.icon ? { icon: face.icon } : {}) },
+          face.here,
+          56
+        );
+        one.style.pointerEvents = 'auto';
+        one.addEventListener('pointerenter', () => {
+          caption.textContent = face.said;
+          caption.style.color = INK.ink;
+        });
+        one.addEventListener('pointerleave', () => {
+          caption.textContent = resting;
+          caption.style.color = INK.faded;
+        });
+        one.addEventListener('mousedown', (event) => event.preventDefault());
+        one.addEventListener('click', () => press(face.pick));
+        strip.appendChild(astop(one, face.pick));
+      }
+      line.append(strip, caption);
+      return line;
+    }
 
     case 'title':
       line.style.cssText = TITLE;

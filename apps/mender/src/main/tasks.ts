@@ -1,5 +1,5 @@
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import type { ActiveRootStatus } from '@emdash/core/runtimes/file-search/api';
@@ -161,7 +161,10 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       });
       const baseRef = (asked.success && asked.data.branch) || 'HEAD';
 
-      const path = join(worktreeRoot(), found.name, branch.replaceAll('/', '-'));
+      /* Under the folder's own name, not the project's: a project renamed on
+         the island is not a reason for its next worktree to live somewhere
+         else from its last. */
+      const path = join(worktreeRoot(), basename(found.path), branch.replaceAll('/', '-'));
       const made = await runtimes.workspaces.createWorktree(
         {
           workspaceId: crypto.randomUUID(),

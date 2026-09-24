@@ -56,9 +56,9 @@ there, and the islet sails its bridge to whatever coast exists. Every state the
 app can reach was composed in both this app and `world/his.py` and compared tile
 for tile: identical, mooring and all.
 
-Of the 253 ledger rows: 54 done, 22 partly done, 34 inherited working from
+Of the 253 ledger rows: 54 done, 24 partly done, 34 inherited working from
 emdash's back end and needing no village surface, 43 deliberately cut, and
-**100 not started**.
+**98 not started**.
 
 What is still genuinely missing: the settings island and everything that would
 live on it, other machines over SSH, work that runs itself, and the wave that
@@ -584,20 +584,41 @@ in; what was committed in it is still on the branch afterwards. That was
 driven: a session started, its card read, taken down in two presses, the
 worktree gone from git's list and the branch still there.
 
-A project can be forgotten too, at the very bottom of its board under
-everything it is, because forgetting a place is not something you should meet
-on the way to the work in it. Two presses again, and the line in between says
+A project can be forgotten too, from the bottom of its own page, which is
+what pressing its name opens, because forgetting a place is not something you
+should meet on the way to the work in it. Two presses again, and the line in between says
 what it costs: the folder stays exactly where it is, and every session cut from
 it is taken down, because a project forgotten with its worktrees still on the
 disk leaves them somewhere nothing in the village can reach.
 
-The offer, the question and escaping out of it were driven. The second press
-was not: founding a project to throw away needs the native folder picker, which
-needs his hands, and forgetting his real one to prove it works is not a test.
+All of it was driven, the second press included, against a copy of his
+projects in a data folder of its own: the district went back to sea and its
+slot came off the rack there and then. It used to stay drawn on both until the
+app was restarted.
+
+**A project has a page of its own.** Pressing its name, top left of its yard,
+lays it over the yard like anything else. What it looks like on the rack comes
+first: every picture in the checkout is looked through, the likeliest to be
+its own logo laid out first in the rack's own slots, one of each however many
+sizes and copies of it the repository keeps, with the kit's stand-in beside
+them and a line for one from anywhere else on the machine. Picking one copies
+it in, so it outlives wherever it came from, and the rack wears it at once.
+Under that it can be called something else (the folder keeps its name, and so
+do its worktrees), every new session can be sent into its worktree with
+whatever git ignores that it would otherwise be missing (the `.env`, the local
+keys, `node_modules`), it can be shown in the Finder, and it can be forgotten.
+A project that has just moved in lands on this page first.
+
+Driven on a copy of his projects: aurio's page found its Android launcher icon
+first, picking it put it on the rack, renaming it rewrote the yard's header,
+sending `.claude/` along was written into the registry's own config for that
+repository, Escape walked out one step at a time. Not driven: the picker for a
+picture from elsewhere and founding itself, which both need the native dialog,
+and a session actually cut with something sent along.
 
 Not here yet: cloning or creating a repository rather than pointing at one,
-relinking, choosing how a worktree is cut, project settings, and a checkout's
-trouble showing on the district.
+relinking, choosing what a worktree is cut from, and a checkout's trouble
+showing on the district.
 
 ### W7 — the rest of it
 
@@ -882,9 +903,9 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-03 | Add Project modal — Clone Repository |  | W7 |
 | WS-04 | Project host — local vs SSH ("Machine") |  | W10 |
 | WS-05 | Repository inspection / creation errors | part | W7 |
-| WS-06 | Rename / delete / relink a project |  | W7 |
+| WS-06 | Rename / delete / relink a project | part | W7 |
 | WS-07 | Project availability banner / disabled-action guard |  | W7 |
-| WS-08 | Project settings & config sharing |  | W7 |
+| WS-08 | Project settings & config sharing | part | W7 |
 | WS-09 | Worktree directory setting |  | W7 |
 | WS-10 | GitHub account per project |  | W7 |
 | WS-11 | Project directory/file tree browsing (for pickers) |  | W7 |
@@ -1154,7 +1175,8 @@ Each tool call says which kind of tool it was, because a signpost, a crate, an
 anvil and a tub over the fire are what you read down that column.
 
 The projects moved to a rack in the top right, over both the island and the
-yard, one slot each with a prop standing in it and the name on hover. That is
+yard, one slot each with the project's own picture standing in it, or a prop
+from the kit until it has one, and the name on hover. That is
 the only pressable box in the app.
 
 Driven against a real Claude in a real worktree, twice: said something, watched

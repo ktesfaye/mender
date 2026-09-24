@@ -8,5 +8,10 @@ export function createProjectsController(projects: Projects): Controller {
     list: () => projects.list(),
     found: () => projects.found(),
     abandon: ({ id }) => projects.abandon(id),
+    rename: ({ id, name }) => projects.rename(id, name),
+    pictures: ({ id, many }) => projects.pictures(id, many),
+    picture: ({ id, from }) => projects.picture(id, from),
+    carrying: ({ id }) => projects.carrying(id),
+    carry: ({ id, path, on }) => projects.carry(id, path, on),
   });
 }

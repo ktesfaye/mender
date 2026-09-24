@@ -259,3 +259,10 @@
   color: var(--yard-outline);
   border: 2px solid var(--yard-outline);
 }
+
+/* A slot on the rack is already a box and already filled, so the keyboard's
+   mark stands round it rather than painting over what is in it. */
+.yard .face.picked {
+  outline: 2px solid var(--yard-gold);
+  outline-offset: 2px;
+}

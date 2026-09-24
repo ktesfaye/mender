@@ -50,6 +50,15 @@ export type Row = (
    */
   | { kind: 'prose'; text: string; tone?: Tone; mark?: string; runs?: Run[]; in?: number }
   | { kind: 'heading'; text: string }
+  /**
+   * Faces to choose between, drawn in the rack's own slots, because what is
+   * being chosen is what goes on the rack. Each is pressed on its own; `said`
+   * is what it is, written under the row while a hand is over it.
+   */
+  | {
+      kind: 'faces';
+      faces: { pick: string; said: string; here: boolean; icon?: string; tool: string }[];
+    }
   | { kind: 'gap' }
 ) &
   Pick;

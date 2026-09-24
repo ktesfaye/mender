@@ -23,6 +23,10 @@ export async function main(): Promise<void> {
   // and the package is called @emdash/mender, which would put his village under
   // a scoped folder named after the thing we forked.
   app.setName('Mender');
+  /* A second village with a data folder of its own, for driving a build
+     beside the one in the Applications folder without the two writing into
+     the same databases. */
+  if (process.env.MENDER_DATA_DIR) app.setPath('userData', process.env.MENDER_DATA_DIR);
 
   /* A way to look at the village without standing in front of it.
      Verifying a change here means driving the real window and reading real

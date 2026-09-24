@@ -112,7 +112,6 @@ async function boot(): Promise<void> {
     answer: (id) => console.log('answered', id),
     press: (pick) => console.log('pressed', pick),
     typed: () => {},
-    forget: async () => ({ said: 'forgotten.' }),
     say: (text) => console.log('said', text),
     leave: () => console.log('back out'),
   });
