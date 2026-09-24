@@ -2243,6 +2243,7 @@ async function boot(): Promise<void> {
          time: naming a building nobody has moved into, answering the villager
          standing at a door, or saying something to whoever is in there. */
       scrolled: (key) => yard.scrolled(key),
+      strayed: (event) => void yard.line.catches(event),
       typed: (event) => {
         /* The finder is a board you type into and walk at the same time, which
            is the whole point of it: the letters narrow it and the arrows pick
@@ -2581,6 +2582,8 @@ interface Pointing {
   ordered(event: KeyboardEvent): boolean;
   /** A key that is not escape and not a chord. True if the board took it. */
   typed(event: KeyboardEvent): boolean;
+  /** A letter nothing took, which is writing that lost its way to the line. */
+  strayed(event: KeyboardEvent): void;
 }
 
 /** Somewhere you have been, small enough to write down and come back to. */
@@ -2676,7 +2679,13 @@ function watchPointer(
       return;
     }
     if (event.altKey) return;
-    if (pointing.typed(event) || pointing.scrolled(event.key)) event.preventDefault();
+    if (pointing.typed(event) || pointing.scrolled(event.key)) {
+      event.preventDefault();
+      return;
+    }
+    /* Not prevented: the line takes the keyboard back during this key, and
+       the letter itself then lands on it rather than being lost. */
+    pointing.strayed(event);
   });
 }
 

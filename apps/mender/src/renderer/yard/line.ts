@@ -56,6 +56,11 @@ export interface Line {
   asks(what: Asking): void;
   /** Take the keyboard. */
   take(): void;
+  /**
+   * A key nothing else wanted landed on nothing: take the keyboard back so it
+   * lands here. True if the line was there to take it.
+   */
+  catches(event: KeyboardEvent): boolean;
   /** Return was pressed with something on the line. */
   onSay(run: (said: string) => void): void;
   /**
@@ -77,7 +82,8 @@ export interface Line {
 
 export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   const root = document.createElement('div');
-  root.style.cssText = 'position:relative;display:flex;align-items:center;pointer-events:auto';
+  root.style.cssText =
+    'position:relative;display:flex;align-items:center;flex:1;cursor:text;pointer-events:auto';
 
   const ghost = document.createElement('span');
   ghost.style.cssText = PROMPT;
@@ -127,6 +133,15 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     cursor.style.left = `${Math.round(rect.right - from.left)}px`;
     cursor.style.top = `${Math.round(rect.top - from.top + (rect.height - 20) / 2)}px`;
   }
+
+  /* The whole width of the line is the line. Empty, the part that can
+     actually hold a caret is a sliver beside the prompt, and a press anywhere
+     else on it used to land on nothing and take the keyboard away instead. */
+  root.addEventListener('mousedown', (event) => {
+    if (event.target === said) return;
+    event.preventDefault();
+    take();
+  });
 
   said.addEventListener('input', () => {
     showing();
@@ -204,6 +219,17 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     typed(said.textContent ?? '');
   }
 
+  function take(): void {
+    said.focus();
+    const range = document.createRange();
+    range.selectNodeContents(said);
+    range.collapse(false);
+    const where = window.getSelection();
+    where?.removeAllRanges();
+    where?.addRange(range);
+    place();
+  }
+
   showing();
 
   return {
@@ -217,15 +243,14 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       ghost.textContent = PROMPTS[what];
       showing();
     },
-    take: () => {
-      said.focus();
-      const range = document.createRange();
-      range.selectNodeContents(said);
-      range.collapse(false);
-      const where = window.getSelection();
-      where?.removeAllRanges();
-      where?.addRange(range);
-      place();
+    take,
+    catches: (event) => {
+      if (event.key.length !== 1 || !root.getClientRects().length) return false;
+      const at = document.activeElement;
+      if (at === said) return false;
+      if (at instanceof HTMLElement && at !== document.body && at.isContentEditable) return false;
+      take();
+      return true;
     },
     onSay: (run) => (say = run),
     onInstead: (run) => (instead = run),
