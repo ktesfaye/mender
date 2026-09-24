@@ -2118,6 +2118,16 @@ async function boot(): Promise<void> {
           rewrite(card.rows());
           return;
         }
+        /* The card is the board turned over, so backing out of it turns it
+           back to the transcript rather than leaving the session entirely.
+           Without this rung Escape from the card fell all the way to the
+           island, past the very session the card belongs to. */
+        if (card) {
+          const task = inside;
+          const aim = open;
+          if (task && aim) void openTask(aim, task);
+          return;
+        }
         if (sending) {
           if (sending.written) {
             sending = { ...sending, written: '' };
