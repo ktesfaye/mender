@@ -1,3 +1,4 @@
+import { cp, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { defineConfig } from 'electron-vite';
 import { menderWorkers } from './src/shared/workers';
@@ -13,6 +14,37 @@ const workspacePackages = [
   '@mender/village',
 ];
 
+/**
+ * The two adapters the village spawns, carried beside the main process.
+ *
+ * An agent that speaks the protocol is not a library this app calls; it is a
+ * program it starts, and the thing it starts has to be a real file on the disk
+ * that a plain node can read. The plugins package already builds each one into
+ * a single self-contained file, so they are copied next to the main bundle and
+ * left out of the archive, and the runtime finds them there before it ever
+ * goes looking through node_modules.
+ *
+ * Without this the app runs out of the checkout perfectly and cannot start a
+ * single agent once it is installed, which is the kind of break that only ever
+ * shows up in the Applications folder.
+ */
+function carryTheAdapters(): { name: string; closeBundle: () => Promise<void> } {
+  return {
+    name: 'mender-carry-adapters',
+    async closeBundle(): Promise<void> {
+      const from = resolve('../../packages/plugins/dist/adapters');
+      const to = resolve('out/main/adapters');
+      try {
+        await rm(to, { recursive: true, force: true });
+        await cp(from, to, { recursive: true });
+      } catch (trouble) {
+        if (trouble instanceof Error && 'code' in trouble && trouble.code === 'ENOENT') return;
+        throw trouble;
+      }
+    },
+  };
+}
+
 function workerBuildInputs(): Record<string, string> {
   return Object.fromEntries(
     Object.entries(menderWorkers).map(([id, entry]) => [id, resolve(entry)])
@@ -23,6 +55,7 @@ export default defineConfig({
   main: {
     root: 'src/main',
     envDir: resolve('.'),
+    plugins: [carryTheAdapters()],
     build: {
       externalizeDeps: { exclude: workspacePackages },
       rollupOptions: {

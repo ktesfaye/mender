@@ -18,14 +18,14 @@ const config: Configuration = {
   publish: null,
   // `assets` as well as `out`: main reads the world's own files from there.
   files: ['out/**/*', 'assets/**/*', 'node_modules/**/*'],
-  /* The compiled binaries have to be real files, because an operating system
-     will not load one out of an archive. Only those: pulling a whole package
-     out and leaving what it imports inside is a package that resolves to half
-     of itself, and that is what a village with nothing behind it looks like.
-     Electron reads the archive itself, so everything that is javascript stays
-     in it and a worker spawned from in there loads exactly as it does in
-     development. */
-  asarUnpack: ['**/*.node'],
+  /* Two things have to be real files on the disk rather than entries in the
+     archive. The compiled binaries, because an operating system will not load
+     one out of an archive. And the two agent adapters, because an agent is a
+     program this app starts rather than a library it calls, and the plain node
+     that starts it cannot read the archive at all. Everything else that is
+     javascript stays in it: Electron reads the archive itself, so a worker
+     spawned from in there loads exactly as it does in development. */
+  asarUnpack: ['out/main/adapters/**', '**/*.node'],
   mac: {
     category: 'public.app-category.developer-tools',
     hardenedRuntime: true,
