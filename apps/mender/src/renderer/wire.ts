@@ -19,6 +19,10 @@ declare global {
       keep: (text: string) => void;
       /** Whether anybody can see the village, which only the host knows. */
       watching: (to: (now: Watching) => void) => void;
+      /** Open a folder in whatever this machine opens folders with. */
+      openIt: (path: string) => void;
+      /** Show it where it actually is, which is a different question. */
+      showIt: (path: string) => void;
     };
   }
 }

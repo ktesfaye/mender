@@ -24,7 +24,7 @@ import { Naming } from '../board/naming';
 import { Palette } from '../board/palette';
 import type { MenderClient } from '../wire';
 import { yardOf } from './from';
-import type { Yard } from './what';
+import type { Health, Yard } from './what';
 
 export interface Watching {
   /** Everything else moved: the task list, somebody's mood, the project. */
@@ -99,6 +99,7 @@ export async function openYard(
       ...(working?.queued.length ? { waiting: working.queued } : {}),
       ...(held.length ? { carrying: held } : {}),
       on: standing(from.project, head),
+      health,
     });
   }
 
@@ -132,17 +133,23 @@ export async function openYard(
      with nobody in it is still standing on a branch. */
   const where = here?.path ?? from.project.path;
   const parsed = parseNativeAbsolute(where);
+  /* A checkout that is not where it was is the one thing about a project worth
+     saying before anything else about it, because nothing else on the board
+     means anything until it is put right. */
+  let health: Health = parsed.success ? 'ok' : 'path-moved';
   if (parsed.success) {
     const model = client.git.checkout.model;
     const watch = new ReplicaState(model.state({ checkout: parsed.data }, 'head'), {
       onChange: (value) => {
         head = value;
+        health = value ? 'ok' : 'not-git';
         again();
       },
     });
     shut.push(() => watch.dispose());
     await watch.ready;
     head = watch.current();
+    if (!head) health = 'not-git';
   }
 
   return {

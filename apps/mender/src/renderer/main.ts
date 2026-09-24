@@ -1788,6 +1788,13 @@ async function boot(): Promise<void> {
         void openChange(pick.slice(7));
         return;
       }
+      if (pick === 'open' || pick === 'show') {
+        const where = inside?.path ?? (open ? projectOn(open.district)?.path : undefined);
+        if (!where) return;
+        if (pick === 'open') window.mender.openIt(where);
+        else window.mender.showIt(where);
+        return;
+      }
       if (pick === 'checkout') {
         void openCheckoutBoard();
         return;

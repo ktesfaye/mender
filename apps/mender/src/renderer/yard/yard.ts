@@ -368,8 +368,33 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
     root.appendChild(it);
   }
 
+  /* And if the ground under all of it has moved, that is said before anything
+     else, because nothing else on the board means a thing until it is put
+     right. */
+  const wrong = WRONG[yard.project.health];
+  if (wrong) {
+    const said = box({ left: edge, top: HEAD.under, width: 600 }, WOUND);
+    said.textContent = wrong;
+    root.appendChild(said);
+  }
+
   root.appendChild(rule({ left: edge, right: edge, top: HEAD.rule }, true));
 }
+
+/** What each way a project can be wrong reads as, in words rather than a mark. */
+const WRONG: Partial<Record<Yard['project']['health'], string>> = {
+  'path-moved': 'this checkout is not where it was.',
+  'not-git': 'there is no repository here any more.',
+  'host-unreachable': 'the machine this is on is not answering.',
+  abandoned: 'the village has forgotten this one.',
+};
+
+const WOUND = [
+  "font-family:'Josefin Sans',sans-serif",
+  'font-size:14px',
+  'color:#e0735a',
+  'text-shadow:1px 1px 0 #120d07',
+].join(';');
 
 /** How many of something, said rather than counted at. */
 function counted(many: number | undefined, one: string, more?: string): string | undefined {

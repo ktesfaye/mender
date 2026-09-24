@@ -14,7 +14,18 @@ import type { Ask, Kit, Mood, Told } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { KIT_NAMES } from './sprite';
-import type { Fire, Hand, Lantern, Note, Posture, Session, Step, Thought, Yard } from './what';
+import type {
+  Fire,
+  Hand,
+  Health,
+  Lantern,
+  Note,
+  Posture,
+  Session,
+  Step,
+  Thought,
+  Yard,
+} from './what';
 
 /**
  * Which prop from the kit stands in for which kind of tool.
@@ -77,6 +88,8 @@ export interface Standing {
   kit?: Kit;
   /** Where the checkout stands, as one phrase. */
   on?: string;
+  /** Whether the checkout is where it said it was, and is still a repository. */
+  health?: Health;
   /** A question standing at the gate, which outranks everything else. */
   asking?: Ask | null;
   /** What it has said it means to do, if it has said. */
@@ -96,7 +109,7 @@ export function yardOf(from: Standing): Yard {
       name: project.name,
       where: project.path,
       on: from.on ?? project.path,
-      health: 'ok',
+      health: from.health ?? 'ok',
       costs: costOf(tasks.length),
       going: told?.began ? longFor(Date.now() - told.began) : undefined,
       turns: told?.turns,
