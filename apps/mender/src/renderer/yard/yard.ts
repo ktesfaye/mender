@@ -26,7 +26,7 @@ import { makeRows } from './rows';
 import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, sprite } from './sprite';
 import { astop, walking, type Walking } from './walk';
-import type { Asking as Ask, Hand, Made, Note, Posture, Step, Thought, Yard } from './what';
+import type { Asking as Ask, Fire, Hand, Made, Note, Posture, Step, Thought, Yard } from './what';
 import { box, exact, firelight, folk, label, row, rule, said, stack, trim } from './write';
 
 /* Where the bands sit, measured off the designs, with one change: the top
@@ -544,16 +544,14 @@ const CARD = [
 function weathered(note: Note): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'display:flex;flex-direction:column;gap:3px';
-  it.appendChild(said(`${note.when} · ${note.standing ? 'standing' : answered(note)}`));
+  it.appendChild(
+    said(`${note.when} · ${note.standing ? 'standing' : note.answered ? 'answered' : 'unanswered'}`)
+  );
   const body = document.createElement('span');
   body.style.cssText = "font-family:'Caveat',cursive;font-size:17px;line-height:1.25;color:#cbb491";
   body.textContent = note.said;
   it.appendChild(body);
   return it;
-}
-
-function answered(note: Note): string {
-  return note.answered ? 'answered' : 'unanswered';
 }
 
 /**
@@ -934,21 +932,17 @@ function ground(
      thing telling you where the middle of this place is. */
   const fireX = Math.round(at.wide / 2) - 23;
   const fireY = 117;
-  const strength =
-    burningOf(yard) === 'lit'
-      ? 0.34
-      : burningOf(yard) === 'banked'
-        ? 0.2
-        : burningOf(yard) === 'embers'
-          ? 0.12
-          : 0.04;
+  const burning = yard.session?.fire ?? 'out';
   patch.appendChild(
-    firelight({ left: fireX - 147, top: fireY - 104, width: 340, height: 240 }, strength, false)
+    firelight(
+      { left: fireX - 147, top: fireY - 104, width: 340, height: 240 },
+      FIRELIGHT[burning],
+      false
+    )
   );
   /* The fire is the session. Lit is somebody working, banked is somebody who
      has stopped and is standing at the gate, embers is finished, and out is
      nobody home. Only a lit fire breathes; a banked one is still. */
-  const burning = yard.session?.fire ?? 'out';
   const fire = sprite(burning === 'out' ? KIT_NAMES.fireOut : KIT_NAMES.fire, 1);
   fire.style.cssText += `;left:${fireX}px;top:${fireY}px`;
   if (burning === 'lit') {
@@ -982,10 +976,8 @@ const EMPTY = ["font-family:'Josefin Sans',sans-serif", 'font-size:14px', 'color
 const HEAD_ROW =
   'display:flex;align-items:baseline;justify-content:space-between;white-space:nowrap';
 
-/** How the fire is burning, which the light in the yard follows. */
-function burningOf(yard: Yard): string {
-  return yard.session?.fire ?? 'out';
-}
+/** How much light each way of burning throws. */
+const FIRELIGHT: Record<Fire, number> = { lit: 0.34, banked: 0.2, embers: 0.12, out: 0.04 };
 
 /** One agent, standing where their state puts them. */
 function standing(hand: Hand, i: number, wide: number): HTMLElement {
