@@ -104,10 +104,13 @@
   image-rendering: pixelated;
 }
 
-/* Gold is pressable and pressable is gold. No underline, no mark, no box. */
+/* Gold is pressable and pressable is gold. No underline, no mark, no box.
+   The layer itself lets every pointer through to the island; the things that
+   are actually pressable are the only ones that take one back. */
 .yard .press {
   color: var(--yard-gold);
   cursor: default;
+  pointer-events: auto;
 }
 .yard .press:hover {
   color: var(--yard-gold-hover);

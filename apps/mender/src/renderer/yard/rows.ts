@@ -61,6 +61,13 @@ export function makeRows(at: HTMLElement, press: (pick: string) => void): Writte
 function one(row: Row, press: (pick: string) => void): HTMLElement {
   const line = document.createElement('div');
   const pick = row.pick;
+  /* Gold is pressable and pressable is gold, so a row that can be pressed is
+     written in it whatever tone the board computed. The mark in the margin and
+     anything said after the thing itself stay stone, which is how a list of
+     files reads as a list rather than as a wall of gold. */
+  /* A pressable row takes its colour from the line rather than from each
+     piece of it, so hover and press move the whole thing at once. */
+  const ink = (tone: Tone | undefined): string => (pick ? 'inherit' : INK[tone ?? 'ink']);
 
   switch (row.kind) {
     case 'gap':
@@ -93,7 +100,7 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
       mark.style.cssText = `width:${GUTTER}px;flex:none;color:${INK.faded};text-align:right`;
       mark.textContent = row.mark;
       const said = document.createElement('span');
-      said.style.color = INK[row.tone ?? 'ink'];
+      said.style.color = ink(row.tone);
       said.textContent = row.text;
       line.append(mark, said);
       break;
@@ -111,12 +118,12 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
       if (row.runs?.length) {
         for (const run of row.runs) {
           const part = document.createElement('span');
-          part.style.color = INK[run.tone ?? row.tone ?? 'ink'];
+          part.style.color = pick ? 'inherit' : INK[run.tone ?? row.tone ?? 'ink'];
           part.textContent = run.text;
           said.appendChild(part);
         }
       } else {
-        said.style.color = INK[row.tone ?? 'ink'];
+        said.style.color = ink(row.tone);
         said.textContent = row.text;
       }
       line.append(mark, said);
@@ -125,13 +132,12 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
 
     default:
       line.style.cssText = BODY;
-      line.style.color = INK[row.tone ?? 'ink'];
+      line.style.color = ink(row.tone);
       line.textContent = row.text;
   }
 
   if (pick) {
-    line.style.cursor = 'default';
-    line.style.pointerEvents = 'auto';
+    line.classList.add('press');
     line.addEventListener('click', () => press(pick));
     astop(line, pick);
   }

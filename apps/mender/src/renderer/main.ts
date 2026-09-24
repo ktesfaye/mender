@@ -21,7 +21,7 @@ import { makeBoard, type Board, type Row } from './board/board';
 import { openCard, type LiveCard } from './board/card';
 import { opening, readOut, unreadable } from './board/changed';
 import { committing } from './board/committing';
-import type { LiveBoard } from './board/district';
+import { openCheckout, type LiveBoard } from './board/district';
 import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
 import { openTree, type LiveTree } from './board/inside';
 import { loadLettering } from './board/lettering';
@@ -158,10 +158,124 @@ async function boot(): Promise<void> {
      * what keeps them from being written over each other.
      */
     const wood = (rows: Row[], at?: 'now'): void => {
+      /* Anything opened from inside a project is laid over its yard rather
+         than shown instead of it: the world drops to silhouettes, a wash comes
+         down over the middle and the right, and what you asked for is written
+         on that. The gatepost and the rail stay exactly where they were.
+
+         Anything opened from the island has no yard to be laid over, so for
+         the moment it is still drawn on wood. That is the last of the board
+         left, and it goes when the island's own boards come across. */
+      if (yard.showing) {
+        dim(pixi.canvas, 'reading');
+        const asks = prompting();
+        yard.reading({ trail: wayHome(), rows, ...(asks ? { asks } : {}) });
+        return;
+      }
       yard.up(false);
       dim(pixi.canvas, 'island');
       board.show(rows, at);
     };
+
+    /** The same surface again, for a board that has changed under you. */
+    const rewrite = (rows: Row[]): void => {
+      if (yard.open) {
+        yard.reading({ trail: wayHome(), rows, ...(prompting() ? { asks: prompting()! } : {}) });
+        return;
+      }
+      board.update(rows);
+    };
+
+    /**
+     * The checkout this yard stands on, laid over it.
+     *
+     * Where the branch stands, what is uncommitted in it, what was done in it
+     * lately, and the handful of things you can do about any of that. It is a
+     * footnote to the work rather than the point of it, which is why it is
+     * something you open rather than something the yard already says.
+     */
+    const openCheckoutBoard = async (): Promise<void> => {
+      const aim = open;
+      const project = aim ? projectOn(aim.district) : undefined;
+      if (!aim || !project) return;
+      const where = inside ?? project;
+      const was = live;
+      live = null;
+      await was?.close();
+      wood([{ kind: 'line', text: 'reading the checkout…', tone: 'faded' }]);
+      const opened = await openCheckout(
+        client,
+        {
+          name: 'name' in where ? where.name : project.name,
+          path: where.path,
+          ...(inside ? { since: inside.base ?? null } : {}),
+        },
+        (rows) => {
+          if (open === aim && live) rewrite(rows);
+        }
+      );
+      if (open !== aim) {
+        await opened.close();
+        return;
+      }
+      live = opened;
+      wood(opened.rows());
+    };
+
+    /**
+     * Back to the yard itself, with nothing laid over it.
+     *
+     * Every step of backing out ends here: whatever was being read comes down,
+     * the world comes back up from silhouettes, and the yard is written again
+     * from whatever it says now rather than from what it said when you opened
+     * the thing you have just closed.
+     */
+    const home = (): void => {
+      if (live) {
+        const was = live;
+        live = null;
+        void was.close();
+      }
+      if (!watching) return;
+      yard.reading(null);
+      dim(pixi.canvas, 'yard');
+      yard.show(watching.yard());
+      yard.line.take();
+    };
+
+    /**
+     * The way home, one step per level, written across the top of whatever you
+     * opened.
+     *
+     * Read off where you actually are rather than kept as a list, because the
+     * state already says it and two records of the same thing is how they come
+     * apart. Every step but the last is pressable, and Escape walks the same
+     * steps one at a time.
+     */
+    const wayHome = (): { said: string; go?: () => void }[] => {
+      const back = (): void => hand.escaped();
+      const steps: { said: string; go?: () => void }[] = [{ said: 'yard', go: back }];
+      if (live) steps.push({ said: 'the checkout', go: back });
+      if (walking) steps.push({ said: 'files', go: back });
+      if (hunt) steps.push({ said: 'looking', go: back });
+      if (looked) steps.push({ said: 'history', go: back });
+      if (writing) steps.push({ said: 'a commit', go: back });
+      if (talking) steps.push({ said: talking.name, go: back });
+      if (sending) steps.push({ said: 'what is open', go: back });
+      if (card) steps.push({ said: 'who works here', go: back });
+      if (reading) steps.push({ said: shortly(reading.path), go: back });
+      if (opened) steps.push({ said: shortly(opened.path), go: back });
+      const last = steps.at(-1);
+      if (last) delete last.go;
+      return steps;
+    };
+
+    /** The last thing in a path, which is the only part worth a breadcrumb. */
+    const shortly = (path: string): string => path.split('/').at(-1) ?? path;
+
+    /** What the line asks for while a particular thing is open. */
+    const prompting = (): 'file' | 'changes' | undefined =>
+      reading ? 'changes' : opened ? 'file' : undefined;
     let drawn = await draw(world, client);
     let projects = await client.projects.list({});
     let tasks: Task[] = [];
@@ -531,6 +645,7 @@ async function boot(): Promise<void> {
       titling = null;
       board.hide();
       yard.up(true);
+      yard.reading(null);
       dim(pixi.canvas, 'yard');
       paintRail();
 
@@ -622,7 +737,7 @@ async function boot(): Promise<void> {
       open = aim;
       inside = task;
       const opened = await openCard(client, task, (rows) => {
-        if (open === aim && card) board.update(rows);
+        if (open === aim && card) rewrite(rows);
       });
       if (open !== aim) {
         await opened.close();
@@ -677,7 +792,7 @@ async function boot(): Promise<void> {
       if (!read?.change || read.at) return;
       if (!sure) {
         read.asked = true;
-        board.update(rowsForChange());
+        rewrite(rowsForChange());
         return;
       }
       const place = inside ?? (open ? projectOn(open.district) : undefined);
@@ -753,7 +868,7 @@ async function boot(): Promise<void> {
         { kind: 'line', text: 'reading it…', tone: 'faded' },
       ]);
       const tree = await openTree(client, place.path, name, (rows) => {
-        if (walking && open === aim && !opened) board.update(rows);
+        if (walking && open === aim && !opened) rewrite(rows);
       });
       if (!tree || open !== aim) {
         await tree?.close();
@@ -784,7 +899,7 @@ async function boot(): Promise<void> {
       if (!file || file.content.kind !== 'text' || file.content.readonly) return;
       const lines = file.content.content.split('\n');
       file.fixing = { at, written: lines[at] ?? '' };
-      board.update(read(file));
+      rewrite(read(file));
     };
 
     /** And putting it back, which writes the file. */
@@ -795,7 +910,7 @@ async function boot(): Promise<void> {
       const lines = file.content.content.split('\n');
       if (lines[at] === written) {
         file.fixing = undefined;
-        board.update(read(file));
+        rewrite(read(file));
         return;
       }
       lines[at] = written;
@@ -933,7 +1048,7 @@ async function boot(): Promise<void> {
       if (!file) return;
       if (!sure) {
         file.asked = true;
-        board.update(read(file));
+        rewrite(read(file));
         return;
       }
       const whole = onDisk(file.path);
@@ -983,12 +1098,12 @@ async function boot(): Promise<void> {
         mine.found = [];
         mine.asking = false;
         mine.unread = false;
-        board.update(hunting(mine));
+        rewrite(hunting(mine));
         return;
       }
       const when = ++mine.asked;
       mine.asking = true;
-      board.update(hunting(mine));
+      rewrite(hunting(mine));
       const got = mine.inside
         ? await client.finding.written({ checkout: mine.checkout, like })
         : await client.finding.named({ checkout: mine.checkout, like });
@@ -997,7 +1112,7 @@ async function boot(): Promise<void> {
       mine.asking = false;
       mine.found = got.success ? got.data.found : [];
       mine.unread = !got.success && got.error.kind === 'still-reading';
-      board.update(hunting(mine));
+      rewrite(hunting(mine));
       if (!got.success && got.error.kind === 'no-way-to-look') say(got.error.because, 5000);
     };
 
@@ -1025,7 +1140,7 @@ async function boot(): Promise<void> {
       const mine = talking;
       wood(shell({ name, lines: [], written: '', running: false }));
       const running = await openShell(client, place.path, () => {
-        if (talking === mine && open === aim) board.update(rowsForShell());
+        if (talking === mine && open === aim) rewrite(rowsForShell());
       });
       if (talking !== mine || open !== aim) {
         await running?.close();
@@ -1088,7 +1203,7 @@ async function boot(): Promise<void> {
       const on = head.data;
       if (!on || on.kind === 'detached' || on.kind === 'unborn') {
         say('this checkout is not on a branch.', 5000);
-        if (live) wood(live.rows());
+        home();
         return;
       }
       const branch = shortName(on.ref);
@@ -1100,7 +1215,7 @@ async function boot(): Promise<void> {
       const remote = named.find((each) => each.name === 'origin') ?? named[0];
       if (!remote) {
         say('this checkout has nowhere to send anything.', 5000);
-        if (live) wood(live.rows());
+        home();
         return;
       }
       const repository = remote.url;
@@ -1154,7 +1269,7 @@ async function boot(): Promise<void> {
       const onto = (named.success ? named.data.branch : null) ?? 'main';
 
       sending = { ...mine, waiting: 'opening it…' };
-      board.update(sent(sending));
+      rewrite(sent(sending));
       const made = await client.pulls.createPullRequest({
         repositoryUrl: mine.repository,
         head: mine.branch,
@@ -1165,7 +1280,7 @@ async function boot(): Promise<void> {
       if (!made.success) {
         say(refused(made.error), 6000);
         sending = { ...mine, written: title };
-        board.update(sent(sending));
+        rewrite(sent(sending));
         return;
       }
       say('opened.', 3000);
@@ -1177,7 +1292,7 @@ async function boot(): Promise<void> {
       const mine = sending;
       if (!mine?.number) return;
       sending = { ...mine, waiting: what === 'ready' ? 'saying so…' : 'putting it in…' };
-      board.update(sent(sending));
+      rewrite(sent(sending));
       const at = { repositoryUrl: mine.repository, number: mine.number };
       const done =
         what === 'ready'
@@ -1186,7 +1301,7 @@ async function boot(): Promise<void> {
       if (!done.success) {
         say(refused(done.error), 6000);
         sending = mine;
-        board.update(sent(sending));
+        rewrite(sent(sending));
         return;
       }
       say(what === 'ready' ? 'said.' : 'it went in.', 3000);
@@ -1222,7 +1337,7 @@ async function boot(): Promise<void> {
       if (!task || !shown) return;
       if (!sure) {
         shown.ask(true);
-        board.update(shown.rows());
+        rewrite(shown.rows());
         return;
       }
       const aim = open;
@@ -1290,7 +1405,7 @@ async function boot(): Promise<void> {
       if (!writing) return;
       if (back) writing.held.add(path);
       else writing.held.delete(path);
-      board.update(rowsForCommit());
+      rewrite(rowsForCommit());
     };
 
     /** Say it. Everything not held back is staged, and then it is a commit. */
@@ -1334,7 +1449,7 @@ async function boot(): Promise<void> {
         return;
       }
       writing = null;
-      if (live) wood(live.rows());
+      home();
       say('committed.', 3000);
     };
 
@@ -1446,12 +1561,12 @@ async function boot(): Promise<void> {
     const wrote = (written: string): void => {
       if (writing) {
         writing = { ...writing, written };
-        board.update(rowsForCommit());
+        rewrite(rowsForCommit());
         return;
       }
       if (looking) {
         looking = { ...looking, written };
-        board.update(finding(written, { projects, tasks, moods: seen, where: standing() }));
+        rewrite(finding(written, { projects, tasks, moods: seen, where: standing() }));
         // The finder always has something under the keyboard, so return means
         // the obvious thing without you having to aim first.
         if (!board.chosen()) board.walk(1);
@@ -1459,12 +1574,12 @@ async function boot(): Promise<void> {
       }
       if (titling) {
         titling = { ...titling, written };
-        board.update(retitling(titling));
+        rewrite(retitling(titling));
         return;
       }
       if (!naming) return;
       naming = { ...naming, written };
-      board.update(asking(naming));
+      rewrite(asking(naming));
     };
 
     const begin = async (): Promise<void> => {
@@ -1472,7 +1587,7 @@ async function boot(): Promise<void> {
       const { project, slot, written } = naming;
       const aim = open;
       naming = null;
-      board.update([
+      rewrite([
         { kind: 'title', text: written },
         { kind: 'gap' },
         { kind: 'line', text: 'cutting a worktree…', tone: 'faded' },
@@ -1638,6 +1753,10 @@ async function boot(): Promise<void> {
         void openChange(pick.slice(7));
         return;
       }
+      if (pick === 'checkout') {
+        void openCheckoutBoard();
+        return;
+      }
       if (pick === 'inside') {
         void walkIn();
         return;
@@ -1661,7 +1780,7 @@ async function boot(): Promise<void> {
       if (pick === 'open-pull') {
         if (sending) {
           sending = { ...sending, written: '' };
-          board.update(sent(sending));
+          rewrite(sent(sending));
         }
         return;
       }
@@ -1697,13 +1816,13 @@ async function boot(): Promise<void> {
         if (opened) {
           const cut = opened.path.lastIndexOf('/');
           opened.renaming = cut === -1 ? opened.path : opened.path.slice(cut + 1);
-          board.update(read(opened));
+          rewrite(read(opened));
         }
         return;
       }
       if (pick === 'elsewhere') {
         card?.show(true);
-        if (card) board.update(card.rows());
+        if (card) rewrite(card.rows());
         return;
       }
       if (pick.startsWith('bring:')) {
@@ -1852,38 +1971,38 @@ async function boot(): Promise<void> {
             return;
           }
           writing = null;
-          if (live) wood(live.rows());
+          home();
           return;
         }
         if (card?.ending()?.asked) {
           card.ask(false);
-          board.update(card.rows());
+          rewrite(card.rows());
           return;
         }
         if (card?.showing()) {
           card.show(false);
-          board.update(card.rows());
+          rewrite(card.rows());
           return;
         }
         if (sending) {
           if (sending.written) {
             sending = { ...sending, written: '' };
-            board.update(sent(sending));
+            rewrite(sent(sending));
             return;
           }
           sending = null;
-          if (live) wood(live.rows());
+          home();
           return;
         }
         if (talking) {
           // What you have half typed at a shell is yours before the shell is.
           if (talking.written) {
             talking.written = '';
-            board.update(rowsForShell());
+            rewrite(rowsForShell());
             return;
           }
           stopTalking();
-          if (live) wood(live.rows());
+          home();
           return;
         }
         if (hunt && !opened) {
@@ -1894,7 +2013,7 @@ async function boot(): Promise<void> {
           }
           hunt = null;
           if (walking) wood(walking.rows());
-          else if (live) wood(live.rows());
+          else home();
           return;
         }
         if (walking && !opened && walking.naming() !== undefined) {
@@ -1909,25 +2028,25 @@ async function boot(): Promise<void> {
         }
         if (opened?.renaming !== undefined) {
           opened.renaming = undefined;
-          board.update(read(opened));
+          rewrite(read(opened));
           return;
         }
         if (opened?.asked) {
           opened.asked = false;
-          board.update(read(opened));
+          rewrite(read(opened));
           return;
         }
         if (opened) {
           // A line half rewritten is work: let go of that before the file.
           if (opened.fixing) {
             opened.fixing = undefined;
-            board.update(read(opened));
+            rewrite(read(opened));
             return;
           }
           opened = null;
           if (hunt) wood(hunting(hunt));
           else if (walking) wood(walking.rows());
-          else if (live) wood(live.rows());
+          else home();
           return;
         }
         if (walking) {
@@ -1937,7 +2056,7 @@ async function boot(): Promise<void> {
             const went = await walking?.up();
             if (went) return;
             stopWalking();
-            if (live) wood(live.rows());
+            home();
           })();
           return;
         }
@@ -1945,7 +2064,7 @@ async function boot(): Promise<void> {
           // Asked whether to throw it away, escape is the answer no.
           if (reading.asked) {
             reading.asked = false;
-            board.update(rowsForChange());
+            rewrite(rowsForChange());
             return;
           }
           // A file read inside a commit steps back onto that commit, not past it.
@@ -1959,7 +2078,7 @@ async function boot(): Promise<void> {
         }
         if (looked) {
           looked = null;
-          if (live) wood(live.rows());
+          home();
           return;
         }
         if (titling) {
@@ -2032,7 +2151,7 @@ async function boot(): Promise<void> {
           } else if (event.key.length === 1) {
             sending = { ...mine, written: (mine.written ?? '') + event.key };
           } else return board.scrolled(event.key);
-          if (sending) board.update(sent(sending));
+          if (sending) rewrite(sent(sending));
           return true;
         }
         /* Talking to a shell. Return hands it the line and a newline, which
@@ -2045,7 +2164,7 @@ async function boot(): Promise<void> {
           } else if (event.key === 'Backspace') said.written = said.written.slice(0, -1);
           else if (event.key.length === 1) said.written += event.key;
           else return board.scrolled(event.key);
-          board.update(rowsForShell());
+          rewrite(rowsForShell());
           return true;
         }
         /* Looking for something in the checkout: letters narrow it, arrows
@@ -2082,7 +2201,7 @@ async function boot(): Promise<void> {
           else if (event.key === 'Backspace') file.renaming = (file.renaming ?? '').slice(0, -1);
           else if (event.key.length === 1) file.renaming = (file.renaming ?? '') + event.key;
           else return board.scrolled(event.key);
-          if (opened) board.update(read(opened));
+          if (opened) rewrite(read(opened));
           return true;
         }
         /* A line of a file taken down to the bottom of the board. The only
@@ -2093,7 +2212,7 @@ async function boot(): Promise<void> {
           else if (event.key === 'Backspace') fixing.written = fixing.written.slice(0, -1);
           else if (event.key.length === 1) fixing.written += event.key;
           else return board.scrolled(event.key);
-          if (opened) board.update(read(opened));
+          if (opened) rewrite(read(opened));
           return true;
         }
         if (writing) {
@@ -2174,7 +2293,7 @@ async function boot(): Promise<void> {
       paintRail();
       // The roster is a live thing: a session that starts working changes its
       // mark on the board you are looking at, without you touching anything.
-      if (writing) board.update(rowsForCommit());
+      if (writing) rewrite(rowsForCommit());
       else if (
         live &&
         !watching &&
@@ -2188,7 +2307,7 @@ async function boot(): Promise<void> {
         !talking &&
         !sending
       ) {
-        board.update(live.rows());
+        rewrite(live.rows());
       }
     };
     const running = new ReplicaState<Task[]>(client.tasks.all.state(undefined, 'list'), {

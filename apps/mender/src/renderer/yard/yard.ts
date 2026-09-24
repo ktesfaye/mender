@@ -23,6 +23,7 @@ import { GUTTER, MARGIN, type Layer } from './frame';
 import { makeLine, type Asking as Prompting, type Line } from './line';
 import { pressing, twice } from './press';
 import { makeRows } from './rows';
+import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, sprite } from './sprite';
 import { astop, walking, type Walking } from './walk';
 import type { Asking as Ask, Hand, Made, Note, Posture, Step, Thought, Yard } from './what';
@@ -85,6 +86,14 @@ export interface Standing {
   asks(what: Prompting): void;
   /** Write the lines a slash or an @ has opened under the line. */
   narrowing(rows: Row[]): void;
+  /**
+   * Lay something over the yard to read, or take it away.
+   *
+   * The world dims further while this is up and the middle and right of the
+   * yard go under it; what you asked for and the rail do not.
+   */
+  reading(what: Reading | null): void;
+  readonly open: boolean;
   /** Where the keyboard is, for whoever is listening to it. */
   readonly walk: Walking;
   readonly line: Line;
@@ -106,6 +115,13 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   const root = box({ left: 0, top: 0, right: 0, bottom: 0 });
   root.style.pointerEvents = 'none';
   stage.appendChild(root);
+
+  /* The two columns the scrim comes down over. Everything else on the yard —
+     the head, the gatepost, the line, the rail — stays visible while you are
+     reading something, so they are drawn outside this. */
+  const covered = box({ left: 0, top: 0, right: 0, bottom: 0 });
+  covered.style.pointerEvents = 'none';
+  root.appendChild(covered);
 
   /* The line is made once and kept. Everything else on this screen is thrown
      away and written again whenever anything moves, and a line that went with
@@ -131,6 +147,11 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   line.onEmpty(() => does.leave());
   line.onType((text) => does.typed(text));
 
+  /* And the wash that comes down over the middle and right of the screen when
+     you open something to read. The gatepost keeps its own column and the rail
+     keeps its own strip, so neither is ever covered. */
+  const scrim = makeScrim(stage, does.press);
+
   const walk = walking(layer.root);
 
   let last: Yard | undefined;
@@ -138,22 +159,29 @@ export function makeYard(layer: Layer, does: Doings): Standing {
 
   function show(yard: Yard): void {
     last = yard;
-    root.replaceChildren();
+    root.replaceChildren(covered);
+    covered.replaceChildren();
     const columns = layer.columns();
     /* Everything from under the header rule to above the line you write on.
        The columns live in here and the bands top and bottom do not. */
     const floor = window.innerHeight - MARGIN - (layer.cramped() ? RAIL_BARE : RAIL_TALL) - 60;
 
     scrims(root);
+    scrim.place(
+      columns.thinking.x - GUTTER / 2,
+      MARGIN - 8,
+      HEAD.rule,
+      window.innerHeight - floor - 20
+    );
     writing.style.left = `${layer.edge()}px`;
     writing.style.right = `${layer.edge()}px`;
     under.style.left = `${layer.edge()}px`;
     under.style.right = `${layer.edge()}px`;
     carried(hands, yard, does);
-    head(root, yard, layer.edge());
+    head(root, yard, layer.edge(), does);
     asked(root, columns.asked, yard, floor, layer.cramped(), does);
-    thinking(root, columns.thinking, yard, floor, does);
-    made(root, columns.made, yard, floor);
+    thinking(covered, columns.thinking, yard, floor, does);
+    made(covered, columns.made, yard, floor);
     still(root, yard, layer.edge(), does);
     said_line(root, layer.edge());
     rail(root, yard, layer.cramped(), layer.edge(), does);
@@ -163,6 +191,16 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   }
 
   return {
+    reading: (what) => {
+      scrim.show(what);
+      /* What is under it is still there and still live; it is simply not what
+         you are looking at, so it stops taking the eye. */
+      covered.style.visibility = what ? 'hidden' : '';
+      line.asks(what?.asks ? (what.asks as Prompting) : 'say');
+    },
+    get open() {
+      return scrim.up;
+    },
     up: (on) => {
       stage.style.display = on ? '' : 'none';
       if (!on) line.write('');
@@ -212,13 +250,19 @@ function scrims(root: HTMLElement): void {
    the session you are standing in: its checkout, its agent, how long it has
    been going and how much of that was turns. To the right, the two things
    that are true of the agent rather than of the work. */
-function head(root: HTMLElement, yard: Yard, edge: number): void {
+function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
   const title = box({ left: edge, top: HEAD.title }, TITLE);
   title.textContent = yard.project.name;
   root.appendChild(title);
 
+  /* The head of the board is pressable wherever it leads somewhere. Where the
+     checkout stands opens the checkout; where it is on disk walks into it. */
+  const on = astop(
+    pressing(yard.project.on, () => does.press('checkout')),
+    'head:checkout'
+  );
+  on.style.cssText += META;
   const said = [
-    yard.project.on,
     yard.session?.agent,
     yard.project.going,
     counted(yard.project.turns, 'turn'),
@@ -226,8 +270,23 @@ function head(root: HTMLElement, yard: Yard, edge: number): void {
   ]
     .filter(Boolean)
     .join(' · ');
-  const meta = box({ left: edge + 2, top: HEAD.meta });
-  meta.appendChild(exact(said, 12));
+  const meta = box({ left: edge + 2, top: HEAD.meta }, 'display:flex;gap:6px;align-items:baseline');
+  meta.append(on);
+  if (said) {
+    const dot = exact('·', 12, '#6b5a40');
+    dot.style.position = 'relative';
+    const rest = exact(said, 12);
+    rest.style.position = 'relative';
+    meta.append(dot, rest);
+  }
+  const into = astop(
+    pressing(shortOf(yard.project.where), () => does.press('inside')),
+    'head:in'
+  );
+  into.style.cssText += META;
+  const dot2 = exact('·', 12, '#6b5a40');
+  dot2.style.position = 'relative';
+  meta.append(dot2, into);
   root.appendChild(meta);
 
   if (yard.session?.permissions) {
@@ -256,6 +315,13 @@ function head(root: HTMLElement, yard: Yard, edge: number): void {
 function counted(many: number | undefined, one: string, more?: string): string | undefined {
   if (!many) return undefined;
   return many === 1 ? `1 ${one}` : `${many} ${more ?? one + 's'}`;
+}
+
+const META = ";font-family:'Courier Prime',monospace;font-size:12px;position:relative";
+
+/** The last thing in a path, which is the only part worth the room. */
+function shortOf(path: string): string {
+  return path.replace(/\/+$/, '').split('/').at(-1) ?? path;
 }
 
 const TITLE = [
