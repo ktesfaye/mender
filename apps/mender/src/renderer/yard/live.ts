@@ -69,6 +69,11 @@ export async function openYard(
   let working: WorkingState | undefined;
   let kit: Kit | undefined;
   let head: CheckoutHeadState | undefined;
+  /* Whether the ground under all of this is where it said it was. Declared up
+     here with everything else the yard is built from, because a live model can
+     speak the moment it is subscribed to and a value the build reaches for
+     before it exists takes the whole board down with it. */
+  let health: Health = 'ok';
 
   const shut: (() => Promise<void>)[] = [];
   let held: readonly Carried[] = [];
@@ -136,7 +141,7 @@ export async function openYard(
   /* A checkout that is not where it was is the one thing about a project worth
      saying before anything else about it, because nothing else on the board
      means anything until it is put right. */
-  let health: Health = parsed.success ? 'ok' : 'path-moved';
+  if (!parsed.success) health = 'path-moved';
   if (parsed.success) {
     const model = client.git.checkout.model;
     const watch = new ReplicaState(model.state({ checkout: parsed.data }, 'head'), {
