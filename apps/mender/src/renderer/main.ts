@@ -35,9 +35,9 @@ import { refused, trouble, unwritten } from './board/trouble';
 import { answerFor } from './board/work';
 import { ran } from './job';
 import { setPace } from './pace';
-import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
+import { createCamera, flyOut, flyToYard, frame, type Extent } from './village/camera';
 import { Folk, loadFolk, type Standing } from './village/folk';
-import { districtBounds, Ground, type Aim } from './village/ground';
+import { Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
 import './yard/tokens.css';
 import { say } from './village/notice';
@@ -229,7 +229,7 @@ async function boot(): Promise<void> {
           ...(inside ? { since: inside.base ?? null } : {}),
         },
         (rows) => {
-          if (open === aim && live) rewrite(rows);
+          if (open === aim && plainCheckout()) rewrite(rows);
         }
       );
       if (open !== aim) {
@@ -239,6 +239,27 @@ async function boot(): Promise<void> {
       live = opened;
       wood(opened.rows());
     };
+
+    /* Whether the checkout board is the thing being read right now.
+     *
+     * It stays open and stays live under everything opened from it — a file, a
+     * commit, the folder, the shell, what is open for the branch — so "there is
+     * a live checkout" is not the same question as "the checkout is on the
+     * screen". Answering the first one let a git refresh write the checkout
+     * over whatever you had actually opened, trail and all. */
+    const plainCheckout = (): boolean =>
+      Boolean(live) &&
+      !reading &&
+      !writing &&
+      !looked &&
+      !walking &&
+      !talking &&
+      !sending &&
+      !hunt &&
+      !naming &&
+      !titling &&
+      !looking &&
+      !card;
 
     /**
      * Back to the yard itself, with nothing laid over it.
@@ -337,6 +358,9 @@ async function boot(): Promise<void> {
     /* Which folder of the checkout is on the board, if you have walked into
        it, and which file of it is open over that. */
     let walking: LiveTree | null = null;
+    /* The tree kept open for the checkout you are in, so walking back into it
+       is instant and never races its own teardown. */
+    let kept: { path: string; tree: LiveTree } | null = null;
     let opened: Read | null = null;
     /* Set while the checkout is being searched rather than walked. */
     let hunt: (Hunt & { checkout: string; asked: number }) | null = null;
@@ -625,7 +649,8 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
-      stopWalking();
+      /* Out of the district altogether, so the checkout's watcher goes too. */
+      letGoOfTree();
       stopTalking();
       sending = null;
       const shown = card;
@@ -656,7 +681,9 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
-      stopWalking();
+      /* A different checkout is a different tree, so the one being held goes. */
+      if (kept && kept.path !== (here?.path ?? project.path)) letGoOfTree();
+      else stopWalking();
       stopTalking();
       sending = null;
       inside = here ?? null;
@@ -728,7 +755,7 @@ async function boot(): Promise<void> {
     const openDistrict = async (aim: Aim): Promise<void> => {
       const project = projectOn(aim.district);
       if (!project) return;
-      flyTo(camera, districtBounds(aim.district), { inset: 0 });
+      flyToYard(camera, aim.district);
       /* You open a project to get at the work in it, so you land in the work:
          whichever session you were last in, or none if it has never had one. */
       const standing = tasksOn(aim.district);
@@ -890,19 +917,40 @@ async function boot(): Promise<void> {
       const place = inside ?? (open ? projectOn(open.district) : undefined);
       if (!place || !open) return;
       const aim = open;
-      stopWalking();
       const name = 'title' in place ? place.title : place.name;
+
+      /* Already holding this checkout's tree: walk it back to the top and show
+         it, with nothing to wait for and nothing to tear down. */
+      if (kept?.path === place.path) {
+        walking = kept.tree;
+        while (await kept.tree.up());
+        if (open !== aim || walking !== kept?.tree) return;
+        wood(kept.tree.rows());
+        return;
+      }
+
       wood([
         { kind: 'title', text: name },
         { kind: 'line', text: 'reading it…', tone: 'faded' },
       ]);
+      letGoOfTree();
+      if (releasing) {
+        await releasing;
+        releasing = null;
+        if (open !== aim) return;
+      }
+      /* The callback fires while this is still being awaited, so what it
+         checks against cannot be the binding it is about to become. */
+      const mine: { tree?: LiveTree } = {};
       const tree = await openTree(client, place.path, name, (rows) => {
-        if (walking && open === aim && !opened) rewrite(rows);
+        if (mine.tree && walking === mine.tree && !opened) rewrite(rows);
       });
       if (!tree || open !== aim) {
         await tree?.close();
         return;
       }
+      mine.tree = tree;
+      kept = { path: place.path, tree };
       walking = tree;
       wood(tree.rows());
     };
@@ -1378,13 +1426,36 @@ async function boot(): Promise<void> {
     };
 
     /** Closing whatever of the checkout you had walked into. */
+    /* Stepping out of the folder you were in.
+     *
+     * It does not close the tree. The file-tree model is keyed on the checkout
+     * and watches it, so walking in, out and in again used to subscribe to the
+     * very session the last visit was still tearing down: the close landed
+     * after the new subscribe, took the shared session with it, and the folder
+     * sat on "reading it…" for good. The tree is kept open for as long as you
+     * are in the project it belongs to and let go of when you leave, which
+     * also makes walking back in instant.
+     */
     const stopWalking = (): void => {
-      const was = walking;
       walking = null;
       opened = null;
       hunt = null;
-      void was?.close();
     };
+
+    /** And actually letting the watcher go, which is leaving the project. */
+    const letGoOfTree = (): void => {
+      const was = kept;
+      kept = null;
+      walking = null;
+      opened = null;
+      hunt = null;
+      if (!was) return;
+      /* Held on to so that whoever opens a tree next waits for this one to be
+         gone. The model is keyed on the checkout and a subscribe that lands
+         mid-release gets the session the release is about to take away. */
+      releasing = was.tree.close().catch(() => undefined);
+    };
+    let releasing: Promise<unknown> | null = null;
 
     /** Step back from a file inside a commit onto the commit it was in. */
     const showMade = (): void => {
@@ -1549,7 +1620,7 @@ async function boot(): Promise<void> {
     const openTask = async (aim: Aim, task: Task): Promise<void> => {
       const project = projects.find((one) => one.id === task.project);
       if (!project) return;
-      flyTo(camera, districtBounds(aim.district), { inset: 0 });
+      flyToYard(camera, aim.district);
       lastIn.set(project.id, task.id);
       await showYard(aim, project, task);
       arrived();
@@ -1573,7 +1644,7 @@ async function boot(): Promise<void> {
          you are standing in, like everything else you open, rather than
          replacing it: the sessions already running are still on the rail while
          you decide what the next one is for. */
-      if (!yard.showing) flyTo(camera, districtBounds(aim.district), { inset: 0 });
+      if (!yard.showing) flyToYard(camera, aim.district);
       yard.asks('start');
       yard.line.write('');
       wood(asking(naming));
@@ -2325,24 +2396,22 @@ async function boot(): Promise<void> {
       }
       drawn.folk.set(standing);
       paintRail();
+      /* The yard you are standing in was handed who was awake when it opened,
+         and moods move after that: a session that has just been cut is still
+         arriving when its board comes up, and its lantern stayed dark for the
+         whole life of the session because nothing ever told the rail. */
+      const inside = open ? projectOn(open.district) : undefined;
+      if (watching && inside) {
+        watching.moved({
+          project: inside,
+          tasks: tasks.filter((task) => task.project === inside.id),
+          moods: seen,
+        });
+      }
       // The roster is a live thing: a session that starts working changes its
       // mark on the board you are looking at, without you touching anything.
       if (writing) rewrite(rowsForCommit());
-      else if (
-        live &&
-        !watching &&
-        !card &&
-        !naming &&
-        !titling &&
-        !looking &&
-        !reading &&
-        !looked &&
-        !walking &&
-        !talking &&
-        !sending
-      ) {
-        rewrite(live.rows());
-      }
+      else if (plainCheckout()) rewrite(live?.rows() ?? []);
     };
     const running = new ReplicaState<Task[]>(client.tasks.all.state(undefined, 'list'), {
       onChange: (value) => {

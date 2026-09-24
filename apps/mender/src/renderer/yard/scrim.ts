@@ -49,16 +49,21 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
   root.style.display = 'none';
   at.appendChild(root);
 
-  const head = box({ left: 32, right: 32, top: 20 }, HEAD);
+  const head = box({}, HEAD);
+  head.style.position = 'relative';
+  head.style.padding = '20px 32px 0';
   root.appendChild(head);
   const way = box({}, 'position:relative');
   const meta = box({}, 'position:relative');
   head.append(way, meta);
-  root.appendChild(rule({ left: 32, right: 32, top: 48, height: 2 }));
+  const across = rule({ left: 32, right: 32, height: 2 });
+  across.style.position = 'relative';
+  across.style.margin = '12px 0 0';
+  root.appendChild(across);
 
   /* The writing scrolls and the chrome above it does not, which is why they
      are two boxes rather than one. */
-  const under = box({ left: 32, right: 32, top: 72, bottom: 24 }, 'overflow-y:auto');
+  const under = box({}, 'overflow-y:auto;position:relative;padding:20px 32px 24px;min-height:0');
   root.appendChild(under);
   const sheet = makeRows(under, press);
 
@@ -69,11 +74,17 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
       return showing;
     },
     sheet,
+    /* The wash is as tall as what is written on it and no taller.
+       A question with four lines in it does not get two thirds of the window
+       of flat brown under it: that reads as a panel that failed to load, and
+       it was the first thing anybody said about this screen. Anything long
+       enough fills the room it is given and scrolls inside it. */
     place: (left, right, top, bottom) => {
       root.style.left = `${left}px`;
       root.style.right = `${right}px`;
       root.style.top = `${top}px`;
-      root.style.bottom = `${bottom}px`;
+      root.style.bottom = 'auto';
+      root.style.maxHeight = `${Math.max(120, window.innerHeight - top - bottom)}px`;
     },
     show: (reading) => {
       const was = showing;
@@ -119,6 +130,8 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
 
 const WASH = [
   'position:absolute',
+  'display:flex',
+  'flex-direction:column',
   /* Flat, not blurred. Nothing in this art is blurred, and a frosted panel
      over a pixel village reads as a screenshot of a different program. */
   'background:rgba(72,37,16,.72)',

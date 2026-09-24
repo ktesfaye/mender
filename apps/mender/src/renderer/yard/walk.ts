@@ -43,8 +43,12 @@ export function walking(root: HTMLElement): Walking {
 
   /* While something is laid over the yard, the keyboard belongs to that and
      not to the yard underneath: walking from a file you are reading onto the
-     project's own header is not a step anybody meant to take. */
+     project's own header is not a step anybody meant to take. What a slash or
+     an @ has opened is nearer still, because it is what the line itself is
+     doing and the line is where your hands already are. */
   const within = (): HTMLElement => {
+    const near = root.querySelector<HTMLElement>('[data-narrowing]');
+    if (near && near.offsetParent !== null) return near;
     const sheet = root.querySelector<HTMLElement>('[data-sheet]');
     return sheet && sheet.offsetParent !== null ? sheet : root;
   };

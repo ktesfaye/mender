@@ -179,9 +179,21 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       'pointer-events:auto',
     ].join(';')
   );
+  under.dataset.narrowing = 'yes';
   const opened = makeRows(under, does.press);
   stage.appendChild(under);
   line.onSay((text) => does.say(text));
+  /* Return means whatever the slash or the @ has picked out, when one of them
+     is open. The first line of either is already standing under the keyboard,
+     because a list you have to arrow into before Return does anything is a
+     list that made you press two keys to do one thing. */
+  line.onInstead(() => (standingInOverlay() ? walk.press() : false));
+
+  /** Whether the keyboard's mark is on one of the lines the overlay opened. */
+  function standingInOverlay(): boolean {
+    if (under.style.display === 'none' || !walk.on) return false;
+    return Boolean(under.querySelector(`[data-walk="${CSS.escape(walk.on)}"]`));
+  }
   line.onEmpty(() => does.leave());
   line.onType((text) => does.typed(text));
 
@@ -205,7 +217,11 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     );
     writing.style.left = `${layer.edge()}px`;
     writing.style.right = `${layer.edge()}px`;
-    under.style.left = `${layer.edge()}px`;
+    /* What a slash or an @ opens takes the same ground a sub-board takes and
+       no more: never over the gatepost, which is where what you asked for is
+       and the one thing you want to still be able to read while you decide
+       what to say next. */
+    under.style.left = `${columns.thinking.x - GUTTER / 2}px`;
     under.style.right = `${layer.edge()}px`;
     /* Clear of the gatepost, because the gatepost has its own things to say
        down there and two columns of writing on the same line is a mess. */
@@ -232,10 +248,19 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     lay();
     carried(hands, yard, does);
     head(root, yard, layer.edge(), does);
-    asked(root, columns.asked, yard, floor, layer.cramped(), does);
-    thinking(covered, columns.thinking, yard, floor, does);
-    made(covered, columns.made, yard, floor);
-    still(stillAt, yard, does);
+    /* A project nobody has worked in yet has nothing to put in three columns,
+       and three headings over three empty columns is scaffolding, not a place.
+       So it says the one true thing and lets the district behind it do the
+       rest; the line at the bottom is already asking what to build. */
+    if (yard.session) {
+      asked(root, columns.asked, yard, floor, layer.cramped(), does);
+      thinking(covered, columns.thinking, yard, floor, does);
+      made(covered, columns.made, yard, floor);
+      still(stillAt, yard, does);
+    } else {
+      nobody(root, columns.asked, columns.made, yard, floor, does);
+      stillAt.replaceChildren();
+    }
     said_line(root, layer.edge());
     rail(root, yard, layer.cramped(), layer.edge(), does);
     /* What the line asks for follows what the yard is: somebody at the gate
@@ -280,8 +305,18 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     },
     show,
     narrowing: (rows) => {
+      /* Asked before the lines are replaced, because afterwards there is
+         nothing left to ask about. */
+      const wasInside = standingInOverlay();
       opened.write(rows);
       under.style.display = rows.length ? 'flex' : 'none';
+      /* The first line of it stands under the keyboard from the moment it
+         opens, drawn filled the way the designs draw it, so Return means it.
+         Arrows move that fill; closing the overlay gives the keyboard back. */
+      const first = rows.find((row) => row.pick)?.pick;
+      if (first && !standingInOverlay()) walk.stand(first);
+      else if (!rows.length && wasInside) walk.stand(null);
+      else walk.again();
       /* Whatever it opened is read from the bottom up, because the thing it is
          narrowing towards is the nearest one to the line. */
       opened.root.scrollTop = opened.root.scrollHeight;
@@ -897,6 +932,38 @@ function did(one: Step): HTMLElement {
 }
 
 /**
+ * A project with nobody in it yet.
+ *
+ * The ground is still the ground and the fire is still cold in the middle of
+ * it, so the yard is drawn as it always is. What is missing is every word: no
+ * notes on the gatepost, nothing being thought, nothing on the cart. Writing
+ * three headings over three empty columns says the board is broken rather than
+ * that the work has not started, so it says that instead, once.
+ */
+function nobody(
+  root: HTMLElement,
+  at: { x: number; wide: number },
+  patch: { x: number; wide: number },
+  yard: Yard,
+  floor: number,
+  does: Doings
+): void {
+  const line = box({ left: at.x, top: HEAD.top + 6, width: 520 }, EMPTY);
+  line.textContent = 'nobody has worked in here yet.';
+  root.appendChild(line);
+
+  const how = box({ left: at.x, top: HEAD.top + 34, width: 520 });
+  how.appendChild(exact('say what you want built, or hang a lantern on the rail.', 12, '#8a7a5e'));
+  root.appendChild(how);
+
+  /* The one thing this board still offers about the project itself, in the
+     same place it sits when there is work here, so it does not move when the
+     first session arrives. */
+  elsewhere(root, at, yard, floor, does);
+  ground(root, patch, yard, floor);
+}
+
+/**
  * The ground, and everybody on it.
  *
  * A patch rather than a list. The fire is the session, and where somebody is
@@ -920,14 +987,23 @@ function ground(
   name.style.position = 'relative';
   head.appendChild(name);
   const back = hands.filter((one) => one.where === 'in-light').length;
-  head.appendChild(
-    exact(`${hands.length} hands · ${back} back · ${hands.length - back} out`, 11, '#bfa476')
-  );
+  /* A count of nobody is not information. An empty yard says so by being
+     empty and by the fire being out in the middle of it. */
+  if (yard.session) {
+    head.appendChild(
+      exact(`${hands.length} hands · ${back} back · ${hands.length - back} out`, 11, '#bfa476')
+    );
+  }
   root.appendChild(head);
 
+  /* A window onto the ground, not a picture of one. The village is already
+     drawn behind this whole screen, so the patch is a hole in the writing with
+     a frame round it: what the agents are standing on is the actual land of
+     this district, at the same light as the rest of the yard, warmed by the
+     fire. A filled rectangle here was a brown slab with a campfire on it. */
   const patch = box(
     { left: at.x, top, width: at.wide, height: YARD_BOX.tall },
-    'overflow:hidden;background:#181410;border:2px solid #3a2712'
+    'overflow:hidden;background:transparent;border:2px solid #3a2712'
   );
   patch.style.position = 'absolute';
 

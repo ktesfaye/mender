@@ -1224,6 +1224,59 @@ its own clock and for the one happening now, because it never needed them: that
 column is placed by order and brightness, and that is what recency is made of
 here. A board that gets time wrong is a board you stop reading times off.
 
+### And then he opened it, and it was black
+
+Five things, and the first one is the whole complaint. **The yard was framed on
+a district's bounding box, and a district is a shape of land rather than a
+rectangle.** The harbour reaches one arm along a coast; its box is nine parts
+sea. Framing that box put the whole screen on open water, and open water dimmed
+to a yard's light is a black screen with writing on it. It now stands on the
+densest window of that district's own cells, pulling a rung closer until the
+ground actually fills the picture, which is what the designs' own crop is: a
+tight piece of market, all land, no coast.
+
+**The ground the agents stand on was a painted rectangle** with a campfire on
+it. It is a hole in the writing now, with the frame kept and the firelight over
+it, so what they are standing on is the district you are standing in.
+
+**Anything laid over the yard was full height whatever was on it.** A question
+with four lines in it got two thirds of the window of flat brown underneath,
+which reads as a panel that failed to load, and that is the piece he pointed at.
+The wash is as tall as its writing now and scrolls when there is more.
+
+**A project nobody has worked in yet** drew three column headings over three
+empty columns, which says the board is broken rather than that the work has not
+started. It says the one true thing instead and lets the district behind it do
+the rest.
+
+**A session's lantern never lit.** The rail is handed who was awake when the
+yard opened and nothing ever told it again, so a session cut while you watched
+stayed dark on the beam for its whole life, including the one you were standing
+in.
+
+### Four more that only turned up by driving it
+
+**Walking into the same checkout twice hung on "reading it…" for good.** The
+file tree is keyed on the checkout and watches it, so the second visit
+subscribed to the session the first was still closing, and the close took the
+shared session with it. The tree is held open for as long as you are in the
+project and let go of when you leave, so walking back in is instant and never
+races itself.
+
+**A git refresh wrote the checkout over whatever you had opened from it.** The
+checkout board stays live underneath a file, a commit, the folder, the shell and
+what is open for the branch, and the question it was answering was "is there a
+live checkout" rather than "is the checkout on the screen". The trail said what
+you opened and the writing said something else.
+
+**`/agent` reached Claude as a sentence.** The overlay a slash opens had nothing
+picked out, so Return meant send. The designs draw its first line filled, which
+is what Return means, and it does now; arrows move the fill and the keyboard
+belongs to the overlay while it is up.
+
+**That overlay also covered the gatepost**, which the rule under its own crop
+says it never does. It takes the same ground a sub-board takes and no more.
+
 ### What the designs do not cover, and neither does this
 
 Three whole groups of the 162 states are about things this app has never had a

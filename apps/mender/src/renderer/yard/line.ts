@@ -58,6 +58,16 @@ export interface Line {
   take(): void;
   /** Return was pressed with something on the line. */
   onSay(run: (said: string) => void): void;
+  /**
+   * First refusal on Return.
+   *
+   * What a slash or an @ has opened under the line has one of its lines
+   * already picked out, so Return means that line rather than "send this".
+   * Whoever is listening says so by answering true, and the line is left
+   * exactly as it was, because picking a file writes its path where the @ is
+   * rather than throwing the sentence away.
+   */
+  onInstead(run: () => boolean): void;
   /** Escape was pressed with nothing on the line, so it means something else. */
   onEmpty(run: () => void): void;
   /** Something was typed, for whatever is narrowing underneath. */
@@ -87,6 +97,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   let say: (said: string) => void = () => {};
   let empty: () => void = () => {};
   let typed: (said: string) => void = () => {};
+  let instead: () => boolean = () => false;
 
   function showing(): void {
     const has = said.textContent !== '';
@@ -133,6 +144,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       /* Return sends. Shift and return is a newline, which is the one thing
          about this line that is exactly what everybody already expects. */
       event.preventDefault();
+      if (instead()) return;
       const text = (said.textContent ?? '').trim();
       said.textContent = '';
       showing();
@@ -210,6 +222,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       place();
     },
     onSay: (run) => (say = run),
+    onInstead: (run) => (instead = run),
     onEmpty: (run) => (empty = run),
     onType: (run) => (typed = run),
     close: () => {

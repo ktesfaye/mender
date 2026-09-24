@@ -1,3 +1,4 @@
+import { CELL, type District } from '@mender/village';
 import { Viewport } from 'pixi-viewport';
 import type { Application } from 'pixi.js';
 import { stir } from '../pace';
@@ -165,4 +166,133 @@ export function frame(viewport: Viewport, island: Extent, padding = 48): void {
   if (!island.width || !island.height) return;
   viewport.setZoom(fitScale(viewport, island, padding), true);
   viewport.moveCenter(island.x + island.width / 2, island.y + island.height / 2);
+}
+
+/* WHAT THE YARD STANDS ON.
+ *
+ * A district is a shape of land, and its bounding box is not that shape: the
+ * harbour reaches one arm along a coast and its box is nine parts water. Framing
+ * the box put the whole yard on open sea, which in the dark reads as a black
+ * screen with some writing on it, and that is exactly what it looked like.
+ *
+ * So the yard is not framed on the box. It is framed on the densest window of
+ * LAND the district has, close enough in that the ground fills the picture the
+ * way the designs' own crop does. The writing sits over the whole window, so
+ * every part of that window has to be worth having behind writing.
+ */
+
+/** How much of the window has to be land before it is a place and not a sea. */
+const ENOUGH_LAND = 0.9;
+
+/** How close the yard is allowed to stand. Whole rungs only; the art is drawn
+    at one scale and anything between two rungs crawls. */
+const YARD_RUNGS = [1, 2, 3] as const;
+
+/**
+ * Fly in until the district's ground fills the window.
+ *
+ * Slides a window over the district's own cells and stands where the most land
+ * is, pulling closer a rung at a time until the view is land rather than coast.
+ * A small district ends up close in, which is right: a yard is somewhere you
+ * are standing, not a region you are surveying.
+ */
+export function flyToYard(viewport: Viewport, district: District): void {
+  const stand = yardStand(viewport, district);
+  if (!stand) return;
+  viewport.animate({
+    position: { x: stand.x, y: stand.y },
+    scale: stand.scale,
+    time: FLIGHT_MS,
+    ease: 'easeInOutSine',
+    removeOnInterrupt: true,
+  });
+}
+
+/** The same place, arrived at without the flight. */
+export function standInYard(viewport: Viewport, district: District): void {
+  const stand = yardStand(viewport, district);
+  if (!stand) return;
+  viewport.setZoom(stand.scale, true);
+  viewport.moveCenter(stand.x, stand.y);
+}
+
+/** Where the camera stands for a yard, and how close. */
+function yardStand(
+  viewport: Viewport,
+  district: District
+): { x: number; y: number; scale: number } | null {
+  const land = new Set<string>();
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (const [x, a, b] of district.cells) {
+    for (let y = a; y <= b; y++) land.add(`${x},${y}`);
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (a < y0) y0 = a;
+    if (b > y1) y1 = b;
+  }
+  if (!land.size || !Number.isFinite(x0)) return null;
+
+  let best: { x: number; y: number; scale: number; share: number } | null = null;
+  for (const scale of YARD_RUNGS) {
+    /* How many cells the window holds at this rung. One short of the true
+       count on each side, so the frame is land right to its edges rather than
+       land up to a coast that happens to fall on the last row. */
+    const wide = Math.max(1, Math.floor(viewport.screenWidth / scale / CELL));
+    const tall = Math.max(1, Math.floor(viewport.screenHeight / scale / CELL));
+    const spot = densest(land, { x0, x1, y0, y1 }, wide, tall);
+    const stand = {
+      /* Cell corner to world pixel, and the world's y runs the other way. */
+      x: (spot.x + wide / 2) * CELL,
+      y: -(spot.y + tall / 2) * CELL,
+      scale,
+      share: spot.share,
+    };
+    if (!best || stand.share > best.share) best = stand;
+    if (stand.share >= ENOUGH_LAND) return stand;
+  }
+  return best;
+}
+
+/** The corner of the `wide`×`tall` window of cells holding the most land. */
+function densest(
+  land: ReadonlySet<string>,
+  box: { x0: number; x1: number; y0: number; y1: number },
+  wide: number,
+  tall: number
+): { x: number; y: number; share: number } {
+  /* A summed-area table over the district's box, so every candidate window is
+     four lookups rather than a sweep. The districts are small, but this runs on
+     every open and the whole point of the move is that it feels instant. */
+  const w = box.x1 - box.x0 + 1;
+  const h = box.y1 - box.y0 + 1;
+  const sum = new Int32Array((w + 1) * (h + 1));
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) {
+      const here = land.has(`${box.x0 + i},${box.y0 + j}`) ? 1 : 0;
+      sum[(j + 1) * (w + 1) + i + 1] =
+        here + sum[j * (w + 1) + i + 1]! + sum[(j + 1) * (w + 1) + i]! - sum[j * (w + 1) + i]!;
+    }
+  }
+  const at = (i: number, j: number): number =>
+    sum[Math.min(Math.max(j, 0), h) * (w + 1) + Math.min(Math.max(i, 0), w)]!;
+
+  let best = { x: box.x0, y: box.y0, share: 0 };
+  /* The window may be wider than the district, and often is once it is close
+     in, so it is allowed to hang off either side: standing half in the sea at
+     the edge of a small district is better than never reaching its middle. */
+  const from = Math.min(0, w - wide);
+  const to = Math.max(0, w - wide);
+  const up = Math.min(0, h - tall);
+  const down = Math.max(0, h - tall);
+  for (let j = up; j <= down; j++) {
+    for (let i = from; i <= to; i++) {
+      const held = at(i + wide, j + tall) - at(i, j + tall) - at(i + wide, j) + at(i, j);
+      const share = held / (wide * tall);
+      if (share > best.share) best = { x: box.x0 + i, y: box.y0 + j, share };
+    }
+  }
+  return best;
 }
