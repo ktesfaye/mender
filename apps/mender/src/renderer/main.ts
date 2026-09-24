@@ -173,7 +173,7 @@ async function boot(): Promise<void> {
      * board it still carries has been moved onto the yard's own scrim, this is
      * what keeps them from being written over each other.
      */
-    const wood = (rows: Row[], at?: 'now'): void => {
+    const wood = (rows: Row[]): void => {
       /* Anything opened from inside a project is laid over its yard rather
          than shown instead of it: the world drops to silhouettes, a wash comes
          down over the middle and the right, and what you asked for is written
@@ -189,16 +189,19 @@ async function boot(): Promise<void> {
       if (!yard.showing) yard.up(true, true);
       const asks = prompting();
       yard.reading({ trail: wayHome(), rows, ...(asks ? { asks } : {}) });
-      void at;
     };
 
-    /** The same surface again, for a board that has changed under you. */
+    /**
+     * The same surface again, for a board that has changed under you.
+     *
+     * Every board in this app is live: a file changes on disk, a commit lands,
+     * an agent says another sentence. Nothing here decides what the board says
+     * — it is handed the rows again and writes them where they already were.
+     */
     const rewrite = (rows: Row[]): void => {
-      if (yard.open) {
-        yard.reading({ trail: wayHome(), rows, ...(prompting() ? { asks: prompting()! } : {}) });
-        return;
-      }
-      /* Unreachable: every surface is the yard's now. */
+      if (!yard.open) return;
+      const asks = prompting();
+      yard.reading({ trail: wayHome(), rows, ...(asks ? { asks } : {}) });
     };
 
     /**

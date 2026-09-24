@@ -151,6 +151,12 @@ export function makeYard(layer: Layer, does: Doings): Standing {
      pressing one puts it down again. */
   const hands = box({}, 'position:relative;display:flex;align-items:center;gap:8px;flex:none');
   writing.appendChild(hands);
+  /* What you said while somebody was busy waits just above the line, with the
+     line rather than with the yard, so it is still there while you are reading
+     something else. It is a thing you might want back, and a thing you might
+     want back does not go behind a wash. */
+  const stillAt = box({ left: 0, right: 0, bottom: 196 });
+  stage.appendChild(stillAt);
   const line = makeLine(writing);
   /* And what a slash or an @ has opened sits just above the line, growing
      upward from it. It is under the line in the sense that matters — it is
@@ -201,6 +207,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     writing.style.right = `${layer.edge()}px`;
     under.style.left = `${layer.edge()}px`;
     under.style.right = `${layer.edge()}px`;
+    stillAt.style.left = `${layer.edge()}px`;
+    stillAt.style.right = `${layer.edge()}px`;
   }
 
   let last: Yard | undefined;
@@ -225,7 +233,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     asked(root, columns.asked, yard, floor, layer.cramped(), does);
     thinking(covered, columns.thinking, yard, floor, does);
     made(covered, columns.made, yard, floor);
-    still(root, yard, layer.edge(), does);
+    still(stillAt, yard, does);
     said_line(root, layer.edge());
     rail(root, yard, layer.cramped(), layer.edge(), does);
     /* What the line asks for follows what the yard is: somebody at the gate
@@ -1035,10 +1043,11 @@ function carried(hands: HTMLElement, yard: Yard, does: Doings): void {
  * because a thing you said that has not happened yet is a thing you might want
  * back, and pressing one takes it back.
  */
-function still(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
+function still(at: HTMLElement, yard: Yard, does: Doings): void {
+  at.replaceChildren();
   const waiting = yard.session?.waiting ?? [];
   if (!waiting.length) return;
-  const at = stack({ left: edge, right: edge, bottom: 196 }, 4);
+  at.style.cssText += ';display:flex;flex-direction:column;gap:4px';
   at.appendChild(label('still to say, press to take one back', {}));
   for (const one of waiting) {
     const press = astop(
@@ -1048,7 +1057,6 @@ function still(root: HTMLElement, yard: Yard, edge: number, does: Doings): void 
     press.style.cssText += "font-family:'Caveat',cursive;font-size:18px";
     at.appendChild(press);
   }
-  root.appendChild(at);
 }
 
 function said_line(root: HTMLElement, edge: number): void {
