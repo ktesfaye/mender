@@ -1093,12 +1093,11 @@ sits on a layer over it, which is what the designs are and is a great deal less
 code than laying out a bitmap face by hand was.
 
 The four faces are carried in the app rather than fetched, all four under the
-open font licence, and Departure Mono is on its way out with the board. The
-design's colours, tones, motion and thresholds are one token file taken verbatim
-off the handoff, with the two places the handoff contradicts itself settled in
-the file: section labels are stone because gold means pressable and nothing
-else, and the faces are the four the designs actually drew with rather than the
-design system's pixel placeholders, which no design ever used.
+open font licence. The design's colours, tones, motion and thresholds are one
+token file taken verbatim off the handoff, with the two places the handoff
+contradicts itself settled in the file: section labels are stone because gold
+means pressable and nothing else, and the faces are the four the designs
+actually drew with rather than the design system's pixel placeholders.
 
 The sprites in among the writing come off the same packed sheets the village
 draws from, so there is still one copy of the art. The villagers in the yard are
@@ -1106,26 +1105,95 @@ ours rather than the kit's: the designs used the kit's own character because it
 was what came in the box, and it is an unfinished template that stands taller
 than the doors it would be standing at.
 
-13a is drawn, from the designs' own session, over the real island composed out
-of the real world files and dimmed to exactly what the handoff specifies. It was
-looked at at four window sizes and fixed at each: the columns keep their
-proportions rather than their widths, the page stops growing and centres once it
-is wider than a line worth reading, every column gives up its beginning rather
-than running over the one below it and says how much it gave up, and a short
-window drops the older notes off the gatepost and the words off the rail, which
-is the handoff's own answer.
+13a is drawn, over the real island composed out of the real world files and
+dimmed to exactly what the handoff specifies. It was looked at at four window
+sizes and fixed at each: the columns keep their proportions rather than their
+widths, the page stops growing and centres once it is wider than a line worth
+reading, every column gives up its beginning rather than running over the one
+below it and says how much it gave up, and a short window drops the older notes
+off the gatepost and the words off the rail.
 
-`yard.html` is the harness: the yard on its own over the real village, fed the
-designs' own session, with no wire and no agent.
-
-Closed: nothing in the ledger yet. This wave is the seam, not a surface.
+`pnpm run yard` is the harness: the yard on its own over the real village, fed
+the designs' own session, with no wire and no agent.
 
 Also in it, because nothing could be looked at until it was: the board was
-broken at HEAD. The commit before this one moved it from a plank to a paper
-scroll and left `board.ts` on the old lettering, so the app did not build at
-all. It builds again. That code is still going away.
+broken at HEAD, half-migrated from a plank to a paper scroll, so the app did not
+build at all. It builds again.
+
+### W-B — gold is pressable · done
+
+The rules sheet, as the primitives every board uses rather than as something
+each of them reinvents. Gold is pressable and pressable is gold; the result of
+pressing lands on the line you pressed and settles back, except a failure, which
+stays; anything that cannot be taken back needs two presses and the first press
+names the cost; nothing spins, and a wait too short to notice says nothing.
+
+The arrows walk the pressable lines in the order they are written, and what they
+stand on is remembered by what that line is rather than where it was. The mark
+they leave is the one fill in the whole interface, and it hugs the words rather
+than the row.
+
+And the line. It is a contenteditable on purpose: selecting a word, undo,
+pasting from another program and composing in a language that needs somewhere
+real to do it are all things people already know how to do. The one thing the
+browser gets wrong for us is the caret, so the real one is made invisible and a
+drawn one follows it, blinking in steps like everything else here.
+
+One exception to the gold rule and it is the only one on the board: the names on
+the rail keep their posture tints, because the rail's whole job is telling you
+from across the room which session wants you.
+
+### W-C — the yard on a real session · done
+
+Pressing a district walks you into the session you were last in. The
+conversation is projected in the main process as four lists rather than one
+column, because notes, thoughts, deeds and errands are four different things
+about the same conversation. The protocol carries no clock, so items are stamped
+as they arrive and nothing is said at all about ones only ever seen replayed.
+Each tool call says which kind of tool it was, because a signpost, a crate, an
+anvil and a tub over the fire are what you read down that column.
+
+The projects moved to a rack in the top right, over both the island and the
+yard, one slot each with a prop standing in it and the name on hover. That is
+the only pressable box in the app.
+
+Driven against a real Claude in a real worktree, twice: said something, watched
+the note go up on the post in handwriting, the answer come back in the serif,
+and the command it ran appear in the margin with its prop beside it.
+
+### W-E — everything else is laid over it · done
+
+Opening a file, a change, a commit, a folder, a shell, a pull request, the
+finder, the card or a new session lays it over the yard: the world drops to
+silhouettes, a flat brown wash comes down over the middle and the right, and
+what you asked for is written on that. The gatepost and the rail stay. The way
+home is written across the top, one gold step per level.
+
+Every board in this app was already a list of rows computed by files that know
+nothing about how any of it is drawn, so the whole of the port is one function
+that turns a row into an element, and not one of those files changed.
+
+**The wooden board is gone.** The plank, the paper scroll it was half-way
+through becoming, the bitmap lettering that measured it and the harness that
+drew it are deleted, along with their art. Out on the island only the line and
+the wash come up, because there is no yard out there to lay anything over.
+
+### W-F — the ages · part
+
+The fire says what the session is doing: lit is somebody working, banked is
+somebody at the gate, embers is finished, out is nobody home, and the light in
+the yard follows it. A place nobody has touched for days is darker than one
+somebody is standing in. What it means to do has its own place above the
+thinking and is only there when the agent has actually posted one.
+
+Left in it: a worktree being cut has no state on the wire to draw from, because
+starting a session is one atomic call that does not return until the worktree
+is there; a project with twenty sessions and a project with twenty-three agents
+have never been seen because nothing here has had that many; and abandoned is
+not reachable, since a project the village has forgotten is gone.
 
 ### Next
 
-W-B is the rules sheet as primitives, and W-C is the yard on a real project and
-a real session. Neither has started.
+The long tail of the 162 states, and the behaviour groups. Nothing in W-G or
+W-H has been started as a wave, though a good deal of both came across with the
+boards that carried it.

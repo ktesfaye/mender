@@ -163,6 +163,33 @@
   }
 }
 
+/**
+ * Something laid over the yard arriving, top to bottom, in four steps.
+ *
+ * Not a fade and not a slide: the art underneath flips between frames rather
+ * than gliding between them, and anything smooth next to it reads as coming
+ * from another game. Four steps is enough to see it happen and few enough that
+ * it never feels like waiting.
+ */
+@keyframes yard-arrive {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/** A lantern hung on the beam, dropping into place rather than appearing. */
+@keyframes yard-hang {
+  from {
+    transform: translateY(-12px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 @keyframes yard-step {
   0% {
     transform: translateY(0);

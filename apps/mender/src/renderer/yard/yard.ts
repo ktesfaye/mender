@@ -114,6 +114,10 @@ export interface Standing {
   close(): void;
 }
 
+/** Which lanterns were on the beam last time, so a new one can be seen to
+    arrive rather than simply being there. */
+const onTheBeam = new Set<string>();
+
 export function makeYard(layer: Layer, does: Doings): Standing {
   /* Everything the yard is, under one thing that can be taken away. The shelf
      of projects lives on the layer beside this rather than inside it, because
@@ -1065,6 +1069,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
 
     const lamp = sprite(one.lit ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff, 2);
     lamp.style.cssText += `;left:${x}px;top:${top}px`;
+    if (!onTheBeam.has(one.id)) {
+      onTheBeam.add(one.id);
+      lamp.style.animation = 'yard-hang 240ms steps(3,end)';
+    }
     const dimmed = one.here ? '' : 'brightness(.75)';
     lamp.style.filter = dimmed;
     if (one.posture === 'wants-you') {

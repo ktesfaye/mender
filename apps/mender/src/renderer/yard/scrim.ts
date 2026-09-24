@@ -76,9 +76,17 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
       root.style.bottom = `${bottom}px`;
     },
     show: (reading) => {
+      const was = showing;
       showing = Boolean(reading);
       root.style.display = reading ? '' : 'none';
       if (!reading) return;
+      /* It steps in from the top the first time it comes up, and after that a
+         change of what is on it is a cut: only the trail moves, because you
+         asked for the next thing and watching it wipe in again is a tax. */
+      if (!was) {
+        root.style.animation = 'yard-arrive 160ms steps(4,end)';
+        window.setTimeout(() => (root.style.animation = ''), 200);
+      }
       way.replaceChildren(trailOf(reading.trail));
       meta.replaceChildren(reading.meta ? exact(reading.meta, 12, '#a89272') : '');
       sheet.write(reading.rows);

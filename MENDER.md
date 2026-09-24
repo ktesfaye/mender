@@ -11,10 +11,11 @@ projects are founded and grow. With nothing on it, it is a small island with a
 campground and a fire.
 
 Nothing in this app is conventional app chrome. Settings is an island with a
-windmill on it. Opening a building zooms the camera in, slides the district
-aside, and brings in ONE wooden board. There is no title bar full of buttons,
-no sidebar tree, no tab strip. The village keeps living behind whatever is
-open; it is never a screen change.
+windmill on it. Opening a district pulls the camera in on it and dims the
+village to a place at night, and the writing goes straight onto it: no board
+slides in, no panel comes down, no page turns. There is no title bar full of
+buttons, no sidebar tree, no tab strip. The village keeps living behind
+whatever is open; it is never a screen change.
 
 ## This is a fork of Emdash, and only the back end is inherited
 
@@ -44,8 +45,9 @@ though it scores lower on parity. Where a feature is genuinely not wanted, it
 is cut on purpose and recorded as cut, not smuggled back in as a panel because
 upstream had one.
 
-One board. One thing on it at a time. Not several boards, not propped panels,
-not split panes, not a tab strip.
+One screen. One thing being read at a time, laid over the village rather than
+instead of it. Not several boards, not propped panels, not split panes, not a
+tab strip.
 
 ## Where things are
 
@@ -97,19 +99,52 @@ while it was busy and it has not heard yet, which you can take back by pressing
 it. Nothing warns an agent that it is running out of room; it simply starts
 losing the beginning of the conversation, so the village says it instead.
 
-**A project's board is the work in it.** Opening a district puts every session
-in that project on the wood, each under the name it gave itself and with a mark
-for what it is doing, and a line at the end that starts another. Pressing one
-opens it; pressing the one you are already in is how you call it something
-else, and a name you write yourself is never overwritten by the agent's. The
-checkout the project sits on is a footnote under all of that, because the
-folder is not what you came for.
+**Opening a project is walking into the work.** Not a list you press into: you
+land in the session you were last in, standing in its yard at night. What you
+asked for is nailed to a gatepost on the left, newest on parchment and the ones
+under it weathered into the post. What it is thinking rises off the fire in the
+middle, oldest first and brightening as it comes down to what is happening now,
+which is the one thing on this screen set large. What it made is loaded on a
+cart to the right, with everything it did listed under it, a prop from the kit
+standing for each: a signpost for something read, a crate for something
+written, an anvil for something changed, a tub over the fire for something set
+running. Under all of that is the ground itself, with whoever it sent out
+standing in the firelight with an answer or off in the dark still working.
 
-**The rail is only how you get between projects.** A plank along the bottom
-carries one nailed tag per project and nothing else. No session names live on
-it: a session belongs to a project and there is room to say what it is on the
-project's own board. Escape lets go of one thing at a time — what you are
-writing, then the session, then the board.
+The fire is the session. Lit is somebody working, banked is somebody who has
+stopped and is standing at the gate, embers is finished, out is nobody home,
+and the light in the whole yard follows it. A place nobody has touched for days
+is darker than one somebody is standing in, because age is carried by the light
+here and never by a date.
+
+**The rail is the sessions, and the projects are a rack on the wall.** A plank
+along the bottom hangs one lantern per session in the project you are in: lit
+means somebody is awake in there, the one you are standing in hangs lowest and
+brightest, and the one that wants you flickers. At the end of the beam is one
+empty hook, which is how a new session is started. The projects moved to a rack
+of tools in the top right, over both the island and the yard, one slot each
+with a prop standing in it and no names until you hover. It folds away.
+
+**Everything else is laid over the yard, never instead of it.** A file, a
+change, a commit, a folder, a search, a shell, a pull request, the card behind
+`/agent`: opening any of them drops the world to silhouettes and brings a flat
+brown wash down over the middle and the right, with what you asked for written
+on it. The gatepost keeps its column and the rail keeps its strip, so while you
+read you can still see what you asked for and who else is working. The way home
+is written across the top, one gold step per level, and Escape walks the same
+steps one at a time.
+
+**Gold is pressable and pressable is gold.** Nothing else anywhere is gold, and
+a pressable thing carries no underline, no arrow and no box. The result of
+pressing lands on the line you pressed: it rewrites itself with what happened,
+sits long enough to be read and settles back, except a failure, which stays.
+Anything that cannot be taken back needs two presses and the first press is
+what names the cost. Nothing spins: a wait is a number counting up, and a wait
+too short to notice says nothing at all. There are two exceptions to the gold
+rule in the whole app and they are both deliberate: the rack of projects, which
+is an inventory rack out of a game rather than a piece of the board, and the
+names on the rail, which keep their posture tints because the rail's whole job
+is telling you from across the room which session wants you.
 
 **A slash on the line is how a session is worked.** Writing one turns the lines
 under it into everything you could mean, and most of it is the agent's own:
