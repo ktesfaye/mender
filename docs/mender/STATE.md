@@ -1192,8 +1192,23 @@ is there; a project with twenty sessions and a project with twenty-three agents
 have never been seen because nothing here has had that many; and abandoned is
 not reachable, since a project the village has forgotten is gone.
 
+### What the designs do not cover, and neither does this
+
+Three whole groups of the 162 states are about things this app has never had a
+back end for, and they did not arrive with the yard because there was nothing
+to arrive: a project's own settings, worktree housekeeping and disk, and the
+dev servers and scheduled runs that go with them. Emdash has all of it and
+Mender has never projected any of it, so those are a wave of their own and not
+part of the district's surface.
+
+Three smaller things have no source rather than no surface. A lantern cannot
+say it has something you have not read, because no read state exists anywhere.
+A session cannot say its worktree is still being cut, because starting one is a
+single call that does not return until the worktree is there. And a new session
+is started with a name and nothing else: the five ways emdash can set up a
+workspace are not offered because the call does not take them.
+
 ### Next
 
-The long tail of the 162 states, and the behaviour groups. Nothing in W-G or
-W-H has been started as a wave, though a good deal of both came across with the
-boards that carried it.
+The long tail of the 162 states that do have a source, and the behaviour
+groups. A good deal of both came across with the boards that carried them.
