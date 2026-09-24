@@ -3,12 +3,13 @@ import {
   Container,
   Graphics,
   Rectangle,
+  Sprite,
   TilingSprite,
   type Application,
   type FederatedPointerEvent,
   type Texture,
 } from 'pixi.js';
-import { ADVANCE, fitted, GLYPH, LINE, words } from './lettering';
+import { BASE, fitted, LINE, stepOf, widthOf, words, type Hand } from './lettering';
 import { RAIL } from './rail';
 
 /**
@@ -63,8 +64,9 @@ export interface Run {
 /** Which end of a line survives when it is too long for the board. */
 type Keep = 'front' | 'tail';
 
-/** What a row does when it is pressed, if it does anything. */
-type Pick = { pick?: string };
+/** What a row does when it is pressed, if it does anything, and which hand it
+    is written in when that is not the board's default. */
+type Pick = { pick?: string; face?: Hand };
 
 export type Row = (
   | { kind: 'title'; text: string }
@@ -87,13 +89,23 @@ export type Row = (
   Pick;
 
 export interface BoardArt {
-  planks: string;
+  /** The sheet, tiled to fill whatever the rods leave between them. */
+  paper: string;
+  /** The strip of sheet turning under the top rod, and over the bottom one. */
+  under: string;
+  over: string;
+  /** One rod, drawn once and stood at both the top and the bottom. */
+  rod: string;
   /** The same timber with its plank ends cut off, for the rail to run on. */
   rail: string;
   width: number;
-  height: number;
-  /** Offsets, within one tile, where two planks meet. */
-  seams: number[];
+  /** How tall one tile of the paper is. */
+  tile: number;
+  /** How tall the turning strip is, under the top rod and over the bottom. */
+  curl: number;
+  rodHeight: number;
+  /** How far a rod juts out past the paper, each side. */
+  overhang: number;
 }
 
 /** About how much of the window the board covers, which is what decides how
@@ -106,7 +118,14 @@ const SLIDE_MS = 300;
 export class Board {
   readonly view = new Container();
 
-  private readonly planks: TilingSprite;
+  /** The sheet, tiled to whatever height the rods leave for it. */
+  private readonly paper: TilingSprite;
+  private readonly underCurl: Sprite;
+  private readonly overCurl: Sprite;
+  private readonly topRod: Sprite;
+  private readonly bottomRod: Sprite;
+  /** How tall the whole scroll is this layout, rods and all. Set in `lay()`. */
+  private bodyHeight = 0;
   private readonly shadow = new Graphics();
   private readonly writing = new Container();
   private readonly clip = new Graphics();
@@ -133,11 +152,28 @@ export class Board {
   constructor(
     private readonly pixi: Application,
     private readonly art: BoardArt,
-    texture: Texture
+    paper: Texture,
+    rod: Texture,
+    under: Texture,
+    over: Texture
   ) {
-    this.planks = new TilingSprite({ texture, width: art.width, height: art.height });
+    this.paper = new TilingSprite({ texture: paper, width: art.width, height: art.tile });
+    this.underCurl = new Sprite(under);
+    this.overCurl = new Sprite(over);
+    this.topRod = new Sprite(rod);
+    this.bottomRod = new Sprite(rod);
+    this.topRod.position.x = this.bottomRod.position.x = -art.overhang;
     this.writing.addChild(this.standing, this.cursor);
-    this.view.addChild(this.shadow, this.planks, this.writing, this.clip);
+    this.view.addChild(
+      this.shadow,
+      this.topRod,
+      this.underCurl,
+      this.paper,
+      this.overCurl,
+      this.bottomRod,
+      this.writing,
+      this.clip
+    );
     this.writing.mask = this.clip;
     this.view.eventMode = 'static';
     this.view.visible = false;
@@ -217,7 +253,7 @@ export class Board {
    */
   scrolled(key: string): boolean {
     if (!this.open) return false;
-    const page = this.planks.height - LINE * 2;
+    const page = this.bodyHeight - LINE * 2;
     const by =
       key === 'ArrowDown'
         ? LINE
@@ -274,7 +310,7 @@ export class Board {
   private look(): void {
     const hit = this.hits.find((row) => row.pick === this.marked);
     if (!hit) return;
-    const shown = this.planks.height - PAD_Y * 2;
+    const shown = this.bodyHeight - PAD_Y * 2;
     if (hit.from < this.scroll) this.scrollBy(hit.from - this.scroll);
     else if (hit.to > this.scroll + shown) this.scrollBy(hit.to - shown - this.scroll);
   }
@@ -324,17 +360,23 @@ export class Board {
     // The rail is nailed along the bottom, and the board stands on the floor
     // it leaves rather than behind it.
     const room = Math.floor(window.innerHeight / this.times) - RAIL - AIR * 2;
-    // It has to end where two planks meet. A board that stops halfway down a
-    // plank is a board somebody sawed through.
-    const tiles = Math.max(1, Math.floor(room / this.art.height));
-    const over = room - tiles * this.art.height;
-    const seam = [...this.art.seams].reverse().find((offset) => offset <= over) ?? 0;
-    const height = tiles * this.art.height + seam;
+    // The rods are always drawn whole; it is the sheet between them that has
+    // to end where one of its own tiles ends, not halfway through one.
+    const fixed = this.art.rodHeight * 2 + this.art.curl * 2;
+    const tiles = Math.max(1, Math.floor((room - fixed) / this.art.tile));
+    const sheet = tiles * this.art.tile;
+    const height = fixed + sheet;
 
-    this.planks.height = height;
-    // The board is a solid object, not a hole with planks drawn behind it: it
+    this.bodyHeight = height;
+    this.topRod.position.y = 0;
+    this.underCurl.position.y = this.art.rodHeight;
+    this.paper.position.y = this.art.rodHeight + this.art.curl;
+    this.paper.height = sheet;
+    this.overCurl.position.y = this.paper.position.y + sheet;
+    this.bottomRod.position.y = this.overCurl.position.y + this.art.curl;
+    // The board is a solid object, not a hole with a sheet drawn behind it: it
     // has to be hit before the island is, or the wheel zooms the village and a
-    // drag across the wood pans it.
+    // drag across the paper pans it.
     this.view.hitArea = new Rectangle(0, 0, this.art.width, height);
     this.shadow.clear().rect(2, 3, this.art.width, height).fill({ color: 0x000000, alpha: 0.3 });
     this.clip
@@ -389,52 +431,62 @@ export class Board {
           break;
         }
         case 'typed': {
-          const shown = fitted(row.text, room - ADVANCE * 2, 'tail');
-          const written = words(shown, INK);
+          const hand = row.face ?? 'hand';
+          const step = stepOf(hand);
+          const shown = fitted(row.text, room - step * 2, 'tail', hand);
+          const written = words(shown, INK, hand);
           written.position.set(PAD_X, y);
           this.writing.addChild(written);
-          this.cursor.clear().rect(PAD_X + shown.length * ADVANCE, y + 1, ADVANCE - 1, GLYPH - 2);
+          this.cursor
+            .clear()
+            .rect(PAD_X + widthOf(shown, hand), y + 1, step - 1, BASE - 2);
           this.cursor.fill(INK);
           this.cursor.visible = true;
           y += LINE;
           break;
         }
         case 'prose': {
+          const hand = row.face ?? 'hand';
+          const unit = stepOf(hand);
           const step = row.in ?? 0;
           const gutter = (row.mark ? GUTTER : 0) + step;
           const tone = TONES[row.tone ?? 'ink'];
           const lines = wrapped(
             row.runs ?? [{ text: row.text, tone: row.tone }],
-            Math.floor(room / ADVANCE) - gutter
+            room - gutter * unit,
+            hand
           );
           if (row.mark) {
-            const mark = words(row.mark, tone);
-            mark.position.set(PAD_X + step * ADVANCE, y);
+            const mark = words(row.mark, tone, hand);
+            mark.position.set(PAD_X + step * unit, y);
             this.writing.addChild(mark);
           }
           for (const line of lines) {
-            let at = PAD_X + gutter * ADVANCE;
+            let at = PAD_X + gutter * unit;
             for (const run of line) {
-              const written = words(run.text, run.tone ? TONES[run.tone] : tone);
+              const written = words(run.text, run.tone ? TONES[run.tone] : tone, hand);
               written.position.set(at, y);
               this.writing.addChild(written);
-              at += run.text.length * ADVANCE;
+              at += widthOf(run.text, hand);
             }
             y += LINE;
           }
           break;
         }
         case 'entry': {
-          const mark = words(row.mark, TONES[row.tone ?? 'faded']);
+          const hand = row.face ?? 'hand';
+          const unit = stepOf(hand);
+          const mark = words(row.mark, TONES[row.tone ?? 'faded'], hand);
           mark.position.set(PAD_X, y);
-          const text = words(fitted(row.text, room - GUTTER * ADVANCE, row.keep), INK);
-          text.position.set(PAD_X + GUTTER * ADVANCE, y);
+          const text = words(fitted(row.text, room - GUTTER * unit, row.keep, hand), INK, hand);
+          text.position.set(PAD_X + GUTTER * unit, y);
           this.writing.addChild(mark, text);
           y += LINE;
           break;
         }
         default: {
-          const written = words(fitted(row.text, room, row.keep), TONES[row.tone ?? 'ink']);
+          const hand = row.face ?? 'hand';
+          const written = words(fitted(row.text, room, row.keep, hand), TONES[row.tone ?? 'ink'], hand);
           written.position.set(PAD_X, y);
           this.writing.addChild(written);
           y += LINE;
@@ -459,7 +511,7 @@ export class Board {
     }
     // Something that is no longer on the board is not somewhere to stand.
     if (this.marked && !this.hits.some((hit) => hit.pick === this.marked)) this.marked = null;
-    this.reach = Math.max(0, y - (this.planks.height - PAD_Y * 2));
+    this.reach = Math.max(0, y - (this.bodyHeight - PAD_Y * 2));
     this.scroll = this.follow ? this.reach : Math.min(this.scroll, this.reach);
     this.writing.y = PAD_Y - Math.round(this.scroll);
   }
@@ -476,7 +528,7 @@ export class Board {
  * middle of a sentence keeps its own writing across a line break instead of
  * losing it at the edge of the board.
  */
-function wrapped(runs: readonly Run[], columns: number): Run[][] {
+function wrapped(runs: readonly Run[], room: number, hand: Hand): Run[][] {
   const lines: Run[][] = [];
   let line: Run[] = [];
   let width = 0;
@@ -489,7 +541,21 @@ function wrapped(runs: readonly Run[], columns: number): Run[][] {
     const last = line[line.length - 1];
     if (last && last.tone === tone) last.text += text;
     else line.push({ text, tone });
-    width += text.length;
+    width += widthOf(text, hand);
+  };
+  // As much of `piece` as fits in what is left of the line, at least one
+  // character so a word wider than the whole board still makes progress.
+  const chunk = (piece: string): [string, string] => {
+    const letters = [...piece];
+    let taken = 0;
+    let wide = 0;
+    while (taken < letters.length) {
+      const next = wide + widthOf(letters[taken] ?? '', hand);
+      if (next > room && taken > 0) break;
+      wide = next;
+      taken += 1;
+    }
+    return [letters.slice(0, taken).join(''), letters.slice(taken).join('')];
   };
 
   /* Whether the writing so far ended mid-word. Runs are cut where the writing
@@ -510,20 +576,21 @@ function wrapped(runs: readonly Run[], columns: number): Run[][] {
       }
       for (const word of paragraph.split(/\s+/).filter(Boolean)) {
         let piece = word;
-        while (piece.length > columns) {
+        while (widthOf(piece, hand) > room) {
           if (width) done();
-          put(piece.slice(0, columns), run.tone);
+          const [head, rest] = chunk(piece);
+          put(head, run.tone);
           done();
-          piece = piece.slice(columns);
+          piece = rest;
           joined = false;
         }
         const glue = joined && width > 0;
         joined = false;
         if (glue) {
-          if (width + piece.length > columns) done();
+          if (width + widthOf(piece, hand) > room) done();
           put(piece, run.tone);
         } else if (!width) put(piece, run.tone);
-        else if (width + 1 + piece.length <= columns) put(` ${piece}`, run.tone);
+        else if (width + widthOf(` ${piece}`, hand) <= room) put(` ${piece}`, run.tone);
         else {
           done();
           put(piece, run.tone);
@@ -537,12 +604,17 @@ function wrapped(runs: readonly Run[], columns: number): Run[][] {
   return lines.length ? lines : [[]];
 }
 
-/** Take the board out of storage. Its timber is cut by `tools/make-board.py`. */
+/** Take the board out of storage. Its timber is cut by `tools/make-scroll.py`. */
 export async function makeBoard(pixi: Application): Promise<Board> {
   const art = (await Assets.load<BoardArt>('./board/board.json')) as BoardArt;
-  const texture = await Assets.load<Texture>('./board/' + art.planks);
-  texture.source.scaleMode = 'nearest';
-  const board = new Board(pixi, art, texture);
+  const [paper, rod, under, over] = await Promise.all([
+    Assets.load<Texture>('./board/' + art.paper),
+    Assets.load<Texture>('./board/' + art.rod),
+    Assets.load<Texture>('./board/' + art.under),
+    Assets.load<Texture>('./board/' + art.over),
+  ]);
+  for (const texture of [paper, rod, under, over]) texture.source.scaleMode = 'nearest';
+  const board = new Board(pixi, art, paper, rod, under, over);
   pixi.stage.addChild(board.view);
   return board;
 }

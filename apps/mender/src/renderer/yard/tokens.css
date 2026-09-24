@@ -1,0 +1,180 @@
+/**
+ * The yard's tokens.
+ *
+ * Taken verbatim off the design handoff, which is the only authority for any
+ * value in here. Nothing is invented and nothing is rounded: where the designs
+ * say a colour or a duration, that is what this file says.
+ *
+ * Two things are settled here that the designs leave in two places at once.
+ * Gold means pressable and nothing else, so section labels are stone even
+ * though the oldest turn of the session screen still draws them gold. And the
+ * faces are the four the designs actually use rather than the design system's
+ * pixel placeholders, which no design ever drew with.
+ */
+
+:root {
+  /* ── the night ─────────────────────────────────────────────────────────── */
+  --yard-night: #1d1811;
+  --yard-shadow: #120d07;
+
+  /* ── ink ───────────────────────────────────────────────────────────────── */
+  --yard-ink-bright: #f4e3c0;
+  --yard-ink-body: #dcc8a0;
+  --yard-ink-dim: #a89272;
+  --yard-thought-live: #ffdca4;
+  --yard-parchment: #fff4d4;
+
+  /* ── gold: the one pressable thing ─────────────────────────────────────── */
+  --yard-gold: #e0b56a;
+  --yard-gold-hover: #f0cf8a;
+  --yard-gold-down: #b08f52;
+
+  /* ── the five tones, each always said as well as shown ─────────────────── */
+  --yard-resting: #a89272;
+  --yard-working: #f4e3c0;
+  --yard-wants-you: #ff9a6a;
+  --yard-done: #a8c469;
+  --yard-broken: #e0735a;
+
+  /* ── timber ────────────────────────────────────────────────────────────── */
+  --yard-timber-light: #5e4326;
+  --yard-timber: #54391e;
+  --yard-timber-mid: #4a3520;
+  --yard-timber-dark: #3a2712;
+  --yard-outline: #482510;
+
+  /* ── rules and scrims ──────────────────────────────────────────────────── */
+  --yard-rule: rgba(244, 227, 192, 0.18);
+  --yard-rule-soft: rgba(244, 227, 192, 0.14);
+  --yard-scrim: rgba(72, 37, 16, 0.72);
+
+  /* ── firelight: radial pools only, never a flat wash ───────────────────── */
+  --yard-fire-faint: rgba(255, 168, 60, 0.14);
+  --yard-fire: rgba(255, 168, 60, 0.3);
+  --yard-fire-strong: rgba(255, 168, 60, 0.34);
+
+  /* ── how bright the world is behind whatever you are doing ─────────────── */
+  --yard-world-open: brightness(0.22) saturate(0.5);
+  --yard-world-reading: brightness(0.12) saturate(0.4);
+  --yard-world-stale: brightness(0.14) saturate(0.3);
+  --yard-figure-lit: brightness(0.95);
+  --yard-figure-out: brightness(0.46) saturate(0.55);
+  --yard-figure-silhouette: brightness(0.16);
+  --yard-fire-reading: brightness(0.55);
+
+  /* ── the faces ─────────────────────────────────────────────────────────── */
+  --yard-face-label: 'Josefin Sans', sans-serif; /* labels and UI */
+  --yard-face-hand: 'Caveat', cursive; /* what you asked */
+  --yard-face-thought: 'Cormorant Garamond', serif; /* what it is thinking */
+  --yard-face-mono: 'Courier Prime', monospace; /* names, status, code */
+
+  /* ── motion: stepped, whole pixels, no easing curve and nothing springs ── */
+  --yard-step-fast: 80ms;
+  --yard-step: 140ms;
+  --yard-step-slow: 240ms;
+  --yard-blink: 900ms;
+  --yard-flicker: 480ms;
+  --yard-ease: steps(1, end);
+  --yard-ease-2: steps(2, end);
+
+  /* ── the thresholds the rules sheet sets ───────────────────────────────── */
+  --yard-hold-result: 3s; /* how long a result sits on the line it rewrote */
+  --yard-hold-confirm: 4s; /* how long an irreversible offer stands */
+}
+
+/* Every piece of text on the yard sits directly on the dimmed world, so it all
+   carries the same hard offset shadow. There is no blur anywhere in this app. */
+.yard,
+.yard * {
+  text-shadow: 1px 1px 0 var(--yard-shadow);
+}
+
+/* The layer is glass. Whatever is under it is the village, and the one thing
+   this app must never do is put a panel between you and it. The night colour
+   belongs to the page behind the canvas, for the moment before the world is
+   drawn and for the edges of a window wider than the island. */
+.yard {
+  background: transparent;
+  color: var(--yard-ink-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.yard img,
+.yard canvas {
+  image-rendering: pixelated;
+}
+
+/* Gold is pressable and pressable is gold. No underline, no mark, no box. */
+.yard .press {
+  color: var(--yard-gold);
+  cursor: default;
+}
+.yard .press:hover {
+  color: var(--yard-gold-hover);
+}
+.yard .press:active {
+  color: var(--yard-gold-down);
+  transform: translate(2px, 2px);
+}
+/* Busy stops being pressable and says what it is doing instead. */
+.yard .press[data-busy] {
+  color: var(--yard-ink-bright);
+  pointer-events: none;
+}
+.yard .press:focus-visible {
+  outline: 2px solid var(--yard-gold);
+  outline-offset: 3px;
+  border-radius: 0;
+}
+
+/**
+ * The three things that move on their own, and there are only three.
+ *
+ * Nothing in this village spins. A cursor says the app is awake, a fire says
+ * the session is, and somebody walking says they have not come back yet. Every
+ * other wait is a number counting up, which is honest about not knowing how
+ * long it will be in a way a spinner never is.
+ *
+ * All three are stepped rather than eased, because the art they sit in is: a
+ * sprite flips between frames, it does not glide between them, and a smoothly
+ * interpolated anything next to it reads instantly as coming from another game.
+ */
+@keyframes yard-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes yard-flicker {
+  0%,
+  100% {
+    opacity: 0.88;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes yard-step {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* The one fill in the whole interface. */
+.yard .picked {
+  background: var(--yard-gold);
+  color: var(--yard-outline);
+  border: 2px solid var(--yard-outline);
+}

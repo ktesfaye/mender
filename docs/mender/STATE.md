@@ -1076,3 +1076,56 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-42 | Update indicator (sidebar footer) |  | W11 |
 | UI-43 | Context-usage indicator (composer) | done | W2 |
 | UI-44 | Boot/crash telemetry (not user-facing) | kept |  |
+
+---
+
+## The yard — where the district surface is now
+
+The district board and the session board are both being replaced by the yard,
+designed whole in `design_handoff_village_session/` and planned in
+`YARD-PLAN.md`. `District States.dc.html` in that handoff is the checklist:
+162 states, and the ones below are the only ones that exist so far.
+
+### W-A — the seam · done
+
+The writing came off the canvas. The village stays in Pixi and every word now
+sits on a layer over it, which is what the designs are and is a great deal less
+code than laying out a bitmap face by hand was.
+
+The four faces are carried in the app rather than fetched, all four under the
+open font licence, and Departure Mono is on its way out with the board. The
+design's colours, tones, motion and thresholds are one token file taken verbatim
+off the handoff, with the two places the handoff contradicts itself settled in
+the file: section labels are stone because gold means pressable and nothing
+else, and the faces are the four the designs actually drew with rather than the
+design system's pixel placeholders, which no design ever used.
+
+The sprites in among the writing come off the same packed sheets the village
+draws from, so there is still one copy of the art. The villagers in the yard are
+ours rather than the kit's: the designs used the kit's own character because it
+was what came in the box, and it is an unfinished template that stands taller
+than the doors it would be standing at.
+
+13a is drawn, from the designs' own session, over the real island composed out
+of the real world files and dimmed to exactly what the handoff specifies. It was
+looked at at four window sizes and fixed at each: the columns keep their
+proportions rather than their widths, the page stops growing and centres once it
+is wider than a line worth reading, every column gives up its beginning rather
+than running over the one below it and says how much it gave up, and a short
+window drops the older notes off the gatepost and the words off the rail, which
+is the handoff's own answer.
+
+`yard.html` is the harness: the yard on its own over the real village, fed the
+designs' own session, with no wire and no agent.
+
+Closed: nothing in the ledger yet. This wave is the seam, not a surface.
+
+Also in it, because nothing could be looked at until it was: the board was
+broken at HEAD. The commit before this one moved it from a plank to a paper
+scroll and left `board.ts` on the old lettering, so the app did not build at
+all. It builds again. That code is still going away.
+
+### Next
+
+W-B is the rules sheet as primitives, and W-C is the yard on a real project and
+a real session. Neither has started.
