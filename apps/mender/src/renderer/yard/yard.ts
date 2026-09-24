@@ -206,6 +206,12 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     still(root, yard, layer.edge(), does);
     said_line(root, layer.edge());
     rail(root, yard, layer.cramped(), layer.edge(), does);
+    /* What the line asks for follows what the yard is: somebody at the gate
+       wants an answer, an empty project wants to know what to build, and
+       anything else is the next thing you have to say. Not while something is
+       laid over the yard, though: that has its own question. */
+    if (!scrim.up) line.asks(yard.asking ? 'answer' : yard.session ? 'say' : 'start');
+
     /* The keyboard was standing on something before the rewrite and the board
        under it is new, so put the mark back on whatever it was standing on. */
     walk.again();
@@ -560,53 +566,79 @@ function thinking(
   root.appendChild(label('what it is thinking', { left: at.x, top: HEAD.label }));
 
   const thoughts = yard.session?.thoughts ?? [];
-  if (!thoughts.length) return;
+  const posted = yard.session?.plan ?? [];
+  let top = HEAD.top;
 
-  const room = floor - HEAD.top;
-  const stream = stack({ left: at.x, top: HEAD.top, width: at.wide, height: room }, 20);
-  stream.style.cssText += ";font-family:'Cormorant Garamond',serif;overflow:hidden";
-
-  const plan = thoughts.find((one) => one.plan);
-  const between = exact('', 12, '#8a7452');
-  if (plan) {
-    stream.appendChild(thought(plan, 15, 'rgba(244,227,192,.46)', 'the plan it posted'));
-    stream.appendChild(between);
+  /* What it said it was going to do stays at the top and everything since
+     scrolls under it, because the plan is what all of it is being measured
+     against and scrolling away from it loses the measure. Only when it has
+     actually posted one: the first thing an agent says is not a plan. */
+  if (posted.length) {
+    const said = box({ left: at.x, top, width: at.wide }, "font-family:'Josefin Sans',sans-serif");
+    said.appendChild(label('what it means to do', {}));
+    const list = stack({}, 4);
+    list.style.position = 'relative';
+    list.style.marginTop = '8px';
+    for (const step of posted) {
+      const line = row(10);
+      const mark = document.createElement('span');
+      mark.style.cssText = `width:14px;flex:none;color:${STEP[step.state]}`;
+      mark.textContent = step.state === 'done' ? '·' : step.state === 'doing' ? '›' : ' ';
+      const text = document.createElement('span');
+      text.style.cssText = `font-size:14px;color:${STEP[step.state]}`;
+      text.textContent = step.said;
+      line.append(mark, text);
+      list.appendChild(line);
+    }
+    said.appendChild(list);
+    root.appendChild(said);
+    top += said.offsetHeight + 20;
   }
 
-  /* The last few, dimmest first. Nothing here is a scroll yet: what does not
-     fit is what the count above says went by. */
-  const rest = thoughts.filter((one) => !one.plan);
-  const shown = rest.slice(-4);
-  shown.forEach((one, i) => {
-    if (one.live) return;
-    const far = shown.length - 1 - i;
+  if (!thoughts.length) return;
+
+  const room = Math.max(60, floor - top);
+  const stream = stack({ left: at.x, top, width: at.wide, height: room }, 20);
+  stream.style.cssText +=
+    ";font-family:'Cormorant Garamond',serif;overflow-y:auto;pointer-events:auto";
+
+  const older = yard.session?.olderThoughts ?? 0;
+  if (older) stream.appendChild(exact(`\u25b8 ${older} more before these`, 12, '#8a7452'));
+
+  /* Oldest first and dimmest first, so the column brightens as it comes down
+     to what is happening now. The last one is set large and is the only thing
+     on this screen that is. */
+  thoughts.forEach((one, i) => {
+    const far = thoughts.length - 1 - i;
+    if (!far) {
+      const it = document.createElement('div');
+      it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
+      it.appendChild(said(`now${one.at ? ` \u00b7 ${one.at} at this` : ''}`, '#ffc98a'));
+      const body = document.createElement('span');
+      body.style.cssText =
+        'font-size:21px;line-height:1.35;color:#ffdca4;text-shadow:0 2px 10px rgba(0,0,0,.9)';
+      body.textContent = one.said;
+      it.appendChild(body);
+      stream.appendChild(it);
+      return;
+    }
     stream.appendChild(
-      thought(one, far > 1 ? 15 : 16, far > 1 ? 'rgba(244,227,192,.55)' : 'rgba(244,227,192,.62)')
+      thought(one, far > 2 ? 15 : 16, far > 2 ? 'rgba(244,227,192,.46)' : 'rgba(244,227,192,.62)')
     );
   });
 
-  const live = thoughts.find((one) => one.live);
-  if (live) {
-    const it = document.createElement('div');
-    it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
-    it.appendChild(said(`now${live.at ? ` · ${live.at} at this` : ''}`, '#ffc98a'));
-    const body = document.createElement('span');
-    body.style.cssText =
-      'font-size:21px;line-height:1.35;color:#ffdca4;text-shadow:0 2px 10px rgba(0,0,0,.9)';
-    body.textContent = live.said;
-    it.appendChild(body);
-    stream.appendChild(it);
-  }
-
   root.appendChild(stream);
-
-  /* The plan and the live thought are the two that never go: the first is what
-     everything since is measured against, and the last is what is happening.
-     What is dropped is the middle, and the count says how much. */
-  const dropped = trim(stream, room, plan ? 2 : 0);
-  const skipped = (yard.session?.olderThoughts ?? 0) + dropped;
-  between.textContent = skipped ? `\u25b8 ${skipped} notes between then and now` : '';
+  /* And it opens at the live edge, because what is happening now is what you
+     came to read. */
+  stream.scrollTop = stream.scrollHeight;
 }
+
+/** What a step of a posted plan looks like, behind them, under their hands, or ahead. */
+const STEP: Record<string, string> = {
+  done: 'rgba(244,227,192,.42)',
+  doing: '#ffdca4',
+  ahead: '#a89272',
+};
 
 /**
  * Somebody standing at the gate with a question.
@@ -835,11 +867,28 @@ function ground(
      thing telling you where the middle of this place is. */
   const fireX = Math.round(at.wide / 2) - 23;
   const fireY = 117;
+  const strength =
+    burningOf(yard) === 'lit'
+      ? 0.34
+      : burningOf(yard) === 'banked'
+        ? 0.2
+        : burningOf(yard) === 'embers'
+          ? 0.12
+          : 0.04;
   patch.appendChild(
-    firelight({ left: fireX - 147, top: fireY - 104, width: 340, height: 240 }, 0.34, false)
+    firelight({ left: fireX - 147, top: fireY - 104, width: 340, height: 240 }, strength, false)
   );
-  const fire = sprite(KIT_NAMES.fire, 1);
-  fire.style.cssText += `;left:${fireX}px;top:${fireY}px;animation:yard-flicker 480ms steps(2,end) infinite alternate`;
+  /* The fire is the session. Lit is somebody working, banked is somebody who
+     has stopped and is standing at the gate, embers is finished, and out is
+     nobody home. Only a lit fire breathes; a banked one is still. */
+  const burning = yard.session?.fire ?? 'out';
+  const fire = sprite(burning === 'out' ? KIT_NAMES.fireOut : KIT_NAMES.fire, 1);
+  fire.style.cssText += `;left:${fireX}px;top:${fireY}px`;
+  if (burning === 'lit') {
+    fire.style.animation = 'yard-flicker 480ms steps(2,end) infinite alternate';
+  }
+  if (burning === 'banked') fire.style.filter = 'brightness(.62)';
+  if (burning === 'embers') fire.style.filter = 'brightness(.45) saturate(.8)';
   patch.appendChild(fire);
 
   for (const [i, hand] of hands.entries()) patch.appendChild(standing(hand, i, at.wide));
@@ -865,6 +914,11 @@ const EMPTY = ["font-family:'Josefin Sans',sans-serif", 'font-size:14px', 'color
 
 const HEAD_ROW =
   'display:flex;align-items:baseline;justify-content:space-between;white-space:nowrap';
+
+/** How the fire is burning, which the light in the yard follows. */
+function burningOf(yard: Yard): string {
+  return yard.session?.fire ?? 'out';
+}
 
 /** One agent, standing where their state puts them. */
 function standing(hand: Hand, i: number, wide: number): HTMLElement {

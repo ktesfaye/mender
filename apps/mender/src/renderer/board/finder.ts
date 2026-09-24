@@ -96,13 +96,14 @@ const FIND_CHORD = 'k';
  * key, because a village with two-key chords in it is a village pretending to
  * be an editor.
  */
-export function chordFor(key: string, where: Standing, projects: number): string | null {
+export function chordFor(key: string, where: Standing, hanging: number): string | null {
   const pressed = key.toLowerCase();
   if (pressed === FIND_CHORD) return FIND;
-  // Command and a number is the nth village along the rail, which is the
-  // order they are nailed up in.
+  /* Command and a number is the nth thing along the rail, in the order it
+     hangs there: a session when you are in a project, and a project when you
+     are out on the island with nothing else hanging. */
   const digit = /^[1-9]$/.test(pressed) ? Number(pressed) : 0;
-  if (digit) return digit <= projects ? `rail:${digit - 1}` : null;
+  if (digit) return digit <= hanging ? `rail:${digit - 1}` : null;
   const doing = DOINGS.find((each) => each.chord === pressed);
   return doing && doing.where.includes(where) ? doing.pick : null;
 }

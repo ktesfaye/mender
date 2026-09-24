@@ -76,6 +76,16 @@ export interface Lantern {
   ground: Ground;
 }
 
+/**
+ * How the fire is burning, which is the one thing that says what a whole
+ * session is doing without saying a word.
+ *
+ * Lit is somebody working. Banked is somebody who has stopped and is waiting
+ * on you. Embers is finished. Out is nobody home, and a fire that has been out
+ * a long time takes the rest of the world down with it.
+ */
+export type Fire = 'lit' | 'banked' | 'embers' | 'out';
+
 export interface Session {
   id: string;
   name: string;
@@ -86,10 +96,16 @@ export interface Session {
   room?: number;
   /** What it answers for itself, which the header says in plain words. */
   permissions?: string;
+  /** What the session is doing, said by the fire rather than by a word. */
+  fire: Fire;
+  /** How long since anything happened in here, when that is a long time. */
+  cold?: string;
   /** Newest first. */
   notes: Note[];
   /** Oldest first, the live one last. */
   thoughts: Thought[];
+  /** What it says it is going to do, when it has actually said. */
+  plan: { said: string; state: 'done' | 'doing' | 'ahead' }[];
   /** Oldest first, the running one last. */
   steps: Step[];
   made: Made[];

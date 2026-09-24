@@ -29,6 +29,7 @@ export const SAMPLE: Yard = {
     model: 'sonnet 4.5',
     room: 0.68,
     permissions: 'bypass permissions on',
+    fire: 'lit',
     olderNotes: 9,
     olderThoughts: 38,
     olderSteps: { many: 44, over: 'first 62 hours' },
@@ -53,13 +54,14 @@ export const SAMPLE: Yard = {
         said: "Oct 3–5, three of us, food-focused. Not a big fan of seafood. Money's not a problem. Don't book anything — I'll do that myself.",
       },
     ],
+    plan: [
+      { said: 'pull twenty-odd candidates out of the local press', state: 'done' },
+      { said: 'verify Sat/Sun/Mon service on each one', state: 'done' },
+      { said: 'cut anything seafood-forward', state: 'doing' },
+      { said: 'cluster what survives by neighbourhood', state: 'ahead' },
+      { said: 'hand you one page per day', state: 'ahead' },
+    ],
     thoughts: [
-      {
-        id: 't0',
-        plan: true,
-        when: '64h ago',
-        said: 'Pull twenty-odd candidates out of the local press, verify Sat/Sun/Mon service on each one, cut anything seafood-forward, cluster what survives by neighbourhood, then hand you one page per day. No bookings.',
-      },
       {
         id: 't1',
         when: 'yesterday, 6pm',

@@ -495,7 +495,17 @@ async function boot(): Promise<void> {
         return;
       }
       if (id.startsWith('rail:')) {
-        const project = projects[Number(id.slice(5))];
+        /* The rail carries the sessions of whatever project you are in, so a
+           number walks into one of those. Out on the island there is no rail
+           and the numbers are the projects on the shelf instead. */
+        const at = Number(id.slice(5));
+        const here = open ? tasksOn(open.district) : [];
+        if (here.length) {
+          const task = here[at];
+          if (task) go(`task:${task.id}`);
+          return;
+        }
+        const project = projects[at];
         if (project) go(`project:${project.id}`);
         return;
       }
@@ -675,6 +685,9 @@ async function boot(): Promise<void> {
           if (open === aim && !reading && !looked && !walking && !talking && !sending && !card) {
             yard.show(now);
             yard.narrowing(narrowing());
+            /* A place nobody has touched for days is darker than one somebody
+               is standing in. Age is carried by the light, never by a date. */
+            if (!yard.open) dim(pixi.canvas, now.session?.cold ? 'stale' : 'yard');
           }
         }
       );
@@ -685,7 +698,6 @@ async function boot(): Promise<void> {
       watching = opened;
       yard.show(opened.yard());
       yard.narrowing(narrowing());
-      yard.asks(here ? 'say' : 'start');
       yard.line.take();
       /* And wake whoever lives in there. A session keeps its checkout and its
          transcript across a restart but the agent is not running, and a
@@ -2136,7 +2148,8 @@ async function boot(): Promise<void> {
       },
       /** A key held with command. One table says what it means. */
       ordered: (event) => {
-        const meant = chordFor(event.key, standing(), projects.length);
+        const hanging = open ? tasksOn(open.district).length : projects.length;
+        const meant = chordFor(event.key, standing(), hanging);
         if (!meant) return false;
         go(meant);
         return true;

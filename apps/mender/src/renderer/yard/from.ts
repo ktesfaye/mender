@@ -14,7 +14,7 @@ import type { Ask, Kit, Mood, Told } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { KIT_NAMES } from './sprite';
-import type { Hand, Lantern, Note, Posture, Session, Step, Thought, Yard } from './what';
+import type { Fire, Hand, Lantern, Note, Posture, Session, Step, Thought, Yard } from './what';
 
 /**
  * Which prop from the kit stands in for which kind of tool.
@@ -65,6 +65,8 @@ export function postureOf(mood: Mood | undefined): Posture {
 
 export interface Standing {
   project: Project;
+  /** What everybody is doing, which is how the fire knows how to burn. */
+  mood?: Mood;
   /** Every session in the project, and what each of them is doing. */
   tasks: Task[];
   moods: Record<string, Mood>;
@@ -77,6 +79,8 @@ export interface Standing {
   on?: string;
   /** A question standing at the gate, which outranks everything else. */
   asking?: Ask | null;
+  /** What it has said it means to do, if it has said. */
+  plan?: readonly { text: string; state: 'done' | 'doing' | 'ahead' }[];
   /** What was said while it was busy and has not been heard yet. */
   waiting?: readonly { id: string; text: string }[];
   /** What is in your hands. */
@@ -128,9 +132,12 @@ function sessionOf(
     ...(kit?.mode
       ? { permissions: kit.modes.find((one) => one.id === kit.mode)?.name?.toLowerCase() }
       : {}),
+    fire: fireOf(from.mood, Boolean(from.asking)),
+    ...(coldFor(told) ? { cold: coldFor(told) } : {}),
     notes: notes.slice(0, 3),
     ...(notes.length > 3 ? { olderNotes: notes.length - 3 } : {}),
     thoughts,
+    plan: (from.plan ?? []).map((one) => ({ said: one.text, state: one.state })),
     steps: (told?.deeds ?? []).map(stepOf),
     made: madeOf(told),
     agents: (told?.errands ?? []).map(handOf),
@@ -157,9 +164,8 @@ function noteOf(
 /**
  * What is rising off the fire, oldest first with the live one last.
  *
- * The first thing the agent ever said is the plan it posted, whether or not it
- * called it that: it is what everything since has been measured against, and it
- * stays at the top of the column while the rest scrolls past underneath.
+ * The plan it posted is a different thing and lives above this: the first thing
+ * an agent says is not a plan, however much it reads like one.
  */
 function thoughtsOf(told: Told | undefined): Thought[] {
   const all = told?.thoughts ?? [];
@@ -167,7 +173,6 @@ function thoughtsOf(told: Told | undefined): Thought[] {
     id: one.id,
     said: one.said,
     when: one.at ? agoOf(Date.now() - one.at) : '',
-    ...(at === 0 && all.length > 1 ? { plan: true } : {}),
     ...(one.since ? { live: true, at: longFor(Date.now() - one.since) } : {}),
     ...(at === all.length - 1 && !one.since ? { live: true } : {}),
   }));
@@ -240,6 +245,34 @@ function costOf(many: number): string {
   if (!many) return 'the folder stays exactly where it is';
   const sessions = many === 1 ? 'the one session' : `all ${many} sessions`;
   return `${sessions} in here go, the folder stays`;
+}
+
+/**
+ * How the fire burns, from what the one person in here is doing.
+ *
+ * A question at the gate banks it: they have stopped working and are standing
+ * there, and a fire nobody is tending settles. Finished is embers, still warm
+ * and not going anywhere. Nothing at all is out.
+ */
+function fireOf(mood: Mood | undefined, asking: boolean): Fire {
+  if (asking || mood === 'asking') return 'banked';
+  if (mood === 'working' || mood === 'arriving') return 'lit';
+  if (mood === 'hurt') return 'out';
+  if (mood === 'resting') return 'embers';
+  return 'out';
+}
+
+/**
+ * How long since anything happened in here, but only when that is long enough
+ * to be worth saying. Age is carried by the light, not by a date.
+ */
+function coldFor(told: Told | undefined): string | undefined {
+  const last = [...(told?.thoughts ?? []), ...(told?.notes ?? [])]
+    .map((one) => one.at)
+    .filter(Boolean);
+  if (!last.length) return undefined;
+  const since = Date.now() - Math.max(...last);
+  return since > 1000 * 60 * 60 * 36 ? agoOf(since) : undefined;
 }
 
 /** Out of the kit's own palette, so nobody ever stands in a colour from elsewhere. */
