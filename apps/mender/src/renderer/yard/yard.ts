@@ -288,13 +288,25 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       return scrim.up;
     },
     scrolled: (key) => scrim.scrolled(key),
-    /* The wash covers land without being pressable, and so do the two bands
-       at the top and the bottom. Everything else on the layer lets a pointer
-       straight through to the island, which is the point of it. */
+    /* WHILE YOU ARE IN A YARD, THE YARD HAS THE SCREEN.
+     *
+     * The village keeps living behind it and the camera is still yours, but
+     * the land is not a list of buttons any more: every gap between two
+     * columns of writing was a district you could hover, light up and walk
+     * into, so the screen was covered in targets nobody put there and a
+     * missed click on the middle of a session threw you back out to the
+     * island. Standing somewhere means the things behind it are scenery.
+     *
+     * Out on the island the layer is bare, carrying only the line you write
+     * on, and then it covers exactly what it draws and nothing else. */
     covers: (x, y) => {
-      if (stage.style.display === 'none') return false;
+      /* Anything actually drawn on the layer, which out on the island is the
+         rack of projects in the corner and the line you write on. Asked first,
+         because the rack is up whether or not a yard is. */
       const at = document.elementFromPoint(x, y);
-      return Boolean(at && stage.contains(at) && at !== stage);
+      if (at && at !== stage && at !== layer.root && layer.root.contains(at)) return true;
+      if (stage.style.display === 'none') return false;
+      return root.style.display !== 'none';
     },
     up: (on, bare = false) => {
       stage.style.display = on ? '' : 'none';

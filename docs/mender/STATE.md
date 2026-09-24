@@ -1320,6 +1320,23 @@ much was written. A resumed session hands back whatever was said to start it,
 so the first thing a restarted board showed was a system instruction filling
 the whole left column in handwriting. The cut lands on a whole line.
 
+### The land behind the writing was a screen full of buttons
+
+Standing in a yard, every gap between two columns was a district you could
+hover, light up and walk into: the whole screen was targets nobody put there,
+and a missed click on the middle of a session threw you out to the island.
+While a yard is up it now has the screen, and out on the island the layer
+covers exactly what it draws, which is the rack of projects and the line you
+write on, and nothing else.
+
+That turned up something worse behind it. Escape from a session stepped back
+onto "the district with no session picked", and there is no such screen: the
+yard IS the district, and walking into one lands you in the work, so escape put
+you straight back in the session you had just left. Nobody noticed because
+clicking the sea still got you out. Take that away and a project was a room
+with no door. The ladder is the line, then whatever you opened to read, then
+the yard, then the island.
+
 ### What the designs do not cover, and neither does this
 
 Three whole groups of the 162 states are about things this app has never had a

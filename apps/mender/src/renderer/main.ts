@@ -2231,12 +2231,14 @@ async function boot(): Promise<void> {
           said('');
           return;
         }
-        // Then the session, back to the project it belongs to, and only then
-        // the board itself.
-        if (inside && open) {
-          void openDistrict({ kind: 'district', district: open.district });
-          return;
-        }
+        /* And then out.
+         *
+         * The ladder used to have a rung between the session and the island:
+         * the district, with no session picked. There is no such screen. The
+         * yard IS the district, and walking into one lands you in the work,
+         * so stepping back onto it put you straight back in the session you
+         * had just left, over and over, with no way out at all once the land
+         * behind stopped taking clicks. */
         void picked(null);
       },
       /** A key held with command. One table says what it means. */
@@ -2622,9 +2624,11 @@ function lastly(): Spot | null {
  * Pointing, going, and writing.
  *
  * A district lights when the pointer is over it and something happens when you
- * pick it; the open sea takes you back out, and so does escape. The camera is
- * dragged with the same button, so a press that moved is a pan and not a pick —
- * without that, every drag that ends over land takes you somewhere.
+ * pick it, and that is true out on the island and nowhere else: once you are
+ * standing in a yard the land behind the writing is scenery, and escape is the
+ * way out. The camera is dragged with the same button, so a press that moved is
+ * a pan and not a pick — without that, every drag that ends over land takes you
+ * somewhere.
  *
  * There is no text field anywhere in this app, so while the board is asking for
  * a name the keyboard simply belongs to the board.
