@@ -169,7 +169,7 @@ function noteOf(
   return {
     id: note.id,
     said: note.said,
-    when: note.at ? agoOf(Date.now() - note.at) : 'a while back',
+    when: note.at ? agoOf(Date.now() - note.at) : 'before this',
     answered: note.answered,
     /* The oldest note on the post is the standing one: the thing that was true
        at the start and has not been taken down since. */
@@ -230,7 +230,7 @@ function madeOf(told: Told | undefined): Session['made'] {
     {
       id: newest.path,
       what: shortOf(newest.path),
-      when: `written ${agoOf(Date.now() - newest.at)}`,
+      when: newest.at ? `written ${agoOf(Date.now() - newest.at)}` : 'written before this',
       lines: rest.slice(0, 6).map((one) => `${shortOf(one.path)} · +${one.added} −${one.gone}`),
     },
   ];

@@ -942,7 +942,11 @@ function toldOf(
   const errands: Errand[] = [];
   const written: Wrote[] = [];
   let began: number | null = null;
+  /* Nought means nobody knows when, so it is not a candidate for the earliest
+     thing: a session whose history was read off the disk would otherwise say
+     it had been going since 1970. */
   const earliest = (at: number): void => {
+    if (!at) return;
     if (began === null || at < began) began = at;
   };
 
