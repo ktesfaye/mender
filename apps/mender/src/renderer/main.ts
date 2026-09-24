@@ -549,14 +549,7 @@ async function boot(): Promise<void> {
       const district = drawn.districts.get(
         projects.find((project) => project.id === task.project)?.district ?? ''
       );
-      if (district) {
-        void openTask(
-          task.slot === null
-            ? { kind: 'district', district }
-            : { kind: 'building', district, slot: task.slot },
-          task
-        );
-      }
+      if (district) void openTask({ kind: 'district', district }, task);
     };
 
     /** Open the finder over whatever you were looking at. */
@@ -620,10 +613,7 @@ async function boot(): Promise<void> {
         flyOut(camera, drawn.island);
         return;
       }
-      const aim: Aim =
-        task.slot === null
-          ? { kind: 'district', district }
-          : { kind: 'building', district, slot: task.slot };
+      const aim: Aim = { kind: 'district', district };
       await openTask(aim, task);
       if (going.card) await showCard(aim, task);
     };
@@ -2484,8 +2474,7 @@ function alongside(written: string, paths: readonly string[]): string {
 }
 
 function sameAim(a: Aim, b: Aim): boolean {
-  if (a.district !== b.district || a.kind !== b.kind) return false;
-  return a.kind !== 'building' || a.slot === (b as { slot: number }).slot;
+  return a.district === b.district;
 }
 
 /** An empty board with a cursor on it, which is all a new session is. */

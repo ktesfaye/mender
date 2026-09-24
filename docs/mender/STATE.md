@@ -1320,6 +1320,15 @@ much was written. A resumed session hands back whatever was said to start it,
 so the first thing a restarted board showed was a system instruction filling
 the whole left column in handwriting. The cut lands on a whole line.
 
+### A house is not a thing you point at either
+
+Buildings were hit first and hit as a shape, so a district was one place with a
+handful of smaller places cut out of it and the grass between two roofs
+answered differently from the roofs. There is one thing on the island you can
+pick and it is a district, whole, and picking any part of it walks into that
+project. Houses still light with somebody in them and still have a villager at
+the door, which is all they were ever for.
+
 ### The land behind the writing was a screen full of buttons
 
 Standing in a yard, every gap between two columns was a district you could

@@ -270,10 +270,13 @@ That card is also the answer to the question this file has been asking. One
 board still shows one thing, and what changes which thing is the rail, the
 roster and the slash, all of them writing on the same wood.
 
-A session is not a building. Buildings light up for the first few sessions in a
-district so the island still says something from the water, but they are
-scenery: a project can easily have more sessions than its district has houses,
-and which house a session stands in means nothing. From out on the water it is
+A session is not a building and a building is not a thing you point at. Houses
+light up for the first few sessions in a district so the island still says
+something from the water, but they are scenery: a project can easily have more
+sessions than its district has houses, and which house a session stands in
+means nothing. Nothing on the island is picked but a district, whole: the land,
+the houses on it and the trees between them answer as one place, and picking
+any of it walks into that project. From out on the water it is
 light and posture and nothing else. A building with
 somebody in it is lit, warmer and pulsing when they want you, red when they have
 broken; the villager at its door is turned away while they are working and

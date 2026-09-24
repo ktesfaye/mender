@@ -29,15 +29,14 @@ import type { Building } from './scene';
  */
 
 /**
- * What the pointer is on.
+ * What the pointer is on, which is a district and only ever a district.
  *
- * A building always comes with the district it stands in, because pointing at
- * a building is also pointing at that project; `slot` is which of the
- * district's buildings it is, counted in the order the map reads.
+ * Houses used to be aimed at in their own right and they are not things you
+ * point at: a district was then one place with a handful of smaller places cut
+ * out of it, and the grass between two houses answered differently from the
+ * roofs either side of it. One district, all of it.
  */
-export type Aim =
-  | { kind: 'district'; district: District }
-  | { kind: 'building'; district: District; slot: number };
+export type Aim = { kind: 'district'; district: District };
 
 /** Where a district sits in the world, in the pixels the renderer places in. */
 export interface DistrictBounds {
@@ -126,21 +125,16 @@ export class Ground {
       const reach = Math.hypot(worldX - this.fire.x, worldY - this.fire.y);
       if (reach <= FIRE_REACH) return { kind: 'district', district: this.camp };
     }
+    /* A HOUSE IS NOT A THING YOU POINT AT.
+     *
+     * It was hit first and hit as a shape, so a district was one place with a
+     * handful of smaller places cut out of it and the ground between them read
+     * differently from the roof. It is one district: the land, the houses on
+     * it, the trees between them, all of it. A house still lights up with
+     * somebody in it and still has a villager at its door, which is what
+     * houses are for here. */
     const district = this.districtAt(worldX, worldY);
-    if (!district) return null;
-    const buildings = this.standing.get(district.id) ?? [];
-    for (let slot = 0; slot < buildings.length; slot++) {
-      const box = buildings[slot];
-      if (
-        worldX >= box.x &&
-        worldX < box.x + box.width &&
-        worldY >= box.y &&
-        worldY < box.y + box.height
-      ) {
-        return { kind: 'building', district, slot };
-      }
-    }
-    return { kind: 'district', district };
+    return district ? { kind: 'district', district } : null;
   }
 
   /** How many buildings a district has, which is how many tasks fit on it. */
@@ -180,12 +174,6 @@ export class Ground {
     this.over = aim;
     this.highlight.clear();
     if (!aim || aim.district.id === CAMP) return;
-    if (aim.kind === 'building') {
-      const box = this.buildingAt(aim.district, aim.slot);
-      if (box)
-        this.glow(box.x + box.width / 2, box.y + box.height / 2, box.width, box.height, 0.03);
-      return;
-    }
     /* The same light the fire gives, over a whole district.
        Filling its cells was the obvious thing and it was wrong twice over: a
        district is a third of the island, so a flat lift over all of it is an
@@ -248,6 +236,5 @@ export function districtBounds(district: District): DistrictBounds {
 
 function same(a: Aim | null, b: Aim | null): boolean {
   if (!a || !b) return a === b;
-  if (a.district !== b.district || a.kind !== b.kind) return false;
-  return a.kind !== 'building' || a.slot === (b as { slot: number }).slot;
+  return a.district === b.district;
 }
