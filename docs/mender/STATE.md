@@ -1210,12 +1210,19 @@ It could only have shown up by opening the thing in the Applications folder,
 which is the whole reason that is the last step of every change.
 
 And once it could hold a conversation, a week-old one said it happened this
-minute. The protocol carries no clock, so items are stamped as the village
-first sees them, and a session read back off the disk is seen for the first
-time the moment you open it. Nothing is dated now until the first batch of
-turns has gone out; before that every item already happened, possibly days ago,
-and the board says "before this" rather than putting a time on it. A board that
-gets time wrong is a board you stop reading times off.
+minute. The protocol carries no clock, so the only time anything has is when
+the village noticed it, and an agent picking up where it left off sends its
+whole transcript back the moment you walk in, on turns it never marks finished.
+Two guesses at telling that from something happening both failed; instrumenting
+it was what settled it.
+
+What tells them apart is you. Nothing is dated until you have said something to
+that session. A note you just wrote says how long ago; one the agent handed
+back on its way in says "before this", which is all anybody knows about it. The
+thinking column stops claiming times altogether, except where reasoning carries
+its own clock and for the one happening now, because it never needed them: that
+column is placed by order and brightness, and that is what recency is made of
+here. A board that gets time wrong is a board you stop reading times off.
 
 ### What the designs do not cover, and neither does this
 
