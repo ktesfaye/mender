@@ -1209,6 +1209,14 @@ a spawned process cannot read them.
 It could only have shown up by opening the thing in the Applications folder,
 which is the whole reason that is the last step of every change.
 
+And once it could hold a conversation, a week-old one said it happened this
+minute. The protocol carries no clock, so items are stamped as the village
+first sees them, and a session read back off the disk is seen for the first
+time the moment you open it. Nothing is dated now until the first batch of
+turns has gone out; before that every item already happened, possibly days ago,
+and the board says "before this" rather than putting a time on it. A board that
+gets time wrong is a board you stop reading times off.
+
 ### What the designs do not cover, and neither does this
 
 Three whole groups of the 162 states are about things this app has never had a
