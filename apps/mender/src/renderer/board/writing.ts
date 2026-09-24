@@ -1,4 +1,4 @@
-import type { Row, Run, Tone } from './board';
+import type { Row, Run, Tone } from './row';
 
 /**
  * Writing, read the way it was written.

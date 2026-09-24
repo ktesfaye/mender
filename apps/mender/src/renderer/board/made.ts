@@ -1,5 +1,5 @@
 import type { Commit, FileChange } from '@emdash/core/runtimes/git/api';
-import type { Row } from './board';
+import type { Row } from './row';
 
 /**
  * One commit, on the wood.

@@ -1,4 +1,4 @@
-import type { Row } from './board';
+import type { Row } from './row';
 
 /**
  * Looking for something in a checkout.

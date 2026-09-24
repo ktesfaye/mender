@@ -2,8 +2,8 @@ import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { shortName, type CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import type { MenderClient } from '../wire';
-import type { Row, Tone } from './board';
 import { saying } from './made';
+import type { Row, Tone } from './row';
 
 /**
  * What a board says about a checkout.

@@ -19,8 +19,8 @@
 const PICKED = 'picked';
 
 export interface Walking {
-  /** Step to the next pressable line, or the one before. */
-  step(way: 1 | -1): void;
+  /** Step to the next pressable line, or the one before. True if it moved. */
+  step(way: 1 | -1): boolean;
   /** Press whatever it is standing on. */
   press(): boolean;
   /** Stand on a particular thing, by the name it was given, or on nothing. */
@@ -41,8 +41,16 @@ export interface Walking {
 export function walking(root: HTMLElement): Walking {
   let on: string | null = null;
 
+  /* While something is laid over the yard, the keyboard belongs to that and
+     not to the yard underneath: walking from a file you are reading onto the
+     project's own header is not a step anybody meant to take. */
+  const within = (): HTMLElement => {
+    const sheet = root.querySelector<HTMLElement>('[data-sheet]');
+    return sheet && sheet.offsetParent !== null ? sheet : root;
+  };
+
   const stops = (): HTMLElement[] =>
-    [...root.querySelectorAll<HTMLElement>('[data-walk]')].filter(
+    [...within().querySelectorAll<HTMLElement>('[data-walk]')].filter(
       (one) => one.offsetParent !== null
     );
 
@@ -51,7 +59,7 @@ export function walking(root: HTMLElement): Walking {
       one.classList.remove(PICKED);
     }
     if (!on) return;
-    const here = root.querySelector<HTMLElement>(`[data-walk="${CSS.escape(on)}"]`);
+    const here = within().querySelector<HTMLElement>(`[data-walk="${CSS.escape(on)}"]`);
     if (!here) return;
     here.classList.add(PICKED);
     /* Only when it is actually out of sight. Scrolling a board a pixel every
@@ -66,7 +74,7 @@ export function walking(root: HTMLElement): Walking {
     },
     step(way) {
       const all = stops();
-      if (!all.length) return;
+      if (!all.length) return false;
       const at = all.findIndex((one) => one.dataset.walk === on);
       /* Stepping from nowhere lands on the first line going down and the last
          going up, which is what a cursor arriving from off the board means. */
@@ -74,10 +82,11 @@ export function walking(root: HTMLElement): Walking {
       const landed = all[Math.max(0, Math.min(all.length - 1, next))];
       on = landed?.dataset.walk ?? null;
       mark();
+      return true;
     },
     press() {
       if (!on) return false;
-      const here = root.querySelector<HTMLElement>(`[data-walk="${CSS.escape(on)}"]`);
+      const here = within().querySelector<HTMLElement>(`[data-walk="${CSS.escape(on)}"]`);
       if (!here) return false;
       here.click();
       return true;

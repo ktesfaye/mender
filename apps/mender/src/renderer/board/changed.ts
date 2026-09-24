@@ -1,5 +1,5 @@
 import type { Change } from '@shared/changes';
-import type { Row } from './board';
+import type { Row } from './row';
 
 /**
  * One file's change, on the wood.

@@ -1,5 +1,5 @@
 import type { Choice, Kit } from '@shared/agents';
-import type { Row } from './board';
+import type { Row } from './row';
 
 /**
  * What a slash opens.

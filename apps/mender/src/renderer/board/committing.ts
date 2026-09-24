@@ -1,5 +1,5 @@
-import type { Row } from './board';
 import { toneOf, type Changed } from './district';
+import type { Row } from './row';
 
 /**
  * What you are about to commit, and the line you say what it is on.

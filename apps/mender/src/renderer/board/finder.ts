@@ -1,7 +1,7 @@
 import type { Mood } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
-import type { Row } from './board';
+import type { Row } from './row';
 
 /**
  * Everything you can reach without looking for it.

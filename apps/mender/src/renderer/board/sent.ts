@@ -1,5 +1,5 @@
 import type { PullRequest } from '@upstream/services/pull-requests/api/schemas';
-import type { Row } from './board';
+import type { Row } from './row';
 
 /**
  * A pull request, on the wood.

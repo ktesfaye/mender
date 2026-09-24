@@ -2,10 +2,10 @@ import { ReplicaState } from '@emdash/wire/live';
 import type { Ask, Carried, Kit, Line, Step, Waiting, WorkingState } from '@shared/agents';
 import type { Task } from '@shared/tasks';
 import type { MenderClient } from '../wire';
-import type { Row } from './board';
 import { openCheckout, type LiveBoard } from './district';
 import { Naming } from './naming';
 import { Palette } from './palette';
+import type { Row } from './row';
 import { saying } from './writing';
 
 /**

@@ -16,7 +16,7 @@
  * walks the same steps one at a time.
  */
 
-import type { Row } from '../board/board';
+import type { Row } from '../board/row';
 import { trail as trailOf } from './press';
 import { makeRows, type Written } from './rows';
 import { box, exact, rule } from './write';
@@ -38,11 +38,14 @@ export interface Scrim {
   /** Where the writing is, for whatever wants to walk or scroll it. */
   readonly sheet: Written;
   place(left: number, right: number, top: number, bottom: number): void;
+  /** An arrow or a page key, when nothing else claimed it. */
+  scrolled(key: string): boolean;
   close(): void;
 }
 
 export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim {
   const root = box({}, WASH);
+  root.dataset.sheet = 'yes';
   root.style.display = 'none';
   at.appendChild(root);
 
@@ -80,6 +83,27 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
       meta.replaceChildren(reading.meta ? exact(reading.meta, 12, '#a89272') : '');
       sheet.write(reading.rows);
       under.scrollTop = 0;
+    },
+    scrolled: (key) => {
+      if (!showing) return false;
+      const page = under.clientHeight - 40;
+      const by =
+        key === 'ArrowDown'
+          ? 60
+          : key === 'ArrowUp'
+            ? -60
+            : key === 'PageDown'
+              ? page
+              : key === 'PageUp'
+                ? -page
+                : key === 'Home'
+                  ? -under.scrollHeight
+                  : key === 'End'
+                    ? under.scrollHeight
+                    : 0;
+      if (!by) return false;
+      under.scrollTop += by;
+      return true;
     },
     close: () => root.remove(),
   };

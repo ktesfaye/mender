@@ -18,7 +18,7 @@
  * writes it down.
  */
 
-import type { Row } from '../board/board';
+import type { Row } from '../board/row';
 import { GUTTER, MARGIN, type Layer } from './frame';
 import { makeLine, type Asking as Prompting, type Line } from './line';
 import { pressing, twice } from './press';
@@ -94,11 +94,21 @@ export interface Standing {
    */
   reading(what: Reading | null): void;
   readonly open: boolean;
+  /** An arrow or a page key that nothing nearer wanted. */
+  scrolled(key: string): boolean;
+  /** Whether something written on covers that point of the window. */
+  covers(x: number, y: number): boolean;
   /** Where the keyboard is, for whoever is listening to it. */
   readonly walk: Walking;
   readonly line: Line;
-  /** Whether the yard is up at all. The island on its own is not a yard. */
-  up(on: boolean): void;
+  /**
+   * Whether the yard is up, and whether all of it is.
+   *
+   * `bare` keeps the line you write on and whatever is laid over it, and puts
+   * the rest away. That is what the island wants: there is no yard out there,
+   * but the finder and founding a place both need somewhere to write.
+   */
+  up(on: boolean, bare?: boolean): void;
   readonly showing: boolean;
   /** Take it down and give the village back. */
   close(): void;
@@ -154,8 +164,28 @@ export function makeYard(layer: Layer, does: Doings): Standing {
 
   const walk = walking(layer.root);
 
+  /* Where the wash comes down, which is the same whether or not there is a
+     yard under it: from the gatepost's own column to the right edge. */
+  function lay(): void {
+    const columns = layer.columns();
+    const floor = window.innerHeight - MARGIN - RAIL_TALL - 60;
+    scrim.place(
+      columns.thinking.x - GUTTER / 2,
+      MARGIN - 8,
+      HEAD.rule,
+      window.innerHeight - floor - 20
+    );
+    writing.style.left = `${layer.edge()}px`;
+    writing.style.right = `${layer.edge()}px`;
+    under.style.left = `${layer.edge()}px`;
+    under.style.right = `${layer.edge()}px`;
+  }
+
   let last: Yard | undefined;
-  layer.onResize(() => last && show(last));
+  layer.onResize(() => {
+    lay();
+    if (last) show(last);
+  });
 
   function show(yard: Yard): void {
     last = yard;
@@ -167,16 +197,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const floor = window.innerHeight - MARGIN - (layer.cramped() ? RAIL_BARE : RAIL_TALL) - 60;
 
     scrims(root);
-    scrim.place(
-      columns.thinking.x - GUTTER / 2,
-      MARGIN - 8,
-      HEAD.rule,
-      window.innerHeight - floor - 20
-    );
-    writing.style.left = `${layer.edge()}px`;
-    writing.style.right = `${layer.edge()}px`;
-    under.style.left = `${layer.edge()}px`;
-    under.style.right = `${layer.edge()}px`;
+    lay();
     carried(hands, yard, does);
     head(root, yard, layer.edge(), does);
     asked(root, columns.asked, yard, floor, layer.cramped(), does);
@@ -201,8 +222,19 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     get open() {
       return scrim.up;
     },
-    up: (on) => {
+    scrolled: (key) => scrim.scrolled(key),
+    /* The wash covers land without being pressable, and so do the two bands
+       at the top and the bottom. Everything else on the layer lets a pointer
+       straight through to the island, which is the point of it. */
+    covers: (x, y) => {
+      if (stage.style.display === 'none') return false;
+      const at = document.elementFromPoint(x, y);
+      return Boolean(at && stage.contains(at) && at !== stage);
+    },
+    up: (on, bare = false) => {
       stage.style.display = on ? '' : 'none';
+      if (on) lay();
+      root.style.display = on && !bare ? '' : 'none';
       if (!on) line.write('');
     },
     get showing() {
@@ -927,7 +959,6 @@ function said_line(root: HTMLElement, edge: number): void {
    there; dark is resting, still being cut, or broken. The one you are standing
    in hangs lowest and brightest, and the one that wants you flickers. */
 function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, does: Doings): void {
-  if (yard.rail.length < 2) return;
   const beam = box({
     left: edge,
     right: edge,
@@ -940,7 +971,9 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
      hang them and never so close that two names touch. Past that the beam
      scrolls sideways rather than the lanterns getting any nearer. */
   const room = window.innerWidth - edge * 2;
-  const step = Math.min(LANTERN_STEP, Math.floor(room / yard.rail.length));
+  /* One more hook than there are lanterns, because the end of the rail is
+     where a new session gets hung. */
+  const step = Math.min(LANTERN_STEP, Math.floor(room / (yard.rail.length + 1)));
   const bare = cramped || step < 140;
 
   for (const [i, one] of yard.rail.entries()) {
@@ -995,11 +1028,28 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
 
     if (!one.here) {
       if (bare) astop(lamp, `rail:${one.id}`);
+      hung.addEventListener('mousedown', (event) => event.preventDefault());
       hung.addEventListener('click', () => does.open(one.id));
       hung.addEventListener('pointerenter', () => (lamp.style.filter = 'brightness(1.15)'));
       hung.addEventListener('pointerleave', () => (lamp.style.filter = dimmed));
     }
     beam.appendChild(hung);
   }
+
+  /* An empty hook at the end of the rail. Pressing it asks what is going to
+     happen in the new session, which is the only question a session starts
+     with and the only one it needs. */
+  const spare = yard.rail.length * step;
+  beam.appendChild(box({ left: spare + 10, top: 3, width: 3, height: LANTERN.cord }, HOOK));
+  const start = astop(
+    pressing('hang a new one', () => does.press('new')),
+    'rail:new'
+  );
+  start.style.cssText += "font-family:'Courier Prime',monospace;font-size:12px";
+  const at = box({ left: spare + 34, top: 3 + LANTERN.cord + 2 });
+  at.appendChild(start);
+  beam.appendChild(at);
   root.appendChild(beam);
 }
+
+const HOOK = 'background:#3a2712';

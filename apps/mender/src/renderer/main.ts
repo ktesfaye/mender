@@ -17,19 +17,17 @@ import type { Mood } from '@shared/agents';
 import type { At, Change } from '@shared/changes';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
-import { makeBoard, type Board, type Row } from './board/board';
 import { openCard, type LiveCard } from './board/card';
 import { opening, readOut, unreadable } from './board/changed';
 import { committing } from './board/committing';
 import { openCheckout, type LiveBoard } from './board/district';
 import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
 import { openTree, type LiveTree } from './board/inside';
-import { loadLettering } from './board/lettering';
 import { hunting, type Hunt } from './board/looking';
 import { made, unmade, unread } from './board/made';
 import type { Meant } from './board/palette';
-import { makeRail, type Rail } from './board/rail';
 import { read, unopened, type Read } from './board/reading';
+import type { Row } from './board/row';
 import { sent, type Sent } from './board/sent';
 import { shell } from './board/shell';
 import { openShell, type LiveShell } from './board/talking';
@@ -87,13 +85,10 @@ async function boot(): Promise<void> {
 
   try {
     say('waking the village…');
-    const [client] = await Promise.all([wire(), loadKit(), loadFolk(), loadLettering()]);
-    const board = await makeBoard(pixi);
-    const rail = await makeRail(pixi);
+    const [client] = await Promise.all([wire(), loadKit(), loadFolk()]);
     /* The plank along the bottom used to carry the projects. It carries the
        sessions of whatever project you are in now, so the projects moved to a
        rack in the corner and the old plank is not drawn at all. */
-    rail.view.visible = false;
     await loadCuts();
     const layer = makeLayer();
     const shelf = makeShelf(layer.root, (id) => void go(`project:${id}`));
@@ -103,10 +98,31 @@ async function boot(): Promise<void> {
       press: (pick) => press(pick),
       forget: () => forget(),
       typed: (text) => {
+        /* One line, and whatever is open decides what is being written on it:
+           a name for a new session, a new name for this one, a commit message,
+           something to look for, or something to say to the agent. */
+        if (naming || titling || writing || looking || hunt) {
+          wrote(text);
+          return;
+        }
         watching?.typed(text);
         yard.narrowing(narrowing());
       },
-      say: (text) => void tell(text),
+      say: (text) => {
+        if (naming) {
+          void begin();
+          return;
+        }
+        if (titling) {
+          void retitle();
+          return;
+        }
+        if (writing) {
+          void commit();
+          return;
+        }
+        void tell(text);
+      },
       leave: () => void backOut(),
     });
 
@@ -166,15 +182,14 @@ async function boot(): Promise<void> {
          Anything opened from the island has no yard to be laid over, so for
          the moment it is still drawn on wood. That is the last of the board
          left, and it goes when the island's own boards come across. */
-      if (yard.showing) {
-        dim(pixi.canvas, 'reading');
-        const asks = prompting();
-        yard.reading({ trail: wayHome(), rows, ...(asks ? { asks } : {}) });
-        return;
-      }
-      yard.up(false);
-      dim(pixi.canvas, 'island');
-      board.show(rows, at);
+      dim(pixi.canvas, 'reading');
+      /* Out on the island there is no yard to lay anything over, so only the
+         line and the wash come up. The village behind stays the whole picture
+         either way; nothing here is ever a screen somewhere else. */
+      if (!yard.showing) yard.up(true, true);
+      const asks = prompting();
+      yard.reading({ trail: wayHome(), rows, ...(asks ? { asks } : {}) });
+      void at;
     };
 
     /** The same surface again, for a board that has changed under you. */
@@ -183,7 +198,7 @@ async function boot(): Promise<void> {
         yard.reading({ trail: wayHome(), rows, ...(prompting() ? { asks: prompting()! } : {}) });
         return;
       }
-      board.update(rows);
+      /* Unreachable: every surface is the yard's now. */
     };
 
     /**
@@ -255,6 +270,9 @@ async function boot(): Promise<void> {
     const wayHome = (): { said: string; go?: () => void }[] => {
       const back = (): void => hand.escaped();
       const steps: { said: string; go?: () => void }[] = [{ said: 'yard', go: back }];
+      if (looking) steps.push({ said: 'looking for something', go: back });
+      if (naming) steps.push({ said: 'a new session', go: back });
+      if (titling) steps.push({ said: 'its name', go: back });
       if (live) steps.push({ said: 'the checkout', go: back });
       if (walking) steps.push({ said: 'files', go: back });
       if (hunt) steps.push({ said: 'looking', go: back });
@@ -515,7 +533,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       wood(finding('', { projects, tasks, moods: seen, where: standing() }));
-      board.walk(1);
+      yard.walk.step(1);
     };
 
     /** Put the board back on whatever the finder was opened over. */
@@ -574,8 +592,6 @@ async function boot(): Promise<void> {
       if (going.card) await showCard(aim, task);
     };
 
-    rail.onPick(go);
-
     /** Put a checkout on the island. The one thing the campfire is for. */
     const settle = async (): Promise<void> => {
       await found(client, async () => {
@@ -602,7 +618,6 @@ async function boot(): Promise<void> {
       const shown = card;
       card = null;
       await shown?.close();
-      board.hide();
       yard.up(false);
       dim(pixi.canvas, 'island');
       const held = watching;
@@ -643,7 +658,6 @@ async function boot(): Promise<void> {
       open = aim;
       naming = null;
       titling = null;
-      board.hide();
       yard.up(true);
       yard.reading(null);
       dim(pixi.canvas, 'yard');
@@ -1537,12 +1551,18 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       open = aim;
-      inside = null;
       titling = null;
       naming = { district: aim.district, project, slot, written: '' };
       paintRail();
-      flyTo(camera, districtBounds(aim.district), { inset: board.inset });
+      /* Asking what is going to happen in a new session is laid over the yard
+         you are standing in, like everything else you open, rather than
+         replacing it: the sessions already running are still on the rail while
+         you decide what the next one is for. */
+      if (!yard.showing) flyTo(camera, districtBounds(aim.district), { inset: 0 });
+      yard.asks('start');
+      yard.line.write('');
       wood(asking(naming));
+      yard.line.take();
     };
 
     /** Calling a session something else. His name for it outranks the agent's. */
@@ -1555,7 +1575,10 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       titling = { task, written: task.title };
+      yard.asks('name');
+      yard.line.write(task.title);
       wood(retitling(titling));
+      yard.line.take();
     };
 
     const wrote = (written: string): void => {
@@ -1569,7 +1592,7 @@ async function boot(): Promise<void> {
         rewrite(finding(written, { projects, tasks, moods: seen, where: standing() }));
         // The finder always has something under the keyboard, so return means
         // the obvious thing without you having to aim first.
-        if (!board.chosen()) board.walk(1);
+        if (!yard.walk.on) yard.walk.step(1);
         return;
       }
       if (titling) {
@@ -1899,7 +1922,6 @@ async function boot(): Promise<void> {
         if (!done.success && done.error.kind === 'refused') say(done.error.because, 6000);
       })();
     };
-    board.onPick(press);
 
     /* A file dropped on the wood, or pasted onto it.
        There is one place for it to go: whoever is working in the building you
@@ -2122,24 +2144,25 @@ async function boot(): Promise<void> {
       /* Three things the keyboard can be doing, and never more than one at a
          time: naming a building nobody has moved into, answering the villager
          standing at a door, or saying something to whoever is in there. */
+      scrolled: (key) => yard.scrolled(key),
       typed: (event) => {
         /* The finder is a board you type into and walk at the same time, which
            is the whole point of it: the letters narrow it and the arrows pick
            out of what is left. */
         if (looking) {
           if (event.key === 'Enter') {
-            const chose = board.chosen();
+            const chose = yard.walk.on;
             if (chose) go(chose);
             else void unlook();
             return true;
           }
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            board.walk(event.key === 'ArrowDown' ? 1 : -1);
+            yard.walk.step(event.key === 'ArrowDown' ? 1 : -1);
             return true;
           }
           if (event.key === 'Backspace') wrote(looking.written.slice(0, -1));
           else if (event.key.length === 1) wrote(looking.written + event.key);
-          else return board.scrolled(event.key);
+          else return yard.scrolled(event.key);
           return true;
         }
         /* Saying what a pull request is for, before opening it. */
@@ -2150,7 +2173,7 @@ async function boot(): Promise<void> {
             sending = { ...mine, written: (mine.written ?? '').slice(0, -1) };
           } else if (event.key.length === 1) {
             sending = { ...mine, written: (mine.written ?? '') + event.key };
-          } else return board.scrolled(event.key);
+          } else return yard.scrolled(event.key);
           if (sending) rewrite(sent(sending));
           return true;
         }
@@ -2163,7 +2186,7 @@ async function boot(): Promise<void> {
             said.written = '';
           } else if (event.key === 'Backspace') said.written = said.written.slice(0, -1);
           else if (event.key.length === 1) said.written += event.key;
-          else return board.scrolled(event.key);
+          else return yard.scrolled(event.key);
           rewrite(rowsForShell());
           return true;
         }
@@ -2171,17 +2194,17 @@ async function boot(): Promise<void> {
            walk what is left, the same as the finder. */
         if (hunt && !opened) {
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            board.walk(event.key === 'ArrowDown' ? 1 : -1);
+            yard.walk.step(event.key === 'ArrowDown' ? 1 : -1);
             return true;
           }
           if (event.key === 'Enter') {
-            const chose = board.chosen();
+            const chose = yard.walk.on;
             if (chose) press(chose);
             return true;
           }
           if (event.key === 'Backspace') hunt.written = hunt.written.slice(0, -1);
           else if (event.key.length === 1) hunt.written += event.key;
-          else return board.scrolled(event.key);
+          else return yard.scrolled(event.key);
           void lookFor();
           return true;
         }
@@ -2191,7 +2214,7 @@ async function boot(): Promise<void> {
           if (event.key === 'Enter') void makeIt();
           else if (event.key === 'Backspace') walking.name(written.slice(0, -1));
           else if (event.key.length === 1) walking.name(written + event.key);
-          else return board.scrolled(event.key);
+          else return yard.scrolled(event.key);
           return true;
         }
         /* Calling a file something else. */
@@ -2200,7 +2223,7 @@ async function boot(): Promise<void> {
           if (event.key === 'Enter') void renamed();
           else if (event.key === 'Backspace') file.renaming = (file.renaming ?? '').slice(0, -1);
           else if (event.key.length === 1) file.renaming = (file.renaming ?? '') + event.key;
-          else return board.scrolled(event.key);
+          else return yard.scrolled(event.key);
           if (opened) rewrite(read(opened));
           return true;
         }
@@ -2211,33 +2234,21 @@ async function boot(): Promise<void> {
           if (event.key === 'Enter') void wroteLine();
           else if (event.key === 'Backspace') fixing.written = fixing.written.slice(0, -1);
           else if (event.key.length === 1) fixing.written += event.key;
-          else return board.scrolled(event.key);
+          else return yard.scrolled(event.key);
           if (opened) rewrite(read(opened));
           return true;
         }
         if (writing) {
-          if (event.key === 'Enter') void commit();
-          else if (event.key === 'Backspace') wrote(writing.written.slice(0, -1));
-          else if (event.key.length === 1) wrote(writing.written + event.key);
-          else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            board.walk(event.key === 'ArrowDown' ? 1 : -1);
-          } else return false;
-          return true;
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            yard.walk.step(event.key === 'ArrowDown' ? 1 : -1);
+            return true;
+          }
+          return false;
         }
-        if (titling) {
-          if (event.key === 'Enter') void retitle();
-          else if (event.key === 'Backspace') wrote(titling.written.slice(0, -1));
-          else if (event.key.length === 1) wrote(titling.written + event.key);
-          else return false;
-          return true;
-        }
-        if (naming) {
-          if (event.key === 'Enter') void begin();
-          else if (event.key === 'Backspace') wrote(naming.written.slice(0, -1));
-          else if (event.key.length === 1) wrote(naming.written + event.key);
-          else return false;
-          return true;
-        }
+        /* Naming a session, calling one something else and writing a commit
+           message all happen on the one line at the foot of the screen, which
+           hears its own keys. Nothing is read off the keyboard twice. */
+        if (titling || naming) return false;
         const saying = watching;
         /* A board still drawn on wood is a list of things you can press, so
            the arrows walk it and return goes where you are standing. The yard
@@ -2245,15 +2256,15 @@ async function boot(): Promise<void> {
            the arrows walk are the ones the yard itself marks. */
         if (!saying || !yard.showing) {
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            return board.walk(event.key === 'ArrowDown' ? 1 : -1) || board.scrolled(event.key);
+            return yard.walk.step(event.key === 'ArrowDown' ? 1 : -1) || yard.scrolled(event.key);
           }
           if (event.key === 'Enter') {
-            const chose = board.chosen();
+            const chose = yard.walk.on;
             if (!chose) return false;
             press(chose);
             return true;
           }
-          return board.scrolled(event.key);
+          return yard.scrolled(event.key);
         }
         /* A question at the gate takes the number keys and nothing else, so
            that answering it cannot be done by accident while typing. */
@@ -2273,7 +2284,7 @@ async function boot(): Promise<void> {
     };
 
     backOut = () => hand.escaped();
-    watchPointer(pixi, camera, board, rail, hand);
+    watchPointer((x, y) => yard.covers(x, y), pixi, camera, hand);
 
     /* Who is standing outside which building, kept true by the main process
        rather than by whatever board happens to be open: a villager is still
@@ -2469,6 +2480,8 @@ interface Pointing {
   hover(aim: Aim | null): void;
   picked(aim: Aim | null): void;
   escaped(): void;
+  /** An arrow or a page key nothing nearer wanted. */
+  scrolled(key: string): boolean;
   /** A key held with command. True if it meant something. */
   ordered(event: KeyboardEvent): boolean;
   /** A key that is not escape and not a chord. True if the board took it. */
@@ -2513,10 +2526,9 @@ function lastly(): Spot | null {
  * a name the keyboard simply belongs to the board.
  */
 function watchPointer(
+  over: (x: number, y: number) => boolean,
   pixi: Application,
   camera: ReturnType<typeof createCamera>,
-  board: Board,
-  rail: Rail,
   pointing: Pointing
 ): void {
   pixi.stage.eventMode = 'static';
@@ -2528,10 +2540,11 @@ function watchPointer(
     const point = camera.toWorld(event.global);
     return pointing.at(point.x, point.y);
   };
-  // Land the board is standing in front of, or the rail is nailed over, is not
-  // land you can point at.
-  const behind = (event: FederatedPointerEvent): boolean =>
-    board.over(event.global.x) || rail.over(event.global.y);
+  /* Land behind something written on is not land you can point at. The writing
+     is DOM over the canvas now, so the browser already answers this: anything
+     pressable takes the pointer itself and the island never hears about it.
+     What is left is the wash, which covers land without being pressable. */
+  const behind = (event: FederatedPointerEvent): boolean => over(event.global.x, event.global.y);
 
   pixi.stage.on('pointermove', (event: FederatedPointerEvent) => {
     const aim = behind(event) ? null : under(event);
@@ -2566,7 +2579,7 @@ function watchPointer(
       return;
     }
     if (event.altKey) return;
-    if (pointing.typed(event) || board.scrolled(event.key)) event.preventDefault();
+    if (pointing.typed(event) || pointing.scrolled(event.key)) event.preventDefault();
   });
 }
 

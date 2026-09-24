@@ -64,6 +64,11 @@ export function pressing(said: string, does: () => void | Doing): HTMLSpanElemen
     const doing = does();
     if (doing) void carry(line, said, doing);
   };
+  /* A press never takes the keyboard off the line. There is one place you
+     write in this app and pressing something is not a reason to stop writing
+     in it, so the mousedown that would move focus is refused and the click
+     goes through on its own. */
+  line.addEventListener('mousedown', (event) => event.preventDefault());
   line.addEventListener('click', go);
   line.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') {

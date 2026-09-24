@@ -3,7 +3,7 @@ import { parseNativeAbsolute, type HostAbsolutePath } from '@emdash/core/primiti
 import type { FileEntry, FileTreeModel } from '@emdash/core/runtimes/files/api';
 import { ReplicaState } from '@emdash/wire/live';
 import type { MenderClient } from '../wire';
-import type { Row } from './board';
+import type { Row } from './row';
 
 /**
  * What is in a checkout, one folder at a time.

@@ -4,7 +4,7 @@ import { ReplicaState } from '@emdash/wire/live';
 import type { Kit } from '@shared/agents';
 import type { Task } from '@shared/tasks';
 import type { MenderClient } from '../wire';
-import type { Row } from './board';
+import type { Row } from './row';
 
 /**
  * The card: what a session works with.

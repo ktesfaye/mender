@@ -1,4 +1,4 @@
-import type { Row } from './board';
+import type { Row } from './row';
 
 /**
  * What an @ opens.

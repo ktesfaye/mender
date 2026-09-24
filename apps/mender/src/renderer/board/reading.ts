@@ -1,6 +1,6 @@
 import type { FileContentModel } from '@emdash/core/runtimes/files/api';
 import type { BlameHunk } from '@emdash/core/runtimes/git/api';
-import type { Row } from './board';
+import type { Row } from './row';
 
 /**
  * A file, on the wood.

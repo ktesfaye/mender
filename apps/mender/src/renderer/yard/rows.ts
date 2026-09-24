@@ -13,7 +13,7 @@
  * wood.
  */
 
-import type { Row, Tone } from '../board/board';
+import type { Row, Tone } from '../board/row';
 import { astop } from './walk';
 
 /** What each tone is, in the light of the yard rather than on a plank. */
@@ -61,6 +61,10 @@ export function makeRows(at: HTMLElement, press: (pick: string) => void): Writte
 function one(row: Row, press: (pick: string) => void): HTMLElement {
   const line = document.createElement('div');
   const pick = row.pick;
+  /* Where the keyboard's mark goes when it stands on this row. The mark is the
+     one fill in the app, so it hugs the words rather than the row: a fill the
+     width of the board is a gold stripe, not a cursor. */
+  let mine: HTMLElement | undefined;
   /* Gold is pressable and pressable is gold, so a row that can be pressed is
      written in it whatever tone the board computed. The mark in the margin and
      anything said after the thing itself stay stone, which is how a list of
@@ -102,6 +106,7 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
       const said = document.createElement('span');
       said.style.color = ink(row.tone);
       said.textContent = row.text;
+      mine = said;
       line.append(mark, said);
       break;
     }
@@ -126,6 +131,7 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
         said.style.color = ink(row.tone);
         said.textContent = row.text;
       }
+      mine = said;
       line.append(mark, said);
       break;
     }
@@ -138,8 +144,9 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
 
   if (pick) {
     line.classList.add('press');
+    line.addEventListener('mousedown', (event) => event.preventDefault());
     line.addEventListener('click', () => press(pick));
-    astop(line, pick);
+    astop(mine ?? line, pick);
   }
   return line;
 }
