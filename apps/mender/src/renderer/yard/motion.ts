@@ -182,6 +182,24 @@ const inked = new Map<string, { text: string; pieces: { end: number; at: number 
  * you walked in.
  */
 export function ink(into: HTMLElement, id: string, text: string, fresh: boolean): void {
+  inkRuns(into, id, [{ text }], fresh);
+}
+
+/** A piece of writing with a look of its own, for `inkRuns`. */
+export type InkRun = { text: string; className?: string };
+
+/**
+ * `ink`, for writing that is not all one look: a sentence with a bit of code
+ * in it, or a word set heavier. What arrives still fades in wherever it lands,
+ * across however many looks it crosses.
+ */
+export function inkRuns(
+  into: HTMLElement,
+  id: string,
+  runs: readonly InkRun[],
+  fresh: boolean
+): void {
+  const text = runs.map((run) => run.text).join('');
   const now = performance.now();
   let was = inked.get(id);
   if (!was || !text.startsWith(was.text)) {
@@ -200,27 +218,49 @@ export function ink(into: HTMLElement, id: string, text: string, fresh: boolean)
     return !next || now - next.at < INK_MS;
   });
 
+  /* Where each piece ends and when it arrived, so any stretch of the text can
+     be asked how old it is. Past the last piece is as old as it gets. */
+  const ends = was.pieces.map((piece) => piece.end);
+  const ages = was.pieces.map((piece) => now - piece.at);
+  const ageAt = (offset: number): number => {
+    const i = ends.findIndex((end) => offset < end);
+    return i === -1 ? Infinity : (ages[i] ?? Infinity);
+  };
+
   into.replaceChildren();
-  let start = 0;
-  for (const piece of was.pieces) {
-    const run = text.slice(start, piece.end);
-    start = piece.end;
-    if (!run) continue;
-    const age = now - piece.at;
-    if (age >= INK_MS || reduced()) {
-      into.appendChild(document.createTextNode(run));
-      continue;
+  let offset = 0;
+  for (const run of runs) {
+    const holder: HTMLElement | DocumentFragment = run.className
+      ? Object.assign(document.createElement('span'), { className: run.className })
+      : document.createDocumentFragment();
+    let from = 0;
+    while (from < run.text.length) {
+      const at = offset + from;
+      const age = ageAt(at);
+      const i = ends.findIndex((end) => at < end);
+      const stop = i === -1 ? run.text.length : Math.min(run.text.length, (ends[i] ?? 0) - offset);
+      const piece = run.text.slice(from, stop);
+      from = stop;
+      if (age >= INK_MS || reduced()) {
+        holder.appendChild(document.createTextNode(piece));
+        continue;
+      }
+      const span = document.createElement('span');
+      span.textContent = piece;
+      span.style.animation = `yard-ink ${INK_MS}ms ease-out both`;
+      span.style.animationDelay = `-${Math.round(age)}ms`;
+      holder.appendChild(span);
     }
-    const span = document.createElement('span');
-    span.textContent = run;
-    span.style.animation = `yard-ink ${INK_MS}ms ease-out both`;
-    span.style.animationDelay = `-${Math.round(age)}ms`;
-    into.appendChild(span);
+    offset += run.text.length;
+    into.appendChild(holder);
   }
-  if (start < text.length) into.appendChild(document.createTextNode(text.slice(start)));
 }
 
 /** Forget what was inked for a thing that is no longer on the board. */
 export function forgetInk(keep: Set<string>): void {
-  for (const id of inked.keys()) if (!keep.has(id)) inked.delete(id);
+  /* A thing written in parts inks each part under its own name, `thing#part`,
+     and goes when the thing does. */
+  for (const id of inked.keys()) {
+    if (!keep.has(id) && !keep.has(id.split('#')[0] ?? id)) inked.delete(id);
+  }
 }

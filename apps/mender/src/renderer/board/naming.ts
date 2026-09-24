@@ -1,4 +1,4 @@
-import type { Row } from './row';
+import { rank, type Offer } from './offer';
 
 /**
  * What an @ opens.
@@ -9,29 +9,18 @@ import type { Row } from './row';
  * under it into what is actually in that checkout, narrowing as you type, and
  * picking one writes the whole path where the @ was.
  *
- * The same wood as the slash and the same keys. Nothing floats.
+ * The same place as the slash and the same keys.
  */
-
-/** As many as the wood shows at once. */
-const SHOWN = 8;
-
-/** The one you are on. */
-const HERE = '>';
 
 /** The @ being written, if the line ends in one. */
 const AT = /(?:^|\s)@(\S*)$/;
 
-/** A path as it is read: its name first, then the folder it is in. */
-function said(path: string): string {
-  const cut = path.lastIndexOf('/');
-  return cut === -1 ? path : `${path.slice(cut + 1)} · ${path.slice(0, cut)}`;
-}
-
 export class Naming {
   private found: string[] = [];
-  private at = 0;
   /** What was last asked for, which is also whether an @ is open at all. */
   private asking: string | null = null;
+  /** The whole line, for where the @ is on it. */
+  private asked = '';
 
   constructor(
     private readonly look: (like: string) => Promise<string[]>,
@@ -40,10 +29,10 @@ export class Naming {
 
   /** Whatever is on the line now. */
   typed(text: string): void {
+    this.asked = text;
     const written = AT.exec(text)?.[1] ?? null;
     if (written === this.asking) return;
     this.asking = written;
-    this.at = 0;
     this.found = [];
     if (written === null) return;
     void this.look(written).then((found) => {
@@ -52,7 +41,6 @@ export class Naming {
       // any more is dropped rather than drawn.
       if (this.asking !== written) return;
       this.found = found;
-      this.at = 0;
       this.told();
     });
   }
@@ -62,40 +50,31 @@ export class Naming {
     return this.asking !== null && this.found.length > 0;
   }
 
-  moved(by: number): void {
-    const many = this.found.length;
-    if (!many) return;
-    this.at = (this.at + by + many) % many;
+  /** Where on the line the @ that opened this is. */
+  get from(): number {
+    const found = AT.exec(this.asked);
+    return found ? found.index + found[0].indexOf('@') : 0;
   }
 
-  /** The lines under the one you are writing on. */
-  rows(): Row[] {
+  /**
+   * What is in the checkout that answers to it. What it is called first, then
+   * where it is, because a checkout is full of files with the same name in
+   * different folders.
+   */
+  offers(): Offer[] {
     if (!this.open) return [];
-    const from = Math.max(0, Math.min(this.at - SHOWN + 1, this.found.length - SHOWN));
-    const rows: Row[] = [];
-    for (const [index, path] of this.found.slice(from, from + SHOWN).entries()) {
-      const here = from + index === this.at;
-      rows.push({
-        kind: 'entry',
-        mark: here ? HERE : ' ',
-        /* What it is called, and then where it is. A checkout is full of files
-           with the same name in different folders, and written whole they all
-           truncate to the same middle of the same path. */
-        text: said(path),
-        tone: here ? 'ink' : 'faded',
-        keep: 'front',
-        pick: `name:${path}`,
-      });
-    }
-    if (this.found.length > SHOWN) {
-      rows.push({ kind: 'line', text: `and ${this.found.length - SHOWN} more.`, tone: 'faded' });
-    }
-    return rows;
-  }
-
-  /** The line with whatever you are standing on written into it. */
-  chosen(text: string): string | null {
-    return this.open ? this.written(text, this.found[this.at]) : null;
+    return rank(
+      this.found.map((path) => {
+        const cut = path.lastIndexOf('/');
+        return {
+          pick: `name:${path}`,
+          name: cut === -1 ? path : path.slice(cut + 1),
+          ...(cut === -1 ? {} : { about: path.slice(0, cut) }),
+        };
+      }),
+      this.asking ?? '',
+      { keepOrder: true }
+    );
   }
 
   /** The line with a pressed one written into it. */

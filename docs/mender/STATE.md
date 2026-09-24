@@ -1454,6 +1454,32 @@ something to show and stands on the first row every time.
 The time gutter wrapped: a three-letter age like `now` broke over two lines
 because the mark margin was a single character wide.
 
+### The slash, rebuilt, and the answers set as what they are (2026-09-24)
+
+He called the slash terrible and he was right. It opened a brown wash the width
+of the screen with the transcript showing through it, capped itself at eight
+lines and an "and 91 more" nothing could reach, matched only on the front of a
+name, and filled the picked line gold so it read as a stripe. It is a small
+solid slab standing on the line now, its edge on the slash, names in the type
+and what they are for after them in one cut line, ranked the way a person would
+rank them, grouped under headings with counts, and scrolled rather than
+truncated. Escape closes it without eating what you wrote; tab picks as well as
+return; the mouse moves the mark. The @ uses the same slab.
+
+It offers what Emdash's does. Emdash's slash is the agent's commands and the
+prompt library; the prompt library is here as what you keep (`/keep`, picked
+back from the slash, `/forget` in two presses, seeded with Emdash's own review
+prompt). A slash mid-sentence opens the agent's commands and your kept ones, as
+Emdash's does anywhere in the editor. Codex's collaboration mode is on the kit,
+the card and the slash as `/collaboration`; that part is wired but has not been
+driven, because only Codex offers it and no Codex session was on hand.
+
+**What an agent said was one run of text.** The column that shows it set every
+answer with its line breaks thrown away, so `/context` came out as a paragraph
+of pipes and hashes. It reads the markdown now: headings as labels, lists,
+quotes, code set in the type and pressed to keep, and tables as tables with
+their numbers leaning right. Driven with a real `/context` in the running app.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

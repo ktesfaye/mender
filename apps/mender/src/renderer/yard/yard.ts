@@ -18,13 +18,14 @@
  * writes it down.
  */
 
-import type { Row } from '../board/row';
+import type { Offer } from '../board/offer';
 import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
 import { makeLine, type Asking as Prompting, type Line } from './line';
-import { forgetInk, ink, keyed, measure, play } from './motion';
+import { makeMenu } from './menu';
+import { forgetInk, keyed, measure, play } from './motion';
 import { pressing } from './press';
-import { makeRows } from './rows';
+import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, sprite } from './sprite';
 import { astop, walking, type Walking } from './walk';
@@ -96,7 +97,7 @@ export interface Standing {
   /** What the line is asking for at the moment. */
   asks(what: Prompting): void;
   /** Write the lines a slash or an @ has opened under the line. */
-  narrowing(rows: Row[]): void;
+  narrowing(offers: Offer[], from: number): void;
   /**
    * Lay something over the yard to read, or take it away.
    *
@@ -181,36 +182,37 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   const stillAt = box({ left: 0, right: 0, bottom: 196 }, 'padding:8px 0');
   stage.appendChild(stillAt);
   const line = makeLine(writing);
-  /* And what a slash or an @ has opened sits just above the line, growing
-     upward from it. It is under the line in the sense that matters — it is
-     what the line has opened and it goes away when the line does — and it is
-     drawn above it because below it is the rail and then the edge of the
-     screen. Nothing here floats over anything. */
-  const under = box(
-    { left: 0, right: 0, bottom: 190 },
-    [
-      'max-height:280px',
-      'overflow-y:auto',
-      /* Born hidden: it holds nothing yet, and an empty box that is merely
-         transparent still traps the keyboard's walk inside it and draws a
-         bare strip of wash over whatever is open. `narrowing` turns it to
-         flex the moment it has lines to show. */
-      'display:none',
-      'flex-direction:column',
-      'justify-content:flex-end',
-      /* The same wash everything read over the yard sits on, because this is
-         read over the yard too and the village behind would otherwise be
-         showing through the middle of a list of file names. */
-      'background:rgba(72,37,16,.72)',
-      'padding:10px 0',
-      'pointer-events:auto',
-    ].join(';')
-  );
-  under.dataset.narrowing = 'yes';
-  const opened = makeRows(under, does.press);
-  /* What the overlay last had on it, so a change of list moves the mark. */
+  /* And what a slash or an @ has opened stands on the line itself, its left
+     edge on the slash you typed, the way a completion list stands on a caret.
+     It is its own small solid slab rather than more writing on the wash,
+     because a list of names read over a transcript was two things to read at
+     once. It goes the moment the line stops asking for it. */
+  const menu = makeMenu(stage, does.press, (pick) => walk.stand(pick));
+  /* What the menu last had on it, so a change of list moves the mark. */
   let lastNarrowed = '';
-  stage.appendChild(under);
+  /* Where on the line what opened it starts, for standing it there. */
+  let narrowedFrom = 0;
+  /* Escape closes the list and keeps what you wrote. It stays closed until
+     what you wrote changes, which is what a list you dismissed is expected to
+     do everywhere else. */
+  let dismissedAt: string | null = null;
+  /* Walk and press it by key, before anything else hears about the key: the
+     line is where your hands are and this is what the line has open. */
+  line.onKey((event) => {
+    if (menu.root.style.display === 'none') return false;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      walk.step(event.key === 'ArrowDown' ? 1 : -1);
+      return true;
+    }
+    if (event.key === 'Tab' && !event.shiftKey) return walk.press();
+    if (event.key === 'Escape') {
+      dismissedAt = line.written();
+      menu.write([]);
+      walk.stand(null);
+      return true;
+    }
+    return false;
+  });
   /* Where the words were on the line the moment they were said, so that if
      they turn out to be for the agent they can be seen leaving from there. */
   let lastSaid: { text: string; rect: DOMRect } | null = null;
@@ -226,8 +228,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
 
   /** Whether the keyboard's mark is on one of the lines the overlay opened. */
   function standingInOverlay(): boolean {
-    if (under.style.display === 'none' || !walk.on) return false;
-    return Boolean(under.querySelector(`[data-walk="${CSS.escape(walk.on)}"]`));
+    if (menu.root.style.display === 'none' || !walk.on) return false;
+    return Boolean(menu.root.querySelector(`[data-walk="${CSS.escape(walk.on)}"]`));
   }
   line.onEmpty(() => does.leave());
   line.onType((text) => does.typed(text));
@@ -252,16 +254,19 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     );
     writing.style.left = `${layer.edge()}px`;
     writing.style.right = `${layer.edge()}px`;
-    /* What a slash or an @ opens takes the same ground a sub-board takes and
-       no more: never over the gatepost, which is where what you asked for is
-       and the one thing you want to still be able to read while you decide
-       what to say next. */
-    under.style.left = `${columns.thinking.x - GUTTER / 2}px`;
-    under.style.right = `${layer.edge()}px`;
+    stand();
     /* Clear of the gatepost, because the gatepost has its own things to say
        down there and two columns of writing on the same line is a mess. */
     stillAt.style.left = `${columns.thinking.x}px`;
     stillAt.style.right = `${layer.edge()}px`;
+  }
+
+  /** Stand the menu on the line, at whatever opened it. */
+  function stand(): void {
+    if (menu.root.style.display === 'none') return;
+    const at = line.at(narrowedFrom);
+    const top = line.root.getBoundingClientRect().top;
+    menu.place(at?.left ?? layer.edge(), window.innerHeight - top + 10, top - HEAD.rule - 40);
   }
 
   let last: Yard | undefined;
@@ -473,30 +478,31 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     },
     show: (yard) => show(yard),
     fly,
-    narrowing: (rows) => {
+    narrowing: (offers, from) => {
+      if (dismissedAt !== null && dismissedAt === line.written()) offers = [];
+      else dismissedAt = null;
       /* Asked before the lines are replaced, because afterwards there is
          nothing left to ask about. */
       const wasInside = standingInOverlay();
-      opened.write(rows);
-      under.style.display = rows.length ? 'flex' : 'none';
+      narrowedFrom = from;
+      menu.write(offers);
+      stand();
 
-      /* The first line of it stands under the keyboard, drawn filled the way
-         the designs draw it, so Return means it.
+      /* The first line of it stands under the keyboard, so Return means it.
          It goes back to the first line every time the list itself changes,
          which is every letter you type. Leaving the mark where it was looks
          harmless until you notice that typing the whole of `/mode` left it
          sitting on `/model` from three letters ago, and return then set the
          model. Arrows move it; the next letter takes it back. */
-      const now = rows.map((row) => row.pick ?? '').join('\u0000');
+      const now = offers.map((one) => one.pick).join('\u0000');
       const moved = now !== lastNarrowed;
       lastNarrowed = now;
-      const first = rows.find((row) => row.pick)?.pick;
-      if (first && (moved || !standingInOverlay())) walk.stand(first);
-      else if (!rows.length && wasInside) walk.stand(null);
+      const first = offers[0]?.pick;
+      if (first && (moved || !standingInOverlay())) {
+        walk.stand(first);
+        if (moved) menu.root.querySelector('.menu-list')?.scrollTo({ top: 0 });
+      } else if (!offers.length && wasInside) walk.stand(null);
       else walk.again();
-      /* Whatever it opened is read from the bottom up, because the thing it is
-         narrowing towards is the nearest one to the line. */
-      opened.root.scrollTop = opened.root.scrollHeight;
     },
     asks: (what) => line.asks(what),
     walk,
@@ -929,11 +935,14 @@ function thinking(
       it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
       const head = said(one.quiet ? 'thinking' : 'now', '#ffc98a');
       it.appendChild(head);
-      const body = document.createElement('span');
+      const body = document.createElement('div');
+      /* Set large, unless it is long enough that large is a wall: a whole
+         report at the size of one sentence is read a word at a time. */
+      const size = one.said.length > 700 ? 19 : 21;
       body.style.cssText = one.quiet
         ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
-        : 'font-size:21px;line-height:1.35;color:#ffdca4;text-shadow:0 2px 10px rgba(0,0,0,.9)';
-      ink(body, one.id, one.said, !walkedIn);
+        : `font-size:${size}px;line-height:1.35;color:#ffdca4;text-shadow:0 2px 10px rgba(0,0,0,.9)`;
+      prose(body, one.id, one.said, !walkedIn, keepCode(does));
       it.appendChild(body);
       stream.appendChild(it);
       return;
@@ -943,7 +952,9 @@ function thinking(
         thought(
           one,
           far > 2 ? 15 : 16,
-          far > 2 ? 'rgba(244,227,192,.46)' : 'rgba(244,227,192,.62)'
+          far > 2 ? 'rgba(244,227,192,.46)' : 'rgba(244,227,192,.62)',
+          undefined,
+          keepCode(does)
         ),
         `thought:${one.id}`
       )
@@ -1087,16 +1098,27 @@ const KEY = [
   'flex:none',
 ].join(';');
 
-function thought(one: Thought, size: number, ink: string, name?: string): HTMLElement {
+/** A block of code pressed off the column goes on the clipboard, like one pressed anywhere. */
+function keepCode(does: Doings): (code: string) => void {
+  return (code) => does.press(`keep:${code}`);
+}
+
+function thought(
+  one: Thought,
+  size: number,
+  ink: string,
+  name?: string,
+  keep?: (code: string) => void
+): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
   /* Only where there is something true to say. A thought with no clock on it
      gets no line above it at all rather than an empty one. */
   const label = name ? (one.when ? `${name} · ${one.when}` : name) : one.when;
   if (label) it.appendChild(said(label));
-  const body = document.createElement('span');
+  const body = document.createElement('div');
   body.style.cssText = `font-size:${size}px;line-height:1.4;color:${ink}`;
-  body.textContent = one.said;
+  prose(body, one.id, one.said, false, keep);
   it.appendChild(body);
   return it;
 }

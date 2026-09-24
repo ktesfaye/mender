@@ -1,30 +1,40 @@
 import type { Choice, Kit } from '@shared/agents';
-import type { Row } from './row';
+import type { Prompt } from '@shared/prompts';
+import { rank, type Offer } from './offer';
 
 /**
  * What a slash opens.
  *
  * The last line of the board is where you write, and writing a slash there
- * turns the lines under it into everything you could mean. Most of it is the
- * agent's own: whatever its CLI advertises when it starts, which on Claude is
- * its commands and the skills it has been taught. A handful are the village's
- * and never reach the agent as words — picking a model is a setting on the
- * session, not a sentence, so it is done to the session directly.
+ * opens everything you could mean, right where you are writing it. Most of it
+ * is the agent's own: whatever its CLI advertises when it starts, which on
+ * Claude is its commands and every skill it has been taught. Then whatever you
+ * have kept to say again, which is what Emdash calls its prompt library. And a
+ * handful are the village's and never reach the agent as words — picking a
+ * model is a setting on the session, not a sentence, so it is done to the
+ * session directly.
  *
- * Nothing here is a menu that floats. It is more writing on the same wood,
- * under the line you are writing on, and it goes away when the slash does.
+ * A slash at the start of the line opens all of it. A slash later in a
+ * sentence opens only the agent's and yours, because a setting is not
+ * something you say halfway through a thought.
  */
 
 /** What picking a line here means. */
 export type Meant =
   /** Set one of the session's own settings, without saying a word to it. */
-  | { does: 'set'; what: 'model' | 'mode' | 'effort'; id: string; name: string }
+  | { does: 'set'; what: 'model' | 'mode' | 'effort' | 'collab'; id: string; name: string }
   /** Turn the board over and show what the session works with. */
   | { does: 'card' }
   /** Put this on the line instead, and keep writing. */
   | { does: 'write'; text: string }
   /** Say it to the agent as it stands. */
-  | { does: 'send' };
+  | { does: 'send'; text: string }
+  /** Keep this, to say again. */
+  | { does: 'keep'; text: string }
+  /** Stop keeping one. */
+  | { does: 'forget'; id: string; title: string };
+
+type Setting = 'model' | 'mode' | 'effort' | 'collab';
 
 /** One of the village's own, which the agent never hears about. */
 type Ours = {
@@ -33,7 +43,11 @@ type Ours = {
   /** The choices it is answered with, or nothing if it is answered by doing it. */
   choices?: (kit: Kit) => Choice[];
   on?: (kit: Kit) => string | null;
-  what?: 'model' | 'mode' | 'effort';
+  what?: Setting;
+  /** Answered by what is written after it rather than by a choice. */
+  takes?: string;
+  /** Only there while this is true of the session and the list. */
+  when?: (kit: Kit, kept: readonly Prompt[]) => boolean;
 };
 
 const OURS: Ours[] = [
@@ -46,7 +60,7 @@ const OURS: Ours[] = [
   },
   {
     name: '/mode',
-    about: 'how it works',
+    about: 'how it works, and what it asks first',
     what: 'mode',
     choices: (kit) => kit.modes,
     on: (kit) => kit.mode,
@@ -58,179 +72,232 @@ const OURS: Ours[] = [
     choices: (kit) => kit.efforts,
     on: (kit) => kit.effort,
   },
+  {
+    name: '/collaboration',
+    about: 'whether it plans first or just gets on with it',
+    what: 'collab',
+    choices: (kit) => kit.collabs,
+    on: (kit) => kit.collab,
+  },
   { name: '/agent', about: 'everything this session works with' },
+  { name: '/keep', about: 'keep what you write after it, to say again', takes: 'what to keep' },
+  {
+    name: '/forget',
+    about: 'stop keeping something you kept',
+    choices: () => [],
+    when: (_kit, kept) => kept.length > 0,
+  },
 ];
 
-/** As many as the wood shows at once before it starts scrolling itself. */
-const SHOWN = 8;
+const SECTION = { ours: 'this session', theirs: 'commands', kept: 'kept' } as const;
 
-/** The one you are on, and the ones you are not. */
-const HERE = '>';
-const ON = '●';
+/** Everything you have kept, for every session at once. */
+let kept: Prompt[] = [];
 
-/**
- * As much of what a command says about itself as is worth a line.
- *
- * An agent's own catalogue is written for another program to read: a skill
- * will happily describe itself in two hundred words. What the line under the
- * one you are writing on needs is enough to tell two of them apart, so it is
- * cut at the first sentence and then at a width, and nothing is lost that was
- * not already unreadable at a glance.
- */
-function hint(about: string): string {
-  const first = about.split(/(?<=[.!?])\s/)[0] ?? about;
-  const said = first.replace(/\s+/g, ' ').trim();
-  return said.length > 92 ? `${said.slice(0, 91)}…` : said;
+/** What is kept changed, somewhere. */
+export function keptNow(prompts: Prompt[]): void {
+  kept = prompts;
 }
+
+/** The slash being written after something else, if the line ends in one. */
+const LATER = /(^|\s)(\/\S*)$/;
+
+/** What is open, if anything: which kind, where it starts, and what is being asked. */
+type Open =
+  | { kind: 'all'; from: number; asked: string }
+  | { kind: 'later'; from: number; asked: string }
+  | { kind: 'choice'; ours: Ours; from: number; asked: string }
+  | { kind: 'keep'; from: number; asked: string };
 
 export class Palette {
   private kit: Kit | null = null;
   private text = '';
-  private at = 0;
+  /** Forgetting takes two presses, and this is the first. */
+  private armed: string | null = null;
 
   told(kit: Kit | null): void {
     this.kit = kit;
-    this.at = Math.min(this.at, Math.max(0, this.matches().length - 1));
   }
 
   /** Whatever is on the line now. */
   typed(text: string): void {
-    const was = this.text;
+    if (text !== this.text) this.armed = null;
     this.text = text;
-    if (head(was) !== head(text)) this.at = 0;
-    this.at = Math.min(this.at, Math.max(0, this.matches().length - 1));
   }
 
   /** Whether a slash is open at all, which is what makes the keys mean this. */
   get open(): boolean {
-    return this.text.startsWith('/') && this.matches().length > 0;
+    return this.offers().length > 0;
   }
 
-  moved(by: number): void {
-    const many = this.matches().length;
-    if (!many) return;
-    this.at = (this.at + by + many) % many;
+  /** Where on the line the slash that opened this is. */
+  get from(): number {
+    return this.opened()?.from ?? 0;
   }
 
-  /** The lines under the one you are writing on. */
-  rows(): Row[] {
-    const all = this.matches();
-    if (!all.length) return [];
-    const from = Math.max(0, Math.min(this.at - SHOWN + 1, all.length - SHOWN));
-    const rows: Row[] = [];
-    for (const [index, match] of all.slice(from, from + SHOWN).entries()) {
-      const here = from + index === this.at;
-      rows.push({
-        kind: 'entry',
-        mark: here ? HERE : match.on ? ON : ' ',
-        text: match.about ? `${match.name} · ${hint(match.about)}` : match.name,
-        tone: here ? 'ink' : 'faded',
-        pick: `slash:${match.name}`,
+  /** Everything the slash could mean as it stands, best first. */
+  offers(): Offer[] {
+    const kit = this.kit;
+    const open = this.opened();
+    if (!kit || !open) return [];
+
+    if (open.kind === 'keep') {
+      const what = open.asked.trim();
+      return [
+        {
+          pick: 'slash:keep',
+          name: what ? `keep “${clip(what, 48)}”` : '/keep',
+          about: what ? 'for later, under the slash' : 'write what to keep after it',
+          section: SECTION.ours,
+        },
+      ];
+    }
+
+    if (open.kind === 'choice') {
+      const ours = open.ours;
+      if (ours.name === '/forget') {
+        return rank(
+          kept.map((one) => ({
+            pick: `slash:forget:${one.id}`,
+            name: one.title,
+            about: this.armed === one.id ? 'press again to forget it for good' : one.prompt,
+            section: SECTION.kept,
+            ...(this.armed === one.id ? { sore: true } : {}),
+          })),
+          open.asked
+        );
+      }
+      const on = ours.on?.(kit) ?? null;
+      return rank(
+        (ours.choices?.(kit) ?? []).map((choice) => ({
+          pick: `slash:${ours.name}:${choice.id}`,
+          name: choice.name,
+          ...(choice.about ? { about: choice.about } : {}),
+          on: choice.id === on,
+          section: ours.about,
+        })),
+        open.asked,
+        { keepOrder: true }
+      );
+    }
+
+    const offers: Offer[] = [];
+    if (open.kind === 'all') {
+      for (const ours of OURS) {
+        if (ours.when ? !ours.when(kit, kept) : ours.choices && !ours.choices(kit).length) continue;
+        offers.push({
+          pick: `slash:${ours.name}`,
+          name: ours.name,
+          about: ours.about,
+          section: SECTION.ours,
+        });
+      }
+    }
+    const mine = new Set(offers.map((one) => one.name));
+    for (const order of kit.orders) {
+      const name = slashed(order.name);
+      if (mine.has(name)) continue;
+      offers.push({
+        pick: `slash:${name}`,
+        name,
+        about: order.about,
+        section: SECTION.theirs,
+        ...(order.takes ? { takes: order.takes } : {}),
       });
     }
-    if (all.length > SHOWN) {
-      rows.push({ kind: 'line', text: `and ${all.length - SHOWN} more.`, tone: 'faded' });
+    for (const one of kept) {
+      offers.push({
+        pick: `slash:kept:${one.id}`,
+        name: one.title,
+        ...(one.title === one.prompt ? {} : { about: one.prompt }),
+        section: SECTION.kept,
+      });
     }
-    return rows;
-  }
-
-  /** What the highlighted line means, or nothing if there is no slash open. */
-  chosen(): Meant | null {
-    return this.meaning(this.matches()[this.at]);
+    return rank(offers, open.asked.slice(1));
   }
 
   /** What a pressed line means. */
   meant(pick: string): Meant | null {
-    return this.meaning(this.matches().find((match) => `slash:${match.name}` === pick));
-  }
-
-  private meaning(match: Match | undefined): Meant | null {
-    if (!match) return null;
-    if (match.kind === 'card') return { does: 'card' };
-    if (match.kind === 'choice' && match.what) {
-      return { does: 'set', what: match.what, id: match.id ?? match.name, name: match.name };
-    }
-    // A command that wants something after it is completed, not sent: the
-    // next thing you type is the argument.
-    return { does: 'write', text: match.takes ? `${match.name} ` : match.name };
-  }
-
-  /** Everything the slash could mean as it stands. */
-  private matches(): Match[] {
+    const open = this.opened();
     const kit = this.kit;
-    if (!this.text.startsWith('/') || !kit) return [];
-    const written = head(this.text);
-    const rest = this.text.slice(written.length).replace(/^ +/, '');
-    const spaced = this.text.length > written.length;
+    if (!open || !kit) return null;
+    const before = this.text.slice(0, open.from);
 
-    if (spaced) {
-      const ours = OURS.find((each) => each.name === written);
-      if (!ours?.choices) return [];
-      const on = ours.on?.(kit) ?? null;
-      return ours
-        .choices(kit)
-        .filter((choice) => starts(choice.name, rest) || starts(choice.id, rest))
-        .map((choice) => ({
-          kind: 'choice' as const,
-          name: choice.name,
-          id: choice.id,
-          ...(choice.about ? { about: choice.about } : {}),
-          ...(ours.what ? { what: ours.what } : {}),
-          on: choice.id === on,
-        }));
+    if (pick === 'slash:keep') {
+      const what = open.asked.trim();
+      return what ? { does: 'keep', text: what } : { does: 'write', text: '/keep ' };
+    }
+    if (pick.startsWith('slash:forget:')) {
+      const id = pick.slice('slash:forget:'.length);
+      const one = kept.find((each) => each.id === id);
+      if (!one) return null;
+      if (this.armed !== id) {
+        this.armed = id;
+        return null;
+      }
+      this.armed = null;
+      return { does: 'forget', id, title: one.title };
+    }
+    if (pick.startsWith('slash:kept:')) {
+      const one = kept.find((each) => `slash:kept:${each.id}` === pick);
+      return one ? { does: 'write', text: before + one.prompt } : null;
     }
 
-    const mine: Match[] = OURS.filter((ours) => !ours.choices || ours.choices(kit).length)
-      .filter((ours) => starts(ours.name, written))
-      .map((ours) => ({
-        kind: ours.choices ? ('ours' as const) : ('card' as const),
-        name: ours.name,
-        about: ours.about,
-        ...(ours.choices ? { takes: 'which' } : {}),
-        ...(ours.what ? { what: ours.what } : {}),
-      }));
-    const theirs: Match[] = kit.orders
-      .filter((order) => starts(slashed(order.name), written))
-      .filter((order) => !mine.some((each) => each.name === slashed(order.name)))
-      .map((order) => ({
-        kind: 'order' as const,
-        name: slashed(order.name),
-        about: order.about,
-        ...(order.takes ? { takes: order.takes } : {}),
-      }));
-    /* What you have written in full is what you meant. `/mode` is a prefix of
-       `/model`, so without this, typing the whole of the shorter one and
-       pressing return silently picked the longer. */
-    return [...mine, ...theirs].sort(
-      (a, b) => Number(same(b.name, written)) - Number(same(a.name, written))
-    );
+    if (open.kind === 'choice') {
+      const ours = open.ours;
+      const id = pick.slice(`slash:${ours.name}:`.length);
+      const choice = ours.choices?.(kit).find((each) => each.id === id);
+      if (!choice || !ours.what) return null;
+      return { does: 'set', what: ours.what, id: choice.id, name: choice.name };
+    }
+
+    const name = pick.slice('slash:'.length);
+    const ours = open.kind === 'all' ? OURS.find((each) => each.name === name) : undefined;
+    if (ours) {
+      if (ours.name === '/agent') return { does: 'card' };
+      return { does: 'write', text: `${ours.name} ` };
+    }
+    const order = kit.orders.find((each) => slashed(each.name) === name);
+    if (!order) return null;
+    /* A command already written out in full is what you meant, so return sends
+       it rather than writing it again. Otherwise it is written with a space
+       after it, which closes the list, and the next return sends it; the same
+       two presses as Emdash's own chip. */
+    if (open.kind === 'all' && same(this.text.trim(), name) && !order.takes) {
+      return { does: 'send', text: name };
+    }
+    return { does: 'write', text: `${before}${name} ` };
   }
-}
 
-type Match = {
-  kind: 'ours' | 'card' | 'order' | 'choice';
-  name: string;
-  id?: string;
-  about?: string;
-  takes?: string;
-  what?: 'model' | 'mode' | 'effort';
-  on?: boolean;
-};
-
-/** The command itself, without whatever is being written after it. */
-function head(text: string): string {
-  const space = text.indexOf(' ');
-  return space === -1 ? text : text.slice(0, space);
+  private opened(): Open | null {
+    const text = this.text;
+    if (text.startsWith('/')) {
+      const space = text.indexOf(' ');
+      if (space === -1) return { kind: 'all', from: 0, asked: text };
+      const head = text.slice(0, space);
+      const rest = text.slice(space + 1);
+      if (same(head, '/keep')) return { kind: 'keep', from: 0, asked: rest };
+      const ours = OURS.find((each) => same(each.name, head) && each.choices);
+      if (ours && !rest.includes(' ')) return { kind: 'choice', ours, from: 0, asked: rest };
+    }
+    const later = LATER.exec(text);
+    if (later && text.trim() !== later[2]) {
+      const from = later.index + (later[1] ?? '').length;
+      return { kind: 'later', from, asked: later[2] ?? '/' };
+    }
+    return null;
+  }
 }
 
 function slashed(name: string): string {
   return name.startsWith('/') ? name : `/${name}`;
 }
 
-function starts(name: string, written: string): boolean {
-  return name.toLowerCase().startsWith(written.toLowerCase());
+function same(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase();
 }
 
-function same(name: string, written: string): boolean {
-  return name.toLowerCase() === written.toLowerCase();
+function clip(text: string, most: number): string {
+  const flat = text.replace(/\s+/g, ' ');
+  return flat.length > most ? `${flat.slice(0, most - 1)}…` : flat;
 }

@@ -519,3 +519,213 @@
   background: var(--yard-broken);
   box-shadow: none;
 }
+
+/* ── what a slash or an @ opens ──────────────────────────────────────────────
+   A small dark slab standing on the line, not a wash across the screen. It is
+   the one surface in the yard that is solid, because a list of names read over
+   a transcript is two things to read at once, and nobody can. Square, with a
+   hard offset shadow and no blur, like everything else here. */
+.yard .menu {
+  position: absolute;
+  z-index: 5;
+  pointer-events: auto;
+  background: rgba(20, 14, 8, 0.97);
+  border: 1px solid rgba(244, 227, 192, 0.16);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.55);
+  animation: yard-arrive var(--yard-step) steps(3, end) both;
+}
+.yard .menu-list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 227, 192, 0.2) transparent;
+}
+.yard .menu-list::-webkit-scrollbar {
+  width: 6px;
+}
+.yard .menu-list::-webkit-scrollbar-thumb {
+  background: rgba(244, 227, 192, 0.2);
+}
+.yard .menu-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 16px 5px 30px;
+  font-family: var(--yard-face-label);
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #8a7452;
+}
+.yard .menu-head:first-child {
+  padding-top: 4px;
+}
+.yard .menu-count {
+  letter-spacing: 0.08em;
+}
+.yard .menu-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 5px 16px 5px 0;
+  cursor: default;
+  white-space: nowrap;
+  border-left: 2px solid transparent;
+}
+.yard .menu-mark {
+  width: 28px;
+  flex: none;
+  text-align: center;
+  font-size: 9px;
+  color: var(--yard-ink-bright);
+}
+.yard .menu-name {
+  flex: none;
+  width: var(--menu-name, 12ch);
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--yard-face-mono);
+  font-size: 15px;
+  color: var(--yard-gold);
+}
+.yard .menu-hit {
+  color: var(--yard-gold-hover);
+}
+.yard .menu-takes {
+  color: #7d6a4c;
+}
+.yard .menu-about {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--yard-face-label);
+  font-size: 13.5px;
+  color: var(--yard-ink-dim);
+}
+.yard .menu-row.sore .menu-about {
+  color: var(--yard-broken);
+}
+/* The keyboard's mark, lifted rather than filled. Stronger than the plain
+   `.picked` fill so that one does not paint the whole line gold. */
+.yard .menu .menu-row.picked {
+  background: rgba(224, 181, 106, 0.13);
+  border: 0;
+  border-left: 2px solid var(--yard-gold);
+  color: inherit;
+}
+.yard .menu .menu-row.picked .menu-name,
+.yard .menu .menu-row.picked .menu-hit {
+  color: var(--yard-gold-hover);
+}
+.yard .menu .menu-row.picked .menu-about {
+  color: var(--yard-ink-body);
+}
+
+/* ── what an agent says, set the way it was written ──────────────────────────
+   Everything is sized off the thought it sits in, so the live one and the
+   history above it keep their difference; the type and the tables are held to
+   a size that stays readable in both. */
+.yard .prose {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+}
+.yard .prose-heading {
+  margin-top: 0.5em;
+  font-family: var(--yard-face-label);
+  font-size: max(11px, 0.56em);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #c9b48a;
+}
+.yard .prose-heading:first-child {
+  margin-top: 0;
+}
+.yard .prose-item {
+  display: flex;
+  gap: 0.5em;
+}
+.yard .prose-mark {
+  flex: none;
+  min-width: 0.9em;
+  text-align: right;
+  opacity: 0.7;
+}
+.yard .prose-quote {
+  padding-left: 0.7em;
+  border-left: 2px solid rgba(244, 227, 192, 0.22);
+  font-style: italic;
+  opacity: 0.85;
+}
+.yard .prose-rule {
+  width: 6em;
+  height: 1px;
+  margin: 0.3em 0;
+  background: rgba(244, 227, 192, 0.2);
+}
+.yard .prose-code {
+  font-family: var(--yard-face-mono);
+  font-size: 0.8em;
+  color: #9ab7c0;
+}
+.yard .prose-heavy {
+  font-weight: 600;
+}
+.yard .prose-lean {
+  font-style: italic;
+}
+.yard .prose-block {
+  margin: 0.15em 0;
+  padding: 8px 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--yard-face-mono);
+  font-size: max(12.5px, 0.64em);
+  line-height: 1.45;
+  color: #c9d6d9;
+  background: rgba(0, 0, 0, 0.28);
+  border-left: 2px solid rgba(154, 183, 192, 0.45);
+}
+.yard .prose-block.press {
+  color: #c9d6d9;
+}
+.yard .prose-block.press:hover {
+  border-left-color: var(--yard-gold);
+  color: #e3ecee;
+}
+.yard .prose-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0.15em 0;
+}
+.yard .prose-table table {
+  border-collapse: collapse;
+  font-family: var(--yard-face-label);
+  font-size: max(12.5px, 0.64em);
+  line-height: 1.35;
+}
+.yard .prose-table th,
+.yard .prose-table td {
+  padding: 3px 14px 3px 0;
+  vertical-align: baseline;
+  text-align: left;
+  white-space: nowrap;
+}
+.yard .prose-table td:last-child,
+.yard .prose-table th:last-child {
+  padding-right: 0;
+}
+.yard .prose-table th {
+  font-size: 0.82em;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #a89272;
+  font-weight: 400;
+  border-bottom: 1px solid rgba(244, 227, 192, 0.18);
+  padding-bottom: 5px;
+}
+.yard .prose-table tr + tr td {
+  border-top: 1px solid rgba(244, 227, 192, 0.06);
+}

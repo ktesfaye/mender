@@ -18,10 +18,12 @@ const SEEDED: Prompt[] = [
   },
 ];
 
-/** How much of a prompt names it: its first few words, and never more than a line. */
+/** How much of a prompt names it: all of it if it is short, its first words and a mark if not. */
 function titled(prompt: string): string {
-  const words = prompt.replace(/\s+/g, ' ').trim().split(' ').slice(0, 6).join(' ');
-  return words.length > 48 ? `${words.slice(0, 47)}…` : words;
+  const flat = prompt.replace(/\s+/g, ' ').trim();
+  if (flat.length <= 44) return flat;
+  const cut = flat.slice(0, 44);
+  return `${cut.slice(0, cut.lastIndexOf(' ') > 20 ? cut.lastIndexOf(' ') : 44)}…`;
 }
 
 export function createPromptsController(): Controller {

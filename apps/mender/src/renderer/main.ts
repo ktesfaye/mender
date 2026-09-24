@@ -16,6 +16,7 @@ import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Mood } from '@shared/agents';
 import type { At, Change } from '@shared/changes';
 import type { Project } from '@shared/projects';
+import type { Prompt } from '@shared/prompts';
 import type { Task } from '@shared/tasks';
 import { openCard, type LiveCard } from './board/card';
 import { opening, readOut, unreadable } from './board/changed';
@@ -25,7 +26,8 @@ import { chordFor, FIND, finding, type Standing as Where } from './board/finder'
 import { openTree, type LiveTree } from './board/inside';
 import { hunting, type Hunt } from './board/looking';
 import { made, unmade, unread } from './board/made';
-import type { Meant } from './board/palette';
+import type { Offer } from './board/offer';
+import { keptNow, type Meant } from './board/palette';
 import { read, unopened, type Read } from './board/reading';
 import type { Row } from './board/row';
 import { sent, type Sent } from './board/sent';
@@ -106,7 +108,7 @@ async function boot(): Promise<void> {
           return;
         }
         watching?.typed(text);
-        yard.narrowing(narrowing());
+        yard.narrowing(...narrowing());
       },
       say: (text) => {
         if (naming) {
@@ -154,7 +156,7 @@ async function boot(): Promise<void> {
       yard.line.write(text);
       watching?.typed(text);
       if (watching) yard.show(watching.yard());
-      yard.narrowing(narrowing());
+      yard.narrowing(...narrowing());
       yard.line.take();
     };
 
@@ -168,12 +170,12 @@ async function boot(): Promise<void> {
      * file in the checkout. Only ever one of them: an @ inside a command is
      * still an @, and the nearer thing wins.
      */
-    const narrowing = (): Row[] =>
+    const narrowing = (): [Offer[], number] =>
       watching?.names.open
-        ? watching.names.rows()
+        ? [watching.names.offers(), watching.names.from]
         : watching?.slash.open
-          ? watching.slash.rows()
-          : [];
+          ? [watching.slash.offers(), watching.slash.from]
+          : [[], 0];
 
     /**
      * One surface at a time.
@@ -730,7 +732,7 @@ async function boot(): Promise<void> {
         (now) => {
           if (open === aim && !reading && !looked && !walking && !talking && !sending && !card) {
             yard.show(now);
-            yard.narrowing(narrowing());
+            yard.narrowing(...narrowing());
             /* A place nobody has touched for days is darker than one somebody
                is standing in. Age is carried by the light, never by a date. */
             if (!yard.open) dim(pixi.canvas, now.session?.cold ? 'stale' : 'yard');
@@ -743,7 +745,7 @@ async function boot(): Promise<void> {
       }
       watching = opened;
       yard.show(opened.yard());
-      yard.narrowing(narrowing());
+      yard.narrowing(...narrowing());
       yard.line.take();
       /* And wake whoever lives in there. A session keeps its checkout and its
          transcript across a restart but the agent is not running, and a
@@ -1980,16 +1982,24 @@ async function boot(): Promise<void> {
       const aim = open;
       if (!task || !saying) return;
       if (meant.does === 'write') {
-        /* A command that takes an argument is completed rather than sent: the
-           next thing you type is the argument. One that is already whole is
-           sent, because writing what is already written would leave the slash
-           open over a line that never went anywhere. */
-        if (meant.text === yard.line.written()) {
-          said('');
-          await tell(meant.text);
-          return;
-        }
         said(meant.text);
+        return;
+      }
+      if (meant.does === 'send') {
+        said('');
+        await tell(meant.text);
+        return;
+      }
+      if (meant.does === 'keep') {
+        said('');
+        const one = await client.prompts.keep({ prompt: meant.text });
+        say(`kept as “${one.title}”. a slash brings it back.`, 4000);
+        return;
+      }
+      if (meant.does === 'forget') {
+        said('');
+        await client.prompts.forget({ id: meant.id });
+        say(`“${meant.title}” is forgotten.`, 3000);
         return;
       }
       if (meant.does === 'card') {
@@ -2160,6 +2170,7 @@ async function boot(): Promise<void> {
       if (pick.startsWith('slash:')) {
         const meant = watching?.slash.meant(pick);
         if (meant) void obey(meant);
+        else yard.narrowing(...narrowing());
         return;
       }
       if (pick === 'card' || pick === 'new' || pick.startsWith('do:')) {
@@ -2625,6 +2636,17 @@ async function boot(): Promise<void> {
       if (writing) rewrite(rowsForCommit());
       else if (plainCheckout()) rewrite(live?.rows() ?? []);
     };
+    /* What you have kept to say again, which every slash in every session
+       offers. It changes from any of them, so it is watched rather than read. */
+    const keeping = new ReplicaState<Prompt[]>(client.prompts.all.state(undefined, 'list'), {
+      onChange: (value) => {
+        keptNow(value);
+        if (watching) yard.narrowing(...narrowing());
+      },
+    });
+    await keeping.ready;
+    keptNow(keeping.current() ?? []);
+
     const running = new ReplicaState<Task[]>(client.tasks.all.state(undefined, 'list'), {
       onChange: (value) => {
         tasks = value;

@@ -165,13 +165,23 @@ column is a small fire throwing sparks, with what it is doing in the present
 tense and how long it has been at it, and the answer inks in as it comes. Words
 ease; the sprites still step, because they are pixel art and writing is not.
 
-**A slash on the line is how a session is worked.** Writing one turns the lines
-under it into everything you could mean, and most of it is the agent's own:
+**A slash on the line is how a session is worked.** Writing one opens
+everything you could mean right where you are writing it: a small dark slab
+standing on the line with its left edge on the slash, the names in the type and
+what each is for after them, the best match first and the whole list there to
+scroll. It is the one solid surface in the yard, because a list read over a
+transcript is two things to read at once. Most of it is the agent's own:
 whatever its CLI advertises when it starts, which on Claude is its commands and
-every skill it has been taught. Four are the village's and never reach the
+every skill it has been taught. Some are the village's and never reach the
 agent as words, because picking a model is a setting on a running session and
-not a sentence: `/model`, `/mode` and `/effort` list what that agent itself says
-it offers and set it there and then, and `/agent` turns the board over.
+not a sentence: `/model`, `/mode`, `/effort` and, where the agent has one,
+`/collaboration` list what that agent itself says it offers and set it there and
+then, and `/agent` turns the board over. And under them is what you have kept:
+`/keep` and whatever you write after it keeps it to say again, picking a kept
+one writes it on the line, and `/forget` lets one go in two presses. It matches
+anywhere in a name or in what it says about itself, the way Emdash's does, and a
+slash later in a sentence opens the agent's and yours but never a setting.
+Arrows walk it, return or tab picks, escape closes it and keeps what you wrote.
 
 **A picture dropped on the wood is carried.** Drop or paste one on a session's
 board and it waits by the line you are writing on until you say something, then
@@ -186,7 +196,7 @@ one thing about it you cannot get across by describing it.
 **An @ names a file in that checkout.** A path is the one thing you cannot get
 across by describing it, so writing an @ turns the lines under it into what is
 actually in there, narrowing as you type, and picking one writes the whole path
-where the @ was. The same wood and the same keys as the slash.
+where the @ was. The same slab and the same keys as the slash.
 
 **A block of code is pressed and it is yours.** Writing on the wood is read, not
 selected, so the one thing you cannot retype comes off it by being pressed: the

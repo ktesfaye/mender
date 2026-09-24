@@ -73,6 +73,14 @@ export interface Line {
    * path where the @ is rather than throwing the sentence away.
    */
   onInstead(run: () => boolean): void;
+  /**
+   * First refusal on any key, before the line does anything with it. Whatever
+   * a slash or an @ has opened walks on the arrows, picks on Tab and closes on
+   * Escape; answering true says it took the key.
+   */
+  onKey(run: (event: KeyboardEvent) => boolean): void;
+  /** Where on the screen the character at `index` of what is written sits. */
+  at(index: number): DOMRect | null;
   /** Escape was pressed with nothing on the line, so it means something else. */
   onEmpty(run: () => void): void;
   /** Something was typed, for whatever is narrowing underneath. */
@@ -104,6 +112,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   let empty: () => void = () => {};
   let typed: (said: string) => void = () => {};
   let instead: () => boolean = () => false;
+  let first: (event: KeyboardEvent) => boolean = () => false;
 
   function showing(): void {
     const has = said.textContent !== '';
@@ -155,6 +164,11 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   });
 
   said.addEventListener('keydown', (event) => {
+    if (!event.isComposing && first(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (event.key === 'Enter' && !event.shiftKey) {
       /* Return sends. Shift and return is a newline, which is the one thing
          about this line that is exactly what everybody already expects. */
@@ -262,6 +276,25 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     },
     onSay: (run) => (say = run),
     onInstead: (run) => (instead = run),
+    onKey: (run) => (first = run),
+    at: (index) => {
+      /* Walked off the text itself, because a contenteditable is free to split
+         what is written into as many nodes as it likes. */
+      let left = index;
+      const walker = document.createTreeWalker(said, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const length = node.textContent?.length ?? 0;
+        if (left <= length) {
+          const range = document.createRange();
+          range.setStart(node, Math.min(left, length));
+          range.setEnd(node, Math.min(left + 1, length));
+          const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
+          return rect.width || rect.height ? rect : null;
+        }
+        left -= length;
+      }
+      return null;
+    },
     onEmpty: (run) => (empty = run),
     onType: (run) => (typed = run),
     close: () => {
