@@ -94,6 +94,8 @@ export interface Standing {
   asking?: Ask | null;
   /** What it has said it means to do, if it has said. */
   plan?: readonly { text: string; state: 'done' | 'doing' | 'ahead' }[];
+  /** How much room it has left to think in, when it says. */
+  room?: number;
   /** What was said while it was busy and has not been heard yet. */
   waiting?: readonly { id: string; text: string }[];
   /** What is in your hands. */
@@ -146,6 +148,7 @@ function sessionOf(
       ? { permissions: kit.modes.find((one) => one.id === kit.mode)?.name?.toLowerCase() }
       : {}),
     fire: fireOf(from.mood, Boolean(from.asking)),
+    ...(from.room === undefined ? {} : { room: from.room }),
     ...(coldFor(told) ? { cold: coldFor(told) } : {}),
     notes: notes.slice(0, 3),
     ...(notes.length > 3 ? { olderNotes: notes.length - 3 } : {}),

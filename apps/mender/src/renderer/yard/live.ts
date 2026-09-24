@@ -101,6 +101,7 @@ export async function openYard(
       ...(kit ? { kit } : {}),
       ...(working?.asking ? { asking: working.asking } : {}),
       ...(working?.plan.length ? { plan: working.plan } : {}),
+      ...(working?.room === null || working?.room === undefined ? {} : { room: working.room }),
       ...(working?.queued.length ? { waiting: working.queued } : {}),
       ...(held.length ? { carrying: held } : {}),
       on: standing(from.project, head),

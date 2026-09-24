@@ -365,18 +365,25 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
     root.appendChild(flag);
   }
 
+  /* How much room it has left to think in. Nothing warns an agent when that
+     runs out; the conversation simply starts losing its own beginning, so the
+     village says it instead, and says it warmly once there is little left. */
   const room = yard.session?.room;
-  const about = [
-    room === undefined ? undefined : `context ${Math.round(room * 100)}%`,
-    yard.session?.model,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  if (about) {
-    const it = box({ right: edge, top: HEAD.under });
-    it.appendChild(exact(about, 12));
-    root.appendChild(it);
+  const it = box({ right: edge, top: HEAD.under }, 'display:flex;gap:6px;align-items:baseline');
+  if (room !== undefined) {
+    it.appendChild(
+      exact(`context ${Math.round(room * 100)}%`, 12, room < TIGHT ? '#ff9a6a' : undefined)
+    );
   }
+  if (yard.session?.model) {
+    if (room !== undefined) {
+      const dot = exact('·', 12, '#6b5a40');
+      dot.style.position = 'relative';
+      it.appendChild(dot);
+    }
+    it.appendChild(exact(yard.session.model, 12));
+  }
+  if (it.childElementCount) root.appendChild(it);
 
   /* And if the ground under all of it has moved, that is said before anything
      else, because nothing else on the board means a thing until it is put
@@ -418,6 +425,9 @@ const META = ";font-family:'Courier Prime',monospace;font-size:12px;position:rel
 function shortOf(path: string): string {
   return path.replace(/\/+$/, '').split('/').at(-1) ?? path;
 }
+
+/** Below this much room left, it stops being a footnote. */
+const TIGHT = 0.15;
 
 const TITLE = [
   "font-family:'Josefin Sans',sans-serif",

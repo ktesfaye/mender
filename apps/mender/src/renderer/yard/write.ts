@@ -77,12 +77,12 @@ export function said(text: string, tone = '#9c8a68'): HTMLSpanElement {
 }
 
 /** A name, a status, a path, a command: anything quoted exactly. */
-export function exact(text: string, size = 12, tone = '#bfa476'): HTMLSpanElement {
+export function exact(text: string, size = 12, tone?: string): HTMLSpanElement {
   const el = document.createElement('span');
   el.style.cssText = [
     "font-family:'Courier Prime',monospace",
     `font-size:${size}px`,
-    `color:${tone}`,
+    `color:${tone ?? '#bfa476'}`,
     'text-shadow:1px 1px 0 #120d07',
     'white-space:nowrap',
   ].join(';');
