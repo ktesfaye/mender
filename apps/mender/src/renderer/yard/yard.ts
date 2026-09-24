@@ -181,13 +181,15 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   );
   under.dataset.narrowing = 'yes';
   const opened = makeRows(under, does.press);
+  /* What the overlay last had on it, so a change of list moves the mark. */
+  let lastNarrowed = '';
   stage.appendChild(under);
   line.onSay((text) => does.say(text));
   /* Return means whatever the slash or the @ has picked out, when one of them
      is open. The first line of either is already standing under the keyboard,
      because a list you have to arrow into before Return does anything is a
      list that made you press two keys to do one thing. */
-  line.onInstead(() => (standingInOverlay() ? walk.press() : false));
+  line.onInstead(standingInOverlay);
 
   /** Whether the keyboard's mark is on one of the lines the overlay opened. */
   function standingInOverlay(): boolean {
@@ -310,11 +312,19 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       const wasInside = standingInOverlay();
       opened.write(rows);
       under.style.display = rows.length ? 'flex' : 'none';
-      /* The first line of it stands under the keyboard from the moment it
-         opens, drawn filled the way the designs draw it, so Return means it.
-         Arrows move that fill; closing the overlay gives the keyboard back. */
+
+      /* The first line of it stands under the keyboard, drawn filled the way
+         the designs draw it, so Return means it.
+         It goes back to the first line every time the list itself changes,
+         which is every letter you type. Leaving the mark where it was looks
+         harmless until you notice that typing the whole of `/mode` left it
+         sitting on `/model` from three letters ago, and return then set the
+         model. Arrows move it; the next letter takes it back. */
+      const now = rows.map((row) => row.pick ?? '').join('\u0000');
+      const moved = now !== lastNarrowed;
+      lastNarrowed = now;
       const first = rows.find((row) => row.pick)?.pick;
-      if (first && !standingInOverlay()) walk.stand(first);
+      if (first && (moved || !standingInOverlay())) walk.stand(first);
       else if (!rows.length && wasInside) walk.stand(null);
       else walk.again();
       /* Whatever it opened is read from the bottom up, because the thing it is
@@ -607,7 +617,12 @@ function elsewhere(
   const tall = 30 + others.length * 23 + 34;
   const top = floor - tall;
   root.appendChild(rule({ left: at.x, top: top - 20, width: at.wide - 20 }));
-  root.appendChild(label(`elsewhere in ${yard.project.name.toLowerCase()}`, { left: at.x, top }));
+  /* Only when there is an elsewhere. One session in a project is not
+     "elsewhere in" anything, and the line under it is about the project
+     rather than about the work. */
+  if (others.length) {
+    root.appendChild(label(`elsewhere in ${yard.project.name.toLowerCase()}`, { left: at.x, top }));
+  }
 
   const list = stack({ left: at.x, top: top + 30, width: at.wide }, 9);
   list.style.fontSize = '14px';
@@ -810,39 +825,48 @@ function thought(one: Thought, size: number, ink: string, name?: string): HTMLEl
    at the foot of the column the yard itself: the fire, and everybody it sent
    out, placed by what they are doing rather than listed. */
 function made(root: HTMLElement, at: { x: number; wide: number }, yard: Yard, floor: number): void {
+  const session = yard.session;
+  const output = session?.made[0];
+  const steps_ = session?.steps ?? [];
+  const hands = session?.agents ?? [];
+
+  /* NOTHING IS WRITTEN OVER NOTHING.
+   *
+   * A heading with an empty column under it does not say "this has not
+   * happened yet", it says the screen is broken. So a section that has nothing
+   * in it is not drawn at all: no cart until something has come off one, no
+   * list of what it did until it has done something, no yard until it has sent
+   * somebody out. The column's own rule goes with them, because a line down an
+   * empty third of the screen is the same lie in thinner form. */
+  if (!output && !steps_.length && !hands.length) return;
+
   root.appendChild(
     rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
   );
-  root.appendChild(label('what it made', { left: at.x, top: HEAD.label }));
 
   /* The ground is the foot of this column whatever happened above it, so
      everything else in here gets the room between the header and the yard and
      not one pixel more. In a short window that means the cart loses its
      itinerary and then what it did loses its beginning, in that order, rather
      than either of them being written over the ground. */
-  const patch = floor - YARD_BOX.tall;
+  const patch = hands.length ? floor - YARD_BOX.tall : floor;
   const room = Math.max(0, patch - 44 - HEAD.top);
   const above = box({ left: at.x, top: HEAD.top, width: at.wide, height: room }, 'overflow:hidden');
   root.appendChild(above);
 
-  const session = yard.session;
-  const output = session?.made[0];
   let y = 0;
   if (output) {
+    root.appendChild(label('what it made', { left: at.x, top: HEAD.label }));
     y = cart(above, at.wide, output);
-  } else {
-    /* An empty cart, said rather than drawn: a heading over nothing reads as
-       something failing to load. */
-    const empty = box({ left: 0, top: 8, width: at.wide }, EMPTY);
-    empty.textContent = session ? 'nothing has come off the cart yet.' : '';
-    above.appendChild(empty);
-    y = 36;
   }
 
-  above.appendChild(rule({ left: 0, top: y + 10, width: at.wide }));
-  above.appendChild(label('what it did', { left: 0, top: y + 30 }));
+  if (steps_.length) {
+    if (output) above.appendChild(rule({ left: 0, top: y + 10, width: at.wide }));
+    const where = output ? { left: 0, top: y + 30 } : { left: at.x, top: HEAD.label };
+    (output ? above : root).appendChild(label('what it did', where));
+  }
 
-  const top = y + 60;
+  const top = output ? y + 60 : 0;
   const left = Math.max(0, room - top);
   const steps = stack({ left: 0, top, width: at.wide, height: left }, 10);
   steps.style.cssText +=
@@ -850,8 +874,8 @@ function made(root: HTMLElement, at: { x: number; wide: number }, yard: Yard, fl
   const earlier = session?.olderSteps;
   const count = exact('', 12, '#8a7452');
   steps.appendChild(count);
-  for (const one of session?.steps ?? []) steps.appendChild(did(one));
-  above.appendChild(steps);
+  for (const one of steps_) steps.appendChild(did(one));
+  if (steps_.length) above.appendChild(steps);
 
   /* Appended first and counted after, because how many fit is a thing only the
      browser knows once the sprites in them have a height. */
@@ -861,7 +885,11 @@ function made(root: HTMLElement, at: { x: number; wide: number }, yard: Yard, fl
     ? `\u25b8 ${many} earlier steps${earlier ? ` \u00b7 ${earlier.over}` : ''}`
     : '';
 
-  ground(root, at, yard, floor);
+  /* And the ground only once there is somebody standing on it. The fire is
+     already said by the light of the whole screen and by the lantern on the
+     rail, so a framed patch of dirt with nobody in it is a box for its own
+     sake. */
+  if (hands.length) ground(root, at, yard, floor);
 }
 
 /** The billboard and what is nailed to it. Returns where the next thing goes. */
@@ -958,9 +986,9 @@ function nobody(
 
   /* The one thing this board still offers about the project itself, in the
      same place it sits when there is work here, so it does not move when the
-     first session arrives. */
+     first session arrives. Nothing else: an empty project has no ground worth
+     framing, no cart and nothing to have done. */
   elsewhere(root, at, yard, floor, does);
-  ground(root, patch, yard, floor);
 }
 
 /**
@@ -1232,19 +1260,45 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     beam.appendChild(hung);
   }
 
-  /* An empty hook at the end of the rail. Pressing it asks what is going to
-     happen in the new session, which is the only question a session starts
-     with and the only one it needs. */
+  /* THE END OF THE RAIL IS HOW A SESSION STARTS.
+   *
+   * It was three words of small type floating under a bare cord, and the one
+   * thing somebody opening a project for the first time needs to find. So it
+   * is hung the way the lanterns beside it are hung: an unlit lamp on the
+   * hook, its name in gold where their names are, and what it does underneath
+   * where their doing is. The whole of it takes the press, so the target is a
+   * lantern rather than a line of twelve-point monospace. */
   const spare = yard.rail.length * step;
+  const cord = 3 + LANTERN.cord;
   beam.appendChild(box({ left: spare + 10, top: 3, width: 3, height: LANTERN.cord }, HOOK));
-  const start = astop(
-    pressing('hang a new one', () => does.press('new')),
-    'rail:new'
-  );
-  start.style.cssText += "font-family:'Courier Prime',monospace;font-size:12px";
-  const at = box({ left: spare + 34, top: 3 + LANTERN.cord + 2 });
-  at.appendChild(start);
-  beam.appendChild(at);
+
+  const lamp = sprite(KIT_NAMES.lanternOff, 2);
+  lamp.style.cssText += `;left:${spare}px;top:${cord}px;filter:brightness(.7)`;
+  beam.appendChild(lamp);
+
+  const hook = box({ left: spare, top: cord, width: bare ? 44 : Math.max(step, 150), height: 58 });
+  hook.style.pointerEvents = 'auto';
+  hook.style.cursor = 'default';
+  if (!bare) {
+    const name = box({ left: 34, top: 2 });
+    const start = astop(
+      pressing('a new session', () => does.press('new')),
+      'rail:new'
+    );
+    start.style.cssText += "font-family:'Courier Prime',monospace;font-size:13px";
+    name.appendChild(start);
+    hook.appendChild(name);
+    const under = box({ left: 34, top: 20 });
+    under.appendChild(exact('the hook is empty', 11, '#a89272'));
+    hook.appendChild(under);
+  } else {
+    astop(lamp, 'rail:new');
+  }
+  hook.addEventListener('mousedown', (event) => event.preventDefault());
+  hook.addEventListener('click', () => does.press('new'));
+  hook.addEventListener('pointerenter', () => (lamp.style.filter = 'brightness(1.1)'));
+  hook.addEventListener('pointerleave', () => (lamp.style.filter = 'brightness(.7)'));
+  beam.appendChild(hook);
   root.appendChild(beam);
 }
 

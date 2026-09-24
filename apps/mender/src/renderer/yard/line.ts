@@ -63,9 +63,9 @@ export interface Line {
    *
    * What a slash or an @ has opened under the line has one of its lines
    * already picked out, so Return means that line rather than "send this".
-   * Whoever is listening says so by answering true, and the line is left
-   * exactly as it was, because picking a file writes its path where the @ is
-   * rather than throwing the sentence away.
+   * Whoever is listening says so by answering true, and the line keeps what is
+   * written on it and lets the key go by, because picking a file writes its
+   * path where the @ is rather than throwing the sentence away.
    */
   onInstead(run: () => boolean): void;
   /** Escape was pressed with nothing on the line, so it means something else. */
@@ -144,7 +144,13 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       /* Return sends. Shift and return is a newline, which is the one thing
          about this line that is exactly what everybody already expects. */
       event.preventDefault();
+      /* Unless a slash or an @ has a line picked out, in which case Return
+         means that line. It is let through rather than handled here, because
+         there is exactly one listener in this app that presses things and two
+         of them pressing the same key is how one Return did two things. */
       if (instead()) return;
+      /* And when this line does take it, nothing else gets a look. */
+      event.stopPropagation();
       const text = (said.textContent ?? '').trim();
       said.textContent = '';
       showing();

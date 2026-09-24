@@ -1277,6 +1277,43 @@ belongs to the overlay while it is up.
 **That overlay also covered the gatepost**, which the rule under its own crop
 says it never does. It takes the same ground a sub-board takes and no more.
 
+### A building is not a session, and four other things he had to point at
+
+**Picking a house opened the session standing in it, or asked for a new one
+when the house was empty.** That was the old district board's idea and it
+should have gone when the rail arrived: it makes the number of sessions a
+project can hold a property of how many houses the artist drew there, which is
+nonsense, and it is the opposite of what this file and `MENDER.md` both say.
+Houses are scenery. A villager still stands at the door of one somebody is
+working in, and picking any of them walks you into the project. The rail is the
+sessions.
+
+**There was no obvious way to start one.** The end of the rail was three words
+of small monospace floating under a bare cord. It is hung the way the lanterns
+beside it are hung now: an unlit lamp on the hook, its name in gold where their
+names are, and what it is underneath.
+
+**Nothing behind a slash worked.** Two listeners both claimed Return, the
+line's own and the one listener that presses things, so one press completed the
+command *and* pressed the first line of what the command opened, which on
+`/model` meant silently setting the model to whichever was first. The line now
+hands Return over when the overlay has a line picked and takes it outright when
+it does not, and nothing else looks at it.
+
+Two more came out of the same pull. A command that was already whole rewrote
+itself forever instead of being sent, so `/compact` could never leave the line.
+And the mark stayed on whatever matched three letters ago, so typing the whole
+of `/mode` left it sitting on `/model`, which is the same bug wearing the
+costume of a prefix. The list's first line is the pick, it moves every time the
+list changes, and a name written in full beats a name it is a prefix of.
+
+**Nothing is written over nothing.** A heading with an empty column under it
+does not say the work has not started, it says the screen failed to load. No
+cart until something has come off one, no list of what it did until it has done
+something, no framed patch of ground until it has sent somebody out, and no
+column rule down an empty third of the screen. A project nobody has worked in
+says that once and lets the district behind it do the rest.
+
 ### What the designs do not cover, and neither does this
 
 Three whole groups of the 162 states are about things this app has never had a

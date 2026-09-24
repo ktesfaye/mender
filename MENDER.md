@@ -81,11 +81,13 @@ on the wood becomes a branch and a worktree, and that session is then its own
 checkout with its own board. Two agents are never loose in one working tree.
 Nothing about any of it is a stand-in.
 
-**An agent runs in a task, and it is a villager.** Telling a building something
-moves somebody in: the ACP runtime spawns that agent's own CLI in the task's
-worktree, and from then on the building's board is what is happening in there —
-what was said, what was read, what was run, wrapped to the wood and pinned to
-its live edge. Agents write in markdown whether or not anybody asked, so it is
+**An agent runs in a task, and it is a villager.** Hanging a lantern on the
+empty hook at the end of the rail moves somebody in: the ACP runtime spawns
+that agent's own CLI in the task's worktree, and from then on the yard is what
+is happening in there — what was said, what was read, what was run. Not a
+building: houses are scenery and picking one walks you into the project, never
+into a session, because a project has as many sessions as it has work and a
+district has as many houses as the artist drew. Agents write in markdown whether or not anybody asked, so it is
 read rather than shown: there is no second weight here to set anything bold in,
 and the gutter, the indent, the gap and the tone carry headings, lists, quotes,
 rules, tables and code without one. The last line of the board is where you write back; there is no

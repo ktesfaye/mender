@@ -198,7 +198,12 @@ export class Palette {
         about: order.about,
         ...(order.takes ? { takes: order.takes } : {}),
       }));
-    return [...mine, ...theirs];
+    /* What you have written in full is what you meant. `/mode` is a prefix of
+       `/model`, so without this, typing the whole of the shorter one and
+       pressing return silently picked the longer. */
+    return [...mine, ...theirs].sort(
+      (a, b) => Number(same(b.name, written)) - Number(same(a.name, written))
+    );
   }
 }
 
@@ -224,4 +229,8 @@ function slashed(name: string): string {
 
 function starts(name: string, written: string): boolean {
   return name.toLowerCase().startsWith(written.toLowerCase());
+}
+
+function same(name: string, written: string): boolean {
+  return name.toLowerCase() === written.toLowerCase();
 }

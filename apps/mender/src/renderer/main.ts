@@ -438,9 +438,8 @@ async function boot(): Promise<void> {
       const project = projectOn(district);
       return project ? tasks.filter((task) => task.project === project.id) : [];
     };
-    /** The task standing in one of a district's buildings, if any is. */
-    const taskIn = (district: District, slot: number): Task | undefined =>
-      tasksOn(district).find((task) => task.slot === slot);
+    /* Which house a session stands in, which is scenery and nothing else:
+       it decides where a villager is drawn and never what anything opens. */
     /** The first building on a district nobody is in, if there is one. */
     const freeSlot = (district: District): number | null => {
       const taken = new Set(tasksOn(district).map((task) => task.slot));
@@ -1752,13 +1751,17 @@ async function boot(): Promise<void> {
         arrived();
         return;
       }
-      if (aim.kind === 'building') {
-        const task = taskIn(aim.district, aim.slot);
-        if (task) await openTask(aim, task);
-        else askName(aim, aim.slot);
-        return;
-      }
-      await openDistrict(aim);
+      /* A BUILDING IS NOT A SESSION.
+       *
+       * Houses light up so the island still says something from out on the
+       * water, and a villager stands at the door of one somebody is working
+       * in, but which house that is means nothing: a project has as many
+       * sessions as it has work and a district has as many houses as the
+       * artist drew. Picking one used to open the session standing in that
+       * slot, or ask for a new session when the slot was empty, which made
+       * the number of sessions a project could have a property of its
+       * architecture. The rail is the sessions. A house is the way in. */
+      await openDistrict({ kind: 'district', district: aim.district });
     };
 
     /**
@@ -1819,6 +1822,15 @@ async function boot(): Promise<void> {
       const aim = open;
       if (!task || !saying) return;
       if (meant.does === 'write') {
+        /* A command that takes an argument is completed rather than sent: the
+           next thing you type is the argument. One that is already whole is
+           sent, because writing what is already written would leave the slash
+           open over a line that never went anywhere. */
+        if (meant.text === yard.line.written()) {
+          said('');
+          await tell(meant.text);
+          return;
+        }
         said(meant.text);
         return;
       }
