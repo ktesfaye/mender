@@ -1,0 +1,245 @@
+/**
+ * The one place you write.
+ *
+ * Every board in this app ends in the same line, and everything that takes
+ * input arrives on it: saying the next thing to an agent, naming a branch,
+ * writing a commit message, looking for a file, calling a session something
+ * else. There is no second field anywhere, and there is deliberately no box, no
+ * outline and no placeholder styling around this one.
+ *
+ * It is a contenteditable, and that is a choice rather than a shortcut. Writing
+ * is the one thing in this village that people already know how to do from
+ * every other program they own: selecting a word, dragging over three, undo,
+ * pasting from somewhere else, and typing a language whose input method needs
+ * somewhere real to compose. Reimplementing all of that on top of a keydown
+ * listener would be several hundred lines that are worse than the browser's.
+ *
+ * The one thing the browser gets wrong for us is the caret, which blinks at
+ * whatever rate the machine feels like. This village blinks at its own rate, in
+ * steps, like everything else that moves here, so the real caret is made
+ * invisible and a drawn one follows it.
+ */
+
+/** What the line says when it is empty, which is different every time. */
+export type Asking =
+  | 'say'
+  | 'start'
+  | 'branch'
+  | 'commit'
+  | 'look'
+  | 'name'
+  | 'file'
+  | 'changes'
+  | 'answer'
+  | 'built';
+
+const PROMPTS: Record<Asking, string> = {
+  say: '› say the next thing',
+  start: '› say what you want built',
+  built: '› say what you want built',
+  branch: '› call it something',
+  commit: '› say what this does',
+  look: '› what are you looking for',
+  name: '› call it something else',
+  file: '› say something about this file',
+  changes: '› say something about these changes',
+  answer: '› answer it',
+};
+
+export interface Line {
+  readonly root: HTMLElement;
+  /** What is written on it right now. */
+  written(): string;
+  /** Put something on it, or clear it. */
+  write(text: string): void;
+  /** Change what it asks for when it is empty. */
+  asks(what: Asking): void;
+  /** Take the keyboard. */
+  take(): void;
+  /** Return was pressed with something on the line. */
+  onSay(run: (said: string) => void): void;
+  /** Escape was pressed with nothing on the line, so it means something else. */
+  onEmpty(run: () => void): void;
+  /** Something was typed, for whatever is narrowing underneath. */
+  onType(run: (said: string) => void): void;
+  close(): void;
+}
+
+export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
+  const root = document.createElement('div');
+  root.style.cssText = 'position:relative;display:flex;align-items:center;pointer-events:auto';
+
+  const ghost = document.createElement('span');
+  ghost.style.cssText = PROMPT;
+  ghost.textContent = PROMPTS[asking];
+
+  const said = document.createElement('span');
+  said.contentEditable = 'plaintext-only';
+  said.spellcheck = false;
+  said.style.cssText = WRITING;
+
+  const cursor = document.createElement('span');
+  cursor.style.cssText = CURSOR;
+
+  root.append(ghost, said, cursor);
+  at.appendChild(root);
+
+  let say: (said: string) => void = () => {};
+  let empty: () => void = () => {};
+  let typed: (said: string) => void = () => {};
+
+  function showing(): void {
+    const has = said.textContent !== '';
+    ghost.style.display = has ? 'none' : 'inline';
+    place();
+  }
+
+  /**
+   * Put the drawn cursor where the real one is.
+   *
+   * Read off the selection rather than counted off the text, because the line
+   * wraps and a character count says nothing about which row it wrapped onto.
+   */
+  function place(): void {
+    const where = window.getSelection();
+    const mine = document.activeElement === said;
+    if (!mine || !where || where.rangeCount === 0) {
+      cursor.style.left = '0';
+      cursor.style.position = 'relative';
+      return;
+    }
+    const range = where.getRangeAt(0).cloneRange();
+    range.collapse(false);
+    const rect = range.getClientRects()[0] ?? said.getBoundingClientRect();
+    const from = root.getBoundingClientRect();
+    cursor.style.position = 'absolute';
+    cursor.style.left = `${Math.round(rect.right - from.left)}px`;
+    cursor.style.top = `${Math.round(rect.top - from.top + (rect.height - 20) / 2)}px`;
+  }
+
+  said.addEventListener('input', () => {
+    showing();
+    typed(said.textContent ?? '');
+  });
+  document.addEventListener('selectionchange', place);
+  said.addEventListener('blur', () => (cursor.style.opacity = '0'));
+  said.addEventListener('focus', () => {
+    cursor.style.opacity = '';
+    place();
+  });
+
+  said.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      /* Return sends. Shift and return is a newline, which is the one thing
+         about this line that is exactly what everybody already expects. */
+      event.preventDefault();
+      const text = (said.textContent ?? '').trim();
+      said.textContent = '';
+      showing();
+      say(text);
+      return;
+    }
+    if (event.key === 'Escape') {
+      /* One thing at a time: a half-written line goes first and the board
+         behind it only when there is nothing left to throw away. */
+      if (said.textContent) {
+        event.preventDefault();
+        event.stopPropagation();
+        said.textContent = '';
+        showing();
+        typed('');
+        return;
+      }
+      empty();
+    }
+  });
+
+  /**
+   * What lands on the line when something is pasted or dropped on it.
+   *
+   * A picture is the only thing an agent can actually be shown, and it is
+   * handled elsewhere because it does not belong on the line at all: it waits
+   * beside it. Everything else that has a path gets written as its path, since
+   * a path is the one thing about a file you cannot get across by describing
+   * it.
+   */
+  said.addEventListener('paste', (event) => {
+    const text = event.clipboardData?.getData('text/plain');
+    if (text === undefined) return;
+    event.preventDefault();
+    /* Flattened on the way in. Several lines pasted onto a one-line prompt is
+       almost always one thing somebody copied with a line break in it. */
+    insert(text.replace(/\s*\n\s*/g, ' '));
+  });
+
+  function insert(text: string): void {
+    const where = window.getSelection();
+    if (!where || where.rangeCount === 0) {
+      said.textContent = (said.textContent ?? '') + text;
+    } else {
+      const range = where.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createTextNode(text));
+      range.collapse(false);
+    }
+    showing();
+    typed(said.textContent ?? '');
+  }
+
+  showing();
+
+  return {
+    root,
+    written: () => said.textContent ?? '',
+    write: (text) => {
+      said.textContent = text;
+      showing();
+    },
+    asks: (what) => {
+      ghost.textContent = PROMPTS[what];
+      showing();
+    },
+    take: () => {
+      said.focus();
+      const range = document.createRange();
+      range.selectNodeContents(said);
+      range.collapse(false);
+      const where = window.getSelection();
+      where?.removeAllRanges();
+      where?.addRange(range);
+      place();
+    },
+    onSay: (run) => (say = run),
+    onEmpty: (run) => (empty = run),
+    onType: (run) => (typed = run),
+    close: () => {
+      document.removeEventListener('selectionchange', place);
+      root.remove();
+    },
+  };
+}
+
+const HAND = "font-family:'Caveat',cursive;font-size:22px;line-height:1.2";
+
+const PROMPT = `${HAND};color:#ab9470;pointer-events:none`;
+
+const WRITING = [
+  HAND,
+  'color:#f4e3c0',
+  'outline:none',
+  'min-width:1px',
+  'white-space:pre-wrap',
+  'word-break:break-word',
+  /* The browser's own caret is turned off and ours is drawn instead, because
+     this village blinks in steps and the machine's caret does not. */
+  'caret-color:transparent',
+].join(';');
+
+const CURSOR = [
+  'width:2px',
+  'height:20px',
+  'background:#f4e3c0',
+  'animation:yard-blink 900ms steps(1,end) infinite',
+  'pointer-events:none',
+  'flex:none',
+].join(';');

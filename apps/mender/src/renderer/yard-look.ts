@@ -100,7 +100,22 @@ async function boot(): Promise<void> {
 
   dim(pixi.canvas, 'yard');
   const layer = makeLayer();
-  makeYard(layer).show(SAMPLE);
+  const yard = makeYard(layer, {
+    open: (id) => console.log('walk into', id),
+    say: (text) => console.log('said', text),
+    leave: () => console.log('back out'),
+  });
+  yard.show(SAMPLE);
+  yard.line.take();
+
+  /* The arrows walk the board and return picks, which is the whole of the
+     keyboard until the chords land. One listener, as everywhere else. */
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      yard.walk.step(event.key === 'ArrowDown' ? 1 : -1);
+    }
+  });
 }
 
 void boot();

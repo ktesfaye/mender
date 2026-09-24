@@ -19,7 +19,9 @@
  */
 
 import { GUTTER, MARGIN, type Layer } from './frame';
+import { makeLine, type Asking, type Line } from './line';
 import { KIT_NAMES, sprite } from './sprite';
+import { astop, walking, type Walking } from './walk';
 import type { Hand, Made, Note, Posture, Step, Thought, Yard } from './what';
 import { box, exact, firelight, folk, label, row, rule, said, stack, trim } from './write';
 
@@ -47,17 +49,43 @@ const TONE: Record<Posture, string> = {
   resting: '#bfa476',
 };
 
+export interface Doings {
+  /** Walk into another session in this project. */
+  open(id: string): void;
+  /** Say something on the line. */
+  say(said: string): void;
+  /** Escape with nothing left on the line to throw away. */
+  leave(): void;
+}
+
 export interface Standing {
   /** Rewrite everything. Cheap: the yard is a couple of hundred elements. */
   show(yard: Yard): void;
+  /** What the line is asking for at the moment. */
+  asks(what: Asking): void;
+  /** Where the keyboard is, for whoever is listening to it. */
+  readonly walk: Walking;
+  readonly line: Line;
   /** Take it down and give the village back. */
   close(): void;
 }
 
-export function makeYard(layer: Layer): Standing {
+export function makeYard(layer: Layer, does: Doings): Standing {
   const root = box({ left: 0, top: 0, right: 0, bottom: 0 });
   root.style.pointerEvents = 'none';
   layer.root.appendChild(root);
+
+  /* The line is made once and kept. Everything else on this screen is thrown
+     away and written again whenever anything moves, and a line that went with
+     it would lose whatever you were half-way through typing every time an
+     agent said a word. */
+  const writing = box({ left: 0, right: 0, bottom: 146 }, 'display:flex;align-items:center');
+  layer.root.appendChild(writing);
+  const line = makeLine(writing);
+  line.onSay((text) => does.say(text));
+  line.onEmpty(() => does.leave());
+
+  const walk = walking(layer.root);
 
   let last: Yard | undefined;
   layer.onResize(() => last && show(last));
@@ -71,17 +99,29 @@ export function makeYard(layer: Layer): Standing {
     const floor = window.innerHeight - MARGIN - (layer.cramped() ? RAIL_BARE : RAIL_TALL) - 60;
 
     scrims(root);
+    writing.style.left = `${layer.edge()}px`;
+    writing.style.right = `${layer.edge()}px`;
     head(root, yard, layer.edge());
     asked(root, columns.asked, yard, floor, layer.cramped());
     thinking(root, columns.thinking, yard, floor);
     made(root, columns.made, yard, floor);
-    line(root, yard, layer.edge());
-    rail(root, yard, layer.cramped(), layer.edge());
+    said_line(root, layer.edge());
+    rail(root, yard, layer.cramped(), layer.edge(), does);
+    /* The keyboard was standing on something before the rewrite and the board
+       under it is new, so put the mark back on whatever it was standing on. */
+    walk.again();
   }
 
   return {
     show,
-    close: () => root.remove(),
+    asks: (what) => line.asks(what),
+    walk,
+    line,
+    close: () => {
+      line.close();
+      writing.remove();
+      root.remove();
+    },
   };
 }
 
@@ -606,24 +646,21 @@ function standing(hand: Hand, i: number, wide: number): HTMLElement {
 /* ── the one place you write ───────────────────────────────────────────────
    One line, no box, no hint, and a cursor that is the only thing on this
    screen saying the app is awake. */
-function line(root: HTMLElement, yard: Yard, edge: number): void {
+function said_line(root: HTMLElement, edge: number): void {
   root.appendChild(rule({ left: edge, right: edge, bottom: 186 }, true));
-  const at = box({ left: edge, right: edge, bottom: 146 }, 'display:flex;align-items:center;gap:10px');
-  const prompt = document.createElement('span');
-  prompt.style.cssText = "font-family:'Caveat',cursive;font-size:22px;color:#ab9470";
-  prompt.textContent = yard.session ? '› say the next thing' : '› say what you want built';
-  at.appendChild(prompt);
-  at.appendChild(
-    box({ width: 2, height: 20 }, 'position:relative;background:#f4e3c0;animation:yard-blink 900ms steps(1,end) infinite')
-  );
-  root.appendChild(at);
 }
 
 /* ── the rail ──────────────────────────────────────────────────────────────
    One lantern per session, hung off a beam. Lit means somebody is awake in
    there; dark is resting, still being cut, or broken. The one you are standing
    in hangs lowest and brightest, and the one that wants you flickers. */
-function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number): void {
+function rail(
+  root: HTMLElement,
+  yard: Yard,
+  cramped: boolean,
+  edge: number,
+  does: Doings
+): void {
   if (yard.rail.length < 2) return;
   const beam = box({
     left: edge,
@@ -655,22 +692,50 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number): vo
 
     const lamp = sprite(one.lit ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff, 2);
     lamp.style.cssText += `;left:${x}px;top:${top}px`;
-    if (!one.here && one.lit) lamp.style.filter = 'brightness(.75)';
-    if (!one.lit) lamp.style.filter = 'brightness(.75)';
+    const dimmed = one.here ? '' : 'brightness(.75)';
+    lamp.style.filter = dimmed;
     if (one.posture === 'wants-you') {
       lamp.style.animation = 'yard-flicker 480ms steps(2,end) infinite alternate';
     }
     beam.appendChild(lamp);
 
+    /* The one place in this app where a pressable thing is not gold.
+       Everywhere else gold means "press me" and nothing else is gold; the rail
+       keeps its posture tints because the rail's whole job is telling you, from
+       across the room and without reading, which session wants you. Six gold
+       names in a row would say nothing at all. What says it is pressable is the
+       lantern: a physical object hanging there, lighting under your hand. */
+    const hung = box({ left: x, top, width: bare ? 44 : Math.max(step, 120), height: 58 });
+    hung.style.pointerEvents = one.here ? 'none' : 'auto';
+    hung.style.cursor = 'default';
+
     /* A short window keeps the lanterns and gives up the words beside them:
        lit, dark, flickering and hanging lowest still say which is which. */
-    if (bare) continue;
-    const name = box({ left: x + 34, top: top + 2 });
-    name.appendChild(exact(one.name, one.here ? 13 : 12, one.here ? '#ffdca4' : TONE[one.posture]));
-    beam.appendChild(name);
-    const under = box({ left: x + 34, top: top + 20 });
-    under.appendChild(exact(one.saying, 11, one.here ? '#dcc8a0' : '#a89272'));
-    beam.appendChild(under);
+    if (!bare) {
+      const name = box({ left: 34, top: 2 });
+      const written = exact(
+        one.name,
+        one.here ? 13 : 12,
+        one.here ? '#ffdca4' : TONE[one.posture]
+      );
+      /* The keyboard stands on the name rather than on the whole lantern,
+         because the mark it leaves is a fill and a fill the size of a lantern
+         is a slab of gold across the bottom of the screen. */
+      if (!one.here) astop(written, `rail:${one.id}`);
+      name.appendChild(written);
+      hung.appendChild(name);
+      const under = box({ left: 34, top: 20 });
+      under.appendChild(exact(one.saying, 11, one.here ? '#dcc8a0' : '#a89272'));
+      hung.appendChild(under);
+    }
+
+    if (!one.here) {
+      if (bare) astop(lamp, `rail:${one.id}`);
+      hung.addEventListener('click', () => does.open(one.id));
+      hung.addEventListener('pointerenter', () => (lamp.style.filter = 'brightness(1.15)'));
+      hung.addEventListener('pointerleave', () => (lamp.style.filter = dimmed));
+    }
+    beam.appendChild(hung);
   }
   root.appendChild(beam);
 }
