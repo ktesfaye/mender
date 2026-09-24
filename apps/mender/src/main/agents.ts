@@ -383,6 +383,10 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
       if (!moved.success) return moved;
       const conversation = moved.data;
 
+      /* From here on the village is watching: you said something, so anything
+         that turns up after it is happening in front of you and can honestly
+         be dated. Everything before it might be a week old. */
+      house.watched();
       house.arriving();
       // No deadline on either: starting an agent means spawning its CLI and
       // waiting for it to say hello, and a prompt is open for as long as the
@@ -529,10 +533,8 @@ class House {
    * we do not have. Cleared with the house.
    */
   private seen = new Map<string, number>();
-  /* Whether anybody was watching yet. Until the first batch of turns has been
-     published, everything on them is history rather than something happening,
-     and history that was read off the disk has no honest clock on it. */
-  private settled = false;
+  /* Whether the village has watched this conversation move. */
+  private watching = false;
 
   constructor(
     private readonly task: string,
@@ -604,7 +606,6 @@ class House {
     this.usage = usage.current() ?? null;
     this.seedSeen();
     this.publish();
-    this.settled = true;
 
     /* Everything said in here before the village was looking. A suspended
        session has none to give — its history lives with the running process —
@@ -619,7 +620,6 @@ class House {
       this.before = [...back.data.turns.filter((had) => !known.has(had.id)), ...this.before];
       this.seedSeen();
       this.publish();
-      this.settled = true;
     }
   }
 
@@ -631,7 +631,6 @@ class House {
    * here on — the ones that arrive while somebody is watching.
    */
   private seedSeen(): void {
-    this.settled = false;
     for (const turn of this.live ? [...this.before, this.live] : this.before) {
       for (const item of turn.items) {
         if (item.kind === 'thinking') continue; // it carries its own clock.
@@ -649,18 +648,26 @@ class House {
    * whole history, and stamping that now would have a week-old conversation
    * say it was this minute, which is worse than saying nothing.
    *
-   * `over` is the exact test rather than a guess about timing. A turn that had
-   * already finished the first time this house laid eyes on it finished before
-   * anybody was looking, however it arrived — replayed off the disk, or sent
-   * again by an agent picking up where it left off. Nought is the honest
-   * answer to when, and the board says so in words.
+   * So nothing is dated until you have said something. An agent picking up
+   * where it left off sends its whole transcript back the moment you walk in,
+   * on turns it never marks finished, so neither "was it already over" nor
+   * "had we published yet" can tell that from something happening. What can is
+   * you: once you have spoken to it, everything after that is in front of you.
+   * A turn that was already finished when this house first saw it is history
+   * either way. Nought is the honest answer to when, and the board says so in
+   * words rather than putting a time on it.
    */
   private time(id: string, over: boolean): number {
     const had = this.seen.get(id);
     if (had !== undefined) return had;
-    const now = over || !this.settled ? 0 : Date.now();
-    this.seen.set(id, now);
-    return now;
+    const at = this.watching && !over ? Date.now() : 0;
+    this.seen.set(id, at);
+    return at;
+  }
+
+  /** You said something, so from here on this house is watching time pass. */
+  watched(): void {
+    this.watching = true;
   }
 
   /** Somebody is on their way in, before the session says anything itself. */

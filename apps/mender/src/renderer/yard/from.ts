@@ -180,6 +180,15 @@ function noteOf(
 /**
  * What is rising off the fire, oldest first with the live one last.
  *
+ * **Nothing here says when it was said unless it actually knows.** The protocol
+ * carries no clock on a message, and an agent picking up where it left off
+ * sends its whole transcript back the moment you walk in, so the only time the
+ * village could put on any of it is the time it happened to notice, which for
+ * a week-old conversation is a lie. Reasoning carries its own clock and the
+ * live one is happening in front of you; everything else is placed by where it
+ * is in the column and by how bright it is, which is what recency is made of
+ * here anyway.
+ *
  * The plan it posted is a different thing and lives above this: the first thing
  * an agent says is not a plan, however much it reads like one.
  */
@@ -188,10 +197,14 @@ function thoughtsOf(told: Told | undefined): Thought[] {
   return all.map((one, at) => ({
     id: one.id,
     said: one.said,
-    /* Nothing was written down about when this happened, because it was read
-       off the disk rather than watched happening. Saying so is better than
-       putting a time on it. */
-    when: one.at ? agoOf(Date.now() - one.at) : 'before this',
+    /* A time only where there is one. The protocol carries no clock on a
+       message, and an agent picking up where it left off sends its whole
+       transcript back the moment you walk in, so the only time the village
+       could put on any of it is the time it happened to notice, which for a
+       week-old conversation is a lie. Reasoning carries its own clock. The
+       rest is placed by where it is in the column and how bright it is, which
+       is what recency is made of here anyway. */
+    when: one.quiet && one.at ? agoOf(Date.now() - one.at) : '',
     ...(one.since ? { live: true, at: longFor(Date.now() - one.since) } : {}),
     ...(at === all.length - 1 && !one.since ? { live: true } : {}),
   }));

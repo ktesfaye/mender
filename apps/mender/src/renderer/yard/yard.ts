@@ -758,7 +758,10 @@ const KEY = [
 function thought(one: Thought, size: number, ink: string, name?: string): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
-  it.appendChild(said(name ? `${name} · ${one.when}` : one.when));
+  /* Only where there is something true to say. A thought with no clock on it
+     gets no line above it at all rather than an empty one. */
+  const label = name ? (one.when ? `${name} · ${one.when}` : name) : one.when;
+  if (label) it.appendChild(said(label));
   const body = document.createElement('span');
   body.style.cssText = `font-size:${size}px;line-height:1.4;color:${ink}`;
   body.textContent = one.said;
