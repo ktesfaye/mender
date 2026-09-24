@@ -1090,6 +1090,9 @@ function toldFrom(
   deeds.push({
     id: node.id,
     did: deedOf(node, root),
+    ...(node.kind === 'execute-tool-call' && node.inputSummary?.trim()
+      ? { why: lower(node.inputSummary.trim()) }
+      : {}),
     note,
     tool: node.kind,
     running: node.status === 'running',
@@ -1099,6 +1102,10 @@ function toldFrom(
   for (const child of node.children ?? []) {
     toldFrom(child, over, root, stamp, earliest, deeds, errands, written);
   }
+}
+
+function lower(said: string): string {
+  return said.charAt(0).toLowerCase() + said.slice(1);
 }
 
 /** Every file written, newest first, one entry per path. */

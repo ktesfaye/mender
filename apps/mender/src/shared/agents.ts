@@ -147,6 +147,15 @@ export type Mused = z.infer<typeof musedSchema>;
 export const deedSchema = z.object({
   id: z.string(),
   did: z.string(),
+  /**
+   * What it was for, in the agent's own words, when it said.
+   *
+   * A command is the least readable thing an agent does: it opens with a
+   * variable or a `cd` into a path, and cut to one line all that survives is
+   * the setup. Claude writes one plain line beside every command saying what
+   * it is for, and that is what the yard reads out instead.
+   */
+  why: z.string().optional(),
   /** What it cost or turned up, written cool after the thing itself. */
   note: z.string().optional(),
   /**

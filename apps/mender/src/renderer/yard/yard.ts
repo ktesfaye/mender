@@ -1243,6 +1243,11 @@ function did(one: Step): HTMLElement {
   }
   line.appendChild(slot);
   const text = document.createElement('span');
+  /* Two lines and then it stops, because a step cut off mid-word halfway
+     across the column reads as the board being broken, and a third line is
+     the step telling you more than you glanced over for. */
+  text.style.cssText =
+    'white-space:normal;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden';
   text.style.color = one.running ? '#ffc98a' : '#f4e3c0';
   text.textContent = one.note ? `${one.did} · ${one.note}` : one.did;
   line.appendChild(text);

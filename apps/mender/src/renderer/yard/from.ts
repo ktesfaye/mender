@@ -267,7 +267,8 @@ function liveOf(from: Standing, told: Told | undefined): Session['live'] {
 }
 
 /** A step it is in the middle of, said in the present tense. */
-function doingOf(deed: { did: string; tool: string }): string {
+function doingOf(deed: { did: string; why?: string; tool: string }): string {
+  if (deed.why) return deed.why;
   const rest = (word: string): string => deed.did.replace(new RegExp(`^${word}\\s+`), '');
   switch (deed.tool) {
     case 'execute-tool-call':
@@ -297,6 +298,7 @@ function doingOf(deed: { did: string; tool: string }): string {
 function stepOf(deed: {
   id: string;
   did: string;
+  why?: string;
   note?: string;
   tool: string;
   running: boolean;
@@ -304,7 +306,7 @@ function stepOf(deed: {
 }): Step {
   return {
     id: deed.id,
-    did: deed.did,
+    did: deed.why ?? deed.did,
     prop: PROPS[deed.tool] ?? PROP,
     ...(deed.note ? { note: deed.note } : {}),
     ...(deed.running ? { running: true } : {}),
