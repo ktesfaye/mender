@@ -1192,6 +1192,18 @@ is there; a project with twenty sessions and a project with twenty-three agents
 have never been seen because nothing here has had that many; and abandoned is
 not reachable, since a project the village has forgotten is gone.
 
+### Built, and broken, found by driving the installed app
+
+The app you install could not start an agent. The two ACP adapters the village
+spawns are declared as development dependencies of the plugins package, which
+is fine while everything runs out of the checkout and wrong the moment it is
+packaged: only production dependencies are carried, so the installed build had
+no adapter to spawn and every agent failed with a module it could not find.
+Fixed by making them dependencies of the app, because the app depends on them.
+
+It could only have shown up by opening the thing in the Applications folder,
+which is the whole reason that is the last step of every change.
+
 ### What the designs do not cover, and neither does this
 
 Three whole groups of the 162 states are about things this app has never had a
