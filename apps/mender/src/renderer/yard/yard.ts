@@ -20,13 +20,26 @@
 
 import type { Row } from '../board/row';
 import { GUTTER, MARGIN, type Layer } from './frame';
+import { longFor } from './from';
 import { makeLine, type Asking as Prompting, type Line } from './line';
+import { forgetInk, ink, keyed, measure, play } from './motion';
 import { pressing, twice } from './press';
 import { makeRows } from './rows';
 import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, sprite } from './sprite';
 import { astop, walking, type Walking } from './walk';
-import type { Asking as Ask, Fire, Hand, Made, Note, Posture, Step, Thought, Yard } from './what';
+import type {
+  Asking as Ask,
+  Fire,
+  Hand,
+  Live,
+  Made,
+  Note,
+  Posture,
+  Step,
+  Thought,
+  Yard,
+} from './what';
 import { box, exact, firelight, folk, label, row, rule, said, stack, trim } from './write';
 
 /* Where the bands sit, measured off the designs, with one change: the top
@@ -110,8 +123,20 @@ export interface Standing {
    */
   up(on: boolean, bare?: boolean): void;
   readonly showing: boolean;
+  /**
+   * What was just said to the agent, lifting off the line.
+   *
+   * It travels up to the gatepost and waits there until the agent's own
+   * record of it arrives, which then takes its place without a seam.
+   */
+  fly(said: string): void;
   /** Take it down and give the village back. */
   close(): void;
+}
+
+/** The same words, however the line and the transcript each spaced them. */
+function same(a: string, b: string): boolean {
+  return a.replace(/\s+/g, ' ').trim() === b.replace(/\s+/g, ' ').trim();
 }
 
 /** Which lanterns were on the beam last time, so a new one can be seen to
@@ -184,7 +209,13 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   /* What the overlay last had on it, so a change of list moves the mark. */
   let lastNarrowed = '';
   stage.appendChild(under);
-  line.onSay((text) => does.say(text));
+  /* Where the words were on the line the moment they were said, so that if
+     they turn out to be for the agent they can be seen leaving from there. */
+  let lastSaid: { text: string; rect: DOMRect } | null = null;
+  line.onSay((text, rect) => {
+    lastSaid = rect ? { text, rect } : null;
+    does.say(text);
+  });
   /* Return means whatever the slash or the @ has picked out, when one of them
      is open. The first line of either is already standing under the keyboard,
      because a list you have to arrow into before Return does anything is a
@@ -234,11 +265,26 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   let last: Yard | undefined;
   layer.onResize(() => {
     lay();
-    if (last) show(last);
+    if (last) show(last, false);
   });
 
-  function show(yard: Yard): void {
+  /* Whether the next rewrite is walking into this place rather than watching
+     it change, which is when everything arrives in order instead of sliding. */
+  let entering = true;
+  /** What was said and is on its way up to the post. */
+  let flight: { said: string; el: HTMLElement; rect: () => DOMRect } | null = null;
+  /** When each session was first seen working, for a count with nothing else to start from. */
+  const workingSince = new Map<string, number>();
+
+  function show(yard: Yard, moving = true): void {
+    const before = last;
     last = yard;
+    const walkedIn =
+      entering ||
+      before?.project.id !== yard.project.id ||
+      before?.session?.id !== yard.session?.id;
+    entering = false;
+    const was = moving && !walkedIn ? measure(stage) : new Map();
     root.replaceChildren(covered);
     covered.replaceChildren();
     const columns = layer.columns();
@@ -256,7 +302,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
        rest; the line at the bottom is already asking what to build. */
     if (yard.session) {
       asked(root, columns.asked, yard, floor, layer.cramped(), does);
-      thinking(covered, columns.thinking, yard, floor, does);
+      thinking(covered, columns.thinking, yard, floor, does, walkedIn, sinceOf(yard));
       made(covered, columns.made, yard, floor);
       still(stillAt, yard, does);
     } else {
@@ -274,6 +320,111 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     /* The keyboard was standing on something before the rewrite and the board
        under it is new, so put the mark back on whatever it was standing on. */
     walk.again();
+
+    if (!moving) return;
+    /* The note that was just said, landing. The agent's own record of it has
+       arrived on the post, so the one in flight hands over to it: the card
+       carries on from wherever the words had got to. */
+    const from = new Map<string, DOMRect>();
+    const newest = yard.session?.notes[0];
+    if (flight && newest && same(newest.said, flight.said) && !was.has(`note:${newest.id}`)) {
+      from.set(`note:${newest.id}`, flight.rect());
+      flight.el.remove();
+      flight = null;
+    }
+    play(stage, was, { entering: walkedIn, from });
+    /* Walking in, the bands and rules come up with the light rather than
+       being there before it, and the keyed things arrive in order over them. */
+    if (walkedIn) {
+      root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: 'ease-out' });
+    }
+  }
+
+  /** When the live count starts, from the note if it has a time and otherwise from now. */
+  function sinceOf(yard: Yard): number | undefined {
+    const session = yard.session;
+    if (!session?.live) {
+      if (session) workingSince.delete(session.id);
+      return undefined;
+    }
+    if (session.live.since) return session.live.since;
+    const seen = workingSince.get(session.id) ?? Date.now();
+    workingSince.set(session.id, seen);
+    return seen;
+  }
+
+  /* The count on the live edge goes up by itself. The yard is only rewritten
+     when something changes, and a wait is exactly when nothing does. */
+  const ticking = window.setInterval(() => {
+    for (const el of stage.querySelectorAll<HTMLElement>('[data-since]')) {
+      el.textContent = longFor(Date.now() - Number(el.dataset.since));
+    }
+  }, 1000);
+
+  function fly(text: string): void {
+    const leaving = lastSaid;
+    lastSaid = null;
+    const columns = layer.columns();
+    if (!leaving || !same(leaving.text, text) || !last?.session) return;
+    flight?.el.remove();
+    const el = document.createElement('div');
+    el.style.cssText = [
+      'position:fixed',
+      `left:${leaving.rect.left}px`,
+      `top:${leaving.rect.top}px`,
+      `max-width:${columns.asked.wide - 60}px`,
+      "font-family:'Caveat',cursive",
+      'font-size:19px',
+      'line-height:1.25',
+      'padding:12px 14px',
+      'color:#f4e3c0',
+      'pointer-events:none',
+      'z-index:5',
+      'transform-origin:top left',
+      'white-space:pre-wrap',
+    ].join(';');
+    el.textContent = text;
+    stage.appendChild(el);
+    /* The line's own padding is none and the card's is twelve, so the words
+       start twelve up and fourteen left of where they will read from. */
+    const dx = columns.asked.x + 22 - leaving.rect.left;
+    const dy = HEAD.top - leaving.rect.top;
+    el.animate(
+      [
+        {
+          transform: 'translate(-14px,-12px)',
+          background: 'rgba(255,244,212,0)',
+          color: '#f4e3c0',
+        },
+        {
+          offset: 0.35,
+          transform: `translate(${dx * 0.25 - 14}px,${dy * 0.5}px) rotate(-2deg)`,
+          background: 'rgba(255,244,212,.85)',
+          color: '#2c2013',
+        },
+        {
+          transform: `translate(${dx}px,${dy}px) rotate(-.7deg)`,
+          background: '#fff4d4',
+          color: '#2c2013',
+          boxShadow: '5px 5px 0 rgba(0,0,0,.5)',
+        },
+      ],
+      { duration: 620, easing: 'cubic-bezier(.3,.7,.2,1)', fill: 'forwards' }
+    );
+    const mine = { said: text, el, rect: () => el.getBoundingClientRect() };
+    flight = mine;
+    /* If the agent never takes it, the note does not hang there forever. */
+    window.setTimeout(() => {
+      if (flight !== mine) return;
+      flight = null;
+      el.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: 300,
+        fill: 'forwards',
+      }).finished.then(
+        () => el.remove(),
+        () => el.remove()
+      );
+    }, 8000);
   }
 
   return {
@@ -309,6 +460,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       return root.style.display !== 'none';
     },
     up: (on, bare = false) => {
+      if (on && stage.style.display === 'none') entering = true;
       stage.style.display = on ? '' : 'none';
       if (on) lay();
       root.style.display = on && !bare ? '' : 'none';
@@ -317,7 +469,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     get showing() {
       return stage.style.display !== 'none';
     },
-    show,
+    show: (yard) => show(yard),
+    fly,
     narrowing: (rows) => {
       /* Asked before the lines are replaced, because afterwards there is
          nothing left to ask about. */
@@ -347,6 +500,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     walk,
     line,
     close: () => {
+      window.clearInterval(ticking);
       line.close();
       stage.remove();
     },
@@ -542,7 +696,10 @@ function asked(
     return;
   }
 
-  const card = pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 });
+  const card = keyed(
+    pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 }),
+    `note:${newest.id}`
+  );
   root.appendChild(card);
   /* A note is a note. Something long enough to fill the post on its own is
      not one, and it is usually not yours either: a resumed session hands back
@@ -573,8 +730,10 @@ function asked(
     { left: at.x + 22, top: below, width: at.wide - 60, height: Math.max(0, under - 20 - below) },
     14
   );
-  list.style.overflow = 'hidden';
-  for (const note of older) list.appendChild(weathered(note));
+  /* Not clipped: `trim` below takes off whatever does not fit, and a clipped
+     list swallowed the note that was on the parchment while it slid down to
+     join the others. */
+  for (const note of older) list.appendChild(keyed(weathered(note), `note:${note.id}`));
   const tail = said('', '#a89272');
   tail.style.fontSize = '10px';
   list.appendChild(tail);
@@ -614,6 +773,8 @@ function pinned(note: Note, where: { left: number; top: number; width: number })
 }
 
 const CARD = [
+  /* Over the notes under it, which slide down behind it when a new one lands. */
+  'z-index:2',
   'background:#fff4d4',
   'color:#2c2013',
   'padding:12px 14px',
@@ -707,7 +868,9 @@ function thinking(
   at: { x: number; wide: number },
   yard: Yard,
   floor: number,
-  does: Doings
+  does: Doings,
+  walkedIn: boolean,
+  since: number | undefined
 ): void {
   root.appendChild(
     rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
@@ -749,7 +912,8 @@ function thinking(
     top += said.offsetHeight + 20;
   }
 
-  if (!thoughts.length) return;
+  const live = yard.session?.live;
+  if (!thoughts.length && !live) return;
 
   const room = Math.max(60, floor - top);
   const stream = stack({ left: at.x, top, width: at.wide, height: room }, 20);
@@ -761,30 +925,117 @@ function thinking(
 
   /* Oldest first and dimmest first, so the column brightens as it comes down
      to what is happening now. The last one is set large and is the only thing
-     on this screen that is. */
+     on this screen that is, unless it was said before the newest note, in
+     which case it is history like the rest and the live edge is what the agent
+     is doing about what you said since. */
+  const keep = new Set<string>();
   thoughts.forEach((one, i) => {
     const far = thoughts.length - 1 - i;
-    if (!far) {
-      const it = document.createElement('div');
+    if (one.live) {
+      keep.add(one.id);
+      const it = keyed(document.createElement('div'), `thought:${one.id}`);
       it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
-      it.appendChild(said(`now${one.at ? ` \u00b7 ${one.at} at this` : ''}`, '#ffc98a'));
+      const head = said(one.quiet ? 'thinking' : 'now', '#ffc98a');
+      it.appendChild(head);
       const body = document.createElement('span');
-      body.style.cssText =
-        'font-size:21px;line-height:1.35;color:#ffdca4;text-shadow:0 2px 10px rgba(0,0,0,.9)';
-      body.textContent = one.said;
+      body.style.cssText = one.quiet
+        ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
+        : 'font-size:21px;line-height:1.35;color:#ffdca4;text-shadow:0 2px 10px rgba(0,0,0,.9)';
+      ink(body, one.id, one.said, !walkedIn);
       it.appendChild(body);
       stream.appendChild(it);
       return;
     }
     stream.appendChild(
-      thought(one, far > 2 ? 15 : 16, far > 2 ? 'rgba(244,227,192,.46)' : 'rgba(244,227,192,.62)')
+      keyed(
+        thought(
+          one,
+          far > 2 ? 15 : 16,
+          far > 2 ? 'rgba(244,227,192,.46)' : 'rgba(244,227,192,.62)'
+        ),
+        `thought:${one.id}`
+      )
     );
   });
+  forgetInk(keep);
+
+  if (live) stream.appendChild(ember(live, since));
 
   root.appendChild(stream);
-  /* And it opens at the live edge, because what is happening now is what you
-     came to read. */
-  stream.scrollTop = stream.scrollHeight;
+  /* It follows the live edge while you are at it, and stays put while you have
+     scrolled up to read something, because being yanked back down in the
+     middle of a sentence is worse than missing the next one. */
+  const kept = followed.get(yard.session?.id ?? '');
+  stream.scrollTop = kept === undefined || walkedIn ? stream.scrollHeight : kept;
+  stream.addEventListener('scroll', () => {
+    const atEdge = stream.scrollTop + stream.clientHeight >= stream.scrollHeight - 24;
+    if (atEdge) followed.delete(yard.session?.id ?? '');
+    else followed.set(yard.session?.id ?? '', stream.scrollTop);
+  });
+}
+
+/** Where the column was left scrolled to, for a session somebody scrolled up in. */
+const followed = new Map<string, number>();
+
+/**
+ * The live edge: a small fire with sparks going up off it, what it is doing,
+ * and how long it has been at it.
+ *
+ * Not a spinner. Nothing here spins, and a spinner says only that something
+ * is happening, which the fire already says. This says what, and for how long.
+ */
+function ember(live: Live, since: number | undefined): HTMLElement {
+  const it = keyed(document.createElement('div'), 'live');
+  it.style.cssText = `display:flex;align-items:center;gap:14px;position:relative;padding:${live.answering ? '0' : '6px'} 0 4px`;
+
+  const hearth = document.createElement('div');
+  hearth.style.cssText = 'position:relative;width:46px;height:32px;flex:none';
+  hearth.appendChild(
+    box(
+      /* Kept inside the column, which scrolls and so clips: a pool of light cut
+         off by the column's own edge is a box, and light here is never a box. */
+      { left: -6, top: -26, width: 84, height: 84 },
+      'background:radial-gradient(circle at 50% 50%,rgba(255,168,60,.34),rgba(0,0,0,0) 62%);animation:yard-glow 2.4s ease-in-out infinite;pointer-events:none'
+    )
+  );
+  const fire = sprite(KIT_NAMES.fire, 1);
+  fire.style.cssText +=
+    ';left:0;top:0;animation:yard-flicker 480ms steps(2,end) infinite alternate';
+  hearth.appendChild(fire);
+  /* Sparks, each on its own clock so they never rise in step. */
+  for (let i = 0; i < 6; i += 1) {
+    const spark = box(
+      { left: 10 + ((i * 7) % 14), top: 8, width: 2, height: 2 },
+      `background:${i % 2 ? '#ffc98a' : '#ff8a4a'};animation:yard-spark ${1400 + i * 230}ms linear ${i * 310}ms infinite;opacity:0`
+    );
+    hearth.appendChild(spark);
+  }
+  it.appendChild(hearth);
+
+  const words = document.createElement('div');
+  words.style.cssText = 'display:flex;align-items:baseline;gap:10px;min-width:0';
+  const doing = document.createElement('span');
+  doing.style.cssText = [
+    "font-family:'Josefin Sans',sans-serif",
+    'font-size:13px',
+    'letter-spacing:.16em',
+    'text-transform:uppercase',
+    'color:#ffc98a',
+    'white-space:nowrap',
+    'overflow:hidden',
+    'text-overflow:ellipsis',
+    'animation:yard-breathe 2.4s ease-in-out infinite',
+  ].join(';');
+  doing.textContent = live.doing;
+  words.appendChild(doing);
+  if (since) {
+    const count = exact(longFor(Date.now() - since), 12, '#bfa476');
+    count.dataset.since = String(since);
+    count.style.position = 'relative';
+    words.appendChild(count);
+  }
+  it.appendChild(words);
+  return it;
 }
 
 /** What a step of a posted plan looks like, behind them, under their hands, or ahead. */
@@ -913,7 +1164,7 @@ function made(root: HTMLElement, at: { x: number; wide: number }, yard: Yard, fl
   const earlier = session?.olderSteps;
   const count = exact('', 12, '#8a7452');
   steps.appendChild(count);
-  for (const one of steps_) steps.appendChild(did(one));
+  for (const one of steps_) steps.appendChild(keyed(did(one), `step:${one.id}`));
   if (steps_.length) above.appendChild(steps);
 
   /* Appended first and counted after, because how many fit is a thing only the
@@ -1200,9 +1451,12 @@ function still(at: HTMLElement, yard: Yard, does: Doings): void {
   at.style.cssText += ';display:flex;flex-direction:column;gap:4px;background:rgba(72,37,16,.72)';
   at.appendChild(label('still to say, press to take one back', {}));
   for (const one of waiting) {
-    const press = astop(
-      pressing(one.said, () => does.press(`unsay:${one.id}`)),
-      `unsay:${one.id}`
+    const press = keyed(
+      astop(
+        pressing(one.said, () => does.press(`unsay:${one.id}`)),
+        `unsay:${one.id}`
+      ),
+      `waiting:${one.id}`
     );
     press.style.cssText += "font-family:'Caveat',cursive;font-size:18px";
     at.appendChild(press);
@@ -1250,7 +1504,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       }
     }
 
-    const lamp = sprite(one.lit ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff, 2);
+    const lamp = keyed(
+      sprite(one.lit ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff, 2),
+      `lantern:${one.id}`
+    );
     lamp.style.cssText += `;left:${x}px;top:${top}px`;
     if (!onTheBeam.has(one.id)) {
       onTheBeam.add(one.id);
@@ -1269,7 +1526,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
        across the room and without reading, which session wants you. Six gold
        names in a row would say nothing at all. What says it is pressable is the
        lantern: a physical object hanging there, lighting under your hand. */
-    const hung = box({ left: x, top, width: bare ? 44 : Math.max(step, 120), height: 58 });
+    const hung = keyed(
+      box({ left: x, top, width: bare ? 44 : Math.max(step, 120), height: 58 }),
+      `hung:${one.id}`
+    );
     hung.style.pointerEvents = one.here ? 'none' : 'auto';
     hung.style.cursor = 'default';
 

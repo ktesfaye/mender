@@ -102,6 +102,11 @@ export interface Standing {
   carrying?: readonly { id: string; name: string }[];
 }
 
+/** The turn the newest note opened, which is the one being answered now. */
+function turnOf(told: Told | undefined): number | undefined {
+  return told?.notes[0]?.turn;
+}
+
 /** Everything the yard needs, from everything the wire last said. */
 export function yardOf(from: Standing): Yard {
   const { project, tasks, moods, here, told, kit } = from;
@@ -138,6 +143,7 @@ function sessionOf(
 ): Session {
   const notes = (told?.notes ?? []).map(noteOf);
   const thoughts = thoughtsOf(told);
+  const live = liveOf(from, told);
   return {
     id: task.id,
     name: task.title,
@@ -148,6 +154,7 @@ function sessionOf(
       ? { permissions: kit.modes.find((one) => one.id === kit.mode)?.name?.toLowerCase() }
       : {}),
     fire: fireOf(from.mood, Boolean(from.asking)),
+    ...(live ? { live } : {}),
     ...(from.room === undefined ? {} : { room: from.room }),
     ...(coldFor(told) ? { cold: coldFor(told) } : {}),
     notes: notes.slice(0, 3),
@@ -194,6 +201,13 @@ function noteOf(
  */
 function thoughtsOf(told: Told | undefined): Thought[] {
   const all = told?.thoughts ?? [];
+  const now = turnOf(told);
+  /* An answer to something you said before the newest note is not what is
+     happening now, however recently it was said: once you have said the next
+     thing, the last reply is history and the live edge is whatever comes back
+     to this one. */
+  const earlier = (turn: number | undefined): boolean =>
+    now !== undefined && turn !== undefined && turn < now;
   return all.map((one, at) => ({
     id: one.id,
     said: one.said,
@@ -206,8 +220,78 @@ function thoughtsOf(told: Told | undefined): Thought[] {
        is what recency is made of here anyway. */
     when: one.quiet && one.at ? agoOf(Date.now() - one.at) : '',
     ...(one.since ? { live: true, at: longFor(Date.now() - one.since) } : {}),
-    ...(at === all.length - 1 && !one.since ? { live: true } : {}),
+    ...(at === all.length - 1 && !one.since && !earlier(one.turn) ? { live: true } : {}),
+    ...(earlier(one.turn) ? { earlier: true } : {}),
+    ...(one.quiet ? { quiet: true } : {}),
   }));
+}
+
+/**
+ * What it is doing this second, while it is doing anything.
+ *
+ * Nothing on the yard said so. The fire burned in a patch of ground that only
+ * shows when somebody has been sent out, and the last answer stayed set large
+ * as "now" long after you had asked the next thing, so the screen looked the
+ * same whether the agent was hard at work or had never heard you.
+ */
+function liveOf(from: Standing, told: Told | undefined): Session['live'] {
+  if (from.asking) return undefined;
+  if (from.mood !== 'working' && from.mood !== 'arriving') return undefined;
+  const turn = turnOf(told);
+  const newest = told?.notes[0];
+  const running = [...(told?.deeds ?? [])].reverse().find((one) => one.running);
+  const thoughts = told?.thoughts ?? [];
+  const last = thoughts.at(-1);
+  const answering = Boolean(
+    last && !last.quiet && (turn === undefined || last.turn === undefined || last.turn >= turn)
+  );
+  const reasoning = thoughts.some((one) => one.since);
+  const doing =
+    from.mood === 'arriving'
+      ? 'waking up'
+      : running
+        ? doingOf(running)
+        : reasoning
+          ? 'thinking'
+          : answering
+            ? 'writing back'
+            : 'thinking';
+  return {
+    doing,
+    /* Counted from when you said it, when the village saw you say it. A note
+       read back off the disk has no such moment, and then the count starts
+       from when the yard first noticed the work. */
+    ...(newest?.at && Date.now() - newest.at < 1000 * 60 * 60 ? { since: newest.at } : {}),
+    answering,
+  };
+}
+
+/** A step it is in the middle of, said in the present tense. */
+function doingOf(deed: { did: string; tool: string }): string {
+  const rest = (word: string): string => deed.did.replace(new RegExp(`^${word}\\s+`), '');
+  switch (deed.tool) {
+    case 'execute-tool-call':
+      /* Before the command itself comes through, all a shell call is called
+         is the name of the tool. */
+      return /^terminal$/i.test(deed.did) ? 'running a command' : `running ${deed.did}`;
+    case 'read-tool-call':
+    case 'web-fetch-tool-call':
+      return `reading ${rest('read')}`;
+    case 'create-file-tool-call':
+      return `writing ${rest('wrote')}`;
+    case 'modify-file-tool-call':
+      return `changing ${rest('changed')}`;
+    case 'delete-file-tool-call':
+      return `removing ${rest('removed')}`;
+    case 'search-tool-call':
+      return `looking for ${rest('looked for')}`;
+    case 'spawn-subagent-tool-call':
+      return 'sending somebody out';
+    case 'create-plan-tool-call':
+      return 'making a plan';
+    default:
+      return deed.did;
+  }
 }
 
 function stepOf(deed: {

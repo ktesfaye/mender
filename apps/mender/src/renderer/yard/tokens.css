@@ -68,7 +68,7 @@
   --yard-face-thought: 'Cormorant Garamond', serif; /* what it is thinking */
   --yard-face-mono: 'Courier Prime', monospace; /* names, status, code */
 
-  /* ── motion: stepped, whole pixels, no easing curve and nothing springs ── */
+  /* ── motion: sprites step and never ease; writing eases (see motion.ts) ── */
   --yard-step-fast: 80ms;
   --yard-step: 140ms;
   --yard-step-slow: 240ms;
@@ -131,16 +131,16 @@
 }
 
 /**
- * The three things that move on their own, and there are only three.
+ * The things that move on their own.
  *
  * Nothing in this village spins. A cursor says the app is awake, a fire says
- * the session is, and somebody walking says they have not come back yet. Every
- * other wait is a number counting up, which is honest about not knowing how
- * long it will be in a way a spinner never is.
+ * the session is, and somebody walking says they have not come back yet. A
+ * wait is a number counting up beside the fire, which is honest about not
+ * knowing how long it will be in a way a spinner never is.
  *
- * All three are stepped rather than eased, because the art they sit in is: a
- * sprite flips between frames, it does not glide between them, and a smoothly
- * interpolated anything next to it reads instantly as coming from another game.
+ * The sprites are stepped rather than eased, because a sprite flips between
+ * frames and does not glide between them. Writing is not pixel art, and it
+ * eases.
  */
 @keyframes yard-blink {
   0%,
@@ -199,6 +199,57 @@
   }
   100% {
     transform: translateY(0);
+  }
+}
+
+/** Writing arriving: out of nothing, with a little of the fire still in it. */
+@keyframes yard-ink {
+  from {
+    opacity: 0;
+    text-shadow: 0 0 12px rgba(255, 190, 110, 0.95);
+  }
+}
+
+/** A spark off the fire at the live edge, going up and going out. */
+@keyframes yard-spark {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  12% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.8;
+    transform: translate(3px, -18px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-2px, -34px);
+  }
+}
+
+/** The pool of light round a working fire, rising and falling. */
+@keyframes yard-glow {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+/** What it is doing, breathing with the fire. */
+@keyframes yard-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
   }
 }
 

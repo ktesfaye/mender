@@ -95,8 +95,17 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
          change of what is on it is a cut: only the trail moves, because you
          asked for the next thing and watching it wipe in again is a tax. */
       if (!was) {
-        root.style.animation = 'yard-arrive 160ms steps(4,end)';
-        window.setTimeout(() => (root.style.animation = ''), 200);
+        root.animate(
+          [
+            { opacity: 0, transform: 'translateY(10px)' },
+            { opacity: 1, transform: 'translateY(0)' },
+          ],
+          { duration: 300, easing: 'cubic-bezier(.2,.8,.2,1)' }
+        );
+      } else {
+        /* A change of what is on it settles in rather than cutting, so going
+           from a folder into a file reads as going somewhere. */
+        under.animate([{ opacity: 0.2 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
       }
       way.replaceChildren(trailOf(reading.trail));
       meta.replaceChildren(reading.meta ? exact(reading.meta, 12, '#a89272') : '');

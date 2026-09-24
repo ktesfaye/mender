@@ -61,8 +61,8 @@ export interface Line {
    * lands here. True if the line was there to take it.
    */
   catches(event: KeyboardEvent): boolean;
-  /** Return was pressed with something on the line. */
-  onSay(run: (said: string) => void): void;
+  /** Return was pressed with something on the line, and where it was written. */
+  onSay(run: (said: string, from?: DOMRect) => void): void;
   /**
    * First refusal on Return.
    *
@@ -100,7 +100,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   root.append(ghost, said, cursor);
   at.appendChild(root);
 
-  let say: (said: string) => void = () => {};
+  let say: (said: string, from?: DOMRect) => void = () => {};
   let empty: () => void = () => {};
   let typed: (said: string) => void = () => {};
   let instead: () => boolean = () => false;
@@ -167,9 +167,10 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       /* And when this line does take it, nothing else gets a look. */
       event.stopPropagation();
       const text = (said.textContent ?? '').trim();
+      const from = said.getBoundingClientRect();
       said.textContent = '';
       showing();
-      say(text);
+      say(text, from);
       return;
     }
     if (event.key === 'Escape') {

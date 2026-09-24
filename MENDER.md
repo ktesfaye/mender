@@ -148,6 +148,13 @@ is an inventory rack out of a game rather than a piece of the board, and the
 names on the rail, which keep their posture tints because the rail's whole job
 is telling you from across the room which session wants you.
 
+**Nothing teleports.** Anything that is the same thing a moment later slides
+to where it is now, anything new arrives, and what you say lifts off the line
+and pins itself to the gatepost. While a session works, the bottom of the middle
+column is a small fire throwing sparks, with what it is doing in the present
+tense and how long it has been at it, and the answer inks in as it comes. Words
+ease; the sprites still step, because they are pixel art and writing is not.
+
 **A slash on the line is how a session is worked.** Writing one turns the lines
 under it into everything you could mean, and most of it is the agent's own:
 whatever its CLI advertises when it starts, which on Claude is its commands and

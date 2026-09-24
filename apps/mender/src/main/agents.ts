@@ -967,17 +967,18 @@ function toldOf(
     if (item.kind === 'note') {
       const at = stamp(item.id, item.hasOutcome);
       earliest(at);
-      notes.push({ id: item.id, said: item.text, at, answered: answered[i] });
+      notes.push({ id: item.id, said: item.text, at, answered: answered[i], turn: item.turn });
     } else if (item.kind === 'said') {
       const at = stamp(item.id, item.hasOutcome);
       earliest(at);
-      thoughts.push({ id: item.id, said: item.text, at });
+      thoughts.push({ id: item.id, said: item.text, at, turn: item.turn });
     } else if (item.kind === 'thinking') {
       earliest(item.item.startedAt);
       thoughts.push({
         id: item.item.id,
         said: item.item.text.trim(),
         at: item.item.startedAt,
+        turn: item.turn,
         quiet: true,
         ...(item.item.status === 'thinking' ? { since: item.item.startedAt } : {}),
       });
@@ -1003,15 +1004,16 @@ function toldOf(
 }
 
 /** One chronological item, flattened out of the turn/message/tool tree. */
-type Flat =
+type Flat = (
   | { kind: 'note'; id: string; text: string; hasOutcome: boolean }
   | { kind: 'said'; id: string; text: string; hasOutcome: boolean }
   | { kind: 'thinking'; item: TranscriptThinking }
-  | { kind: 'tool'; node: ToolNode; hasOutcome: boolean };
+  | { kind: 'tool'; node: ToolNode; hasOutcome: boolean }
+) & { turn: number };
 
 function flatten(turns: readonly TranscriptTurn[]): Flat[] {
   const flat: Flat[] = [];
-  for (const turn of turns) {
+  turns.forEach((turn, at) => {
     const hasOutcome = turn.outcome !== undefined;
     for (const item of turn.items) {
       if (item.kind === 'message') {
@@ -1019,16 +1021,16 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
         if (!text) continue;
         flat.push(
           item.role === 'user'
-            ? { kind: 'note', id: item.id, text, hasOutcome }
-            : { kind: 'said', id: item.id, text, hasOutcome }
+            ? { kind: 'note', id: item.id, text, hasOutcome, turn: at }
+            : { kind: 'said', id: item.id, text, hasOutcome, turn: at }
         );
       } else if (item.kind === 'thinking') {
-        if (item.text.trim()) flat.push({ kind: 'thinking', item });
+        if (item.text.trim()) flat.push({ kind: 'thinking', item, turn: at });
       } else {
-        flat.push({ kind: 'tool', node: item, hasOutcome });
+        flat.push({ kind: 'tool', node: item, hasOutcome, turn: at });
       }
     }
-  }
+  });
   return flat;
 }
 

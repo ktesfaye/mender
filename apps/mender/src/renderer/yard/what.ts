@@ -98,6 +98,8 @@ export interface Session {
   permissions?: string;
   /** What the session is doing, said by the fire rather than by a word. */
   fire: Fire;
+  /** What it is doing this second, while it is doing anything at all. */
+  live?: Live;
   /** How long since anything happened in here, when that is a long time. */
   cold?: string;
   /** Newest first. */
@@ -120,6 +122,16 @@ export interface Session {
   olderSteps?: { many: number; over: string };
   /** And how many thoughts sit between the posted plan and the ones shown. */
   olderThoughts?: number;
+}
+
+/** The live edge of a session that is working. */
+export interface Live {
+  /** In the present tense: thinking, reading this, running that. */
+  doing: string;
+  /** When it started on what you last said, for the count. */
+  since?: number;
+  /** Whether it has started saying anything back yet. */
+  answering: boolean;
 }
 
 /** Something said while somebody was busy, still waiting its turn. */
@@ -156,6 +168,10 @@ export interface Thought {
   live?: boolean;
   /** How long it has been at this one, said rather than spun. */
   at?: string;
+  /** Said in answer to something before the newest note, so it is history. */
+  earlier?: boolean;
+  /** Reasoning rather than an answer. */
+  quiet?: boolean;
 }
 
 /** Something it did: a tool call, with a prop from the kit standing for it. */

@@ -123,6 +123,8 @@ export const notedSchema = z.object({
   at: z.number(),
   /** Whether anything has come back since. */
   answered: z.boolean(),
+  /** Which turn of the conversation it opened. */
+  turn: z.number().int().optional(),
 });
 export type Noted = z.infer<typeof notedSchema>;
 
@@ -135,6 +137,9 @@ export const musedSchema = z.object({
   quiet: z.boolean().optional(),
   /** Still going, and since when. */
   since: z.number().optional(),
+  /** Which turn of the conversation it belongs to, so the board can tell an
+      answer to what you just said from the one before it. */
+  turn: z.number().int().optional(),
 });
 export type Mused = z.infer<typeof musedSchema>;
 

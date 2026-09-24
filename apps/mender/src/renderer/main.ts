@@ -1771,6 +1771,7 @@ async function boot(): Promise<void> {
         return;
       }
       saying.handed();
+      if (text) yard.fly(text);
       const heard = await client.agents.tell(
         { task: task.id, text, ...(carrying.length ? { carrying } : {}) },
         { timeoutMs: 0 }

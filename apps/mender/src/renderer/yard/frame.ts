@@ -174,9 +174,9 @@ const DIM: Record<Dimness, string> = {
 };
 
 export function dim(canvas: HTMLCanvasElement, how: Dimness): void {
-  /* Stepped, like everything else here. The designs are explicit that the yard
-     dims in two steps rather than fading, because a fade is a thing this art
-     does not do anywhere. */
-  canvas.style.transition = 'filter 120ms steps(2,end)';
+  /* Eased, not stepped. The designs asked for two hard steps, and walking into
+     a place and having the whole world behind it cut to black was one of the
+     things that made the app feel like it was flicking between screens. */
+  canvas.style.transition = 'filter 520ms cubic-bezier(.2,.8,.2,1)';
   canvas.style.filter = DIM[how];
 }

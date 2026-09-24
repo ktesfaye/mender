@@ -1346,6 +1346,34 @@ clicking the sea still got you out. Take that away and a project was a room
 with no door. The ladder is the line, then whatever you opened to read, then
 the yard, then the island.
 
+### The yard moves now, and it says what it is doing
+
+The yard was rewritten whole on every word an agent said, so nothing on it could
+move: a note you sent was simply at the top of the post, the thought it pushed
+down was simply lower, and the last answer stayed set large as "now" long after
+you had asked the next thing. Whether the agent was hard at work or had never
+heard you, the screen looked the same.
+
+Everything on it that is the same thing from one rewrite to the next now carries
+a key, and is slid from where it was to where it is; something new arrives
+rather than appearing, and walking into a session brings it up in order. What
+you say lifts off the line as parchment and pins itself to the post while the
+notes under it slide down. The answer inks in a piece at a time as it arrives.
+The last reply turns to history the moment you say the next thing, and the live
+edge of the middle column is a small fire throwing sparks with what it is doing
+in the present tense (waking up, thinking, running a command, reading a file,
+writing back) and a count of how long it has been at it. Anything laid over the
+yard comes up rather than cutting in, and the world behind dims smoothly.
+
+Words move smoothly and sprites still step, which is a deliberate break from the
+handoff's "no easing anywhere": writing that jumps is what made it feel broken.
+Driven in the running app on a real session: sending, a tool call, and a
+streamed answer, frame by frame.
+
+The line you write on also keeps the keyboard now. It only had it when handed it
+on opening, so one click anywhere, the line included, left every letter landing
+on nothing.
+
 ### What the designs do not cover, and neither does this
 
 Three whole groups of the 162 states are about things this app has never had a
