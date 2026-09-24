@@ -532,6 +532,25 @@ function asked(
 
   const card = pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 });
   root.appendChild(card);
+  /* A note is a note. Something long enough to fill the post on its own is
+     not one, and it is usually not yours either: a resumed session hands back
+     whatever was said to start it, summaries and instructions and all. So the
+     parchment is only ever a few lines of it and says how many it is holding
+     back, which is the same bargain the rest of this column already makes.
+     The cut lands on a whole line, because half a line of handwriting sliced
+     through the middle reads as the card being broken rather than trimmed. */
+  const body = card.querySelector<HTMLElement>('[data-note="said"]');
+  if (body) {
+    const line = Math.max(1, Math.round(NOTE_LINE));
+    const lines = Math.round(body.scrollHeight / line);
+    if (lines > NOTE_LINES) {
+      body.style.height = `${NOTE_LINES * line}px`;
+      body.style.overflow = 'hidden';
+      const more = said(`${lines - NOTE_LINES} more lines on this note`, '#b3651f');
+      more.style.cssText += ';display:block;font-size:9px;padding-top:7px';
+      card.appendChild(more);
+    }
+  }
   post.style.height = `${Math.min(room, card.offsetHeight + 60)}px`;
 
   if (!older.length || cramped) return;
@@ -555,6 +574,11 @@ function asked(
   post.style.height = `${Math.min(room, below + list.scrollHeight - HEAD.top + 40)}px`;
 }
 
+/** How many lines of one note the parchment holds, however long it was. */
+const NOTE_LINES = 7;
+/** What one of those lines is, at the card's own size and leading. */
+const NOTE_LINE = 19 * 1.25;
+
 /** The newest note: on parchment, pinned, and not quite straight. */
 function pinned(note: Note, where: { left: number; top: number; width: number }): HTMLElement {
   const card = box(where, CARD);
@@ -570,7 +594,10 @@ function pinned(note: Note, where: { left: number; top: number; width: number })
   meta.style.display = 'block';
   meta.style.marginBottom = '5px';
   card.appendChild(meta);
-  card.appendChild(document.createTextNode(note.said));
+  const body = document.createElement('div');
+  body.dataset.note = 'said';
+  body.textContent = note.said;
+  card.appendChild(body);
   return card;
 }
 

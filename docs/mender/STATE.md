@@ -1314,6 +1314,12 @@ something, no framed patch of ground until it has sent somebody out, and no
 column rule down an empty third of the screen. A project nobody has worked in
 says that once and lets the district behind it do the rest.
 
+And the other half of the same rule: the parchment on the gatepost is a few
+lines of the newest note and a count of what it is holding back, not however
+much was written. A resumed session hands back whatever was said to start it,
+so the first thing a restarted board showed was a system instruction filling
+the whole left column in handwriting. The cut lands on a whole line.
+
 ### What the designs do not cover, and neither does this
 
 Three whole groups of the 162 states are about things this app has never had a
