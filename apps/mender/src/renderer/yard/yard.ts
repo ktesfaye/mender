@@ -155,7 +155,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
      line rather than with the yard, so it is still there while you are reading
      something else. It is a thing you might want back, and a thing you might
      want back does not go behind a wash. */
-  const stillAt = box({ left: 0, right: 0, bottom: 196 });
+  const stillAt = box({ left: 0, right: 0, bottom: 196 }, 'padding:8px 0');
   stage.appendChild(stillAt);
   const line = makeLine(writing);
   /* And what a slash or an @ has opened sits just above the line, growing
@@ -207,7 +207,9 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     writing.style.right = `${layer.edge()}px`;
     under.style.left = `${layer.edge()}px`;
     under.style.right = `${layer.edge()}px`;
-    stillAt.style.left = `${layer.edge()}px`;
+    /* Clear of the gatepost, because the gatepost has its own things to say
+       down there and two columns of writing on the same line is a mess. */
+    stillAt.style.left = `${columns.thinking.x}px`;
     stillAt.style.right = `${layer.edge()}px`;
   }
 
@@ -1047,7 +1049,7 @@ function still(at: HTMLElement, yard: Yard, does: Doings): void {
   at.replaceChildren();
   const waiting = yard.session?.waiting ?? [];
   if (!waiting.length) return;
-  at.style.cssText += ';display:flex;flex-direction:column;gap:4px';
+  at.style.cssText += ';display:flex;flex-direction:column;gap:4px;background:rgba(72,37,16,.72)';
   at.appendChild(label('still to say, press to take one back', {}));
   for (const one of waiting) {
     const press = astop(

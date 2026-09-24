@@ -44,6 +44,10 @@ function placed(where: Place): string {
  */
 export function label(text: string, where: Place): HTMLDivElement {
   const el = box(where, LABEL);
+  /* Placed if it was given somewhere to be, and in the flow if it was not.
+     A label with no position inside a column of other things is one that
+     belongs in that column, not one floating at its corner. */
+  if (!Object.keys(where).length) el.style.position = 'relative';
   el.textContent = text;
   return el;
 }
