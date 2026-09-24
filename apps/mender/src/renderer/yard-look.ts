@@ -17,6 +17,7 @@
 
 import {
   createVillage,
+  Document,
   districtsOf,
   parseLayout,
   type Atlas,
@@ -32,6 +33,7 @@ import { loadKit } from './village/kit';
 import { buildScene } from './village/scene';
 import { dim, makeLayer } from './yard/frame';
 import { SAMPLE } from './yard/sample';
+import { makeShelf } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
 import { makeYard } from './yard/yard';
 import './yard/tokens.css';
@@ -55,10 +57,7 @@ async function island(world: Container): Promise<void> {
   const wanted = village.world.districts.slice(0, STANDING).map((one) => one.id);
   const composed = village.compose(village.connected(wanted));
   const districts = districtsOf(village.world, composed.on, composed.moored);
-  const scene = buildScene(
-    new (await import('@mender/village')).Document(composed.layout).items(),
-    composed.layout
-  );
+  const scene = buildScene(new Document(composed.layout).items(), composed.layout);
   if (scene.missing.length) console.warn(`${scene.missing.length} sprites are not in the kit`);
   const ground = new Ground(districts, composed.layout, scene.buildings);
   scene.root.addChildAt(ground.overlay, scene.groundTop);
@@ -100,11 +99,24 @@ async function boot(): Promise<void> {
 
   dim(pixi.canvas, 'yard');
   const layer = makeLayer();
+  makeShelf(layer.root, (id) => console.log('go to', id)).show([
+    { id: 'a', name: 'mender', at: 0, here: true },
+    { id: 'b', name: 'aurio', at: 1, here: false },
+    { id: 'c', name: 'stuff-sports', at: 2, here: false },
+    { id: 'd', name: 'sure', at: 3, here: false },
+    { id: 'e', name: 'emdash', at: 4, here: false },
+  ]);
+
   const yard = makeYard(layer, {
     open: (id) => console.log('walk into', id),
+    answer: (id) => console.log('answered', id),
+    press: (pick) => console.log('pressed', pick),
+    typed: () => {},
+    forget: async () => ({ said: 'forgotten.' }),
     say: (text) => console.log('said', text),
     leave: () => console.log('back out'),
   });
+  yard.up(true);
   yard.show(SAMPLE);
   yard.line.take();
 

@@ -103,6 +103,8 @@ export const SAMPLE: Yard = {
         ],
       },
     ],
+    waiting: [{ id: 'w1', said: 'and check the Sunday ones are open for lunch' }],
+    carrying: [],
     agents: [
       { id: 'a1', errand: 'hours', where: 'in-light', tint: '#c6a740' },
       { id: 'a2', errand: 'walking', where: 'in-light', tint: '#9ca44f' },

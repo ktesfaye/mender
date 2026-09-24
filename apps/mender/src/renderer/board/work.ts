@@ -62,6 +62,7 @@ const QUIET: WorkingState = {
   mood: 'empty',
   doing: 'nobody is working in here.',
   lines: [],
+  told: { notes: [], thoughts: [], deeds: [], errands: [], wrote: [], turns: 0, began: null },
   asking: null,
   plan: [],
   queued: [],

@@ -18,16 +18,28 @@
  * writes it down.
  */
 
+import type { Row } from '../board/board';
 import { GUTTER, MARGIN, type Layer } from './frame';
-import { makeLine, type Asking, type Line } from './line';
+import { makeLine, type Asking as Prompting, type Line } from './line';
+import { pressing, twice } from './press';
+import { makeRows } from './rows';
 import { KIT_NAMES, sprite } from './sprite';
 import { astop, walking, type Walking } from './walk';
-import type { Hand, Made, Note, Posture, Step, Thought, Yard } from './what';
+import type { Asking as Ask, Hand, Made, Note, Posture, Step, Thought, Yard } from './what';
 import { box, exact, firelight, folk, label, row, rule, said, stack, trim } from './write';
 
-/* Where the bands sit, measured off the designs. The top band and the bottom
-   band are fixed; everything between them is what the window gives us. */
-const HEAD = { title: 22, meta: 56, rule: 92, label: 112, top: 142 } as const;
+/* Where the bands sit, measured off the designs, with one change: the top
+   right corner belongs to the projects shelf, so the two facts the designs put
+   up there drop below it and the whole band is that much deeper. */
+const HEAD = {
+  title: 22,
+  meta: 56,
+  aside: 70,
+  under: 92,
+  rule: 112,
+  label: 132,
+  top: 162,
+} as const;
 /* From the beam down to the bottom edge, which is what the rail lives in. Less
    of it when the lanterns are hanging bare, since there are no words under
    them to leave room for. */
@@ -52,38 +64,72 @@ const TONE: Record<Posture, string> = {
 export interface Doings {
   /** Walk into another session in this project. */
   open(id: string): void;
+  /** Something on a board of rows was pressed. */
+  press(pick: string): void;
+  /** Something was typed, for whatever is narrowing under the line. */
+  typed(said: string): void;
+  /** Answer the question somebody is standing at the gate with. */
+  answer(id: string): void;
   /** Say something on the line. */
   say(said: string): void;
   /** Escape with nothing left on the line to throw away. */
   leave(): void;
+  /** The village forgets this project. Only ever reached by two presses. */
+  forget(): Promise<{ said: string } | { wrong: string; because?: string }>;
 }
 
 export interface Standing {
   /** Rewrite everything. Cheap: the yard is a couple of hundred elements. */
   show(yard: Yard): void;
   /** What the line is asking for at the moment. */
-  asks(what: Asking): void;
+  asks(what: Prompting): void;
+  /** Write the lines a slash or an @ has opened under the line. */
+  narrowing(rows: Row[]): void;
   /** Where the keyboard is, for whoever is listening to it. */
   readonly walk: Walking;
   readonly line: Line;
+  /** Whether the yard is up at all. The island on its own is not a yard. */
+  up(on: boolean): void;
+  readonly showing: boolean;
   /** Take it down and give the village back. */
   close(): void;
 }
 
 export function makeYard(layer: Layer, does: Doings): Standing {
+  /* Everything the yard is, under one thing that can be taken away. The shelf
+     of projects lives on the layer beside this rather than inside it, because
+     the shelf is reachable from the island as well as from in here. */
+  const stage = box({ left: 0, top: 0, right: 0, bottom: 0 });
+  stage.style.cssText += ';pointer-events:none;display:none';
+  layer.root.appendChild(stage);
+
   const root = box({ left: 0, top: 0, right: 0, bottom: 0 });
   root.style.pointerEvents = 'none';
-  layer.root.appendChild(root);
+  stage.appendChild(root);
 
   /* The line is made once and kept. Everything else on this screen is thrown
      away and written again whenever anything moves, and a line that went with
      it would lose whatever you were half-way through typing every time an
      agent said a word. */
-  const writing = box({ left: 0, right: 0, bottom: 146 }, 'display:flex;align-items:center');
-  layer.root.appendChild(writing);
+  const writing = box(
+    { left: 0, right: 0, bottom: 146 },
+    'display:flex;align-items:center;gap:10px'
+  );
+  stage.appendChild(writing);
+  /* What is in your hands sits beside the line rather than on it, because a
+     picture is not writing: what the board says is that you have it, and
+     pressing one puts it down again. */
+  const hands = box({}, 'position:relative;display:flex;align-items:center;gap:8px;flex:none');
+  writing.appendChild(hands);
   const line = makeLine(writing);
+  /* And what a slash or an @ has opened goes under the line, which is where
+     the lines it is narrowing actually are. Nothing here floats. */
+  const under = box({ left: 0, right: 0, bottom: 0, height: 140 }, 'overflow:hidden');
+  const opened = makeRows(under, does.press);
+  stage.appendChild(under);
   line.onSay((text) => does.say(text));
   line.onEmpty(() => does.leave());
+  line.onType((text) => does.typed(text));
 
   const walk = walking(layer.root);
 
@@ -101,10 +147,14 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     scrims(root);
     writing.style.left = `${layer.edge()}px`;
     writing.style.right = `${layer.edge()}px`;
+    under.style.left = `${layer.edge()}px`;
+    under.style.right = `${layer.edge()}px`;
+    carried(hands, yard, does);
     head(root, yard, layer.edge());
-    asked(root, columns.asked, yard, floor, layer.cramped());
-    thinking(root, columns.thinking, yard, floor);
+    asked(root, columns.asked, yard, floor, layer.cramped(), does);
+    thinking(root, columns.thinking, yard, floor, does);
     made(root, columns.made, yard, floor);
+    still(root, yard, layer.edge(), does);
     said_line(root, layer.edge());
     rail(root, yard, layer.cramped(), layer.edge(), does);
     /* The keyboard was standing on something before the rewrite and the board
@@ -113,14 +163,27 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   }
 
   return {
+    up: (on) => {
+      stage.style.display = on ? '' : 'none';
+      if (!on) line.write('');
+    },
+    get showing() {
+      return stage.style.display !== 'none';
+    },
     show,
+    narrowing: (rows) => {
+      opened.write(rows);
+      /* The line sits above whatever it opened, so the board gives the room
+         back the moment there is nothing under it. */
+      under.style.height = rows.length ? '140px' : '0';
+      writing.style.bottom = rows.length ? '186px' : '146px';
+    },
     asks: (what) => line.asks(what),
     walk,
     line,
     close: () => {
       line.close();
-      writing.remove();
-      root.remove();
+      stage.remove();
     },
   };
 }
@@ -158,8 +221,8 @@ function head(root: HTMLElement, yard: Yard, edge: number): void {
     yard.project.on,
     yard.session?.agent,
     yard.project.going,
-    yard.project.turns ? `${yard.project.turns} turns` : undefined,
-    yard.project.spawned ? `${yard.project.spawned} agents spawned` : undefined,
+    counted(yard.project.turns, 'turn'),
+    counted(yard.project.spawned, 'agent spawned', 'agents spawned'),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -168,7 +231,7 @@ function head(root: HTMLElement, yard: Yard, edge: number): void {
   root.appendChild(meta);
 
   if (yard.session?.permissions) {
-    const flag = box({ right: edge, top: 26 }, FLAG);
+    const flag = box({ right: edge, top: HEAD.aside }, FLAG);
     flag.textContent = yard.session.permissions;
     root.appendChild(flag);
   }
@@ -181,12 +244,18 @@ function head(root: HTMLElement, yard: Yard, edge: number): void {
     .filter(Boolean)
     .join(' · ');
   if (about) {
-    const it = box({ right: edge, top: 50 });
+    const it = box({ right: edge, top: HEAD.under });
     it.appendChild(exact(about, 12));
     root.appendChild(it);
   }
 
   root.appendChild(rule({ left: edge, right: edge, top: HEAD.rule }, true));
+}
+
+/** How many of something, said rather than counted at. */
+function counted(many: number | undefined, one: string, more?: string): string | undefined {
+  if (!many) return undefined;
+  return many === 1 ? `1 ${one}` : `${many} ${more ?? one + 's'}`;
 }
 
 const TITLE = [
@@ -219,28 +288,35 @@ function asked(
   at: { x: number; wide: number },
   yard: Yard,
   floor: number,
-  cramped: boolean
+  cramped: boolean,
+  does: Doings
 ): void {
   root.appendChild(label('what you asked', { left: at.x, top: HEAD.label }));
 
   /* The glance at the other sessions sits at the foot of the column, so the
      post and the notes on it get everything above that and no more. */
-  const under = elsewhere(root, at, yard, floor);
+  const under = elsewhere(root, at, yard, floor, does);
   const room = under - 20 - HEAD.top;
 
-  root.appendChild(
-    box(
-      { left: at.x, top: HEAD.top - 2, width: 12, height: room },
-      'background:linear-gradient(90deg,#54391e,#3a2712)'
-    )
+  /* The post is only as long as what is nailed to it, plus a little bare wood
+     under the last note. A post running the height of the window with nothing
+     on it is a stripe, not a gatepost. */
+  const post = box(
+    { left: at.x, top: HEAD.top - 2, width: 12, height: room },
+    'background:linear-gradient(90deg,#54391e,#3a2712)'
   );
+  root.appendChild(post);
 
   const notes = yard.session?.notes ?? [];
   const [newest, ...older] = notes;
-  if (!newest) return;
+  if (!newest) {
+    post.style.height = '120px';
+    return;
+  }
 
   const card = pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 });
   root.appendChild(card);
+  post.style.height = `${Math.min(room, card.offsetHeight + 60)}px`;
 
   if (!older.length || cramped) return;
   /* The card is as tall as whatever was written on it, which nothing knows
@@ -260,6 +336,7 @@ function asked(
   const dropped = trim(list, under - 20 - below);
   const many = (yard.session?.olderNotes ?? 0) + dropped;
   tail.textContent = many ? `${many} older notes further down the post` : '';
+  post.style.height = `${Math.min(room, below + list.scrollHeight - HEAD.top + 40)}px`;
 }
 
 /** The newest note: on parchment, pinned, and not quite straight. */
@@ -298,8 +375,7 @@ function weathered(note: Note): HTMLElement {
   it.style.cssText = 'display:flex;flex-direction:column;gap:3px';
   it.appendChild(said(`${note.when} · ${note.standing ? 'standing' : answered(note)}`));
   const body = document.createElement('span');
-  body.style.cssText =
-    "font-family:'Caveat',cursive;font-size:17px;line-height:1.25;color:#cbb491";
+  body.style.cssText = "font-family:'Caveat',cursive;font-size:17px;line-height:1.25;color:#cbb491";
   body.textContent = note.said;
   it.appendChild(body);
   return it;
@@ -320,11 +396,11 @@ function elsewhere(
   root: HTMLElement,
   at: { x: number; wide: number },
   yard: Yard,
-  floor: number
+  floor: number,
+  does: Doings
 ): number {
   const others = yard.rail.filter((one) => !one.here).slice(0, 3);
-  if (!others.length) return floor;
-  const tall = 30 + others.length * 23;
+  const tall = 30 + others.length * 23 + 34;
   const top = floor - tall;
   root.appendChild(rule({ left: at.x, top: top - 20, width: at.wide - 20 }));
   root.appendChild(label(`elsewhere in ${yard.project.name.toLowerCase()}`, { left: at.x, top }));
@@ -334,7 +410,9 @@ function elsewhere(
   list.style.fontFamily = "'Josefin Sans',sans-serif";
   for (const one of others) {
     const line = row(10);
-    line.appendChild(box({ width: 8, height: 8 }, `background:${TONE[one.posture]};position:relative`));
+    line.appendChild(
+      box({ width: 8, height: 8 }, `background:${TONE[one.posture]};position:relative`)
+    );
     const text = document.createElement('span');
     text.style.color = one.posture === 'wants-you' ? '#ff9a6a' : '#dcc8a0';
     text.textContent = `${one.name} · ${one.saying}`;
@@ -342,6 +420,21 @@ function elsewhere(
     list.appendChild(line);
   }
   root.appendChild(list);
+
+  /* The one thing this board offers about the project rather than about the
+     work in it, at the very bottom, under everything, because forgetting a
+     place is not something you should meet on your way into it. */
+  const go = box({ left: at.x, top: top + 30 + others.length * 23 + 14 });
+  go.appendChild(
+    astop(
+      twice('forget this project', yard.project.costs ?? 'it goes', {
+        while: 'forgetting',
+        run: does.forget,
+      }),
+      'forget'
+    )
+  );
+  root.appendChild(go);
   return top;
 }
 
@@ -355,9 +448,17 @@ function thinking(
   root: HTMLElement,
   at: { x: number; wide: number },
   yard: Yard,
-  floor: number
+  floor: number,
+  does: Doings
 ): void {
-  root.appendChild(rule({ left: at.x - GUTTER / 2, top: 104, width: 1, height: floor - 104 }));
+  root.appendChild(
+    rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
+  );
+  if (yard.asking) {
+    gate(root, at, yard.asking, does);
+    return;
+  }
+
   root.appendChild(label('what it is thinking', { left: at.x, top: HEAD.label }));
 
   const thoughts = yard.session?.thoughts ?? [];
@@ -409,6 +510,56 @@ function thinking(
   between.textContent = skipped ? `\u25b8 ${skipped} notes between then and now` : '';
 }
 
+/**
+ * Somebody standing at the gate with a question.
+ *
+ * It takes the whole middle of the board, because whatever it was thinking
+ * stopped when it came to ask and nothing under that matters until you answer.
+ * A number key answers it; so does pressing the line, because a line you can
+ * press by hand and not by key is only half there and the other way round is
+ * no better.
+ */
+function gate(root: HTMLElement, at: { x: number; wide: number }, asking: Ask, does: Doings): void {
+  root.appendChild(label('it is asking', { left: at.x, top: HEAD.label }));
+  const said = box({ left: at.x, top: HEAD.top, width: at.wide }, ASKED);
+  said.textContent = asking.said;
+  root.appendChild(said);
+
+  const answers = stack({ left: at.x, top: HEAD.top + 90, width: at.wide }, 12);
+  for (const [i, answer] of asking.answers.entries()) {
+    const line = row(12);
+    const key = document.createElement('span');
+    key.style.cssText = KEY;
+    key.textContent = String(i + 1);
+    line.appendChild(key);
+    const press = astop(
+      pressing(answer.said, () => does.answer(answer.id)),
+      `answer:${answer.id}`
+    );
+    press.style.cssText += "font-family:'Josefin Sans',sans-serif;font-size:16px";
+    line.appendChild(press);
+    answers.appendChild(line);
+  }
+  root.appendChild(answers);
+}
+
+const ASKED = [
+  "font-family:'Cormorant Garamond',serif",
+  'font-size:21px',
+  'line-height:1.35',
+  'color:#ffdca4',
+  'text-shadow:0 2px 10px rgba(0,0,0,.9)',
+].join(';');
+
+const KEY = [
+  "font-family:'Courier Prime',monospace",
+  'font-size:12px',
+  'color:#482510',
+  'background:#a89272',
+  'padding:1px 6px',
+  'flex:none',
+].join(';');
+
 function thought(one: Thought, size: number, ink: string, name?: string): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
@@ -425,13 +576,10 @@ function thought(one: Thought, size: number, ink: string, name?: string): HTMLEl
    steps it took to get there with a prop from the kit standing for each, and
    at the foot of the column the yard itself: the fire, and everybody it sent
    out, placed by what they are doing rather than listed. */
-function made(
-  root: HTMLElement,
-  at: { x: number; wide: number },
-  yard: Yard,
-  floor: number
-): void {
-  root.appendChild(rule({ left: at.x - GUTTER / 2, top: 104, width: 1, height: floor - 104 }));
+function made(root: HTMLElement, at: { x: number; wide: number }, yard: Yard, floor: number): void {
+  root.appendChild(
+    rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
+  );
   root.appendChild(label('what it made', { left: at.x, top: HEAD.label }));
 
   /* The ground is the foot of this column whatever happened above it, so
@@ -446,7 +594,17 @@ function made(
 
   const session = yard.session;
   const output = session?.made[0];
-  const y = output ? cart(above, at.wide, output) : 0;
+  let y = 0;
+  if (output) {
+    y = cart(above, at.wide, output);
+  } else {
+    /* An empty cart, said rather than drawn: a heading over nothing reads as
+       something failing to load. */
+    const empty = box({ left: 0, top: 8, width: at.wide }, EMPTY);
+    empty.textContent = session ? 'nothing has come off the cart yet.' : '';
+    above.appendChild(empty);
+    y = 36;
+  }
 
   above.appendChild(rule({ left: 0, top: y + 10, width: at.wide }));
   above.appendChild(label('what it did', { left: 0, top: y + 30 }));
@@ -454,7 +612,8 @@ function made(
   const top = y + 60;
   const left = Math.max(0, room - top);
   const steps = stack({ left: 0, top, width: at.wide, height: left }, 10);
-  steps.style.cssText += ";font-size:14px;line-height:1.3;font-family:'Josefin Sans',sans-serif;overflow:hidden";
+  steps.style.cssText +=
+    ";font-size:14px;line-height:1.3;font-family:'Josefin Sans',sans-serif;overflow:hidden";
   const earlier = session?.olderSteps;
   const count = exact('', 12, '#8a7452');
   steps.appendChild(count);
@@ -602,6 +761,10 @@ function ground(
   root.appendChild(patch);
 }
 
+const EMPTY = ["font-family:'Josefin Sans',sans-serif", 'font-size:14px', 'color:#a89272'].join(
+  ';'
+);
+
 const HEAD_ROW =
   'display:flex;align-items:baseline;justify-content:space-between;white-space:nowrap';
 
@@ -643,9 +806,52 @@ function standing(hand: Hand, i: number, wide: number): HTMLElement {
   return it;
 }
 
+/**
+ * What is in your hands, beside the line.
+ *
+ * A picture is the one thing an agent can be shown, and it cannot be drawn on
+ * the board, because the board is writing. So what the board says is that you
+ * have it: it waits here until you say something and then goes with what you
+ * said, and pressing it puts it down again.
+ */
+function carried(hands: HTMLElement, yard: Yard, does: Doings): void {
+  hands.replaceChildren();
+  for (const one of yard.session?.carrying ?? []) {
+    const held = astop(
+      pressing(`▣ ${one.name}`, () => does.press(`putdown:${one.id}`)),
+      `carrying:${one.id}`
+    );
+    held.style.cssText += "font-family:'Courier Prime',monospace;font-size:12px";
+    hands.appendChild(held);
+  }
+}
+
 /* ── the one place you write ───────────────────────────────────────────────
    One line, no box, no hint, and a cursor that is the only thing on this
    screen saying the app is awake. */
+/**
+ * What you said while somebody was busy and they have not heard yet.
+ *
+ * It waits in the open above the line rather than disappearing into a queue,
+ * because a thing you said that has not happened yet is a thing you might want
+ * back, and pressing one takes it back.
+ */
+function still(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
+  const waiting = yard.session?.waiting ?? [];
+  if (!waiting.length) return;
+  const at = stack({ left: edge, right: edge, bottom: 196 }, 4);
+  at.appendChild(label('still to say, press to take one back', {}));
+  for (const one of waiting) {
+    const press = astop(
+      pressing(one.said, () => does.press(`unsay:${one.id}`)),
+      `unsay:${one.id}`
+    );
+    press.style.cssText += "font-family:'Caveat',cursive;font-size:18px";
+    at.appendChild(press);
+  }
+  root.appendChild(at);
+}
+
 function said_line(root: HTMLElement, edge: number): void {
   root.appendChild(rule({ left: edge, right: edge, bottom: 186 }, true));
 }
@@ -654,13 +860,7 @@ function said_line(root: HTMLElement, edge: number): void {
    One lantern per session, hung off a beam. Lit means somebody is awake in
    there; dark is resting, still being cut, or broken. The one you are standing
    in hangs lowest and brightest, and the one that wants you flickers. */
-function rail(
-  root: HTMLElement,
-  yard: Yard,
-  cramped: boolean,
-  edge: number,
-  does: Doings
-): void {
+function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, does: Doings): void {
   if (yard.rail.length < 2) return;
   const beam = box({
     left: edge,
@@ -686,7 +886,9 @@ function rail(
     if (one.lit) {
       const strength = one.here ? 0.3 : one.posture === 'wants-you' ? 0.16 : 0;
       if (strength) {
-        beam.appendChild(firelight({ left: x - 34, top: top - 24, width: 90, height: 90 }, strength));
+        beam.appendChild(
+          firelight({ left: x - 34, top: top - 24, width: 90, height: 90 }, strength)
+        );
       }
     }
 
@@ -713,11 +915,7 @@ function rail(
        lit, dark, flickering and hanging lowest still say which is which. */
     if (!bare) {
       const name = box({ left: 34, top: 2 });
-      const written = exact(
-        one.name,
-        one.here ? 13 : 12,
-        one.here ? '#ffdca4' : TONE[one.posture]
-      );
+      const written = exact(one.name, one.here ? 13 : 12, one.here ? '#ffdca4' : TONE[one.posture]);
       /* The keyboard stands on the name rather than on the whole lantern,
          because the mark it leaves is a fill and a fill the size of a lantern
          is a slab of gold across the bottom of the screen. */

@@ -44,8 +44,7 @@ export const WIDEST = 1560;
 export const COLUMN = { asked: 360, thinking: 500, made: 380 } as const;
 
 /** The gap between two columns, which is also where the rule between them goes. */
-export const GUTTER =
-  (DRAWN_WIDE - MARGIN * 2 - COLUMN.asked - COLUMN.thinking - COLUMN.made) / 2;
+export const GUTTER = (DRAWN_WIDE - MARGIN * 2 - COLUMN.asked - COLUMN.thinking - COLUMN.made) / 2;
 
 export interface Layer {
   /** Where everything is written. Absolutely positioned children, in pixels. */

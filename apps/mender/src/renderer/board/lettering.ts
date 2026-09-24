@@ -183,6 +183,10 @@ export function fitted(
   if (widthOf(text, hand) <= room) return text;
 
   const dots = widthOf('…', hand);
+  /* Code points, deliberately: this walks a bitmap face whose glyphs are
+     baked one code point at a time, so splitting the way it draws is the
+     correct answer and a grapheme segmenter would be the wrong one. */
+  // oxlint-disable-next-line typescript/no-misused-spread
   const letters = [...text];
   if (keep === 'tail') {
     let wide = dots;

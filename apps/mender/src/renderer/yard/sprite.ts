@@ -118,8 +118,12 @@ export const KIT_NAMES = {
   barrel: 'props/TX Village Props - Barrel 01.png',
   sack: 'props/TX Village Props - Sack 01.png',
   bucket: 'props/TX Village Props - Bucket 01 Water.png',
-  pot: 'props/TX Village Props - Pot 03.png',
   table: 'props/TX Village Props - Table 01 H A.png',
+  /* A command set running is something on the boil, and the kit's cauldron is
+     too tall to sit in a line of writing, so it is the washtub over the fire.
+     Nothing in the margin is taller than the crate the designs already use. */
+  pot: 'props/TX Village Props - Washtub 01.png',
+  rack: 'props/TX Village Props - Weapon Rack 01.png',
   /* Ours, not the kit's. See the note on loadCuts. */
   facingYou: 'folk/front-0',
   facingAway: 'folk/back-0',

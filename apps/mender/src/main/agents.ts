@@ -6,6 +6,7 @@ import type {
   SessionState,
   SessionUsage,
   ToolNode,
+  TranscriptThinking,
   TranscriptTurn,
 } from '@emdash/core/runtimes/acp/api';
 import type { ConversationRecords } from '@emdash/core/runtimes/conversations/api';
@@ -15,7 +16,25 @@ import { createLiveJobReplicaCache, LiveJobFailedError, ReplicaState } from '@em
 import type { WireFile } from '@emdash/wire/rpc';
 import { cell, peek, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
-import type { Ask, Carried, Kit, Line, Mood, Step, Waiting, WorkingState } from '@shared/agents';
+import type {
+  Ask,
+  Carried,
+  Deed,
+  Errand,
+  Kit,
+  Line,
+  Mood,
+  Mused,
+  Noted,
+  Step,
+  // Renamed on the way in: this file already has its own `Told`, the yes/no
+  // result of an RPC, and the shared `Told` is the yard's whole conversation.
+  // Same word, unrelated shapes.
+  Told as ToldState,
+  Waiting,
+  WorkingState,
+  Wrote,
+} from '@shared/agents';
 
 /**
  * Why an install left them not here, in its own words.
@@ -107,10 +126,21 @@ type TellError =
 
 type Told = { success: true; data: void } | { success: false; error: TellError };
 
+const EMPTY_TOLD: ToldState = {
+  notes: [],
+  thoughts: [],
+  deeds: [],
+  errands: [],
+  wrote: [],
+  turns: 0,
+  began: null,
+};
+
 const EMPTY: WorkingState = {
   mood: 'empty',
   doing: 'nobody is working in here.',
   lines: [],
+  told: EMPTY_TOLD,
   asking: null,
   plan: [],
   queued: [],
@@ -487,6 +517,18 @@ class House {
   private before: TranscriptTurn[] = [];
   private replicas: ReplicaState<unknown>[] = [];
   private trouble: string | undefined;
+  /**
+   * When this session first saw each message and tool call, keyed by the
+   * item's own id.
+   *
+   * The protocol keeps no clock on either, so the only honest time is the one
+   * this process happened to be looking when the item arrived. Whatever is
+   * already on the turns a house is settled with — replayed history, or a
+   * turn already in flight on reconnect — is stamped 0 instead of `Date.now()`
+   * for that same reason: claiming those happened "now" would be a precision
+   * we do not have. Cleared with the house.
+   */
+  private seen = new Map<string, number>();
 
   constructor(
     private readonly task: string,
@@ -556,6 +598,7 @@ class House {
     this.turned(turn.current());
     this.plan = plan.current() ?? null;
     this.usage = usage.current() ?? null;
+    this.seedSeen();
     this.publish();
 
     /* Everything said in here before the village was looking. A suspended
@@ -569,8 +612,34 @@ class House {
     if (back.success && back.data && !back.data.unavailable && back.data.turns.length) {
       const known = new Set(this.before.map((had) => had.id));
       this.before = [...back.data.turns.filter((had) => !known.has(had.id)), ...this.before];
+      this.seedSeen();
       this.publish();
     }
+  }
+
+  /**
+   * Marks whatever is already on the turns as seen, without dating it.
+   *
+   * Called right before the first time a batch of turns is published, so that
+   * `read()`'s own stamping only ever dates items that are genuinely new from
+   * here on — the ones that arrive while somebody is watching.
+   */
+  private seedSeen(): void {
+    for (const turn of this.live ? [...this.before, this.live] : this.before) {
+      for (const item of turn.items) {
+        if (item.kind === 'thinking') continue; // it carries its own clock.
+        for (const id of idsOf(item)) if (!this.seen.has(id)) this.seen.set(id, 0);
+      }
+    }
+  }
+
+  /** The wall-clock time this house first saw an item, stamping it if new. */
+  private time(id: string): number {
+    const had = this.seen.get(id);
+    if (had !== undefined) return had;
+    const now = Date.now();
+    this.seen.set(id, now);
+    return now;
   }
 
   /** Somebody is on their way in, before the session says anything itself. */
@@ -590,6 +659,7 @@ class House {
   async dispose(): Promise<void> {
     const going = this.replicas;
     this.replicas = [];
+    this.seen.clear();
     await Promise.all(going.map((replica) => replica.dispose()));
   }
 
@@ -620,6 +690,7 @@ class House {
       mood,
       doing: this.trouble ?? doingOf(mood, this.live),
       lines,
+      told: toldOf(turns, this.where(), (id) => this.time(id)),
       asking,
       plan: stepsOf(this.plan),
       queued: waitingOf(this.lifecycle),
@@ -818,6 +889,201 @@ function linesOf(turns: readonly TranscriptTurn[], root: string | undefined): Li
     }
   }
   return lines;
+}
+
+/**
+ * The same turns, told as a place instead of a list.
+ *
+ * `linesOf` walks the turns once for a board that reads top to bottom; this
+ * walks them again for a yard that reads left to right, up, and out — your
+ * notes, its thinking, what it did, who it sent, and what it made are five
+ * different things about the one conversation, and the yard wants them apart
+ * rather than folded into one column. `stamp` is the house's own memory of
+ * when it first saw an item, since the protocol keeps no clock of its own on
+ * anything but reasoning.
+ */
+function toldOf(
+  turns: readonly TranscriptTurn[],
+  root: string | undefined,
+  stamp: (id: string) => number
+): ToldState {
+  const flat = flatten(turns);
+
+  /* A note is answered once the exchange it opened has settled, or the agent
+     has already said something back — either in the same turn or a later
+     one. That can only be known by looking ahead, so this walks backward
+     first and remembers whether anything answered has been seen yet. */
+  const answered = new Array<boolean>(flat.length).fill(false);
+  let saidSince = false;
+  for (let i = flat.length - 1; i >= 0; i -= 1) {
+    const item = flat[i];
+    if (item.kind === 'said') saidSince = true;
+    if (item.kind === 'note') answered[i] = item.hasOutcome || saidSince;
+  }
+
+  const notes: Noted[] = [];
+  const thoughts: Mused[] = [];
+  const deeds: Deed[] = [];
+  const errands: Errand[] = [];
+  const written: Wrote[] = [];
+  let began: number | null = null;
+  const earliest = (at: number): void => {
+    if (began === null || at < began) began = at;
+  };
+
+  flat.forEach((item, i) => {
+    if (item.kind === 'note') {
+      const at = stamp(item.id);
+      earliest(at);
+      notes.push({ id: item.id, said: item.text, at, answered: answered[i] });
+    } else if (item.kind === 'said') {
+      const at = stamp(item.id);
+      earliest(at);
+      thoughts.push({ id: item.id, said: item.text, at });
+    } else if (item.kind === 'thinking') {
+      earliest(item.item.startedAt);
+      thoughts.push({
+        id: item.item.id,
+        said: item.item.text.trim(),
+        at: item.item.startedAt,
+        quiet: true,
+        ...(item.item.status === 'thinking' ? { since: item.item.startedAt } : {}),
+      });
+    } else {
+      toldFrom(item.node, root, stamp, earliest, deeds, errands, written);
+    }
+  });
+
+  return {
+    notes: notes.reverse(),
+    /* A session that has run a while can carry thousands of tool calls and a
+       reasoning stream to match, and the yard only ever reads the live edge
+       of either — the fire and the far end of the errands. Notes are what
+       you actually came back to reread, and there are never many of them, so
+       they are the one list here that is never trimmed. */
+    thoughts: thoughts.slice(-KEPT),
+    deeds: deeds.slice(-KEPT),
+    errands,
+    wrote: newestByPath(written),
+    turns: turns.length,
+    began,
+  };
+}
+
+/** One chronological item, flattened out of the turn/message/tool tree. */
+type Flat =
+  | { kind: 'note'; id: string; text: string; hasOutcome: boolean }
+  | { kind: 'said'; id: string; text: string }
+  | { kind: 'thinking'; item: TranscriptThinking }
+  | { kind: 'tool'; node: ToolNode };
+
+function flatten(turns: readonly TranscriptTurn[]): Flat[] {
+  const flat: Flat[] = [];
+  for (const turn of turns) {
+    const hasOutcome = turn.outcome !== undefined;
+    for (const item of turn.items) {
+      if (item.kind === 'message') {
+        const text = item.text.trim();
+        if (!text) continue;
+        flat.push(
+          item.role === 'user'
+            ? { kind: 'note', id: item.id, text, hasOutcome }
+            : { kind: 'said', id: item.id, text }
+        );
+      } else if (item.kind === 'thinking') {
+        if (item.text.trim()) flat.push({ kind: 'thinking', item });
+      } else {
+        flat.push({ kind: 'tool', node: item });
+      }
+    }
+  }
+  return flat;
+}
+
+/**
+ * One tool call, folded into the yard's deeds, errands and cart.
+ *
+ * A tool group is a container the board draws a heading for and the yard
+ * does not, so it disappears here and only its children come through. A
+ * subagent is the opposite: it is the one thing that does NOT flatten, since
+ * what it went and did belongs to its own errand and not to this session's
+ * deeds.
+ */
+function toldFrom(
+  node: ToolNode,
+  root: string | undefined,
+  stamp: (id: string) => number,
+  earliest: (at: number) => void,
+  deeds: Deed[],
+  errands: Errand[],
+  written: Wrote[]
+): void {
+  if (node.kind === 'tool-group') {
+    for (const child of node.children)
+      toldFrom(child, root, stamp, earliest, deeds, errands, written);
+    return;
+  }
+
+  const at = stamp(node.id);
+  earliest(at);
+
+  if (node.kind === 'spawn-subagent-tool-call') {
+    errands.push({
+      id: node.id,
+      errand: node.inputSummary ?? node.name,
+      running: node.status === 'running',
+      since: at,
+    });
+    return;
+  }
+
+  let note: string | undefined;
+  if (node.kind === 'create-file-tool-call') {
+    const added = node.content ? node.content.split('\n').length : 0;
+    if (added) note = `${added} line${added === 1 ? '' : 's'}`;
+    written.push({ path: node.path, at, added, gone: 0 });
+  } else if (node.kind === 'modify-file-tool-call') {
+    const changed = changes(node.oldText, node.newText);
+    const added = changed.filter((line) => line.startsWith('+')).length;
+    const gone = changed.filter((line) => line.startsWith('-')).length;
+    if (added || gone) note = `+${added} −${gone}`;
+    written.push({ path: node.path, at, added, gone });
+  } else if (node.kind === 'search-tool-call' && node.matchCount !== undefined) {
+    note = `${node.matchCount} match${node.matchCount === 1 ? '' : 'es'}`;
+  }
+
+  deeds.push({
+    id: node.id,
+    did: deedOf(node, root),
+    note,
+    tool: node.kind,
+    running: node.status === 'running',
+    ...(node.status === 'error' ? { wrong: true } : {}),
+  });
+
+  for (const child of node.children ?? []) {
+    toldFrom(child, root, stamp, earliest, deeds, errands, written);
+  }
+}
+
+/** Every file written, newest first, one entry per path. */
+function newestByPath(written: readonly Wrote[]): Wrote[] {
+  const had = new Set<string>();
+  const kept: Wrote[] = [];
+  for (let i = written.length - 1; i >= 0; i -= 1) {
+    const entry = written[i];
+    if (had.has(entry.path)) continue;
+    had.add(entry.path);
+    kept.push(entry);
+  }
+  return kept;
+}
+
+/** Every id under an item, so a house can mark what it has already dated. */
+function idsOf(item: { id: string; children?: ToolNode[] }): string[] {
+  const ids = [item.id];
+  for (const child of item.children ?? []) ids.push(...idsOf(child));
+  return ids;
 }
 
 /** As many lines of a tool's own output as are worth carrying to a board. */

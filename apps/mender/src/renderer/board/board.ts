@@ -437,9 +437,7 @@ export class Board {
           const written = words(shown, INK, hand);
           written.position.set(PAD_X, y);
           this.writing.addChild(written);
-          this.cursor
-            .clear()
-            .rect(PAD_X + widthOf(shown, hand), y + 1, step - 1, BASE - 2);
+          this.cursor.clear().rect(PAD_X + widthOf(shown, hand), y + 1, step - 1, BASE - 2);
           this.cursor.fill(INK);
           this.cursor.visible = true;
           y += LINE;
@@ -486,7 +484,11 @@ export class Board {
         }
         default: {
           const hand = row.face ?? 'hand';
-          const written = words(fitted(row.text, room, row.keep, hand), TONES[row.tone ?? 'ink'], hand);
+          const written = words(
+            fitted(row.text, room, row.keep, hand),
+            TONES[row.tone ?? 'ink'],
+            hand
+          );
           written.position.set(PAD_X, y);
           this.writing.addChild(written);
           y += LINE;
@@ -546,6 +548,8 @@ function wrapped(runs: readonly Run[], room: number, hand: Hand): Run[][] {
   // As much of `piece` as fits in what is left of the line, at least one
   // character so a word wider than the whole board still makes progress.
   const chunk = (piece: string): [string, string] => {
+    /* Code points, for the same reason the face is measured in them. */
+    // oxlint-disable-next-line typescript/no-misused-spread
     const letters = [...piece];
     let taken = 0;
     let wide = 0;

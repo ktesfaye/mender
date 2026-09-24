@@ -101,11 +101,106 @@ export const waitingSchema = z.object({
 });
 export type Waiting = z.infer<typeof waitingSchema>;
 
+/**
+ * What one session looks like when it is a yard rather than a transcript.
+ *
+ * The board used to be a list of lines and the village is not: it is a place
+ * with your notes on the gatepost, the agent's thinking rising off the fire,
+ * what it made on the cart and whoever it sent out standing in or out of the
+ * light. Those are four different things about the same conversation, and
+ * flattening them into one column is what a terminal does.
+ *
+ * So they are projected separately, here, where the turns actually are. The
+ * renderer gets four lists it can put in four places and does not have to
+ * re-derive any of it from prose.
+ */
+
+/** Something you said, which is what is nailed to the gatepost. */
+export const notedSchema = z.object({
+  id: z.string(),
+  said: z.string(),
+  /** When it was said. Stamped as it arrives, because the protocol has no clock. */
+  at: z.number(),
+  /** Whether anything has come back since. */
+  answered: z.boolean(),
+});
+export type Noted = z.infer<typeof notedSchema>;
+
+/** Something it thought or said back, which is what rises off the fire. */
+export const musedSchema = z.object({
+  id: z.string(),
+  said: z.string(),
+  at: z.number(),
+  /** Reasoning rather than an answer, which reads differently. */
+  quiet: z.boolean().optional(),
+  /** Still going, and since when. */
+  since: z.number().optional(),
+});
+export type Mused = z.infer<typeof musedSchema>;
+
+/** One thing it did, which is a step in the yard's right-hand column. */
+export const deedSchema = z.object({
+  id: z.string(),
+  did: z.string(),
+  /** What it cost or turned up, written cool after the thing itself. */
+  note: z.string().optional(),
+  /**
+   * Which kind of tool it was.
+   *
+   * The board stands a prop from the kit in for each one — a signpost for a
+   * skill, a crate for a file written, an anvil for a file changed — and it
+   * cannot pick one from a sentence. This is the tool's own word for itself.
+   */
+  tool: z.string(),
+  running: z.boolean(),
+  wrong: z.boolean().optional(),
+});
+export type Deed = z.infer<typeof deedSchema>;
+
+/** Somebody it sent off, who is standing in the yard until they are back. */
+export const errandSchema = z.object({
+  id: z.string(),
+  /** What they were sent to do, which is the only useful name for them. */
+  errand: z.string(),
+  running: z.boolean(),
+  /** When they went, so the yard knows how far out to stand them. */
+  since: z.number().optional(),
+});
+export type Errand = z.infer<typeof errandSchema>;
+
+/** A file this session wrote, which is what the cart is carrying. */
+export const wroteSchema = z.object({
+  path: z.string(),
+  at: z.number(),
+  added: z.number().int(),
+  gone: z.number().int(),
+});
+export type Wrote = z.infer<typeof wroteSchema>;
+
+export const toldSchema = z.object({
+  /** Newest first. */
+  notes: z.array(notedSchema),
+  /** Oldest first, so the newest is the one at the live edge. */
+  thoughts: z.array(musedSchema),
+  /** Oldest first, the running one last. */
+  deeds: z.array(deedSchema),
+  errands: z.array(errandSchema),
+  /** Newest first. */
+  wrote: z.array(wroteSchema),
+  /** How many turns have been taken in here. */
+  turns: z.number().int(),
+  /** When the first thing was said, so the board can say how long this has run. */
+  began: z.number().nullable(),
+});
+export type Told = z.infer<typeof toldSchema>;
+
 export const workingStateSchema = z.object({
   mood: moodSchema,
   /** One line for what is happening right now. */
   doing: z.string(),
   lines: z.array(lineSchema),
+  /** The same conversation, as a place rather than as a list. */
+  told: toldSchema,
   asking: askSchema.nullable(),
   /** What it says it is going to do, when it has said. */
   plan: z.array(stepSchema),

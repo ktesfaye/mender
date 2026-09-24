@@ -88,10 +88,7 @@ export function exact(text: string, size = 12, tone = '#bfa476'): HTMLSpanElemen
 
 /** One of the hairlines that separates a column, or a part of one. */
 export function rule(where: Place, strong = false): HTMLDivElement {
-  return box(
-    { height: 1, ...where },
-    `background:rgba(244,227,192,${strong ? '.18' : '.14'})`
-  );
+  return box({ height: 1, ...where }, `background:rgba(244,227,192,${strong ? '.18' : '.14'})`);
 }
 
 /** A column of things with an even gap down it. */

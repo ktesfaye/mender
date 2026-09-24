@@ -11,12 +11,7 @@
   "railHeight": 94,
   "overhang": 7,
   "ink": "#3A1D0C",
-  "ramp": [
-    "#BCAD96",
-    "#B7A58E",
-    "#A68B6D",
-    "#987C61"
-  ],
+  "ramp": ["#BCAD96", "#B7A58E", "#A68B6D", "#987C61"],
   "lift": 1.691,
   "sources": [
     "props/TX Village Props - Wood Log 01 H.png",

@@ -25,10 +25,23 @@ export type Ground = 'cutting' | 'ready' | 'missing' | 'locked';
 
 export interface Yard {
   project: Project;
+  /**
+   * Somebody standing at the gate with a question.
+   *
+   * When this is set it is the only thing the middle of the board says, because
+   * nothing else it was thinking matters until you answer. A number key does.
+   */
+  asking?: Asking;
   /** The session you are standing in. Absent on a project nobody has worked. */
   session?: Session;
   /** Every session in the project, this one included, in rail order. */
   rail: Lantern[];
+}
+
+export interface Asking {
+  said: string;
+  /** In the order the number keys answer them. */
+  answers: { id: string; said: string }[];
 }
 
 export interface Project {
@@ -40,6 +53,8 @@ export interface Project {
   on: string;
   host?: string;
   health: Health;
+  /** What forgetting it would cost, said before it is offered. */
+  costs?: string;
   /** How long the project has been going, and how busy, as the header says it. */
   going?: string;
   turns?: number;
@@ -79,12 +94,28 @@ export interface Session {
   steps: Step[];
   made: Made[];
   agents: Hand[];
+  /** What you said while it was busy, in the order it will hear it. */
+  waiting: Waiting[];
+  /** What is in your hands, waiting by the line for you to say something. */
+  carrying: Carried[];
   /** How many notes are further down the post than the board can show. */
   olderNotes?: number;
   /** And how many steps came before the ones shown, and over how long. */
   olderSteps?: { many: number; over: string };
   /** And how many thoughts sit between the posted plan and the ones shown. */
   olderThoughts?: number;
+}
+
+/** Something said while somebody was busy, still waiting its turn. */
+export interface Waiting {
+  id: string;
+  said: string;
+}
+
+/** A picture picked up off the wood and not yet handed over. */
+export interface Carried {
+  id: string;
+  name: string;
 }
 
 /** Something you said, nailed to the gatepost. */

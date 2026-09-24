@@ -21,29 +21,35 @@ import { makeBoard, type Board, type Row } from './board/board';
 import { openCard, type LiveCard } from './board/card';
 import { opening, readOut, unreadable } from './board/changed';
 import { committing } from './board/committing';
-import { openCheckout, type LiveBoard } from './board/district';
+import type { LiveBoard } from './board/district';
 import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
 import { openTree, type LiveTree } from './board/inside';
 import { loadLettering } from './board/lettering';
 import { hunting, type Hunt } from './board/looking';
 import { made, unmade, unread } from './board/made';
 import type { Meant } from './board/palette';
-import { makeRail, type Peg, type Rail } from './board/rail';
+import { makeRail, type Rail } from './board/rail';
 import { read, unopened, type Read } from './board/reading';
 import { sent, type Sent } from './board/sent';
 import { shell } from './board/shell';
 import { openShell, type LiveShell } from './board/talking';
 import { refused, trouble, unwritten } from './board/trouble';
-import { answerFor, openWork, type LiveWork } from './board/work';
+import { answerFor } from './board/work';
 import { ran } from './job';
 import { setPace } from './pace';
 import { createCamera, flyOut, flyTo, frame, type Extent } from './village/camera';
 import { Folk, loadFolk, type Standing } from './village/folk';
 import { districtBounds, Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
+import './yard/tokens.css';
 import { say } from './village/notice';
 import { buildScene } from './village/scene';
 import { wire, type MenderClient } from './wire';
+import { dim, makeLayer } from './yard/frame';
+import { openYard, type Watching } from './yard/live';
+import { makeShelf } from './yard/shelf';
+import { loadCuts } from './yard/sprite';
+import { makeYard } from './yard/yard';
 
 /** The kinds of picture an agent can actually be shown. */
 const CARRIED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -84,6 +90,78 @@ async function boot(): Promise<void> {
     const [client] = await Promise.all([wire(), loadKit(), loadFolk(), loadLettering()]);
     const board = await makeBoard(pixi);
     const rail = await makeRail(pixi);
+    /* The plank along the bottom used to carry the projects. It carries the
+       sessions of whatever project you are in now, so the projects moved to a
+       rack in the corner and the old plank is not drawn at all. */
+    rail.view.visible = false;
+    await loadCuts();
+    const layer = makeLayer();
+    const shelf = makeShelf(layer.root, (id) => void go(`project:${id}`));
+    const yard = makeYard(layer, {
+      open: (id) => void go(`task:${id}`),
+      answer: (id) => void answered(id),
+      press: (pick) => press(pick),
+      forget: () => forget(),
+      typed: (text) => {
+        watching?.typed(text);
+        yard.narrowing(narrowing());
+      },
+      say: (text) => void tell(text),
+      leave: () => void backOut(),
+    });
+
+    /* Escape's whole ladder lives at the bottom of this file, and the yard is
+       built at the top of it, so the yard is handed the way out rather than
+       reaching for it. */
+    let backOut: () => void = () => {};
+
+    /**
+     * Put something on the line, from anywhere but the keyboard.
+     *
+     * A path picked out of the @, a command picked out of the slash, a line
+     * thrown away by Escape. All of them go through here so the two things
+     * narrowing underneath always hear about it; the line itself tells them
+     * when the change came from a hand on the keys.
+     */
+    const said = (text: string): void => {
+      yard.line.write(text);
+      watching?.typed(text);
+      if (watching) yard.show(watching.yard());
+      yard.narrowing(narrowing());
+      yard.line.take();
+    };
+
+    /** What the yard is standing on, while it is up. */
+    let watching: Watching | null = null;
+
+    /**
+     * The lines under the one you are writing on.
+     *
+     * A slash turns them into everything you could mean and an @ into every
+     * file in the checkout. Only ever one of them: an @ inside a command is
+     * still an @, and the nearer thing wins.
+     */
+    const narrowing = (): Row[] =>
+      watching?.names.open
+        ? watching.names.rows()
+        : watching?.slash.open
+          ? watching.slash.rows()
+          : [];
+
+    /**
+     * One surface at a time.
+     *
+     * The yard and the old wooden board are two different things and are never
+     * both up: anything still drawn on wood covers the yard while it is open
+     * and gives it back afterwards. The wood is on its way out; until every
+     * board it still carries has been moved onto the yard's own scrim, this is
+     * what keeps them from being written over each other.
+     */
+    const wood = (rows: Row[], at?: 'now'): void => {
+      yard.up(false);
+      dim(pixi.canvas, 'island');
+      board.show(rows, at);
+    };
     let drawn = await draw(world, client);
     let projects = await client.projects.list({});
     let tasks: Task[] = [];
@@ -104,8 +182,6 @@ async function boot(): Promise<void> {
     /** The place the board is standing in front of, while it is in. */
     let open: Aim | null = null;
     let live: LiveBoard | null = null;
-    /** Set while the board in front of you is a task's, which can be talked to. */
-    let work: LiveWork | null = null;
     /** The task that board belongs to. */
     let inside: Task | null = null;
     /** Set while the board is showing what that session works with. */
@@ -220,24 +296,13 @@ async function boot(): Promise<void> {
        walk from one village to the next. */
     const paintRail = (): void => {
       const here = open ? projectOn(open.district) : undefined;
-      rail.show(
-        projects.map((project): Peg => {
-          const moods = tasks
-            .filter((task) => task.project === project.id)
-            .map((task) => seen[task.id]);
-          const tone = moods.includes('hurt')
-            ? ('sore' as const)
-            : moods.includes('asking')
-              ? ('keen' as const)
-              : undefined;
-          return {
-            id: `project:${project.id}`,
-            mark: project.name.slice(0, 1).toUpperCase(),
-            name: project.name,
-            here: project.id === here?.id,
-            ...(tone ? { tone } : {}),
-          };
-        })
+      shelf.show(
+        projects.map((project, at) => ({
+          id: project.id,
+          name: project.name,
+          at,
+          here: project.id === here?.id,
+        }))
       );
     };
 
@@ -276,12 +341,6 @@ async function boot(): Promise<void> {
       }
       if (id === 'do:back' || id === 'do:forward') {
         void retrace(id === 'do:back' ? -1 : 1);
-        return;
-      }
-      // Opening up what a piece of work actually did, which is the one pick a
-      // session's own board offers besides turning it over.
-      if (id.startsWith('fold:')) {
-        work?.fold(id.slice(5));
         return;
       }
       // Taking back something you said while it was busy. It never reached the
@@ -341,7 +400,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
-      board.show(finding('', { projects, tasks, moods: seen, where: standing() }));
+      wood(finding('', { projects, tasks, moods: seen, where: standing() }));
       board.walk(1);
     };
 
@@ -420,7 +479,6 @@ async function boot(): Promise<void> {
       titling = null;
       looking = null;
       inside = null;
-      work = null;
       reading = null;
       writing = null;
       looked = null;
@@ -431,53 +489,80 @@ async function boot(): Promise<void> {
       card = null;
       await shown?.close();
       board.hide();
+      yard.up(false);
+      dim(pixi.canvas, 'island');
+      const held = watching;
+      watching = null;
+      await held?.close();
       paintRail();
       const was = live;
       live = null;
       await was?.close();
     };
 
-    /** Put a checkout on the board and keep it there until something else is. */
-    const stand = async (
-      aim: Aim,
-      name: string,
-      path: string,
-      lines: () => Row[]
-    ): Promise<void> => {
+    /**
+     * Stand in a project's yard, and keep standing there until something else.
+     *
+     * With a session it is that session's yard; without one it is the project
+     * with nobody in it, which is a yard with no fire and every lantern on the
+     * rail dark. Either way the village behind stays visible and dims, rather
+     * than a board sliding over it.
+     */
+    const showYard = async (aim: Aim, project: Project, here?: Task): Promise<void> => {
       const was = live;
       live = null;
-      work = null;
       reading = null;
       writing = null;
       looked = null;
       stopWalking();
       stopTalking();
       sending = null;
-      inside = null;
+      inside = here ?? null;
       await was?.close();
+      const shown = card;
+      card = null;
+      await shown?.close();
+      const held = watching;
+      watching = null;
+      await held?.close();
 
       open = aim;
       naming = null;
       titling = null;
+      board.hide();
+      yard.up(true);
+      dim(pixi.canvas, 'yard');
       paintRail();
-      board.show([
-        { kind: 'title', text: name },
-        { kind: 'line', text: path, tone: 'faded', keep: 'tail' },
-        { kind: 'gap' },
-        { kind: 'line', text: 'reading the checkout…', tone: 'faded' },
-      ]);
 
-      const opened = await openCheckout(client, { name, path, lines, tail: leaving }, (rows) => {
-        if (open === aim && !reading && !looked && !walking && !talking && !sending) {
-          board.update(rows);
+      const opened = await openYard(
+        client,
+        {
+          project,
+          tasks: tasks.filter((task) => task.project === project.id),
+          moods: seen,
+          ...(here ? { here } : {}),
+        },
+        (now) => {
+          if (open === aim && !reading && !looked && !walking && !talking && !sending && !card) {
+            yard.show(now);
+            yard.narrowing(narrowing());
+          }
         }
-      });
+      );
       if (open !== aim) {
         await opened.close();
         return;
       }
-      live = opened;
-      board.update(opened.rows());
+      watching = opened;
+      yard.show(opened.yard());
+      yard.narrowing(narrowing());
+      yard.asks(here ? 'say' : 'start');
+      yard.line.take();
+      /* And wake whoever lives in there. A session keeps its checkout and its
+         transcript across a restart but the agent is not running, and a
+         sleeping agent cannot say what it can do — so walking into the yard is
+         what starts it, not the first thing you say. */
+      if (here) void client.agents.wake({ task: here.id }, { timeoutMs: 0 });
     };
 
     /**
@@ -491,36 +576,6 @@ async function boot(): Promise<void> {
     /* Whether the project board is asking about being forgotten. Nothing on
        the board keeps this: it is a question, and a question you walked away
        from is not one. */
-    let forgetting = false;
-
-    const roster = (district: District): Row[] => {
-      const standing = tasksOn(district);
-      const rows: Row[] = [{ kind: 'gap' }, { kind: 'heading', text: 'sessions' }];
-      if (!standing.length) {
-        rows.push({
-          kind: 'prose',
-          text: 'nothing is running here yet. say what you want doing and it gets its own branch, its own checkout and somebody to do it.',
-          tone: 'faded',
-        });
-      }
-      for (const task of standing) {
-        rows.push({
-          kind: 'entry',
-          mark: markOf(seen[task.id]) ?? '·',
-          text: task.title,
-          tone: toneOf(seen[task.id]) ?? 'ink',
-          pick: `task:${task.id}`,
-        });
-      }
-      rows.push({
-        kind: 'entry',
-        mark: '+',
-        text: standing.length ? 'start another one' : 'start one',
-        tone: 'faded',
-        pick: 'new',
-      });
-      return rows;
-    };
 
     /* Opening a district is one move with two halves: the camera pulls in on
        its land, aiming at the part of the window the board is about to leave,
@@ -529,10 +584,19 @@ async function boot(): Promise<void> {
     const openDistrict = async (aim: Aim): Promise<void> => {
       const project = projectOn(aim.district);
       if (!project) return;
-      flyTo(camera, districtBounds(aim.district), { inset: board.inset });
-      await stand(aim, project.name, project.path, () => roster(aim.district));
+      flyTo(camera, districtBounds(aim.district), { inset: 0 });
+      /* You open a project to get at the work in it, so you land in the work:
+         whichever session you were last in, or none if it has never had one. */
+      const standing = tasksOn(aim.district);
+      const last = lastIn.get(project.id);
+      const here = standing.find((task) => task.id === last) ?? standing[0];
+      await showYard(aim, project, here);
       arrived();
     };
+
+    /* Which session you were last standing in, per project, so walking back
+       into a district puts you where you left rather than at its first. */
+    const lastIn = new Map<string, string>();
 
     /**
      * What the session works with, on the same board the conversation was on.
@@ -544,7 +608,6 @@ async function boot(): Promise<void> {
     const showCard = async (aim: Aim, task: Task): Promise<void> => {
       const was = live;
       live = null;
-      work = null;
       reading = null;
       writing = null;
       looked = null;
@@ -567,7 +630,7 @@ async function boot(): Promise<void> {
       }
       card = opened;
       paintRail();
-      board.show(opened.rows());
+      wood(opened.rows());
       arrived();
     };
 
@@ -583,15 +646,15 @@ async function boot(): Promise<void> {
       if (!aim || !checkout) return;
       reading = { aim, path, ...(at ? { at } : {}) };
       const mine = reading;
-      board.show(opening(path));
+      wood(opening(path));
       const got = await client.changes.file({ checkout, path, ...(at ? { at } : {}) });
       if (reading !== mine) return;
       if (!got.success) {
-        board.show(unreadable(path, whyNot(got.error)));
+        wood(unreadable(path, whyNot(got.error)));
         return;
       }
       reading.change = got.data;
-      board.show(rowsForChange());
+      wood(rowsForChange());
     };
 
     /* A committed change is history and there is nothing to undo about it; one
@@ -652,7 +715,7 @@ async function boot(): Promise<void> {
       writing = null;
       looked = { aim, checkout: place.path, commit: null, files: undefined };
       const mine = looked;
-      board.show(unread());
+      wood(unread());
 
       const [got, touched] = await Promise.all([
         client.git.checkout.getCommit({ checkout, hash }),
@@ -660,16 +723,16 @@ async function boot(): Promise<void> {
       ]);
       if (looked !== mine) return;
       if (!got.success) {
-        board.show(unmade(trouble(got.error)));
+        wood(unmade(trouble(got.error)));
         return;
       }
       if (!got.data.commit) {
-        board.show(unmade('that commit is not in this checkout any more.'));
+        wood(unmade('that commit is not in this checkout any more.'));
         return;
       }
       looked.commit = got.data.commit;
       looked.files = touched.success ? touched.data.files : [];
-      board.show(made(looked.commit, looked.files));
+      wood(made(looked.commit, looked.files));
     };
 
     /**
@@ -685,7 +748,7 @@ async function boot(): Promise<void> {
       const aim = open;
       stopWalking();
       const name = 'title' in place ? place.title : place.name;
-      board.show([
+      wood([
         { kind: 'title', text: name },
         { kind: 'line', text: 'reading it…', tone: 'faded' },
       ]);
@@ -697,7 +760,7 @@ async function boot(): Promise<void> {
         return;
       }
       walking = tree;
-      board.show(tree.rows());
+      wood(tree.rows());
     };
 
     /** Opening one file of it, live, so an agent writing to it shows. */
@@ -708,11 +771,11 @@ async function boot(): Promise<void> {
       const whole = joinAbsolute(parsed.data, path as PortableRelativePath);
       if (!whole.success) return;
       opened = null;
-      board.show(unopened(path));
+      wood(unopened(path));
       const got = await client.files.content.state({ path: whole.data }, 'content').snapshot();
       if (!walking) return;
       opened = { path, content: got.data };
-      board.show(read(opened));
+      wood(read(opened));
     };
 
     /** Taking one line of it down to the line you write on. */
@@ -755,7 +818,7 @@ async function boot(): Promise<void> {
       const again = await client.files.content.state({ path: whole.data }, 'content').snapshot();
       if (opened !== file) return;
       opened = { path: file.path, content: again.data };
-      board.show(read(opened));
+      wood(read(opened));
       say('written.', 2000);
     };
 
@@ -810,7 +873,7 @@ async function boot(): Promise<void> {
         return;
       }
       opened = null;
-      if (walking) board.show(walking.rows());
+      if (walking) wood(walking.rows());
       say('renamed.', 3000);
     };
 
@@ -861,7 +924,7 @@ async function boot(): Promise<void> {
         return;
       }
       file.blame = said.data.hunks;
-      board.show(read(file));
+      wood(read(file));
     };
 
     /** And throwing one away, which takes the second press. */
@@ -881,7 +944,7 @@ async function boot(): Promise<void> {
         return;
       }
       opened = null;
-      if (walking) board.show(walking.rows());
+      if (walking) wood(walking.rows());
       say('thrown away.', 3000);
     };
 
@@ -907,7 +970,7 @@ async function boot(): Promise<void> {
         unread: false,
         asked: 0,
       };
-      board.show(hunting(hunt));
+      wood(hunting(hunt));
       if (hunt.written) void lookFor();
     };
 
@@ -960,7 +1023,7 @@ async function boot(): Promise<void> {
       const name = 'title' in place ? place.title : place.name;
       talking = { shell: null, name, written: '' };
       const mine = talking;
-      board.show(shell({ name, lines: [], written: '', running: false }));
+      wood(shell({ name, lines: [], written: '', running: false }));
       const running = await openShell(client, place.path, () => {
         if (talking === mine && open === aim) board.update(rowsForShell());
       });
@@ -969,7 +1032,7 @@ async function boot(): Promise<void> {
         return;
       }
       if (!running) {
-        board.show(
+        wood(
           shell({
             name,
             lines: [],
@@ -981,7 +1044,7 @@ async function boot(): Promise<void> {
         return;
       }
       mine.shell = running;
-      board.show(rowsForShell());
+      wood(rowsForShell());
     };
 
     const rowsForShell = (): Row[] =>
@@ -1019,13 +1082,13 @@ async function boot(): Promise<void> {
       stopTalking();
       const name = 'title' in place ? place.title : place.name;
 
-      board.show(sent({ name, branch: '', waiting: 'asking the other end…' }));
+      wood(sent({ name, branch: '', waiting: 'asking the other end…' }));
 
       const head = await client.git.checkout.model.state({ checkout }, 'head').snapshot();
       const on = head.data;
       if (!on || on.kind === 'detached' || on.kind === 'unborn') {
         say('this checkout is not on a branch.', 5000);
-        if (live) board.show(live.rows());
+        if (live) wood(live.rows());
         return;
       }
       const branch = shortName(on.ref);
@@ -1037,7 +1100,7 @@ async function boot(): Promise<void> {
       const remote = named.find((each) => each.name === 'origin') ?? named[0];
       if (!remote) {
         say('this checkout has nowhere to send anything.', 5000);
-        if (live) board.show(live.rows());
+        if (live) wood(live.rows());
         return;
       }
       const repository = remote.url;
@@ -1060,7 +1123,7 @@ async function boot(): Promise<void> {
         repository,
         ...(pull ? { pull, number: numberOf(pull.url) } : { written: undefined }),
       };
-      board.show(sent(sending));
+      wood(sent(sending));
     };
 
     /** The number at the end of a pull request's url, which is its name to git. */
@@ -1131,65 +1194,18 @@ async function boot(): Promise<void> {
     };
 
     /**
-     * The one thing a project's board offers about the project itself.
-     *
-     * At the very bottom, under everything it is, because forgetting a place
-     * is not something you should meet on your way to the work in it.
-     */
-    const leaving = (): Row[] => {
-      const standing = open ? tasksOn(open.district) : [];
-      const rows: Row[] = [{ kind: 'gap' }];
-      if (!forgetting) {
-        return [
-          ...rows,
-          {
-            kind: 'entry',
-            mark: '✗',
-            text: 'forget this project',
-            tone: 'faded',
-            pick: 'forget',
-          },
-        ];
-      }
-      rows.push({
-        kind: 'line',
-        text: standing.length
-          ? `${standing.length === 1 ? 'the one session' : `all ${standing.length} sessions`} in here would be taken down. the folder stays.`
-          : 'the folder stays exactly where it is.',
-        tone: standing.length ? 'sore' : 'faded',
-      });
-      return [
-        ...rows,
-        {
-          kind: 'entry',
-          mark: '✗',
-          text: 'press again and the village forgets it',
-          tone: 'sore',
-          pick: 'forget!',
-        },
-      ];
-    };
-
-    /**
      * Forgetting a project, which also takes two presses.
      *
      * The village forgets it; the folder stays exactly where it is. What does
      * go is every session cut from it, because a project forgotten with its
      * worktrees still on the disk leaves them somewhere nothing here can reach.
      */
-    const forget = async (sure: boolean): Promise<void> => {
+    const forget = async (): Promise<{ said: string } | { wrong: string }> => {
       const project = open ? projectOn(open.district) : null;
-      if (!project) return;
-      if (!sure) {
-        forgetting = true;
-        if (live) board.update(live.rows());
-        return;
-      }
-      forgetting = false;
-      say('forgetting it…', 30000);
+      if (!project) return { wrong: 'there is nothing open to forget' };
       await client.projects.abandon({ id: project.id }, { timeoutMs: 0 });
-      say('forgotten. the folder is still where it was.', 5000);
       void picked(null);
+      return { said: 'forgotten. the folder is still where it was.' };
     };
 
     /**
@@ -1229,7 +1245,7 @@ async function boot(): Promise<void> {
     /** Step back from a file inside a commit onto the commit it was in. */
     const showMade = (): void => {
       if (!looked?.commit) return;
-      board.show(made(looked.commit, looked.files));
+      wood(made(looked.commit, looked.files));
     };
 
     /**
@@ -1256,7 +1272,7 @@ async function boot(): Promise<void> {
         held: new Set(),
         written: '',
       };
-      board.show(rowsForCommit());
+      wood(rowsForCommit());
     };
 
     const rowsForCommit = (): Row[] =>
@@ -1318,7 +1334,7 @@ async function boot(): Promise<void> {
         return;
       }
       writing = null;
-      if (live) board.show(live.rows());
+      if (live) wood(live.rows());
       say('committed.', 3000);
     };
 
@@ -1379,7 +1395,7 @@ async function boot(): Promise<void> {
       if (!live) return;
       /* Back at the top, which is where the file was pressed: a session's
          board is pinned to now, but you did not come from now. */
-      board.show(live.rows());
+      wood(live.rows());
     };
 
     /**
@@ -1387,54 +1403,12 @@ async function boot(): Promise<void> {
      * working in it. The board opens at the bottom, because the bottom is now.
      */
     const openTask = async (aim: Aim, task: Task): Promise<void> => {
-      flyTo(camera, districtBounds(aim.district), { inset: board.inset });
-      const was = live;
-      live = null;
-      work = null;
-      reading = null;
-      writing = null;
-      looked = null;
-      stopWalking();
-      stopTalking();
-      sending = null;
-      await was?.close();
-      const shown = card;
-      card = null;
-      await shown?.close();
-
-      open = aim;
-      naming = null;
-      titling = null;
-      inside = task;
-      paintRail();
-      board.show(
-        [
-          { kind: 'title', text: task.title },
-          { kind: 'line', text: task.path, tone: 'faded', keep: 'tail' },
-          { kind: 'gap' },
-          { kind: 'line', text: 'looking in…', tone: 'faded' },
-        ],
-        'now'
-      );
-
-      const opened = await openWork(client, task, (rows) => {
-        if (open === aim && !reading && !looked && !walking && !talking && !sending) {
-          board.update(rows);
-        }
-      });
-      if (open !== aim) {
-        await opened.close();
-        return;
-      }
-      live = opened;
-      work = opened;
-      board.show(opened.rows(), 'now');
+      const project = projects.find((one) => one.id === task.project);
+      if (!project) return;
+      flyTo(camera, districtBounds(aim.district), { inset: 0 });
+      lastIn.set(project.id, task.id);
+      await showYard(aim, project, task);
       arrived();
-      /* And wake whoever lives in there. A session keeps its checkout and its
-         transcript across a restart but the agent is not running, and a
-         sleeping agent cannot say what it can do — so opening the board is
-         what starts it, not the first thing you say. */
-      void client.agents.wake({ task: task.id }, { timeoutMs: 0 });
     };
 
     /** A new session is a question: what is going to happen in there. */
@@ -1449,12 +1423,11 @@ async function boot(): Promise<void> {
       sending = null;
       open = aim;
       inside = null;
-      work = null;
       titling = null;
       naming = { district: aim.district, project, slot, written: '' };
       paintRail();
       flyTo(camera, districtBounds(aim.district), { inset: board.inset });
-      board.show(asking(naming));
+      wood(asking(naming));
     };
 
     /** Calling a session something else. His name for it outranks the agent's. */
@@ -1467,7 +1440,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       titling = { task, written: task.title };
-      board.show(retitling(titling));
+      wood(retitling(titling));
     };
 
     const wrote = (written: string): void => {
@@ -1568,17 +1541,18 @@ async function boot(): Promise<void> {
      * Whatever is written on a task's board is said to whoever is in there —
      * and nothing written, while they are working, calls them off.
      */
-    const tell = async (): Promise<void> => {
+    const tell = async (said: string): Promise<void> => {
       const task = inside;
-      const saying = work;
+      const saying = watching;
       if (!task || !saying) return;
-      const text = saying.written().trim();
+      const text = said.trim();
       const carrying = [...saying.carrying()];
+      /* An empty line while somebody is working calls them off. It is the only
+         thing in this app that means something by being nothing. */
       if (!text && !carrying.length) {
         if (saying.working()) await client.agents.hush({ task: task.id });
         return;
       }
-      saying.wrote('');
       saying.handed();
       const heard = await client.agents.tell(
         { task: task.id, text, ...(carrying.length ? { carrying } : {}) },
@@ -1589,18 +1563,23 @@ async function boot(): Promise<void> {
       }
     };
 
-    const answer = async (key: string): Promise<void> => {
+    const answered = async (optionId: string): Promise<void> => {
       const task = inside;
-      const asked = work?.asked();
+      const asked = watching?.asked();
       if (!task || !asked) return;
-      const optionId = answerFor(asked, key);
-      if (!optionId) return;
       const given = await client.agents.answer({
         task: task.id,
         requestId: asked.requestId,
         optionId,
       });
       if (!given.success && given.error.kind === 'refused') say(given.error.because, 6000);
+    };
+
+    /** The same door, opened with a number key instead of a hand. */
+    const answer = async (key: string): Promise<void> => {
+      const asked = watching?.asked();
+      const optionId = asked ? answerFor(asked, key) : null;
+      if (optionId) await answered(optionId);
     };
 
     /**
@@ -1612,20 +1591,20 @@ async function boot(): Promise<void> {
      */
     const obey = async (meant: Meant): Promise<void> => {
       const task = inside;
-      const saying = work;
+      const saying = watching;
       const aim = open;
       if (!task || !saying) return;
       if (meant.does === 'write') {
-        saying.wrote(meant.text);
+        said(meant.text);
         return;
       }
       if (meant.does === 'card') {
-        saying.wrote('');
+        said('');
         if (aim) await showCard(aim, task);
         return;
       }
       if (meant.does !== 'set') return;
-      saying.wrote('');
+      said('');
       const done = await client.agents.choose(
         { task: task.id, what: meant.what, id: meant.id },
         { timeoutMs: 0 }
@@ -1669,10 +1648,6 @@ async function boot(): Promise<void> {
       }
       if (pick === 'shell') {
         void talk();
-        return;
-      }
-      if (pick === 'forget' || pick === 'forget!') {
-        void forget(pick === 'forget!');
         return;
       }
       if (pick === 'end' || pick === 'end!') {
@@ -1764,17 +1739,16 @@ async function boot(): Promise<void> {
         return;
       }
       if (pick.startsWith('putdown:')) {
-        work?.putDown(pick.slice(8));
+        watching?.putDown(pick.slice(8));
         return;
       }
       if (pick.startsWith('name:')) {
-        const saying = work;
-        const line = saying?.names.named(saying.written(), pick);
-        if (saying && line !== null && line !== undefined) saying.wrote(line);
+        const line = watching?.names.named(yard.line.written(), pick);
+        if (line !== null && line !== undefined) said(line);
         return;
       }
       if (pick.startsWith('slash:')) {
-        const meant = work?.slash.meant(pick);
+        const meant = watching?.slash.meant(pick);
         if (meant) void obey(meant);
         return;
       }
@@ -1817,7 +1791,7 @@ async function boot(): Promise<void> {
        is written on the line as where it is, which is what you would have said
        about it anyway and the one thing the agent can act on. */
     const carry = async (files: readonly File[]): Promise<void> => {
-      const saying = work;
+      const saying = watching;
       if (!files.length) return;
       if (!saying) {
         say('open a building first, and somebody can take it.', 4000);
@@ -1828,7 +1802,7 @@ async function boot(): Promise<void> {
         .filter((file) => !CARRIED.includes(file.type))
         .map((file) => window.mender.pathOf(file))
         .filter((path) => path.length > 0);
-      if (elsewhere.length) saying.wrote(alongside(saying.written(), elsewhere));
+      if (elsewhere.length) said(alongside(yard.line.written(), elsewhere));
       if (!pictures.length && !elsewhere.length) {
         // Pasted bytes with no file behind them: a picture would have been
         // carried, and there is nothing to say about the rest.
@@ -1854,7 +1828,7 @@ async function boot(): Promise<void> {
       void carry(files);
     });
 
-    watchPointer(pixi, camera, board, rail, {
+    const hand: Pointing = {
       at: (x, y) => drawn.ground.at(x, y),
       hover: (aim) => drawn.ground.hover(aim),
       picked: (aim) => void picked(aim),
@@ -1878,12 +1852,7 @@ async function boot(): Promise<void> {
             return;
           }
           writing = null;
-          if (live) board.show(live.rows());
-          return;
-        }
-        if (forgetting) {
-          forgetting = false;
-          if (live) board.update(live.rows());
+          if (live) wood(live.rows());
           return;
         }
         if (card?.ending()?.asked) {
@@ -1903,7 +1872,7 @@ async function boot(): Promise<void> {
             return;
           }
           sending = null;
-          if (live) board.show(live.rows());
+          if (live) wood(live.rows());
           return;
         }
         if (talking) {
@@ -1914,7 +1883,7 @@ async function boot(): Promise<void> {
             return;
           }
           stopTalking();
-          if (live) board.show(live.rows());
+          if (live) wood(live.rows());
           return;
         }
         if (hunt && !opened) {
@@ -1924,8 +1893,8 @@ async function boot(): Promise<void> {
             return;
           }
           hunt = null;
-          if (walking) board.show(walking.rows());
-          else if (live) board.show(live.rows());
+          if (walking) wood(walking.rows());
+          else if (live) wood(live.rows());
           return;
         }
         if (walking && !opened && walking.naming() !== undefined) {
@@ -1935,7 +1904,7 @@ async function boot(): Promise<void> {
         if (opened?.blame) {
           // Back to reading the file rather than out of it.
           opened.blame = undefined;
-          board.show(read(opened));
+          wood(read(opened));
           return;
         }
         if (opened?.renaming !== undefined) {
@@ -1956,9 +1925,9 @@ async function boot(): Promise<void> {
             return;
           }
           opened = null;
-          if (hunt) board.show(hunting(hunt));
-          else if (walking) board.show(walking.rows());
-          else if (live) board.show(live.rows());
+          if (hunt) wood(hunting(hunt));
+          else if (walking) wood(walking.rows());
+          else if (live) wood(live.rows());
           return;
         }
         if (walking) {
@@ -1968,7 +1937,7 @@ async function boot(): Promise<void> {
             const went = await walking?.up();
             if (went) return;
             stopWalking();
-            if (live) board.show(live.rows());
+            if (live) wood(live.rows());
           })();
           return;
         }
@@ -1990,7 +1959,7 @@ async function boot(): Promise<void> {
         }
         if (looked) {
           looked = null;
-          if (live) board.show(live.rows());
+          if (live) wood(live.rows());
           return;
         }
         if (titling) {
@@ -2012,9 +1981,8 @@ async function boot(): Promise<void> {
           if (open) void openDistrict({ kind: 'district', district: open.district });
           return;
         }
-        const saying = work;
-        if (saying?.written()) {
-          saying.wrote('');
+        if (yard.line.written()) {
+          said('');
           return;
         }
         // Then the session, back to the project it belongs to, and only then
@@ -2151,12 +2119,12 @@ async function boot(): Promise<void> {
           else return false;
           return true;
         }
-        const saying = work;
-        /* Any other board is a list of things you can press, so the arrows
-           walk it and return goes where you are standing. A session's board is
-           the exception: it is mostly a conversation, and walking a transcript
-           line by line is not what anybody wants from an arrow key there. */
-        if (!saying) {
+        const saying = watching;
+        /* A board still drawn on wood is a list of things you can press, so
+           the arrows walk it and return goes where you are standing. The yard
+           is not: the keyboard belongs to the line you write on, and the lines
+           the arrows walk are the ones the yard itself marks. */
+        if (!saying || !yard.showing) {
           if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             return board.walk(event.key === 'ArrowDown' ? 1 : -1) || board.scrolled(event.key);
           }
@@ -2168,69 +2136,25 @@ async function boot(): Promise<void> {
           }
           return board.scrolled(event.key);
         }
+        /* A question at the gate takes the number keys and nothing else, so
+           that answering it cannot be done by accident while typing. */
         if (saying.asked()) {
           if (!/^[1-9]$/.test(event.key)) return false;
           void answer(event.key);
           return true;
         }
-        /* A session's board is mostly a conversation, so the arrows scroll it
-           rather than walking it — except that what a piece of work did is
-           opened by pressing it, and nothing should need a pointer. Holding
-           shift walks the openable lines instead of scrolling. */
-        if (event.shiftKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
-          return board.walk(event.key === 'ArrowDown' ? 1 : -1);
-        }
-        /* An @ in the middle of the line takes the keys the same way a slash
-           does, and writes the whole path where the @ was. */
-        if (saying.names.open) {
-          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            saying.names.moved(event.key === 'ArrowDown' ? 1 : -1);
-            saying.wrote(saying.written());
-            return true;
-          }
-          if (event.key === 'Tab' || event.key === 'Enter') {
-            const line = saying.names.chosen(saying.written());
-            if (line === null) return false;
-            saying.wrote(line);
-            return true;
-          }
-        }
-        /* A slash on the line takes the keys off the conversation: up and
-           down walk what it could mean, and return picks rather than sends. */
-        if (saying.slash.open) {
-          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            saying.slash.moved(event.key === 'ArrowDown' ? 1 : -1);
-            saying.wrote(saying.written());
-            return true;
-          }
-          if (event.key === 'Tab' || event.key === 'Enter') {
-            const meant = saying.slash.chosen();
-            if (!meant) return false;
-            if (meant.does === 'write') {
-              saying.wrote(meant.text);
-              // A command that takes nothing is finished the moment it is
-              // picked, so return says it rather than only writing it.
-              if (event.key === 'Enter' && !meant.text.endsWith(' ')) void tell();
-            } else void obey(meant);
-            return true;
-          }
-        }
-        // Tab opens whatever the shift-arrows landed on. Return is spoken for
-        // here: it says what you wrote, or calls them off when you wrote
-        // nothing, and shift and return has a newline coming.
-        if (event.key === 'Tab') {
-          const chose = board.chosen();
-          if (!chose) return false;
-          press(chose);
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          yard.walk.step(event.key === 'ArrowDown' ? 1 : -1);
           return true;
         }
-        if (event.key === 'Enter') void tell();
-        else if (event.key === 'Backspace') saying.wrote(saying.written().slice(0, -1));
-        else if (event.key.length === 1) saying.wrote(saying.written() + event.key);
-        else return false;
-        return true;
+        if (event.key === 'Enter' && yard.walk.on) return yard.walk.press();
+        /* Everything else is writing, and the line takes that itself. */
+        return false;
       },
-    });
+    };
+
+    backOut = () => hand.escaped();
+    watchPointer(pixi, camera, board, rail, hand);
 
     /* Who is standing outside which building, kept true by the main process
        rather than by whatever board happens to be open: a villager is still
@@ -2253,7 +2177,7 @@ async function boot(): Promise<void> {
       if (writing) board.update(rowsForCommit());
       else if (
         live &&
-        !work &&
+        !watching &&
         !card &&
         !naming &&
         !titling &&
@@ -2359,22 +2283,6 @@ function retitling(titling: { task: Task; written: string }): Row[] {
       tone: 'faded',
     },
   ];
-}
-
-/** The mark a session wears on the rail, which is what it is doing. */
-function markOf(mood: Mood | undefined): string | undefined {
-  if (mood === 'working') return '…';
-  if (mood === 'asking') return '?';
-  if (mood === 'hurt') return '×';
-  if (mood === 'arriving') return '·';
-  if (mood === 'resting') return '·';
-  return undefined;
-}
-
-function toneOf(mood: Mood | undefined): 'keen' | 'sore' | undefined {
-  if (mood === 'asking') return 'keen';
-  if (mood === 'hurt') return 'sore';
-  return undefined;
 }
 
 function whyNot(error: { kind: string; because?: string; name?: string }): string {
