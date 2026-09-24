@@ -1194,12 +1194,17 @@ not reachable, since a project the village has forgotten is gone.
 
 ### Built, and broken, found by driving the installed app
 
-The app you install could not start an agent. The two ACP adapters the village
-spawns are declared as development dependencies of the plugins package, which
-is fine while everything runs out of the checkout and wrong the moment it is
-packaged: only production dependencies are carried, so the installed build had
-no adapter to spawn and every agent failed with a module it could not find.
-Fixed by making them dependencies of the app, because the app depends on them.
+The app you install could not start an agent. An agent that speaks the protocol
+is not a library this app calls, it is a program it starts, and the thing it
+starts has to be a real file on the disk that a plain node can read. The plugins
+package already builds each adapter into one self-contained file and upstream
+carries them beside its main bundle; Mender never copied them, so the installed
+build went looking through node_modules, found nothing, and every session failed
+to initialise. They are carried now, and left out of the archive.
+
+The first attempt at this was wrong in an instructive way: making them
+dependencies of the app got the files into the archive, which is exactly where
+a spawned process cannot read them.
 
 It could only have shown up by opening the thing in the Applications folder,
 which is the whole reason that is the last step of every change.
