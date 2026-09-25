@@ -6,6 +6,8 @@ import { MENDER_WATCH_CHANNEL, type Watching } from '../shared/channels';
 import { createAgents } from './agents';
 import { createAgentsController } from './agents-controller';
 import { watchForAttention } from './attend';
+import { createBoard } from './board';
+import { createBoardController } from './board-controller';
 import { createChanges } from './changes';
 import { createChangesController } from './changes-controller';
 import { createFinding } from './finding';
@@ -65,6 +67,7 @@ export async function main(): Promise<void> {
   installWire(scope, {
     ...runtimes.controllers,
     agents: createAgentsController(agents),
+    board: createBoardController(createBoard()),
     changes: createChangesController(changes),
     finding: createFindingController(finding),
     projects: createProjectsController(projects),

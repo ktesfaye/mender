@@ -1,6 +1,7 @@
 import type { FileContentModel } from '@emdash/core/runtimes/files/api';
 import type { BlameHunk } from '@emdash/core/runtimes/git/api';
 import type { Row } from './row';
+import { saying } from './writing';
 
 /**
  * A file, on the wood.
@@ -29,6 +30,12 @@ export interface Read {
   asked?: boolean;
   /** Who last touched each run of lines, when that is what is being read. */
   blame?: readonly BlameHunk[];
+  /** The file's own pixels, for a picture. Undefined until asked for; null if
+      the machine could not make a picture out of it after all. */
+  picture?: { src: string; wide: number; tall: number } | null;
+  /** A markdown file read as prose. Press the line at the bottom to read the
+      writing itself instead. */
+  raw?: boolean;
 }
 
 export function read(state: Read): Row[] {
@@ -37,15 +44,22 @@ export function read(state: Read): Row[] {
 
   switch (content.kind) {
     case 'binary':
+      if (state.picture) {
+        rows.push(
+          { kind: 'picture', src: state.picture.src, wide: state.picture.wide, tall: state.picture.tall },
+          { kind: 'line', text: sized(content.byteSize), tone: 'faded' }
+        );
+        return rows;
+      }
       rows.push({ kind: 'line', text: notWriting(content.byteSize), tone: 'faded' });
-      return rows;
+      return [...rows, ...openProperly(state)];
     case 'too-large':
       rows.push({
         kind: 'line',
         text: `${sized(content.byteSize)}, which is more than a board will hold.`,
         tone: 'faded',
       });
-      return rows;
+      return [...rows, ...openProperly(state)];
     case 'unavailable':
       rows.push({ kind: 'line', text: missing(content.code), tone: 'sore' });
       return rows;
@@ -56,6 +70,28 @@ export function read(state: Read): Row[] {
   if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
 
   if (state.blame) return [...rows, ...whose(state.blame, lines)];
+
+  /* A markdown file read plain shows the marks rather than the shape they are
+     for — read it the way an agent's own words already are, with one line to
+     drop back to the raw text when that is what the writing itself is for. */
+  if (isMarkdown(state.path) && !state.raw) {
+    rows.push(
+      { kind: 'line', text: 'read as writing. press to read the raw text.', tone: 'faded', pick: 'raw' },
+      { kind: 'gap' },
+      ...saying(content.content, undefined, 'ink'),
+      { kind: 'gap' }
+    );
+    return [...rows, ...over(state, content.readonly)];
+  }
+  if (isMarkdown(state.path) && state.raw) {
+    rows.push({
+      kind: 'line',
+      text: 'the raw text. press to read it as writing.',
+      tone: 'faded',
+      pick: 'raw',
+    });
+    rows.push({ kind: 'gap' });
+  }
 
   rows.push({ kind: 'line', text: how(lines.length, content.readonly), tone: 'faded' });
   rows.push({ kind: 'gap' });
@@ -93,7 +129,7 @@ export function read(state: Read): Row[] {
  * again; renaming does not, because a name is put back by typing the old one.
  */
 function over(state: Read, readonly: boolean): Row[] {
-  if (readonly || state.blame) return [];
+  if (readonly || state.blame) return openProperly(state);
   const rows: Row[] = [{ kind: 'gap' }];
   if (state.renaming !== undefined) {
     rows.push(
@@ -116,6 +152,7 @@ function over(state: Read, readonly: boolean): Row[] {
     tone: 'faded',
     pick: 'rename',
   });
+  rows.push(...openProperly(state));
   rows.push(
     state.asked
       ? {
@@ -195,6 +232,28 @@ export function unopened(path: string): Row[] {
 function how(lines: number, readonly: boolean): string {
   const many = lines === 1 ? 'one line' : `${lines} lines`;
   return readonly ? `${many}, and nothing here can change it` : `${many}. press one to rewrite it`;
+}
+
+/**
+ * Opening the file in whatever the machine opens files like it with.
+ *
+ * Most work here goes through the agent and the line editor covers a small
+ * human fix, but a real editor, or the only sane default-app open for a
+ * binary or too-large file, has no other door — one line, using the same
+ * bridge a checkout's own "show in Finder" already does.
+ */
+function openProperly(state: Read): Row[] {
+  if (state.blame) return [];
+  return [
+    { kind: 'gap' },
+    { kind: 'entry', mark: '→', text: 'open it properly', tone: 'faded', pick: 'open-it' },
+  ];
+}
+
+const MARKDOWN = /\.mdx?$/i;
+
+function isMarkdown(path: string): boolean {
+  return MARKDOWN.test(path);
 }
 
 function notWriting(bytes: number): string {

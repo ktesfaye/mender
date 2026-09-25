@@ -1,8 +1,10 @@
 import {
+  formatAbsolute,
   joinAbsolute,
   parseNativeAbsolute,
   type PortableRelativePath,
 } from '@emdash/core/primitives/path/api';
+import type { FileContentModel } from '@emdash/core/runtimes/files/api';
 import {
   gitContract,
   shortName,
@@ -56,6 +58,14 @@ import { makeYard } from './yard/yard';
 
 /** The kinds of picture an agent can actually be shown. */
 const CARRIED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+
+/** Which files a folder walk offers to show as a picture rather than read. */
+const PICTURE = /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i;
+function isPicture(path: string): boolean {
+  return PICTURE.test(path);
+}
+/** How wide a picture is asked for, sized to a board comfortably. */
+const PICTURE_WIDTH = 640;
 
 /**
  * You open Mender and you see the village.
@@ -392,6 +402,16 @@ async function boot(): Promise<void> {
        is instant and never races its own teardown. */
     let kept: { path: string; tree: LiveTree } | null = null;
     let opened: Read | null = null;
+    /* Kept live while a file is open, so an agent writing to it out from under
+       you shows here the same way a checkout's own status does. Disposed
+       whenever `opened` stops meaning this file. */
+    let openedLive: ReplicaState<FileContentModel> | null = null;
+    let openingGen = 0;
+    /* The one board you last Escaped all the way out of in this checkout, so
+       wanting it back a minute later is one key rather than walking to it
+       again. Deliberately narrow: the file or the folder, the two boards this
+       area owns. */
+    let lastLeft: { kind: 'file'; path: string } | { kind: 'folder' } | null = null;
     /* Set while the checkout is being searched rather than walked. */
     let hunt: (Hunt & { checkout: string; asked: number }) | null = null;
     /* The shell running in this checkout, while its board is the one open. */
@@ -523,6 +543,15 @@ async function boot(): Promise<void> {
       }
       if (id === 'do:found') {
         openFound();
+        return;
+      }
+      if (id === 'hunt') {
+        hunted(false);
+        return;
+      }
+      if (id === 'do:reopen') {
+        if (lastLeft?.kind === 'file') void openFile(lastLeft.path);
+        else if (lastLeft?.kind === 'folder') void walkIn();
         return;
       }
       if (id === 'do:out') {
@@ -1245,6 +1274,14 @@ async function boot(): Promise<void> {
       wood(tree.rows());
     };
 
+    /** Letting go of whichever file is open, and its live subscription with it. */
+    const closeFile = (): void => {
+      opened = null;
+      const live = openedLive;
+      openedLive = null;
+      if (live) void live.dispose();
+    };
+
     /** Opening one file of it, live, so an agent writing to it shows. */
     const openFile = async (path: string): Promise<void> => {
       const place = inside ?? (open ? projectOn(open.district) : undefined);
@@ -1252,12 +1289,41 @@ async function boot(): Promise<void> {
       if (!parsed?.success) return;
       const whole = joinAbsolute(parsed.data, path as PortableRelativePath);
       if (!whole.success) return;
-      opened = null;
+      closeFile();
       wood(unopened(path));
-      const got = await client.files.content.state({ path: whole.data }, 'content').snapshot();
-      if (!walking) return;
-      opened = { path, content: got.data };
+      const gen = ++openingGen;
+      const live = new ReplicaState<FileContentModel>(
+        client.files.content.state({ path: whole.data }, 'content'),
+        {
+          onChange: (value) => {
+            // Late news about a file you have since left, or replaced with
+            // another one, says nothing to the board any more.
+            if (gen !== openingGen || !opened || opened.path !== path) return;
+            opened = { ...opened, content: value };
+            rewrite(read(opened));
+          },
+        }
+      );
+      await live.ready;
+      // Still in a checkout a file can be read from — whether you walked to
+      // this one or found it from the yard, without ever walking in at all.
+      const here = inside ?? (open ? projectOn(open.district) : undefined);
+      if (gen !== openingGen || !here) {
+        void live.dispose();
+        return;
+      }
+      openedLive = live;
+      opened = { path, content: live.current() };
       wood(read(opened));
+      // A picture shows the picture, not its size in a binary line. Asked for
+      // once, off the side: nothing here waits on it to show the rest.
+      if (live.current().kind === 'binary' && isPicture(path)) {
+        void client.board.picture({ path: formatAbsolute(whole.data), width: PICTURE_WIDTH }).then((got) => {
+          if (gen !== openingGen || !opened || opened.path !== path) return;
+          opened = { ...opened, picture: got.picture };
+          rewrite(read(opened));
+        });
+      }
     };
 
     /** Taking one line of it down to the line you write on. */
@@ -1359,7 +1425,7 @@ async function boot(): Promise<void> {
         say(unwritten(done.error), 6000);
         return;
       }
-      opened = null;
+      closeFile();
       if (walking) wood(walking.rows());
       say('renamed.', 3000);
     };
@@ -1430,7 +1496,7 @@ async function boot(): Promise<void> {
         say(unwritten(done.error), 6000);
         return;
       }
-      opened = null;
+      closeFile();
       if (walking) wood(walking.rows());
       say('thrown away.', 3000);
     };
@@ -1446,7 +1512,7 @@ async function boot(): Promise<void> {
     const hunted = (inside: boolean): void => {
       const place = onPlace();
       if (!place) return;
-      opened = null;
+      closeFile();
       hunt = {
         checkout: place.path,
         name: 'title' in place ? place.title : place.name,
@@ -1729,7 +1795,7 @@ async function boot(): Promise<void> {
      */
     const stopWalking = (): void => {
       walking = null;
-      opened = null;
+      closeFile();
       hunt = null;
     };
 
@@ -1738,7 +1804,7 @@ async function boot(): Promise<void> {
       const was = kept;
       kept = null;
       walking = null;
-      opened = null;
+      closeFile();
       hunt = null;
       if (!was) return;
       /* Held on to so that whoever opens a tree next waits for this one to be
@@ -2267,6 +2333,18 @@ async function boot(): Promise<void> {
         void blamed();
         return;
       }
+      if (pick === 'raw') {
+        if (opened) {
+          opened.raw = !opened.raw;
+          rewrite(read(opened));
+        }
+        return;
+      }
+      if (pick === 'open-it') {
+        const whole = opened ? onDisk(opened.path) : null;
+        if (whole) window.mender.openIt(formatAbsolute(whole));
+        return;
+      }
       if (pick === 'bin' || pick === 'bin!') {
         void binned(pick === 'bin!');
         return;
@@ -2518,7 +2596,8 @@ async function boot(): Promise<void> {
             yard.line.take();
             return;
           }
-          opened = null;
+          lastLeft = { kind: 'file', path: opened.path };
+          closeFile();
           if (hunt) wood(hunting(hunt));
           else if (walking) wood(walking.rows());
           else home();
@@ -2530,6 +2609,7 @@ async function boot(): Promise<void> {
           void (async () => {
             const went = await walking?.up();
             if (went) return;
+            lastLeft = { kind: 'folder' };
             stopWalking();
             home();
           })();

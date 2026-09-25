@@ -53,5 +53,7 @@ export type Row = (
   | { kind: 'prose'; text: string; tone?: Tone; mark?: string; runs?: Run[]; in?: number }
   | { kind: 'heading'; text: string }
   | { kind: 'gap' }
+  /** A picture, sized to fit the board's own width. Pixel art keeps its edges. */
+  | { kind: 'picture'; src: string; wide: number; tall: number }
 ) &
   Pick;

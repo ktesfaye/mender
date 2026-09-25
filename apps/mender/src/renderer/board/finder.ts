@@ -56,6 +56,20 @@ const DOINGS: Doing[] = [
     where: ['session', 'card'],
   },
   {
+    pick: 'hunt',
+    name: 'find a file',
+    about: 'by name or by what is written in it',
+    chord: 'f',
+    where: ['district', 'session'],
+  },
+  {
+    pick: 'do:reopen',
+    name: 'reopen what you closed',
+    about: 'the last file or folder you stepped out of',
+    chord: 'o',
+    where: ['district', 'session'],
+  },
+  {
     pick: 'do:found',
     name: 'found a project',
     about: 'put a checkout on the island',

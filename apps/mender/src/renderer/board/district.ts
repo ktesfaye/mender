@@ -197,6 +197,8 @@ function build(
     { kind: 'gap' },
     // The one thing a checkout is for that git has no word for.
     { kind: 'entry', mark: '→', text: 'open a shell in here', tone: 'faded', pick: 'shell' },
+    // Finding a file does not need walking to it first.
+    { kind: 'entry', mark: '→', text: 'find a file', tone: 'faded', pick: 'hunt' },
     // And the way this piece of work ends, which is not in a browser.
     { kind: 'entry', mark: '→', text: 'what is open for this branch', tone: 'faded', pick: 'sent' },
     { kind: 'gap' },

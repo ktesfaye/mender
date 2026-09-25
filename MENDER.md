@@ -267,6 +267,11 @@ this. Another line switches to the other question, where is this written, and
 carries what you typed across. Both answer with files you press, the matching
 lines under each.
 
+**Finding a file does not need walking to it first.** The checkout board
+itself offers the same look-by-name-or-by-what's-written board the folder
+does, and answers to a key from anywhere in a project's or a session's yard,
+the same way every other doing held with command does.
+
 **Who last touched it is on the same board.** Not a name beside every line:
 writing happens in runs, so it says it once over each run, with who, how long
 ago and what they were doing.
@@ -282,6 +287,31 @@ this app, so changing a line means taking that line into the writing: press it,
 it turns to full ink with the cursor after it, rewrite it where it sits, and
 return writes the file. Escape puts it back. Nothing is written if the file
 changed underneath you while you had a line of it down.
+
+**A file you are reading keeps reading while it is written.** Opening one
+holds the checkout's own writing open rather than taking one look at it, so a
+line an agent puts in while you are standing in the file arrives on the board
+the way a commit already does, without you closing it and opening it again.
+
+**A file that is a picture shows the picture.** A png, a jpeg, a gif, a webp
+or an svg draws itself in place of the numbered lines, sized to the board and
+kept crisp rather than smoothed when it is small, with its size in words
+underneath. Blame, renaming and throwing it away all still work, since none of
+those are about the writing.
+
+**A `.md` file reads as writing, not as marks.** The same reading the agents'
+own words already get — headings, lists, quotes, rules, fenced code — applies
+to a markdown file walked to in the folder, with one line to drop back to the
+raw text when a line of it is what you actually came to change.
+
+**A file the board cannot show properly offers to be opened properly.** In
+whatever the machine opens it with, one gold line, the same door a checkout's
+own "show in Finder" already uses.
+
+**The last file or folder you stepped all the way out of is one key away.**
+Escaping a board on purpose used to mean walking back to it by hand; now the
+same key that holds every other doing brings back whichever of the two you
+left last.
 
 **There is a real shell in the checkout.** A line under where the checkout
 stands opens one, and it is a real terminal on the board rather than a line

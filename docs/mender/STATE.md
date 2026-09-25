@@ -466,8 +466,37 @@ runs, twelve lines somebody put in on a Tuesday and then four somebody else
 changed since, so it says it once over the run with who, how long ago and what
 they were doing. Escape goes back to reading the file rather than out of it.
 
-Not here yet: reading an image or a table as anything other than the bytes it
-is.
+A picture is drawn now rather than read as bytes: a png, a jpeg, a gif, a webp
+or an svg shows the picture itself with its size in words underneath, pixel art
+kept crisp rather than smoothed. The reading uses the same decoder a project's
+own face already went through, reached for a file's own path instead of a
+checkout's likeliest icon.
+
+A file you are reading updates while it is written, the same way a checkout's
+own status already did: opening one now holds the live model open rather than
+a single snapshot, so a line an agent puts in while you are looking at the
+file appears without you closing and reopening it. Taking a line down to fix
+it is still pinned to what was actually on the disk when you took it, so
+nothing is silently overwritten by what just arrived.
+
+A `.md` file reads as writing rather than as marks now, the same renderer the
+transcript already uses for an agent's own words: headings, lists, quotes,
+rules and fenced code, with one line at the top to drop back to the raw text
+when editing a line is actually what you came for. Mermaid has nowhere to
+plug in yet on this board or the transcript's, so a fenced ` ```mermaid ` block
+still reads as a plain code block until that renderer exists.
+
+A file can be found from anywhere in a project or a session's yard now, not
+only after walking into the folder first: `find a file` is a line on the
+checkout board and answers to the same key the finder's own doings do, and it
+opens straight onto the same look-by-name-or-by-what's-written board the
+folder already offered.
+
+A file that cannot be read here — too large, not writing, or simply a kind
+better handed to a real editor — offers to be opened properly, using the same
+bridge a project's own "show in Finder" already used. The last file or folder
+you stepped all the way out of is one key away from being back, without
+walking to it again.
 
 ### W4 — you can ship it · started
 
@@ -1083,10 +1112,10 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-17 | Search-results tree | done | W5 |
 | FS-18 | Files RPC contract (fs.*, tree, content) | kept |  |
 | FS-19 | Open-file store (editor tab lifecycle) | kept |  |
-| FS-20 | File-kind renderer routing (text/csv/markdown/html/svg/image/too-large/binary) |  | W5 |
+| FS-20 | File-kind renderer routing (text/csv/markdown/html/svg/image/too-large/binary) | part | W5 |
 | FS-21 | Monaco text editor | cut | W5 |
 | FS-22 | CSV renderer |  | W5 |
-| FS-23 | Markdown/HTML/SVG/image renderers |  | W5 |
+| FS-23 | Markdown/HTML/SVG/image renderers | part | W5 |
 | FS-24 | Text diff (Monaco diff editor) | done | W3 |
 | FS-25 | Inline review comments on diff lines | cut | W3 |
 | FS-26 | Stacked multi-file diff view | cut | W3 |

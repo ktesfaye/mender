@@ -105,6 +105,21 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
       line.textContent = row.text;
       break;
 
+    case 'picture': {
+      line.style.cssText = 'padding:8px 0';
+      const img = document.createElement('img');
+      img.src = row.src;
+      img.width = row.wide;
+      img.height = row.tall;
+      /* A small picture is almost always pixel art wearing its own pixels as
+         its detail, not a photo that happens to be small; blurring those into
+         a smooth image would be losing the one thing worth looking at. */
+      const crisp = Math.max(row.wide, row.tall) <= 256;
+      img.style.cssText = `max-width:100%;height:auto;display:block;${crisp ? 'image-rendering:pixelated' : ''}`;
+      line.appendChild(img);
+      return line;
+    }
+
     case 'typed': {
       /* Something taken off a board to be rewritten is being written here
          rather than on the line at the foot of the screen, so this is the
