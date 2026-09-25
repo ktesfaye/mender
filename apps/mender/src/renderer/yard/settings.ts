@@ -35,6 +35,8 @@ export interface SettingsDoings {
   more(): void;
   rename(name: string): Promise<void>;
   carry(path: string, on: boolean): void;
+  /** Who this project's sessions commit as. Blank clears an override. */
+  identity(name: string, email: string): Promise<void>;
   show(): void;
   forget(): Promise<void>;
   closed(): void;
@@ -115,8 +117,9 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   const welcome = el('p', 'settings-welcome');
   const faces = section('Icon');
   const sessions = section('New sessions');
+  const identity = section('Commits go out as');
   const danger = el('div', 'settings-danger');
-  body.append(welcome, faces.root, sessions.root, danger);
+  body.append(welcome, faces.root, sessions.root, identity.root, danger);
   panel.append(head, body);
 
   document.body.appendChild(back);
@@ -265,6 +268,41 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     sessions.fill([hint, list]);
   }
 
+  function drawIdentity(): void {
+    const hint = el('p', 'settings-hint');
+    hint.textContent = 'Blank means whatever git would use anyway.';
+    const gitName = document.createElement('input');
+    gitName.className = 'settings-identity-field';
+    gitName.placeholder = 'name';
+    gitName.spellcheck = false;
+    gitName.value = now.project.gitName ?? '';
+    const gitEmail = document.createElement('input');
+    gitEmail.className = 'settings-identity-field';
+    gitEmail.placeholder = 'email';
+    gitEmail.spellcheck = false;
+    gitEmail.value = now.project.gitEmail ?? '';
+    const keep = async (): Promise<void> => {
+      if (
+        gitName.value.trim() === (now.project.gitName ?? '') &&
+        gitEmail.value.trim() === (now.project.gitEmail ?? '')
+      )
+        return;
+      await does.identity(gitName.value, gitEmail.value);
+    };
+    for (const field of [gitName, gitEmail]) {
+      field.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          field.blur();
+        }
+      });
+      field.addEventListener('blur', () => void keep());
+    }
+    const row = el('div', 'settings-identity-row');
+    row.append(gitName, gitEmail);
+    identity.fill([hint, row]);
+  }
+
   function drawDanger(): void {
     const cost = !now.sessions
       ? 'the folder stays where it is'
@@ -298,6 +336,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     welcome.style.display = now.fresh ? '' : 'none';
     drawFaces();
     drawSessions();
+    if (document.activeElement?.closest('.settings-identity-row') == null) drawIdentity();
     drawDanger();
   }
 

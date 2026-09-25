@@ -13,5 +13,6 @@ export function createProjectsController(projects: Projects): Controller {
     picture: ({ id, from }) => projects.picture(id, from),
     carrying: ({ id }) => projects.carrying(id),
     carry: ({ id, path, on }) => projects.carry(id, path, on),
+    identity: ({ id, name, email }) => projects.identity(id, name, email),
   });
 }

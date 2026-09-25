@@ -901,6 +901,10 @@ async function boot(): Promise<void> {
             );
             redraw();
           })(),
+        identity: async (name, email) => {
+          await client.projects.identity({ id: project.id, name, email }, { timeoutMs: 0 });
+          await refreshed();
+        },
         show: () => window.mender.showIt(project.path),
         forget: async () => {
           const went = await forget(project.id);

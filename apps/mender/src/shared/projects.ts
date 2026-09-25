@@ -12,6 +12,9 @@ export const projectSchema = z.object({
   picture: z.string().optional(),
   /** That picture, as something the page can draw. */
   icon: z.string().optional(),
+  /** Who a session's commits go out as, when this project says otherwise. */
+  gitName: z.string().optional(),
+  gitEmail: z.string().optional(),
 });
 
 export type Project = z.infer<typeof projectSchema>;
@@ -80,6 +83,11 @@ export const projectsContract = defineContract({
   carry: procedure({
     input: z.object({ id: z.string(), path: z.string(), on: z.boolean() }),
     output: carryingSchema,
+  }),
+  /** Set or clear who this project's sessions commit as. Blank clears it. */
+  identity: procedure({
+    input: z.object({ id: z.string(), name: z.string(), email: z.string() }),
+    output: z.array(projectSchema),
   }),
 });
 

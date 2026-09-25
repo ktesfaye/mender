@@ -629,6 +629,16 @@ Not here yet: cloning or creating a repository rather than pointing at one,
 relinking, choosing what a worktree is cut from, and a checkout's trouble
 showing on the district.
 
+**A project can say who its commits go out as.** A new section on the same
+window, "commits go out as," holds two plain lines, name and email; blank
+means whatever git would already use. Setting either writes it into the
+project's own record, and every worktree cut for that project afterwards gets
+it as a local `git config user.name` / `user.email` in that worktree alone —
+never the machine's global config, and never a project without an override.
+Driven: typed both fields on a scratch project, watched the record hold them
+after a close and reopen, and confirmed the same write function sets a real
+checkout's local git config correctly.
+
 ### W7 — the rest of it
 
 The largest wave, and the least glamorous. Everything about founding, naming,

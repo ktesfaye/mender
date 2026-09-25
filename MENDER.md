@@ -135,7 +135,9 @@ on a click outside it or Escape, leaving the session under it untouched. In it
 is the icon it wears on the rack, picked from the images already in its
 checkout or chosen from anywhere, its name, typed straight into the window,
 what every new session carries into its worktree that git would leave behind,
-where it is, and removing it. A project that has just moved in opens it first.
+who its commits go out as when that should be someone other than whatever git
+would already say, where it is, and removing it. A project that has just moved
+in opens it first.
 
 **Everything else is laid over the yard, never instead of it.** A file, a
 change, a commit, a folder, a search, a shell, a pull request, the card behind

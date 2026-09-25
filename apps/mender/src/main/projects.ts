@@ -34,6 +34,9 @@ export interface Project {
   readonly picture?: string;
   /** That picture, ready for the page. Never stored: read off the kept copy. */
   readonly icon?: string;
+  /** Who a session's commits go out as, when this project says otherwise. */
+  readonly gitName?: string;
+  readonly gitEmail?: string;
 }
 
 /** Where a project's picture is to come from. */
@@ -80,6 +83,8 @@ export interface Projects {
   carrying(id: string): Promise<Carrying>;
   /** Send something along into every new session, or stop sending it. */
   carry(id: string, path: string, on: boolean): Promise<Carrying>;
+  /** Set or clear who this project's sessions commit as. Blank clears it. */
+  identity(id: string, name: string, email: string): Promise<Project[]>;
   /** Who takes a project's sessions down when the project is forgotten. */
   sweeps(sweep: (project: string) => Promise<void>): void;
   /** The state these projects make: the districts that are standing. */
@@ -323,6 +328,22 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
         });
       }
       return carryingIn(project);
+    },
+
+    async identity(id, name, email) {
+      const projects = await stored();
+      const written = { name: name.trim(), email: email.trim() };
+      return save(
+        projects.map((project) => {
+          if (project.id !== id) return project;
+          const { gitName: _n, gitEmail: _e, ...bare } = project;
+          return {
+            ...bare,
+            ...(written.name ? { gitName: written.name } : {}),
+            ...(written.email ? { gitEmail: written.email } : {}),
+          };
+        })
+      );
     },
 
     async abandon(id) {

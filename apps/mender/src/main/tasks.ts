@@ -1,5 +1,7 @@
+import { execFile } from 'node:child_process';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
+import { promisify } from 'node:util';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import type { ActiveRootStatus } from '@emdash/core/runtimes/file-search/api';
@@ -183,6 +185,13 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
         return fail({ kind: 'refused', because: whatItSaid(made.error) });
       }
 
+      // A project that says who its commits go out as writes that into the
+      // worktree's own git config, not the machine's — so it holds only here,
+      // and never leaks into a session cut from a different project.
+      if (found.gitName || found.gitEmail) {
+        await identityIn(made.data.path, found.gitName, found.gitEmail);
+      }
+
       const task: Task = {
         id: made.data.id,
         project,
@@ -354,6 +363,19 @@ export function branchFor(name: string): string {
 /** Where worktrees are cut. Out of the repository, so nothing appears inside it. */
 function worktreeRoot(): string {
   return process.env.MENDER_WORKTREE_ROOT ?? join(homedir(), 'mender', 'worktrees');
+}
+
+const ran = promisify(execFile);
+
+/** Sets a worktree's own git identity, local to that checkout alone. */
+async function identityIn(path: string, name?: string, email?: string): Promise<void> {
+  try {
+    if (name) await ran('git', ['config', 'user.name', name], { cwd: path });
+    if (email) await ran('git', ['config', 'user.email', email], { cwd: path });
+  } catch {
+    // A worktree that refuses a local config write still works; it just
+    // commits under whatever git would have used anyway.
+  }
 }
 
 /** Where Mender keeps its own state on this machine. */
