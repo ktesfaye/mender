@@ -37,7 +37,7 @@ import type { Offer } from './board/offer';
 import { keptNow, type Meant } from './board/palette';
 import { read, unopened, type Read } from './board/reading';
 import type { Row } from './board/row';
-import { sent, type Sent } from './board/sent';
+import { sent, toHand, toHandCheck, type Sent } from './board/sent';
 import { shell } from './board/shell';
 import { openShell, type LiveShell } from './board/talking';
 import { refused, trouble, unwritten } from './board/trouble';
@@ -2250,6 +2250,18 @@ async function boot(): Promise<void> {
         ...(pull ? { pull, number: numberOf(pull.url) } : { written: undefined }),
       };
       wood(sent(sending));
+
+      /* What was actually said about it, fetched after the PR itself so the
+         board shows something the moment it can rather than waiting on both. */
+      if (pull) {
+        const number = numberOf(pull.url);
+        if (number) {
+          const got = await client.pulls.getPullRequestComments({ repositoryUrl: repository, number });
+          if (open !== aim || sending?.pull?.url !== pull.url) return;
+          sending = { ...sending, comments: got.success ? got.data.comments : [] };
+          wood(sent(sending));
+        }
+      }
     };
 
     /** The number at the end of a pull request's url, which is its name to git. */
@@ -3191,6 +3203,24 @@ async function boot(): Promise<void> {
       }
       if (pick.startsWith('merge-pull:')) {
         void doneWith(pick.slice(11) as 'squash' | 'merge' | 'rebase');
+        return;
+      }
+      if (pick.startsWith('hand-comment:')) {
+        const id = pick.slice(13);
+        const comment = sending?.comments?.find((one) => one.id === id);
+        if (comment) {
+          yard.line.write(toHand(comment));
+          yard.line.take();
+        }
+        return;
+      }
+      if (pick.startsWith('hand-check:')) {
+        const id = pick.slice(11);
+        const check = sending?.pull?.checks.find((one) => one.id === id);
+        if (check) {
+          yard.line.write(toHandCheck(check));
+          yard.line.take();
+        }
         return;
       }
       if (pick === 'flip') {

@@ -520,6 +520,18 @@ a line each, and anything still running says so. The same rule as the checkout
 board applies to the actions: squashing, merging and rebasing only appear when
 they are actually possible, and a draft offers to say it is ready instead.
 
+A failed check and an unresolved review comment are both pressable now, under
+a heading of what got said: each writes its own text onto the write line,
+unsent, exactly the way any other pressable line hands something to the
+gatepost. A comment writes `path:line — what was said`; a failed check writes
+`the "name" check failed, conclusion.`. Resolved comments are left off the
+same way a happy check is folded into a count rather than read out. Driven
+against a fixture rather than a real PR (never one of those in a dev copy): a
+vitest fixture with one open and one resolved comment and one failed and one
+green check confirms the resolved comment and the green check carry no pick
+at all, the open comment and the failed check do, and confirms the exact text
+each one hands over.
+
 Who the village is to GitHub is answered by asking the `gh` on this machine for
 the token it already holds. Emdash keeps its own account store, its own
 device-code flow and its own keychain entries, and the village wants none of
@@ -1269,6 +1281,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-31 | Open a checkout or a file in the owner's own external editor | done | W5 |
 | WS-57 | PR selector (linking a PR to a task) |  | W4 |
 | WS-58 | Shared exclusion-policy engine | kept |  |
+| WS-59 | PR review comments + failed checks, handed to the agent | done | W4 |
 | TR-01 | Interactive terminal panes | done | W6 |
 | TR-02 | Terminal grid sizing (multi-pane resize) | cut | W6 |
 | TR-03 | Off-screen terminal host / instant tab switching | cut | W6 |

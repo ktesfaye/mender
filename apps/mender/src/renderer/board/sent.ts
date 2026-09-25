@@ -1,4 +1,7 @@
-import type { PullRequest } from '@upstream/services/pull-requests/api/schemas';
+import type {
+  PullRequest,
+  PullRequestComment,
+} from '@upstream/services/pull-requests/api/schemas';
 import type { Row } from './row';
 
 /**
@@ -14,6 +17,8 @@ export interface Sent {
   name: string;
   /** The pull request, if there is one for this branch yet. */
   pull?: PullRequest;
+  /** What has been said about it — read here rather than in a browser. */
+  comments?: PullRequestComment[];
   /** What the branch is called, for when there is not one yet. */
   branch: string;
   /** What it would be called, being written, when one is being opened. */
@@ -51,9 +56,51 @@ export function sent(state: Sent): Row[] {
   }
 
   rows.push({ kind: 'heading', text: 'the machines' }, ...machines(pull));
+  const said_ = comments(state.comments ?? []);
+  if (said_.length) rows.push({ kind: 'gap' }, { kind: 'heading', text: 'what got said' }, ...said_);
   rows.push({ kind: 'gap' }, ...landing(pull));
 
   return rows;
+}
+
+/**
+ * What was actually said, each line pressable to hand it to the agent.
+ *
+ * Not every comment: a resolved one is a conversation that is already over,
+ * so it is left out the same way a happy check is folded into a count rather
+ * than read out.
+ */
+function comments(said: PullRequestComment[]): Row[] {
+  const open = said.filter((one) => !one.isResolved);
+  return open.map((one) => ({
+    kind: 'entry',
+    mark: '·',
+    text: quoted(one),
+    tone: 'faded',
+    keep: 'tail',
+    pick: `hand-comment:${one.id}`,
+  }));
+}
+
+function quoted(comment: PullRequestComment): string {
+  const who = comment.author?.userName ?? 'somebody';
+  const where_ = comment.path ? ` on ${comment.path}` : '';
+  const said = comment.body.trim().replaceAll('\n', ' ').slice(0, 140);
+  return `${who}${where_}: ${said}`;
+}
+
+/** What handing one comment to the agent actually says. */
+export function toHand(comment: PullRequestComment): string {
+  const where_ = comment.path
+    ? `${comment.path}${comment.line ? `:${comment.line}` : ''} — `
+    : '';
+  return `${where_}${comment.body.trim()}`;
+}
+
+/** What handing one failed check to the agent actually says. */
+export function toHandCheck(check: PullRequest['checks'][number]): string {
+  const said = check.conclusion ? `, ${check.conclusion.toLowerCase().replaceAll('_', ' ')}` : '';
+  return `the "${check.name}" check failed${said}.`;
 }
 
 /** When the branch has never been sent anywhere. */
@@ -101,7 +148,14 @@ function machines(pull: PullRequest): Row[] {
 
   const rows: Row[] = [];
   for (const check of bad) {
-    rows.push({ kind: 'entry', mark: '✗', text: check.name, tone: 'sore', keep: 'tail' });
+    rows.push({
+      kind: 'entry',
+      mark: '✗',
+      text: check.name,
+      tone: 'sore',
+      keep: 'tail',
+      pick: `hand-check:${check.id}`,
+    });
   }
   for (const check of running) {
     rows.push({ kind: 'entry', mark: '·', text: `${check.name}, still going`, tone: 'faded' });
