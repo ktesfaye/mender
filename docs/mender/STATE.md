@@ -864,12 +864,16 @@ that retracts when a project is abandoned.
 Done when: you can tell from the water who is working, who is stuck and who is
 waiting for you, without opening anything.
 
-### W10 — other machines, and work that runs itself
+### W10 — work that runs itself
 
-Closes WS-04, TR-13 through TR-20, ST-22, ST-32, UI-15, UI-41.
+Other machines were cut on 2026-09-25: Kirubel does not want a project living
+on another computer, so SSH hosts, the remote workspace server, port forwarding
+and everything that says which machine a thing is on are gone from the list
+(WS-04, TR-10, TR-13, TR-14, TR-16, TR-19, ST-32). The back end for them stays,
+unused, because it is upstream's. What is left here is TR-15, TR-17, TR-18,
+TR-20, ST-22, UI-15 and UI-41.
 
-Done when: a remote host can be added and a session run on it end to end, and a
-session can be scheduled to start without you.
+Done when: a session can be scheduled to start without you.
 
 ### W11 — it is an app you install · started
 
@@ -1108,6 +1112,9 @@ Kept here so none of it quietly returns as a panel.
   (AG-54). The last line of the board is where you write, always.
 - An OS deep-link scheme (UI-24), which emdash does not have either.
 - The workspace-server artifact URL (ST-16), which stays build configuration.
+- Other machines (WS-04, TR-10, TR-13, TR-14, TR-16, TR-19, ST-32). Every
+  project lives on this Mac. The same goes for the rail on a phone, which was
+  only ever a cmux idea and is not a row.
 - The whole diff-review apparatus: a floating action card on a selection
   (WS-37), preview against pinned diff tabs (WS-38), prefetched diffs on hover
   (WS-39), a stacked multi-file diff (FS-26), a flat-or-tree setting for the
@@ -1232,7 +1239,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-01 | Add Project modal — Pick Directory | done |  |
 | WS-02 | Add Project modal — Create Repository |  | W7 |
 | WS-03 | Add Project modal — Clone Repository |  | W7 |
-| WS-04 | Project host — local vs SSH ("Machine") |  | W10 |
+| WS-04 | Project host — local vs SSH ("Machine") | cut |  |
 | WS-05 | Repository inspection / creation errors | part | W7 |
 | WS-06 | Rename / delete / relink a project | part | W7 |
 | WS-07 | Project availability banner / disabled-action guard |  | W7 |
@@ -1298,16 +1305,16 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | TR-07 | Terminal appearance & behavior settings |  | W8 |
 | TR-08 | Terminal environment (theme signaling, agent env) | kept |  |
 | TR-09 | Automatic dev-server URL detection | done | W6 |
-| TR-10 | Manual port forwarding (SSH workspaces) |  | W6 |
+| TR-10 | Manual port forwarding (SSH workspaces) | cut |  |
 | TR-11 | Preview server pill (task titlebar) | cut | W6 |
 | TR-12 | In-app browser (Emdash Browser) | done | W6 |
-| TR-13 | Add/edit/connect a machine |  | W10 |
-| TR-14 | Machine status indicator |  | W10 |
+| TR-13 | Add/edit/connect a machine | cut |  |
+| TR-14 | Machine status indicator | cut |  |
 | TR-15 | Host settings (per-machine defaults) |  | W10 |
-| TR-16 | Workspace server (remote runtime daemon) |  | W10 |
+| TR-16 | Workspace server (remote runtime daemon) | cut |  |
 | TR-17 | Machine resource monitoring | done | W10 |
 | TR-18 | Host system dependencies |  | W10 |
-| TR-19 | Machine's conversations/workspaces lists |  | W10 |
+| TR-19 | Machine's conversations/workspaces lists | cut |  |
 | TR-20 | Workspace disk usage |  | W10 |
 | TR-21 | Bound exec primitive | kept |  |
 | TR-22 | Execution planning / shell quoting | kept |  |
@@ -1381,7 +1388,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-29 | GitHub accounts (multi-account) |  | W8 |
 | ST-30 | Three ways to connect GitHub |  | W8 |
 | ST-31 | Other issue-tracker integrations (12 providers) |  | W8 |
-| ST-32 | SSH machine connections (form + validation) |  | W10 |
+| ST-32 | SSH machine connections (form + validation) | cut |  |
 | ST-33 | Full keybinding catalog & conflict model | part | W1 |
 | ST-34 | App self-update flow |  | W11 |
 | ST-35 | Telemetry consent |  | W11 |
