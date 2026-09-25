@@ -297,6 +297,14 @@ whole thing to whoever is working in the session as the next thing said to
 them, and a two-press way to give up and put the checkout back exactly how
 it stood before the merge was tried.
 
+**And a session's board reads its own whole branch, not only what changed
+today.** Next to those two, whenever there is anything to show, "everything
+this session changed" opens the branch's whole diff against the commit it
+and its base still share — every file it has touched since, listed once,
+each pressable into the very same wood a working change or a commit's own
+file is already read on. Escape backs off a file onto that list, and off
+the list onto the checkout, the same one press at a time as everywhere else.
+
 **The checkout is a place you walk into.** Under a project's or a session's
 name is where it is, and pressing that walks into the folder: what is in it,
 folders first, each one walked into the same way a district is. Escape walks

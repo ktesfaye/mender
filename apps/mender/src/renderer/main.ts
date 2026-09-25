@@ -20,6 +20,7 @@ import type { At, Change } from '@shared/changes';
 import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
 import type { Task } from '@shared/tasks';
+import { branchMade, branchUnmade, unbranchMade } from './board/branch';
 import { openCard, type LiveCard } from './board/card';
 import { opening, readOut, unreadable } from './board/changed';
 import { committing } from './board/committing';
@@ -377,6 +378,7 @@ async function boot(): Promise<void> {
       !reading &&
       !writing &&
       !looked &&
+      !branchLooked &&
       !walking &&
       !talking &&
       !sending &&
@@ -427,6 +429,7 @@ async function boot(): Promise<void> {
       if (walking) steps.push({ said: 'files', go: back });
       if (hunt) steps.push({ said: 'looking', go: back });
       if (looked) steps.push({ said: 'history', go: back });
+      if (branchLooked) steps.push({ said: 'everything this session changed', go: back });
       if (writing) steps.push({ said: 'a commit', go: back });
       if (talking) steps.push({ said: talking.name, go: back });
       if (sending) steps.push({ said: 'what is open', go: back });
@@ -526,6 +529,15 @@ async function boot(): Promise<void> {
       files: readonly FileChange[] | undefined;
       isHead?: boolean;
       asked?: boolean;
+    } | null = null;
+    /** Set while the board is reading everything a session's branch changed
+        against the base it grew out of. */
+    let branchLooked: {
+      aim: Aim;
+      checkout: string;
+      base: string;
+      mergeBase: string;
+      files: readonly FileChange[] | undefined;
     } | null = null;
     /* Saying a commit differently. The same write-line a new one is said on,
        just aimed at `--amend` instead of a fresh commit. */
@@ -778,6 +790,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      branchLooked = null;
       stopWalking();
       stopTalking();
       sending = null;
@@ -888,6 +901,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      branchLooked = null;
       /* Out of the district altogether, so the checkout's watcher goes too. */
       letGoOfTree();
       stopTalking();
@@ -920,6 +934,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      branchLooked = null;
       /* A different checkout is a different tree, so the one being held goes. */
       if (kept && kept.path !== (here?.path ?? project.path)) letGoOfTree();
       else stopWalking();
@@ -1021,6 +1036,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      branchLooked = null;
       stopWalking();
       stopTalking();
       sending = null;
@@ -1201,6 +1217,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      branchLooked = null;
       stopWalking();
       stopTalking();
       sending = null;
@@ -1319,6 +1336,58 @@ async function boot(): Promise<void> {
           })
         : [];
 
+    /**
+     * Everything a session's branch changed, read against the base it grew
+     * out of — not the commit it started from, but the commit it and the
+     * base still share, since the base may well have moved on since.
+     */
+    const openBranchMade = async (): Promise<void> => {
+      const aim = open;
+      const session = inside;
+      if (!aim || !session?.base) return;
+      const parsed = parseNativeAbsolute(session.path);
+      if (!parsed.success) return;
+      const checkout = parsed.data;
+      reading = null;
+      looked = null;
+      branchLooked = { aim, checkout: session.path, base: session.base, mergeBase: '', files: undefined };
+      const mine = branchLooked;
+      wood(unbranchMade());
+
+      const [base, changed] = await Promise.all([
+        client.git.checkout.getMergeBase({ checkout, ref: session.base }),
+        client.git.checkout.getChangedFiles({
+          checkout,
+          target: {
+            kind: 'merge-base',
+            base: { kind: 'branch', branch: { type: 'local', branch: session.base } },
+            head: { kind: 'commit', sha: 'HEAD' },
+          },
+        }),
+      ]);
+      if (branchLooked !== mine) return;
+      if (!base.success) {
+        wood(branchUnmade(trouble(base.error)));
+        return;
+      }
+      if (!changed.success) {
+        wood(branchUnmade(trouble(changed.error)));
+        return;
+      }
+      branchLooked.mergeBase = base.data.sha;
+      branchLooked.files = changed.data.files;
+      wood(rowsForBranchMade());
+    };
+
+    const rowsForBranchMade = (): Row[] =>
+      branchLooked ? branchMade(branchLooked.base, branchLooked.files) : [];
+
+    /** Step back from a file inside this view onto the view itself. */
+    const showBranchMade = (): void => {
+      if (!branchLooked) return;
+      wood(rowsForBranchMade());
+    };
+
     /** Opening the write-line to say the last commit differently. */
     const askAmend = (): void => {
       const on = looked;
@@ -1374,6 +1443,7 @@ async function boot(): Promise<void> {
         return;
       }
       looked = null;
+      branchLooked = null;
       home();
       say('taken back. what it wrote is still there.', 4000);
     };
@@ -1398,6 +1468,7 @@ async function boot(): Promise<void> {
         return;
       }
       looked = null;
+      branchLooked = null;
       home();
       say('undone, with a new commit.', 4000);
     };
@@ -2032,6 +2103,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      branchLooked = null;
       stopWalking();
       stopTalking();
       sending = null;
@@ -2159,6 +2231,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      branchLooked = null;
       stopWalking();
       stopTalking();
       sending = null;
@@ -2188,6 +2261,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      branchLooked = null;
       stopWalking();
       stopTalking();
       sending = null;
@@ -2212,6 +2286,7 @@ async function boot(): Promise<void> {
       reading = null;
       writing = null;
       looked = null;
+      branchLooked = null;
       stopWalking();
       stopTalking();
       sending = null;
@@ -2614,6 +2689,15 @@ async function boot(): Promise<void> {
         }
         return;
       }
+      if (pick === 'branch-changed') {
+        void openBranchMade();
+        return;
+      }
+      if (pick.startsWith('branch-file:')) {
+        const on = branchLooked;
+        if (on) void openChange(pick.slice(12), { sha: 'HEAD', from: on.mergeBase });
+        return;
+      }
       if (pick.startsWith('keep:')) {
         window.mender.keep(pick.slice(5));
         say('copied.', 2000);
@@ -2874,11 +2958,24 @@ async function boot(): Promise<void> {
             showMade();
             return;
           }
+          // Same, stepping back onto everything the branch changed rather
+          // than all the way past it.
+          if (reading.at && branchLooked) {
+            reading = null;
+            showBranchMade();
+            return;
+          }
           stopReading();
           return;
         }
         if (looked) {
           looked = null;
+          branchLooked = null;
+          home();
+          return;
+        }
+        if (branchLooked) {
+          branchLooked = null;
           home();
           return;
         }

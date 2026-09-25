@@ -140,6 +140,15 @@ export const gitCheckoutContract = defineContract({
     data: z.object({ ahead: z.number().int(), behind: z.number().int(), landed: z.boolean() }),
     error: gitCommandErrorSchema,
   }),
+  /** The commit HEAD and some other ref both grew out of — what "everything
+      this branch changed" is read against, since diffing straight against a
+      moved ref would carry that ref's own new commits as if HEAD had undone
+      them. */
+  getMergeBase: fallible({
+    input: checkoutSelectorSchema.extend({ ref: z.string() }),
+    data: z.object({ sha: z.string() }),
+    error: gitCommandErrorSchema,
+  }),
 
   push: liveJob({
     input: pushJobInputSchema,

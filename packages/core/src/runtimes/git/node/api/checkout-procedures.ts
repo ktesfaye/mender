@@ -14,6 +14,7 @@ export function createCheckoutProcedures(runtime: GitCheckoutRuntime) {
     getCommitFiles: (input) => runtime.getCommitFiles(input),
     blame: (input) => runtime.blame(input),
     compareRef: (input) => runtime.compareRef(input),
+    getMergeBase: (input) => runtime.getMergeBase(input),
     push: { run: (input, context) => runtime.push(input, context) },
     publish: { run: (input, context) => runtime.publish(input, context) },
     pull: { run: (input, context) => runtime.pull(input, context) },

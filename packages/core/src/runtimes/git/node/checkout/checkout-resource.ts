@@ -220,6 +220,11 @@ export class CheckoutResource {
     return this.commands.compareRef(ref);
   }
 
+  getMergeBase(ref: string) {
+    this.assertActive();
+    return this.commands.getMergeBase(ref);
+  }
+
   async push(options: Parameters<GitCheckout['push']>[0], context: GitOperationContext) {
     const result = await this.execute(() => this.commands.push(options, context));
     if (result.success) {

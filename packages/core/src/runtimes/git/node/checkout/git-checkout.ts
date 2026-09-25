@@ -235,6 +235,16 @@ export class GitCheckout {
     }
   }
 
+  /** The commit some other ref and HEAD both grew out of. */
+  async getMergeBase(ref: string): Promise<Result<{ sha: string }, GitCommandError>> {
+    try {
+      const { stdout } = await this.exec.exec(['merge-base', ref, 'HEAD']);
+      return ok({ sha: stdout.trim() });
+    } catch (error) {
+      return checkoutFailures.command(error);
+    }
+  }
+
   // -- Sync --------------------------------------------------------------------
 
   async push(

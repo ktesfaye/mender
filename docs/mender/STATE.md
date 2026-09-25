@@ -1779,6 +1779,41 @@ the board. Added `tail?: () => Row[]` to `Place` and spliced it in right
 after the existing `sending(head)` push/pull lines, which is the only change
 beyond driving.
 
+### Everything a session's branch changed, read against its base · done
+
+One more line on a session's board, next to "bring it into `<base>` here":
+"everything this session changed", offered whenever the session is ahead.
+Presses into a new board — `board/branch.ts`'s `branchMade` — that lists
+every file the branch touched since the commit it and its base still share,
+each one pressable into the same `readOut` diff a working change or a
+commit's own file already opens on, so a file is a file wherever you meet
+it. Escape steps off a file onto this list, and off this list onto the
+checkout, exactly the way a commit's own file list already does.
+
+The list comes from `getChangedFiles` with a `merge-base` target, which the
+wire contract already carried — unused until now. Reading each file's own
+diff needed one small new backend read: `getMergeBase`, alongside
+`compareRef` in the same file, since `changes.file`'s `at.from` wants an
+actual commit and the base branch's *tip* is the wrong one to diff against
+once it has moved — that would show the base's own new commits as if the
+session had undone them. `getMergeBase` runs `git merge-base <base> HEAD`
+once and the board holds the sha for every file it opens from that list.
+
+Driven live in the same throwaway repo as the row above it, on a session
+ahead of a main that had also moved on its own: "everything this session
+changed" listed exactly the one file the session actually touched, one
+line, `1 in and 1 out`; pressing it read only the session's own edit to
+that line, with neither main's unrelated added line nor main's own
+conflicting edit to the same line anywhere in it — confirming the
+merge-base read rather than a straight two-tip diff. Escape backed off the
+file onto the list and off the list onto the checkout, each one press.
+
+Note for whoever drives Mender next against a backend change: this session
+lost time to `Unknown procedure 'checkout.getMergeBase'` after editing
+`packages/core` while the dev copy was already running — the renderer
+hot-reloads but the Electron main process does not pick up workspace-package
+changes without a full kill and restart of `pnpm run dev`.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

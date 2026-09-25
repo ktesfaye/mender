@@ -128,6 +128,10 @@ export class GitCheckoutRuntime {
     return this.run(input, (checkout) => checkout.compareRef(input.ref));
   }
 
+  getMergeBase(input: CheckoutSelector & { ref: string }) {
+    return this.run(input, (checkout) => checkout.getMergeBase(input.ref));
+  }
+
   push(input: PushJobInput, context: LiveJobContext<GitTransferProgress>) {
     return this.run(input, (checkout) =>
       checkout.push(input.options, {

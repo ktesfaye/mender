@@ -110,6 +110,15 @@ export function landingLines(on: Landing | null): Row[] {
       pick: 'land-here',
     });
   }
+  if (on.ahead) {
+    rows.push({
+      kind: 'entry',
+      mark: '→',
+      text: 'everything this session changed',
+      tone: 'faded',
+      pick: 'branch-changed',
+    });
+  }
   return rows;
 }
 
