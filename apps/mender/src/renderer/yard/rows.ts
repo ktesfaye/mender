@@ -176,7 +176,11 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
     default:
       line.style.cssText = BODY;
       line.style.color = ink(row.tone);
-      line.textContent = row.text;
+      /* A blank line is still a line: an empty text node gives the div
+         nothing to lay out and it collapses to no height at all, which in a
+         file being read means a blank line simply is not there. A non-breaking
+         space keeps its row without being read as anything. */
+      line.textContent = row.text === '' ? ' ' : row.text;
   }
 
   if (pick) {
