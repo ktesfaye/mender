@@ -22,7 +22,7 @@ import type { Row } from './row';
 export type Standing = 'island' | 'district' | 'session' | 'card';
 
 /** One of the village's own doings, as opposed to a place you can go. */
-interface Doing {
+export interface Doing {
   /** The same vocabulary a pressed row speaks, so one place answers both. */
   pick: string;
   name: string;
@@ -33,7 +33,7 @@ interface Doing {
   where: Standing[];
 }
 
-const DOINGS: Doing[] = [
+export const DOINGS: Doing[] = [
   {
     pick: 'new',
     name: 'start a session',
@@ -115,24 +115,56 @@ const DOINGS: Doing[] = [
 
 /** The finder itself, which is one of the doings and opens the rest. */
 export const FIND = 'do:find';
-const FIND_CHORD = 'k';
+export const FIND_CHORD = 'k';
+
+/** Every doing a chord can mean, the finder's own search included — one
+    table, so the windmill's rebinding page and the finder itself read the
+    same list rather than two that could drift apart. */
+export function rebindableDoings(): Doing[] {
+  return [
+    {
+      pick: FIND,
+      name: 'find anything',
+      about: 'every project, every session, everything the village can do',
+      chord: FIND_CHORD,
+      where: ['island', 'district', 'session', 'card'],
+    },
+    ...DOINGS,
+  ];
+}
+
+/** A chord already spoken for, keyed by pick — what a session remembers
+    having rebound. Absent means the table's own default still holds. */
+export type Keybindings = Readonly<Record<string, string>>;
+
+/** The chord a doing actually answers to right now: what was rebound, or the
+    table's own default. */
+export function chordOf(pick: string, bound: Keybindings): string | undefined {
+  return bound[pick] ?? rebindableDoings().find((each) => each.pick === pick)?.chord;
+}
 
 /**
  * What a chord means, or nothing.
  *
  * One table, read in one place. Every chord is command (or control) plus one
  * key, because a village with two-key chords in it is a village pretending to
- * be an editor.
+ * be an editor. `bound` is whatever this session has rebound; nothing in it
+ * mean every chord is still the table's own default.
  */
-export function chordFor(key: string, where: Standing, hanging: number): string | null {
+export function chordFor(
+  key: string,
+  where: Standing,
+  hanging: number,
+  bound: Keybindings = {}
+): string | null {
   const pressed = key.toLowerCase();
-  if (pressed === FIND_CHORD) return FIND;
   /* Command and a number is the nth thing along the rail, in the order it
      hangs there: a session when you are in a project, and a project when you
-     are out on the island with nothing else hanging. */
+     are out on the island with nothing else hanging. Not itself rebindable —
+     there are nine of them and only nine digits. */
   const digit = /^[1-9]$/.test(pressed) ? Number(pressed) : 0;
   if (digit) return digit <= hanging ? `rail:${digit - 1}` : null;
-  const doing = DOINGS.find((each) => each.chord === pressed);
+  const doing = rebindableDoings().find((each) => chordOf(each.pick, bound) === pressed);
   return doing && doing.where.includes(where) ? doing.pick : null;
 }
 
@@ -154,7 +186,7 @@ const SHOWN = 12;
  * those are — they are on this list to be discovered once, and to say what
  * their key is, not to be hunted for every time.
  */
-export function finding(written: string, village: Village): Row[] {
+export function finding(written: string, village: Village, bound: Keybindings = {}): Row[] {
   const looked = written.trim().toLowerCase();
   const rows: Row[] = [
     { kind: 'title', text: 'what are you after' },
@@ -192,7 +224,7 @@ export function finding(written: string, village: Village): Row[] {
     if (!named(doing.name) && !named(doing.about)) continue;
     doings.push({
       kind: 'entry',
-      mark: doing.chord ?? ' ',
+      mark: chordOf(doing.pick, bound) ?? ' ',
       text: `${doing.name} · ${doing.about}`,
       tone: 'faded',
       pick: doing.pick,

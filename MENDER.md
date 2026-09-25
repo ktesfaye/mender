@@ -750,7 +750,15 @@ says how a shell looks and what it starts as: a font size in pixels, and a
 default shell's own path, absent whatever the host's own `$SHELL` already
 said. Both reach every real shell the board opens next, in this project or
 any other — the size is what the grid actually draws at, and the shell is
-what `ps` on the spawned process actually shows. A fifth page, Agents,
+what `ps` on the spawned process actually shows. A fifth page, Keys, lists
+every command-chord doing the app answers to, its letter beside it: pressing
+a line waits for whatever is pressed next, and that becomes its chord, unless
+another doing this session can still reach is already answering to it, in
+which case the row says so plainly, right where the new key would have gone,
+and nothing is saved. A rebound line carries a `default` of its own, which
+puts it back. What is pressed anywhere in the village from then on reads this
+same table, so a rebind takes hold the moment it is made, not on the next
+launch. A sixth page, Agents,
 is what this machine hands each installed agent's own CLI beyond its
 ordinary command: extra arguments on one line, environment variables added
 and thrown away by name, and — where the host actually found more than one
@@ -758,7 +766,7 @@ install of that agent's CLI on this machine — which one it runs, a plain
 list of the paths it found with the one in use marked, a press away from
 changing. All three reach the same runtime a terminal session's CLI is
 actually spawned with, so what is set here is what `ps` on that process
-shows, not a village-side promise about it. A sixth page says what this
+shows, not a village-side promise about it. A seventh page says what this
 machine is spending right now, cpu, memory and disk in plain words, counting
 back up every few seconds rather than sitting still, and underneath it,
 every open session's own share of that: its agent process where this

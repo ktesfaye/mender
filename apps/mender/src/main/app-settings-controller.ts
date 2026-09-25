@@ -26,5 +26,8 @@ export function createAppSettingsController(
     terminalSettings: () => settings.terminalSettings(),
     setTerminalFontSize: ({ fontSize }) => settings.setTerminalFontSize(fontSize),
     setDefaultShell: ({ shell }) => settings.setDefaultShell(shell),
+    keybindings: () => settings.keybindings(),
+    setKeybinding: ({ pick, chord }) => settings.setKeybinding(pick, chord),
+    clearKeybinding: ({ pick }) => settings.clearKeybinding(pick),
   });
 }

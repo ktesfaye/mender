@@ -107,6 +107,11 @@ export interface AppSettings {
   terminalSettings(): Promise<TerminalSettings>;
   setTerminalFontSize(fontSize: number): Promise<TerminalSettings>;
   setDefaultShell(shell: string): Promise<TerminalSettings>;
+  /** Every chord rebound away from the table's own default, keyed by the
+      doing's own `pick`. */
+  keybindings(): Promise<Record<string, string>>;
+  setKeybinding(pick: string, chord: string): Promise<Record<string, string>>;
+  clearKeybinding(pick: string): Promise<Record<string, string>>;
 }
 
 const KEY = 'app';
@@ -127,6 +132,7 @@ interface Stored {
     fontSize?: number;
     defaultShell?: string;
   };
+  keybindings?: Record<string, string>;
 }
 
 export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
@@ -281,6 +287,27 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
     async setDefaultShell(shell) {
       await mutate((now) => ({ ...now, terminal: { ...now.terminal, defaultShell: shell.trim() } }));
       return terminalSettingsOf();
+    },
+
+    async keybindings() {
+      return (await stored()).keybindings ?? {};
+    },
+
+    async setKeybinding(pick, chord) {
+      await mutate((now) => ({
+        ...now,
+        keybindings: { ...now.keybindings, [pick]: chord.toLowerCase() },
+      }));
+      return (await stored()).keybindings ?? {};
+    },
+
+    async clearKeybinding(pick) {
+      await mutate((now) => {
+        const keybindings = { ...now.keybindings };
+        delete keybindings[pick];
+        return { ...now, keybindings };
+      });
+      return (await stored()).keybindings ?? {};
     },
 
     async hands() {

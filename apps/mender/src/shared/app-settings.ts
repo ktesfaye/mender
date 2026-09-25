@@ -76,6 +76,12 @@ export const terminalSettingsSchema = z.object({
 
 export type TerminalSettings = z.infer<typeof terminalSettingsSchema>;
 
+/** A chord rebound away from the table's own default, keyed by the doing's
+    own `pick`. Absent for anything nobody has touched. */
+export const keybindingsSchema = z.record(z.string(), z.string());
+
+export type Keybindings = z.infer<typeof keybindingsSchema>;
+
 export const appSettingsContract = defineContract({
   checkoutSettings: procedure({ input: z.object({}), output: checkoutSettingsSchema }),
   setBranchPrefix: procedure({
@@ -115,6 +121,18 @@ export const appSettingsContract = defineContract({
   setDefaultShell: procedure({
     input: z.object({ shell: z.string() }),
     output: terminalSettingsSchema,
+  }),
+  keybindings: procedure({ input: z.object({}), output: keybindingsSchema }),
+  /** Rebind one doing's chord. Conflicts are the windmill's own to say
+      plainly before it ever calls this — this just stores what it is told. */
+  setKeybinding: procedure({
+    input: z.object({ pick: z.string(), chord: z.string() }),
+    output: keybindingsSchema,
+  }),
+  /** Back to the table's own default for that one doing. */
+  clearKeybinding: procedure({
+    input: z.object({ pick: z.string() }),
+    output: keybindingsSchema,
   }),
 });
 

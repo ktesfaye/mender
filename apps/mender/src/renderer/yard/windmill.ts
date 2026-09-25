@@ -16,10 +16,12 @@ import type { HostDependencyView } from '@emdash/core/primitives/host-dependenci
 import type {
   CheckoutSettings,
   Hand,
+  Keybindings,
   ProviderConfig,
   SessionUsage,
   TerminalSettings,
 } from '@shared/app-settings';
+import { chordOf, rebindableDoings } from '../board/finder';
 import { counted } from '../board/card';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
@@ -72,6 +74,9 @@ export interface WindmillState {
   /** How a shell looks and what it starts as. Null while the first answer
       hasn't arrived yet. */
   terminal: TerminalSettings | null;
+  /** Every chord rebound away from the table's own default. Null while the
+      first answer hasn't arrived yet. */
+  keybindings: Keybindings | null;
 }
 
 export interface WindmillDoings {
@@ -90,6 +95,11 @@ export interface WindmillDoings {
   setWorktreeDir(dir: string): Promise<void>;
   setTerminalFontSize(fontSize: number): Promise<void>;
   setDefaultShell(shell: string): Promise<void>;
+  /** Rebind one doing's chord. The caller has already checked it against
+      nothing else this doing could conflict with. */
+  rebind(pick: string, chord: string): Promise<void>;
+  /** Back to the table's own default for that one doing. */
+  unbind(pick: string): Promise<void>;
   closed(): void;
 }
 
@@ -131,6 +141,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   const general = section('General');
   const checkouts = section('Checkouts');
   const terminal = section('Terminal');
+  const keys = section('Keys');
   const agentsSection = section('Agents');
   const worktrees = section('What is on disk');
   const machine = section('This machine');
@@ -138,6 +149,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     general.root,
     checkouts.root,
     terminal.root,
+    keys.root,
     agentsSection.root,
     worktrees.root,
     machine.root
@@ -341,6 +353,91 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     terminal.fill(rows);
   }
 
+  /** The doing armed for a key press, if any, and what came of the last one
+      tried — a conflict is said right where the key would have gone, not as
+      a toast, since that is the one line anyone rebinding a key is actually
+      looking at. */
+  let arming: string | null = null;
+  let armed: string | null = null;
+  let armKey: ((event: KeyboardEvent) => void) | null = null;
+
+  /** Only lets go of the listener — `arming` stays put so a conflict can
+      still be shown against the row that was being rebound. */
+  function detach(): void {
+    if (armKey) document.removeEventListener('keydown', armKey, true);
+    armKey = null;
+  }
+
+  function stopArming(): void {
+    detach();
+    arming = null;
+  }
+
+  function arm(pick: string): void {
+    stopArming();
+    arming = pick;
+    armed = null;
+    drawKeys();
+    const onKey = (event: KeyboardEvent): void => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.key === 'Escape') {
+        stopArming();
+        drawKeys();
+        return;
+      }
+      const letter = event.key.length === 1 ? event.key.toLowerCase() : '';
+      if (!/^[a-z[\],]$/.test(letter)) return; // not a chord this table speaks in — keep waiting.
+      const bound = now.keybindings ?? {};
+      const conflict = rebindableDoings().find(
+        (each) => each.pick !== pick && chordOf(each.pick, bound) === letter
+      );
+      detach();
+      if (conflict) {
+        armed = `⌘${letter.toUpperCase()} is already ${conflict.name}'s.`;
+        drawKeys();
+        return;
+      }
+      arming = null;
+      void does.rebind(pick, letter).then(() => draw());
+    };
+    armKey = onKey;
+    document.addEventListener('keydown', onKey, true);
+  }
+
+  function drawKeys(): void {
+    if (!now.keybindings) {
+      keys.fill([hintLine('Reading it…')]);
+      return;
+    }
+    const bound = now.keybindings;
+    const rows: HTMLElement[] = [];
+    for (const doing of rebindableDoings()) {
+      const chord = chordOf(doing.pick, bound) ?? '';
+      const row = el('div', 'windmill-agent-line');
+      const label = el('span', 'settings-hint');
+      label.textContent = `${doing.name} — `;
+      const said =
+        arming === doing.pick
+          ? (armed ?? 'press a key…')
+          : chord
+            ? `⌘${chord.toUpperCase()}`
+            : 'unset';
+      const key = button(said, 'settings-link', () => arm(doing.pick));
+      row.append(label, key);
+      if (bound[doing.pick] !== undefined) {
+        const reset = button(
+          'default',
+          'settings-link',
+          () => void does.unbind(doing.pick).then(() => draw())
+        );
+        row.append(reset);
+      }
+      rows.push(row);
+    }
+    keys.fill(rows);
+  }
+
   function drawAgents(): void {
     if (!now.hands) {
       agentsSection.fill([hintLine('reading it…')]);
@@ -541,6 +638,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     drawGeneral();
     drawCheckouts();
     drawTerminal();
+    drawKeys();
     drawAgents();
     drawWorktrees();
     drawMachine();
@@ -553,6 +651,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   function close(): void {
     if (!open) return;
     open = false;
+    stopArming();
     back.remove();
     does.closed();
   }

@@ -37,7 +37,7 @@ import { lineNumberOf, opening, readOut, unreadable, type Noting } from './board
 import { committing } from './board/committing';
 import { conflict, conflictMessage } from './board/conflict';
 import { landingLines, openCheckout, type Landing, type LiveBoard } from './board/district';
-import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
+import { chordFor, FIND, finding, type Keybindings, type Standing as Where } from './board/finder';
 import { openTree, type LiveTree } from './board/inside';
 import { hunting, type Hunt } from './board/looking';
 import { amending as amendBoard, made, unmade, unread } from './board/made';
@@ -578,6 +578,14 @@ async function boot(): Promise<void> {
       .then((read) => {
         terminalSettings = read;
       });
+    /** Every chord this session has rebound away from the table's own
+        default, read once at the start the same way the terminal settings
+        are — a rebind made on the windmill updates this in place, so a
+        chord pressed anywhere else sees it immediately. */
+    let keybindings: Keybindings = {};
+    void client.appSettings.keybindings({}, { timeoutMs: 0 }).then((read) => {
+      keybindings = read;
+    });
     /* Which file's change is on the board, over the checkout it came from.
        The checkout board underneath stays open and stays live; it is simply
        not what the wood is showing. */
@@ -938,7 +946,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
-      wood(finding('', { projects, tasks, moods: seen, where: standing() }));
+      wood(finding('', { projects, tasks, moods: seen, where: standing() }, keybindings));
       /* From nowhere, every time. The mark outlives a board on purpose, so
          without this the finder opens standing on whatever row it was left on
          last time and steps one further from there, which lands it two or
@@ -1050,6 +1058,7 @@ async function boot(): Promise<void> {
         installs: {} as Record<string, HostDependencyView>,
         checkout: null as CheckoutSettings | null,
         terminal: null as TerminalSettings | null,
+        keybindings: null as Keybindings | null,
       };
       let records: ReplicaState<Record<string, WorkspaceRecord>> | null = null;
       const readProviders = (hands: Hand[]): void => {
@@ -1116,6 +1125,17 @@ async function boot(): Promise<void> {
           state.terminal = await client.appSettings.setDefaultShell({ shell }, { timeoutMs: 0 });
           terminalSettings = state.terminal;
         },
+        rebind: async (pick, chord) => {
+          state.keybindings = await client.appSettings.setKeybinding(
+            { pick, chord },
+            { timeoutMs: 0 }
+          );
+          keybindings = state.keybindings;
+        },
+        unbind: async (pick) => {
+          state.keybindings = await client.appSettings.clearKeybinding({ pick }, { timeoutMs: 0 });
+          keybindings = state.keybindings;
+        },
         closed: () => {
           if (windmill === ui) windmill = null;
           void records?.dispose();
@@ -1146,17 +1166,20 @@ async function boot(): Promise<void> {
       sample();
       const sampling = setInterval(sample, 5000);
       void (async () => {
-        const [hand, hands, checkout, terminal] = await Promise.all([
+        const [hand, hands, checkout, terminal, bound] = await Promise.all([
           client.appSettings.defaultHand({}, { timeoutMs: 0 }),
           client.appSettings.hands({}, { timeoutMs: 0 }),
           client.appSettings.checkoutSettings({}, { timeoutMs: 0 }),
           client.appSettings.terminalSettings({}, { timeoutMs: 0 }),
+          client.appSettings.keybindings({}, { timeoutMs: 0 }),
         ]);
         state.hand = hand;
         state.hands = hands;
         state.checkout = checkout;
         state.terminal = terminal;
         terminalSettings = terminal;
+        state.keybindings = bound;
+        keybindings = bound;
         ui.update(state);
         readProviders(hands);
         const hostReplica = new ReplicaState(client.host.snapshot.state(undefined, 'current'), {
@@ -3281,7 +3304,7 @@ async function boot(): Promise<void> {
       }
       if (looking) {
         looking = { ...looking, written };
-        rewrite(finding(written, { projects, tasks, moods: seen, where: standing() }));
+        rewrite(finding(written, { projects, tasks, moods: seen, where: standing() }, keybindings));
         // The finder always has something under the keyboard, so return means
         // the obvious thing without you having to aim first.
         if (!yard.walk.on) yard.walk.step(1);
@@ -4465,7 +4488,7 @@ async function boot(): Promise<void> {
       /** A key held with command. One table says what it means. */
       ordered: (event) => {
         const hanging = open ? tasksOn(open.district).length : projects.length;
-        const meant = chordFor(event.key, standing(), hanging);
+        const meant = chordFor(event.key, standing(), hanging, keybindings);
         if (!meant) return false;
         go(meant);
         return true;

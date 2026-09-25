@@ -63,7 +63,7 @@ deliberately cut, and **40 not started**.
 What is still genuinely missing: agents driving other Mac apps; mermaid you
 can pan and zoom, and a CSV table; the thinner transcript cards (thinking, the
 plan, how a turn ended) and a transcript that scrolls a long session cheaply;
-rebinding keys; the settings nobody has placed yet (branch naming, default
+the settings nobody has placed yet (branch naming, default
 folders); linking an existing pull request and starting from a
 chosen branch; a missing folder or a failed setup step as a state of its own;
 and issue trackers other than GitHub.
@@ -143,17 +143,21 @@ type. The arrows walk any board's pressable lines and return picks one. There is
 one key listener in the whole app. The app reopens on whatever you last had
 open.
 
-Left in it: rebinding, and the conflict model that goes with it, which needs
-somewhere to live and so waits for the settings island in W8. Filename search
-(FS-15) waits for files in W5, since there is nothing to search yet. Shift and
-return for a newline (AG-53) still needs the line to hold more than one.
+Rebinding, and the conflict model that goes with it, landed on the windmill's
+own Keys page once there was a settings island for it to live on: every chord
+in the table is pressable there, a pressed row waits for the next key, a key
+already spoken for by another doing is said plainly right on that row rather
+than saved over it, and a `default` line beside anything rebound puts it back.
+Filename search (FS-15) waits for files in W5, since there is nothing to
+search yet. Shift and return for a newline (AG-53) still needs the line to
+hold more than one.
 
 Closed UI-17, UI-18, UI-21, UI-22, UI-23, UI-25, WS-21, and four of the seven
 broken things above: the arrow collision, Escape eating a draft, the rename
-nobody could reach and the mouse-only card. Still open in it: UI-26 and ST-33
-(the chord table exists, rebinding and conflicts do not), ST-08 and FS-15 and
-AG-53 as above, and the driven harness over the real feature set (B6-03), which
-is the next thing in this wave.
+nobody could reach and the mouse-only card. Also closed: ST-08 and ST-33
+(rebinding and its conflict model). Still open in it: FS-15 and AG-53 as
+above, and the driven harness over the real feature set (B6-03), which is the
+next thing in this wave.
 
 ### W2 — a session reads like a real conversation · started
 
@@ -1393,7 +1397,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-05 | `project` settings (push-on-create, branch prefix, random suffix, tmux-by-default) | part | W8 |
 | ST-06 | `localProject` settings (default projects dir, default worktree dir) | done |  |
 | ST-07 | `defaultAgent` setting | done | W8 |
-| ST-08 | `keyboard` overrides |  | W1 |
+| ST-08 | `keyboard` overrides | done | W1 |
 | ST-09 | `notifications` settings (enabled, sound, custom sound path, OS notifications, sound-focus-mode) |  | W11 |
 | ST-10 | `theme` setting | cut |  |
 | ST-11 | `openIn` settings (default + hidden apps) |  | W8 |
@@ -1418,7 +1422,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-30 | Three ways to connect GitHub |  | W8 |
 | ST-31 | Other issue-tracker integrations (12 providers) |  | W8 |
 | ST-32 | SSH machine connections (form + validation) | cut |  |
-| ST-33 | Full keybinding catalog & conflict model | part | W1 |
+| ST-33 | Full keybinding catalog & conflict model | done | W1 |
 | ST-34 | App self-update flow | cut |  |
 | ST-35 | Telemetry consent | cut |  |
 | ST-36 | `.emdash.json` (the one per-repo config file) | kept |  |
