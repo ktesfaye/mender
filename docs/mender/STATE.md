@@ -982,6 +982,44 @@ straight off the dev server and called with real lines) and watched it fade
 and remove itself after its own stand time, without touching anything to
 close it.
 
+And the empty hook at the end of the rail remembers the one session just
+taken down in a project, for the rest of that sitting. `tasks.ts` stashes it
+in memory the moment `abandon` runs — never written to disk, the same way the
+agent itself is not woken back up by a restart — and clears it again the
+moment it is either put back up or something else is taken down in its
+place. Pressing the empty hook now asks the registry whether one is on
+offer and, if the name is still empty, writes one extra line above the usual
+"say what you want doing": `put <name> back up?`. Pressing it cuts a fresh
+worktree straight from that same branch — `createWorktree` already reuses an
+existing `refs/heads/<branch>` rather than cutting from a base ref, so this
+is the very same branch, not a new one under the old one's name — and opens
+it exactly as a freshly begun session would. Typing a name instead makes the
+offer stand aside; nothing is lost either way, since the offer is only
+consumed by actually pressing it. Driven for real, end to end, through the
+live wire client rather than the canvas (clicking a district's exact hotspot
+over CDP did not land reliably in the time available): began a real task,
+abandoned it, confirmed `revivable` answered with its title, called `revive`
+and got back a task on the identical branch, and confirmed on disk that the
+new worktree really did check out that branch rather than a fresh one off
+`master`. Confirmed `revivable` answers `null` again immediately after. Did
+not confirm the board's own line and press over the canvas — the renderer
+wiring (`askName`, `asking()`, `press('revive')`) follows the exact pattern
+every other pressable board line already uses and was typechecked and linted
+clean, but only the back end was driven live.
+
+Also confirmed, without writing any new code for it: a session that was
+mid-turn genuinely is not silently lost when the app dies rather than quits
+cleanly. Began a real task, `kill -9`'d the whole Electron process tree
+rather than quitting it, relaunched against the same data dir, and the task
+was still there — same id, same branch, worktree untouched on disk. This was
+already true before this wave: tasks live in `tasks.json` and the worktree
+and branch are git's, neither is app state that a crash can drop, and
+`MENDER.md`'s own "waking every session at boot was dropped on purpose"
+note already covers what happens next — nothing is auto-woken, the lantern
+comes back `resting`, and opening it wakes the agent same as any other
+restart. Not a new build; called out because the brief asked for it
+explicitly and it is worth having confirmed rather than assumed.
+
 Not here yet: recovering from a bad boot.
 
 Closes UI-01 through UI-04, UI-27 through UI-29, UI-42, ST-09, ST-34,

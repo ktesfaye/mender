@@ -12,5 +12,7 @@ export function createTasksController(tasks: Tasks): Controller {
     files: ({ id, like }) => tasks.files(id, like),
     rename: ({ id, title }) => tasks.rename(id, title),
     abandon: ({ id }) => tasks.abandon(id),
+    revivable: ({ project }) => tasks.revivable(project),
+    revive: ({ project }) => tasks.revive(project),
   });
 }

@@ -73,6 +73,21 @@ export const tasksContract = defineContract({
     output: z.array(taskSchema),
   }),
   abandon: procedure({ input: z.object({ id: z.string() }), output: z.array(taskSchema) }),
+  /**
+   * The last session taken down in this project this sitting, if putting it
+   * back up is still on offer. Gone once revived, once another is taken down
+   * in its place, or once the app restarts — it is not written down anywhere.
+   */
+  revivable: procedure({
+    input: z.object({ project: z.string() }),
+    output: z.object({ title: z.string() }).nullable(),
+  }),
+  /** Cuts a fresh worktree from the same branch and stands it back up. */
+  revive: fallible({
+    input: z.object({ project: z.string() }),
+    data: taskSchema,
+    error: taskErrorSchema,
+  }),
 });
 
 export type TasksContract = typeof tasksContract;

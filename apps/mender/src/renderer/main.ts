@@ -600,6 +600,8 @@ async function boot(): Promise<void> {
       project: Project;
       slot: number | null;
       written: string;
+      /** The one just taken down here, if putting it back up is still on offer. */
+      revivable: { title: string } | null;
     } | null = null;
     /** Set while an existing session is being called something else. */
     let titling: { task: Task; written: string } | null = null;
@@ -2469,7 +2471,7 @@ async function boot(): Promise<void> {
       sending = null;
       open = aim;
       titling = null;
-      naming = { district: aim.district, project, slot, written: '' };
+      naming = { district: aim.district, project, slot, written: '', revivable: null };
       paintRail();
       /* Asking what is going to happen in a new session is laid over the yard
          you are standing in, like everything else you open, rather than
@@ -2480,6 +2482,35 @@ async function boot(): Promise<void> {
       yard.line.write('');
       wood(asking(naming));
       yard.line.take();
+      // Whether the last one taken down in this project is still on offer —
+      // asked after the board is already up, since it never blocks a fresh
+      // name from being typed straight away.
+      void client.tasks.revivable({ project: project.id }, { timeoutMs: 5000 }).then((held) => {
+        if (naming?.district !== aim.district || naming.written) return;
+        naming = { ...naming, revivable: held };
+        rewrite(asking(naming));
+      });
+    };
+
+    /** Putting the last session taken down here back up, worktree and all. */
+    const reviveSession = async (): Promise<void> => {
+      const asked = naming;
+      const aim = open;
+      if (!asked?.revivable || !aim) return;
+      naming = null;
+      rewrite([
+        { kind: 'title', text: asked.revivable.title },
+        { kind: 'gap' },
+        { kind: 'line', text: 'putting it back up…', tone: 'faded' },
+      ]);
+      const made = await client.tasks.revive({ project: asked.project.id }, { timeoutMs: 0 });
+      if (!made.success) {
+        say(whyNot(made.error), 6000);
+        await shut();
+        flyOut(camera, drawn.island);
+        return;
+      }
+      await openTask(aim, made.data);
     };
 
     /** Calling a session something else. His name for it outranks the agent's. */
@@ -2830,6 +2861,10 @@ async function boot(): Promise<void> {
       }
       if (pick === 'end' || pick === 'end!') {
         void ending(pick === 'end!');
+        return;
+      }
+      if (pick === 'revive') {
+        void reviveSession();
         return;
       }
       if (pick === 'rest') {
@@ -3605,11 +3640,23 @@ function sameAim(a: Aim, b: Aim): boolean {
 }
 
 /** An empty board with a cursor on it, which is all a new session is. */
-function asking(naming: { district: District; written: string }): Row[] {
+function asking(naming: {
+  district: District;
+  written: string;
+  revivable: { title: string } | null;
+}): Row[] {
+  const offer: Row[] =
+    naming.revivable && !naming.written
+      ? [
+          { kind: 'line', text: `put ${naming.revivable.title} back up?`, pick: 'revive' },
+          { kind: 'gap' },
+        ]
+      : [];
   return [
     { kind: 'title', text: 'a new session' },
     { kind: 'line', text: `on the ${naming.district.name.toLowerCase()}`, tone: 'faded' },
     { kind: 'gap' },
+    ...offer,
     {
       kind: 'prose',
       text: 'say what you want doing. it gets its own branch, and it will name itself.',

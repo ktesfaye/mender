@@ -88,6 +88,13 @@ export interface Tasks {
   /** What whoever is in here thinks with, next time they start. */
   remodel(id: string, model: string | null): Promise<Task[]>;
   abandon(id: string): Promise<Task[]>;
+  /**
+   * The one just taken down in this project, if putting it back up is still
+   * on offer — kept for the rest of this sitting, on disk nowhere.
+   */
+  revivable(project: string): { title: string } | null;
+  /** Cuts a fresh worktree from that same branch and stands it back up. */
+  revive(project: string): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
   /** Take down every session in one project, for when the project is forgotten. */
   sweep(project: string): Promise<void>;
   dispose(): Promise<void>;
@@ -104,6 +111,10 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
   /* Which checkouts have had their contents read. Holding one of these open is
      what keeps that worktree's index alive and watched. */
   const indexed = new Map<string, ReplicaState<ActiveRootStatus>>();
+  /* The one session just taken down in each project, for the rest of this
+     sitting — not written to disk, so a restart forgets it the same way the
+     agent itself is not woken back up by a restart either. */
+  const lastTakenDown = new Map<string, Task>();
 
   const all = async (): Promise<Task[]> => {
     const loaded = await store.get(KEY);
@@ -302,10 +313,78 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
           { workspaceId: id, deleteBranch: false },
           { timeoutMs: 0 }
         );
+        // The empty hook remembers this one, in case letting go of it was a
+        // slip on the second press.
+        lastTakenDown.set(going.project, going);
       }
       indexed.get(id)?.dispose();
       indexed.delete(id);
       return await save(tasks.filter((task) => task.id !== id));
+    },
+
+    revivable(project) {
+      const held = lastTakenDown.get(project);
+      return held ? { title: held.title } : null;
+    },
+
+    async revive(project) {
+      const stash = lastTakenDown.get(project);
+      if (!stash) return fail({ kind: 'no-such-project' });
+      const found = (await projects.list()).find((candidate) => candidate.id === project);
+      if (!found) return fail({ kind: 'no-such-project' });
+
+      const repository = await repositoryOf(runtimes, found);
+      if (!repository.success) return repository;
+
+      const parsed = parseNativeAbsolute(found.path);
+      if (!parsed.success) return fail({ kind: 'refused', because: 'that checkout has moved.' });
+
+      // The branch outlived the building, so this is the same branch, not a
+      // new one — `createWorktree` reuses an existing `refs/heads/<branch>`
+      // rather than cutting from `baseRef` when it finds one already there.
+      const path = join(worktreeRoot(), basename(found.path), stash.branch.replaceAll('/', '-'));
+      const made = await runtimes.workspaces.createWorktree(
+        {
+          workspaceId: crypto.randomUUID(),
+          repositoryId: repository.data,
+          branch: stash.branch,
+          baseRef: stash.base ?? stash.branch,
+          path,
+          preservePatterns: [],
+        },
+        { timeoutMs: 0 }
+      );
+      if (!made.success) return fail({ kind: 'refused', because: whatItSaid(made.error) });
+
+      if (found.gitName || found.gitEmail) {
+        await identityIn(runtimes, made.data.path, found.gitName, found.gitEmail);
+      }
+      try {
+        await runtimes.workspaces.activateWorkspace(
+          { workspaceId: made.data.id },
+          { timeoutMs: 0 }
+        );
+      } catch {
+        // Nothing this call can do about a registry that would not answer.
+      }
+
+      lastTakenDown.delete(project);
+      const task: Task = {
+        id: made.data.id,
+        project,
+        name: stash.name,
+        title: stash.title,
+        named: stash.named,
+        agent: stash.agent,
+        model: stash.model,
+        branch: stash.branch,
+        base: stash.base,
+        slot: stash.slot,
+        path: made.data.path,
+        startedAt: new Date().toISOString(),
+      };
+      await save([...(await all()), task]);
+      return { success: true as const, data: task };
     },
 
     /** Take down every session in one project, worktrees and all. */
@@ -321,6 +400,7 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
         indexed.delete(task.id);
       }
       if (going.length) await save(tasks.filter((task) => task.project !== project));
+      lastTakenDown.delete(project);
     },
 
     async dispose() {

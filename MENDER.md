@@ -141,7 +141,10 @@ of room stays sore, because there is nothing to wait out.
 along the bottom hangs one lantern per session in the project you are in: lit
 means somebody is awake in there, the one you are standing in hangs lowest and
 brightest, and the one that wants you flickers. At the end of the beam is one
-empty hook, which is how a new session is started. The projects moved to a rack
+empty hook, which is how a new session is started — and, for the rest of that
+sitting, remembers the last one taken down here: it offers to put it straight
+back up, on the very same branch, before it ever offers to start something
+new. The projects moved to a rack
 in the top right, over both the island and the yard, one slot each with the
 project's own face in it, its app icon or its logo, and a prop from the kit
 until it has one, and no names until you hover. It folds away.
