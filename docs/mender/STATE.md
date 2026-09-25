@@ -64,7 +64,7 @@ What is still genuinely missing: agents driving other Mac apps; mermaid you
 can pan and zoom, and a CSV table; the thinner transcript cards (thinking, the
 plan, how a turn ended) and a transcript that scrolls a long session cheaply;
 rebinding keys; the settings nobody has placed yet (branch naming, default
-folders, what search and watching leave out); linking an existing pull request and starting from a
+folders); linking an existing pull request and starting from a
 chosen branch; a missing folder or a failed setup step as a state of its own;
 and issue trackers other than GitHub.
 
@@ -1382,7 +1382,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-29 | Mermaid diagram, drawn from a `.md` file's fenced block, panned and zoomed the same as an answer's | done | W9 |
 | FS-30 | Image viewer (contained/expandable/standalone/zoom-pan chassis) | cut | W5 |
 | FS-31 | Shared file-watching service | kept |  |
-| FS-32 | Exclusion policy settings UI |  | W8 |
+| FS-32 | Exclusion policy settings UI | done | W8 |
 | FS-33 | Disk usage measurement | kept |  |
 | FS-34 | Directory selector (in-app column browser) |  | W7 |
 | FS-35 | Workspace path containment (security) | kept |  |

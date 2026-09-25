@@ -1545,6 +1545,10 @@ async function boot(): Promise<void> {
           await client.projects.setEnv({ id: project.id, text }, { timeoutMs: 0 });
           await refreshed();
         },
+        excludes: async (text) => {
+          await client.projects.setExcludes({ id: project.id, text }, { timeoutMs: 0 });
+          await refreshed();
+        },
         script: async (which, value) => {
           state.scripts = await client.projects.script(
             { id: project.id, which, value },

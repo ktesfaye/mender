@@ -72,6 +72,9 @@ export interface SettingsDoings {
   /** What every session here carries into its spawn, `NAME=value` a line.
       Blank clears it. */
   env(text: string): Promise<void>;
+  /** What search and file watching leave out here, one glob a line, on top
+      of the default policy. Blank clears it. */
+  excludes(text: string): Promise<void>;
   /** Blank clears that script, back to nothing running for it. */
   script(which: ScriptKind, value: string): Promise<void>;
   /** A session cut on its own, without you pressing the hook. */
@@ -168,6 +171,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   const scripts = section('What runs when a worktree is cut');
   const identity = section('Commits go out as');
   const environment = section('Every session here carries');
+  const excludes = section('What search and watching leave out here');
   const github = section('GitHub');
   const history = section('sessions that have ended');
   const danger = el('div', 'settings-danger');
@@ -179,6 +183,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     scripts.root,
     identity.root,
     environment.root,
+    excludes.root,
     github.root,
     history.root,
     danger
@@ -629,6 +634,23 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     environment.fill([hint, field]);
   }
 
+  function drawExcludes(): void {
+    const hint = el('p', 'settings-hint');
+    hint.textContent = 'One glob a line, on top of what is already left out.';
+    const field = document.createElement('textarea');
+    field.className = 'settings-env-field';
+    field.spellcheck = false;
+    field.rows = 3;
+    field.placeholder = '*.log';
+    field.value = now.project.excludes ?? '';
+    const keep = async (): Promise<void> => {
+      if (field.value.trim() === (now.project.excludes ?? '').trim()) return;
+      await does.excludes(field.value);
+    };
+    field.addEventListener('blur', () => void keep());
+    excludes.fill([hint, field]);
+  }
+
   let signingIn: { code: string; url: string } | null = null;
   let ghTrouble: string | null = null;
 
@@ -718,6 +740,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     if (document.activeElement?.closest('.settings-scripts-list') == null) drawScripts();
     if (document.activeElement?.closest('.settings-identity-row') == null) drawIdentity();
     if (document.activeElement?.closest('.settings-env-field') == null) drawEnv();
+    if (document.activeElement?.closest('.settings-env-field') == null) drawExcludes();
     drawGitHub();
     drawHistory();
     drawDanger();

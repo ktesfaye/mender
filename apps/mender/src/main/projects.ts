@@ -44,6 +44,9 @@ export interface Project {
   /** What every session here carries into its spawn beyond git — `NAME=value`
       lines. */
   readonly env?: string;
+  /** What search and file watching leave out here, beyond the default
+      policy — one glob a line. */
+  readonly excludes?: string;
 }
 
 /** Where a project's picture is to come from. */
@@ -122,6 +125,9 @@ export interface Projects {
   /** What every session here carries into its spawn beyond git — `NAME=value`
       lines. Blank clears it. */
   setEnv(id: string, text: string): Promise<Project[]>;
+  /** What search and file watching leave out here, beyond the default
+      policy — one glob a line. Blank clears it. */
+  setExcludes(id: string, text: string): Promise<Project[]>;
   /** What runs when a worktree is cut: prepare, setup, run, teardown. */
   scripts(id: string): Promise<Scripts>;
   /** Blank clears that script, back to nothing running for it. */
@@ -424,6 +430,18 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
           if (project.id !== id) return project;
           const { env: _e, ...bare } = project;
           return written ? { ...bare, env: written } : bare;
+        })
+      );
+    },
+
+    async setExcludes(id, text) {
+      const projects = await stored();
+      const written = text.trim();
+      return save(
+        projects.map((project) => {
+          if (project.id !== id) return project;
+          const { excludes: _x, ...bare } = project;
+          return written ? { ...bare, excludes: written } : bare;
         })
       );
     },

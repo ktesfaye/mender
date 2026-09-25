@@ -1,7 +1,10 @@
+import { DEFAULT_SEARCH_EXCLUDE } from '@emdash/core/primitives/exclusion-policy/api';
 import { parseNativeAbsolute, type HostAbsolutePath } from '@emdash/core/primitives/path/api';
 import { fileSearchContract, type ActiveRootStatus } from '@emdash/core/runtimes/file-search/api';
 import { createLiveJobReplicaCache, LiveJobFailedError, ReplicaState } from '@emdash/wire/live';
 import type { Found, FindingError } from '@shared/finding';
+import { parseGlobLines } from '@shared/glob-lines';
+import type { Projects } from './projects';
 import type { MenderRuntimes } from './runtimes';
 
 /**
@@ -25,17 +28,32 @@ const IN_ONE = 40;
 /** How long to wait for a checkout nobody has read yet, before giving up. */
 const PATIENCE = 20000;
 
-export function createFinding(runtimes: MenderRuntimes): Finding {
+export function createFinding(runtimes: MenderRuntimes, projects: Projects): Finding {
   /* One replica per checkout, kept for as long as the app runs. Asking is what
      builds the index and building it takes a moment, so the answer to the
      second keystroke has to arrive before the third. */
   const held = new Map<string, ReplicaState<ActiveRootStatus>>();
 
-  function hold(root: HostAbsolutePath, at: string): ReplicaState<ActiveRootStatus> {
+  /* What the checkout's own project says search and watching should leave
+     out beyond emdash's own default policy — merged onto it, never in place
+     of it, since the whole point is what it leaves out beyond that. The
+     first question asked of a root is what registers it with this list, so a
+     pattern added after that root is already held open needs a fresh session
+     to take effect — the same way any other index lifetime here works. */
+  async function exclusionsFor(checkout: string): Promise<string[]> {
+    const project = (await projects.list()).find((each) => each.path === checkout);
+    return [...DEFAULT_SEARCH_EXCLUDE, ...parseGlobLines(project?.excludes ?? '')];
+  }
+
+  function hold(
+    root: HostAbsolutePath,
+    at: string,
+    exclusions: readonly string[]
+  ): ReplicaState<ActiveRootStatus> {
     const already = held.get(at);
     if (already) return already;
     const fresh = new ReplicaState<ActiveRootStatus>(
-      runtimes.files.activeRoot.state({ root }, 'status'),
+      runtimes.files.activeRoot.state({ root, exclusions: [...exclusions] }, 'status'),
       { onChange: () => {} }
     );
     held.set(at, fresh);
@@ -68,11 +86,13 @@ export function createFinding(runtimes: MenderRuntimes): Finding {
     async named(checkout, like) {
       const root = parseNativeAbsolute(checkout);
       if (!root.success) return { success: false, error: { kind: 'not-a-checkout' } };
-      if (!(await ready(hold(root.data, checkout)))) {
+      const exclusions = await exclusionsFor(checkout);
+      if (!(await ready(hold(root.data, checkout, exclusions)))) {
         return { success: false, error: { kind: 'still-reading' } };
       }
       const found = await runtimes.files.searchPaths({
         root: root.data,
+        exclusions,
         query: like,
         kinds: ['file'],
         limit: FILES,
@@ -84,7 +104,8 @@ export function createFinding(runtimes: MenderRuntimes): Finding {
     async written(checkout, like) {
       const root = parseNativeAbsolute(checkout);
       if (!root.success) return { success: false, error: { kind: 'not-a-checkout' } };
-      if (!(await ready(hold(root.data, checkout)))) {
+      const exclusions = await exclusionsFor(checkout);
+      if (!(await ready(hold(root.data, checkout, exclusions)))) {
         return { success: false, error: { kind: 'still-reading' } };
       }
 
@@ -92,7 +113,7 @@ export function createFinding(runtimes: MenderRuntimes): Finding {
         fileSearchContract.searchContent,
         runtimes.files.searchContent
       );
-      const lease = await jobs.start({ root: root.data, query: like, limit: 400 });
+      const lease = await jobs.start({ root: root.data, exclusions, query: like, limit: 400 });
       try {
         const job = await lease.ready();
         const result = await job.result;

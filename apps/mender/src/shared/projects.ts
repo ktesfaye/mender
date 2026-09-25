@@ -19,6 +19,9 @@ export const projectSchema = z.object({
       behind, over and above the host's own environment — `NAME=value`, one
       per line. */
   env: z.string().optional(),
+  /** What search and file watching leave out here, beyond emdash's own
+      default exclusion policy — one glob a line, merged onto it. */
+  excludes: z.string().optional(),
   /** Whether its folder is actually still there, checked fresh on every
       `list` and never stored — a folder moved or deleted outside the
       village shows up here without anything writing it down. */
@@ -142,6 +145,10 @@ export const projectsContract = defineContract({
     output: z.array(projectSchema),
   }),
   setEnv: procedure({
+    input: z.object({ id: z.string(), text: z.string() }),
+    output: z.array(projectSchema),
+  }),
+  setExcludes: procedure({
     input: z.object({ id: z.string(), text: z.string() }),
     output: z.array(projectSchema),
   }),

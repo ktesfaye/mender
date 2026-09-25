@@ -211,8 +211,10 @@ what every new session carries into its worktree that git would leave behind,
 what runs when a worktree is cut — prepare before a session starts, setup and
 run alongside it, teardown when it comes down, each just a line of shell —
 what every session here carries into its own spawn beyond that, `NAME=value`
-a line, reaching the agent's own CLI and a real shell alike —
-who its commits go out as when that should be someone other than whatever git
+a line, reaching the agent's own CLI and a real shell alike — what looking for
+a file by name or by what's written in it leaves out here, a glob a line, on
+top of what emdash's own default policy already leaves out rather than in
+place of it — who its commits go out as when that should be someone other than whatever git
 would already say, whether this machine is signed in to GitHub and as whom —
 there is no per-project account here, the village is to GitHub whoever `gh`
 on this machine already signs in as, and signing in from a settings window

@@ -82,7 +82,7 @@ export async function main(): Promise<void> {
   watchDockBadge({ scope, agents, moods });
   watchStayingAwake({ scope, agents, moods });
   const changes = createChanges(runtimes);
-  const finding = createFinding(runtimes);
+  const finding = createFinding(runtimes, projects);
   const sessionUsage = createSessionUsageReader(runtimes, tasks);
   const schedules = createSchedules(tasks, agents, projects);
   scope.add(() => agents.dispose());
