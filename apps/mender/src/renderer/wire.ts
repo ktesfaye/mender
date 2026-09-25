@@ -33,6 +33,8 @@ declare global {
       openIt: (path: string) => void;
       /** Show it where it actually is, which is a different question. */
       showIt: (path: string) => void;
+      /** Open it in the owner's own editor, next to "show in Finder". */
+      openInEditor: (path: string) => void;
       /** A link an agent wrote, out to whatever the machine reads the web with. */
       openLink: (url: string) => void;
       /** The one file this app writes unasked, outside any checkout. Returns

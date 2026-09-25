@@ -247,6 +247,7 @@ function openProperly(state: Read): Row[] {
   return [
     { kind: 'gap' },
     { kind: 'entry', mark: '→', text: 'open it properly', tone: 'faded', pick: 'open-it' },
+    { kind: 'entry', mark: '→', text: 'open it in the editor', tone: 'faded', pick: 'open-editor' },
   ];
 }
 

@@ -500,6 +500,11 @@ bridge a project's own "show in Finder" already used. The last file or folder
 you stepped all the way out of is one key away from being back, without
 walking to it again.
 
+A project's settings window, and any file you can actually read on its own
+board, now offer opening it in your own editor too, next to "show in Finder":
+`$VISUAL`/`$EDITOR` when it names a GUI editor's own CLI, otherwise the first
+of Cursor, VS Code or Zed this machine actually has installed.
+
 ### W4 — you can ship it · started
 
 A piece of work ends in the village now. Under where the checkout stands is a

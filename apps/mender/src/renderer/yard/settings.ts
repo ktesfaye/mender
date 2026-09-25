@@ -56,6 +56,7 @@ export interface SettingsDoings {
   /** Starts GitHub's device flow. Resolves to what went wrong, if it did. */
   signIn(): Promise<{ code: string; url: string } | { wrong: string }>;
   show(): void;
+  openEditor(): void;
   forget(): Promise<void>;
   closed(): void;
 }
@@ -108,7 +109,8 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   const where = el('div', 'settings-where');
   const path = el('span', 'settings-path');
   const finder = button('Show in Finder', 'settings-link', () => does.show());
-  where.append(path, finder);
+  const editor = button('Open in editor', 'settings-link', () => does.openEditor());
+  where.append(path, finder, editor);
   who.append(name, where);
   const shut = button('×', 'settings-close', () => close());
   shut.setAttribute('aria-label', 'Close');

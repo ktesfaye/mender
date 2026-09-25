@@ -369,6 +369,11 @@ what you actually came to change.
 whatever the machine opens it with, one gold line, the same door a checkout's
 own "show in Finder" already uses.
 
+**And any of it opens in your own editor too, next to "show in Finder."** A
+project's settings and any file you can read on its own board both offer it:
+`$VISUAL` or `$EDITOR` when it names one you'd actually get a window from,
+otherwise whichever of Cursor, VS Code or Zed this machine has.
+
 **The last file or folder you stepped all the way out of is one key away.**
 Escaping a board on purpose used to mean walking back to it by hand; now the
 same key that holds every other doing brings back whichever of the two you

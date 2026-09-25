@@ -1,3 +1,4 @@
+import { execFile, spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
@@ -18,6 +19,58 @@ import {
 // Typechecked as node (no DOM lib) but runs in the renderer; declare `window`
 // with the structural type wire needs.
 declare const window: WindowLike;
+
+/**
+ * Opening something in the owner's own editor, next to "show in Finder".
+ *
+ * `$VISUAL`/`$EDITOR` wins when it names a GUI editor's own CLI — a terminal
+ * editor set there (vim, nano) is not something this app can hand a window
+ * to. Failing that, the first of Cursor, VS Code or Zed that is actually
+ * installed opens it, in that order, since that is the order most of this
+ * codebase's own commits were written in.
+ */
+const GUI_EDITOR_COMMANDS = ['code', 'cursor', 'zed', 'subl', 'idea', 'webstorm'];
+const FALLBACK_EDITORS = ['Cursor', 'Visual Studio Code', 'Zed'];
+
+function guiEditorCommand(): string | null {
+  const said = process.env.VISUAL || process.env.EDITOR || '';
+  const first = said.trim().split(/\s+/)[0];
+  if (!first) return null;
+  const base = first.split('/').pop() ?? first;
+  return GUI_EDITOR_COMMANDS.includes(base) ? said.trim() : null;
+}
+
+async function firstInstalledApp(): Promise<string | null> {
+  const { access } = await import('node:fs/promises');
+  const { constants } = await import('node:fs');
+  for (const name of FALLBACK_EDITORS) {
+    for (const root of [`/Applications/${name}.app`, `${homedir()}/Applications/${name}.app`]) {
+      try {
+        await access(root, constants.F_OK);
+        return name;
+      } catch {
+        // Not there; try the next place, then the next editor.
+      }
+    }
+  }
+  return null;
+}
+
+async function openInEditor(path: string): Promise<void> {
+  const said = guiEditorCommand();
+  if (said) {
+    const parts = said.split(/\s+/);
+    const cmd = parts[0] as string;
+    spawn(cmd, [...parts.slice(1), path], { detached: true, stdio: 'ignore' }).unref();
+    return;
+  }
+  const app = await firstInstalledApp();
+  if (!app) return;
+  execFile('open', ['-a', app, path], () => {
+    // Nothing to do with a failure here: there is no line on the board that
+    // reports it, the same as "open it properly" reports nothing either.
+  });
+}
 
 /* The host starts saying whether anybody is looking before the page has
    finished loading enough to care, so the answer is caught here, at the edge,
@@ -119,6 +172,7 @@ contextBridge.exposeInMainWorld('mender', {
      the machine opens folders with, or showing it where it actually is. */
   openIt: (path: string) => void shell.openPath(path),
   showIt: (path: string) => shell.showItemInFolder(path),
+  openInEditor: (path: string) => void openInEditor(path),
   /* A link an agent wrote, out to whatever the machine reads the web with. */
   openLink: (url: string) => void shell.openExternal(url),
   /* The one file this app writes unasked, always outside any checkout so it

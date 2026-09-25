@@ -1369,6 +1369,7 @@ async function boot(): Promise<void> {
           return started.data;
         },
         show: () => window.mender.showIt(project.path),
+        openEditor: () => window.mender.openInEditor(project.path),
         forget: async () => {
           const went = await forget(project.id);
           say('said' in went ? went.said : went.wrong, 4000);
@@ -3197,6 +3198,11 @@ async function boot(): Promise<void> {
       if (pick === 'open-it') {
         const whole = opened ? onDisk(opened.path) : null;
         if (whole) window.mender.openIt(formatAbsolute(whole));
+        return;
+      }
+      if (pick === 'open-editor') {
+        const whole = opened ? onDisk(opened.path) : null;
+        if (whole) window.mender.openInEditor(formatAbsolute(whole));
         return;
       }
       if (pick === 'bin' || pick === 'bin!') {
