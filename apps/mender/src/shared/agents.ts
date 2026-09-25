@@ -438,6 +438,19 @@ export const agentsContract = defineContract({
     error: agentErrorSchema,
   }),
   /**
+   * Send whoever is working home for the night.
+   *
+   * The process stops and the lantern goes dark, but the worktree, the
+   * branch and the transcript all stay exactly as they were — opening the
+   * session again, or simply saying something to it, wakes the same one back
+   * up. Distinct from taking a session down, which throws the worktree away.
+   */
+  rest: fallible({
+    input: z.object({ task: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /**
    * The mood of every building with somebody in it.
    *
    * The island reads this one and the board reads `work`: from out on the water

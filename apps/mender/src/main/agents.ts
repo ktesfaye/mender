@@ -89,6 +89,11 @@ const PROVIDER = 'claude';
 const KEPT = 400;
 /** How many turns to ask the session for when we first look in. */
 const BACKWARD = 12;
+/** How long a resting session sits untouched before the village sends it
+    home on its own, the process gone but the worktree and transcript kept. */
+const IDLE_MS = 30 * 60 * 1000;
+/** How often the sweep looks for one that has gone that long. */
+const IDLE_SWEEP_MS = 60 * 1000;
 
 export interface Agents {
   /** The live state of one building, for the board to subscribe to. */
@@ -117,6 +122,8 @@ export interface Agents {
   hush(task: string): Promise<Told>;
   /** Whoever is in there moves out with the building. */
   evict(task: string): Promise<void>;
+  /** Sends them home for the night: the process stops, everything else stays. */
+  rest(task: string): Promise<Told>;
   dispose(): Promise<void>;
 }
 
@@ -165,6 +172,11 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
   /* Where each session's checkout is, so a path written on the board can be
      the path inside it rather than the whole way from the root of the disk. */
   const wheres = new Map<string, string>();
+  /* When each house last had anything happen in it, so the sweep below knows
+     how long one has sat quiet. Touched on every mood change, which is also
+     touched the moment a turn settles into resting — the idle clock starts
+     counting from exactly the point there is nothing left to wait for. */
+  const lastActive = new Map<string, number>();
   const learn = async (): Promise<void> => {
     for (const record of await tasks.list()) wheres.set(record.id, record.path);
   };
@@ -205,6 +217,7 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
         task,
         runtimes,
         () => {
+          lastActive.set(task, Date.now());
           island.set(moodsOf(houses));
         },
         () => wheres.get(task)
@@ -278,10 +291,50 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
     if (!conversation) return;
     await runtimes.acp.terminate({ conversationId: conversation });
     await runtimes.conversations.delete({ conversationId: conversation });
-    const { [task]: _gone, ...rest } = lodgers;
-    lodgers = rest;
+    const { [task]: _gone, ...remaining } = lodgers;
+    lodgers = remaining;
     await store.set(KEY, lodgers as unknown as never);
   };
+
+  /**
+   * Sends whoever is working home without taking anything down.
+   *
+   * The same first half as `evict` — the process actually stops — but nothing
+   * after it: the conversation stays in `lodgers`, so the next thing said in
+   * here, or simply opening the yard again, resumes the very same session the
+   * same way the whole app does when it starts back up. Distinct from taking
+   * a session down, which also throws the worktree away.
+   */
+  const rest = async (task: string): Promise<Told> => {
+    await loaded;
+    const conversation = lodgers[task];
+    await houses.get(task)?.dispose();
+    houses.delete(task);
+    await kits.forget(task);
+    lastActive.delete(task);
+    island.set(moodsOf(houses));
+    if (conversation) await runtimes.acp.terminate({ conversationId: conversation });
+    return { success: true, data: undefined };
+  };
+
+  /**
+   * A villager left standing at the gate too long goes home on their own.
+   *
+   * Only a house that is genuinely idle — done with its turn and nobody
+   * asked anything, not working and not waiting on you — is ever swept, and
+   * only once it has sat that way longer than `IDLE_MS`. Checked on a slow
+   * clock because nothing here needs to be prompt: worst case a session
+   * that could have gone home sooner keeps its process a few minutes longer.
+   */
+  const sweep = setInterval(() => {
+    const now = Date.now();
+    for (const [task, house] of houses) {
+      if (peek(house.state).mood !== 'resting') continue;
+      const since = lastActive.get(task) ?? now;
+      if (now - since >= IDLE_MS) void rest(task);
+    }
+  }, IDLE_SWEEP_MS);
+  sweep.unref?.();
 
   return {
     working: (task) => houseOf(task).state,
@@ -494,8 +547,10 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
     },
 
     evict,
+    rest,
 
     async dispose() {
+      clearInterval(sweep);
       await Promise.all([...houses.values()].map((house) => house.dispose()));
       houses.clear();
       await Promise.all([index.dispose(), named.dispose(), kits.dispose()]);

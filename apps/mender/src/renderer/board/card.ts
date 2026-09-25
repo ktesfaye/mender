@@ -138,7 +138,7 @@ function written(task: Task, kit: Kit | null, ending?: Ending, showing?: boolean
   ];
   if (!kit) {
     rows.push({ kind: 'gap' }, { kind: 'line', text: 'looking…', tone: 'faded' });
-    return [...rows, ...over(ending)];
+    return [...rows, ...over(ending, false)];
   }
 
   rows.push({ kind: 'gap' }, { kind: 'heading', text: 'who works here' });
@@ -198,7 +198,7 @@ function written(task: Task, kit: Kit | null, ending?: Ending, showing?: boolean
     );
     /* A sleeping session still ends, and a session nobody has spoken to is
        exactly the one you are most likely to want rid of. */
-    return [...rows, ...over(ending)];
+    return [...rows, ...over(ending, false)];
   }
 
   choices(rows, 'thinking with', 'model', kit.model, kit.models);
@@ -241,7 +241,7 @@ function written(task: Task, kit: Kit | null, ending?: Ending, showing?: boolean
       tone: 'ink',
     });
   }
-  return [...rows, ...over(ending)];
+  return [...rows, ...over(ending, kit.awake)];
 }
 
 function choices(
@@ -281,9 +281,36 @@ export interface Ending {
   asked: boolean;
 }
 
-function over(ending: Ending | undefined): Row[] {
-  if (!ending) return [];
-  const rows: Row[] = [{ kind: 'gap' }, { kind: 'heading', text: 'when it is over' }];
+/**
+ * Sending whoever is working home without touching the worktree.
+ *
+ * One press, not two, because nothing here is thrown away: the branch, the
+ * transcript and the worktree all stay exactly as they are, and opening this
+ * session again — or just saying something to it — wakes the same one back
+ * up. Only offered while somebody is actually here to send home.
+ */
+function homeward(awake: boolean): Row[] {
+  if (!awake) return [];
+  return [
+    { kind: 'gap' },
+    {
+      kind: 'entry',
+      mark: '○',
+      text: 'send them home for the night',
+      tone: 'faded',
+      pick: 'rest',
+    },
+    {
+      kind: 'prose',
+      text: 'the worktree and everything said stay. opening this again wakes the same one back up.',
+      tone: 'faded',
+    },
+  ];
+}
+
+function over(ending: Ending | undefined, awake: boolean): Row[] {
+  if (!ending) return homeward(awake);
+  const rows: Row[] = [...homeward(awake), { kind: 'gap' }, { kind: 'heading', text: 'when it is over' }];
 
   const losing = [
     ending.uncommitted

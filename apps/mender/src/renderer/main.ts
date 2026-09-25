@@ -1858,6 +1858,27 @@ async function boot(): Promise<void> {
       if (aim) void openDistrict({ kind: 'district', district: aim.district });
     };
 
+    /**
+     * Sending whoever is working home, and nothing else.
+     *
+     * The one thing here that undoes itself: opening this session again, or
+     * saying anything to it, wakes the very same one back up, so this is a
+     * single press like everything else in the village that can be pressed
+     * again.
+     */
+    const resting = async (): Promise<void> => {
+      const task = inside;
+      const aim = open;
+      if (!task || !aim) return;
+      say('sending them home…', 30000);
+      await client.agents.rest({ task: task.id }, { timeoutMs: 0 });
+      say('gone home. opening this wakes them again.', 4000);
+      /* The card's own subscription was watching the building that just went
+         home, not the empty one that replaced it, so it is reopened rather
+         than left to show a villager who is no longer there. */
+      if (open === aim && inside === task) void showCard(aim, task);
+    };
+
     /** Closing whatever of the checkout you had walked into. */
     /* Stepping out of the folder you were in.
      *
@@ -2347,6 +2368,10 @@ async function boot(): Promise<void> {
       }
       if (pick === 'end' || pick === 'end!') {
         void ending(pick === 'end!');
+        return;
+      }
+      if (pick === 'rest') {
+        void resting();
         return;
       }
       if (pick === 'sent') {

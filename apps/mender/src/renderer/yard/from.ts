@@ -411,14 +411,18 @@ function hashOf(text: string): number {
 
 function lanternOf(task: Task, mood: Mood | undefined, here: boolean): Lantern {
   const posture = postureOf(mood);
+  /* Lit means somebody is awake in there. Nobody has moved in, they have gone
+     home, or it broke, and the lantern is out. A dark, otherwise-resting
+     lantern is not the same as a lit one waiting on you to speak — the
+     process itself is gone, not just idle — so it says so rather than
+     reusing the same "resting" a session still running says. */
+  const lit = mood !== undefined && mood !== 'empty' && mood !== 'hurt';
   return {
     id: task.id,
     name: task.title,
     posture,
-    saying: here ? 'you are here' : sayingOf(posture, task),
-    /* Lit means somebody is awake in there. Nobody has moved in, they have gone
-       home, or it broke, and the lantern is out. */
-    lit: mood !== undefined && mood !== 'empty' && mood !== 'hurt',
+    saying: here ? 'you are here' : !lit && posture === 'resting' ? 'asleep' : sayingOf(posture, task),
+    lit,
     here,
     unread: false,
     ground: 'ready',

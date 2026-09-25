@@ -16,6 +16,7 @@ export function createAgentsController(agents: Agents): Controller {
     answer: ({ task, requestId, optionId }) => agents.answer(task, requestId, optionId),
     unsay: ({ task, id }) => agents.unsay(task, id),
     hush: ({ task }) => agents.hush(task),
+    rest: ({ task }) => agents.rest(task),
     choose: ({ task, what, id }) => agents.choose(task, what, id),
     tool: ({ task, name, on }) => agents.tool(task, name, on),
     fetch: ({ hand }) => agents.fetch(hand),

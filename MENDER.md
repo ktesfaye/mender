@@ -459,6 +459,17 @@ agent from a session. A permission question does land on the
 board, and a number key answers it; it takes setting the session to ask first,
 because otherwise the Claude on this machine answers its own.
 
+**Sending somebody home is not taking anything down.** One line above that,
+one press: whoever is working stops, the lantern goes dark, and the worktree,
+the branch and everything said all stay exactly where they were. Opening that
+session again, or just saying something to it, wakes the very same one back
+up, the same as any session does after the app itself restarts. Left standing
+at the gate with nothing more to say long enough, a villager goes home on
+their own the same way — the rail still says a branch's name for a dark
+lantern, but a truly empty one now says `asleep` instead of `resting`, because
+`resting` is a fire still lit with nobody feeding it and `asleep` is a fire
+that has actually gone out.
+
 ## House rules
 
 - Work on `main`. Never create branches.

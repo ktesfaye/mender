@@ -1004,8 +1004,8 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-10 | Multi-account registry (issue trackers etc.) |  | W8 |
 | AG-11 | CLI dependency install/update/uninstall |  | W8 |
 | AG-12 | Agent-process environment sanitization | kept |  |
-| AG-13 | Session idle policy & automatic teardown | part | W2 |
-| AG-14 | Session intents — persisted resume state | part | W2 |
+| AG-13 | Session idle policy & automatic teardown | done |  |
+| AG-14 | Session intents — persisted resume state | done |  |
 | AG-15 | ACP session launch / TUI session start contracts | kept |  |
 | AG-16 | Conversation index | kept |  |
 | AG-17 | Conversation lifecycle reporting | kept |  |
