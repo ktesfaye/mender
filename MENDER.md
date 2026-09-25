@@ -193,6 +193,13 @@ that isn't signed in opens the same one-time code `gh` itself would give you
 in a terminal — where it is, and removing it. A project that has just moved
 in opens it first.
 
+**Taking a session down does not throw away what was said in it.** Settings
+also carries the ledger of every session this project has taken down, newest
+first, each saying how long ago in words. Pressing one reads its whole
+conversation back, plainly, right there in the window — nothing woken, no
+worktree needed, since taking a session down was always only ever the
+worktree going. Escape steps back out to settings.
+
 **Everything else is laid over the yard, never instead of it.** A file, a
 change, a commit, a folder, a search, a shell, a pull request, the card behind
 `/agent`: opening any of them drops the world to silhouettes and brings a flat

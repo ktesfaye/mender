@@ -21,7 +21,17 @@ import type {
   ScriptKind,
   Scripts,
 } from '@shared/projects';
+import type { HistoryEntry } from '@shared/tasks';
 import { slot, toolFor } from './face';
+import { agoOf } from './from';
+
+/** A session's transcript, read back once it has ended. */
+export interface HistoryRead {
+  title: string;
+  branch: string;
+  /** Oldest first. */
+  turns: { who: 'you' | 'agent'; text: string }[];
+}
 
 export interface SettingsState {
   project: Project;
@@ -39,6 +49,9 @@ export interface SettingsState {
   github: GitHubStatus | null;
   /** How many sessions it has, which is what removing it costs. */
   sessions: number;
+  /** Every session taken down in this project, newest first. Null while it is
+      still being read. */
+  history: HistoryEntry[] | null;
   /** Just moved in, so this is the first thing it is asked. */
   fresh?: boolean;
 }
@@ -57,6 +70,9 @@ export interface SettingsDoings {
   signIn(): Promise<{ code: string; url: string } | { wrong: string }>;
   show(): void;
   openEditor(): void;
+  /** What was said in an ended session, read back without waking it. Null
+      when its conversation is gone too. */
+  readHistory(id: string): Promise<HistoryRead | null>;
   forget(): Promise<void>;
   closed(): void;
 }
@@ -140,9 +156,82 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   const scripts = section('What runs when a worktree is cut');
   const identity = section('Commits go out as');
   const github = section('GitHub');
+  const history = section('sessions that have ended');
   const danger = el('div', 'settings-danger');
-  body.append(welcome, faces.root, sessions.root, scripts.root, identity.root, github.root, danger);
+  body.append(
+    welcome,
+    faces.root,
+    sessions.root,
+    scripts.root,
+    identity.root,
+    github.root,
+    history.root,
+    danger
+  );
   panel.append(head, body);
+
+  // ── reading one back, in place of the body ──────────────────────────────
+  const past = el('div', 'settings-past');
+  past.style.display = 'none';
+  const pastBack = button('‹ settings', 'settings-link', () => showBody());
+  const pastTitle = el('div', 'settings-past-title');
+  const pastBranch = el('div', 'settings-past-branch');
+  const pastTurns = el('div', 'settings-past-turns');
+  past.append(pastBack, pastTitle, pastBranch, pastTurns);
+  panel.append(past);
+
+  function showBody(): void {
+    past.style.display = 'none';
+    body.style.display = '';
+  }
+
+  function drawHistory(): void {
+    const entries = now.history;
+    if (!entries) {
+      const hint = el('p', 'settings-hint');
+      hint.textContent = 'Reading what has ended here…';
+      history.fill([hint]);
+      return;
+    }
+    if (!entries.length) {
+      const hint = el('p', 'settings-hint');
+      hint.textContent = 'Nothing has ended here yet.';
+      history.fill([hint]);
+      return;
+    }
+    const list = el('div', 'settings-list');
+    for (const entry of entries) {
+      const row = button(
+        `${entry.title}  ·  ${agoOf(Date.now() - Date.parse(entry.endedAt))}`,
+        'settings-button settings-history-row',
+        () => void openPast(entry)
+      );
+      list.appendChild(row);
+    }
+    history.fill([list]);
+  }
+
+  async function openPast(entry: HistoryEntry): Promise<void> {
+    pastTitle.textContent = entry.title;
+    pastBranch.textContent = 'reading…';
+    pastTurns.replaceChildren();
+    body.style.display = 'none';
+    past.style.display = '';
+    const read = await does.readHistory(entry.id);
+    if (past.style.display === 'none') return;
+    if (!read) {
+      pastBranch.textContent = 'its conversation is gone too.';
+      return;
+    }
+    pastBranch.textContent = read.branch;
+    const turns: HTMLElement[] = [];
+    for (const turn of read.turns) {
+      const line = el('p', `settings-past-turn settings-past-turn-${turn.who}`);
+      line.textContent = turn.text;
+      turns.push(line);
+    }
+    pastTurns.replaceChildren(...turns);
+  }
 
   document.body.appendChild(back);
   back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
@@ -456,6 +545,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     if (document.activeElement?.closest('.settings-scripts-list') == null) drawScripts();
     if (document.activeElement?.closest('.settings-identity-row') == null) drawIdentity();
     drawGitHub();
+    drawHistory();
     drawDanger();
   }
 
@@ -479,6 +569,10 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       draw();
     },
     escaped() {
+      if (past.style.display !== 'none') {
+        showBody();
+        return;
+      }
       if (document.activeElement === name) {
         name.value = now.project.name;
         name.blur();

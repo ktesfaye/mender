@@ -31,6 +31,17 @@ export const taskSchema = z.object({
 
 export type Task = z.infer<typeof taskSchema>;
 
+/** A session taken down, as the ledger of ended sessions remembers it. */
+export const historyEntrySchema = z.object({
+  id: z.string(),
+  project: z.string(),
+  title: z.string(),
+  branch: z.string(),
+  endedAt: z.string(),
+});
+
+export type HistoryEntry = z.infer<typeof historyEntrySchema>;
+
 export const taskErrorSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('no-such-project') }),
   /** Nothing was written on the board. */
@@ -96,6 +107,11 @@ export const tasksContract = defineContract({
     input: z.object({ project: z.string() }),
     data: taskSchema,
     error: taskErrorSchema,
+  }),
+  /** Every session taken down in this project, newest first. */
+  history: procedure({
+    input: z.object({ project: z.string() }),
+    output: z.array(historyEntrySchema),
   }),
 });
 

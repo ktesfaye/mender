@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Told } from '@shared/agents';
 import type { Task } from '@shared/tasks';
-import { transcriptMarkdown } from './card';
+import { transcriptMarkdown, turnsOf } from './card';
 
 const task: Task = {
   id: 't1',
@@ -53,5 +53,16 @@ describe('transcriptMarkdown', () => {
         '',
       ].join('\n')
     );
+  });
+});
+
+describe('turnsOf', () => {
+  it('pairs each note with what answered it, oldest turn first', () => {
+    expect(turnsOf(told)).toEqual([
+      { who: 'you', text: 'do the thing' },
+      { who: 'agent', text: 'doing the thing' },
+      { who: 'you', text: 'and now this' },
+      { who: 'agent', text: 'done with that too' },
+    ]);
   });
 });

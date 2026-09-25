@@ -598,6 +598,23 @@ export function unsentIn(head: CheckoutHeadState | undefined): number | null {
  * notes backwards and pairs each with whatever it answered by turn, which is
  * the only thing that already ties the two together.
  */
+/**
+ * The same pairing `transcriptMarkdown` writes as a document, as plain turns
+ * instead — for reading an ended session back without any marks on it.
+ */
+export function turnsOf(told: Told): { who: 'you' | 'agent'; text: string }[] {
+  const turns: { who: 'you' | 'agent'; text: string }[] = [];
+  const notes = [...told.notes].reverse();
+  for (const note of notes) {
+    turns.push({ who: 'you', text: note.said });
+    for (const thought of told.thoughts) {
+      if (thought.turn !== note.turn) continue;
+      turns.push({ who: 'agent', text: thought.said });
+    }
+  }
+  return turns;
+}
+
 export function transcriptMarkdown(task: Task, told: Told): string {
   const lines: string[] = [`# ${task.title}`, '', `_${task.branch}_`];
   const notes = [...told.notes].reverse();

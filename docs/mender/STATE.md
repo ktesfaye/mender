@@ -2119,6 +2119,25 @@ command line, the variable in its tmux wrapper's own environment. Opened
 that same session's usage line and watched it name its agent process with a
 real cpu and memory number.
 
+### A history of ended sessions, read back without waking anything (2026-09-25)
+
+Taking a session down (`tasks.abandon`) was already only ever cutting the
+worktree — its conversation was never touched, just orphaned with nothing to
+find it by. `tasks.ts` now writes a small ledger entry (id, project, title,
+branch, when) to its own `history.json` on the way down, capped at 200, and a
+new `tasks.history(project)` reads it back newest first. The project's
+settings window gets a "sessions that have ended" list off it; pressing one
+calls `agents.work` for that same task id — still there in `agents.ts`'s own
+conversation store, since nothing ever evicted it — and reads the turns back
+as plain "you"/"agent" lines, oldest first, on the settings window itself
+rather than a second board. No process is woken to read it.
+
+Driven: started a real Claude session, said one thing, took it down with the
+existing two-press "send everybody home and take this down", then opened the
+project's settings and pressed the entry that appeared under "sessions that
+have ended" — the transcript read back exactly, title and branch included,
+with `history.json` on disk holding the entry after restart.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

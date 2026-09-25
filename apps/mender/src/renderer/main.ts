@@ -25,7 +25,7 @@ import type { Prompt } from '@shared/prompts';
 import type { Task } from '@shared/tasks';
 import { branchMade, branchUnmade, unbranchMade } from './board/branch';
 import { browsing, openPage, safe as safeAddress } from './board/browsing';
-import { openCard, transcriptMarkdown, type LiveCard } from './board/card';
+import { openCard, transcriptMarkdown, turnsOf, type LiveCard } from './board/card';
 import { lineNumberOf, opening, readOut, unreadable, type Noting } from './board/changed';
 import { committing } from './board/committing';
 import { conflict, conflictMessage } from './board/conflict';
@@ -1355,6 +1355,7 @@ async function boot(): Promise<void> {
         scripts: null,
         github: null,
         sessions: tasks.filter((task) => task.project === project.id).length,
+        history: null,
         ...(fresh ? { fresh } : {}),
       };
       let shown = FACES;
@@ -1438,6 +1439,12 @@ async function boot(): Promise<void> {
         },
         show: () => window.mender.showIt(project.path),
         openEditor: () => window.mender.openInEditor(project.path),
+        readHistory: async (id) => {
+          const entry = state.history?.find((one) => one.id === id);
+          if (!entry) return null;
+          const read = await client.agents.work.state({ task: id }, 'state').snapshot();
+          return { title: entry.title, branch: entry.branch, turns: turnsOf(read.data.told) };
+        },
         forget: async () => {
           const went = await forget(project.id);
           say('said' in went ? went.said : went.wrong, 4000);
@@ -1451,6 +1458,10 @@ async function boot(): Promise<void> {
       void look(shown);
       void (async () => {
         state.carrying = await client.projects.carrying({ id: project.id }, { timeoutMs: 0 });
+        redraw();
+      })();
+      void (async () => {
+        state.history = await client.tasks.history({ project: project.id }, { timeoutMs: 0 });
         redraw();
       })();
       void (async () => {

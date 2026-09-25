@@ -14,5 +14,6 @@ export function createTasksController(tasks: Tasks): Controller {
     abandon: ({ id }) => tasks.abandon(id),
     revivable: ({ project }) => tasks.revivable(project),
     revive: ({ project }) => tasks.revive(project),
+    history: ({ project }) => tasks.history(project),
   });
 }

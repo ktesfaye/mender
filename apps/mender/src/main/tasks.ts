@@ -58,6 +58,23 @@ export interface Task {
   readonly kind?: 'chat' | 'terminal';
 }
 
+/**
+ * A session that has been taken down, remembered for the ledger.
+ *
+ * The worktree is gone and the task record with it, so this is what is left
+ * to say about it: what it was called, what branch it was, and when. Its
+ * conversation is not stored here — it is still sitting wherever `agents.ts`
+ * left it, keyed by this same `id`, since taking a session down never asks
+ * the conversation to leave.
+ */
+export interface HistoryEntry {
+  readonly id: string;
+  readonly project: string;
+  readonly title: string;
+  readonly branch: string;
+  readonly endedAt: string;
+}
+
 export type TaskError =
   | { kind: 'no-such-project' }
   | { kind: 'nameless' }
@@ -97,6 +114,8 @@ export interface Tasks {
    * on offer — kept for the rest of this sitting, on disk nowhere.
    */
   revivable(project: string): { title: string } | null;
+  /** Every session taken down in this project, newest first. */
+  history(project: string): Promise<HistoryEntry[]>;
   /** Cuts a fresh worktree from that same branch and stands it back up. */
   revive(project: string): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
   /** Take down every session in one project, for when the project is forgotten. */
@@ -108,9 +127,25 @@ export interface Tasks {
 const NAMES = 12;
 
 const KEY = 'tasks';
+const HISTORY_KEY = 'history';
+/** How many ended sessions the ledger keeps before the oldest fall off. */
+const HISTORY_KEPT = 200;
 
 export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks {
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'tasks.json') });
+  const historyStore = createJsonFileKeyValueStore({ path: join(userDataDir(), 'history.json') });
+
+  const allHistory = async (): Promise<HistoryEntry[]> => {
+    const loaded = await historyStore.get(HISTORY_KEY);
+    if (!loaded.success || !Array.isArray(loaded.data)) return [];
+    return loaded.data as unknown as HistoryEntry[];
+  };
+
+  /** Remembers a session that just came down, newest first, capped. */
+  const remember = async (entry: HistoryEntry): Promise<void> => {
+    const kept = [entry, ...(await allHistory())].slice(0, HISTORY_KEPT);
+    await historyStore.set(HISTORY_KEY, kept as unknown as never);
+  };
   const standing = cell<Task[]>([], { name: 'tasks:all' });
   /* Which checkouts have had their contents read. Holding one of these open is
      what keeps that worktree's index alive and watched. */
@@ -321,6 +356,16 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
         // The empty hook remembers this one, in case letting go of it was a
         // slip on the second press.
         lastTakenDown.set(going.project, going);
+        // And the ledger remembers it too, past the end of this sitting —
+        // its conversation is untouched by any of this, so there is still
+        // something to read back once it is off the hook.
+        await remember({
+          id: going.id,
+          project: going.project,
+          title: going.title,
+          branch: going.branch,
+          endedAt: new Date().toISOString(),
+        });
       }
       indexed.get(id)?.dispose();
       indexed.delete(id);
@@ -330,6 +375,11 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
     revivable(project) {
       const held = lastTakenDown.get(project);
       return held ? { title: held.title } : null;
+    },
+
+    async history(project) {
+      const all = await allHistory();
+      return all.filter((entry) => entry.project === project);
     },
 
     async revive(project) {
