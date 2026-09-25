@@ -21,6 +21,7 @@ import type {
   ScriptKind,
   Scripts,
 } from '@shared/projects';
+import type { Schedule, ScheduleHand, ScheduleWhen } from '@shared/schedules';
 import type { HistoryEntry } from '@shared/tasks';
 import { slot, toolFor } from './face';
 import { agoOf } from './from';
@@ -52,6 +53,10 @@ export interface SettingsState {
   /** Every session taken down in this project, newest first. Null while it is
       still being read. */
   history: HistoryEntry[] | null;
+  /** Sessions this project cuts on its own. Null while still being read. */
+  schedules: Schedule[] | null;
+  /** Who could work one, whether or not it is installed here yet. */
+  scheduleHands: ScheduleHand[];
   /** Just moved in, so this is the first thing it is asked. */
   fresh?: boolean;
 }
@@ -66,6 +71,9 @@ export interface SettingsDoings {
   identity(name: string, email: string): Promise<void>;
   /** Blank clears that script, back to nothing running for it. */
   script(which: ScriptKind, value: string): Promise<void>;
+  /** A session cut on its own, without you pressing the hook. */
+  addSchedule(what: string, agent: string, terminal: boolean, when: ScheduleWhen): Promise<void>;
+  removeSchedule(id: string): Promise<void>;
   /** Starts GitHub's device flow. Resolves to what went wrong, if it did. */
   signIn(): Promise<{ code: string; url: string } | { wrong: string }>;
   show(): void;
@@ -153,6 +161,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   const welcome = el('p', 'settings-welcome');
   const faces = section('Icon');
   const sessions = section('New sessions');
+  const timetable = section('Sessions on a timetable');
   const scripts = section('What runs when a worktree is cut');
   const identity = section('Commits go out as');
   const github = section('GitHub');
@@ -162,6 +171,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     welcome,
     faces.root,
     sessions.root,
+    timetable.root,
     scripts.root,
     identity.root,
     github.root,
@@ -379,6 +389,146 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     sessions.fill([hint, list]);
   }
 
+  // ── sessions on a timetable ──────────────────────────────────────────────
+  let draftWhat = '';
+  let draftHand = 0;
+  let draftKind: ScheduleWhen['kind'] = 'daily';
+  let draftTime = soonHHMM();
+  let draftHours = 6;
+  let draftTerminal = false;
+  const removing = new Map<string, number>();
+
+  function whenSaid(when: ScheduleWhen): string {
+    if (when.kind === 'daily') return `every morning at ${when.time}`;
+    if (when.kind === 'hours') return `every ${when.n} hour${when.n === 1 ? '' : 's'}`;
+    return 'on every push to the base branch';
+  }
+
+  function drawTimetable(): void {
+    const hint = el('p', 'settings-hint');
+    hint.textContent =
+      'Cuts its own session, exactly like the empty hook does — but only while Mender is running.';
+    const children: HTMLElement[] = [hint];
+
+    if (now.schedules === null) {
+      const loading = el('p', 'settings-hint');
+      loading.textContent = 'Reading the timetable…';
+      children.push(loading);
+    } else {
+      if (now.schedules.length) {
+        const list = el('div', 'settings-list');
+        for (const one of now.schedules) {
+          const row = el('div', 'settings-script-row');
+          const said = el('span', 'settings-check-path');
+          const hand = now.scheduleHands.find((h) => h.id === one.agent)?.name ?? one.agent;
+          said.textContent = `“${one.what}” · ${hand} · ${whenSaid(one.when)}`;
+          const gone = removing.has(one.id);
+          const remove = button(gone ? 'click again to remove' : 'remove', 'settings-link', () => {
+            if (!gone) {
+              const timer = window.setTimeout(() => {
+                removing.delete(one.id);
+                if (back.isConnected) drawTimetable();
+              }, STANDS_MS);
+              removing.set(one.id, timer);
+              drawTimetable();
+              return;
+            }
+            window.clearTimeout(removing.get(one.id));
+            removing.delete(one.id);
+            void does.removeSchedule(one.id);
+          });
+          if (gone) remove.classList.add('settings-remove', 'armed');
+          row.append(said, remove);
+          list.appendChild(row);
+        }
+        children.push(list);
+      }
+
+      // ── the add line ────────────────────────────────────────────────────
+      const form = el('div', 'settings-list');
+      const what = document.createElement('input');
+      what.className = 'settings-identity-field';
+      what.placeholder = 'what it is for — the first thing said';
+      what.spellcheck = false;
+      what.value = draftWhat;
+      what.addEventListener('input', () => (draftWhat = what.value));
+
+      const hands = now.scheduleHands;
+      const handLine = button(
+        hands.length ? `works: ${hands[draftHand % hands.length]?.name ?? '…'}` : 'no agents on this machine',
+        'settings-link',
+        () => {
+          if (!hands.length) return;
+          draftHand = (draftHand + 1) % hands.length;
+          drawTimetable();
+        }
+      );
+
+      const terminalLine = button(
+        draftTerminal ? 'in its own terminal' : 'as a conversation',
+        'settings-link',
+        () => {
+          draftTerminal = !draftTerminal;
+          drawTimetable();
+        }
+      );
+
+      const kinds: ScheduleWhen['kind'][] = ['daily', 'hours', 'push'];
+      const kindSaid: Record<ScheduleWhen['kind'], string> = {
+        daily: 'every morning',
+        hours: 'every n hours',
+        push: 'on every push',
+      };
+      const whenLine = button(`when: ${kindSaid[draftKind]}`, 'settings-link', () => {
+        draftKind = kinds[(kinds.indexOf(draftKind) + 1) % kinds.length] ?? 'daily';
+        drawTimetable();
+      });
+
+      const detail = el('div', 'settings-script-row');
+      if (draftKind === 'daily') {
+        const time = document.createElement('input');
+        time.type = 'time';
+        time.className = 'settings-identity-field';
+        time.value = draftTime;
+        time.addEventListener('input', () => (draftTime = time.value));
+        detail.appendChild(time);
+      } else if (draftKind === 'hours') {
+        const hours = document.createElement('input');
+        hours.type = 'number';
+        hours.min = '1';
+        hours.className = 'settings-identity-field';
+        hours.value = String(draftHours);
+        hours.addEventListener('input', () => (draftHours = Math.max(1, Number(hours.value) || 1)));
+        detail.appendChild(hours);
+      }
+
+      const add = button('add to the timetable', 'settings-button', () => {
+        const said = draftWhat.trim();
+        const hand = hands[draftHand % hands.length];
+        if (!said || !hand) return;
+        const when: ScheduleWhen =
+          draftKind === 'daily'
+            ? { kind: 'daily', time: draftTime }
+            : draftKind === 'hours'
+              ? { kind: 'hours', n: draftHours }
+              : { kind: 'push' };
+        draftWhat = '';
+        void does.addSchedule(said, hand.id, draftTerminal, when).then(() => drawTimetable());
+      });
+
+      form.append(what, handLine, terminalLine, whenLine, detail, add);
+      children.push(form);
+    }
+    timetable.fill(children);
+  }
+
+  /** A minute from now, as `HH:MM` — the shape a schedule "due a minute out"
+      needs to fill in the time field with. */
+  function soonHHMM(): string {
+    const soon = new Date(Date.now() + 60_000);
+    return `${String(soon.getHours()).padStart(2, '0')}:${String(soon.getMinutes()).padStart(2, '0')}`;
+  }
+
   const SCRIPT_ROWS: { which: ScriptKind; said: string; hint: string }[] = [
     { which: 'prepare', said: 'prepare', hint: 'runs first; a session waits for it' },
     { which: 'setup', said: 'setup', hint: 'runs after, alongside the session' },
@@ -542,6 +692,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     welcome.style.display = now.fresh ? '' : 'none';
     drawFaces();
     drawSessions();
+    if (document.activeElement?.closest('.settings-section') !== timetable.root) drawTimetable();
     if (document.activeElement?.closest('.settings-scripts-list') == null) drawScripts();
     if (document.activeElement?.closest('.settings-identity-row') == null) drawIdentity();
     drawGitHub();

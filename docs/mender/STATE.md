@@ -1378,7 +1378,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-19 | MCP server management (catalog + custom) | done |  |
 | ST-20 | MCP "sync to agents" |  | W8 |
 | ST-21 | Skills catalog | done |  |
-| ST-22 | Automations (scheduled/cron agent runs) |  | W10 |
+| ST-22 | Automations (scheduled/cron agent runs) | done |  |
 | ST-23 | Per-project settings — provenance model |  | W7 |
 | ST-24 | Per-project "base" settings (GitHub account, worktree root, default branch, base/push remote, git-credential mode, tmux) |  | W7 |
 | ST-25 | Per-project "shareable" settings written to `.emdash.json` |  | W7 |
@@ -2241,6 +2241,36 @@ result a real machine missing gh/ripgrep/tmux/node but not git would give
 the resolver the checkout board reads from. This one is `part`, not `done`:
 it is the plain-line notice, not the fuller one-click "workshop" surface
 TR-18 in the catalog also describes.
+### A session on a timetable, cut on its own (2026-09-25)
+
+ST-22. A new section on a project's settings window, "sessions on a
+timetable" — what it's for (the first thing said), which agent, and when:
+every morning at a fixed clock time, every n hours, or on every push to the
+base branch. Backed by its own small domain (`main/schedules.ts`, a JSON
+store beside `projects.json`) and a 15-second tick, running only while the
+app is: the settings window offers no way to reach a cron entry or a git
+hook, and neither exists on disk. When one comes due it cuts a session
+exactly the way the empty hook does — `tasks.begin` with the same name/kind
+the naming board already sends, `tasks.rehand` for the chosen agent, then
+`agents.tell` with what it's for as the first thing said (skipped for a
+terminal-kind one, the same exception the naming board already makes) — and
+it lands on the rail like any other lantern, with its work left there.
+"Every push" watches the base branch's own ref with a plain `git rev-parse`
+in the project's own checkout, no fetch and no hook: it only ever notices
+what has already arrived, and its baseline is captured the moment the
+schedule is made so it never fires on whatever the branch already was.
+Listed schedules remove with the app's usual two presses.
+
+Driven: opened a throwaway project's settings, picked Claude Code, wrote
+"say the word pineapple", set "every morning" a minute out, added it to the
+timetable. A minute later, with nobody touching anything, a real session
+appeared on the rail on its own — a fresh worktree, a real `claude` spawned,
+greeted with the prompt, and renamed itself "Pineapple" the way an agent's
+own naming already works. Not independently driven this sitting: the
+"every n hours" and "on every push" branches (same `due()`/`fire()` path,
+exercised by the daily one) — an hours-scale or a push-triggered fire is
+consistent with the code but wasn't sat through or manufactured with a real
+commit.
 
 ### Next
 

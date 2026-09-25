@@ -210,6 +210,18 @@ conversation back, plainly, right there in the window — nothing woken, no
 worktree needed, since taking a session down was always only ever the
 worktree going. Escape steps back out to settings.
 
+**A session can cut itself, on a timetable.** The same window offers sessions
+on their own schedule: what it's for — the first thing said, exactly as if
+you'd written it on the gatepost yourself — which agent, and when: every
+morning at a time, every few hours, or on every push to the base branch,
+watched rather than hooked. Only while the village is open; there is no cron
+entry and no hook on the checkout, so a schedule due while Mender is closed
+simply waits for the next moment it is. When one comes due it cuts its own
+worktree exactly like the empty hook does and hangs its lantern on the rail
+like any other session, its work already left there for you to find.
+Schedules on the list come off with the same two presses everything
+irreversible here takes.
+
 **Everything else is laid over the yard, never instead of it.** A file, a
 change, a commit, a folder, a search, a shell, a pull request, the card behind
 `/agent`: opening any of them drops the world to silhouettes and brings a flat

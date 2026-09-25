@@ -25,6 +25,8 @@ import { createProjectsController } from './projects-controller';
 import { createPromptsController } from './prompts';
 import { installQuitGuard } from './quit';
 import { startRuntimes } from './runtimes';
+import { createSchedules } from './schedules';
+import { createSchedulesController } from './schedules-controller';
 import { createTasks } from './tasks';
 import { createTasksController } from './tasks-controller';
 import { createTuiSessions, mergedMoods } from './tui-sessions';
@@ -81,9 +83,11 @@ export async function main(): Promise<void> {
   const changes = createChanges(runtimes);
   const finding = createFinding(runtimes);
   const sessionUsage = createSessionUsageReader(runtimes, tasks);
+  const schedules = createSchedules(tasks, agents, projects);
   scope.add(() => agents.dispose());
   scope.add(() => tasks.dispose());
   scope.add(() => tuiSessions.dispose());
+  scope.add(() => schedules.dispose());
   installWire(scope, {
     ...runtimes.controllers,
     agents: createAgentsController(agents, moods, tuiSessions),
@@ -94,6 +98,7 @@ export async function main(): Promise<void> {
     github: createGitHubStatus(),
     projects: createProjectsController(projects),
     prompts: createPromptsController(),
+    schedules: createSchedulesController(schedules),
     tasks: createTasksController(tasks),
     village: createVillageController({ state: () => projects.standing() }),
   });

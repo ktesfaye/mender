@@ -1358,6 +1358,8 @@ async function boot(): Promise<void> {
         github: null,
         sessions: tasks.filter((task) => task.project === project.id).length,
         history: null,
+        schedules: null,
+        scheduleHands: [],
         ...(fresh ? { fresh } : {}),
       };
       let shown = FACES;
@@ -1427,6 +1429,17 @@ async function boot(): Promise<void> {
           );
           redraw();
         },
+        addSchedule: async (what, agent, terminal, when) => {
+          state.schedules = await client.schedules.add(
+            { project: project.id, what, agent, kind: terminal ? 'terminal' : undefined, when },
+            { timeoutMs: 0 }
+          );
+          redraw();
+        },
+        removeSchedule: async (id) => {
+          state.schedules = await client.schedules.remove({ id }, { timeoutMs: 0 });
+          redraw();
+        },
         signIn: async () => {
           const started = await client.github.signIn({}, { timeoutMs: 0 });
           if (!started.success) {
@@ -1472,6 +1485,11 @@ async function boot(): Promise<void> {
       })();
       void (async () => {
         state.github = await client.github.status({}, { timeoutMs: 0 });
+        redraw();
+      })();
+      void (async () => {
+        state.scheduleHands = await client.schedules.agents({}, { timeoutMs: 0 });
+        state.schedules = await client.schedules.list({ project: project.id }, { timeoutMs: 0 });
         redraw();
       })();
     };
