@@ -1272,7 +1272,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-03 | Add Project modal — Clone Repository | done | W7 |
 | WS-04 | Project host — local vs SSH ("Machine") | cut |  |
 | WS-05 | Repository inspection / creation errors | part | W7 |
-| WS-06 | Rename / delete / relink a project | part | W7 |
+| WS-06 | Rename / delete / relink a project | done |  |
 | WS-07 | Project availability banner / disabled-action guard |  | W7 |
 | WS-08 | Project settings & config sharing | part | W7 |
 | WS-09 | Worktree directory setting | done |  |
@@ -1293,7 +1293,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-24 | Workspaces tab (per project or per machine) | done |  |
 | WS-25 | Workspace row actions (Open in Task / Clean Artifacts / Delete) | part |  |
 | WS-26 | Bulk "Delete workspaces" |  | W7 |
-| WS-27 | Workspace removal / path-issue / script-issue states |  | W7 |
+| WS-27 | Workspace removal / path-issue / script-issue states | part | W7 |
 | WS-28 | Observation freshness (fresh/stale/offline) |  | W7 |
 | WS-29 | Checkout store (stage/unstage/discard/commit/push/pull/publish) | done | W3 |
 | WS-30 | Git action toasts | done | W3 |
@@ -1431,7 +1431,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-05 | Home view | done |  |
 | UI-06 | Project view — header & actions menu | cut |  |
 | UI-07 | Project view — section tabs (Tasks/PRs/Workspaces/Settings) | cut |  |
-| UI-08 | Project view — non-ready states (creating/hydrating/context-error) |  | W7 |
+| UI-08 | Project view — non-ready states (creating/hydrating/context-error) | part | W7 |
 | UI-09 | Task titlebar — breadcrumb + git popover | cut | W3 |
 | UI-10 | Task titlebar — activity/preview/open-in/drawer-toggle/sidebar-toggle | cut |  |
 | UI-11 | Task main column — split-pane tab workbench | cut |  |

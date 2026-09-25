@@ -336,6 +336,22 @@ nobody has seen, send up what has run ahead, bring down whatever is new. Nothing
 here goes and asks the other end what it has, so bringing it down is also how
 you find out.
 
+**A project whose folder is gone says so, plainly, in place of the yard.**
+Walking into a district whose checkout was moved or deleted outside the
+village does not open onto an empty yard or a silent failure: it says where
+the folder used to be and offers the one way out, "relink it" — the same
+native folder picker founding a project already uses, pointed at an existing
+project instead of a new one. Picking a real git repository stands the yard
+back up exactly where you left it; nothing about the project's sessions,
+history or settings is touched.
+
+**A worktree's own setup step that never came back clean says so on its
+checkout board, not just once in a toast that is gone by the time you look
+up.** `its <script> step failed: <what it said>` sits under the branch's own
+standing, with the two ways through it: run it again, or say it is fine as
+it is and stop being asked — an agent working in a checkout that never ran
+its setup script is still a working session, never a broken one.
+
 **A session's own board offers to catch it up, or land it, without a remote
 in the way.** When the branch it was cut from has moved, a line offers to
 bring that base in, merging it straight into the session's worktree; unless

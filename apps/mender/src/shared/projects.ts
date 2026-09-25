@@ -15,6 +15,10 @@ export const projectSchema = z.object({
   /** Who a session's commits go out as, when this project says otherwise. */
   gitName: z.string().optional(),
   gitEmail: z.string().optional(),
+  /** Whether its folder is actually still there, checked fresh on every
+      `list` and never stored — a folder moved or deleted outside the
+      village shows up here without anything writing it down. */
+  available: z.boolean().optional(),
 });
 
 export type Project = z.infer<typeof projectSchema>;
@@ -39,6 +43,17 @@ export const foundErrorSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('clone-failed'), said: z.string() }),
   z.object({ kind: z.literal('create-failed'), said: z.string() }),
 ]);
+
+/** Pointing a project at a folder actually there, after its own has gone
+    missing — the folder picker, once more, but onto an existing project
+    rather than a new one. */
+export const relinkErrorSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('cancelled') }),
+  z.object({ kind: z.literal('not-a-repository'), path: z.string() }),
+  z.object({ kind: z.literal('no-such-project') }),
+]);
+
+export type RelinkError = z.infer<typeof relinkErrorSchema>;
 
 export const pictureSchema = z.object({
   path: z.string(),
@@ -125,6 +140,13 @@ export const projectsContract = defineContract({
   script: procedure({
     input: z.object({ id: z.string(), which: scriptKindSchema, value: z.string() }),
     output: scriptsSchema,
+  }),
+  /** Points a project whose own folder has gone missing at one that is
+      actually there — the native folder picker, same as founding. */
+  relink: fallible({
+    input: z.object({ id: z.string() }),
+    data: projectSchema,
+    error: relinkErrorSchema,
   }),
 });
 

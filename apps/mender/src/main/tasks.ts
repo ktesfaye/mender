@@ -6,6 +6,7 @@ import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import type { ActiveRootStatus } from '@emdash/core/runtimes/file-search/api';
 import { shortName } from '@emdash/core/runtimes/git/api';
+import type { WorkspaceRecord } from '@emdash/core/runtimes/workspace-registry/api';
 import { ReplicaState } from '@emdash/wire/live';
 import { cell, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
@@ -103,6 +104,14 @@ export interface Tasks {
   /** The branches this project's checkout already knows about, for the
       naming step to offer alongside a fresh one. */
   branches(project: string): Promise<string[]>;
+  /** The script that failed setting this task's worktree up, if any is still
+      unresolved — read off the workspace registry's own record, never
+      guessed. */
+  setupFailure(id: string): Promise<{ script: string; message: string } | null>;
+  /** Runs that script again. Its own failure lands back on `setupFailure`
+      the next time it is read; this never fails the call itself, the same
+      way the registry never fails activation over a script. */
+  retrySetup(id: string): Promise<void>;
   /**
    * What is in that checkout, by name, nearest first.
    *
@@ -233,6 +242,33 @@ export function createTasks(
           .filter(Boolean);
       } catch {
         return [];
+      }
+    },
+
+    async setupFailure(id) {
+      const records = await workspaceRecords(runtimes);
+      const notice = records[id]?.runtime?.notices?.find(
+        (each) => each.kind === 'script-failed' && each.script !== 'teardown'
+      );
+      return notice && notice.kind === 'script-failed'
+        ? { script: notice.script, message: notice.message }
+        : null;
+    },
+
+    async retrySetup(id) {
+      const records = await workspaceRecords(runtimes);
+      const notice = records[id]?.runtime?.notices?.find(
+        (each) => each.kind === 'script-failed' && each.script !== 'teardown'
+      );
+      const script = notice && notice.kind === 'script-failed' ? notice.script : 'setup';
+      try {
+        await runtimes.workspaces.runScript(
+          { workspaceId: id, script, provenance: 'retry' },
+          { timeoutMs: 0 }
+        );
+      } catch {
+        // A run that would not even start is the same as one that failed:
+        // the notice stays, and the board says so next time it is read.
       }
     },
 
@@ -623,6 +659,21 @@ async function repositoryOf(
   });
   if (!registered.success) return fail({ kind: 'refused', because: whatItSaid(registered.error) });
   return { success: true as const, data: registered.data.parentId ?? registered.data.id };
+}
+
+/** The workspace registry's own records, read once and let go of — the
+ *  board that shows them resamples on its own rewrite rather than staying
+ *  subscribed here. */
+async function workspaceRecords(
+  runtimes: MenderRuntimes
+): Promise<Record<string, WorkspaceRecord>> {
+  const replica = new ReplicaState(runtimes.workspaces.records.state(undefined, 'list'), {
+    onChange: () => {},
+  });
+  await replica.ready;
+  const value = replica.current();
+  await replica.dispose();
+  return value;
 }
 
 /**

@@ -16,5 +16,6 @@ export function createProjectsController(projects: Projects): Controller {
     identity: ({ id, name, email }) => projects.identity(id, name, email),
     scripts: ({ id }) => projects.scripts(id),
     script: ({ id, which, value }) => projects.script(id, which, value),
+    relink: ({ id }) => projects.relink(id),
   });
 }

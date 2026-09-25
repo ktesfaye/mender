@@ -85,6 +85,14 @@ export const tasksContract = defineContract({
   /** The branches this project's checkout already knows about, for the
       naming step to offer alongside a fresh one. */
   branches: procedure({ input: z.object({ project: z.string() }), output: z.array(z.string()) }),
+  /** The script that failed setting this task's worktree up, if any is
+      still unresolved. */
+  setupFailure: procedure({
+    input: z.object({ id: z.string() }),
+    output: z.object({ script: z.string(), message: z.string() }).nullable(),
+  }),
+  /** Runs that script again. */
+  retrySetup: procedure({ input: z.object({ id: z.string() }), output: z.void() }),
   /**
    * What is in that checkout, by name.
    *

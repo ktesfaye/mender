@@ -82,6 +82,11 @@ export type FoundError =
   | { kind: 'clone-failed'; said: string }
   | { kind: 'create-failed'; said: string };
 
+export type RelinkError =
+  | { kind: 'cancelled' }
+  | { kind: 'not-a-repository'; path: string }
+  | { kind: 'no-such-project' };
+
 /** How a checkout is meant to arrive: already on disk, cloned, or made fresh. */
 export type FoundFrom =
   | { kind: 'folder' }
@@ -113,6 +118,11 @@ export interface Projects {
   scripts(id: string): Promise<Scripts>;
   /** Blank clears that script, back to nothing running for it. */
   script(id: string, which: ScriptKind, value: string): Promise<Scripts>;
+  /** Points a project whose own folder has gone missing at one that is
+      actually there. */
+  relink(
+    id: string
+  ): Promise<{ success: true; data: Project } | { success: false; error: RelinkError }>;
   /** Who takes a project's sessions down when the project is forgotten. */
   sweeps(sweep: (project: string) => Promise<void>): void;
   /** The state these projects make: the districts that are standing. */
@@ -163,7 +173,8 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
     Promise.all(
       (await stored()).map(async (project) => {
         const icon = project.picture ? await shown(iconPath(project.id)) : undefined;
-        return icon ? { ...project, icon } : project;
+        const available = existsSync(project.path);
+        return { ...project, ...(icon ? { icon } : {}), available };
       })
     );
 
@@ -411,6 +422,25 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
         });
       }
       return scriptsIn(project);
+    },
+
+    async relink(id) {
+      const projects = await stored();
+      const project = projects.find((each) => each.id === id);
+      if (!project) return { success: false, error: { kind: 'no-such-project' } };
+      const picked = await pickFolder();
+      if (!picked.success) return { success: false, error: { kind: 'cancelled' } };
+      const parsed = parseNativeAbsolute(picked.data);
+      if (!parsed.success) {
+        return { success: false, error: { kind: 'not-a-repository', path: picked.data } };
+      }
+      const inspection = await runtimes.git.inspectPath({ path: parsed.data });
+      if (!inspection.success || inspection.data.kind !== 'repository') {
+        return { success: false, error: { kind: 'not-a-repository', path: picked.data } };
+      }
+      const relinked = { ...project, path: picked.data };
+      await save(projects.map((each) => (each.id === id ? relinked : each)));
+      return { success: true, data: { ...relinked, available: true } };
     },
 
     async abandon(id) {

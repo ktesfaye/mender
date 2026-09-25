@@ -305,6 +305,7 @@ async function boot(): Promise<void> {
       live = null;
       landing = null;
       conflicted = null;
+      setupFailure = null;
       await was?.close();
       wood([{ kind: 'line', text: 'reading the checkout…', tone: 'faded' }]);
       const opened = await openCheckout(
@@ -313,7 +314,9 @@ async function boot(): Promise<void> {
           name: 'name' in where ? where.name : project.name,
           path: where.path,
           ...(session ? { since: session.base ?? null } : {}),
-          ...(session?.base ? { tail: () => landingLines(landing) } : {}),
+          ...(session
+            ? { tail: () => [...landingLines(landing), ...setupFailureLines(setupFailure)] }
+            : {}),
           servers: () => servers.get(where.path) ?? [],
         },
         (rows) => {
@@ -327,6 +330,16 @@ async function boot(): Promise<void> {
       live = opened;
       wood(opened.rows());
       if (session?.base) void refreshLanding(aim, session, project);
+      if (session) void refreshSetupFailure(aim, session);
+    };
+
+    /** Reads whether the session's own worktree setup ever failed, fresh
+        every time the checkout board opens — never cached across sessions. */
+    const refreshSetupFailure = async (aim: Aim, session: Task): Promise<void> => {
+      const found = await client.tasks.setupFailure({ id: session.id }, { timeoutMs: 5000 });
+      if (open !== aim || inside !== session) return;
+      setupFailure = found;
+      if (live && plainCheckout()) rewrite(live.rows());
     };
 
     /** How the session's branch stands against the base it was cut from, asked
@@ -530,6 +543,9 @@ async function boot(): Promise<void> {
     let inside: Task | null = null;
     /** How this session's branch stands against the base it was cut from. */
     let landing: Landing | null = null;
+    /** The script that failed setting this session's worktree up, if the
+        board hasn't been told to stop saying so. */
+    let setupFailure: { script: string; message: string } | null = null;
     /** A merge that stopped on a conflict, laid over the checkout board. */
     let conflicted: {
       aim: Aim;
@@ -1319,6 +1335,11 @@ async function boot(): Promise<void> {
       const project = projectOn(aim.district);
       if (!project) return;
       flyToYard(camera, aim.district);
+      if (project.available === false) {
+        showMissingFolder(aim, project);
+        arrived();
+        return;
+      }
       /* You open a project to get at the work in it, so you land in the work:
          whichever session you were last in, or none if it has never had one. */
       const standing = tasksOn(aim.district);
@@ -1326,6 +1347,40 @@ async function boot(): Promise<void> {
       const here = standing.find((task) => task.id === last) ?? standing[0];
       await showYard(aim, project, here);
       arrived();
+    };
+
+    /**
+     * A project whose folder is gone — moved or deleted outside the village.
+     * Said plainly, on the same wood any other doing opens from the island
+     * on, with the one way out: pick the folder it is actually in now.
+     */
+    const showMissingFolder = (aim: Aim, project: Project): void => {
+      open = aim;
+      naming = null;
+      titling = null;
+      wood([
+        { kind: 'title', text: project.name },
+        { kind: 'line', text: `its folder is gone — it was at ${project.path}.`, tone: 'faded' },
+        { kind: 'gap' },
+        { kind: 'line', text: 'relink it', pick: 'relink' },
+      ]);
+    };
+
+    const relinkProject = async (project: Project): Promise<void> => {
+      const done = await client.projects.relink({ id: project.id }, { timeoutMs: 0 });
+      if (!done.success) {
+        if (done.error.kind === 'cancelled') return;
+        say(
+          done.error.kind === 'not-a-repository'
+            ? `${done.error.path} is not a git repository.`
+            : 'that project is gone.',
+          6000
+        );
+        return;
+      }
+      projects = projects.map((each) => (each.id === project.id ? done.data : each));
+      const aim = open;
+      if (aim && projectOn(aim.district)?.id === project.id) await openDistrict(aim);
     };
 
     /* Which session you were last standing in, per project, so walking back
@@ -3623,6 +3678,26 @@ async function boot(): Promise<void> {
         void reviveSession();
         return;
       }
+      if (pick === 'relink') {
+        const aim = open;
+        const project = aim && projectOn(aim.district);
+        if (project) void relinkProject(project);
+        return;
+      }
+      if (pick === 'setup-retry') {
+        const aim = open;
+        const session = inside;
+        if (!aim || !session) return;
+        void client.tasks.retrySetup({ id: session.id }, { timeoutMs: 0 }).then(() => {
+          void refreshSetupFailure(aim, session);
+        });
+        return;
+      }
+      if (pick === 'setup-skip') {
+        setupFailure = null;
+        if (live && plainCheckout()) rewrite(live.rows());
+        return;
+      }
       if (pick === 'allow-all-toggle') {
         if (!naming) return;
         naming = { ...naming, allowAll: !naming.allowAll };
@@ -4538,6 +4613,19 @@ function alongside(written: string, paths: readonly string[]): string {
   const said = paths.map((path) => (path.includes(' ') ? `"${path}"` : path)).join(' ');
   const before = written.trimEnd();
   return before ? `${before} ${said} ` : `${said} `;
+}
+
+/** A worktree's own setup step that never came back clean, said plainly on
+    the checkout board, with the two ways out: run it again, or say it's
+    fine as it is and stop being asked. */
+function setupFailureLines(failure: { script: string; message: string } | null): Row[] {
+  if (!failure) return [];
+  return [
+    { kind: 'gap' },
+    { kind: 'line', text: `its ${failure.script} step failed: ${failure.message}`, tone: 'sore' },
+    { kind: 'line', text: 're-run it', pick: 'setup-retry' },
+    { kind: 'line', text: "it's fine as it is", tone: 'faded', pick: 'setup-skip' },
+  ];
 }
 
 function sameAim(a: Aim, b: Aim): boolean {
