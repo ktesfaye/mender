@@ -186,6 +186,12 @@ export interface Step {
   /** What it cost or changed, written cool after the thing it did. */
   note?: string;
   tone?: Posture;
+  /** The file this step touched, so pressing it can open the change itself. */
+  path?: string;
+  /** A few marked lines of what changed, read right under the step. */
+  diff?: string[];
+  /** How many more marked lines there were than `diff` carries. */
+  diffMore?: number;
 }
 
 /** Something it produced, which is what the cart is carrying. */

@@ -173,6 +173,12 @@ export const deedSchema = z.object({
   tool: z.string(),
   running: z.boolean(),
   wrong: z.boolean().optional(),
+  /** The file this step touched, so the board knows what "open it" means. */
+  path: z.string().optional(),
+  /** A few marked lines of what changed, capped, for reading right under the step. */
+  diff: z.array(z.string()).optional(),
+  /** How many more marked lines there were than `diff` carries. */
+  diffMore: z.number().int().optional(),
 });
 export type Deed = z.infer<typeof deedSchema>;
 

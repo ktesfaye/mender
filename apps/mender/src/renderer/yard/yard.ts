@@ -324,7 +324,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     if (yard.session) {
       asked(root, columns.asked, yard, floor, layer.cramped());
       thinking(covered, columns.thinking, yard, floor, does, walkedIn, sinceOf(yard));
-      made(covered, columns.made, yard, floor);
+      made(covered, columns.made, yard, floor, does);
       still(stillAt, yard, does);
     } else {
       nobody(root, columns.asked, columns.made, yard, floor);
@@ -1157,7 +1157,13 @@ function thought(
    steps it took to get there with a prop from the kit standing for each, and
    at the foot of the column the yard itself: the fire, and everybody it sent
    out, placed by what they are doing rather than listed. */
-function made(root: HTMLElement, at: { x: number; wide: number }, yard: Yard, floor: number): void {
+function made(
+  root: HTMLElement,
+  at: { x: number; wide: number },
+  yard: Yard,
+  floor: number,
+  does: Doings
+): void {
   const session = yard.session;
   const output = session?.made[0];
   const steps_ = session?.steps ?? [];
@@ -1207,7 +1213,7 @@ function made(root: HTMLElement, at: { x: number; wide: number }, yard: Yard, fl
   const earlier = session?.olderSteps;
   const count = exact('', 12, '#8a7452');
   steps.appendChild(count);
-  for (const one of steps_) steps.appendChild(keyed(did(one), `step:${one.id}`));
+  for (const one of steps_) steps.appendChild(keyed(did(one, does), `step:${one.id}`));
   if (steps_.length) above.appendChild(steps);
 
   /* Appended first and counted after, because how many fit is a thing only the
@@ -1266,7 +1272,16 @@ function cart(root: HTMLElement, wide: number, output: Made): number {
 }
 
 /** One thing it did, with the prop that stands for it in a fixed slot. */
-function did(one: Step): HTMLElement {
+function did(one: Step, does: Doings): HTMLElement {
+  const it = document.createElement('div');
+  it.style.cssText = 'display:flex;flex-direction:column;gap:2px';
+  it.appendChild(deedLine(one));
+  if (one.diff?.length) it.appendChild(diffPreview(one, does));
+  return it;
+}
+
+/** The line itself: the prop, what it did, and what it cost. */
+function deedLine(one: Step): HTMLElement {
   const line = row(10);
   const slot = document.createElement('span');
   slot.style.cssText = 'width:44px;display:flex;justify-content:center;flex:none;position:relative';
@@ -1320,6 +1335,40 @@ function noted(note: string): (string | HTMLElement)[] {
   }
   if (/^\d+ lines?$/.test(note)) return [tinted(note, 'var(--yard-well)')];
   return [tinted(note, '#a89272')];
+}
+
+/**
+ * What a step changed, read right under it: a few marked lines in the same
+ * two tones a change is read in anywhere else, indented under the prop's
+ * slot so it reads as belonging to the step rather than as its own line.
+ *
+ * When there was more than fits, the cap itself is the way to the rest —
+ * pressing it opens the file's whole change, the same board a checkout's own
+ * changed files already open onto.
+ */
+function diffPreview(one: Step, does: Doings): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-left:44px;display:flex;flex-direction:column;gap:1px';
+  for (const marked of one.diff ?? []) {
+    const line = document.createElement('span');
+    const kind = marked[0];
+    line.style.cssText =
+      "font-family:'Josefin Sans',sans-serif;font-size:12px;line-height:1.35;white-space:pre;overflow:hidden;text-overflow:ellipsis";
+    line.style.color = kind === '+' ? 'var(--yard-well)' : kind === '-' ? 'var(--yard-wrong)' : '#a89272';
+    line.textContent = marked;
+    wrap.appendChild(line);
+  }
+  if (one.diffMore && one.path) {
+    const more = pressing(`and ${one.diffMore} more lines`, () => does.press(`change:${one.path}`));
+    more.style.cssText += ';font-size:12px';
+    wrap.appendChild(more);
+  } else if (one.diffMore) {
+    const more = document.createElement('span');
+    more.style.cssText = "font-family:'Josefin Sans',sans-serif;font-size:12px;color:#8a7452";
+    more.textContent = `and ${one.diffMore} more lines`;
+    wrap.appendChild(more);
+  }
+  return wrap;
 }
 
 /**

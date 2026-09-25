@@ -1213,16 +1213,30 @@ function toldFrom(
   }
 
   let note: string | undefined;
+  let diff: string[] | undefined;
+  let diffMore: number | undefined;
+  let path: string | undefined;
   if (node.kind === 'create-file-tool-call') {
     const added = node.content ? node.content.split('\n').length : 0;
     if (added) note = `${added} line${added === 1 ? '' : 's'}`;
     written.push({ path: node.path, at, added, gone: 0 });
+    path = inCheckout(node.path, root);
+    const lines = (node.content ?? '').split('\n').map((line) => `+${line}`);
+    if (lines.length) {
+      diff = lines.slice(0, STEP_DIFF);
+      if (lines.length > STEP_DIFF) diffMore = lines.length - STEP_DIFF;
+    }
   } else if (node.kind === 'modify-file-tool-call') {
     const changed = changes(node.oldText, node.newText);
     const added = changed.filter((line) => line.startsWith('+')).length;
     const gone = changed.filter((line) => line.startsWith('-')).length;
     if (added || gone) note = `+${added} −${gone}`;
     written.push({ path: node.path, at, added, gone });
+    path = inCheckout(node.path, root);
+    if (changed.length) {
+      diff = changed.slice(0, STEP_DIFF);
+      if (changed.length > STEP_DIFF) diffMore = changed.length - STEP_DIFF;
+    }
   } else if (node.kind === 'search-tool-call' && node.matchCount !== undefined) {
     note = `${node.matchCount} match${node.matchCount === 1 ? '' : 'es'}`;
   }
@@ -1237,6 +1251,9 @@ function toldFrom(
     tool: node.kind,
     running: node.status === 'running',
     ...(node.status === 'error' ? { wrong: true } : {}),
+    ...(path ? { path } : {}),
+    ...(diff ? { diff } : {}),
+    ...(diffMore ? { diffMore } : {}),
   });
 
   for (const child of node.children ?? []) {
@@ -1272,6 +1289,8 @@ function idsOf(item: { id: string; children?: ToolNode[] }): string[] {
 const SPOKE = 40;
 /** A thought is long and is not the thing you came to read. */
 const MUSED = 60;
+/** As many marked lines of a file edit as belong right under the step itself. */
+const STEP_DIFF = 6;
 
 function markFor(status: string): string {
   return status === 'running' ? '…' : status === 'error' ? '✗' : '·';
@@ -1463,6 +1482,19 @@ function inside(path: string, root: string | undefined): string {
     if (rest) return rest;
   }
   return path;
+}
+
+/**
+ * A file's path, relative to the checkout, for the one thing that has to send
+ * a path back across the wire rather than just say it: opening the change
+ * itself needs the same root-relative shape the checkout board's own files
+ * use, and an absolute path is never in the checkout as far as that board is
+ * concerned, so a step outside a known root offers no such open at all.
+ */
+function inCheckout(path: string, root: string | undefined): string | undefined {
+  if (!root || !path.startsWith(root)) return undefined;
+  const rest = path.slice(root.length).replace(/^[/\\]+/, '');
+  return rest || undefined;
 }
 
 /** A runtime's reason, as a sentence rather than a symbol. */

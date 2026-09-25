@@ -304,6 +304,9 @@ function stepOf(deed: {
   tool: string;
   running: boolean;
   wrong?: boolean;
+  path?: string;
+  diff?: string[];
+  diffMore?: number;
 }): Step {
   return {
     id: deed.id,
@@ -312,6 +315,9 @@ function stepOf(deed: {
     ...(deed.note ? { note: deed.note } : {}),
     ...(deed.running ? { running: true } : {}),
     ...(deed.wrong ? { tone: 'broken' as const } : {}),
+    ...(deed.path ? { path: deed.path } : {}),
+    ...(deed.diff ? { diff: deed.diff } : {}),
+    ...(deed.diffMore ? { diffMore: deed.diffMore } : {}),
   };
 }
 

@@ -110,8 +110,12 @@ which is the one thing on this screen set large. What it made is loaded on a
 cart to the right, with everything it did listed under it, a prop from the kit
 standing for each: a signpost for something read, a crate for something
 written, an anvil for something changed, a tub over the fire for something set
-running. Under all of that is the ground itself, with whoever it sent out
-standing in the firelight with an answer or off in the dark still working.
+running. An anvil's own step carries a few marked lines of what it actually
+changed right under it, capped, in the same warm and sore tones a change is
+read in anywhere else in the village; pressing the cap opens the whole change
+on the checkout's own board. Under all of that is the ground itself, with
+whoever it sent out standing in the firelight with an answer or off in the
+dark still working.
 
 The fire is the session. Lit is somebody working, banked is somebody who has
 stopped and is standing at the gate, embers is finished, out is nobody home,
