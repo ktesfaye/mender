@@ -270,7 +270,18 @@ while you scroll is a panel floating over the wood, which is the thing this app
 does not do; the question is directly above the answer, and scrolling back to it
 is the honest way to see it again.
 
-Nothing is left in W2 that this machine can reach. A thought and a plan are
+The column of what it is thinking only draws the most recent stretch of a
+session's thoughts, not its whole history: the rest sits behind a "N more
+before these" line that reveals another stretch a click at a time, the
+scroll held steady across it. What was already true stays true — a session's
+own record is capped at 400 thoughts before this column ever sees it — this
+adds the same shrink on top of that, on the DOM rather than the data, so a
+long session's cost is whatever is actually drawn. Verified with the window
+math itself (`window.test.ts`) and smoke-tested in the running app; not
+driven with a synthetic session of hundreds of real turns, so AG-23 stays
+`part` until it has been.
+
+Nothing else is left in W2 that this machine can reach. A thought and a plan are
 built and have never rendered, because Claude has never sent either one over the
 protocol at any setting, and naming an issue on the line waits for the trackers
 in W4.
@@ -1222,7 +1233,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-20 | Normalized transcript event vocabulary | part | W2 |
 | AG-21 | Host/runtime availability states |  | W7 |
 | AG-22 | Transcript row kinds (message, tool, subagent, thinking, file-op, execute, diff, resource-link, plan, working, turn-outcome) | part | W2 |
-| AG-23 | Virtualized, auto-growing transcript scroll | part | W2 |
+| AG-23 | Virtualized, auto-growing transcript scroll (draws the most recent stretch only, older revealed a chunk at a time; not driven at hundreds of real turns) | part | W2 |
 | AG-24 | Composer placement (centered vs docked) | cut |  |
 | AG-25 | Pin the active user message while scrolling | cut | W2 |
 | AG-26 | User message card | done | W2 |

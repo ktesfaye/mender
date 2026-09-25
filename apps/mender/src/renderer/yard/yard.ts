@@ -43,6 +43,7 @@ import type {
   Yard,
 } from './what';
 import { box, exact, firelight, folk, label, row, rule, said, stack, trim } from './write';
+import { hiddenCount, revealMore, windowStart } from './window';
 
 /*
  * On a Mac the window's own three buttons float over the top left corner of
@@ -984,8 +985,44 @@ function thinking(
   stream.style.cssText +=
     ";font-family:'Cormorant Garamond',serif;overflow-y:auto;pointer-events:auto";
 
-  const older = yard.session?.olderThoughts ?? 0;
-  if (older) stream.appendChild(exact(`\u25b8 ${older} more before these`, 12, '#8a7452'));
+  /* A long conversation is hundreds of turns, and laying every one of them on
+     the wood at once is the whole column's cost paid on every single token
+     that comes in, whether or not you are looking at any of it. So only the
+     most recent stretch is actually drawn; the rest stays a number rather
+     than DOM, and pressing it draws the next stretch back, the scroll held
+     steady so the words you were reading do not jump. */
+  const sessionId = yard.session?.id ?? '';
+  const wholeSize = thoughts.length;
+  let shown = Math.min(wholeSize, revealedThoughts.get(sessionId) ?? REVEAL_INITIAL);
+  const server = yard.session?.olderThoughts ?? 0;
+
+  const older = document.createElement('div');
+  stream.appendChild(older);
+
+  const items = document.createElement('div');
+  items.style.cssText = 'display:flex;flex-direction:column;gap:20px';
+  stream.appendChild(items);
+
+  function laidOlder(): void {
+    const hidden = hiddenCount(wholeSize, shown, server);
+    older.replaceChildren();
+    if (!hidden) return;
+    const line = exact(`\u25b8 ${hidden} more before these`, 12, '#8a7452');
+    if (windowStart(wholeSize, shown) > 0) {
+      line.style.cursor = 'pointer';
+      line.style.pointerEvents = 'auto';
+      line.addEventListener('mousedown', (event) => event.preventDefault());
+      line.addEventListener('click', () => {
+        const before = stream.scrollHeight;
+        shown = revealMore(wholeSize, shown, REVEAL_CHUNK);
+        revealedThoughts.set(sessionId, shown);
+        laidOlder();
+        laidItems();
+        stream.scrollTop += stream.scrollHeight - before;
+      });
+    }
+    older.appendChild(line);
+  }
 
   /* Oldest first and dimmest first, so the column brightens as it comes down
      to what is happening now. The last one is set large and is the only thing
@@ -993,52 +1030,64 @@ function thinking(
      which case it is history like the rest and the live edge is what the agent
      is doing about what you said since. */
   const keep = new Set<string>();
-  thoughts.forEach((one, i) => {
-    const far = thoughts.length - 1 - i;
-    if (one.live) {
-      keep.add(one.id);
-      const it = keyed(document.createElement('div'), `thought:${one.id}`);
-      it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
-      const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
-      const head = said(
-        trouble?.head ?? (one.quiet ? 'thinking' : 'now'),
-        trouble?.ink ?? '#ffc98a'
-      );
-      it.appendChild(head);
-      const body = document.createElement('div');
-      /* Set large, unless it is long enough that large is a wall: a whole
+  function laidItems(): void {
+    items.replaceChildren();
+    keep.clear();
+    laidOne();
+  }
+  function laidOne(): void {
+    const start = windowStart(wholeSize, shown);
+    thoughts.slice(start).forEach((one, si) => {
+      const i = start + si;
+      const far = thoughts.length - 1 - i;
+      if (one.live) {
+        keep.add(one.id);
+        const it = keyed(document.createElement('div'), `thought:${one.id}`);
+        it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
+        const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
+        const head = said(
+          trouble?.head ?? (one.quiet ? 'thinking' : 'now'),
+          trouble?.ink ?? '#ffc98a'
+        );
+        it.appendChild(head);
+        const body = document.createElement('div');
+        /* Set large, unless it is long enough that large is a wall: a whole
          report at the size of one sentence is read a word at a time. */
-      const size = one.said.length > 700 ? 19 : 21;
-      body.style.cssText = one.quiet
-        ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
-        : `font-size:${size}px;line-height:1.35;color:${trouble?.ink ?? '#ffdca4'};text-shadow:0 2px 10px rgba(0,0,0,.9)`;
-      prose(body, one.id, one.said, !walkedIn, keepCode(does), openLink(does));
-      it.appendChild(body);
-      stream.appendChild(it);
-      return;
-    }
-    /* Trouble keeps its colour as it goes into the history, dimmed with the
+        const size = one.said.length > 700 ? 19 : 21;
+        body.style.cssText = one.quiet
+          ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
+          : `font-size:${size}px;line-height:1.35;color:${trouble?.ink ?? '#ffdca4'};text-shadow:0 2px 10px rgba(0,0,0,.9)`;
+        prose(body, one.id, one.said, !walkedIn, keepCode(does), openLink(does));
+        it.appendChild(body);
+        items.appendChild(it);
+        return;
+      }
+      /* Trouble keeps its colour as it goes into the history, dimmed with the
        rest, so scrolling back you can still see where it went wrong. */
-    const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
-    const fade = far > 2 ? 0.46 : 0.62;
-    stream.appendChild(
-      keyed(
-        thought(
-          one,
-          far > 2 ? 15 : 16,
-          trouble
-            ? `color-mix(in srgb, ${trouble.ink} ${Math.round(fade * 140)}%, transparent)`
-            : `rgba(244,227,192,${fade})`,
-          trouble?.head,
-          keepCode(does),
-          trouble?.ink,
-          openLink(does)
-        ),
-        `thought:${one.id}`
-      )
-    );
-  });
-  forgetInk(keep);
+      const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
+      const fade = far > 2 ? 0.46 : 0.62;
+      items.appendChild(
+        keyed(
+          thought(
+            one,
+            far > 2 ? 15 : 16,
+            trouble
+              ? `color-mix(in srgb, ${trouble.ink} ${Math.round(fade * 140)}%, transparent)`
+              : `rgba(244,227,192,${fade})`,
+            trouble?.head,
+            keepCode(does),
+            trouble?.ink,
+            openLink(does)
+          ),
+          `thought:${one.id}`
+        )
+      );
+    });
+    forgetInk(keep);
+  }
+
+  laidOlder();
+  laidItems();
 
   if (live) stream.appendChild(ember(live, since));
   if (failure) stream.appendChild(failureEmber(failure, does));
@@ -1058,6 +1107,13 @@ function thinking(
 
 /** Where the column was left scrolled to, for a session somebody scrolled up in. */
 const followed = new Map<string, number>();
+
+/** How many of a session's most recent thoughts are actually drawn, keyed by
+    session id, so a long transcript's cost is what a screen's worth of it
+    costs rather than its whole history's. */
+const revealedThoughts = new Map<string, number>();
+const REVEAL_INITIAL = 60;
+const REVEAL_CHUNK = 80;
 
 /**
  * The fire banked — a limit, an overload, a lost connection — with what there
