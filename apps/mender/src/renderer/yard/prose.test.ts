@@ -20,6 +20,13 @@ describe('prose', () => {
     ]);
   });
 
+  it('reads a mermaid fence as a diagram block and any other fence as code', () => {
+    expect(blocksOf('```mermaid\ngraph TD\n  A --> B\n```')).toEqual([
+      { kind: 'mermaid', text: 'graph TD\n  A --> B' },
+    ]);
+    expect(blocksOf('```js\nconst a = 1\n```')).toEqual([{ kind: 'code', text: 'const a = 1' }]);
+  });
+
   it('reads a table with its divider dropped and numbers leaning right', () => {
     const [table] = blocksOf('| Name | Tokens |\n|---|---|\n| a | 2.2k |\n| b | 33 |');
     expect(table).toEqual({

@@ -14,9 +14,10 @@
  * footnotes or HTML, and anything it does not know it leaves as writing.
  */
 
+import { mermaidSVG } from '../diagram';
 import { inkRuns, type InkRun } from './motion';
 
-const FENCE = /^\s*(```|~~~)/;
+const FENCE = /^\s*(```|~~~)(\s*\S*)?/;
 const HEADING = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const RULED = /^\s{0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/;
 const QUOTE = /^\s{0,3}>\s?(.*)$/;
@@ -31,6 +32,7 @@ type Block =
   | { kind: 'item'; mark: string; depth: number; text: string }
   | { kind: 'quote'; text: string }
   | { kind: 'code'; text: string }
+  | { kind: 'mermaid'; text: string }
   | { kind: 'table'; rows: string[][]; right: boolean[] }
   | { kind: 'rule' };
 
@@ -42,11 +44,16 @@ export function blocksOf(text: string): Block[] {
     const line = lines[at] ?? '';
     if (!line.trim()) continue;
 
-    if (FENCE.test(line)) {
+    const fenced = FENCE.exec(line);
+    if (fenced) {
+      const lang = (fenced[2] ?? '').trim().toLowerCase();
       const code: string[] = [];
       at++;
       while (at < lines.length && !FENCE.test(lines[at] ?? '')) code.push(lines[at++] ?? '');
-      blocks.push({ kind: 'code', text: code.join('\n') });
+      const body = code.join('\n');
+      blocks.push(
+        lang === 'mermaid' ? { kind: 'mermaid', text: body } : { kind: 'code', text: body }
+      );
       continue;
     }
     const heading = HEADING.exec(line);
@@ -246,10 +253,34 @@ export function prose(
         into.appendChild(code);
         return;
       }
+      case 'mermaid': {
+        into.appendChild(mermaidBlock(block.text, keep));
+        return;
+      }
       case 'table':
         into.appendChild(table(block));
     }
   });
+}
+
+/** A diagram, drawn — or, when it will not parse, its own fenced text back. */
+function mermaidBlock(text: string, keep?: (code: string) => void): HTMLElement {
+  const svg = mermaidSVG(text);
+  if (!svg) {
+    const code = document.createElement('pre');
+    code.className = keep ? 'prose-block press' : 'prose-block';
+    code.textContent = text;
+    if (keep) {
+      code.title = 'press to keep it';
+      code.addEventListener('mousedown', (event) => event.preventDefault());
+      code.addEventListener('click', () => keep(text));
+    }
+    return code;
+  }
+  const wrap = document.createElement('div');
+  wrap.className = 'prose-mermaid';
+  wrap.innerHTML = svg;
+  return wrap;
 }
 
 function written(

@@ -1,3 +1,4 @@
+import { mermaidSVGStandalone } from '../diagram';
 import type { Row, Run, Tone } from './row';
 
 /**
@@ -23,7 +24,7 @@ const IN = 2;
 /** How wide a rule is drawn. Short of the board, so it reads as a pause. */
 const RULE = 24;
 
-const FENCE = /^\s*(?:```|~~~)/;
+const FENCE = /^\s*(```|~~~)(\s*\S*)?/;
 const HEADING = /^(#{1,6})\s+(.*)$/;
 const RULED = /^\s{0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/;
 const QUOTE = /^\s{0,3}>\s?(.*)$/;
@@ -44,17 +45,25 @@ export function saying(text: string, mark: string | undefined, tone?: Tone): Row
   for (let at = 0; at < lines.length; at++) {
     const line = lines[at] ?? '';
 
-    if (FENCE.test(line)) {
+    const fenced = FENCE.exec(line);
+    if (fenced) {
+      const lang = (fenced[2] ?? '').trim().toLowerCase();
       at++;
       const block: string[] = [];
       while (at < lines.length && !FENCE.test(lines[at] ?? '')) {
         block.push(lines[at] ?? '');
         at++;
       }
+      const body = block.join('\n');
+      const drawn = lang === 'mermaid' ? diagramRow(body) : null;
+      if (drawn) {
+        rows.push(drawn);
+        continue;
+      }
       /* A block of code is the one thing on a board you want out of it and
          cannot retype: press it and it is on the clipboard. Every row of it
          presses the same thing, so the whole block lights up as one. */
-      const pick = `keep:${block.join('\n')}`;
+      const pick = `keep:${body}`;
       for (const written of block) {
         rows.push({
           kind: 'line',
@@ -277,4 +286,24 @@ function plainly(text: string): string {
       out.slice(leant.index + leant[0].length);
   }
   return out;
+}
+
+/** How wide a drawn diagram is let get before it is scaled down to fit. */
+const DIAGRAM_WIDE = 640;
+const SVG_SIZE = /width="([\d.]+)"\s+height="([\d.]+)"/;
+
+/** A `mermaid` fence, drawn as a picture row — or null when it will not parse. */
+function diagramRow(text: string): Row | null {
+  const svg = mermaidSVGStandalone(text);
+  const size = svg ? SVG_SIZE.exec(svg) : null;
+  const wide = size ? Number(size[1]) : 0;
+  const tall = size ? Number(size[2]) : 0;
+  if (!svg || !wide || !tall) return null;
+  const scale = wide > DIAGRAM_WIDE ? DIAGRAM_WIDE / wide : 1;
+  return {
+    kind: 'picture',
+    src: `data:image/svg+xml,${encodeURIComponent(svg)}`,
+    wide: Math.round(wide * scale),
+    tall: Math.round(tall * scale),
+  };
 }

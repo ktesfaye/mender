@@ -895,6 +895,16 @@
   overflow-x: auto;
   margin: 0.15em 0;
 }
+.yard .prose-mermaid {
+  margin: 0.3em 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.yard .prose-mermaid svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
 .yard .prose-table table {
   border-collapse: collapse;
   font-family: var(--yard-face-label);

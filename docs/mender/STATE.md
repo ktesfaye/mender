@@ -203,10 +203,12 @@ line break. A table is measured and padded into real columns, because markdown
 tables are written by hand and almost never line up in the source. Emphasis loses
 its marks and keeps its words, which is the right way round.
 
-Diagrams moved to W9. A mermaid diagram is the one thing here with no answer
-yet: a pan-and-zoom viewer is a second surface, which this app does not have, and
-the village answer is to draw it on the wood in the same lines everything else is
-drawn in. That is drawing, not wiring, so it goes with the rest of the drawing.
+A fenced ` ```mermaid ` block is now drawn — colored to the wood rather than
+left in whatever the diagram's own default is, via `beautiful-mermaid` (already
+in the lockfile, no DOM dependency of its own). What is still W9 is a
+pan-and-zoom viewer for a diagram too large to read at the board's own width;
+until then it draws at a capped size, which is drawing, not the second surface
+a real viewer would need.
 
 A file can be named on the line you write on. An @ turns the lines under it into
 what is actually in that checkout, narrowing as you type, and picking one writes
@@ -482,9 +484,9 @@ nothing is silently overwritten by what just arrived.
 A `.md` file reads as writing rather than as marks now, the same renderer the
 transcript already uses for an agent's own words: headings, lists, quotes,
 rules and fenced code, with one line at the top to drop back to the raw text
-when editing a line is actually what you came for. Mermaid has nowhere to
-plug in yet on this board or the transcript's, so a fenced ` ```mermaid ` block
-still reads as a plain code block until that renderer exists.
+when editing a line is actually what you came for. A fenced ` ```mermaid `
+block draws as a picture row, the same diagram the transcript draws inline,
+capped to the board's own width.
 
 A file can be found from anywhere in a project or a session's yard now, not
 only after walking into the folder first: `find a file` is a line on the
@@ -1170,7 +1172,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-35 | Resource link card | cut | W2 |
 | AG-36 | Turn outcome / filler rows | part | W2 |
 | AG-37 | Markdown rendering (headings, tables, code, Mermaid, GFM, math) | part | W2 |
-| AG-38 | Mermaid diagram pan/zoom viewer |  | W9 |
+| AG-38 | Mermaid diagram, drawn in an answer (colored to the wood, via `beautiful-mermaid`; no pan/zoom yet) | part | W9 |
 | AG-39 | Copy-to-clipboard affordance — a code block or a whole answer, pressed | done | W2 |
 | AG-39a | Links in an answer, pressable and gold, opening in the system browser | done | W2 |
 | AG-39b | Export the transcript as markdown, from the session card | done | W2 |
@@ -1301,7 +1303,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-26 | Stacked multi-file diff view | cut | W3 |
 | FS-27 | Image diff view | cut | W3 |
 | FS-28 | Binary diff fallback | done | W3 |
-| FS-29 | Mermaid inline + standalone viewer |  | W9 |
+| FS-29 | Mermaid diagram, drawn from a `.md` file's fenced block (no pan/zoom yet) | part | W9 |
 | FS-30 | Image viewer (contained/expandable/standalone/zoom-pan chassis) | cut | W5 |
 | FS-31 | Shared file-watching service | kept |  |
 | FS-32 | Exclusion policy settings UI |  | W8 |

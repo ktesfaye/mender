@@ -90,7 +90,9 @@ into a session, because a project has as many sessions as it has work and a
 district has as many houses as the artist drew. Agents write in markdown whether or not anybody asked, so it is
 read rather than shown: there is no second weight here to set anything bold in,
 and the gutter, the indent, the gap and the tone carry headings, lists, quotes,
-rules, tables and code without one. The last line of the board is where you write back; there is no
+rules, tables and code without one. A fenced mermaid block is the one mark that
+was never going to read as prose, so it is drawn instead, in the same warm and
+sore tones everything else on the board already is. The last line of the board is where you write back; there is no
 text field anywhere in this app. An empty line while somebody is working calls
 them off.
 
@@ -358,9 +360,10 @@ underneath. Blame, renaming and throwing it away all still work, since none of
 those are about the writing.
 
 **A `.md` file reads as writing, not as marks.** The same reading the agents'
-own words already get — headings, lists, quotes, rules, fenced code — applies
-to a markdown file walked to in the folder, with one line to drop back to the
-raw text when a line of it is what you actually came to change.
+own words already get — headings, lists, quotes, rules, fenced code, a fenced
+mermaid block drawn rather than read — applies to a markdown file walked to in
+the folder, with one line to drop back to the raw text when a line of it is
+what you actually came to change.
 
 **A file the board cannot show properly offers to be opened properly.** In
 whatever the machine opens it with, one gold line, the same door a checkout's
