@@ -451,7 +451,7 @@ async function boot(): Promise<void> {
       const steps: { said: string; go?: () => void }[] = [{ said: 'yard', go: back }];
       if (looking) steps.push({ said: 'looking for something', go: back });
       if (naming) steps.push({ said: 'a new session', go: back });
-      if (titling) steps.push({ said: 'its name', go: back });
+      if (titling) steps.push({ said: titling.mode === 'mcp' ? 'a server' : 'its name', go: back });
       if (live) steps.push({ said: 'the checkout', go: back });
       if (walking) steps.push({ said: 'files', go: back });
       if (hunt) steps.push({ said: 'looking', go: back });
@@ -611,8 +611,10 @@ async function boot(): Promise<void> {
           ordinary chat yard. */
       terminal: boolean;
     } | null = null;
-    /** Set while an existing session is being called something else. */
-    let titling: { task: Task; written: string } | null = null;
+    /** Set while an existing session is being called something else, or —
+        the same one line, the same keys — while a custom server is being
+        named for the card. */
+    let titling: { task: Task; written: string; mode?: 'title' | 'mcp' } | null = null;
     /** Set while the board is the finder, and what has been typed into it. */
     let looking: { written: string; from: Spot } | null = null;
     /** What everybody is doing, as the main process sees it. */
@@ -2602,6 +2604,24 @@ async function boot(): Promise<void> {
       yard.line.take();
     };
 
+    /** Naming a custom server, the same line and the same keys a session's
+        own name is called on: a name, then the command it starts with. */
+    const askMcpAdd = (task: Task): void => {
+      naming = null;
+      reading = null;
+      writing = null;
+      looked = null;
+      branchLooked = null;
+      stopWalking();
+      stopTalking();
+      sending = null;
+      titling = { task, written: '', mode: 'mcp' };
+      yard.asks('server');
+      yard.line.write('');
+      wood(addingServer(titling));
+      yard.line.take();
+    };
+
     const wrote = (written: string): void => {
       if (writing) {
         writing = { ...writing, written };
@@ -2618,7 +2638,7 @@ async function boot(): Promise<void> {
       }
       if (titling) {
         titling = { ...titling, written };
-        rewrite(retitling(titling));
+        rewrite(titling.mode === 'mcp' ? addingServer(titling) : retitling(titling));
         return;
       }
       if (!naming) return;
@@ -2693,6 +2713,20 @@ async function boot(): Promise<void> {
       const asked = titling;
       if (!asked) return;
       titling = null;
+      if (asked.mode === 'mcp') {
+        const [name, ...rest] = asked.written.trim().split(/\s+/);
+        const aim = open;
+        if (name && rest.length) {
+          const done = await client.agents.addCustomTool({
+            task: asked.task.id,
+            name,
+            command: rest.join(' '),
+          });
+          if (!done.success && done.error.kind === 'refused') say(done.error.because, 6000);
+        }
+        if (aim) await showCard(aim, asked.task);
+        return;
+      }
       const written = asked.written.trim();
       if (written && written !== asked.task.title) {
         await client.tasks.rename({ id: asked.task.id, title: written });
@@ -3117,6 +3151,18 @@ async function boot(): Promise<void> {
         });
         return;
       }
+      if (meant.does === 'browse') {
+        rewrite(card?.rows() ?? []);
+        return;
+      }
+      if (meant.does === 'addcustom') {
+        askMcpAdd(task);
+        return;
+      }
+      if (meant.does === 'rmtool' && !meant.asked) {
+        rewrite(card?.rows() ?? []);
+        return;
+      }
       void (async () => {
         const done =
           meant.does === 'choose'
@@ -3124,7 +3170,11 @@ async function boot(): Promise<void> {
                 { task: task.id, what: meant.what, id: meant.id },
                 { timeoutMs: 0 }
               )
-            : await client.agents.tool({ task: task.id, name: meant.name, on: meant.on });
+            : meant.does === 'addcat'
+              ? await client.agents.addTool({ task: task.id, key: meant.key })
+              : meant.does === 'rmtool'
+                ? await client.agents.removeTool({ task: task.id, name: meant.name })
+                : await client.agents.tool({ task: task.id, name: meant.name, on: meant.on });
         if (!done.success && done.error.kind === 'refused') say(done.error.because, 6000);
       })();
     };
@@ -3398,9 +3448,14 @@ async function boot(): Promise<void> {
             wrote('');
             return;
           }
+          const mode = titling.mode;
+          const asked = titling.task;
           titling = null;
-          const task = inside;
-          if (task && open) void openTask(open, task);
+          if (mode === 'mcp' && open) void showCard(open, asked);
+          else {
+            const task = inside;
+            if (task && open) void openTask(open, task);
+          }
           return;
         }
         if (naming) {
@@ -3774,6 +3829,19 @@ function retitling(titling: { task: Task; written: string }): Row[] {
       text: 'return to keep it. escape clears it, again to leave it alone.',
       tone: 'faded',
     },
+  ];
+}
+
+/** Naming a custom server: a name, then the command it starts with, on the
+    one line every board writes on. */
+function addingServer(titling: { task: Task; written: string }): Row[] {
+  return [
+    { kind: 'title', text: 'add a server' },
+    { kind: 'gap' },
+    { kind: 'line', text: 'its name, then the command that starts it.' },
+    { kind: 'typed', text: titling.written },
+    { kind: 'gap' },
+    { kind: 'line', text: 'return adds it. escape clears it, again to leave it alone.', tone: 'faded' },
   ];
 }
 

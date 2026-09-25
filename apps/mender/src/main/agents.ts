@@ -105,6 +105,12 @@ export interface Agents {
     id: string
   ): Promise<Told>;
   tool(task: string, name: string, on: boolean): Promise<Told>;
+  /** Add one from the catalogue of suggested servers. */
+  addTool(task: string, key: string): Promise<Told>;
+  /** Add one of your own: a name, then its command or URL. */
+  addCustomTool(task: string, name: string, command: string): Promise<Told>;
+  /** Throw one away, for this agent only. */
+  removeTool(task: string, name: string): Promise<Told>;
   /** Put an agent's CLI on this machine, so somebody else could work here. */
   fetch(hand: string): Promise<Fetched>;
   /** Every building with somebody in it, for the island. */
@@ -524,6 +530,21 @@ export function createAgents(
 
     async tool(task, name, on) {
       const done = await kits.tool(task, name, on);
+      return done.success ? { success: true, data: undefined } : done;
+    },
+
+    async addTool(task, key) {
+      const done = await kits.addTool(task, key);
+      return done.success ? { success: true, data: undefined } : done;
+    },
+
+    async addCustomTool(task, name, command) {
+      const done = await kits.addCustomTool(task, name, command);
+      return done.success ? { success: true, data: undefined } : done;
+    },
+
+    async removeTool(task, name) {
+      const done = await kits.removeTool(task, name);
       return done.success ? { success: true, data: undefined } : done;
     },
 

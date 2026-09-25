@@ -432,6 +432,24 @@ export const agentsContract = defineContract({
     data: z.void(),
     error: agentErrorSchema,
   }),
+  /** Add one from the catalogue of suggested servers. */
+  addTool: fallible({
+    input: z.object({ task: z.string(), key: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** Add one of your own: a name, then its command or URL. */
+  addCustomTool: fallible({
+    input: z.object({ task: z.string(), name: z.string(), command: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** Throw one away, for this agent only. */
+  removeTool: fallible({
+    input: z.object({ task: z.string(), name: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
   /** What is going on in one building, as it goes on. */
   work: liveModel({
     key: z.object({ task: z.string() }),

@@ -2,6 +2,7 @@ import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import type { CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import type { Kit } from '@shared/agents';
+import { MCP_CATALOG } from '@shared/mcp-catalog';
 import type { Task } from '@shared/tasks';
 import type { MenderClient } from '../wire';
 import type { Row } from './row';
@@ -37,7 +38,12 @@ export type Meant =
   | { does: 'choose'; what: 'hand' | 'model' | 'mode' | 'effort' | 'collab'; id: string }
   | { does: 'tool'; name: string; on: boolean }
   /** Open the real shell here, with the agent's own sign-in line ready to run. */
-  | { does: 'signin'; command: string };
+  | { does: 'signin'; command: string }
+  | { does: 'browse' }
+  | { does: 'addcat'; key: string }
+  | { does: 'addcustom' }
+  /** Arm or fire the two-press removal of one server. */
+  | { does: 'rmtool'; name: string; asked: boolean };
 
 export async function openCard(
   client: MenderClient,
@@ -51,11 +57,15 @@ export async function openCard(
   let ending: Ending = { uncommitted: 0, unsent: 0, asked: false };
   /** Whether the agents who are not on this machine are folded open. */
   let showing = false;
+  /** Whether the catalogue of suggested servers is folded open. */
+  let catalogShowing = false;
+  /** The server armed for a second press to throw it away, if any. */
+  let removing: string | null = null;
 
   const replica = new ReplicaState<Kit>(client.agents.kit.state({ task: task.id }, 'state'), {
     onChange: (value) => {
       kit = value;
-      changed(written(task, value, ending, showing));
+      changed(written(task, value, ending, showing, catalogShowing, removing));
     },
   });
 
@@ -68,7 +78,7 @@ export async function openCard(
         {
           onChange: (value) => {
             ending = { ...ending, uncommitted: Object.keys(value.entries ?? {}).length };
-            changed(written(task, kit, ending, showing));
+            changed(written(task, kit, ending, showing, catalogShowing, removing));
           },
         }
       )
@@ -77,7 +87,7 @@ export async function openCard(
     ? new ReplicaState<CheckoutHeadState>(model.state({ checkout }, 'head'), {
         onChange: (value) => {
           ending = { ...ending, unsent: unsentIn(value) };
-          changed(written(task, kit, ending, showing));
+          changed(written(task, kit, ending, showing, catalogShowing, removing));
         },
       })
     : null;
@@ -91,7 +101,7 @@ export async function openCard(
   };
 
   return {
-    rows: () => written(task, kit, ending, showing),
+    rows: () => written(task, kit, ending, showing, catalogShowing, removing),
     show: (open) => {
       showing = open;
       /* Turned back to the transcript is backing out of the card, and the
@@ -105,7 +115,21 @@ export async function openCard(
     ask: (asked) => {
       ending = { ...ending, asked };
     },
-    meant: (pick) => read(pick, kit),
+    meant: (pick) => {
+      const meant = read(pick, kit);
+      /* Arming or firing removal is the card's own state, tracked here rather
+         than asked of the caller twice. */
+      if (meant?.does === 'rmtool') {
+        if (removing === meant.name) {
+          removing = null;
+          return { ...meant, asked: true };
+        }
+        removing = meant.name;
+        return { ...meant, asked: false };
+      }
+      if (meant?.does === 'browse') catalogShowing = !catalogShowing;
+      return meant;
+    },
     close: async () => {
       await Promise.all([replica.dispose(), status?.dispose(), head?.dispose()]);
     },
@@ -117,6 +141,10 @@ function read(pick: string, kit: Kit | null): Meant | null {
   if (pick === 'signin') {
     return kit?.signIn ? { does: 'signin', command: kit.signIn.command } : null;
   }
+  if (pick === 'browse') return { does: 'browse' };
+  if (pick === 'addcustom') return { does: 'addcustom' };
+  if (pick.startsWith('addcat:')) return { does: 'addcat', key: pick.slice(7) };
+  if (pick.startsWith('rmtool:')) return { does: 'rmtool', name: pick.slice(7), asked: false };
   const cut = pick.indexOf(':');
   if (cut === -1) return null;
   const kind = pick.slice(0, cut);
@@ -141,7 +169,14 @@ function read(pick: string, kit: Kit | null): Meant | null {
 const ON = '●';
 const OFF = '·';
 
-function written(task: Task, kit: Kit | null, ending?: Ending, showing?: boolean): Row[] {
+function written(
+  task: Task,
+  kit: Kit | null,
+  ending?: Ending,
+  showing?: boolean,
+  catalogShowing?: boolean,
+  removing?: string | null
+): Row[] {
   const rows: Row[] = [
     { kind: 'title', text: task.title, pick: 'card' },
     { kind: 'line', text: task.branch, tone: 'faded', keep: 'tail' },
@@ -238,6 +273,13 @@ function written(task: Task, kit: Kit | null, ending?: Ending, showing?: boolean
       tone: tool.trouble ? 'sore' : tool.on ? 'ink' : 'faded',
       pick: `tool:${tool.name}`,
     });
+    rows.push({
+      kind: 'entry',
+      mark: '✗',
+      text: removing === tool.name ? `press again and ${tool.name} is gone` : `throw it away`,
+      tone: removing === tool.name ? 'sore' : 'faded',
+      pick: `rmtool:${tool.name}`,
+    });
   }
   if (kit.tools.length) {
     rows.push({
@@ -246,6 +288,35 @@ function written(task: Task, kit: Kit | null, ending?: Ending, showing?: boolean
       tone: 'faded',
     });
   }
+
+  const has = new Set(kit.tools.map((tool) => tool.name));
+  if (catalogShowing) {
+    for (const entry of MCP_CATALOG.filter((each) => !has.has(each.name.toLowerCase()))) {
+      rows.push({
+        kind: 'entry',
+        mark: '+',
+        text: `${entry.name} · ${entry.description}`,
+        tone: 'faded',
+        pick: `addcat:${entry.key}`,
+      });
+    }
+    rows.push({ kind: 'entry', mark: '·', text: 'fold the catalogue away', pick: 'browse' });
+  } else {
+    rows.push({
+      kind: 'entry',
+      mark: '+',
+      text: 'add one from the catalogue',
+      tone: 'faded',
+      pick: 'browse',
+    });
+  }
+  rows.push({
+    kind: 'entry',
+    mark: '+',
+    text: 'add one of your own',
+    tone: 'faded',
+    pick: 'addcustom',
+  });
 
   rows.push({ kind: 'gap' }, { kind: 'heading', text: 'what it has been taught' });
   if (!kit.knacksSupported) {

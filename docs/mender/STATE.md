@@ -1139,7 +1139,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-04 | Vendor event-field enrichment | kept |  |
 | AG-05 | Session resumability & provider session-id tracking | done |  |
 | AG-06 | Hook-driven status & session signals | kept |  |
-| AG-07 | MCP server management, scoped per agent | part | W8 |
+| AG-07 | MCP server management, scoped per agent | done |  |
 | AG-08 | Workspace trust pre-authorization | kept |  |
 | AG-09 | Per-agent auth status detection | done | W8 |
 | AG-10 | Multi-account registry (issue trackers etc.) |  | W8 |
@@ -1325,7 +1325,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-16 | `remoteMachine` install-source setting | cut |  |
 | ST-17 | Per-agent-provider config (extra CLI args, env vars) |  | W8 |
 | ST-18 | Per-agent executable override |  | W8 |
-| ST-19 | MCP server management (catalog + custom) |  | W8 |
+| ST-19 | MCP server management (catalog + custom) | done |  |
 | ST-20 | MCP "sync to agents" |  | W8 |
 | ST-21 | Skills catalog |  | W8 |
 | ST-22 | Automations (scheduled/cron agent runs) |  | W10 |

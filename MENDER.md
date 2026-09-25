@@ -472,8 +472,12 @@ line saying how many more speak the protocol opens all of them, and pressing
 one runs what that agent itself says installs it. Nothing is chosen for you
 afterwards.
 
-Nothing yet adds a server or teaches a skill: the card shows what is there and
-turns a server on or off, and the rest is still done in the agent's own files.
+A server is added from the same card: a `+` opens the catalogue of the ones
+worth suggesting, pressing one adds it as it stands, and a second `+` takes a
+name and the command that starts it on the one line every board writes on.
+Thrown away the same way everything irreversible is, two presses, the first
+naming which one. Nothing yet teaches a skill: that shelf is still read-only,
+and the rest is still done in the agent's own files.
 
 **A district is the artist's, or it is sea. Nothing grows.** The map is his
 `base-layout.json`, untouched, and his own partition of it into thirteen

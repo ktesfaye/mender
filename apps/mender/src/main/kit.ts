@@ -8,6 +8,7 @@ import { pluginRegistry } from '@emdash/plugins/agents';
 import { ReplicaState } from '@emdash/wire/live';
 import { cell, type Cell } from '@emdash/wire/state';
 import type { Choice, Hand, Kit, Knack, Tool } from '@shared/agents';
+import { serverFromCatalog } from '@shared/mcp-catalog';
 import type { AppSettings } from './app-settings';
 import type { MenderRuntimes } from './runtimes';
 import type { Tasks } from './tasks';
@@ -57,6 +58,12 @@ export interface Kits {
     id: string
   ): Promise<Wrong>;
   tool(task: string, name: string, on: boolean): Promise<Wrong>;
+  /** Add one from the catalogue of suggested servers. */
+  addTool(task: string, key: string): Promise<Wrong>;
+  /** Add one of your own: a name, then its command or URL. */
+  addCustomTool(task: string, name: string, command: string): Promise<Wrong>;
+  /** Throw one away, for this agent only. */
+  removeTool(task: string, name: string): Promise<Wrong>;
   forget(task: string): Promise<void>;
   dispose(): Promise<void>;
 }
@@ -154,6 +161,49 @@ export function createKits(
         server: { ...server, enabled: on } as McpServer,
       });
       if (!saved.success) return refused(said(saved.error));
+      await card.redraw();
+      return fine;
+    },
+
+    async addTool(task, key) {
+      const card = cardOf(task);
+      const hand = await card.hand();
+      const server = serverFromCatalog(key, hand);
+      if (!server) return refused(`${key} is not one the catalogue knows.`);
+      const saved = await runtimes.agentConfig.saveMcpServer({ server });
+      if (!saved.success) return refused(said(saved.error));
+      await card.redraw();
+      return fine;
+    },
+
+    async addCustomTool(task, name, command) {
+      const card = cardOf(task);
+      const hand = await card.hand();
+      const trimmedName = name.trim();
+      const trimmedCommand = command.trim();
+      if (!trimmedName || !trimmedCommand) {
+        return refused('a server needs a name and a command.');
+      }
+      const [cmd, ...args] = trimmedCommand.split(/\s+/);
+      const server: McpServer = {
+        name: trimmedName,
+        transport: 'stdio',
+        command: cmd,
+        args,
+        enabled: true,
+        providers: [hand],
+      };
+      const saved = await runtimes.agentConfig.saveMcpServer({ server });
+      if (!saved.success) return refused(said(saved.error));
+      await card.redraw();
+      return fine;
+    },
+
+    async removeTool(task, name) {
+      const card = cardOf(task);
+      const hand = await card.hand();
+      const removed = await runtimes.agentConfig.removeMcpForAgent({ providerId: hand, name });
+      if (!removed.success) return refused(said(removed.error));
       await card.redraw();
       return fine;
     },
