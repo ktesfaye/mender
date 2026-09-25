@@ -486,6 +486,17 @@ because a banner would only double a lantern he is already looking at.
 Clicking it brings the village forward and stands him in that session's yard,
 the same door a chord or a rail press already opens.
 
+**And what he missed is said once, when he comes back.** A banner answers the
+moment somebody starts wanting him, but only if he is looking right then — if
+he was gone a while, whoever asked, finished, or broke while he was away used
+to just sit there for him to find lantern by lantern. Now the moment the
+window has his eyes on it again, one line stands over the top of the island
+and says it: who asked, who finished, who broke, a few named and the rest
+folded into one count. Not a toast — no box, nothing to press, not gold,
+since it isn't pressable — it reads for a few seconds and fades on its own,
+the same way a result on the wood settles back once it has had time to be
+read.
+
 **Quitting on a lit fire says what it costs.** `Cmd+Q`, or the window's own
 close box, with nobody working closes the village the way it always has. With
 a villager still lit it does not: the window goes dark and one line stands up

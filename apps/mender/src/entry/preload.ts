@@ -4,6 +4,7 @@ import {
   MENDER_ATTEND_CHANNEL,
   MENDER_CONFIRM_QUIT_CHANNEL,
   MENDER_MENU_CHANNEL,
+  MENDER_MISSED_CHANNEL,
   MENDER_QUIT_COST_CHANNEL,
   MENDER_WATCH_CHANNEL,
   MENDER_WIRE_CHANNEL,
@@ -48,6 +49,14 @@ ipcRenderer.on(MENDER_MENU_CHANNEL, (_event, command: MenuCommand) => {
   else heldMenu = command;
 });
 
+/* What happened while he was away, before the page has asked. */
+let missed: ((lines: string[]) => void) | null = null;
+let heldMissed: string[] | null = null;
+ipcRenderer.on(MENDER_MISSED_CHANNEL, (_event, lines: string[]) => {
+  if (missed) missed(lines);
+  else heldMissed = lines;
+});
+
 contextBridge.exposeInMainWorld('mender', {
   requestWirePort: () => requestWirePort({ ipcRenderer, window }, { channel: MENDER_WIRE_CHANNEL }),
   /* Where a dropped file came from. The browser hands the renderer bytes and a
@@ -88,6 +97,14 @@ contextBridge.exposeInMainWorld('mender', {
     if (heldMenu) {
       to(heldMenu);
       heldMenu = null;
+    }
+  },
+  /* What happened while he was away. */
+  missed: (to: (lines: string[]) => void) => {
+    missed = to;
+    if (heldMissed) {
+      to(heldMissed);
+      heldMissed = null;
     }
   },
   /* Taking something off the board. The host's own clipboard rather than the

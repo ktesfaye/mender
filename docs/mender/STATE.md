@@ -961,6 +961,27 @@ installed (a bad role name would throw before the window ever opens) and
 drove the ⌘, chord itself over the debug port to confirm it raises the
 windmill — the same code path the menu item's click handler hands off to.
 
+And what happened while he was away is said once when he comes back, rather
+than left for him to piece together lantern by lantern. `attend.ts`'s own
+rule for who just started wanting him — asked, broke, or a turn finished — is
+reused verbatim (`apps/mender/src/main/missed.ts`); while the window is not
+the frontmost thing, whatever that rule catches is held rather than
+forgotten, and the moment he actually comes back after being gone 30 seconds
+or more, one line says it, capped at four named and the rest folded into "n
+more". It stands over the top of the island itself — no box, no dismiss, not
+gold, since it isn't pressable — reads for a few seconds, and fades on its
+own, the same way a result on the wood settles back once it has had time to
+be read. Pulled the one part of this worth pinning down —
+which sessions actually get named, capped, with a title that has gone missing
+dropped rather than mis-counted into the overflow — into its own pure
+function and caught a real off-by-one with it before it ever ran
+(`describeMissed`, `missed.test.ts`): a title-less entry was being folded into
+"1 more" instead of just left out. Driven for real: confirmed the line
+renders and reads correctly over the debug port (`showMissed` imported
+straight off the dev server and called with real lines) and watched it fade
+and remove itself after its own stand time, without touching anything to
+close it.
+
 Not here yet: recovering from a bad boot.
 
 Closes UI-01 through UI-04, UI-27 through UI-29, UI-42, ST-09, ST-34,

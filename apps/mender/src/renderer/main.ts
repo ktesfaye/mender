@@ -54,6 +54,7 @@ import { wire, type MenderClient } from './wire';
 import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
 import { openYard, type Watching } from './yard/live';
+import { showMissed } from './yard/missed';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf } from './yard/shelf';
@@ -3439,6 +3440,7 @@ async function boot(): Promise<void> {
     window.mender?.menu?.((command) => {
       if (command === 'settings') go('do:windmill');
     });
+    window.mender?.missed?.((lines) => showMissed(lines));
 
     /* Who is standing outside which building, kept true by the main process
        rather than by whatever board happens to be open: a villager is still

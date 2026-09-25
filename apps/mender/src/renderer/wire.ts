@@ -27,6 +27,8 @@ declare global {
       confirmQuit: () => void;
       /** What the native app menu asked for. */
       menu: (to: (command: MenuCommand) => void) => void;
+      /** What happened while he was away, said once when he comes back. */
+      missed: (to: (lines: string[]) => void) => void;
       /** Open a folder in whatever this machine opens folders with. */
       openIt: (path: string) => void;
       /** Show it where it actually is, which is a different question. */

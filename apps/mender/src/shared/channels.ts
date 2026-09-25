@@ -42,3 +42,10 @@ export const MENDER_CONFIRM_QUIT_CHANNEL = 'mender:confirm-quit';
  */
 export const MENDER_MENU_CHANNEL = 'mender:menu';
 export type MenuCommand = 'settings';
+
+/**
+ * Channel the main process uses to say what happened while he was away, once,
+ * when the window regains focus after being gone a while. Carries a short
+ * list of already-composed lines, oldest first.
+ */
+export const MENDER_MISSED_CHANNEL = 'mender:missed';

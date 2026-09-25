@@ -18,6 +18,7 @@ import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
 import { createGitHubStatus } from './github';
 import { installAppMenu } from './menu';
+import { watchMissed } from './missed';
 import { createProjects } from './projects';
 import { createProjectsController } from './projects-controller';
 import { createPromptsController } from './prompts';
@@ -91,6 +92,7 @@ export async function main(): Promise<void> {
   await app.whenReady();
   installAppMenu();
   const window = await openVillageWindow();
+  watchMissed(window, { scope, agents, tasks });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void openVillageWindow();
