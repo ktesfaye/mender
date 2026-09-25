@@ -26,6 +26,7 @@ export type Asking =
   | 'start'
   | 'branch'
   | 'commit'
+  | 'amend'
   | 'look'
   | 'name'
   | 'file'
@@ -39,6 +40,7 @@ const PROMPTS: Record<Asking, string> = {
   built: '› say what you want built',
   branch: '› call it something',
   commit: '› say what this does',
+  amend: '› say it differently',
   look: '› what are you looking for',
   name: '› call it something else',
   file: '› say something about this file',

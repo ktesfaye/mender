@@ -10,7 +10,11 @@ import type { Row } from './row';
  * pressable, because the question you have after reading a commit message is
  * almost always which file it actually happened in.
  */
-export function made(commit: Commit, files: readonly FileChange[] | undefined): Row[] {
+export function made(
+  commit: Commit,
+  files: readonly FileChange[] | undefined,
+  offer?: { isHead: boolean; reverting?: 'offered' | 'asked' }
+): Row[] {
   /* The subject is a sentence rather than a name, and a board's title is
      written twice the size, so it is read out rather than titled: a sentence
      that has to be cut off to be a heading is worse than one that is simply
@@ -43,7 +47,61 @@ export function made(commit: Commit, files: readonly FileChange[] | undefined): 
       pick: `in:${file.path}`,
     });
   }
+
+  if (offer) rows.push({ kind: 'gap' }, ...undoing(offer));
   return rows;
+}
+
+/**
+ * What can still be done about a commit once it is read.
+ *
+ * Only the most recent commit can be said differently or taken back — an
+ * older one is history other commits now stand on, so the only way to change
+ * what it did is a new commit that undoes it, which is why "it went in
+ * wrong" always has an answer here whichever commit that turns out to be.
+ */
+function undoing(offer: { isHead: boolean; reverting?: 'offered' | 'asked' }): Row[] {
+  const rows: Row[] = [];
+  if (offer.isHead) {
+    rows.push(
+      { kind: 'entry', mark: '✎', text: 'say it differently', tone: 'faded', pick: 'amend' },
+      {
+        kind: 'entry',
+        mark: '✗',
+        text: 'take it back, keep what it wrote',
+        tone: 'faded',
+        pick: 'uncommit',
+      }
+    );
+  }
+  if (offer.reverting === 'asked') {
+    rows.push({
+      kind: 'entry',
+      mark: '✗',
+      text: 'press again and a commit undoing this goes in',
+      tone: 'sore',
+      pick: 'revert-made!',
+    });
+  } else {
+    rows.push({
+      kind: 'entry',
+      mark: '✗',
+      text: 'undo it with a new commit',
+      tone: 'faded',
+      pick: 'revert-made',
+    });
+  }
+  return rows;
+}
+
+/** Saying a commit differently: the same write-line a new one is said on. */
+export function amending(written: string): Row[] {
+  return [
+    { kind: 'title', text: 'say it differently' },
+    { kind: 'gap' },
+    { kind: 'line', text: 'return writes it.', tone: 'faded' },
+    { kind: 'typed', text: written },
+  ];
 }
 
 /** While git is still being asked what the commit was. */

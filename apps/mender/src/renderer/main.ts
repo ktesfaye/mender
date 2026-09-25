@@ -25,7 +25,7 @@ import { openCheckout, type LiveBoard } from './board/district';
 import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
 import { openTree, type LiveTree } from './board/inside';
 import { hunting, type Hunt } from './board/looking';
-import { made, unmade, unread } from './board/made';
+import { amending as amendBoard, made, unmade, unread } from './board/made';
 import type { Offer } from './board/offer';
 import { keptNow, type Meant } from './board/palette';
 import { read, unopened, type Read } from './board/reading';
@@ -391,7 +391,12 @@ async function boot(): Promise<void> {
       checkout: string;
       commit: Commit | null;
       files: readonly FileChange[] | undefined;
+      isHead?: boolean;
+      asked?: boolean;
     } | null = null;
+    /* Saying a commit differently. The same write-line a new one is said on,
+       just aimed at `--amend` instead of a fresh commit. */
+    let amending: { aim: Aim; checkout: string; hash: string; written: string } | null = null;
     /* The commit being written, if one is. Nothing is staged and nothing is
        committed until return: what is held back lives here until then. */
     let writing: {
@@ -1060,9 +1065,10 @@ async function boot(): Promise<void> {
       const mine = looked;
       wood(unread());
 
-      const [got, touched] = await Promise.all([
+      const [got, touched, atHead] = await Promise.all([
         client.git.checkout.getCommit({ checkout, hash }),
         client.git.checkout.getCommitFiles({ checkout, hash }),
+        client.git.checkout.model.state({ checkout }, 'head').snapshot(),
       ]);
       if (looked !== mine) return;
       if (!got.success) {
@@ -1075,7 +1081,95 @@ async function boot(): Promise<void> {
       }
       looked.commit = got.data.commit;
       looked.files = touched.success ? touched.data.files : [];
-      wood(made(looked.commit, looked.files));
+      const head = atHead.data;
+      looked.isHead = !!head && 'oid' in head && head.oid === hash;
+      wood(rowsForMade());
+    };
+
+    const rowsForMade = (): Row[] =>
+      looked?.commit
+        ? made(looked.commit, looked.files, {
+            isHead: !!looked.isHead,
+            reverting: looked.asked ? 'asked' : 'offered',
+          })
+        : [];
+
+    /** Opening the write-line to say the last commit differently. */
+    const askAmend = (): void => {
+      const on = looked;
+      if (!on?.commit || !on.isHead) return;
+      amending = { aim: on.aim, checkout: on.checkout, hash: on.commit.hash, written: on.commit.subject };
+      yard.asks('amend');
+      yard.line.write(amending.written);
+      wood(amendBoard(amending.written));
+      yard.line.take();
+    };
+
+    /** Saying it. The message changes; nothing else about the commit does. */
+    const amended = async (): Promise<void> => {
+      const said = amending;
+      if (!said) return;
+      const message = said.written.trim();
+      if (!message) {
+        say('a commit with nothing written on it is not a commit.', 4000);
+        return;
+      }
+      const parsed = parseNativeAbsolute(said.checkout);
+      if (!parsed.success) return;
+      const made = await client.git.checkout.model.mutate('commit', {
+        key: { checkout: parsed.data },
+        input: { message, options: { amend: true } },
+      });
+      if (!made.success) {
+        say(trouble(made.error), 6000);
+        return;
+      }
+      amending = null;
+      home();
+      say('said differently.', 3000);
+    };
+
+    /** Taking the last commit back. Nothing is lost: it lands back uncommitted. */
+    const uncommit = async (): Promise<void> => {
+      const on = looked;
+      if (!on?.commit || !on.isHead) return;
+      const parsed = parseNativeAbsolute(on.checkout);
+      if (!parsed.success) return;
+      const done = await client.git.checkout.model.mutate('uncommit', {
+        key: { checkout: parsed.data },
+        input: {},
+      });
+      if (!done.success) {
+        say(trouble(done.error), 6000);
+        return;
+      }
+      looked = null;
+      home();
+      say('taken back. what it wrote is still there.', 4000);
+    };
+
+    /** Undoing a commit with a new one, on the second press. */
+    const revertMade = async (sure: boolean): Promise<void> => {
+      const on = looked;
+      if (!on?.commit) return;
+      if (!sure) {
+        on.asked = true;
+        rewrite(rowsForMade());
+        return;
+      }
+      const parsed = parseNativeAbsolute(on.checkout);
+      if (!parsed.success) return;
+      const done = await client.git.checkout.model.mutate('revertCommit', {
+        key: { checkout: parsed.data },
+        input: { hash: on.commit.hash },
+      });
+      if (!done.success) {
+        say(trouble(done.error), 6000);
+        return;
+      }
+      looked = null;
+      home();
+      say('undone, with a new commit.', 4000);
     };
 
     /**
@@ -1642,7 +1736,7 @@ async function boot(): Promise<void> {
     /** Step back from a file inside a commit onto the commit it was in. */
     const showMade = (): void => {
       if (!looked?.commit) return;
-      wood(made(looked.commit, looked.files));
+      wood(rowsForMade());
     };
 
     /**
@@ -2170,6 +2264,18 @@ async function boot(): Promise<void> {
         void openMade(pick.slice(5));
         return;
       }
+      if (pick === 'amend') {
+        askAmend();
+        return;
+      }
+      if (pick === 'uncommit') {
+        void uncommit();
+        return;
+      }
+      if (pick === 'revert-made' || pick === 'revert-made!') {
+        void revertMade(pick === 'revert-made!');
+        return;
+      }
       if (pick.startsWith('in:')) {
         const commit = looked?.commit;
         if (commit) {
@@ -2345,6 +2451,11 @@ async function boot(): Promise<void> {
           home();
           return;
         }
+        if (amending) {
+          amending = null;
+          showMade();
+          return;
+        }
         if (talking) {
           // What you have half typed at a shell is yours before the shell is.
           if (talking.written) {
@@ -2516,6 +2627,16 @@ async function boot(): Promise<void> {
             sending = { ...mine, written: (mine.written ?? '') + event.key };
           } else return yard.scrolled(event.key);
           if (sending) rewrite(sent(sending));
+          return true;
+        }
+        /* Saying the last commit differently. */
+        if (amending) {
+          const mine = amending;
+          if (event.key === 'Enter') void amended();
+          else if (event.key === 'Backspace') amending = { ...mine, written: mine.written.slice(0, -1) };
+          else if (event.key.length === 1) amending = { ...mine, written: mine.written + event.key };
+          else return yard.scrolled(event.key);
+          if (amending) rewrite(amendBoard(amending.written));
           return true;
         }
         /* Talking to a shell. Return hands it the line and a newline, which

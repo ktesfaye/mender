@@ -1568,6 +1568,23 @@ was driven end to end with a real session to confirm nothing broke, but no real
 rate limit was on hand in this session to see the failure itself rendered live —
 next session with a live limit should confirm the wording and mark this `done`.
 
+### A commit is said differently, taken back, or undone with a new one (2026-09-24)
+
+Neither Emdash nor Mender had these before (`mender-12-add-git.md`'s own audit
+confirmed it), so this is new front and back alike. Reading a commit that is
+still HEAD now offers two more lines beside what was already there: "say it
+differently," which opens the write-line prefilled with its subject and
+`--amend`s it on return, and "take it back, keep what it wrote," a one-press
+soft reset that leaves its changes sitting uncommitted (nothing is lost, so
+it does not ask twice). Any commit, HEAD or not, offers "undo it with a new
+commit" — a real `git revert`, two presses like everything else here that
+cannot be pressed again. New checkout mutations: `merge`, `mergeAbort`,
+`uncommit`, `revertCommit`, plus a `compareRef` read used by later rows.
+Driven on a scratch repo over CDP: amended a commit's message and watched the
+hash change, took one back and watched it land uncommitted with its diff
+intact, and reverted one and watched a new commit come in with the working
+tree back to what it was.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour
