@@ -460,7 +460,7 @@ function over(ending: Ending | undefined, awake: boolean): Row[] {
   return rows;
 }
 
-function counted(many: number, thing: string): string {
+export function counted(many: number, thing: string): string {
   return many === 1 ? `one ${thing}` : `${many} ${thing}s`;
 }
 
@@ -472,7 +472,7 @@ function counted(many: number, thing: string): string {
  * and how much that is cannot be counted from here. A number would be a guess
  * printed as a fact, which is the worst thing a preflight can do.
  */
-function unsentIn(head: CheckoutHeadState | undefined): number | null {
+export function unsentIn(head: CheckoutHeadState | undefined): number | null {
   if (!head || head.kind === 'detached' || head.kind === 'unborn') return 0;
   if (head.upstream.kind === 'none') return null;
   const tracking = head.upstream.tracking;

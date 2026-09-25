@@ -13,6 +13,7 @@
  */
 
 import type { Hand } from '@shared/app-settings';
+import { counted } from '../board/card';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
  *  and whether anything still uses it. */
@@ -24,9 +25,13 @@ export interface WorktreeRow {
   bytes: number | null;
   /** Branch merged upstream, or nothing here still points at it. */
   stale: boolean;
-  /** How far its branch has run ahead of whatever it follows, for the cost
-   *  line a removal shows before it happens. */
-  ahead: number | null;
+  /** How many files in there git has never committed, or null while that is
+   *  still being read. */
+  uncommitted: number | null;
+  /** How far its branch has run ahead of whatever it follows — null means
+   *  nowhere else has ever seen it, which is the same "keep the branch" case
+   *  as a positive count, and 0 means it is already upstream. */
+  unsent: number | null;
 }
 
 export interface WindmillState {
@@ -38,8 +43,10 @@ export interface WindmillState {
 
 export interface WindmillDoings {
   choose(id: string): Promise<void>;
-  /** Deactivate, remove the worktree and its branch, and unregister it. */
-  clear(id: string): Promise<void>;
+  /** Deactivate, remove the worktree, and unregister it. Only takes the
+   *  branch down with it when nothing on the branch is unique — the caller
+   *  decides that from the same row this board just showed. */
+  clear(row: WorktreeRow): Promise<void>;
   closed(): void;
 }
 
@@ -167,7 +174,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
         () => {
           if (clearing === one.id) {
             clearing = null;
-            void does.clear(one.id).then(() => drawWorktrees());
+            void does.clear(one).then(() => drawWorktrees());
             return;
           }
           clearing = one.id;
@@ -239,14 +246,29 @@ function hintLine(text: string): HTMLElement {
   return made;
 }
 
-/** What a second press would actually cost, said before it happens. */
+/** Whether a second press keeps the branch — the same question `clear`
+ *  answers when it actually runs, asked first so the line can say it. */
+export function keepsBranch(one: Pick<WorktreeRow, 'unsent'>): boolean {
+  return one.unsent === null || one.unsent > 0;
+}
+
+/** What a second press would actually cost, said before it happens — the
+ *  same two facts a session's own takedown names before it goes. */
 function costOf(one: WorktreeRow): string {
   const size = one.bytes === null ? 'an unmeasured amount' : sized(one.bytes);
-  const branch =
-    one.ahead === null || one.ahead === 0
-      ? 'its branch is already upstream'
-      : `its branch has ${one.ahead === 1 ? 'one commit' : `${one.ahead} commits`} nowhere else has`;
-  return `press again — frees ${size}, and ${branch}`;
+  const losing = one.uncommitted
+    ? `${counted(one.uncommitted, 'file')} in there nobody has committed`
+    : '';
+  if (keepsBranch(one)) {
+    const branch =
+      one.unsent === null
+        ? 'nowhere else has ever seen it'
+        : `it has ${counted(one.unsent, 'commit')} nowhere else has`;
+    const also = losing ? `, loses ${losing},` : '';
+    return `press again — frees ${size}${also} and keeps the branch — ${branch}`;
+  }
+  const also = losing ? `, and loses ${losing}` : '';
+  return `press again — frees ${size}${also}, and the branch that is already upstream`;
 }
 
 /** How much room something takes, in plain words. */

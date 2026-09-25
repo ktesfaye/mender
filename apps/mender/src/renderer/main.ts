@@ -62,7 +62,7 @@ import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
-import { openWindmill, type WorktreeRow, type Windmill } from './yard/windmill';
+import { keepsBranch, openWindmill, type WorktreeRow, type Windmill } from './yard/windmill';
 import { makeYard } from './yard/yard';
 
 /** The kinds of picture an agent can actually be shown. */
@@ -972,10 +972,10 @@ async function boot(): Promise<void> {
           state.hand = await client.appSettings.setDefaultHand({ id }, { timeoutMs: 0 });
           ui.update(state);
         },
-        clear: async (id) => {
+        clear: async (row) => {
           const done = await client.workspaces.deleteWorktree({
-            workspaceId: id,
-            deleteBranch: true,
+            workspaceId: row.id,
+            deleteBranch: !keepsBranch(row),
           });
           if (!done.success) say(worktreeTrouble(done.error), 6000);
         },
@@ -1006,6 +1006,30 @@ async function boot(): Promise<void> {
           ui.update(state);
         });
       };
+      // How much of a worktree a second press would actually throw away: the
+      // same question a session's own takedown asks of its checkout, asked
+      // here of a worktree nothing is currently open on.
+      const uncommitted = new Map<string, number | null>();
+      const preflight = (id: string, path: string): void => {
+        const parsed = parseNativeAbsolute(path);
+        if (!parsed.success) {
+          uncommitted.set(id, null);
+          return;
+        }
+        const status = new ReplicaState<{ kind: string; entries?: Record<string, unknown> }>(
+          client.git.checkout.model.state({ checkout: parsed.data }, 'status'),
+          { onChange: () => {} }
+        );
+        void status.ready.then(() => {
+          uncommitted.set(id, Object.keys(status.current()?.entries ?? {}).length);
+          state.worktrees =
+            state.worktrees?.map((row) =>
+              row.id === id ? { ...row, uncommitted: uncommitted.get(id) ?? null } : row
+            ) ?? null;
+          ui.update(state);
+          void status.dispose();
+        });
+      };
       records = new ReplicaState<Record<string, WorkspaceRecord>>(
         client.workspaces.records.state(undefined, 'list'),
         {
@@ -1019,12 +1043,16 @@ async function boot(): Promise<void> {
                 path: each.path,
                 bytes: measured.has(each.id) ? (measured.get(each.id) ?? null) : null,
                 stale: Boolean(each.git?.prunable) || !paths.has(each.path),
-                ahead: each.git?.ahead ?? null,
+                uncommitted: uncommitted.has(each.id) ? (uncommitted.get(each.id) ?? null) : null,
+                unsent: each.git?.ahead ?? null,
               }))
               .sort((a, b) => (b.stale ? 1 : 0) - (a.stale ? 1 : 0));
             state.worktrees = rows;
             ui.update(state);
-            for (const row of rows) if (!measured.has(row.id)) measure(row.id);
+            for (const row of rows) {
+              if (!measured.has(row.id)) measure(row.id);
+              if (!uncommitted.has(row.id)) preflight(row.id, row.path);
+            }
           },
         }
       );
