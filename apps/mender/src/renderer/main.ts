@@ -25,7 +25,7 @@ import type { Task } from '@shared/tasks';
 import { branchMade, branchUnmade, unbranchMade } from './board/branch';
 import { browsing, openPage, safe as safeAddress } from './board/browsing';
 import { openCard, transcriptMarkdown, type LiveCard } from './board/card';
-import { opening, readOut, unreadable } from './board/changed';
+import { lineNumberOf, opening, readOut, unreadable, type Noting } from './board/changed';
 import { committing } from './board/committing';
 import { conflict, conflictMessage } from './board/conflict';
 import { landingLines, openCheckout, type Landing, type LiveBoard } from './board/district';
@@ -160,7 +160,7 @@ async function boot(): Promise<void> {
         /* One line, and whatever is open decides what is being written on it:
            a name for a new session, a new name for this one, a commit message,
            something to look for, or something to say to the agent. */
-        if (naming || titling || writing || looking || hunt) {
+        if (naming || titling || writing || looking || hunt || reading?.noting) {
           wrote(text);
           return;
         }
@@ -173,6 +173,10 @@ async function boot(): Promise<void> {
       say: (text) => {
         if (talking) {
           talking.shell?.focus();
+          return;
+        }
+        if (reading?.noting) {
+          pinNote();
           return;
         }
         if (naming) {
@@ -545,6 +549,8 @@ async function boot(): Promise<void> {
       at?: At;
       change?: Change;
       asked?: boolean;
+      /** A note being written against one of this file's diff lines. */
+      noting?: Noting;
     } | null = null;
     /* Which commit is on the board, over the checkout it came from. A commit
        is stepped into the same way a change is, and a file pressed inside one
@@ -1465,8 +1471,45 @@ async function boot(): Promise<void> {
        away, so it is the only place that offers it. */
     const rowsForChange = (): Row[] => {
       if (!reading?.change) return [];
-      if (reading.at) return readOut(reading.change);
-      return readOut(reading.change, reading.asked ? 'asked' : 'offered');
+      const pinned = new Map(
+        (watching?.notes() ?? [])
+          .filter((note) => note.path === reading?.path)
+          .map((note) => [note.at, { id: note.id, text: note.note }] as const)
+      );
+      const notes = { ...(reading.noting ? { noting: reading.noting } : {}), pinned };
+      if (reading.at) return readOut(reading.change, undefined, notes);
+      return readOut(reading.change, reading.asked ? 'asked' : 'offered', notes);
+    };
+
+    /**
+     * Pinning a note against a diff line — Return, while writing one.
+     *
+     * It rides into the next thing said to this session, exactly the way a
+     * dropped picture does: it waits by the line until then.
+     */
+    const pinNote = (): void => {
+      const read = reading;
+      if (!read?.noting || !read.change || !watching) return;
+      const at = read.noting.at;
+      const text = read.noting.text.trim();
+      reading = { ...read, noting: undefined };
+      if (!text) {
+        rewrite(rowsForChange());
+        return;
+      }
+      const line = lineNumberOf(read.change, at);
+      const label = `${shortly(read.path)}:${line}`;
+      watching.noteIt({
+        id: crypto.randomUUID(),
+        path: read.path,
+        at,
+        label,
+        note: text,
+        text: `${read.path}:${line} — ${text}`,
+      });
+      yard.line.write('');
+      yard.show(watching.yard());
+      rewrite(rowsForChange());
     };
 
     /**
@@ -2789,6 +2832,11 @@ async function boot(): Promise<void> {
     };
 
     const wrote = (written: string): void => {
+      if (reading?.noting) {
+        reading = { ...reading, noting: { ...reading.noting, text: written } };
+        rewrite(rowsForChange());
+        return;
+      }
       if (writing) {
         writing = { ...writing, written };
         rewrite(rowsForCommit());
@@ -2969,8 +3017,11 @@ async function boot(): Promise<void> {
       const task = inside;
       const saying = watching;
       if (!task || !saying) return;
-      const text = said.trim();
       const carrying = [...saying.carrying()];
+      const notes = [...saying.notes()];
+      /* Every pinned note rides in with what is actually said, file and line
+         first, the same way Emdash folds a diff-line comment into the prompt. */
+      const text = [said.trim(), ...notes.map((one) => one.text)].filter(Boolean).join('\n\n');
       /* An empty line while somebody is working calls them off. It is the only
          thing in this app that means something by being nothing. */
       if (!text && !carrying.length) {
@@ -2978,7 +3029,7 @@ async function boot(): Promise<void> {
         return;
       }
       saying.handed();
-      if (text) yard.fly(text);
+      if (said.trim()) yard.fly(said.trim());
       /* Said, not half-written any more. */
       const pending = draftTimers.get(task.id);
       if (pending) clearTimeout(pending);
@@ -3287,6 +3338,19 @@ async function boot(): Promise<void> {
       }
       if (pick === 'undo' || pick === 'undo!') {
         void undo(pick === 'undo!');
+        return;
+      }
+      if (pick.startsWith('note:')) {
+        if (!reading) return;
+        reading = { ...reading, noting: { at: Number(pick.slice(5)), text: '' } };
+        yard.line.write('');
+        rewrite(rowsForChange());
+        return;
+      }
+      if (pick.startsWith('note-off:') || pick.startsWith('unnote:')) {
+        watching?.unnote(pick.slice(pick.indexOf(':') + 1));
+        if (watching) yard.show(watching.yard());
+        if (reading?.change) rewrite(rowsForChange());
         return;
       }
       if (pick.startsWith('made:')) {
@@ -3892,7 +3956,16 @@ async function boot(): Promise<void> {
       },
     };
 
-    backOut = () => hand.escaped();
+    backOut = () => {
+      /* Writing a note goes first: it is half-said, and the board underneath
+         is still the thing Escape would otherwise walk out of. */
+      if (reading?.noting) {
+        reading = { ...reading, noting: undefined };
+        rewrite(rowsForChange());
+        return;
+      }
+      hand.escaped();
+    };
     watchPointer((x, y) => yard.covers(x, y), pixi, camera, hand);
 
     /* A clicked notification names a session the same way pressing it on the

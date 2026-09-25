@@ -122,6 +122,9 @@ export interface Session {
   waiting: Waiting[];
   /** What is in your hands, waiting by the line for you to say something. */
   carrying: Carried[];
+  /** Notes pinned to a diff line, carried the same way, gone with what you
+      next say. */
+  pinnedNotes: PinnedNote[];
   /** How many notes are further down the post than the board can show. */
   olderNotes?: number;
   /** And how many steps came before the ones shown, and over how long. */
@@ -167,6 +170,17 @@ export interface Waiting {
 export interface Carried {
   id: string;
   name: string;
+}
+
+/** A note pinned to a diff line, not yet handed over. */
+export interface PinnedNote {
+  id: string;
+  path: string;
+  at: number;
+  /** What it reads as, waiting by the line — `file:line`. */
+  label: string;
+  /** What was actually written, read back on the diff line it is pinned to. */
+  note: string;
 }
 
 /** Something you said, nailed to the gatepost. */

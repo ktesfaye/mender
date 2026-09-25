@@ -1,6 +1,16 @@
 import type { Change } from '@shared/changes';
 import type { Row } from './row';
 
+/** A note being written right now, against one line of the diff. */
+export interface Noting {
+  at: number;
+  text: string;
+}
+
+/** Notes already pinned to a line, keyed by that line's position in
+    `change.lines`. */
+export type Pinned = ReadonlyMap<number, { id: string; text: string }>;
+
 /**
  * One file's change, on the wood.
  *
@@ -9,7 +19,11 @@ import type { Row } from './row';
  * went in reads warm, what came out reads sore, and everything around it is
  * there to tell you where you are rather than to be read.
  */
-export function readOut(change: Change, undoing?: 'offered' | 'asked'): Row[] {
+export function readOut(
+  change: Change,
+  undoing?: 'offered' | 'asked',
+  notes?: { noting?: Noting; pinned?: Pinned }
+): Row[] {
   const rows: Row[] = [
     { kind: 'title', text: name(change.path) },
     ...where(change.path),
@@ -17,11 +31,14 @@ export function readOut(change: Change, undoing?: 'offered' | 'asked'): Row[] {
     { kind: 'gap' },
   ];
 
-  for (const line of change.lines) {
+  const pinned = notes?.pinned;
+  const noting = notes?.noting;
+
+  change.lines.forEach((line, at) => {
     if (line.startsWith('…')) {
       // What went by unchanged, said rather than scrolled through.
       rows.push({ kind: 'gap' }, { kind: 'line', text: line, tone: 'faded' }, { kind: 'gap' });
-      continue;
+      return;
     }
     const mark = line[0];
     /* A diff is columns: what went in has to sit directly above what came out
@@ -32,8 +49,28 @@ export function readOut(change: Change, undoing?: 'offered' | 'asked'): Row[] {
       tone: mark === '+' ? 'keen' : mark === '-' ? 'sore' : 'faded',
       keep: 'front',
       face: 'type',
+      // A line already being written on, or already noted, is not a second
+      // way to open the same note — pressing the pinned note itself is.
+      ...(noting?.at === at || pinned?.has(at) ? {} : { pick: `note:${at}` }),
     });
-  }
+    if (noting?.at === at) {
+      rows.push(
+        { kind: 'line', text: 'say what is wrong with it. return pins it.', tone: 'faded' },
+        { kind: 'typed', text: noting.text }
+      );
+      return;
+    }
+    const said = pinned?.get(at);
+    if (said !== undefined) {
+      rows.push({
+        kind: 'entry',
+        mark: '✎',
+        text: said.text,
+        tone: 'warn',
+        pick: `note-off:${said.id}`,
+      });
+    }
+  });
   if (change.more) {
     rows.push(
       { kind: 'gap' },
@@ -42,6 +79,27 @@ export function readOut(change: Change, undoing?: 'offered' | 'asked'): Row[] {
   }
   if (undoing) rows.push({ kind: 'gap' }, undo(change, undoing));
   return rows;
+}
+
+/**
+ * Which line of the file a diff line at `at` is really talking about.
+ *
+ * The board only ever carries marked lines, never the file's own numbering,
+ * so this walks back through them the same way git itself would: a kept or
+ * added line moves the count on, a removed one does not, and a skipped
+ * stretch moves it on by however many lines it said it was.
+ */
+export function lineNumberOf(change: Change, at: number): number {
+  let line = 1;
+  for (let i = 0; i < at; i++) {
+    const text = change.lines[i] ?? '';
+    if (text.startsWith('…')) {
+      line += Number(/(\d+)/.exec(text)?.[1] ?? 0);
+      continue;
+    }
+    if (text[0] !== '-') line += 1;
+  }
+  return line;
 }
 
 /**

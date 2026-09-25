@@ -1665,6 +1665,14 @@ function carried(hands: HTMLElement, yard: Yard, does: Doings): void {
     held.style.cssText += "font-family:'Courier Prime',monospace;font-size:12px";
     hands.appendChild(held);
   }
+  for (const one of yard.session?.pinnedNotes ?? []) {
+    const note = astop(
+      pressing(`✎ ${one.label}`, () => does.press(`unnote:${one.id}`)),
+      `pinned-note:${one.id}`
+    );
+    note.style.cssText += "font-family:'Courier Prime',monospace;font-size:12px";
+    hands.appendChild(note);
+  }
 }
 
 /* ── the one place you write ───────────────────────────────────────────────

@@ -268,6 +268,15 @@ those files turns the board into what changed: what went in, what came out, a
 little of what is around it, and a line saying how much unchanged writing went
 by. Escape steps back out. Nothing is staged or committed from there yet.
 
+**A marked line of that change is where you tell the agent what is wrong
+with it.** Pressing one — not the whole file, the one line — turns it into a
+line of writing: say what is wrong, return pins it. A pinned note leaves a
+small mark under that line and waits by the write line the same way a dropped
+picture does, gold and pressable either place, gone with a second press. It
+rides into the next thing you say to that session as `file:line — the note`,
+because a path and a number are the one thing about a line you cannot get
+across by describing it.
+
 **A change is thrown away with two presses.** At the bottom of a change is the
 one thing you can do about it: put the file back the way it was, or throw it
 away entirely when git has never seen it. Pressing it does not do it; it turns

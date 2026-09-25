@@ -55,9 +55,31 @@ export interface Watching {
   pickUp(file: File): Promise<string | null>;
   /** Put one down again. */
   putDown(id: string): void;
-  /** Everything carried went with what was just said. */
+  /** Notes pinned to a diff line, waiting to go with what you next say. */
+  notes(): readonly PinnedNote[];
+  /** Pin one. */
+  noteIt(note: PinnedNote): void;
+  /** Take one back off the line before it is said. */
+  unnote(id: string): void;
+  /** Everything carried, and every pinned note, went with what was just said. */
   handed(): void;
   close(): Promise<void>;
+}
+
+/** A note pinned to a diff line, kept in full so it can be folded into the
+    next thing said the moment that happens. */
+export interface PinnedNote {
+  id: string;
+  /** Which file, and which of its diff lines — enough to find the pinned
+      mark again on that file's own board. */
+  path: string;
+  at: number;
+  /** What it reads as, waiting by the line — `file:line`. */
+  label: string;
+  /** What was actually written, read back on the diff line it is pinned to. */
+  note: string;
+  /** `file:line — the note`, ready to fold into what is said. */
+  text: string;
 }
 
 export interface Opening {
@@ -89,6 +111,7 @@ export async function openYard(
 
   const shut: (() => Promise<void>)[] = [];
   let held: readonly Carried[] = [];
+  let pinned: readonly PinnedNote[] = [];
 
   const again = (): void => changed(build());
 
@@ -119,6 +142,7 @@ export async function openYard(
       ...(working?.cost ? { cost: working.cost } : {}),
       ...(working?.queued.length ? { waiting: working.queued } : {}),
       ...(held.length ? { carrying: held } : {}),
+      ...(pinned.length ? { pinnedNotes: pinned } : {}),
       ...(working?.failure ? { failure: working.failure } : {}),
       ...(working?.carryOn === null || working?.carryOn === undefined
         ? {}
@@ -224,8 +248,18 @@ export async function openYard(
       again();
       if (from.here) void client.agents.putDown({ task: from.here.id, id });
     },
+    notes: () => pinned,
+    noteIt: (note) => {
+      pinned = [...pinned, note];
+      again();
+    },
+    unnote: (id) => {
+      pinned = pinned.filter((each) => each.id !== id);
+      again();
+    },
     handed: () => {
       held = [];
+      pinned = [];
       again();
     },
     close: async () => {

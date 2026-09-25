@@ -107,6 +107,14 @@ export interface Standing {
   waiting?: readonly { id: string; text: string }[];
   /** What is in your hands. */
   carrying?: readonly { id: string; name: string }[];
+  /** Notes pinned to a diff line, not yet handed over. */
+  pinnedNotes?: readonly {
+    id: string;
+    path: string;
+    at: number;
+    label: string;
+    note: string;
+  }[];
   /** A typed failure worth its own line, or absent when there isn't one. */
   failure?: Failure | null;
   /** When set, a continue is scheduled to send itself at this epoch ms. */
@@ -191,6 +199,13 @@ function sessionOf(
     agents: (told?.errands ?? []).map(handOf),
     waiting: (from.waiting ?? []).map((one) => ({ id: one.id, said: one.text })),
     carrying: (from.carrying ?? []).map((one) => ({ id: one.id, name: one.name })),
+    pinnedNotes: (from.pinnedNotes ?? []).map((one) => ({
+      id: one.id,
+      path: one.path,
+      at: one.at,
+      label: one.label,
+      note: one.note,
+    })),
     ...(from.failure
       ? {
           failure: {

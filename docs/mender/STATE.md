@@ -381,13 +381,23 @@ never drawn on the wood, because the wood is writing. A changed image says it
 changed and by how many bytes, and looking at it is a thing you do where images
 are looked at.
 
-Inline review comments on diff lines (FS-25, WS-44) are cut as a shape and not
-as a capability. Telling an agent about a particular line is real and wanted;
-doing it by threading notes into a diff gutter is a code-review tool's answer,
-and the village already has a better one, which is that you write to the agent
-on the line at the bottom of its board and an @ names the file. If pointing at
-a specific line turns out to need more than that, it comes back as a way of
-writing rather than a layer over the diff.
+Inline review comments on diff lines (FS-25, WS-44) came back. The earlier cut
+reasoned that the gatepost and an @ already say the same thing in words; the
+gap that reasoning missed is that neither one can point at a specific line
+without you typing the path and counting the line number yourself, which is
+exactly the one thing about a file you cannot get across by describing it. So
+a marked diff line is pressable now, the same gold as everything else: it
+turns into one line of writing right there on the wood — "say what is wrong
+with it. return pins it." — and pinning one leaves a small `✎` mark under
+that line and a matching `✎ file:line` chip waiting by the write line, the
+same way a dropped picture waits. It rides into the next thing said to this
+session as `file:line — the note`, and pressing the chip or the pinned mark
+takes it back. Driven for real: opened a real uncommitted change in a real
+session's own worktree, pinned a note on one added line, watched the chip and
+the pinned mark both appear, backed out to the yard with the chip still
+showing, sent nothing but the note with Return, and watched it land on the
+gatepost as `README.md:3 — why is this line here` and the agent actually act
+on it — then confirmed the chip was gone afterwards.
 
 WS-35, the branch selector, moves to W8 with the rest of rebinding a session to
 a different branch: which branch a checkout is on is a thing you change about a
@@ -1106,9 +1116,6 @@ Kept here so none of it quietly returns as a panel.
   that rests, a settings surface, a titlebar or a sidebar, and there are none.
 - Image diff (FS-27). A picture is never drawn on the wood; a changed image
   says that it changed.
-- Inline review comments on diff lines (FS-25, WS-44), as a shape rather than
-  as a capability. Telling an agent about a line is wanted and the village's
-  answer is writing to it with an @, not threading notes into a gutter.
 
 ## The work that has no ledger number
 
@@ -1265,7 +1272,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-41 | Diff main panel | done | W3 |
 | WS-42 | Commit history / blame | done | W3 |
 | WS-43 | CI check runs | done | W4 |
-| WS-44 | Draft line comments (agent-directed notes) | cut | W3 |
+| WS-44 | Draft line comments (agent-directed notes) | done | W3 |
 | WS-45 | PR data model | kept |  |
 | WS-46 | PR list/filtering (project level) | cut | W4 |
 | WS-47 | PR entry (inside a task's Changes panel) | cut | W4 |
@@ -1332,7 +1339,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-22 | CSV renderer |  | W5 |
 | FS-23 | Markdown/HTML/SVG/image renderers | part | W5 |
 | FS-24 | Text diff (Monaco diff editor) | done | W3 |
-| FS-25 | Inline review comments on diff lines | cut | W3 |
+| FS-25 | Inline review comments on diff lines | done | W3 |
 | FS-26 | Stacked multi-file diff view | cut | W3 |
 | FS-27 | Image diff view | cut | W3 |
 | FS-28 | Binary diff fallback | done | W3 |
