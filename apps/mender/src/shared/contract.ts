@@ -4,6 +4,7 @@ import { resourceUsageContract } from '@emdash/core/runtimes/resource-usage/api'
 import { terminalsContract } from '@emdash/core/runtimes/terminals/api';
 import { tuiAgentsContract } from '@emdash/core/runtimes/tui-agents/api';
 import { workspaceRegistryContract } from '@emdash/core/runtimes/workspace-registry/api';
+import { hostDependenciesContract } from '@emdash/core/services/host-dependencies/api';
 import { defineContract } from '@emdash/wire/rpc';
 import { pullRequestsContract } from '@upstream/services/pull-requests/api/contract';
 import { agentsContract } from './agents';
@@ -34,6 +35,7 @@ export const menderDomainContracts = {
   finding: findingContract,
   git: gitContract,
   github: githubContract,
+  host: hostDependenciesContract,
   projects: projectsContract,
   prompts: promptsContract,
   pulls: pullRequestsContract,

@@ -26,6 +26,7 @@ import { workspaceRegistryWorkerSpec } from '@emdash/core/runtimes/workspace-reg
 import { buildDescriptorFromProvider } from '@emdash/core/services/agent-plugins/api/plugins';
 import { NodeExecutionContext } from '@emdash/core/services/exec/api';
 import { fsWatchWorkerSpec } from '@emdash/core/services/fs-watch/node';
+import { hostDependenciesContract } from '@emdash/core/services/host-dependencies/api';
 import {
   CORE_DEPENDENCIES,
   createHostDependenciesComponent,
@@ -402,6 +403,10 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
       resourceUsage: createController(
         resourceUsageContract,
         forwardContractImpl(resourceUsageContract, resourceUsage.client)
+      ),
+      host: createController(
+        hostDependenciesContract,
+        forwardContractImpl(hostDependenciesContract, hostDependencies.client)
       ),
     },
     git,

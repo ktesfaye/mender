@@ -12,7 +12,8 @@
  * a page of switches that do nothing yet.
  */
 
-import type { Hand } from '@shared/app-settings';
+import type { HostDependencyView } from '@emdash/core/primitives/host-dependencies/api';
+import type { Hand, ProviderConfig } from '@shared/app-settings';
 import { counted } from '../board/card';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
@@ -50,6 +51,12 @@ export interface WindmillState {
   worktrees: WorktreeRow[] | null;
   /** null until the first sample answers. */
   machine: MachineSample | null;
+  /** What this machine hands each agent's own CLI beyond its ordinary
+      command, keyed by agent id. Filled in as each one is asked about. */
+  providers: Record<string, ProviderConfig>;
+  /** Which install of each agent's CLI this machine actually runs, and what
+      else it found, keyed by agent id. */
+  installs: Record<string, HostDependencyView>;
 }
 
 export interface WindmillDoings {
@@ -58,6 +65,10 @@ export interface WindmillDoings {
    *  branch down with it when nothing on the branch is unique — the caller
    *  decides that from the same row this board just showed. */
   clear(row: WorktreeRow): Promise<void>;
+  setExtraArgs(agent: string, extraArgs: string): Promise<void>;
+  setEnvVar(agent: string, key: string, value: string): Promise<void>;
+  removeEnvVar(agent: string, key: string): Promise<void>;
+  selectInstall(agent: string, path: string): Promise<void>;
   closed(): void;
 }
 
@@ -97,9 +108,10 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
 
   const body = el('div', 'settings-body');
   const general = section('General');
+  const agentsSection = section('Agents');
   const worktrees = section('What is on disk');
   const machine = section('This machine');
-  body.append(general.root, worktrees.root, machine.root);
+  body.append(general.root, agentsSection.root, worktrees.root, machine.root);
   panel.append(head, body);
 
   /** The worktree armed for a second press to clear it, if any. */
@@ -149,6 +161,108 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       list.appendChild(one);
     }
     general.fill([hint, list]);
+  }
+
+  function drawAgents(): void {
+    if (!now.hands) {
+      agentsSection.fill([hintLine('reading it…')]);
+      return;
+    }
+    const here = now.hands.filter((hand) => hand.here);
+    if (!here.length) {
+      agentsSection.fill([hintLine('nothing on this machine yet.')]);
+      return;
+    }
+    const rows: HTMLElement[] = [];
+    for (const hand of here) {
+      rows.push(drawAgentRow(hand));
+    }
+    agentsSection.fill(rows);
+  }
+
+  function drawAgentRow(hand: Hand): HTMLElement {
+    const row = el('div', 'windmill-agent');
+    const title = el('div', 'windmill-agent-name');
+    title.textContent = hand.name;
+    row.append(title);
+
+    const config = now.providers[hand.id];
+    const argsLine = el('div', 'windmill-agent-line');
+    const argsLabel = el('span', 'settings-hint');
+    argsLabel.textContent = 'extra arguments — ';
+    const argsInput = document.createElement('input');
+    argsInput.type = 'text';
+    argsInput.className = 'windmill-agent-input';
+    argsInput.placeholder = 'none';
+    argsInput.value = config ? config.extraArgs.join(' ') : '';
+    argsInput.disabled = !config;
+    const commit = (): void => {
+      void does.setExtraArgs(hand.id, argsInput.value).then(() => draw());
+    };
+    argsInput.addEventListener('blur', commit);
+    argsInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        argsInput.blur();
+      }
+    });
+    argsLine.append(argsLabel, argsInput);
+    row.append(argsLine);
+
+    const envHeading = el('div', 'settings-hint');
+    envHeading.textContent = 'environment';
+    row.append(envHeading);
+    if (config) {
+      for (const [key, value] of Object.entries(config.env)) {
+        const line = el('div', 'windmill-agent-line');
+        const text = el('span', 'windmill-agent-env');
+        text.textContent = `${key}=${value}`;
+        const remove = button('remove', 'windmill-agent-remove', () => {
+          void does.removeEnvVar(hand.id, key).then(() => draw());
+        });
+        line.append(text, remove);
+        row.append(line);
+      }
+    }
+    const addLine = el('div', 'windmill-agent-line');
+    const keyInput = document.createElement('input');
+    keyInput.type = 'text';
+    keyInput.placeholder = 'KEY';
+    keyInput.className = 'windmill-agent-input windmill-agent-input-key';
+    const valueInput = document.createElement('input');
+    valueInput.type = 'text';
+    valueInput.placeholder = 'value';
+    valueInput.className = 'windmill-agent-input';
+    const add = button('add', 'windmill-agent-add', () => {
+      const key = keyInput.value.trim();
+      if (!key) return;
+      void does.setEnvVar(hand.id, key, valueInput.value).then(() => draw());
+    });
+    addLine.append(keyInput, valueInput, add);
+    row.append(addLine);
+
+    const install = now.installs[hand.id];
+    if (install && install.candidates.length > 1) {
+      const installHeading = el('div', 'settings-hint');
+      installHeading.textContent = 'which install';
+      row.append(installHeading);
+      for (const candidate of install.candidates) {
+        const picked =
+          install.selection?.kind === 'path'
+            ? install.selection.path === candidate.path
+            : install.resolved?.path === candidate.path && !install.selection;
+        const line = button(
+          picked ? `● ${candidate.path}` : `· ${candidate.path}`,
+          'windmill-agent-install',
+          () => {
+            if (picked) return;
+            void does.selectInstall(hand.id, candidate.path).then(() => draw());
+          }
+        );
+        row.append(line);
+      }
+    }
+    return row;
   }
 
   function drawWorktrees(): void {
@@ -215,6 +329,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
 
   function draw(): void {
     drawGeneral();
+    drawAgents();
     drawWorktrees();
     drawMachine();
   }

@@ -71,6 +71,11 @@ export function createTuiSessions(
       const record = (await tasks.list()).find((candidate) => candidate.id === taskId);
       if (!record) return { success: false, because: 'that building is gone.' };
       const hand = record.agent ?? (await settings.defaultHand());
+      // What this machine hands that agent's own CLI beyond its ordinary
+      // command, set on the windmill: extra arguments and environment,
+      // read into the one runtime that actually takes a built command
+      // apart rather than speaking to the agent over its own protocol.
+      const provider = await settings.providerConfig(hand);
       const started = await runtimes.tuiAgents.start(
         {
           conversationId: record.id,
@@ -84,6 +89,8 @@ export function createTuiSessions(
           // than a window: the CLI is still running in it after the app
           // closes, the same way the plain shell's own tmux wrapper does.
           tmux: { identity: `mender-tui-${record.id}` },
+          ...(provider.extraArgs.length ? { extraArgs: provider.extraArgs } : {}),
+          ...(Object.keys(provider.env).length ? { providerVars: provider.env } : {}),
         },
         { timeoutMs: 0 }
       );

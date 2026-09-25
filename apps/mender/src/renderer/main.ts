@@ -4,6 +4,7 @@ import {
   parseNativeAbsolute,
   type PortableRelativePath,
 } from '@emdash/core/primitives/path/api';
+import type { HostDependencyView } from '@emdash/core/primitives/host-dependencies/api';
 import type { FileContentModel } from '@emdash/core/runtimes/files/api';
 import {
   gitContract,
@@ -17,7 +18,7 @@ import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Mood } from '@shared/agents';
-import type { Hand } from '@shared/app-settings';
+import type { Hand, ProviderConfig } from '@shared/app-settings';
 import type { At, Change } from '@shared/changes';
 import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
@@ -992,8 +993,20 @@ async function boot(): Promise<void> {
         hands: null as Hand[] | null,
         worktrees: null as WorktreeRow[] | null,
         machine: null as MachineSample | null,
+        providers: {} as Record<string, ProviderConfig>,
+        installs: {} as Record<string, HostDependencyView>,
       };
       let records: ReplicaState<Record<string, WorkspaceRecord>> | null = null;
+      const readProviders = (hands: Hand[]): void => {
+        for (const hand of hands.filter((one) => one.here)) {
+          void client.appSettings
+            .providerConfig({ agent: hand.id }, { timeoutMs: 0 })
+            .then((config) => {
+              state.providers = { ...state.providers, [hand.id]: config };
+              ui.update(state);
+            });
+        }
+      };
       const ui = openWindmill(state, {
         choose: async (id) => {
           state.hand = await client.appSettings.setDefaultHand({ id }, { timeoutMs: 0 });
@@ -1005,6 +1018,25 @@ async function boot(): Promise<void> {
             deleteBranch: !keepsBranch(row),
           });
           if (!done.success) say(worktreeTrouble(done.error), 6000);
+        },
+        setExtraArgs: async (agent, extraArgs) => {
+          const config = await client.appSettings.setExtraArgs({ agent, extraArgs }, { timeoutMs: 0 });
+          state.providers = { ...state.providers, [agent]: config };
+        },
+        setEnvVar: async (agent, key, value) => {
+          const config = await client.appSettings.setEnvVar({ agent, key, value }, { timeoutMs: 0 });
+          state.providers = { ...state.providers, [agent]: config };
+        },
+        removeEnvVar: async (agent, key) => {
+          const config = await client.appSettings.removeEnvVar({ agent, key }, { timeoutMs: 0 });
+          state.providers = { ...state.providers, [agent]: config };
+        },
+        selectInstall: async (agent, path) => {
+          const view = await client.host.snapshot.mutate('setSelection', {
+            key: undefined,
+            input: { id: agent, selection: { kind: 'path', path } },
+          });
+          if (view.success) state.installs = { ...state.installs, [agent]: view.data.data };
         },
         closed: () => {
           if (windmill === ui) windmill = null;
@@ -1039,6 +1071,17 @@ async function boot(): Promise<void> {
         state.hand = hand;
         state.hands = hands;
         ui.update(state);
+        readProviders(hands);
+        const hostReplica = new ReplicaState(client.host.snapshot.state(undefined, 'current'), {
+          onChange: (snap) => {
+            state.installs = snap.dependencies;
+            ui.update(state);
+          },
+        });
+        await hostReplica.ready;
+        state.installs = hostReplica.current().dependencies;
+        ui.update(state);
+        void hostReplica.dispose();
       })();
       const measured = new Map<string, number | null>();
       const measure = (id: string): void => {

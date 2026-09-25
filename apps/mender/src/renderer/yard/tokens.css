@@ -617,6 +617,77 @@
   color: var(--yard-gold-hover);
   background: var(--yard-timber-light);
 }
+.windmill-agent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--yard-rule-soft);
+}
+.windmill-agent:last-child {
+  border-bottom: none;
+}
+.windmill-agent-name {
+  font:
+    14px/1.3 'Josefin Sans',
+    sans-serif;
+  color: var(--yard-ink-bright);
+}
+.windmill-agent-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.windmill-agent-input {
+  flex: 1;
+  min-width: 0;
+  font:
+    12px/1.4 'Courier Prime',
+    monospace;
+  color: var(--yard-ink-bright);
+  background: var(--yard-timber);
+  border: 1px solid var(--yard-rule-soft);
+  padding: 3px 6px;
+}
+.windmill-agent-input-key {
+  flex: none;
+  width: 40%;
+}
+.windmill-agent-env {
+  flex: 1;
+  font:
+    12px/1.4 'Courier Prime',
+    monospace;
+  color: var(--yard-ink-dim);
+}
+.windmill-agent-remove,
+.windmill-agent-add {
+  font:
+    12px/1.2 'Josefin Sans',
+    sans-serif;
+  color: var(--yard-gold);
+  background: none;
+  border: none;
+  cursor: default;
+}
+.windmill-agent-remove:hover,
+.windmill-agent-add:hover {
+  color: var(--yard-gold-hover);
+}
+.windmill-agent-install {
+  align-self: flex-start;
+  font:
+    12px/1.4 'Courier Prime',
+    monospace;
+  color: var(--yard-ink-dim);
+  background: none;
+  border: none;
+  cursor: default;
+  text-align: left;
+}
+.windmill-agent-install:hover {
+  color: var(--yard-gold);
+}
 .settings-identity-row {
   display: flex;
   gap: 10px;

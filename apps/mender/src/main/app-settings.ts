@@ -25,6 +25,18 @@ export interface LastKit {
   mode: string | null;
 }
 
+/** What this machine hands an agent's own CLI beyond its ordinary command:
+    extra arguments split the plain way a shell would, and environment
+    variables set only for it. Read into a session's own terminal — the one
+    runtime that actually takes a built command apart — so `ps` on that
+    process shows exactly what is set here. */
+export interface ProviderConfig {
+  extraArgs: string[];
+  env: Record<string, string>;
+}
+
+const NO_PROVIDER_CONFIG: ProviderConfig = { extraArgs: [], env: {} };
+
 export interface AppSettings {
   /** Whoever a fresh session starts with. Falls back to Claude Code. */
   defaultHand(): Promise<string>;
@@ -35,6 +47,12 @@ export interface AppSettings {
   lastKit(agent: string): Promise<LastKit>;
   rememberModel(agent: string, model: string): Promise<void>;
   rememberMode(agent: string, mode: string): Promise<void>;
+  /** What this machine hands that agent's own CLI beyond its ordinary
+      command, for its next terminal session. */
+  providerConfig(agent: string): Promise<ProviderConfig>;
+  setExtraArgs(agent: string, extraArgs: string): Promise<ProviderConfig>;
+  setEnvVar(agent: string, key: string, value: string): Promise<ProviderConfig>;
+  removeEnvVar(agent: string, key: string): Promise<ProviderConfig>;
 }
 
 const KEY = 'app';
@@ -44,6 +62,7 @@ const NO_KIT: LastKit = { model: null, mode: null };
 interface Stored {
   defaultHand?: string;
   perAgent?: Record<string, { model?: string | null; mode?: string | null }>;
+  providers?: Record<string, { extraArgs?: string; env?: Record<string, string> }>;
 }
 
 export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
@@ -56,11 +75,38 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
       : {};
   };
 
+  /* Every write here is read-modify-write on one JSON file, and the windmill
+     can fire two of them in the same breath — an extra argument saved on
+     blur and an environment variable added a moment later. Queued onto the
+     same chain, so the second write always starts from what the first one
+     actually landed rather than from underneath it. */
+  let queue: Promise<unknown> = Promise.resolve();
+  const mutate = async (patch: (now: Stored) => Stored): Promise<Stored> => {
+    const next = queue.then(async () => {
+      const now = await stored();
+      const patched = patch(now);
+      await store.set(KEY, patched as unknown as never);
+      return patched;
+    });
+    queue = next.catch(() => {});
+    return next;
+  };
+
   const rememberKit = async (agent: string, patch: { model?: string; mode?: string }): Promise<void> => {
-    const now = await stored();
-    const perAgent = { ...now.perAgent };
-    perAgent[agent] = { ...perAgent[agent], ...patch };
-    await store.set(KEY, { ...now, perAgent } as unknown as never);
+    await mutate((now) => {
+      const perAgent = { ...now.perAgent };
+      perAgent[agent] = { ...perAgent[agent], ...patch };
+      return { ...now, perAgent };
+    });
+  };
+
+  const providerConfigOf = async (agent: string): Promise<ProviderConfig> => {
+    const held = (await stored()).providers?.[agent];
+    if (!held) return NO_PROVIDER_CONFIG;
+    return {
+      extraArgs: held.extraArgs?.trim() ? held.extraArgs.trim().split(/\s+/) : [],
+      env: held.env ?? {},
+    };
   };
 
   return {
@@ -69,8 +115,7 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
     },
 
     async setDefaultHand(id) {
-      const now = await stored();
-      await store.set(KEY, { ...now, defaultHand: id } as unknown as never);
+      await mutate((now) => ({ ...now, defaultHand: id }));
       return id;
     },
 
@@ -86,6 +131,38 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
 
     async rememberMode(agent, mode) {
       await rememberKit(agent, { mode });
+    },
+
+    providerConfig: providerConfigOf,
+
+    async setExtraArgs(agent, extraArgs) {
+      await mutate((now) => {
+        const providers = { ...now.providers };
+        providers[agent] = { ...providers[agent], extraArgs: extraArgs.trim() };
+        return { ...now, providers };
+      });
+      return providerConfigOf(agent);
+    },
+
+    async setEnvVar(agent, key, value) {
+      await mutate((now) => {
+        const providers = { ...now.providers };
+        const env = { ...providers[agent]?.env, [key]: value };
+        providers[agent] = { ...providers[agent], env };
+        return { ...now, providers };
+      });
+      return providerConfigOf(agent);
+    },
+
+    async removeEnvVar(agent, key) {
+      await mutate((now) => {
+        const providers = { ...now.providers };
+        const env = { ...providers[agent]?.env };
+        delete env[key];
+        providers[agent] = { ...providers[agent], env };
+        return { ...now, providers };
+      });
+      return providerConfigOf(agent);
     },
 
     async hands() {

@@ -8,5 +8,9 @@ export function createAppSettingsController(settings: AppSettings): Controller {
     defaultHand: () => settings.defaultHand(),
     setDefaultHand: ({ id }) => settings.setDefaultHand(id),
     hands: () => settings.hands(),
+    providerConfig: ({ agent }) => settings.providerConfig(agent),
+    setExtraArgs: ({ agent, extraArgs }) => settings.setExtraArgs(agent, extraArgs),
+    setEnvVar: ({ agent, key, value }) => settings.setEnvVar(agent, key, value),
+    removeEnvVar: ({ agent, key }) => settings.removeEnvVar(agent, key),
   });
 }

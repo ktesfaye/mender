@@ -628,12 +628,19 @@ branch already sitting upstream, or nothing left pointing at it — and clears
 it in two presses, the first press saying what that would actually cost:
 whatever is uncommitted in there is gone regardless, but a branch with
 commits nowhere else has, or one that has simply never been sent anywhere,
-is kept — only the worktree goes, not the history. A third page says what
-this machine is spending right now, cpu, memory and disk in plain words,
-counting back up every few seconds rather than sitting still. Everything
-else the windmill will eventually hold — updating and
-authenticating agents, MCP, skills, accounts, task defaults — still has
-nowhere to live.
+is kept — only the worktree goes, not the history. A third page, Agents,
+is what this machine hands each installed agent's own CLI beyond its
+ordinary command: extra arguments on one line, environment variables added
+and thrown away by name, and — where the host actually found more than one
+install of that agent's CLI on this machine — which one it runs, a plain
+list of the paths it found with the one in use marked, a press away from
+changing. All three reach the same runtime a terminal session's CLI is
+actually spawned with, so what is set here is what `ps` on that process
+shows, not a village-side promise about it. A fourth page says what this
+machine is spending right now, cpu, memory and disk in plain words, counting
+back up every few seconds rather than sitting still. Everything else the
+windmill will eventually hold — updating and authenticating agents, MCP,
+skills, accounts, task defaults — still has nowhere to live.
 
 **A session remembers what it was last thinking with.** Change an agent's
 model or mode on one session and every fresh session with that same agent

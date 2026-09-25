@@ -1366,8 +1366,8 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-14 | `browserPreview` / `browser` settings (profiles, CORS relax, clear-data) |  | W8 |
 | ST-15 | `changesViewMode` setting (flat/tree per section) | cut | W3 |
 | ST-16 | `remoteMachine` install-source setting | cut |  |
-| ST-17 | Per-agent-provider config (extra CLI args, env vars) |  | W8 |
-| ST-18 | Per-agent executable override |  | W8 |
+| ST-17 | Per-agent-provider config (extra CLI args, env vars) | done |  |
+| ST-18 | Per-agent executable override | done |  |
 | ST-19 | MCP server management (catalog + custom) | done |  |
 | ST-20 | MCP "sync to agents" |  | W8 |
 | ST-21 | Skills catalog | done |  |
