@@ -795,6 +795,25 @@ mood the island already reads, constructed the notification with the fire's
 own line as its body, and the click hands off to the same `go()` a rail press
 or a finder pick already uses. `apps/mender/src/main/attend.ts`.
 
+And quitting on top of a lit fire says so before it happens, rather than
+cutting every running turn with no notice. `Cmd+Q`, the app menu's own Quit,
+and the window's close box all fall through one gate in the main process
+(`apps/mender/src/main/quit.ts`, its timing rule pinned down in
+`quit-gate.ts`): with nobody working it is the one press it always was, and
+with a villager lit it turns the window dark and puts one line up —
+"`<n>` villagers are still working. quit anyway?" — the same shape as every
+other two-press cost on the wood. A second press of that line, or the chord
+again before it withdraws, is the only way through; anything else, including
+just waiting four seconds, is no. Driven live: called the renderer's own
+`showQuitCost` over the debug port and watched it darken the island and put
+the line up, pressed it and watched it call back through the exposed
+`confirmQuit` bridge into the real `ipcMain` listener, and clicking elsewhere
+on the darkened window withdrew it. Could not script the actual `Cmd+Q`
+accelerator itself over CDP — a native menu shortcut is caught by macOS
+before it ever reaches the page — so the gate's own timing (first press asks,
+second within four seconds allows, a stale press or one after the window
+closes just says no) is instead pinned down with `quit-gate.test.ts`.
+
 Not here yet: recovering from a bad boot.
 
 Closes UI-01 through UI-04, UI-27 through UI-29, UI-42, ST-09, ST-34,

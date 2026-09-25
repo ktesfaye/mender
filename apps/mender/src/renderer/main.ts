@@ -48,6 +48,7 @@ import { wire, type MenderClient } from './wire';
 import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
 import { openYard, type Watching } from './yard/live';
+import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
@@ -2759,6 +2760,7 @@ async function boot(): Promise<void> {
     /* A clicked notification names a session the same way pressing it on the
        rail or in the finder does: one path in, `go` decides the rest. */
     window.mender?.attend?.((task) => go(`task:${task}`));
+    window.mender?.quitCost?.((n) => showQuitCost(n));
 
     /* Who is standing outside which building, kept true by the main process
        rather than by whatever board happens to be open: a villager is still

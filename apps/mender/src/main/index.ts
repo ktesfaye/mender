@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { createScope } from '@emdash/shared/concurrency';
+import { peek } from '@emdash/wire/state';
 import { app, BrowserWindow } from 'electron';
 import { MENDER_WATCH_CHANNEL, type Watching } from '../shared/channels';
 import { createAgents } from './agents';
@@ -12,6 +13,7 @@ import { createFindingController } from './finding-controller';
 import { createProjects } from './projects';
 import { createProjectsController } from './projects-controller';
 import { createPromptsController } from './prompts';
+import { installQuitGuard } from './quit';
 import { startRuntimes } from './runtimes';
 import { createTasks } from './tasks';
 import { createTasksController } from './tasks-controller';
@@ -72,7 +74,7 @@ export async function main(): Promise<void> {
   });
 
   await app.whenReady();
-  await openVillageWindow();
+  const window = await openVillageWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void openVillageWindow();
@@ -82,12 +84,15 @@ export async function main(): Promise<void> {
     if (process.platform !== 'darwin') app.quit();
   });
 
-  app.on('before-quit', () => {
-    void scope.dispose();
+  installQuitGuard(app, {
+    window: () => window,
+    workingCount: () =>
+      Object.values(peek(agents.moods())).filter((mood) => mood === 'working').length,
+    dispose: () => scope.dispose(),
   });
 }
 
-async function openVillageWindow(): Promise<void> {
+async function openVillageWindow(): Promise<BrowserWindow> {
   const window = new BrowserWindow({
     // Room for the island at one screen pixel per world pixel, which is the
     // only scale this art is drawn for.
@@ -145,6 +150,8 @@ async function openVillageWindow(): Promise<void> {
   const devServer = process.env.ELECTRON_RENDERER_URL;
   if (devServer) await window.loadURL(devServer);
   else await window.loadFile(join(app.getAppPath(), 'out', 'renderer', 'index.html'));
+
+  return window;
 }
 
 /**

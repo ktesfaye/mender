@@ -21,6 +21,10 @@ declare global {
       watching: (to: (now: Watching) => void) => void;
       /** Which session a clicked notification wants him standing in. */
       attend: (to: (task: string) => void) => void;
+      /** How many villagers are still lit, named before a quit happens. */
+      quitCost: (to: (n: number) => void) => void;
+      /** The second press: quit anyway. */
+      confirmQuit: () => void;
       /** Open a folder in whatever this machine opens folders with. */
       openIt: (path: string) => void;
       /** Show it where it actually is, which is a different question. */

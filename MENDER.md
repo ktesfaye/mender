@@ -378,6 +378,14 @@ because a banner would only double a lantern he is already looking at.
 Clicking it brings the village forward and stands him in that session's yard,
 the same door a chord or a rail press already opens.
 
+**Quitting on a lit fire says what it costs.** `Cmd+Q`, or the window's own
+close box, with nobody working closes the village the way it always has. With
+a villager still lit it does not: the window goes dark and one line stands up
+in it — "`<n>` villagers are still working. quit anyway?" — the same shape
+every other thing here that cannot be undone already takes. Pressing it
+again, or the chord again before it withdraws, is the only way through;
+anything else, including just waiting, is no.
+
 The board's timber is the dock, widened by `tools/make-board.py` out of the
 artist's own planks, and the writing is Departure Mono under the SIL OFL. There
 is still no windmill, no parchment, no frame, no icon.

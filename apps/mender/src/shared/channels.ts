@@ -24,3 +24,14 @@ export type Watching = 'front' | 'behind' | 'gone';
  * cannot say for itself.
  */
 export const MENDER_ATTEND_CHANNEL = 'mender:attend';
+
+/**
+ * Channels for naming the cost of quitting before it happens.
+ *
+ * Main tells the renderer how many villagers are still lit, over
+ * `MENDER_QUIT_COST_CHANNEL`, instead of quitting outright; the renderer's
+ * own line says so, and pressing that line again sends
+ * `MENDER_CONFIRM_QUIT_CHANNEL` back, which is the second press.
+ */
+export const MENDER_QUIT_COST_CHANNEL = 'mender:quit-cost';
+export const MENDER_CONFIRM_QUIT_CHANNEL = 'mender:confirm-quit';

@@ -2,6 +2,8 @@ import { requestWirePort, type WindowLike } from '@emdash/wire/rpc';
 import { clipboard, contextBridge, ipcRenderer, shell, webUtils } from 'electron';
 import {
   MENDER_ATTEND_CHANNEL,
+  MENDER_CONFIRM_QUIT_CHANNEL,
+  MENDER_QUIT_COST_CHANNEL,
   MENDER_WATCH_CHANNEL,
   MENDER_WIRE_CHANNEL,
   type Watching,
@@ -28,6 +30,12 @@ let heldAttend: string | null = null;
 ipcRenderer.on(MENDER_ATTEND_CHANNEL, (_event, task: string) => {
   if (attended) attended(task);
   else heldAttend = task;
+});
+
+/* How many villagers are still lit, named before a quit actually happens. */
+let quitCost: ((n: number) => void) | null = null;
+ipcRenderer.on(MENDER_QUIT_COST_CHANNEL, (_event, n: number) => {
+  quitCost?.(n);
 });
 
 contextBridge.exposeInMainWorld('mender', {
@@ -59,6 +67,11 @@ contextBridge.exposeInMainWorld('mender', {
       heldAttend = null;
     }
   },
+  /* Quitting with the fire still lit: what it costs, and the second press. */
+  quitCost: (to: (n: number) => void) => {
+    quitCost = to;
+  },
+  confirmQuit: () => ipcRenderer.send(MENDER_CONFIRM_QUIT_CHANNEL),
   /* Taking something off the board. The host's own clipboard rather than the
      browser's, because the browser's needs a secure page and a packaged
      village is loaded off the disk. */
