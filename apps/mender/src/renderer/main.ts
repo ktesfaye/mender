@@ -18,8 +18,15 @@ import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Mood } from '@shared/agents';
-import type { CheckoutSettings, Hand, ProviderConfig, SessionUsage } from '@shared/app-settings';
+import type {
+  CheckoutSettings,
+  Hand,
+  ProviderConfig,
+  SessionUsage,
+  TerminalSettings,
+} from '@shared/app-settings';
 import type { At, Change } from '@shared/changes';
+import { parseEnvLines } from '@shared/env-lines';
 import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
 import type { Task } from '@shared/tasks';
@@ -563,6 +570,14 @@ async function boot(): Promise<void> {
     let founding: Founding | null = null;
     /** The windmill, while that window is up over everything. */
     let windmill: Windmill | null = null;
+    /** How a shell looks and what it starts as, read once at the start so a
+        shell opened before the windmill ever is still gets it. */
+    let terminalSettings: TerminalSettings | null = null;
+    void client.appSettings
+      .terminalSettings({}, { timeoutMs: 0 })
+      .then((read) => {
+        terminalSettings = read;
+      });
     /* Which file's change is on the board, over the checkout it came from.
        The checkout board underneath stays open and stays live; it is simply
        not what the wood is showing. */
@@ -1034,6 +1049,7 @@ async function boot(): Promise<void> {
         providers: {} as Record<string, ProviderConfig>,
         installs: {} as Record<string, HostDependencyView>,
         checkout: null as CheckoutSettings | null,
+        terminal: null as TerminalSettings | null,
       };
       let records: ReplicaState<Record<string, WorkspaceRecord>> | null = null;
       const readProviders = (hands: Hand[]): void => {
@@ -1089,6 +1105,17 @@ async function boot(): Promise<void> {
         setWorktreeDir: async (dir) => {
           state.checkout = await client.appSettings.setWorktreeDir({ dir }, { timeoutMs: 0 });
         },
+        setTerminalFontSize: async (fontSize) => {
+          state.terminal = await client.appSettings.setTerminalFontSize(
+            { fontSize },
+            { timeoutMs: 0 }
+          );
+          terminalSettings = state.terminal;
+        },
+        setDefaultShell: async (shell) => {
+          state.terminal = await client.appSettings.setDefaultShell({ shell }, { timeoutMs: 0 });
+          terminalSettings = state.terminal;
+        },
         closed: () => {
           if (windmill === ui) windmill = null;
           void records?.dispose();
@@ -1119,14 +1146,17 @@ async function boot(): Promise<void> {
       sample();
       const sampling = setInterval(sample, 5000);
       void (async () => {
-        const [hand, hands, checkout] = await Promise.all([
+        const [hand, hands, checkout, terminal] = await Promise.all([
           client.appSettings.defaultHand({}, { timeoutMs: 0 }),
           client.appSettings.hands({}, { timeoutMs: 0 }),
           client.appSettings.checkoutSettings({}, { timeoutMs: 0 }),
+          client.appSettings.terminalSettings({}, { timeoutMs: 0 }),
         ]);
         state.hand = hand;
         state.hands = hands;
         state.checkout = checkout;
+        state.terminal = terminal;
+        terminalSettings = terminal;
         ui.update(state);
         readProviders(hands);
         const hostReplica = new ReplicaState(client.host.snapshot.state(undefined, 'current'), {
@@ -1509,6 +1539,10 @@ async function boot(): Promise<void> {
           })(),
         identity: async (name, email) => {
           await client.projects.identity({ id: project.id, name, email }, { timeoutMs: 0 });
+          await refreshed();
+        },
+        env: async (text) => {
+          await client.projects.setEnv({ id: project.id, text }, { timeoutMs: 0 });
           await refreshed();
         },
         script: async (which, value) => {
@@ -2288,6 +2322,16 @@ async function boot(): Promise<void> {
      * while it is what is open. `ctrl+]` is the one chord this board keeps
      * for itself, and it steps back out to wherever you were.
      */
+    /** What a checkout's own project says every session here carries, plus
+        the windmill's own default shell where one is set — the project wins
+        when both name `SHELL`, since it is the more specific of the two. */
+    const shellEnvOf = (project: Project | undefined): Record<string, string> => {
+      const env: Record<string, string> = {};
+      const shell = terminalSettings?.defaultShell.trim();
+      if (shell) env.SHELL = shell;
+      return { ...env, ...parseEnvLines(project?.env ?? '') };
+    };
+
     const talk = async (id = 'village'): Promise<void> => {
       const place = onPlace();
       if (!place || !open) return;
@@ -2305,6 +2349,7 @@ async function boot(): Promise<void> {
         );
       };
       redrawShell(false);
+      const owner = 'title' in place ? projects.find((p) => p.id === place.project) : place;
       const running = await openShell(
         client,
         place.path,
@@ -2319,7 +2364,9 @@ async function boot(): Promise<void> {
           }
         },
         (url) => noteServer(place.path, url),
-        id
+        id,
+        shellEnvOf(owner),
+        terminalSettings?.fontSize ?? 0
       );
       if (talking !== mine || open !== aim) {
         await running?.close();

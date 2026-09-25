@@ -3,7 +3,9 @@ import { ReplicaState } from '@emdash/wire/live';
 import { cell, observe, peek, type Cell } from '@emdash/wire/state';
 import type { Scope } from '@emdash/shared/concurrency';
 import type { Mood } from '@shared/agents';
+import { parseEnvLines } from '@shared/env-lines';
 import type { AppSettings } from './app-settings';
+import type { Projects } from './projects';
 import type { MenderRuntimes } from './runtimes';
 import type { Tasks } from './tasks';
 
@@ -36,7 +38,8 @@ const ROWS = 40;
 export function createTuiSessions(
   runtimes: MenderRuntimes,
   settings: AppSettings,
-  tasks: Tasks
+  tasks: Tasks,
+  projects: Projects
 ): TuiSessions {
   const island = cell<Record<string, Mood>>({}, { name: 'tui:island' });
   let sessions: Record<string, TuiSessionState> = {};
@@ -76,6 +79,13 @@ export function createTuiSessions(
       // read into the one runtime that actually takes a built command
       // apart rather than speaking to the agent over its own protocol.
       const provider = await settings.providerConfig(hand);
+      // What the project's own settings say every session here carries, with
+      // the agent's own per-provider vars (set on the windmill) winning where
+      // both name the same thing, since they are the more specific of the two.
+      const projectEnv = parseEnvLines(
+        (await projects.list()).find((each) => each.id === record.project)?.env ?? ''
+      );
+      const vars = { ...projectEnv, ...provider.env };
       const started = await runtimes.tuiAgents.start(
         {
           conversationId: record.id,
@@ -90,7 +100,7 @@ export function createTuiSessions(
           // closes, the same way the plain shell's own tmux wrapper does.
           tmux: { identity: `mender-tui-${record.id}` },
           ...(provider.extraArgs.length ? { extraArgs: provider.extraArgs } : {}),
-          ...(Object.keys(provider.env).length ? { providerVars: provider.env } : {}),
+          ...(Object.keys(vars).length ? { providerVars: vars } : {}),
         },
         { timeoutMs: 0 }
       );

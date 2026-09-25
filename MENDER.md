@@ -210,6 +210,8 @@ checkout or chosen from anywhere, its name, typed straight into the window,
 what every new session carries into its worktree that git would leave behind,
 what runs when a worktree is cut — prepare before a session starts, setup and
 run alongside it, teardown when it comes down, each just a line of shell —
+what every session here carries into its own spawn beyond that, `NAME=value`
+a line, reaching the agent's own CLI and a real shell alike —
 who its commits go out as when that should be someone other than whatever git
 would already say, whether this machine is signed in to GitHub and as whom —
 there is no per-project account here, the village is to GitHub whoever `gh`
@@ -741,7 +743,12 @@ branch already sitting upstream, or nothing left pointing at it — and clears
 it in two presses, the first press saying what that would actually cost:
 whatever is uncommitted in there is gone regardless, but a branch with
 commits nowhere else has, or one that has simply never been sent anywhere,
-is kept — only the worktree goes, not the history. A fourth page, Agents,
+is kept — only the worktree goes, not the history. A fourth page, Terminal,
+says how a shell looks and what it starts as: a font size in pixels, and a
+default shell's own path, absent whatever the host's own `$SHELL` already
+said. Both reach every real shell the board opens next, in this project or
+any other — the size is what the grid actually draws at, and the shell is
+what `ps` on the spawned process actually shows. A fifth page, Agents,
 is what this machine hands each installed agent's own CLI beyond its
 ordinary command: extra arguments on one line, environment variables added
 and thrown away by name, and — where the host actually found more than one
@@ -749,7 +756,7 @@ install of that agent's CLI on this machine — which one it runs, a plain
 list of the paths it found with the one in use marked, a press away from
 changing. All three reach the same runtime a terminal session's CLI is
 actually spawned with, so what is set here is what `ps` on that process
-shows, not a village-side promise about it. A fifth page says what this
+shows, not a village-side promise about it. A sixth page says what this
 machine is spending right now, cpu, memory and disk in plain words, counting
 back up every few seconds rather than sitting still, and underneath it,
 every open session's own share of that: its agent process where this

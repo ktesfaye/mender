@@ -63,6 +63,19 @@ export const checkoutSettingsSchema = z.object({
 
 export type CheckoutSettings = z.infer<typeof checkoutSettingsSchema>;
 
+/** How a shell looks and what it starts as, until a project says otherwise.
+    Blank fields fall back to whatever xterm and the host's own `$SHELL`
+    already gave. */
+export const terminalSettingsSchema = z.object({
+  /** In pixels. 0 falls back to the board's own default. */
+  fontSize: z.number().int(),
+  /** A shell executable's path, e.g. `/bin/zsh`. Blank falls back to the
+      host's own `$SHELL`. */
+  defaultShell: z.string(),
+});
+
+export type TerminalSettings = z.infer<typeof terminalSettingsSchema>;
+
 export const appSettingsContract = defineContract({
   checkoutSettings: procedure({ input: z.object({}), output: checkoutSettingsSchema }),
   setBranchPrefix: procedure({
@@ -94,6 +107,15 @@ export const appSettingsContract = defineContract({
     output: providerConfigSchema,
   }),
   sessionUsage: procedure({ input: z.object({}), output: z.array(sessionUsageSchema) }),
+  terminalSettings: procedure({ input: z.object({}), output: terminalSettingsSchema }),
+  setTerminalFontSize: procedure({
+    input: z.object({ fontSize: z.number().int() }),
+    output: terminalSettingsSchema,
+  }),
+  setDefaultShell: procedure({
+    input: z.object({ shell: z.string() }),
+    output: terminalSettingsSchema,
+  }),
 });
 
 export type AppSettingsContract = typeof appSettingsContract;

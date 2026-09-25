@@ -718,6 +718,29 @@
 .settings-identity-field:focus {
   border-color: var(--yard-gold);
 }
+.settings-env-field {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  resize: vertical;
+  font:
+    13px/1.4 'Courier Prime',
+    monospace;
+  color: var(--yard-ink-bright);
+  background: rgba(18, 13, 7, 0.25);
+  border: 2px solid rgba(164, 137, 97, 0.45);
+  outline: none;
+}
+.settings-env-field::placeholder {
+  color: var(--yard-ink-dim);
+}
+.settings-env-field:hover {
+  border-color: rgba(164, 137, 97, 0.7);
+}
+.settings-env-field:focus {
+  border-color: var(--yard-gold);
+}
 .settings-danger {
   padding-top: 18px;
 }

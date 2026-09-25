@@ -23,5 +23,8 @@ export function createAppSettingsController(
     setRandomSuffix: ({ on }) => settings.setRandomSuffix(on),
     setProjectsDir: ({ dir }) => settings.setProjectsDir(dir),
     setWorktreeDir: ({ dir }) => settings.setWorktreeDir(dir),
+    terminalSettings: () => settings.terminalSettings(),
+    setTerminalFontSize: ({ fontSize }) => settings.setTerminalFontSize(fontSize),
+    setDefaultShell: ({ shell }) => settings.setDefaultShell(shell),
   });
 }

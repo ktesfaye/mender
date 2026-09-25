@@ -64,8 +64,7 @@ What is still genuinely missing: agents driving other Mac apps; mermaid you
 can pan and zoom, and a CSV table; the thinner transcript cards (thinking, the
 plan, how a turn ended) and a transcript that scrolls a long session cheaply;
 rebinding keys; the settings nobody has placed yet (branch naming, default
-folders, per-project environment, the terminal's font and shell, what search
-and watching leave out); linking an existing pull request and starting from a
+folders, what search and watching leave out); linking an existing pull request and starting from a
 chosen branch; a missing folder or a failed setup step as a state of its own;
 and issue trackers other than GitHub.
 
@@ -1331,8 +1330,8 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | TR-03 | Off-screen terminal host / instant tab switching | cut | W6 |
 | TR-04 | Terminal persistence via tmux | done | W6 |
 | TR-05 | Terminal exit/kill semantics | kept |  |
-| TR-06 | Shell resolution & selection |  | W6 |
-| TR-07 | Terminal appearance & behavior settings |  | W8 |
+| TR-06 | Shell resolution & selection | done | W6 |
+| TR-07 | Terminal appearance & behavior settings | done | W8 |
 | TR-08 | Terminal environment (theme signaling, agent env) | kept |  |
 | TR-09 | Automatic dev-server URL detection | done | W6 |
 | TR-10 | Manual port forwarding (SSH workspaces) | cut |  |
@@ -1413,7 +1412,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-24 | Per-project "base" settings (GitHub account, worktree root, default branch, base/push remote, git-credential mode, tmux) | part | W7 |
 | ST-25 | Per-project "shareable" settings written to `.emdash.json` |  | W7 |
 | ST-26 | Config import ("migrate from Conductor/Superset/Paseo/Codex") | cut |  |
-| ST-27 | Per-project environment variables |  | W7 |
+| ST-27 | Per-project environment variables | done | W7 |
 | ST-28 | Emdash account (sign-in/out, session states) | cut |  |
 | ST-29 | GitHub accounts (multi-account) | cut |  |
 | ST-30 | Three ways to connect GitHub |  | W8 |

@@ -15,6 +15,10 @@ export const projectSchema = z.object({
   /** Who a session's commits go out as, when this project says otherwise. */
   gitName: z.string().optional(),
   gitEmail: z.string().optional(),
+  /** What every session here carries into its worktree that git would leave
+      behind, over and above the host's own environment — `NAME=value`, one
+      per line. */
+  env: z.string().optional(),
   /** Whether its folder is actually still there, checked fresh on every
       `list` and never stored — a folder moved or deleted outside the
       village shows up here without anything writing it down. */
@@ -135,6 +139,10 @@ export const projectsContract = defineContract({
   /** Set or clear who this project's sessions commit as. Blank clears it. */
   identity: procedure({
     input: z.object({ id: z.string(), name: z.string(), email: z.string() }),
+    output: z.array(projectSchema),
+  }),
+  setEnv: procedure({
+    input: z.object({ id: z.string(), text: z.string() }),
     output: z.array(projectSchema),
   }),
   /** What runs when a worktree is cut: prepare, setup, run, teardown. */

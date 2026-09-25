@@ -41,6 +41,9 @@ export interface Project {
   /** Who a session's commits go out as, when this project says otherwise. */
   readonly gitName?: string;
   readonly gitEmail?: string;
+  /** What every session here carries into its spawn beyond git — `NAME=value`
+      lines. */
+  readonly env?: string;
 }
 
 /** Where a project's picture is to come from. */
@@ -116,6 +119,9 @@ export interface Projects {
   carry(id: string, path: string, on: boolean): Promise<Carrying>;
   /** Set or clear who this project's sessions commit as. Blank clears it. */
   identity(id: string, name: string, email: string): Promise<Project[]>;
+  /** What every session here carries into its spawn beyond git — `NAME=value`
+      lines. Blank clears it. */
+  setEnv(id: string, text: string): Promise<Project[]>;
   /** What runs when a worktree is cut: prepare, setup, run, teardown. */
   scripts(id: string): Promise<Scripts>;
   /** Blank clears that script, back to nothing running for it. */
@@ -406,6 +412,18 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
             ...(written.name ? { gitName: written.name } : {}),
             ...(written.email ? { gitEmail: written.email } : {}),
           };
+        })
+      );
+    },
+
+    async setEnv(id, text) {
+      const projects = await stored();
+      const written = text.trim();
+      return save(
+        projects.map((project) => {
+          if (project.id !== id) return project;
+          const { env: _e, ...bare } = project;
+          return written ? { ...bare, env: written } : bare;
         })
       );
     },

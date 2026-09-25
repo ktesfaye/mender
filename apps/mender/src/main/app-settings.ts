@@ -68,6 +68,14 @@ const NO_CHECKOUT_SETTINGS: CheckoutSettings = {
   worktreeDir: '',
 };
 
+/** How a shell looks and what it starts as, until a project says otherwise. */
+export interface TerminalSettings {
+  fontSize: number;
+  defaultShell: string;
+}
+
+const NO_TERMINAL_SETTINGS: TerminalSettings = { fontSize: 0, defaultShell: '' };
+
 export interface AppSettings {
   /** Whoever a fresh session starts with. Falls back to Claude Code. */
   defaultHand(): Promise<string>;
@@ -93,6 +101,12 @@ export interface AppSettings {
   setRandomSuffix(on: boolean): Promise<CheckoutSettings>;
   setProjectsDir(dir: string): Promise<CheckoutSettings>;
   setWorktreeDir(dir: string): Promise<CheckoutSettings>;
+  /** How a shell looks and what it starts as: font size and the default
+      shell, read into the board's own xterm and into a fresh shell's own
+      spawn. */
+  terminalSettings(): Promise<TerminalSettings>;
+  setTerminalFontSize(fontSize: number): Promise<TerminalSettings>;
+  setDefaultShell(shell: string): Promise<TerminalSettings>;
 }
 
 const KEY = 'app';
@@ -108,6 +122,10 @@ interface Stored {
     randomSuffix?: boolean;
     projectsDir?: string;
     worktreeDir?: string;
+  };
+  terminal?: {
+    fontSize?: number;
+    defaultShell?: string;
   };
 }
 
@@ -163,6 +181,15 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
       randomSuffix: held.randomSuffix ?? false,
       projectsDir: held.projectsDir ?? '',
       worktreeDir: held.worktreeDir ?? '',
+    };
+  };
+
+  const terminalSettingsOf = async (): Promise<TerminalSettings> => {
+    const held = (await stored()).terminal;
+    if (!held) return NO_TERMINAL_SETTINGS;
+    return {
+      fontSize: held.fontSize ?? 0,
+      defaultShell: held.defaultShell ?? '',
     };
   };
 
@@ -242,6 +269,18 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
     async setWorktreeDir(dir) {
       await mutate((now) => ({ ...now, checkout: { ...now.checkout, worktreeDir: dir.trim() } }));
       return checkoutSettingsOf();
+    },
+
+    terminalSettings: terminalSettingsOf,
+
+    async setTerminalFontSize(fontSize) {
+      await mutate((now) => ({ ...now, terminal: { ...now.terminal, fontSize } }));
+      return terminalSettingsOf();
+    },
+
+    async setDefaultShell(shell) {
+      await mutate((now) => ({ ...now, terminal: { ...now.terminal, defaultShell: shell.trim() } }));
+      return terminalSettingsOf();
     },
 
     async hands() {

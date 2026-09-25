@@ -69,6 +69,9 @@ export interface SettingsDoings {
   carry(path: string, on: boolean): void;
   /** Who this project's sessions commit as. Blank clears an override. */
   identity(name: string, email: string): Promise<void>;
+  /** What every session here carries into its spawn, `NAME=value` a line.
+      Blank clears it. */
+  env(text: string): Promise<void>;
   /** Blank clears that script, back to nothing running for it. */
   script(which: ScriptKind, value: string): Promise<void>;
   /** A session cut on its own, without you pressing the hook. */
@@ -164,6 +167,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   const timetable = section('Sessions on a timetable');
   const scripts = section('What runs when a worktree is cut');
   const identity = section('Commits go out as');
+  const environment = section('Every session here carries');
   const github = section('GitHub');
   const history = section('sessions that have ended');
   const danger = el('div', 'settings-danger');
@@ -174,6 +178,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     timetable.root,
     scripts.root,
     identity.root,
+    environment.root,
     github.root,
     history.root,
     danger
@@ -607,6 +612,23 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     identity.fill([hint, row]);
   }
 
+  function drawEnv(): void {
+    const hint = el('p', 'settings-hint');
+    hint.textContent = 'One NAME=value a line, for the worktree beyond what git carries.';
+    const field = document.createElement('textarea');
+    field.className = 'settings-env-field';
+    field.spellcheck = false;
+    field.rows = 4;
+    field.placeholder = 'FOO=bar';
+    field.value = now.project.env ?? '';
+    const keep = async (): Promise<void> => {
+      if (field.value.trim() === (now.project.env ?? '').trim()) return;
+      await does.env(field.value);
+    };
+    field.addEventListener('blur', () => void keep());
+    environment.fill([hint, field]);
+  }
+
   let signingIn: { code: string; url: string } | null = null;
   let ghTrouble: string | null = null;
 
@@ -695,6 +717,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     if (document.activeElement?.closest('.settings-section') !== timetable.root) drawTimetable();
     if (document.activeElement?.closest('.settings-scripts-list') == null) drawScripts();
     if (document.activeElement?.closest('.settings-identity-row') == null) drawIdentity();
+    if (document.activeElement?.closest('.settings-env-field') == null) drawEnv();
     drawGitHub();
     drawHistory();
     drawDanger();

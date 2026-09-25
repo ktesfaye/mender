@@ -13,7 +13,13 @@
  */
 
 import type { HostDependencyView } from '@emdash/core/primitives/host-dependencies/api';
-import type { CheckoutSettings, Hand, ProviderConfig, SessionUsage } from '@shared/app-settings';
+import type {
+  CheckoutSettings,
+  Hand,
+  ProviderConfig,
+  SessionUsage,
+  TerminalSettings,
+} from '@shared/app-settings';
 import { counted } from '../board/card';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
@@ -63,6 +69,9 @@ export interface WindmillState {
   /** How a fresh checkout gets made: branch naming, and where a new project
       or worktree lands. Null while the first answer hasn't arrived yet. */
   checkout: CheckoutSettings | null;
+  /** How a shell looks and what it starts as. Null while the first answer
+      hasn't arrived yet. */
+  terminal: TerminalSettings | null;
 }
 
 export interface WindmillDoings {
@@ -79,6 +88,8 @@ export interface WindmillDoings {
   setRandomSuffix(on: boolean): Promise<void>;
   setProjectsDir(dir: string): Promise<void>;
   setWorktreeDir(dir: string): Promise<void>;
+  setTerminalFontSize(fontSize: number): Promise<void>;
+  setDefaultShell(shell: string): Promise<void>;
   closed(): void;
 }
 
@@ -119,10 +130,18 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   const body = el('div', 'settings-body');
   const general = section('General');
   const checkouts = section('Checkouts');
+  const terminal = section('Terminal');
   const agentsSection = section('Agents');
   const worktrees = section('What is on disk');
   const machine = section('This machine');
-  body.append(general.root, checkouts.root, agentsSection.root, worktrees.root, machine.root);
+  body.append(
+    general.root,
+    checkouts.root,
+    terminal.root,
+    agentsSection.root,
+    worktrees.root,
+    machine.root
+  );
   panel.append(head, body);
 
   /** The worktree armed for a second press to clear it, if any. */
@@ -263,6 +282,63 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     rows.push(worktreeLine);
 
     checkouts.fill(rows);
+  }
+
+  function drawTerminal(): void {
+    if (!now.terminal) {
+      terminal.fill([hintLine('Reading it…')]);
+      return;
+    }
+    const held = now.terminal;
+    const rows: HTMLElement[] = [];
+
+    const fontLine = el('div', 'windmill-agent-line');
+    const fontLabel = el('span', 'settings-hint');
+    fontLabel.textContent = 'font size — ';
+    const fontInput = document.createElement('input');
+    fontInput.type = 'text';
+    fontInput.inputMode = 'numeric';
+    fontInput.className = 'windmill-agent-input';
+    fontInput.placeholder = '13';
+    fontInput.value = held.fontSize ? String(held.fontSize) : '';
+    const keepFont = (): void => {
+      const parsed = Number.parseInt(fontInput.value, 10);
+      void does
+        .setTerminalFontSize(Number.isFinite(parsed) && parsed > 0 ? parsed : 0)
+        .then(() => draw());
+    };
+    fontInput.addEventListener('blur', keepFont);
+    fontInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        fontInput.blur();
+      }
+    });
+    fontLine.append(fontLabel, fontInput);
+    rows.push(fontLine);
+
+    const shellLine = el('div', 'windmill-agent-line');
+    const shellLabel = el('span', 'settings-hint');
+    shellLabel.textContent = 'default shell — ';
+    const shellInput = document.createElement('input');
+    shellInput.type = 'text';
+    shellInput.className = 'windmill-agent-input';
+    shellInput.placeholder = '/bin/zsh';
+    shellInput.spellcheck = false;
+    shellInput.value = held.defaultShell;
+    shellInput.addEventListener('blur', () => {
+      void does.setDefaultShell(shellInput.value).then(() => draw());
+    });
+    shellInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        shellInput.blur();
+      }
+    });
+    shellLine.append(shellLabel, shellInput);
+    rows.push(shellLine);
+
+    terminal.fill(rows);
   }
 
   function drawAgents(): void {
@@ -464,6 +540,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   function draw(): void {
     drawGeneral();
     drawCheckouts();
+    drawTerminal();
     drawAgents();
     drawWorktrees();
     drawMachine();

@@ -50,7 +50,7 @@ export interface TerminalHooks {
   onStepOut(): void;
 }
 
-export function makeTerminal(hooks: TerminalHooks): LiveTerminal {
+export function makeTerminal(hooks: TerminalHooks, fontSize = 14): LiveTerminal {
   const container = document.createElement('div');
   container.style.cssText = 'width:100%;height:100%';
 
@@ -59,7 +59,7 @@ export function makeTerminal(hooks: TerminalHooks): LiveTerminal {
     rows: ROWS,
     scrollback: 5000,
     fontFamily: "'Courier Prime', ui-monospace, monospace",
-    fontSize: 14,
+    fontSize,
     lineHeight: 1.3,
     cursorBlink: true,
     allowProposedApi: true,

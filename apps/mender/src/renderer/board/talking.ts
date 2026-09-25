@@ -44,7 +44,13 @@ export async function openShell(
   /** Which of a checkout's shells this is. Opening the same id twice is the
       same shell, which is the whole point: it is a place. A second id is a
       second place, its own tmux, alive independently of the first. */
-  id = 'village'
+  id = 'village',
+  /** What the project's own settings say every session here carries,
+      `NAME=value`, parsed. */
+  env: Record<string, string> = {},
+  /** The windmill's own terminal font size, in pixels. 0 falls back to the
+      grid's own default. */
+  fontSize = 0
 ): Promise<LiveShell | null> {
   const parsed = parseNativeAbsolute(checkout);
   if (!parsed.success) return null;
@@ -54,17 +60,20 @@ export async function openShell(
     id,
   };
 
-  const term: LiveTerminal = makeTerminal({
-    onData: (data) => void client.terminals.sendInput({ key, data }),
-    onResize: ({ cols, rows }) => void client.terminals.resize({ key, cols, rows }),
-    onStepOut: steppedOut,
-  });
+  const term: LiveTerminal = makeTerminal(
+    {
+      onData: (data) => void client.terminals.sendInput({ key, data }),
+      onResize: ({ cols, rows }) => void client.terminals.resize({ key, cols, rows }),
+      onStepOut: steppedOut,
+    },
+    fontSize || undefined
+  );
 
   const started = await client.terminals.start({
     key,
     spec: {
       cwd: checkout,
-      env: {},
+      env,
       /* Without tmux the shell dies with the app, which is the one thing a
          shell in a village must not do. Where tmux is not installed the
          runtime runs it plainly and it is simply not there next time. */

@@ -76,7 +76,7 @@ export async function main(): Promise<void> {
   // Same reason as `projects.sweeps` just above: the two need each other, so
   // one has to be told about the other after both exist.
   tasks.onGone((task) => void agents.evict(task));
-  const tuiSessions = createTuiSessions(runtimes, appSettings, tasks);
+  const tuiSessions = createTuiSessions(runtimes, appSettings, tasks, projects);
   const moods = mergedMoods(scope, agents.moods(), tuiSessions.moods());
   watchForAttention({ scope, agents, tasks, tuiDoing: (task) => tuiSessions.doing(task) });
   watchDockBadge({ scope, agents, moods });
