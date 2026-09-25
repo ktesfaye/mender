@@ -161,6 +161,11 @@ function initializeAgent(agent: AcpAgentApi, host: AcpAgentProcessHost) {
     clientCapabilities: {
       fs: { readTextFile: true, writeTextFile: true },
       terminal: typeof host.spawnTerminal === 'function',
+      /* Opts in to Claude's ACP adapter's "AIR" `sessionFailure` extension: a
+         typed usage/rate limit, overload, empty quota, or auth-required report
+         instead of ordinary transcript prose. Unknown `_meta` is ignored by
+         every other provider, so this is safe to advertise unconditionally. */
+      _meta: { jetbrains: { air: { version: 1, capabilities: ['sessionFailure'] } } },
     },
   });
 }

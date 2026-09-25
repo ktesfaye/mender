@@ -19,6 +19,7 @@ import type {
   PromptInput,
   QueuedPrompt,
   SessionConfigState,
+  SessionFailure,
   SessionState,
   SessionUsage,
   StopReason,
@@ -42,6 +43,7 @@ import {
   type SessionMachineContext,
 } from '#runtimes/acp/node/machine/machine';
 import { createMachineEffectDriver, type MachineEffectDriver } from '../machine/primitive';
+import { decodeAirSessionFailure } from './air-session-failure';
 import type { PromptAcceptance, SessionCellDeps, SessionPromptResult } from './cell-deps';
 import { PermissionBroker } from './permission-broker';
 import { RawAcpLog, type RawAcpEvent } from './raw-log';
@@ -75,6 +77,10 @@ export class SessionCell {
   private quiesceTimer: ReturnType<typeof setTimeout> | null = null;
   private lastRunningAgentCount = 0;
   private readonly effectDriver: MachineEffectDriver<Effect>;
+  /** The most recent typed failure Claude's adapter has reported (its AIR
+   *  `sessionFailure` extension), cleared the moment a new prompt goes out —
+   *  see `applySessionFailure`/`clearSessionFailure`. */
+  private currentFailure: SessionFailure | null = null;
 
   constructor(private readonly deps: SessionCellDeps) {
     this._acpSessionId = deps.acpSessionId;
@@ -117,7 +123,26 @@ export class SessionCell {
   }
 
   get sessionState(): SessionState {
-    return { ...this.machine.sessionState(), historyRevision: this.transcript.historyRevision };
+    return {
+      ...this.machine.sessionState(),
+      historyRevision: this.transcript.historyRevision,
+      failure: this.currentFailure,
+    };
+  }
+
+  /** Records a typed session failure reported outside a settled turn — an
+   *  advisory notice such as "temporarily overloaded", still retrying under
+   *  the hood. Turn-ending failures are recorded from the prompt response
+   *  itself, in `sendPromptInternal`. */
+  applySessionFailure(failure: SessionFailure): void {
+    this.currentFailure = failure;
+    this.deps.callbacks?.onSessionStateChanged?.();
+  }
+
+  clearSessionFailure(): void {
+    if (!this.currentFailure) return;
+    this.currentFailure = null;
+    this.deps.callbacks?.onSessionStateChanged?.();
   }
 
   get config(): SessionConfigState {
@@ -521,6 +546,9 @@ export class SessionCell {
       acceptance?.onAccepted({ queued: true });
       return ok({ queued: true });
     }
+    /* A fresh attempt is the village's own "retry": the failure it's a retry
+       of stops being current the moment it goes out, not only if it succeeds. */
+    this.clearSessionFailure();
 
     const messageId = `${this.conversationId}-${this.machine.nextTurnIndex}-user`;
     this.transcript.pushEvent({
@@ -573,6 +601,14 @@ export class SessionCell {
         sessionId: this.acpSessionId,
         stopReason: response.stopReason,
       });
+      /* A typed failure carried on the prompt response is the canonical AIR
+         carrier for one that settled this turn — Claude's adapter still
+         reports a normal `end_turn` stop reason alongside it, so without this
+         the turn would otherwise read as an ordinary, silent finish. */
+      const failure = decodeAirSessionFailure(
+        (response as { _meta?: unknown })._meta
+      );
+      if (failure) this.applySessionFailure(failure);
       this.settleTurn(outcomeFromStopReason(response.stopReason));
       return ok({ queued: false });
     } catch (e) {

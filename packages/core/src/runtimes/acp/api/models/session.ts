@@ -12,6 +12,39 @@ export const stopReasonSchema = z.enum([
 export type StopReason = z.infer<typeof stopReasonSchema>;
 
 /**
+ * A typed session failure, as Claude's own ACP adapter reports it (its "AIR"
+ * `sessionFailure` extension) rather than as ordinary transcript prose: a
+ * usage/rate limit, an overload, an empty quota, sign-in being required, a
+ * lost connection, or the like, each with what it's asking you to do about it.
+ */
+export const sessionFailureCategorySchema = z.enum([
+  'connection',
+  'access',
+  'limit',
+  'request',
+  'service',
+  'unknown',
+]);
+export type SessionFailureCategory = z.infer<typeof sessionFailureCategorySchema>;
+
+export const sessionFailureActionSchema = z.enum(['retry', 'login', 'new_session']);
+export type SessionFailureAction = z.infer<typeof sessionFailureActionSchema>;
+
+export const sessionFailureSchema = z.object({
+  id: z.string(),
+  category: sessionFailureCategorySchema,
+  severity: z.enum(['warning', 'error']),
+  title: z.string(),
+  /** The agent's own prose, when it carried more than the title — kept because
+   *  its wording is sometimes the only place a reset time is said at all. */
+  details: z.string().optional(),
+  actions: z.array(sessionFailureActionSchema),
+  /** Epoch ms, pulled out of `details` when it names a reset time. */
+  resetAt: z.number().optional(),
+});
+export type SessionFailure = z.infer<typeof sessionFailureSchema>;
+
+/**
  * ACP session lifecycle owned by the SessionMachine.
  *
  * - `starting`: agent process/session setup is in progress.
@@ -56,6 +89,10 @@ export const sessionStateSchema = z.object({
   canSubmit: z.boolean(),
   /** Machine-owned UI affordance: true when there is cancellable foreground/agent work. */
   canCancel: z.boolean(),
+  /** The most recent typed failure the agent has reported, cleared the moment
+   *  a new prompt is sent. Optional so existing session-state literals built
+   *  before this field existed stay valid. */
+  failure: sessionFailureSchema.nullable().optional(),
 });
 export type SessionState = z.infer<typeof sessionStateSchema>;
 

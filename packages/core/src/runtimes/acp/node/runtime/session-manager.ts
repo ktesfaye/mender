@@ -36,6 +36,7 @@ import type {
   AcpConnectionContext,
   AcpConnectionSource,
 } from '#runtimes/acp/node/connection/source';
+import { decodeAirSessionFailure } from '#runtimes/acp/node/session/air-session-failure';
 import type { AcpChatHistory, SessionCell } from '#runtimes/acp/node/session/cell';
 import {
   closedSessionState,
@@ -985,6 +986,14 @@ export class SessionManager {
       case 'config_option_update':
         cell.applySessionMeta({ configOptions: update.configOptions });
         break;
+      case 'session_info_update': {
+        /* An advisory typed failure — one still being retried under the hood,
+           not one that settled a turn (that comes back on the prompt response
+           itself; see SessionCell.sendPromptInternal). */
+        const failure = decodeAirSessionFailure((update as { _meta?: unknown })._meta);
+        if (failure) cell.applySessionFailure(failure);
+        break;
+      }
       default:
         break;
     }

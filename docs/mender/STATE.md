@@ -1510,6 +1510,35 @@ back to gold. On a checkout board the mark beside each file is its colour
 the file itself is gold. In an answer, bold is violet, code blue, headings and
 quotes carry the violet too. Driven on his real session that hit the limit.
 
+### Typed session failures, wired but not yet driven live (2026-09-24)
+
+Claude's ACP adapter can report a limit, an overload, an empty quota, a lost
+connection or a sign-in requirement as a typed report — its "AIR" `sessionFailure`
+extension — instead of the plain prose the previous entry above still leans on.
+Emdash's connection now asks for it (`clientCapabilities._meta`), and both the
+ways the adapter delivers one are decoded: an advisory still in flight, off a
+`session_info_update`'s `_meta`, and one that settled the turn, off the
+`session/prompt` response's `_meta` (Claude reports that one as an ordinary
+`end_turn` alongside it, so without this it would read as a normal, silent
+finish). It surfaces on the session's own state, cleared the moment a fresh
+prompt goes out — that new prompt reads as this session's own "retry".
+
+The board reads it: the fire banks (mood `resting`, not `hurt`) for a limit, an
+overloaded service, or a lost connection, since there is a real next move —
+wait, retry, start again — and says which kind of wait it is, with the reset
+time pulled out of Claude's own prose and said in local time when it names one.
+Sign-in and anything else stays sore. A turn that stopped for the turn limit
+(`max_turn_requests`) now gets its own sentence instead of reading as a plain,
+silent success.
+
+Not done: the gold retry/"carry on when it lifts"/new-session action lines the
+brief asks for, and the counting-down wait — today it's a static reset time, not
+a live countdown. Sign-in's own way-in (item 2) isn't built. All of this is
+unit-tested (the AIR `_meta` decoder and its reset-time parsing) and the app
+was driven end to end with a real session to confirm nothing broke, but no real
+rate limit was on hand in this session to see the failure itself rendered live —
+next session with a live limit should confirm the wording and mark this `done`.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

@@ -3,6 +3,7 @@ import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import type {
   AcpPermissionRequest,
   PlanState,
+  SessionFailure,
   SessionState,
   SessionUsage,
   ToolNode,
@@ -713,10 +714,11 @@ class House {
     const turns = this.live ? [...this.before, this.live] : this.before;
     const lines = linesOf(turns, this.where()).slice(-KEPT);
     const asking = askOf(this.lifecycle?.pendingPermissions?.[0], this.where());
-    const mood = moodOf(this.lifecycle, asking, this.trouble);
+    const failure = this.lifecycle?.failure ?? null;
+    const mood = moodOf(this.lifecycle, asking, this.trouble, failure);
     return {
       mood,
-      doing: this.trouble ?? doingOf(mood, this.live),
+      doing: this.trouble ?? (failure ? failureDoing(failure) : doingOf(mood, this.live)),
       lines,
       told: toldOf(turns, this.where(), (id, over) => this.time(id, over)),
       asking,
@@ -739,10 +741,17 @@ function moodsOf(houses: Map<string, House>): Record<string, Mood> {
 function moodOf(
   lifecycle: SessionState | undefined,
   asking: Ask | null,
-  trouble: string | undefined
+  trouble: string | undefined,
+  failure: SessionFailure | null
 ): Mood {
   if (trouble) return 'hurt';
   if (!lifecycle) return 'arriving';
+  /* A limit, an overload, or a lost connection is somebody who has stopped
+     and is standing at the gate — the fire banked, not out — because there is
+     a real next move (wait, retry, start again) rather than something broken
+     to go and fix. Sign-in and a request the agent flatly would not make are
+     the ones that stay sore. */
+  if (failure) return bankable(failure.category) ? 'resting' : 'hurt';
   if (asking) return 'asking';
   if (lifecycle.lifecycle === 'starting' || lifecycle.lifecycle === 'replaying') return 'arriving';
   if (lifecycle.isGenerating) return 'working';
@@ -763,6 +772,49 @@ function doingOf(mood: Mood, live: TranscriptTurn | null): string {
   if (mood === 'empty') return 'nobody is working in here.';
   const last = live ? lastMove(live) : undefined;
   return last ?? 'working.';
+}
+
+/** A typed failure that has somewhere to go once it lifts — a wait, a retry, a
+ *  new session — rather than something that needs fixing before anything can
+ *  go on. */
+function bankable(category: SessionFailure['category']): boolean {
+  return category === 'limit' || category === 'service' || category === 'connection';
+}
+
+/** The doing-line for a typed session failure, said the way the fire itself
+ *  would say it — what kind of wait it is, and when it lifts, in local time. */
+function failureDoing(failure: SessionFailure): string {
+  const resets = failure.resetAt ? ` · resets ${localClock(failure.resetAt)}` : '';
+  switch (failure.category) {
+    case 'limit':
+      return `waiting out a limit${resets}`;
+    case 'service':
+      return `waiting out a rough patch at the other end${resets}`;
+    case 'connection':
+      return `lost its way back to the agent${resets}`;
+    case 'access':
+      return 'it cannot go on until you sign it in.';
+    default:
+      return sentence(failure.title);
+  }
+}
+
+/** A clock time in this machine's own zone, said the way the village talks:
+ *  lower case, no leading zero, no space before am/pm. */
+function localClock(at: number): string {
+  return new Date(at)
+    .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    .toLowerCase()
+    .replace(/\s+/g, '');
+}
+
+/** The agent's own words, read as a sentence rather than a heading. */
+function sentence(said: string): string {
+  const trimmed = said.trim();
+  const lower = /^[A-Z][a-z]/.test(trimmed)
+    ? `${trimmed[0]?.toLowerCase()}${trimmed.slice(1)}`
+    : trimmed;
+  return /[.!?]$/.test(lower) ? lower : `${lower}.`;
 }
 
 /** Whatever is actually happening this second, if it can be named. */
@@ -1112,6 +1164,9 @@ function endedBadly(
   }
   if (outcome.kind === 'done' && outcome.reason === 'max_tokens') {
     return { said: 'It ran out of room to answer and stopped short.', trouble: 'warn' };
+  }
+  if (outcome.kind === 'done' && outcome.reason === 'max_turn_requests') {
+    return { said: 'It reached how far it is allowed to go in one turn and stopped.', trouble: 'warn' };
   }
   if (outcome.kind === 'interrupted' && outcome.reason === 'process_closed') {
     return { said: 'The agent went away in the middle of it.', trouble: 'wrong' };
