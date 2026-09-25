@@ -10,6 +10,7 @@ import { gitContract } from '@emdash/core/runtimes/git/api';
 import { LiveJobFailedError, createLiveJobReplicaCache } from '@emdash/wire/live';
 import { COMMON, createPlan, type DistrictSpec } from '@mender/village';
 import { app, dialog } from 'electron';
+import type { AppSettings } from './app-settings';
 import { keep, picturesIn, shown, type Picture } from './pictures';
 import type { MenderRuntimes } from './runtimes';
 
@@ -139,7 +140,7 @@ function plan(): ReturnType<typeof createPlan> {
 }
 let cached: ReturnType<typeof createPlan> | undefined;
 
-export function createProjects(runtimes: MenderRuntimes): Projects {
+export function createProjects(runtimes: MenderRuntimes, appSettings: AppSettings): Projects {
   let sweeping: ((project: string) => Promise<void>) | null = null;
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'projects.json') });
 
@@ -265,8 +266,8 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
         from.kind === 'folder'
           ? await pickFolder()
           : from.kind === 'clone'
-            ? await cloneInto(runtimes, from.url)
-            : await createInto(runtimes, from.name, from.private);
+            ? await cloneInto(runtimes, appSettings, from.url)
+            : await createInto(runtimes, appSettings, from.name, from.private);
       if (!path.success) return path;
 
       if (projects.some((project) => project.path === path.data)) {
@@ -446,9 +447,14 @@ async function pickFolder(): Promise<Landed> {
   return { success: true, data: path };
 }
 
-/** Where a cloned or freshly made checkout lands, absent anywhere better. */
-function projectsRoot(): string {
-  return process.env.MENDER_PROJECTS_ROOT ?? join(homedir(), 'mender', 'projects');
+/** Where a cloned or freshly made checkout lands, absent anywhere better.
+ *  `MENDER_PROJECTS_ROOT` is a dev/test override and always wins; next is
+ *  the windmill's own "default projects dir" setting; last is the built-in
+ *  fallback. */
+async function projectsRoot(appSettings: AppSettings): Promise<string> {
+  if (process.env.MENDER_PROJECTS_ROOT) return process.env.MENDER_PROJECTS_ROOT;
+  const set = (await appSettings.checkoutSettings()).projectsDir;
+  return set || join(homedir(), 'mender', 'projects');
 }
 
 /** A folder name out of a clone URL: the last path segment, `.git` dropped. */
@@ -466,10 +472,14 @@ function freeTarget(root: string, name: string): string {
   return candidate;
 }
 
-async function cloneInto(runtimes: MenderRuntimes, url: string): Promise<Landed> {
+async function cloneInto(
+  runtimes: MenderRuntimes,
+  appSettings: AppSettings,
+  url: string
+): Promise<Landed> {
   const written = url.trim();
   if (!written) return { success: false, error: { kind: 'clone-failed', said: 'no address.' } };
-  const root = projectsRoot();
+  const root = await projectsRoot(appSettings);
   await mkdir(root, { recursive: true });
   const target = freeTarget(root, repoNameFrom(written));
   const parsed = parseNativeAbsolute(target);
@@ -510,12 +520,13 @@ function whatCloneSaid(error: { type: string; message?: string; stderr?: string 
 /** A repository made fresh on GitHub, through whatever `gh` this machine has. */
 async function createInto(
   runtimes: MenderRuntimes,
+  appSettings: AppSettings,
   name: string,
   isPrivate: boolean
 ): Promise<Landed> {
   const written = name.trim();
   if (!written) return { success: false, error: { kind: 'create-failed', said: 'no name.' } };
-  const root = projectsRoot();
+  const root = await projectsRoot(appSettings);
   await mkdir(root, { recursive: true });
   // `gh --clone` always lands the checkout at `<cwd>/<bare repo name>`, so the
   // target it will use has to be worked out the same way rather than chosen.

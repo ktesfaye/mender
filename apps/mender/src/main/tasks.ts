@@ -9,6 +9,7 @@ import { shortName } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import { cell, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
+import type { AppSettings } from './app-settings';
 import type { Project, Projects } from './projects';
 import type { MenderRuntimes } from './runtimes';
 
@@ -93,8 +94,15 @@ export interface Tasks {
     project: string,
     name: string,
     slot: number | null,
-    kind?: 'chat' | 'terminal'
+    kind?: 'chat' | 'terminal',
+    /** An existing branch to stand the session on, instead of cutting a
+        fresh one out of the name. `createWorktree` reuses it rather than
+        cutting from a base ref when it finds one already there. */
+    branch?: string
   ): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
+  /** The branches this project's checkout already knows about, for the
+      naming step to offer alongside a fresh one. */
+  branches(project: string): Promise<string[]>;
   /**
    * What is in that checkout, by name, nearest first.
    *
@@ -149,7 +157,11 @@ const HISTORY_KEY = 'history';
 /** How many ended sessions the ledger keeps before the oldest fall off. */
 const HISTORY_KEPT = 200;
 
-export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks {
+export function createTasks(
+  runtimes: MenderRuntimes,
+  projects: Projects,
+  appSettings: AppSettings
+): Tasks {
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'tasks.json') });
   const historyStore = createJsonFileKeyValueStore({ path: join(userDataDir(), 'history.json') });
 
@@ -205,7 +217,26 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       return project ? tasks.filter((task) => task.project === project) : tasks;
     },
 
-    async begin(project, name, slot, kind) {
+    async branches(project) {
+      const found = (await projects.list()).find((candidate) => candidate.id === project);
+      if (!found) return [];
+      try {
+        const env = await runtimes.env.current();
+        const listed = await ran(
+          'git',
+          ['for-each-ref', '--format=%(refname:short)', 'refs/heads/'],
+          { cwd: found.path, env }
+        );
+        return listed.stdout
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean);
+      } catch {
+        return [];
+      }
+    },
+
+    async begin(project, name, slot, kind, branch) {
       const written = name.trim();
       if (!written) return fail({ kind: 'nameless' });
 
@@ -213,9 +244,10 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       const found = (await projects.list()).find((candidate) => candidate.id === project);
       if (!found) return fail({ kind: 'no-such-project' });
 
-      const branch = branchFor(written);
+      const settings = await appSettings.checkoutSettings();
+      const cut = branch?.trim() || branchFor(written, settings);
       const here = tasks.filter((task) => task.project === project);
-      if (here.some((task) => task.branch === branch)) {
+      if (here.some((task) => task.branch === cut)) {
         return fail({ kind: 'already-here', name: written });
       }
       if (slot !== null && here.some((task) => task.slot === slot)) return fail({ kind: 'taken' });
@@ -240,12 +272,12 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       /* Under the folder's own name, not the project's: a project renamed on
          the island is not a reason for its next worktree to live somewhere
          else from its last. */
-      const path = join(worktreeRoot(), basename(found.path), branch.replaceAll('/', '-'));
+      const path = join(await worktreeRoot(appSettings), basename(found.path), cut.replaceAll('/', '-'));
       const made = await runtimes.workspaces.createWorktree(
         {
           workspaceId: crypto.randomUUID(),
           repositoryId: repository.data,
-          branch,
+          branch: cut,
           baseRef,
           path,
           preservePatterns: [],
@@ -286,7 +318,7 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
         project,
         name: written,
         title: written,
-        branch,
+        branch: cut,
         base: baseRef === 'HEAD' ? null : baseRef,
         slot,
         path: made.data.path,
@@ -430,7 +462,7 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       // The branch outlived the building, so this is the same branch, not a
       // new one — `createWorktree` reuses an existing `refs/heads/<branch>`
       // rather than cutting from `baseRef` when it finds one already there.
-      const path = join(worktreeRoot(), basename(found.path), stash.branch.replaceAll('/', '-'));
+      const path = join(await worktreeRoot(appSettings), basename(found.path), stash.branch.replaceAll('/', '-'));
       const made = await runtimes.workspaces.createWorktree(
         {
           workspaceId: crypto.randomUUID(),
@@ -492,11 +524,12 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       // Cut from the branch as it stands: there is no per-turn commit kept
       // anywhere to cut from instead, so this is the tip, not the moment the
       // line being carried on from was actually said.
-      let branch = branchFor(`${original.name}-carry-on`);
+      const naming = await appSettings.checkoutSettings();
+      let branch = branchFor(`${original.name}-carry-on`, naming);
       if (here.some((task) => task.branch === branch)) {
-        branch = branchFor(`${original.name}-carry-on-${Date.now().toString(36)}`);
+        branch = branchFor(`${original.name}-carry-on-${Date.now().toString(36)}`, naming);
       }
-      const path = join(worktreeRoot(), basename(found.path), branch.replaceAll('/', '-'));
+      const path = join(await worktreeRoot(appSettings), basename(found.path), branch.replaceAll('/', '-'));
       const made = await runtimes.workspaces.createWorktree(
         {
           workspaceId: crypto.randomUUID(),
@@ -625,20 +658,40 @@ function whatItSaid(error: { type: string; message?: string; path?: string }): s
  * The branch a task's name becomes.
  *
  * Under one prefix, so every branch a village made is obvious in `git branch`
- * and none of them collide with a branch somebody made by hand.
+ * and none of them collide with a branch somebody made by hand. The prefix
+ * and whether a random tail rides along are both the windmill's own to set;
+ * blank prefix falls back to `mender`.
  */
-export function branchFor(name: string): string {
+export function branchFor(
+  name: string,
+  config: { branchPrefix: string; randomSuffix: boolean } = {
+    branchPrefix: '',
+    randomSuffix: false,
+  }
+): string {
   const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 48);
-  return `mender/${slug || 'work'}`;
+  const prefix = config.branchPrefix.trim().replace(/^\/+|\/+$/g, '') || 'mender';
+  const tail = config.randomSuffix ? `-${randomTail()}` : '';
+  return `${prefix}/${slug || 'work'}${tail}`;
 }
 
-/** Where worktrees are cut. Out of the repository, so nothing appears inside it. */
-function worktreeRoot(): string {
-  return process.env.MENDER_WORKTREE_ROOT ?? join(homedir(), 'mender', 'worktrees');
+/** A short, unguessable tail — base-36, six characters wide. */
+function randomTail(): string {
+  return Math.random().toString(36).slice(2, 8).padEnd(6, '0');
+}
+
+/** Where worktrees are cut. Out of the repository, so nothing appears inside
+ *  it. `MENDER_WORKTREE_ROOT` is a dev/test override and always wins; next
+ *  is the windmill's own "default worktree dir" setting; last is the
+ *  built-in fallback. */
+async function worktreeRoot(appSettings: AppSettings): Promise<string> {
+  if (process.env.MENDER_WORKTREE_ROOT) return process.env.MENDER_WORKTREE_ROOT;
+  const set = (await appSettings.checkoutSettings()).worktreeDir;
+  return set || join(homedir(), 'mender', 'worktrees');
 }
 
 const ran = promisify(execFile);

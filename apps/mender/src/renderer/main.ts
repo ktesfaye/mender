@@ -18,7 +18,7 @@ import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Mood } from '@shared/agents';
-import type { Hand, ProviderConfig, SessionUsage } from '@shared/app-settings';
+import type { CheckoutSettings, Hand, ProviderConfig, SessionUsage } from '@shared/app-settings';
 import type { At, Change } from '@shared/changes';
 import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
@@ -653,6 +653,14 @@ async function boot(): Promise<void> {
       /** Whether the issue list is what is on the board right now, rather
           than the ordinary typed name. */
       pickingIssue?: boolean;
+      /** The project's own branches, offered as a place to stand the session
+          instead of cutting a fresh one; `null` means never asked. */
+      branches?: string[] | null;
+      /** Whether the branch list is what is on the board right now. */
+      pickingBranch?: boolean;
+      /** The existing branch picked to stand this session on, if any —
+          `begin` cuts nothing fresh when this is set. */
+      branch?: string | null;
       /** Start it already allowing everything, the agent's own most
           permissive mode, applied the moment it is awake to hear it. */
       allowAll: boolean;
@@ -1009,6 +1017,7 @@ async function boot(): Promise<void> {
         sessions: null as SessionUsage[] | null,
         providers: {} as Record<string, ProviderConfig>,
         installs: {} as Record<string, HostDependencyView>,
+        checkout: null as CheckoutSettings | null,
       };
       let records: ReplicaState<Record<string, WorkspaceRecord>> | null = null;
       const readProviders = (hands: Hand[]): void => {
@@ -1052,6 +1061,18 @@ async function boot(): Promise<void> {
           });
           if (view.success) state.installs = { ...state.installs, [agent]: view.data.data };
         },
+        setBranchPrefix: async (prefix) => {
+          state.checkout = await client.appSettings.setBranchPrefix({ prefix }, { timeoutMs: 0 });
+        },
+        setRandomSuffix: async (on) => {
+          state.checkout = await client.appSettings.setRandomSuffix({ on }, { timeoutMs: 0 });
+        },
+        setProjectsDir: async (dir) => {
+          state.checkout = await client.appSettings.setProjectsDir({ dir }, { timeoutMs: 0 });
+        },
+        setWorktreeDir: async (dir) => {
+          state.checkout = await client.appSettings.setWorktreeDir({ dir }, { timeoutMs: 0 });
+        },
         closed: () => {
           if (windmill === ui) windmill = null;
           void records?.dispose();
@@ -1082,12 +1103,14 @@ async function boot(): Promise<void> {
       sample();
       const sampling = setInterval(sample, 5000);
       void (async () => {
-        const [hand, hands] = await Promise.all([
+        const [hand, hands, checkout] = await Promise.all([
           client.appSettings.defaultHand({}, { timeoutMs: 0 }),
           client.appSettings.hands({}, { timeoutMs: 0 }),
+          client.appSettings.checkoutSettings({}, { timeoutMs: 0 }),
         ]);
         state.hand = hand;
         state.hands = hands;
+        state.checkout = checkout;
         ui.update(state);
         readProviders(hands);
         const hostReplica = new ReplicaState(client.host.snapshot.state(undefined, 'current'), {
@@ -2943,6 +2966,9 @@ async function boot(): Promise<void> {
         terminal: false,
         issues: null,
         pickingIssue: false,
+        branches: null,
+        pickingBranch: false,
+        branch: null,
         allowAll: false,
       };
       paintRail();
@@ -2990,6 +3016,32 @@ async function boot(): Promise<void> {
       const written = found ? `#${found.number} ${found.title}` : `#${number}`;
       naming = { ...naming, pickingIssue: false, written };
       yard.line.write(written);
+      yard.line.take();
+      rewrite(asking(naming));
+    };
+
+    /**
+     * Turning the naming board over to the project's own branches, so a
+     * session can stand on one already there instead of cutting a fresh one.
+     */
+    const openBranchPicker = async (): Promise<void> => {
+      if (!naming) return;
+      naming = { ...naming, pickingBranch: true, branches: naming.branches ?? null };
+      yard.line.blur();
+      rewrite(asking(naming));
+      const mine = naming;
+      const found = await client.tasks.branches({ project: mine.project.id }, { timeoutMs: 5000 });
+      if (naming !== mine) return;
+      naming = { ...naming, branches: found };
+      rewrite(asking(naming));
+    };
+
+    /** Naming the session after the branch just picked, and standing it
+        there instead of cutting a fresh one. */
+    const pickBranch = (name: string): void => {
+      if (!naming) return;
+      naming = { ...naming, pickingBranch: false, branch: name, written: name };
+      yard.line.write(name);
       yard.line.take();
       rewrite(asking(naming));
     };
@@ -3154,7 +3206,7 @@ async function boot(): Promise<void> {
 
     const begin = async (): Promise<void> => {
       if (!naming) return;
-      const { project, slot, written, terminal, allowAll } = naming;
+      const { project, slot, written, terminal, allowAll, branch } = naming;
       const aim = open;
       naming = null;
       rewrite([
@@ -3179,7 +3231,13 @@ async function boot(): Promise<void> {
       let made: Awaited<ReturnType<typeof client.tasks.begin>>;
       try {
         made = await client.tasks.begin(
-          { project: project.id, name: written, slot, kind: terminal ? 'terminal' : undefined },
+          {
+            project: project.id,
+            name: written,
+            slot,
+            kind: terminal ? 'terminal' : undefined,
+            ...(branch ? { branch } : {}),
+          },
           { timeoutMs: 0 }
         );
       } finally {
@@ -3583,6 +3641,14 @@ async function boot(): Promise<void> {
       }
       if (pick.startsWith('issue:')) {
         pickIssue(Number(pick.slice(6)));
+        return;
+      }
+      if (pick === 'branch-toggle') {
+        void openBranchPicker();
+        return;
+      }
+      if (pick.startsWith('branch:')) {
+        pickBranch(pick.slice(7));
         return;
       }
       if (pick === 'rest') {
@@ -4486,9 +4552,13 @@ function asking(naming: {
   terminal: boolean;
   issues?: { number: number; title: string }[] | null;
   pickingIssue?: boolean;
+  branches?: string[] | null;
+  pickingBranch?: boolean;
+  branch?: string | null;
   allowAll: boolean;
 }): Row[] {
   if (naming.pickingIssue) return pickingIssue(naming.issues ?? null);
+  if (naming.pickingBranch) return pickingBranch(naming.branches ?? null);
 
   const offer: Row[] =
     naming.revivable && !naming.written
@@ -4518,6 +4588,12 @@ function asking(naming: {
       pick: 'terminal-toggle',
     },
     { kind: 'line', text: 'start from an open issue', tone: 'faded', pick: 'issue-toggle' },
+    {
+      kind: 'line',
+      text: naming.branch ? `on the branch ${naming.branch}` : 'start from an existing branch',
+      tone: 'faded',
+      pick: 'branch-toggle',
+    },
     ...(naming.terminal
       ? []
       : [
@@ -4553,6 +4629,27 @@ function pickingIssue(issues: { number: number; title: string }[] | null): Row[]
       keep: 'tail',
       pick: `issue:${issue.number}`,
     });
+  }
+  return rows;
+}
+
+/** The naming board turned over to the project's own branches. */
+function pickingBranch(branches: string[] | null): Row[] {
+  const rows: Row[] = [
+    { kind: 'title', text: 'an existing branch' },
+    { kind: 'line', text: 'picking one stands the session there instead of a fresh branch.', tone: 'faded' },
+    { kind: 'gap' },
+  ];
+  if (branches === null) {
+    rows.push({ kind: 'line', text: 'reading the checkout…', tone: 'faded' });
+    return rows;
+  }
+  if (!branches.length) {
+    rows.push({ kind: 'line', text: 'nothing there yet.', tone: 'faded' });
+    return rows;
+  }
+  for (const name of branches) {
+    rows.push({ kind: 'entry', mark: '→', text: name, keep: 'tail', pick: `branch:${name}` });
   }
   return rows;
 }

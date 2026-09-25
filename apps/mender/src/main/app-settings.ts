@@ -51,6 +51,23 @@ export interface ProviderConfig {
 
 const NO_PROVIDER_CONFIG: ProviderConfig = { extraArgs: [], env: {} };
 
+/** How a fresh checkout gets made, until a project says otherwise. Blank
+    fields fall back to the built-in defaults `tasks.ts` and `projects.ts`
+    already used. */
+export interface CheckoutSettings {
+  branchPrefix: string;
+  randomSuffix: boolean;
+  projectsDir: string;
+  worktreeDir: string;
+}
+
+const NO_CHECKOUT_SETTINGS: CheckoutSettings = {
+  branchPrefix: '',
+  randomSuffix: false,
+  projectsDir: '',
+  worktreeDir: '',
+};
+
 export interface AppSettings {
   /** Whoever a fresh session starts with. Falls back to Claude Code. */
   defaultHand(): Promise<string>;
@@ -69,6 +86,13 @@ export interface AppSettings {
   setExtraArgs(agent: string, extraArgs: string): Promise<ProviderConfig>;
   setEnvVar(agent: string, key: string, value: string): Promise<ProviderConfig>;
   removeEnvVar(agent: string, key: string): Promise<ProviderConfig>;
+  /** How a fresh checkout gets made: the branch prefix, whether it carries a
+      random tail, and where a new project or worktree lands. */
+  checkoutSettings(): Promise<CheckoutSettings>;
+  setBranchPrefix(prefix: string): Promise<CheckoutSettings>;
+  setRandomSuffix(on: boolean): Promise<CheckoutSettings>;
+  setProjectsDir(dir: string): Promise<CheckoutSettings>;
+  setWorktreeDir(dir: string): Promise<CheckoutSettings>;
 }
 
 const KEY = 'app';
@@ -79,6 +103,12 @@ interface Stored {
   defaultHand?: string;
   perAgent?: Record<string, { model?: string | null; mode?: string | null }>;
   providers?: Record<string, { extraArgs?: string; env?: Record<string, string> }>;
+  checkout?: {
+    branchPrefix?: string;
+    randomSuffix?: boolean;
+    projectsDir?: string;
+    worktreeDir?: string;
+  };
 }
 
 export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
@@ -122,6 +152,17 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
     return {
       extraArgs: held.extraArgs?.trim() ? held.extraArgs.trim().split(/\s+/) : [],
       env: held.env ?? {},
+    };
+  };
+
+  const checkoutSettingsOf = async (): Promise<CheckoutSettings> => {
+    const held = (await stored()).checkout;
+    if (!held) return NO_CHECKOUT_SETTINGS;
+    return {
+      branchPrefix: held.branchPrefix ?? '',
+      randomSuffix: held.randomSuffix ?? false,
+      projectsDir: held.projectsDir ?? '',
+      worktreeDir: held.worktreeDir ?? '',
     };
   };
 
@@ -179,6 +220,28 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
         return { ...now, providers };
       });
       return providerConfigOf(agent);
+    },
+
+    checkoutSettings: checkoutSettingsOf,
+
+    async setBranchPrefix(prefix) {
+      await mutate((now) => ({ ...now, checkout: { ...now.checkout, branchPrefix: prefix.trim() } }));
+      return checkoutSettingsOf();
+    },
+
+    async setRandomSuffix(on) {
+      await mutate((now) => ({ ...now, checkout: { ...now.checkout, randomSuffix: on } }));
+      return checkoutSettingsOf();
+    },
+
+    async setProjectsDir(dir) {
+      await mutate((now) => ({ ...now, checkout: { ...now.checkout, projectsDir: dir.trim() } }));
+      return checkoutSettingsOf();
+    },
+
+    async setWorktreeDir(dir) {
+      await mutate((now) => ({ ...now, checkout: { ...now.checkout, worktreeDir: dir.trim() } }));
+      return checkoutSettingsOf();
     },
 
     async hands() {

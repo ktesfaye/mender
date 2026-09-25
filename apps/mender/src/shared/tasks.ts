@@ -75,10 +75,16 @@ export const tasksContract = defineContract({
       /** `terminal` for a session that is the agent's own CLI in a real
           terminal rather than the yard's chat board. Omitted means `chat`. */
       kind: z.enum(['chat', 'terminal']).optional(),
+      /** An existing branch to stand the session on, in place of cutting a
+          fresh one from the name. */
+      branch: z.string().optional(),
     }),
     data: taskSchema,
     error: taskErrorSchema,
   }),
+  /** The branches this project's checkout already knows about, for the
+      naming step to offer alongside a fresh one. */
+  branches: procedure({ input: z.object({ project: z.string() }), output: z.array(z.string()) }),
   /**
    * What is in that checkout, by name.
    *

@@ -18,5 +18,10 @@ export function createAppSettingsController(
     setEnvVar: ({ agent, key, value }) => settings.setEnvVar(agent, key, value),
     removeEnvVar: ({ agent, key }) => settings.removeEnvVar(agent, key),
     sessionUsage: () => usage.sample(),
+    checkoutSettings: () => settings.checkoutSettings(),
+    setBranchPrefix: ({ prefix }) => settings.setBranchPrefix(prefix),
+    setRandomSuffix: ({ on }) => settings.setRandomSuffix(on),
+    setProjectsDir: ({ dir }) => settings.setProjectsDir(dir),
+    setWorktreeDir: ({ dir }) => settings.setWorktreeDir(dir),
   });
 }

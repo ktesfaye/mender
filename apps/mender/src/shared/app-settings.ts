@@ -45,7 +45,36 @@ export const missingDepSchema = z.object({
 
 export type MissingDep = z.infer<typeof missingDepSchema>;
 
+/** How a fresh checkout gets made, until a project says otherwise: the
+    branch a session's name becomes, and where a new project or worktree
+    lands absent anywhere better. */
+export const checkoutSettingsSchema = z.object({
+  /** Under one prefix, so every branch the village made is obvious in `git
+      branch`. Blank falls back to `mender`. */
+  branchPrefix: z.string(),
+  /** A short random tail on every branch name, so two sessions named the
+      same thing never collide. */
+  randomSuffix: z.boolean(),
+  /** Blank falls back to `~/mender/projects`. */
+  projectsDir: z.string(),
+  /** Blank falls back to `~/mender/worktrees`. */
+  worktreeDir: z.string(),
+});
+
+export type CheckoutSettings = z.infer<typeof checkoutSettingsSchema>;
+
 export const appSettingsContract = defineContract({
+  checkoutSettings: procedure({ input: z.object({}), output: checkoutSettingsSchema }),
+  setBranchPrefix: procedure({
+    input: z.object({ prefix: z.string() }),
+    output: checkoutSettingsSchema,
+  }),
+  setRandomSuffix: procedure({
+    input: z.object({ on: z.boolean() }),
+    output: checkoutSettingsSchema,
+  }),
+  setProjectsDir: procedure({ input: z.object({ dir: z.string() }), output: checkoutSettingsSchema }),
+  setWorktreeDir: procedure({ input: z.object({ dir: z.string() }), output: checkoutSettingsSchema }),
   defaultHand: procedure({ input: z.object({}), output: z.string() }),
   setDefaultHand: procedure({ input: z.object({ id: z.string() }), output: z.string() }),
   hands: procedure({ input: z.object({}), output: z.array(handSchema) }),

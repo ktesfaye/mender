@@ -1275,12 +1275,12 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-06 | Rename / delete / relink a project | part | W7 |
 | WS-07 | Project availability banner / disabled-action guard |  | W7 |
 | WS-08 | Project settings & config sharing | part | W7 |
-| WS-09 | Worktree directory setting |  | W7 |
+| WS-09 | Worktree directory setting | done |  |
 | WS-10 | GitHub account per project | cut |  |
 | WS-11 | Project directory/file tree browsing (for pickers) |  | W7 |
 | WS-12 | Create Task modal | done |  |
 | WS-13 | Workspace presets (5 kinds) | part | W7 |
-| WS-14 | Branch conflict detection & reuse offer |  | W7 |
+| WS-14 | Branch conflict detection & reuse offer | done |  |
 | WS-15 | Setup step preview |  | W7 |
 | WS-16 | Git plan compiler (branch/PR provisioning) | kept |  |
 | WS-17 | Task/workspace creation execution | done |  |
@@ -1301,7 +1301,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-32 | Repository store (branches/remotes/provider identity) | kept |  |
 | WS-33 | Repository-level wire contract (worktrees/refs/remotes/fetch) | kept |  |
 | WS-34 | Branch reference model | kept |  |
-| WS-35 | Branch selector components |  | W8 |
+| WS-35 | Branch selector components | part | W8 |
 | WS-36 | Staged/Unstaged sections | done | W3 |
 | WS-37 | Floating action card on selection | cut | W3 |
 | WS-38 | Preview vs pinned diff tabs | cut | W3 |
@@ -1392,8 +1392,8 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-02 | Settings storage model (SQLite override + safeStorage secrets) | kept |  |
 | ST-03 | Provider/integration accounts registry | kept |  |
 | ST-04 | `tasks` settings (7 fields: auto-name, auto-approve, auto-trust, create-branch, delete-branch, capitalization, issue-context) |  | W8 |
-| ST-05 | `project` settings (push-on-create, branch prefix, random suffix, tmux-by-default) |  | W8 |
-| ST-06 | `localProject` settings (default projects dir, default worktree dir) |  | W8 |
+| ST-05 | `project` settings (push-on-create, branch prefix, random suffix, tmux-by-default) | part | W8 |
+| ST-06 | `localProject` settings (default projects dir, default worktree dir) | done |  |
 | ST-07 | `defaultAgent` setting | done | W8 |
 | ST-08 | `keyboard` overrides |  | W1 |
 | ST-09 | `notifications` settings (enabled, sound, custom sound path, OS notifications, sound-focus-mode) |  | W11 |

@@ -13,7 +13,7 @@
  */
 
 import type { HostDependencyView } from '@emdash/core/primitives/host-dependencies/api';
-import type { Hand, ProviderConfig, SessionUsage } from '@shared/app-settings';
+import type { CheckoutSettings, Hand, ProviderConfig, SessionUsage } from '@shared/app-settings';
 import { counted } from '../board/card';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
@@ -60,6 +60,9 @@ export interface WindmillState {
   /** Which install of each agent's CLI this machine actually runs, and what
       else it found, keyed by agent id. */
   installs: Record<string, HostDependencyView>;
+  /** How a fresh checkout gets made: branch naming, and where a new project
+      or worktree lands. Null while the first answer hasn't arrived yet. */
+  checkout: CheckoutSettings | null;
 }
 
 export interface WindmillDoings {
@@ -72,6 +75,10 @@ export interface WindmillDoings {
   setEnvVar(agent: string, key: string, value: string): Promise<void>;
   removeEnvVar(agent: string, key: string): Promise<void>;
   selectInstall(agent: string, path: string): Promise<void>;
+  setBranchPrefix(prefix: string): Promise<void>;
+  setRandomSuffix(on: boolean): Promise<void>;
+  setProjectsDir(dir: string): Promise<void>;
+  setWorktreeDir(dir: string): Promise<void>;
   closed(): void;
 }
 
@@ -111,10 +118,11 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
 
   const body = el('div', 'settings-body');
   const general = section('General');
+  const checkouts = section('Checkouts');
   const agentsSection = section('Agents');
   const worktrees = section('What is on disk');
   const machine = section('This machine');
-  body.append(general.root, agentsSection.root, worktrees.root, machine.root);
+  body.append(general.root, checkouts.root, agentsSection.root, worktrees.root, machine.root);
   panel.append(head, body);
 
   /** The worktree armed for a second press to clear it, if any. */
@@ -164,6 +172,97 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       list.appendChild(one);
     }
     general.fill([hint, list]);
+  }
+
+  function drawCheckouts(): void {
+    if (!now.checkout) {
+      checkouts.fill([hintLine('Reading it…')]);
+      return;
+    }
+    const held = now.checkout;
+    const rows: HTMLElement[] = [];
+
+    const prefixLine = el('div', 'windmill-agent-line');
+    const prefixLabel = el('span', 'settings-hint');
+    prefixLabel.textContent = 'branch prefix — ';
+    const prefixInput = document.createElement('input');
+    prefixInput.type = 'text';
+    prefixInput.className = 'windmill-agent-input';
+    prefixInput.placeholder = 'mender';
+    prefixInput.value = held.branchPrefix;
+    prefixInput.addEventListener('blur', () => {
+      void does.setBranchPrefix(prefixInput.value).then(() => draw());
+    });
+    prefixInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        prefixInput.blur();
+      }
+    });
+    prefixLine.append(prefixLabel, prefixInput);
+    rows.push(prefixLine);
+
+    const suffixRow = el('div', 'windmill-hand');
+    suffixRow.tabIndex = 0;
+    suffixRow.setAttribute('role', 'button');
+    suffixRow.setAttribute('aria-pressed', String(held.randomSuffix));
+    if (held.randomSuffix) suffixRow.classList.add('picked');
+    suffixRow.textContent = held.randomSuffix
+      ? 'a random tail on every branch — on'
+      : 'a random tail on every branch — off';
+    const toggleSuffix = (): void => {
+      void does.setRandomSuffix(!held.randomSuffix).then(() => draw());
+    };
+    suffixRow.addEventListener('click', toggleSuffix);
+    suffixRow.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleSuffix();
+      }
+    });
+    rows.push(suffixRow);
+
+    const projectsLine = el('div', 'windmill-agent-line');
+    const projectsLabel = el('span', 'settings-hint');
+    projectsLabel.textContent = 'new projects land in — ';
+    const projectsInput = document.createElement('input');
+    projectsInput.type = 'text';
+    projectsInput.className = 'windmill-agent-input';
+    projectsInput.placeholder = '~/mender/projects';
+    projectsInput.value = held.projectsDir;
+    projectsInput.addEventListener('blur', () => {
+      void does.setProjectsDir(projectsInput.value).then(() => draw());
+    });
+    projectsInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        projectsInput.blur();
+      }
+    });
+    projectsLine.append(projectsLabel, projectsInput);
+    rows.push(projectsLine);
+
+    const worktreeLine = el('div', 'windmill-agent-line');
+    const worktreeLabel = el('span', 'settings-hint');
+    worktreeLabel.textContent = 'new worktrees land in — ';
+    const worktreeInput = document.createElement('input');
+    worktreeInput.type = 'text';
+    worktreeInput.className = 'windmill-agent-input';
+    worktreeInput.placeholder = '~/mender/worktrees';
+    worktreeInput.value = held.worktreeDir;
+    worktreeInput.addEventListener('blur', () => {
+      void does.setWorktreeDir(worktreeInput.value).then(() => draw());
+    });
+    worktreeInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        worktreeInput.blur();
+      }
+    });
+    worktreeLine.append(worktreeLabel, worktreeInput);
+    rows.push(worktreeLine);
+
+    checkouts.fill(rows);
   }
 
   function drawAgents(): void {
@@ -364,6 +463,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
 
   function draw(): void {
     drawGeneral();
+    drawCheckouts();
     drawAgents();
     drawWorktrees();
     drawMachine();

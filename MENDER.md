@@ -476,6 +476,13 @@ read-only. Picking one writes `#<number> <title>` on the line, the same as if
 you had typed it: it becomes the session's name and the first thing said to
 whoever moves in.
 
+**Or it can start on a branch that is already there**, beside the issue line:
+"start from an existing branch" turns the same board over to the project's
+own branches, and picking one stands the session on it instead of cutting a
+fresh one — a worktree `git worktree add` reuses, not a new `refs/heads/`
+entry. The board says which one it is standing on, right where "allow
+everything" sits.
+
 **A session can start already allowing everything.** A third line on that
 same naming board, offered for a conversation rather than a terminal: allow
 everything, from the start. Taken, the worktree is cut and the first thing
@@ -689,14 +696,19 @@ There is no sprite for it yet, so it is reached the way any other doing is:
 a project's settings do. One page so far, General, and one real switch on
 it — who a fresh session starts with, the same "who works here" names the
 card already knows. Picking one is remembered and a fresh session actually
-starts that agent, not always Claude Code. A second page, "what is on disk,"
+starts that agent, not always Claude Code. A second page, Checkouts, says
+how a fresh checkout gets made from here on: the prefix a session's branch
+carries — `mender` absent anywhere else — whether a short random tail rides
+along so two sessions named the same thing never collide, and where a new
+project or a new worktree lands, absent anywhere better. A third page,
+"what is on disk,"
 lists every worktree Mender has ever cut on this machine, whichever project
 cut it: its branch, how much room it takes and whether it is stale — its
 branch already sitting upstream, or nothing left pointing at it — and clears
 it in two presses, the first press saying what that would actually cost:
 whatever is uncommitted in there is gone regardless, but a branch with
 commits nowhere else has, or one that has simply never been sent anywhere,
-is kept — only the worktree goes, not the history. A third page, Agents,
+is kept — only the worktree goes, not the history. A fourth page, Agents,
 is what this machine hands each installed agent's own CLI beyond its
 ordinary command: extra arguments on one line, environment variables added
 and thrown away by name, and — where the host actually found more than one
@@ -704,7 +716,7 @@ install of that agent's CLI on this machine — which one it runs, a plain
 list of the paths it found with the one in use marked, a press away from
 changing. All three reach the same runtime a terminal session's CLI is
 actually spawned with, so what is set here is what `ps` on that process
-shows, not a village-side promise about it. A fourth page says what this
+shows, not a village-side promise about it. A fifth page says what this
 machine is spending right now, cpu, memory and disk in plain words, counting
 back up every few seconds rather than sitting still, and underneath it,
 every open session's own share of that: its agent process where this

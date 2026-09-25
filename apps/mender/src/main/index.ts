@@ -66,8 +66,8 @@ export async function main(): Promise<void> {
 
   const runtimes = startRuntimes(scope);
   const appSettings = createAppSettings(runtimes);
-  const projects = createProjects(runtimes);
-  const tasks = createTasks(runtimes, projects);
+  const projects = createProjects(runtimes, appSettings);
+  const tasks = createTasks(runtimes, projects, appSettings);
   /* Forgetting a project sends everybody in it home, which means the projects
      have to be able to reach the tasks and the tasks already reach back. */
   projects.sweeps((project) => tasks.sweep(project));

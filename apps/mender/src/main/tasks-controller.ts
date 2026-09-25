@@ -8,7 +8,9 @@ export function createTasksController(tasks: Tasks): Controller {
   return createController(tasksContract, {
     all: expose(tasksContract.all, { list: () => tasks.watch() }),
     list: ({ project }) => tasks.list(project),
-    begin: ({ project, name, slot, kind }) => tasks.begin(project, name, slot, kind),
+    begin: ({ project, name, slot, kind, branch }) =>
+      tasks.begin(project, name, slot, kind, branch),
+    branches: ({ project }) => tasks.branches(project),
     files: ({ id, like }) => tasks.files(id, like),
     rename: ({ id, title }) => tasks.rename(id, title),
     retool: ({ id }) => tasks.retool(id),
