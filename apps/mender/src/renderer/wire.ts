@@ -35,6 +35,8 @@ declare global {
       showIt: (path: string) => void;
       /** Open it in the owner's own editor, next to "show in Finder". */
       openInEditor: (path: string) => void;
+      /** Carry a file off the board and onto the Mac. */
+      startDrag: (path: string) => void;
       /** A link an agent wrote, out to whatever the machine reads the web with. */
       openLink: (url: string) => void;
       /** The one file this app writes unasked, outside any checkout. Returns

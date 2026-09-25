@@ -4095,11 +4095,50 @@ async function boot(): Promise<void> {
       }
     };
 
+    /* A folder dragged straight off the Finder, with nothing else open: the
+       island itself is what caught it, so it is founded there rather than
+       handed to whoever is working, which is what a drop means everywhere
+       else in the village. Dropped somewhere a board is already open, or
+       dropped as more than one item, it falls through to the ordinary
+       carry — a folder is not a picture or a path an agent wants either. */
+    const foundDropped = async (files: readonly File[]): Promise<boolean> => {
+      if (watching || founding || windmill || settings) return false;
+      if (files.length !== 1) return false;
+      const file = files[0] as File;
+      // A folder carries no browser-guessed type; a picture or any other
+      // ordinary file does. That is the one signal a drop hands over before
+      // the main process has looked at the path at all.
+      if (file.type) return false;
+      const path = window.mender.pathOf(file);
+      if (!path) return false;
+      const moved = await found(
+        client,
+        async () => {
+          drawn = await draw(world, client);
+          projects = await client.projects.list({});
+          people();
+          frame(camera, drawn.island);
+        },
+        { kind: 'path', path }
+      );
+      if (!moved) return true; // Not a checkout, or nowhere left to put it — said already.
+      const district = drawn.districts.get(moved.district);
+      if (district) {
+        await openDistrict({ kind: 'district', district });
+        const project = projects.find((one) => one.id === moved.id);
+        if (project) configure(project, true);
+      }
+      return true;
+    };
+
     // Without this the window navigates to the file and the village vanishes.
     window.addEventListener('dragover', (event) => event.preventDefault());
     window.addEventListener('drop', (event) => {
       event.preventDefault();
-      void carry([...(event.dataTransfer?.files ?? [])]);
+      const files = [...(event.dataTransfer?.files ?? [])];
+      void foundDropped(files).then((handled) => {
+        if (!handled) void carry(files);
+      });
     });
     window.addEventListener('paste', (event) => {
       const files = [...(event.clipboardData?.files ?? [])];

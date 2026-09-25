@@ -195,6 +195,17 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
     line.addEventListener('mousedown', (event) => event.preventDefault());
     line.addEventListener('click', () => press(pick));
     astop(mine ?? line, pick);
+    /* A file in a list like this one is a real thing on the Mac, and the one
+       thing about it a press can't hand over is carrying it somewhere else —
+       another app, the Finder, a mail compose window. `open:` is always a
+       file (a folder's own row is `into:`), so that one gets to leave. */
+    if (pick.startsWith('open:')) {
+      line.draggable = true;
+      line.addEventListener('dragstart', (event) => {
+        event.preventDefault();
+        window.mender.startDrag(pick.slice(5));
+      });
+    }
   }
   return line;
 }

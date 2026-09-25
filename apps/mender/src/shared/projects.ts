@@ -29,6 +29,9 @@ export const foundFromSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('folder') }),
   z.object({ kind: z.literal('clone'), url: z.string() }),
   z.object({ kind: z.literal('create'), name: z.string(), private: z.boolean() }),
+  /** A folder dragged straight off the Finder onto the island: the path is
+      already known, so there is no dialog to open. */
+  z.object({ kind: z.literal('path'), path: z.string() }),
 ]);
 
 export type FoundFrom = z.infer<typeof foundFromSchema>;

@@ -188,6 +188,19 @@ straight back down. Whichever way it arrived, it lands the same place a
 folder pick always did: a fresh district, its settings open, asking what it
 looks like standing in its own yard.
 
+**Or a folder lands there straight off the Finder.** Dragging one out of the
+Finder and letting go anywhere on the water is the fourth way in, with
+nothing to answer first: the campfire's own folder pick, minus the picker,
+because the folder is already in your hand. Dropped somewhere a board is
+already open it means what a drop always means there instead — a picture
+carried to whoever is working, a path written on the line — since only the
+water itself is asking what checkout is moving in.
+
+**A file leaves the board the way it came in.** Grabbing one out of a listing
+— the folder walked into, a search result — and dragging it out to the
+Finder, to another app, to a mail compose window, hands over the real file at
+its real path, the same door a dropped-in file already opened, the other way.
+
 **A project's name opens its settings, in a window of their own.** Settings
 are about the place, not the work, so they are the one thing that is not laid
 over the yard: a window pops up over everything with a close mark, and it goes

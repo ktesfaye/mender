@@ -91,7 +91,9 @@ export type RelinkError =
 export type FoundFrom =
   | { kind: 'folder' }
   | { kind: 'clone'; url: string }
-  | { kind: 'create'; name: string; private: boolean };
+  | { kind: 'create'; name: string; private: boolean }
+  /** A folder dragged straight off the Finder: the path is already known. */
+  | { kind: 'path'; path: string };
 
 export interface Projects {
   list(): Promise<Project[]>;
@@ -276,9 +278,11 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
       const path =
         from.kind === 'folder'
           ? await pickFolder()
-          : from.kind === 'clone'
-            ? await cloneInto(runtimes, appSettings, from.url)
-            : await createInto(runtimes, appSettings, from.name, from.private);
+          : from.kind === 'path'
+            ? ({ success: true, data: from.path } as Landed)
+            : from.kind === 'clone'
+              ? await cloneInto(runtimes, appSettings, from.url)
+              : await createInto(runtimes, appSettings, from.name, from.private);
       if (!path.success) return path;
 
       if (projects.some((project) => project.path === path.data)) {

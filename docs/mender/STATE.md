@@ -65,8 +65,7 @@ can pan and zoom, and a CSV table; the thinner transcript cards (thinking, the
 plan, how a turn ended) and a transcript that scrolls a long session cheaply;
 rebinding keys; the settings nobody has placed yet (branch naming, default
 folders, per-project environment, the terminal's font and shell, what search
-and watching leave out); dragging files out of the board and a folder from
-Finder onto the island; linking an existing pull request and starting from a
+and watching leave out); linking an existing pull request and starting from a
 chosen branch; a missing folder or a failed setup step as a state of its own;
 and issue trackers other than GitHub.
 
@@ -1363,7 +1362,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-08 | File tree context menu | cut | W5 |
 | FS-09 | Internal drag & drop (move) | cut | W5 |
 | FS-10 | External drag-in (import) |  | W5 |
-| FS-11 | Drag-out to compose/elsewhere |  | W5 |
+| FS-11 | Drag-out to compose/elsewhere | done | W5 |
 | FS-12 | Flat-mode listing | cut | W5 |
 | FS-13 | Row decoration (git-status badges, tone) | done | W5 |
 | FS-14 | File icons by extension | cut | W5 |
@@ -1453,7 +1452,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-27 | Native application menu | done | W11 |
 | UI-28 | System tray | cut |  |
 | UI-29 | Window management (per-platform titlebar/frame) | done | W11 |
-| UI-30 | Drag and drop — OS folder → sidebar |  | W7 |
+| UI-30 | Drag and drop — OS folder → sidebar | done | W7 |
 | UI-31 | Drag and drop — workspace file → composer/tree | done | W2 |
 | UI-32 | Drag and drop — tabs | cut |  |
 | UI-33 | Drag and drop — terminal tabs | cut |  |

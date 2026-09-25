@@ -49,3 +49,11 @@ export type MenuCommand = 'settings';
  * list of already-composed lines, oldest first.
  */
 export const MENDER_MISSED_CHANNEL = 'mender:missed';
+
+/**
+ * Channel the renderer uses to carry a file out of the board and onto the
+ * Mac — dropped on the Finder, another app, anywhere outside the window. The
+ * browser has no such gesture of its own; only the main process can start an
+ * OS-level drag, so the renderer just names the path.
+ */
+export const MENDER_START_DRAG_CHANNEL = 'mender:start-drag';

@@ -15,6 +15,7 @@ import { createBoard } from './board';
 import { createBoardController } from './board-controller';
 import { createChanges } from './changes';
 import { createChangesController } from './changes-controller';
+import { installDragOut } from './drag';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
 import { createGitHubStatus } from './github';
@@ -122,6 +123,8 @@ export async function main(): Promise<void> {
       Object.values(peek(agents.moods())).filter((mood) => mood === 'working').length,
     dispose: () => scope.dispose(),
   });
+
+  installDragOut(app);
 }
 
 async function openVillageWindow(): Promise<BrowserWindow> {

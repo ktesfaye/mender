@@ -10,6 +10,7 @@ import {
   MENDER_MENU_CHANNEL,
   MENDER_MISSED_CHANNEL,
   MENDER_QUIT_COST_CHANNEL,
+  MENDER_START_DRAG_CHANNEL,
   MENDER_WATCH_CHANNEL,
   MENDER_WIRE_CHANNEL,
   type MenuCommand,
@@ -173,6 +174,9 @@ contextBridge.exposeInMainWorld('mender', {
   openIt: (path: string) => void shell.openPath(path),
   showIt: (path: string) => shell.showItemInFolder(path),
   openInEditor: (path: string) => void openInEditor(path),
+  /* Carrying a file out of the board and onto the Mac. Only the main process
+     can start an OS-level drag, so this just names the path. */
+  startDrag: (path: string) => ipcRenderer.send(MENDER_START_DRAG_CHANNEL, path),
   /* A link an agent wrote, out to whatever the machine reads the web with. */
   openLink: (url: string) => void shell.openExternal(url),
   /* The one file this app writes unasked, always outside any checkout so it
