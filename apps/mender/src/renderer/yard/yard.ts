@@ -19,7 +19,7 @@
  */
 
 import type { Offer } from '../board/offer';
-import { GUTTER, MARGIN, type Layer } from './frame';
+import { GUTTER, MARGIN, WIDEST, type Layer } from './frame';
 import { longFor } from './from';
 import { makeLine, type Asking as Prompting, type Line } from './line';
 import { makeMenu } from './menu';
@@ -46,15 +46,43 @@ import { box, exact, firelight, folk, label, row, rule, said, stack, trim } from
 /* Where the bands sit, measured off the designs, with one change: the top
    right corner belongs to the projects shelf, so the two facts the designs put
    up there drop below it and the whole band is that much deeper. */
+/*
+ * On a Mac the window's own three buttons float over the top left corner of
+ * the world. Where the yard is wide enough that its edge is clear of them the
+ * header sits in the corner beside them; where it is not, everything from the
+ * title down comes lower, so the name is never written through the buttons.
+ */
+const LIGHTS = { clear: 92, drop: 30 };
+const MAC = /Mac/.test(navigator.userAgent);
+
+function lifted(): number {
+  const edge = Math.max(MARGIN, Math.round((window.innerWidth - WIDEST) / 2));
+  return MAC && edge < LIGHTS.clear ? LIGHTS.drop : 0;
+}
+
 const HEAD = {
-  title: 22,
-  meta: 56,
-  aside: 70,
-  under: 92,
-  rule: 112,
-  label: 132,
-  top: 162,
-} as const;
+  get title() {
+    return 22 + lifted();
+  },
+  get meta() {
+    return 56 + lifted();
+  },
+  get aside() {
+    return 70 + lifted();
+  },
+  get under() {
+    return 92 + lifted();
+  },
+  get rule() {
+    return 112 + lifted();
+  },
+  get label() {
+    return 132 + lifted();
+  },
+  get top() {
+    return 162 + lifted();
+  },
+};
 /* From the beam down to the bottom edge, which is what the rail lives in. Less
    of it when the lanterns are hanging bare, since there are no words under
    them to leave room for. */
@@ -1590,26 +1618,29 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
        across the room and without reading, which session wants you. Six gold
        names in a row would say nothing at all. What says it is pressable is the
        lantern: a physical object hanging there, lighting under your hand. */
-    const hung = keyed(
-      box({ left: x, top, width: bare ? 44 : Math.max(step, 120), height: 58 }),
-      `hung:${one.id}`
-    );
+    const hung = keyed(box({ left: x, top, width: bare ? 44 : step, height: 58 }), `hung:${one.id}`);
     hung.style.pointerEvents = one.here ? 'none' : 'auto';
     hung.style.cursor = 'default';
 
     /* A short window keeps the lanterns and gives up the words beside them:
        lit, dark, flickering and hanging lowest still say which is which. */
     if (!bare) {
-      const name = box({ left: 34, top: 2 });
+      /* Everything beside a lantern stops short of the next one. A long name
+         running on under its neighbour reads as the two sessions being one. */
+      const wide = step - 34 - WORDS_GAP;
+      const name = box({ left: 34, top: 2, width: wide }, CLIPPED);
       const written = exact(one.name, one.here ? 13 : 12, one.here ? '#ffdca4' : TONE[one.posture]);
+      clipped(written, one.name);
       /* The keyboard stands on the name rather than on the whole lantern,
          because the mark it leaves is a fill and a fill the size of a lantern
          is a slab of gold across the bottom of the screen. */
       if (!one.here) astop(written, `rail:${one.id}`);
       name.appendChild(written);
       hung.appendChild(name);
-      const under = box({ left: 34, top: 20 });
-      under.appendChild(exact(one.saying, 11, one.here ? '#dcc8a0' : '#a89272'));
+      const under = box({ left: 34, top: 20, width: wide }, CLIPPED);
+      const saying = exact(one.saying, 11, one.here ? '#dcc8a0' : '#a89272');
+      clipped(saying, one.saying);
+      under.appendChild(saying);
       hung.appendChild(under);
     }
 
@@ -1666,3 +1697,17 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
 }
 
 const HOOK = 'background:#3a2712';
+
+/** How much bare beam there is between the words beside one lantern and the next. */
+const WORDS_GAP = 18;
+const CLIPPED = 'overflow:hidden';
+
+/** Cut off with an ellipsis at the box it is in, and whole on hover. */
+function clipped(it: HTMLElement, whole: string): void {
+  it.style.display = 'inline-block';
+  it.style.maxWidth = '100%';
+  it.style.verticalAlign = 'top';
+  it.style.overflow = 'hidden';
+  it.style.textOverflow = 'ellipsis';
+  it.title = whole;
+}

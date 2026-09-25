@@ -427,9 +427,22 @@ function sayingOf(posture: Posture, task: Task): string {
       return 'working';
     case 'broken':
       return 'it broke';
-    default:
-      return task.branch;
+    default: {
+      /* The `mender/` in front of every branch the village cuts says nothing
+         a lantern needs to say, and a branch that is only the name again says
+         nothing at all. */
+      const branch = shortOf(task.branch);
+      return branch === slugOf(task.title) ? 'resting' : branch;
+    }
   }
+}
+
+/** A name the way a branch is cut from it. */
+function slugOf(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 /** The last thing in a path, which is the only part worth the room. */
