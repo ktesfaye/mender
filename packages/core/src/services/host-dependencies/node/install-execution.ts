@@ -20,7 +20,7 @@ import {
   resolveCommandPath,
 } from '#services/host-dependencies/api/runtime/probe';
 
-export type InstallCommandKind = 'install' | 'update';
+export type InstallCommandKind = 'install' | 'update' | 'uninstall';
 export type InstallCommandMode = 'plain' | 'sudo' | 'sudo-interactive';
 
 export type CommandExecutionResult =
@@ -138,7 +138,7 @@ export function permissionDeniedError({
     id,
     message:
       message ??
-      `${commandKind === 'update' ? 'Updating' : 'Installing'} ${id} needs administrator privileges.`,
+      `${commandKind === 'update' ? 'Updating' : commandKind === 'uninstall' ? 'Removing' : 'Installing'} ${id} needs administrator privileges.`,
     output,
     exitCode: exitCode ?? null,
     canRetryWithSudo: hostElevation === 'passwordless-sudo',
@@ -180,7 +180,7 @@ export function installExecutionError(
     type: 'command-failed',
     message:
       execution.message ??
-      `${context.commandKind === 'update' ? 'Update' : 'Install'} command exited with code ${execution.exitCode ?? 'unknown'}`,
+      `${context.commandKind === 'update' ? 'Update' : context.commandKind === 'uninstall' ? 'Uninstall' : 'Install'} command exited with code ${execution.exitCode ?? 'unknown'}`,
     output,
     exitCode: execution.exitCode ?? null,
   };

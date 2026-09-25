@@ -71,6 +71,7 @@ export const hostDependencyErrorSchema = z.discriminatedUnion('type', [
     output: z.string().optional(),
   }),
   z.object({ type: z.literal('no-update-command'), id: dependencyIdSchema }),
+  z.object({ type: z.literal('no-uninstall-command'), id: dependencyIdSchema }),
   z.object({
     type: z.literal('installer-missing'),
     id: dependencyIdSchema,

@@ -46,6 +46,10 @@ export type Meant =
   | { does: 'addcustom' }
   /** Arm or fire the two-press removal of one server. */
   | { does: 'rmtool'; name: string; asked: boolean }
+  /** Bring an agent already here up to date. */
+  | { does: 'updatehand'; id: string }
+  /** Arm or fire the two-press removal of an agent's CLI from this machine. */
+  | { does: 'rmhand'; id: string; asked: boolean }
   /** Fold the catalogue of installable skills open or shut. */
   | { does: 'browseknacks' }
   /** Install one from the catalogue. */
@@ -84,6 +88,8 @@ export async function openCard(
   let catalogShowing = false;
   /** The server armed for a second press to throw it away, if any. */
   let removing: string | null = null;
+  /** The agent CLI armed for a second press to take it off this machine, if any. */
+  let removingHand: string | null = null;
   /** What the export line says while its own result is sitting on it. */
   let exported: { text: string; path?: string } | null = null;
   /** The catalogue of skills, what it is reading, and what it is about to
@@ -92,7 +98,9 @@ export async function openCard(
   let knackUi: KnackUi = { catalogShowing: false, catalog: null, removing: null, reading: null };
 
   const redraw = (): void => {
-    changed(written(task, kit, ending, showing, catalogShowing, removing, exported, knackUi));
+    changed(
+      written(task, kit, ending, showing, catalogShowing, removing, removingHand, exported, knackUi)
+    );
   };
 
   const replica = new ReplicaState<Kit>(client.agents.kit.state({ task: task.id }, 'state'), {
@@ -134,7 +142,8 @@ export async function openCard(
   };
 
   return {
-    rows: () => written(task, kit, ending, showing, catalogShowing, removing, exported, knackUi),
+    rows: () =>
+      written(task, kit, ending, showing, catalogShowing, removing, removingHand, exported, knackUi),
     setExported: (said) => {
       exported = said;
     },
@@ -161,6 +170,14 @@ export async function openCard(
           return { ...meant, asked: true };
         }
         removing = meant.name;
+        return { ...meant, asked: false };
+      }
+      if (meant?.does === 'rmhand') {
+        if (removingHand === meant.id) {
+          removingHand = null;
+          return { ...meant, asked: true };
+        }
+        removingHand = meant.id;
         return { ...meant, asked: false };
       }
       if (meant?.does === 'browse') catalogShowing = !catalogShowing;
@@ -222,6 +239,8 @@ function read(pick: string, kit: Kit | null): Meant | null {
   if (pick === 'addcustom') return { does: 'addcustom' };
   if (pick.startsWith('addcat:')) return { does: 'addcat', key: pick.slice(7) };
   if (pick.startsWith('rmtool:')) return { does: 'rmtool', name: pick.slice(7), asked: false };
+  if (pick.startsWith('updatehand:')) return { does: 'updatehand', id: pick.slice(11) };
+  if (pick.startsWith('rmhand:')) return { does: 'rmhand', id: pick.slice(7), asked: false };
   if (pick === 'export') return { does: 'export' };
   if (pick.startsWith('show-export:')) return { does: 'show-export', path: pick.slice(12) };
   if (pick === 'browseknacks') return { does: 'browseknacks' };
@@ -266,6 +285,7 @@ function written(
   showing?: boolean,
   catalogShowing?: boolean,
   removing?: string | null,
+  removingHand?: string | null,
   exported?: { text: string; path?: string } | null,
   knackUi?: KnackUi
 ): Row[] {
@@ -290,6 +310,26 @@ function written(
       tone: hand.id === kit.hand ? 'ink' : 'faded',
       pick: `hand:${hand.id}`,
     });
+    // Only for the ones actually on this machine: a CLI that is only here
+    // because it is the one working right now has nothing installed to bring
+    // up to date or take off.
+    if (hand.here) {
+      rows.push({
+        kind: 'entry',
+        mark: '↻',
+        text: 'bring it up to date',
+        tone: 'faded',
+        pick: `updatehand:${hand.id}`,
+      });
+      rows.push({
+        kind: 'entry',
+        mark: '✗',
+        text:
+          removingHand === hand.id ? `press again and ${hand.name} is off this machine` : 'take it off this machine',
+        tone: removingHand === hand.id ? 'sore' : 'faded',
+        pick: `rmhand:${hand.id}`,
+      });
+    }
   }
   /* Only the one working here says how, because that is the one thing about
      to fail without it. */

@@ -427,6 +427,24 @@ export const agentsContract = defineContract({
       z.object({ kind: z.literal('refused'), because: z.string() }),
     ]),
   }),
+  /** Bring an agent already here up to date. */
+  update: fallible({
+    input: z.object({ hand: z.string() }),
+    data: z.object({ here: z.boolean() }),
+    error: z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('no-such-agent') }),
+      z.object({ kind: z.literal('refused'), because: z.string() }),
+    ]),
+  }),
+  /** Take an agent's CLI back off this machine. */
+  remove: fallible({
+    input: z.object({ hand: z.string() }),
+    data: z.object({ here: z.boolean() }),
+    error: z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('no-such-agent') }),
+      z.object({ kind: z.literal('refused'), because: z.string() }),
+    ]),
+  }),
   tool: fallible({
     input: z.object({ task: z.string(), name: z.string(), on: z.boolean() }),
     data: z.void(),

@@ -51,6 +51,8 @@ export function createAgentsController(
     removeKnack: ({ task, name, from }) => agents.removeKnack(task, name, from),
     knackText: ({ task, name, from }) => agents.knackText(task, name, from),
     fetch: ({ hand }) => agents.fetch(hand),
+    update: ({ hand }) => agents.update(hand),
+    remove: ({ hand }) => agents.remove(hand),
     draft: ({ task }) => agents.draft(task),
     setDraft: ({ task, text }) => agents.setDraft(task, text),
   });

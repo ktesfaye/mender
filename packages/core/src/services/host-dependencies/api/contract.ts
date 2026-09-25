@@ -60,7 +60,7 @@ export const hostDependenciesContract = defineContract({
   }),
   runInstallCommand: liveJob({
     input: hostDependencyInstallRequestSchema.extend({
-      commandKind: z.enum(['install', 'update']).optional(),
+      commandKind: z.enum(['install', 'update', 'uninstall']).optional(),
     }),
     progress: hostDependencyOperationProgressSchema,
     result: hostDependencyViewSchema,

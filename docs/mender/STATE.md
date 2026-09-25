@@ -1190,7 +1190,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-08 | Workspace trust pre-authorization | kept |  |
 | AG-09 | Per-agent auth status detection | done | W8 |
 | AG-10 | Multi-account registry (issue trackers etc.) |  | W8 |
-| AG-11 | CLI dependency install/update/uninstall |  | W8 |
+| AG-11 | CLI dependency install/update/uninstall | done |  |
 | AG-12 | Agent-process environment sanitization | kept |  |
 | AG-13 | Session idle policy & automatic teardown | done |  |
 | AG-14 | Session intents — persisted resume state | done |  |
@@ -2189,6 +2189,30 @@ Driven: seeded `agents.json` with a lodger for a task id that has no entry
 in `tasks.json`, started the app against that data directory, and read the
 file back once it had settled — the orphan was gone and the boot log carried
 nothing about it.
+
+### Updating and removing an agent's CLI, from the same card that installs one (2026-09-25)
+
+`fetch` already put an agent on the machine; the card had no way to bring
+one up to date or take it back off. `runInstallCommand`'s `commandKind` grew
+a third value, `'uninstall'`, in `packages/core`'s host-dependencies runtime
+— it resolves to the plugin's own `uninstallCommand` and refuses with
+`no-uninstall-command` rather than quietly re-running the install line when
+a plugin doesn't have one. `agents.update` tries the plugin's own self-update
+command first (`runSelfUpdateCommand` — running the CLI itself, `claude
+install latest` for Claude) and only falls back to the platform's per-method
+update line when a plugin has no self-update of its own; `agents.remove`
+runs the new uninstall command kind. Every hand already on the machine, in
+the card's own "who works here" list, now carries two more lines under it:
+"bring it up to date" and "take it off this machine", the second a two-press
+throw-away in the same shape a taught skill or an MCP server already is.
+
+Driven: started a real session, opened `/agent`, and read both lines under
+Claude Code and Codex. Pressed "take it off this machine" once and read the
+armed line back — "press again and Claude Code is off this machine" — and
+stopped there rather than firing the second press, since that would really
+run `claude uninstall` on this machine. Did not press either for real; the
+command each would run was confirmed by reading the plugin's own descriptor
+(`claude uninstall`, `claude install latest`) rather than by running it.
 
 ### Next
 

@@ -296,8 +296,15 @@ export class HostDependenciesRuntime {
     const option = selectInstallOption(installOptionsForPlatform(definition), method);
     if (!option) return err({ type: 'no-install-command', id });
     const commandKind = options.commandKind ?? 'install';
+    if (commandKind === 'uninstall' && !option.uninstallCommand) {
+      return err({ type: 'no-uninstall-command', id });
+    }
     const command =
-      commandKind === 'update' ? (option.updateCommand ?? option.command) : option.command;
+      commandKind === 'update'
+        ? (option.updateCommand ?? option.command)
+        : commandKind === 'uninstall'
+          ? (option.uninstallCommand as string)
+          : option.command;
     const elevation = option.elevation ?? 'never';
     const elevationDecision = await resolveElevationDecision(
       elevation,

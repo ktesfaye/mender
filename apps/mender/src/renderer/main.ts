@@ -2041,6 +2041,40 @@ async function boot(): Promise<void> {
       );
     };
 
+    /** Bringing an agent already here up to date, the plugin's own way. */
+    const updateHand = async (hand: string): Promise<void> => {
+      say('bringing them up to date…', 600000);
+      const done = await client.agents
+        .update({ hand }, { timeoutMs: 0 })
+        .catch((error: unknown) => ({
+          success: false as const,
+          error: { kind: 'refused' as const, because: String(error) },
+        }));
+      if (!done.success) {
+        say(whyNot(done.error), 8000);
+        return;
+      }
+      say(done.data.here ? 'up to date.' : 'it ran, and they are still not here.', 6000);
+      rewrite(card?.rows() ?? []);
+    };
+
+    /** Taking an agent's CLI back off this machine, the plugin's own way. */
+    const removeHand = async (hand: string): Promise<void> => {
+      say('taking them off this machine…', 600000);
+      const done = await client.agents
+        .remove({ hand }, { timeoutMs: 0 })
+        .catch((error: unknown) => ({
+          success: false as const,
+          error: { kind: 'refused' as const, because: String(error) },
+        }));
+      if (!done.success) {
+        say(whyNot(done.error), 8000);
+        return;
+      }
+      say(done.data.here ? 'it ran, and they are still here.' : 'gone.', 6000);
+      rewrite(card?.rows() ?? []);
+    };
+
     /** Who last touched each run of lines in the file that is open. */
     const blamed = async (): Promise<void> => {
       const file = opened;
@@ -2190,6 +2224,22 @@ async function boot(): Promise<void> {
       talking = null;
       void was?.shell?.close();
       closeBrowser();
+    };
+
+    /**
+     * Putting the line that fetches something this machine is missing onto
+     * the board's real shell, ready to run.
+     *
+     * Written there rather than sent: this only ever gets as far as arming
+     * the command, on the same real prompt anything else typed there runs
+     * on, and pressing return there — his own key, in his own shell — is the
+     * approval that actually runs a real command on the real machine.
+     */
+    const runInstall = async (command: string): Promise<void> => {
+      if (!talking?.shell) await talk();
+      if (talking?.shell && 'key' in talking.shell) {
+        void client.terminals.sendInput({ key: talking.shell.key, data: command });
+      }
     };
 
     /**
@@ -3389,6 +3439,12 @@ async function boot(): Promise<void> {
         void talk();
         return;
       }
+      if (pick.startsWith('installdep:')) {
+        const rest = pick.slice('installdep:'.length);
+        const cut = rest.indexOf('\u0000');
+        if (cut !== -1) void runInstall(rest.slice(cut + 1));
+        return;
+      }
       if (pick.startsWith('page:')) {
         openBrowserBoard(pick.slice(5));
         return;
@@ -3645,6 +3701,18 @@ async function boot(): Promise<void> {
       }
       if (meant.does === 'rmtool' && !meant.asked) {
         rewrite(card?.rows() ?? []);
+        return;
+      }
+      if (meant.does === 'updatehand') {
+        void updateHand(meant.id);
+        return;
+      }
+      if (meant.does === 'rmhand') {
+        if (!meant.asked) {
+          rewrite(card?.rows() ?? []);
+          return;
+        }
+        void removeHand(meant.id);
         return;
       }
       if (meant.does === 'browseknacks' || meant.does === 'knack') {
