@@ -53,6 +53,9 @@ export interface Task {
   /** The worktree, as the filesystem spells it. */
   readonly path: string;
   readonly startedAt: string;
+  /** `terminal` for a session whose board is the agent's own CLI in a real
+      terminal. Unset means the ordinary chat yard. */
+  readonly kind?: 'chat' | 'terminal';
 }
 
 export type TaskError =
@@ -70,7 +73,8 @@ export interface Tasks {
   begin(
     project: string,
     name: string,
-    slot: number | null
+    slot: number | null,
+    kind?: 'chat' | 'terminal'
   ): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
   /**
    * What is in that checkout, by name, nearest first.
@@ -146,7 +150,7 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       return project ? tasks.filter((task) => task.project === project) : tasks;
     },
 
-    async begin(project, name, slot) {
+    async begin(project, name, slot, kind) {
       const written = name.trim();
       if (!written) return fail({ kind: 'nameless' });
 
@@ -232,6 +236,7 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
         slot,
         path: made.data.path,
         startedAt: new Date().toISOString(),
+        kind: kind === 'terminal' ? 'terminal' : undefined,
       };
       await save([...tasks, task]);
       return { success: true as const, data: task };

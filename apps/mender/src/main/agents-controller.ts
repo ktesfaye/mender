@@ -1,15 +1,33 @@
 import { createController, type Controller } from '@emdash/wire/rpc';
-import { expose } from '@emdash/wire/state';
-import { agentsContract } from '@shared/agents';
+import { expose, type Cell } from '@emdash/wire/state';
+import { agentsContract, type Mood } from '@shared/agents';
 import type { Agents } from './agents';
+import type { TuiSessions } from './tui-sessions';
 
-/** The agents domain: what the village can see of whoever is working. */
-export function createAgentsController(agents: Agents): Controller {
+/**
+ * The agents domain: what the village can see of whoever is working.
+ *
+ * `moods` is normally `agents.moods()`, but a session running as its own
+ * terminal keeps its mood in `tui-sessions.ts` instead, so the island's real
+ * mood map is whichever one the caller merged the two into — the rail does
+ * not know or care which runtime a lantern's light came from.
+ */
+export function createAgentsController(
+  agents: Agents,
+  moods: Cell<Record<string, Mood>>,
+  tuiSessions: TuiSessions
+): Controller {
   return createController(agentsContract, {
     work: expose(agentsContract.work, { state: (key) => agents.working(key.task) }),
     kit: expose(agentsContract.kit, { state: (key) => agents.kit(key.task) }),
-    island: expose(agentsContract.island, { moods: () => agents.moods() }),
+    island: expose(agentsContract.island, { moods: () => moods }),
     wake: ({ task }) => agents.wake(task),
+    wakeTerminal: async ({ task }) => {
+      const started = await tuiSessions.open(task);
+      return started.success
+        ? { success: true as const, data: undefined }
+        : { success: false as const, error: { kind: 'refused' as const, because: started.because } };
+    },
     tell: ({ task, text, carrying }) => agents.tell(task, text, carrying),
     carry: ({ task }, file) => agents.carry(task, file),
     putDown: ({ task, id }) => agents.putDown(task, id),

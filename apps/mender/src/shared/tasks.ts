@@ -21,6 +21,12 @@ export const taskSchema = z.object({
   slot: z.number().int().nonnegative().nullable(),
   path: z.string(),
   startedAt: z.string(),
+  /**
+   * `terminal` means this session's board is the agent's own CLI, running
+   * raw in a real terminal, rather than the yard's parsed transcript. Unset
+   * (or `chat`) is every session there has ever been until now.
+   */
+  kind: z.enum(['chat', 'terminal']).optional(),
 });
 
 export type Task = z.infer<typeof taskSchema>;
@@ -53,6 +59,9 @@ export const tasksContract = defineContract({
       name: z.string(),
       /** Which building to stand it in. Null when the district has no room. */
       slot: z.number().int().nonnegative().nullable(),
+      /** `terminal` for a session that is the agent's own CLI in a real
+          terminal rather than the yard's chat board. Omitted means `chat`. */
+      kind: z.enum(['chat', 'terminal']).optional(),
     }),
     data: taskSchema,
     error: taskErrorSchema,

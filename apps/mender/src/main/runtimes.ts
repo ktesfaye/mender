@@ -17,6 +17,7 @@ import { hostSettingsWorkerSpec } from '@emdash/core/runtimes/host-settings/node
 import { scriptsWorkerSpec } from '@emdash/core/runtimes/scripts/node';
 import { terminalsContract } from '@emdash/core/runtimes/terminals/api';
 import { terminalsWorkerSpec } from '@emdash/core/runtimes/terminals/node';
+import { tuiAgentsContract } from '@emdash/core/runtimes/tui-agents/api';
 import { tuiAgentsWorkerSpec } from '@emdash/core/runtimes/tui-agents/node';
 import { workspaceRegistryContract } from '@emdash/core/runtimes/workspace-registry/api';
 import { workspaceRegistryWorkerSpec } from '@emdash/core/runtimes/workspace-registry/node';
@@ -70,6 +71,8 @@ export interface MenderRuntimes {
   disk: ReturnType<typeof diskClient>;
   /** Real shells, which outlive the window they were opened from. */
   terminals: ReturnType<typeof terminalsClient>;
+  /** Provider CLIs running raw in a real terminal, as their own kind of session. */
+  tuiAgents: ReturnType<typeof tuiAgentsClient>;
   /** What is open against the other end, and what its checks think of it. */
   pulls: ReturnType<typeof pullsClient>;
   /** The workspace registry: the thing that makes a worktree exist. */
@@ -112,6 +115,10 @@ function filesClient(ready: Promise<unknown>) {
 
 function terminalsClient(ready: Promise<unknown>) {
   return queuedClient(terminalsContract, () => ready as Promise<never>);
+}
+
+function tuiAgentsClient(ready: Promise<unknown>) {
+  return queuedClient(tuiAgentsContract, () => ready as Promise<never>);
 }
 
 function pullsClient(ready: Promise<unknown>) {
@@ -359,6 +366,7 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
   const workspaces = workspacesClient(workspacesReady);
   const disk = diskClient(diskReady);
   const terminals = terminalsClient(terminalsReady);
+  const tuiAgents = tuiAgentsClient(tuiAgentsReady);
   const pulls = pullsClient(pullsReady);
   return {
     controllers: {
@@ -367,6 +375,10 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
       terminals: createController(
         terminalsContract,
         forwardContractImpl(terminalsContract, terminals)
+      ),
+      tuiAgents: createController(
+        tuiAgentsContract,
+        forwardContractImpl(tuiAgentsContract, tuiAgents)
       ),
       pulls: createController(
         pullRequestsContract,
@@ -377,6 +389,7 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
     files: filesClient(filesReady),
     disk,
     terminals,
+    tuiAgents,
     pulls,
     workspaces,
     conversations: conversationsClient(conversationsReady),

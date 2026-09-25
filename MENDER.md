@@ -377,6 +377,20 @@ dropped or pasted on it lands as its own path, shell-escaped and unsent, on
 the input line — a shell has no way to be shown a picture, only told where it
 is.
 
+**A session can be its own terminal instead of a conversation.** Naming a new
+one on the empty hook offers a second line beside its name: in its own
+terminal. Taken, the worktree is cut exactly as always and the agent's own
+CLI is run raw in it, over the runtime that already knows how to keep a
+provider's own process and resume it, rather than spoken to over the
+protocol — so that CLI's own screen, its own trust prompt, its own usage-limit
+banner and its own permission prompts are what is actually on the board, not
+a village re-telling of them. It is still a villager like any other: the same
+fire, the same gatepost, the same cart-frame stand it up, and only the middle,
+where the transcript would draw, is its terminal instead — the rail still
+hangs its lantern, the rack, `Cmd+U` and a system notification still all read
+its mood, because a mood is a mood whichever runtime is behind it. `ctrl+]`
+steps back out to the yard behind it, the same as the plain shell.
+
 **Something the shell starts listening on is noticed, not hunted for.**
 Whatever a checkout's own shell prints an address in — `npm run dev`, a test
 server, anything — turns into a line on the checkout board, most recent

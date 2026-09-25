@@ -1,5 +1,5 @@
 import type { Scope } from '@emdash/shared/concurrency';
-import { observe } from '@emdash/wire/state';
+import { observe, type Cell } from '@emdash/wire/state';
 import { powerSaveBlocker } from 'electron';
 import type { Mood } from '@shared/agents';
 import type { Agents } from './agents';
@@ -17,13 +17,15 @@ import type { Agents } from './agents';
 export interface AwakeOptions {
   scope: Scope;
   agents: Agents;
+  /** The island's real mood map. Defaults to `agents.moods()`. */
+  moods?: Cell<Record<string, Mood>>;
 }
 
 export function watchStayingAwake(options: AwakeOptions): void {
   let blocker: number | null = null;
 
   observe(
-    options.agents.moods(),
+    options.moods ?? options.agents.moods(),
     (snapshot) => {
       const working = anyWorking(snapshot.value);
       if (working && blocker === null) {

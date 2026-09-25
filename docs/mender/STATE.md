@@ -1977,6 +1977,50 @@ lost time to `Unknown procedure 'checkout.getMergeBase'` after editing
 hot-reloads but the Electron main process does not pick up workspace-package
 changes without a full kill and restart of `pnpm run dev`.
 
+### A session in its own terminal, and the rail reads its mood too (2026-09-24)
+
+`mender-13-add-files-terminal.md`'s own audit called this "the one place a
+genuinely different board layout is warranted" — not a second board type
+bolted beside the chat one, a different way to hang the lantern. Built: the
+empty-hook naming board now offers a second, pressable line, "in its own
+terminal," beside the name; picking it cuts the worktree exactly as before
+and then runs the agent's own CLI raw, over emdash's TUI-agent runtime
+(`@emdash/core/runtimes/tui-agents`, already brought up by `runtimes.ts` and
+already forwarded to Mender's wire, previously unused — `mender-13`'s own
+audit flagged it "possibly-vestigial"), instead of starting an ACP
+conversation. The session still stands up through the same `showYard` every
+chat session does — the fire, the gatepost's column, the rail with every
+lantern in the project on it — and only the middle, where the transcript
+would draw, is taken over by a real terminal (the same xterm.js board the
+plain shell already mounts), the same way a plain shell already takes a
+checkout board over. `ctrl+]` steps back to the yard behind it.
+
+The rail reads it too. A TUI session's mood (idle/working/awaiting-input/
+error, read off the TUI runtime's own `sessions` and `agentStates` live
+models) is folded into the same island mood map every chat session's lantern
+already reads from (`main/tui-sessions.ts`'s `mergedMoods`, merged once in
+`index.ts` and handed to the agents controller, the dock badge, the
+stay-awake blocker and the missed-while-away summary alike), so a session
+running this way lights its lantern, reaches the rack, answers `Cmd+U` and
+rings a notification exactly like any other villager — none of that
+machinery had to learn a second mood source.
+
+Not done: a signed-in `/agent`-card gold line to start one (only the naming
+board offers it so far); a written prose line for "it broke" beyond the CLI's
+own trust prompt and exit codes; killing a TUI session's process the way the
+plain shell still cannot be killed from the board either.
+
+Driven: a throwaway repo, the naming board's toggle switched on, a real
+`claude` spawned in its own worktree and its own terminal — the CLI's own
+trust prompt, then its own interface, both drawn correctly on the board. Sent
+a one-word prompt and watched it think and settle. Stepped out with `ctrl+]`
+and back to the yard behind it (the "no checkout board of its own" fallback
+was wrong on the first pass — it left the middle column showing the
+terminal's own stale title after the terminal was gone; fixed to call the
+same `home()` every other "nothing laid over the yard" case already calls).
+Started a second session the same way and watched the first read `asleep`
+then `resting` on the rail from the second one's own yard, live.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

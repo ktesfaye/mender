@@ -1,5 +1,5 @@
 import type { Scope } from '@emdash/shared/concurrency';
-import { observe } from '@emdash/wire/state';
+import { observe, type Cell } from '@emdash/wire/state';
 import type { BrowserWindow } from 'electron';
 import { MENDER_MISSED_CHANNEL } from '@shared/channels';
 import type { Mood } from '@shared/agents';
@@ -59,6 +59,8 @@ export interface MissedOptions {
   scope: Scope;
   agents: Agents;
   tasks: Tasks;
+  /** The island's real mood map. Defaults to `agents.moods()`. */
+  moods?: Cell<Record<string, Mood>>;
 }
 
 export function watchMissed(window: BrowserWindow, options: MissedOptions): void {
@@ -68,7 +70,7 @@ export function watchMissed(window: BrowserWindow, options: MissedOptions): void
   const held = new Map<string, Mood>();
 
   observe(
-    options.agents.moods(),
+    options.moods ?? options.agents.moods(),
     (snapshot) => {
       const now = snapshot.value;
       if (previous === null) {

@@ -47,6 +47,9 @@ export interface AttendOptions {
   scope: Scope;
   agents: Agents;
   tasks: Tasks;
+  /** A session running as its own terminal has no transcript to read a
+      notification's body off; this is where that line comes from instead. */
+  tuiDoing?: (task: string) => string;
 }
 
 /**
@@ -86,11 +89,14 @@ async function ring(task: string, mood: Mood, options: AttendOptions): Promise<v
 
   const record = (await options.tasks.list()).find((candidate) => candidate.id === task);
   if (!record) return;
-  const state = peek(options.agents.working(task));
+  const doing =
+    record.kind === 'terminal' && options.tuiDoing
+      ? options.tuiDoing(task)
+      : peek(options.agents.working(task)).doing;
 
   const notice = new Notification({
     title: `${record.title} · mender`,
-    body: state.doing,
+    body: doing,
   });
   notice.on('click', () => {
     const win = BrowserWindow.getAllWindows()[0];
@@ -102,6 +108,6 @@ async function ring(task: string, mood: Mood, options: AttendOptions): Promise<v
   notice.show();
 
   if (process.env.MENDER_DEBUG_PORT) {
-    process.stdout.write(`[attend] ${mood}: ${record.title} — ${state.doing}\n`);
+    process.stdout.write(`[attend] ${mood}: ${record.title} — ${doing}\n`);
   }
 }

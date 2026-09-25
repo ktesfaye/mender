@@ -40,6 +40,8 @@ import { sent, type Sent } from './board/sent';
 import { shell } from './board/shell';
 import { openShell, type LiveShell } from './board/talking';
 import { refused, trouble, unwritten } from './board/trouble';
+import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
+import { tuiSession } from './board/tui-session';
 import { answerFor, SEND_ALL } from './board/work';
 import { ran } from './job';
 import { setPace } from './pace';
@@ -555,7 +557,10 @@ async function boot(): Promise<void> {
     /* Set while the checkout is being searched rather than walked. */
     let hunt: (Hunt & { checkout: string; asked: number }) | null = null;
     /* The shell running in this checkout, while its board is the one open. */
-    let talking: { shell: LiveShell | null; name: string } | null = null;
+    /* `shell` is a plain shell's own live terminal most of the time, and an
+       agent's own CLI running raw when the session behind it is a terminal
+       one instead — the same slot, the same cleanup, whichever it is. */
+    let talking: { shell: LiveShell | LiveTuiTerminal | null; name: string } | null = null;
     /* A browser laid over the yard, showing one page. `url` is what is
        actually loaded; `written` is what the foot-of-board line currently
        says, which differs from it while an address is being typed. */
@@ -602,6 +607,9 @@ async function boot(): Promise<void> {
       written: string;
       /** The one just taken down here, if putting it back up is still on offer. */
       revivable: { title: string } | null;
+      /** In its own terminal — the agent's own CLI, raw — rather than the
+          ordinary chat yard. */
+      terminal: boolean;
     } | null = null;
     /** Set while an existing session is being called something else. */
     let titling: { task: Task; written: string } | null = null;
@@ -1065,7 +1073,10 @@ async function boot(): Promise<void> {
          transcript across a restart but the agent is not running, and a
          sleeping agent cannot say what it can do — so walking into the yard is
          what starts it, not the first thing you say. */
-      if (here) {
+      // A terminal-kind session wakes over the TUI runtime instead — see
+      // `openTuiTask`, which calls `showYard` for the rail and gatepost and
+      // then takes the board itself over.
+      if (here && here.kind !== 'terminal') {
         void client.agents.wake({ task: here.id }, { timeoutMs: 0 });
         /* Whatever was half-written last time is still on the line. */
         void client.agents.draft({ task: here.id }).then((text) => {
@@ -2452,9 +2463,64 @@ async function boot(): Promise<void> {
     const openTask = async (aim: Aim, task: Task): Promise<void> => {
       const project = projects.find((one) => one.id === task.project);
       if (!project) return;
+      if (task.kind === 'terminal') {
+        await openTuiTask(aim, task);
+        return;
+      }
       flyToYard(camera, aim.district);
       lastIn.set(project.id, task.id);
       await showYard(aim, project, task);
+      arrived();
+    };
+
+    /**
+     * A session whose board is its own terminal, not a chat: the same door as
+     * `openTask`, but what stands up behind it is the agent's own CLI, in a
+     * real terminal, mounted through the same `talking` slot `talk()` opens a
+     * plain shell into.
+     *
+     * `showYard` is still what stands the session up — the fire, the
+     * gatepost's column, the rail with every lantern in the project on it —
+     * because none of that is particular to a chat transcript. Only the
+     * middle of the board, where the transcript would draw, is taken over,
+     * the same way a plain shell already takes it over from a checkout board.
+     */
+    const openTuiTask = async (aim: Aim, task: Task): Promise<void> => {
+      const project = projects.find((one) => one.id === task.project);
+      if (!project) return;
+      flyToYard(camera, aim.district);
+      lastIn.set(project.id, task.id);
+      await showYard(aim, project, task);
+      if (open !== aim) return;
+      stopTalking();
+      const name = task.title;
+      talking = { shell: null, name };
+      const mine = talking;
+      const hand = task.agent ?? 'the agent';
+      wood(tuiSession({ name, hand, running: false }));
+      const started = await client.agents.wakeTerminal({ task: task.id }, { timeoutMs: 0 });
+      if (talking !== mine || open !== aim) return;
+      if (!started.success) {
+        wood(tuiSession({ name, hand, running: true, stopped: whyNot(started.error) }));
+        return;
+      }
+      const term = await openTuiTerminal(client, task.id, () => {
+        if (talking === mine && open === aim) {
+          stopTalking();
+          /* `ctrl+]` steps back to the yard behind the terminal — the same
+             fire, gatepost and rail `showYard` already stood up. There is no
+             checkout board of its own the way a plain shell sometimes has
+             one, so this is always the yard itself. */
+          home();
+        }
+      });
+      if (talking !== mine || open !== aim) {
+        await term.close();
+        return;
+      }
+      mine.shell = term;
+      wood(tuiSession({ name, hand, running: true }), term.el);
+      term.focus();
       arrived();
     };
 
@@ -2471,7 +2537,7 @@ async function boot(): Promise<void> {
       sending = null;
       open = aim;
       titling = null;
-      naming = { district: aim.district, project, slot, written: '', revivable: null };
+      naming = { district: aim.district, project, slot, written: '', revivable: null, terminal: false };
       paintRail();
       /* Asking what is going to happen in a new session is laid over the yard
          you are standing in, like everything else you open, rather than
@@ -2570,7 +2636,7 @@ async function boot(): Promise<void> {
 
     const begin = async (): Promise<void> => {
       if (!naming) return;
-      const { project, slot, written } = naming;
+      const { project, slot, written, terminal } = naming;
       const aim = open;
       naming = null;
       rewrite([
@@ -2595,7 +2661,7 @@ async function boot(): Promise<void> {
       let made: Awaited<ReturnType<typeof client.tasks.begin>>;
       try {
         made = await client.tasks.begin(
-          { project: project.id, name: written, slot },
+          { project: project.id, name: written, slot, kind: terminal ? 'terminal' : undefined },
           { timeoutMs: 0 }
         );
       } finally {
@@ -2609,8 +2675,10 @@ async function boot(): Promise<void> {
         return;
       }
       // The first thing written in a new session is the first thing said in
-      // it. There is no separate step where you name it and then start it.
-      void client.agents.tell({ task: made.data.id, text: written }, { timeoutMs: 0 });
+      // it. There is no separate step where you name it and then start it —
+      // except in its own terminal, where what you wrote was only ever this
+      // session's name: the agent's own CLI has no ACP prompt to hand it.
+      if (!terminal) void client.agents.tell({ task: made.data.id, text: written }, { timeoutMs: 0 });
       if (aim) await openTask(aim, made.data);
     };
 
@@ -2867,6 +2935,12 @@ async function boot(): Promise<void> {
         void reviveSession();
         return;
       }
+      if (pick === 'terminal-toggle') {
+        if (!naming) return;
+        naming = { ...naming, terminal: !naming.terminal };
+        rewrite(asking(naming));
+        return;
+      }
       if (pick === 'rest') {
         void resting();
         return;
@@ -3025,7 +3099,7 @@ async function boot(): Promise<void> {
            the input rather than a blank prompt. Not sent: they still press
            return themselves. */
         void talk().then(() => {
-          if (talking?.shell)
+          if (talking?.shell && 'key' in talking.shell)
             void client.terminals.sendInput({
               key: talking.shell.key,
               data: meant.command,
@@ -3644,6 +3718,7 @@ function asking(naming: {
   district: District;
   written: string;
   revivable: { title: string } | null;
+  terminal: boolean;
 }): Row[] {
   const offer: Row[] =
     naming.revivable && !naming.written
@@ -3659,11 +3734,19 @@ function asking(naming: {
     ...offer,
     {
       kind: 'prose',
-      text: 'say what you want doing. it gets its own branch, and it will name itself.',
+      text: naming.terminal
+        ? 'say what to call it. it gets its own branch, and opens in its own terminal — the agent’s own CLI, raw.'
+        : 'say what you want doing. it gets its own branch, and it will name itself.',
       tone: 'faded',
     },
     { kind: 'gap' },
     { kind: 'typed', text: naming.written },
+    { kind: 'gap' },
+    {
+      kind: 'line',
+      text: naming.terminal ? 'in its own terminal — on' : 'in its own terminal',
+      pick: 'terminal-toggle',
+    },
   ];
 }
 

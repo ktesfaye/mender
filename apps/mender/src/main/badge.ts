@@ -1,5 +1,5 @@
 import type { Scope } from '@emdash/shared/concurrency';
-import { observe } from '@emdash/wire/state';
+import { observe, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
 import type { Mood } from '@shared/agents';
 import type { Agents } from './agents';
@@ -20,6 +20,9 @@ import type { Agents } from './agents';
 export interface BadgeOptions {
   scope: Scope;
   agents: Agents;
+  /** The island's real mood map, when a session running as its own terminal
+      needs folding in beside the ordinary ones. Defaults to `agents.moods()`. */
+  moods?: Cell<Record<string, Mood>>;
 }
 
 export function watchDockBadge(options: BadgeOptions): void {
@@ -27,7 +30,7 @@ export function watchDockBadge(options: BadgeOptions): void {
 
   let wanted: boolean | null = null;
   observe(
-    options.agents.moods(),
+    options.moods ?? options.agents.moods(),
     (snapshot) => {
       const now = wantsHim(snapshot.value);
       if (now === wanted) return;

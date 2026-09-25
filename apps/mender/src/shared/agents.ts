@@ -441,6 +441,16 @@ export const agentsContract = defineContract({
     data: z.void(),
     error: agentErrorSchema,
   }),
+  /**
+   * The same wake, for a session whose board is its own terminal rather than
+   * a chat: it runs the agent's own CLI raw, wired to emdash's TUI-agent
+   * runtime instead of the ACP one `wake` starts.
+   */
+  wakeTerminal: fallible({
+    input: z.object({ task: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
   /** Say something to whoever is in there, moving somebody in if nobody is. */
   tell: fallible({
     input: z.object({

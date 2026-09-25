@@ -26,6 +26,7 @@ import { installQuitGuard } from './quit';
 import { startRuntimes } from './runtimes';
 import { createTasks } from './tasks';
 import { createTasksController } from './tasks-controller';
+import { createTuiSessions, mergedMoods } from './tui-sessions';
 import { createVillageController } from './village';
 import { installWire } from './wire';
 import { restoredBounds, watchWindowBounds } from './window-state';
@@ -68,16 +69,19 @@ export async function main(): Promise<void> {
      have to be able to reach the tasks and the tasks already reach back. */
   projects.sweeps((project) => tasks.sweep(project));
   const agents = createAgents(runtimes, tasks, appSettings);
-  watchForAttention({ scope, agents, tasks });
-  watchDockBadge({ scope, agents });
-  watchStayingAwake({ scope, agents });
+  const tuiSessions = createTuiSessions(runtimes, appSettings, tasks);
+  const moods = mergedMoods(scope, agents.moods(), tuiSessions.moods());
+  watchForAttention({ scope, agents, tasks, tuiDoing: (task) => tuiSessions.doing(task) });
+  watchDockBadge({ scope, agents, moods });
+  watchStayingAwake({ scope, agents, moods });
   const changes = createChanges(runtimes);
   const finding = createFinding(runtimes);
   scope.add(() => agents.dispose());
   scope.add(() => tasks.dispose());
+  scope.add(() => tuiSessions.dispose());
   installWire(scope, {
     ...runtimes.controllers,
-    agents: createAgentsController(agents),
+    agents: createAgentsController(agents, moods, tuiSessions),
     appSettings: createAppSettingsController(appSettings),
     board: createBoardController(createBoard()),
     changes: createChangesController(changes),
@@ -92,7 +96,7 @@ export async function main(): Promise<void> {
   await app.whenReady();
   installAppMenu();
   const window = await openVillageWindow();
-  watchMissed(window, { scope, agents, tasks });
+  watchMissed(window, { scope, agents, tasks, moods });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) void openVillageWindow();
