@@ -6,7 +6,7 @@ import {
   type ContractClient,
   type DomPortLike,
 } from '@emdash/wire/rpc';
-import { MENDER_WIRE_CHANNEL, type Watching } from '@shared/channels';
+import { MENDER_WIRE_CHANNEL, type MenuCommand, type Watching } from '@shared/channels';
 import { menderWireContract, type menderDomainContracts } from '@shared/contract';
 
 declare global {
@@ -25,6 +25,8 @@ declare global {
       quitCost: (to: (n: number) => void) => void;
       /** The second press: quit anyway. */
       confirmQuit: () => void;
+      /** What the native app menu asked for. */
+      menu: (to: (command: MenuCommand) => void) => void;
       /** Open a folder in whatever this machine opens folders with. */
       openIt: (path: string) => void;
       /** Show it where it actually is, which is a different question. */

@@ -3,9 +3,11 @@ import { clipboard, contextBridge, ipcRenderer, shell, webUtils } from 'electron
 import {
   MENDER_ATTEND_CHANNEL,
   MENDER_CONFIRM_QUIT_CHANNEL,
+  MENDER_MENU_CHANNEL,
   MENDER_QUIT_COST_CHANNEL,
   MENDER_WATCH_CHANNEL,
   MENDER_WIRE_CHANNEL,
+  type MenuCommand,
   type Watching,
 } from '../shared/channels';
 
@@ -36,6 +38,14 @@ ipcRenderer.on(MENDER_ATTEND_CHANNEL, (_event, task: string) => {
 let quitCost: ((n: number) => void) | null = null;
 ipcRenderer.on(MENDER_QUIT_COST_CHANNEL, (_event, n: number) => {
   quitCost?.(n);
+});
+
+/* What the native app menu asked for, before the page has asked. */
+let menued: ((command: MenuCommand) => void) | null = null;
+let heldMenu: MenuCommand | null = null;
+ipcRenderer.on(MENDER_MENU_CHANNEL, (_event, command: MenuCommand) => {
+  if (menued) menued(command);
+  else heldMenu = command;
 });
 
 contextBridge.exposeInMainWorld('mender', {
@@ -72,6 +82,14 @@ contextBridge.exposeInMainWorld('mender', {
     quitCost = to;
   },
   confirmQuit: () => ipcRenderer.send(MENDER_CONFIRM_QUIT_CHANNEL),
+  /* What the native app menu asked for. */
+  menu: (to: (command: MenuCommand) => void) => {
+    menued = to;
+    if (heldMenu) {
+      to(heldMenu);
+      heldMenu = null;
+    }
+  },
   /* Taking something off the board. The host's own clipboard rather than the
      browser's, because the browser's needs a secure page and a packaged
      village is loaded off the disk. */

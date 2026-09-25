@@ -930,6 +930,37 @@ session a shell command with a few seconds of work in it and watched
 process while it ran, then confirmed the assertion was gone once the turn
 was cancelled — the actual macOS power state, not a mocked call.
 
+And the window reopens exactly where and at whatever size he last left it,
+rather than the fixed 1480×1020 it always opened at before. A moment after it
+stops being moved or resized it is written down
+(`apps/mender/src/main/window-state.ts`); the next launch reads it back and
+opens there, but only if that rectangle still lands on a display that still
+exists — a window remembered from a bigger monitor since unplugged would
+otherwise be gone off the edge of the world, not restored, so `fitsSomeDisplay`
+checks it against whatever `screen.getAllDisplays()` says right now. That rule
+is the one part worth pinning down with a test (`window-state.test.ts`), since
+the bug it guards against looks like nothing at all — the app would seem to
+hang or open invisibly. Driven for real: moved and resized the actual (if
+invisible, over the debug port) window with `window.moveTo`/`resizeTo`, read
+`window-state.json` back to confirm it settled 400ms later, killed the whole
+process tree, relaunched from the same data dir, and read `window.screenX` /
+`screenY` / `outerWidth` / `outerHeight` back — the exact rectangle came back.
+
+And the menu bar is Mender's own now, not Electron's stock one — which
+carried a live "Reload" that would have dropped him out of whatever board he
+had open, a raw DevTools entry, and an About panel that said "Electron."
+`apps/mender/src/main/menu.ts` replaces it with just what macOS needs: an
+app menu (About Mender, Settings… on ⌘,, Hide/Hide Others/Unhide, Quit), a
+standard Edit menu (Undo/Redo/Cut/Copy/Paste/Select All, for the write line),
+and Window (minimize/zoom/close). No File, View, or Help menu, because there
+is nothing under any of them. Settings is the one item the menu cannot do
+itself — only the page can raise the windmill — so it asks over
+`MENDER_MENU_CHANNEL`, landing on the identical `go('do:windmill')` the ⌘,
+chord already calls. Driven: confirmed the app boots clean with the menu
+installed (a bad role name would throw before the window ever opens) and
+drove the ⌘, chord itself over the debug port to confirm it raises the
+windmill — the same code path the menu item's click handler hands off to.
+
 Not here yet: recovering from a bad boot.
 
 Closes UI-01 through UI-04, UI-27 through UI-29, UI-42, ST-09, ST-34,
@@ -1278,9 +1309,9 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-24 | No OS deep-link scheme (confirmed absent) | cut |  |
 | UI-25 | Command palette (`cmdk`-based) | done | W1 |
 | UI-26 | Keyboard shortcuts (full default set) | part | W1 |
-| UI-27 | Native application menu |  | W11 |
+| UI-27 | Native application menu | done | W11 |
 | UI-28 | System tray |  | W11 |
-| UI-29 | Window management (per-platform titlebar/frame) | part | W11 |
+| UI-29 | Window management (per-platform titlebar/frame) | done | W11 |
 | UI-30 | Drag and drop — OS folder → sidebar |  | W7 |
 | UI-31 | Drag and drop — workspace file → composer/tree | done | W2 |
 | UI-32 | Drag and drop — tabs | cut |  |

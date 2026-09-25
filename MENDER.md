@@ -504,6 +504,22 @@ turn holds the machine's own lid open, however long it takes; the moment
 the last lit fire on the whole island stops, it lets go. Nothing to look
 at, nothing to press.
 
+**The window stays where it was put.** It sits parked beside whatever he is
+really working in, and its size and position are chosen once and stay
+chosen: it opens next time at exactly the spot and size he last left it
+rather than being shoved back to the middle of the main display. Nothing to
+look at and nothing to press, the same way a session's own board comes back
+exactly as he left it — and if that spot no longer lands on any display that
+still exists, it falls back to how it always opened rather than showing up
+somewhere unreachable.
+
+**The menu bar is Mender's own, not the shell it was built on top of.** Just
+what macOS actually needs and nothing it doesn't: About Mender, Settings on
+⌘, — the one door in from outside the wood — Hide and Quit, plain Edit roles
+for the write line's cut and copy and paste, and Window. No Reload sitting
+where a stray press could drop him out of whatever board was open, no raw
+developer tools, no File or View or Help standing over nothing.
+
 The board's timber is the dock, widened by `tools/make-board.py` out of the
 artist's own planks, and the writing is Departure Mono under the SIL OFL.
 There is still no parchment, no frame, no icon.

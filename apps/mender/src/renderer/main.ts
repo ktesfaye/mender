@@ -3434,6 +3434,11 @@ async function boot(): Promise<void> {
        rail or in the finder does: one path in, `go` decides the rest. */
     window.mender?.attend?.((task) => go(`task:${task}`));
     window.mender?.quitCost?.((n) => showQuitCost(n));
+    /* The native menu can only ask for things the page can do; "settings" is
+       the one item it carries, so it lands on the same doing the chord does. */
+    window.mender?.menu?.((command) => {
+      if (command === 'settings') go('do:windmill');
+    });
 
     /* Who is standing outside which building, kept true by the main process
        rather than by whatever board happens to be open: a villager is still

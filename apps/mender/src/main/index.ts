@@ -17,6 +17,7 @@ import { createChangesController } from './changes-controller';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
 import { createGitHubStatus } from './github';
+import { installAppMenu } from './menu';
 import { createProjects } from './projects';
 import { createProjectsController } from './projects-controller';
 import { createPromptsController } from './prompts';
@@ -26,6 +27,7 @@ import { createTasks } from './tasks';
 import { createTasksController } from './tasks-controller';
 import { createVillageController } from './village';
 import { installWire } from './wire';
+import { restoredBounds, watchWindowBounds } from './window-state';
 
 const scope = createScope({ label: 'mender' });
 
@@ -87,6 +89,7 @@ export async function main(): Promise<void> {
   });
 
   await app.whenReady();
+  installAppMenu();
   const window = await openVillageWindow();
 
   app.on('activate', () => {
@@ -106,11 +109,12 @@ export async function main(): Promise<void> {
 }
 
 async function openVillageWindow(): Promise<BrowserWindow> {
+  // Where it was last left, if that spot still lands on a real display —
+  // otherwise the one scale this art is drawn for, room for the island at
+  // one screen pixel per world pixel.
+  const remembered = await restoredBounds();
   const window = new BrowserWindow({
-    // Room for the island at one screen pixel per world pixel, which is the
-    // only scale this art is drawn for.
-    width: 1480,
-    height: 1020,
+    ...(remembered ?? { width: 1480, height: 1020 }),
     // The village is the whole interface, so the frame carries no app chrome
     // of its own; on macOS the traffic lights float over the world.
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
@@ -131,6 +135,7 @@ async function openVillageWindow(): Promise<BrowserWindow> {
       webviewTag: true,
     },
   });
+  watchWindowBounds(window);
 
   window.once('ready-to-show', () => {
     /* WITH THE DEBUG PORT OPEN THE WINDOW IS NEVER ON HIS SCREEN AT ALL.

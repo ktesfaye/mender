@@ -35,3 +35,10 @@ export const MENDER_ATTEND_CHANNEL = 'mender:attend';
  */
 export const MENDER_QUIT_COST_CHANNEL = 'mender:quit-cost';
 export const MENDER_CONFIRM_QUIT_CHANNEL = 'mender:confirm-quit';
+
+/**
+ * Channel the native app menu uses to ask the page for something only the
+ * page can do — there is nowhere else "open the windmill" lives.
+ */
+export const MENDER_MENU_CHANNEL = 'mender:menu';
+export type MenuCommand = 'settings';
