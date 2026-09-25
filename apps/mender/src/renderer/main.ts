@@ -23,7 +23,8 @@ import type { Task } from '@shared/tasks';
 import { openCard, type LiveCard } from './board/card';
 import { opening, readOut, unreadable } from './board/changed';
 import { committing } from './board/committing';
-import { openCheckout, type LiveBoard } from './board/district';
+import { landingLines, openCheckout, type Landing, type LiveBoard } from './board/district';
+import { conflict, conflictMessage } from './board/conflict';
 import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
 import { openTree, type LiveTree } from './board/inside';
 import { hunting, type Hunt } from './board/looking';
@@ -253,8 +254,11 @@ async function boot(): Promise<void> {
       const project = aim ? projectOn(aim.district) : undefined;
       if (!aim || !project) return;
       const where = inside ?? project;
+      const session = inside;
       const was = live;
       live = null;
+      landing = null;
+      conflicted = null;
       await was?.close();
       wood([{ kind: 'line', text: 'reading the checkout…', tone: 'faded' }]);
       const opened = await openCheckout(
@@ -262,7 +266,8 @@ async function boot(): Promise<void> {
         {
           name: 'name' in where ? where.name : project.name,
           path: where.path,
-          ...(inside ? { since: inside.base ?? null } : {}),
+          ...(session ? { since: session.base ?? null } : {}),
+          ...(session?.base ? { tail: () => landingLines(landing) } : {}),
         },
         (rows) => {
           if (open === aim && plainCheckout()) rewrite(rows);
@@ -274,6 +279,90 @@ async function boot(): Promise<void> {
       }
       live = opened;
       wood(opened.rows());
+      if (session?.base) void refreshLanding(aim, session, project);
+    };
+
+    /** How the session's branch stands against the base it was cut from, asked
+        for fresh after opening the board and after every merge attempt. */
+    const refreshLanding = async (aim: Aim, session: Task, project: Project): Promise<void> => {
+      const base = session.base;
+      if (!base) return;
+      const parsed = parseNativeAbsolute(session.path);
+      if (!parsed.success) return;
+      const got = await client.git.checkout.compareRef({ checkout: parsed.data, ref: base });
+      if (open !== aim || inside !== session || !live) return;
+      landing = got.success
+        ? { base, ahead: got.data.ahead, behind: got.data.behind, landed: got.data.landed }
+        : null;
+      if (plainCheckout()) rewrite(live.rows());
+      void project;
+    };
+
+    /** Bringing the base in, or landing this session's branch into it — the
+        one operation both turn out to be, aimed at whichever checkout the
+        merge belongs in. */
+    const merging = async (mode: 'bring' | 'land'): Promise<void> => {
+      const aim = open;
+      const session = inside;
+      const project = aim ? projectOn(aim.district) : undefined;
+      if (!aim || !session?.base || !project) return;
+      const target = mode === 'bring' ? session.path : project.path;
+      const ref = mode === 'bring' ? session.base : session.branch;
+      const parsed = parseNativeAbsolute(target);
+      if (!parsed.success) return;
+      say(mode === 'bring' ? 'bringing it in…' : 'landing it…', 30000);
+      const done = await client.git.checkout.model.mutate('merge', {
+        key: { checkout: parsed.data },
+        input: { ref },
+      });
+      if (!done.success) {
+        if (done.error.type === 'conflict') {
+          conflicted = {
+            aim,
+            checkout: target,
+            base: mode === 'bring' ? session.base : `${session.base} (as ${ref})`,
+            mode,
+            files: done.error.conflictedFiles ?? [],
+          };
+          wood(conflict(conflicted.base, conflicted.files, false));
+          return;
+        }
+        say(trouble(done.error), 6000);
+        return;
+      }
+      say(mode === 'bring' ? 'brought in.' : 'landed.', 3000);
+      void refreshLanding(aim, session, project);
+    };
+
+    /** Handing a stopped merge to whoever is working here, as the next thing
+        said on the gatepost. */
+    const handConflict = (): void => {
+      const on = conflicted;
+      if (!on) return;
+      said(conflictMessage(on.base, on.files));
+      conflicted = null;
+      home();
+    };
+
+    /** Giving up on a stopped merge, on the second press. Nothing here is
+        lost: the merge itself is the only thing undone. */
+    const abortMerge = async (sure: boolean): Promise<void> => {
+      const on = conflicted;
+      if (!on) return;
+      if (!sure) {
+        conflicted = { ...on, asked: true };
+        rewrite(conflict(on.base, on.files, true));
+        return;
+      }
+      const parsed = parseNativeAbsolute(on.checkout);
+      if (!parsed.success) return;
+      await client.git.checkout.model.mutate('mergeAbort', {
+        key: { checkout: parsed.data },
+        input: {},
+      });
+      conflicted = null;
+      say('given up. the checkout is back where it was.', 4000);
+      home();
     };
 
     /* Whether the checkout board is the thing being read right now.
@@ -295,6 +384,7 @@ async function boot(): Promise<void> {
       !naming &&
       !titling &&
       !looking &&
+      !conflicted &&
       !card;
 
     /**
@@ -376,6 +466,17 @@ async function boot(): Promise<void> {
     let live: LiveBoard | null = null;
     /** The task that board belongs to. */
     let inside: Task | null = null;
+    /** How this session's branch stands against the base it was cut from. */
+    let landing: Landing | null = null;
+    /** A merge that stopped on a conflict, laid over the checkout board. */
+    let conflicted: {
+      aim: Aim;
+      checkout: string;
+      base: string;
+      mode: 'bring' | 'land';
+      files: string[];
+      asked?: boolean;
+    } | null = null;
     /** Set while the board is showing what that session works with. */
     let card: LiveCard | null = null;
     /** A project's settings, while that window is up over everything. */
@@ -2351,6 +2452,22 @@ async function boot(): Promise<void> {
         void errand(pick);
         return;
       }
+      if (pick === 'bring-base') {
+        void merging('bring');
+        return;
+      }
+      if (pick === 'land-here') {
+        void merging('land');
+        return;
+      }
+      if (pick === 'hand-conflict') {
+        handConflict();
+        return;
+      }
+      if (pick === 'abort-merge' || pick === 'abort-merge!') {
+        void abortMerge(pick === 'abort-merge!');
+        return;
+      }
       if (pick.startsWith('hold:')) {
         holding(pick.slice(5), true);
         return;
@@ -2762,6 +2879,16 @@ async function boot(): Promise<void> {
         }
         if (looked) {
           looked = null;
+          home();
+          return;
+        }
+        if (conflicted) {
+          if (conflicted.asked) {
+            conflicted = { ...conflicted, asked: false };
+            rewrite(conflict(conflicted.base, conflicted.files, false));
+            return;
+          }
+          conflicted = null;
           home();
           return;
         }

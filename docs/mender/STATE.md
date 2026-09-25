@@ -1743,6 +1743,42 @@ hash change, took one back and watched it land uncommitted with its diff
 intact, and reverted one and watched a new commit come in with the working
 tree back to what it was.
 
+### A session's board offers to bring the base in, and to land itself · done
+
+Two more lines on a session's own checkout board, both new front and back:
+when the base has moved, "bring `<base>` in" merges it into the session's own
+worktree; always, unless it has already gone in, "bring it into `<base>` here"
+merges the session's branch into the *project's* own checkout — a real local
+landing for a project with no GitHub remote, run from the session's board but
+against the project's own working tree, matching `mender-12-add-git.md`'s own
+proposed shape for this. A stopped merge lays a conflict board over the
+checkout: the files it could not settle, one line each, "hand this to it"
+(folds them into the next thing said on the session's gatepost) and a
+two-press "give up" that runs `git merge --abort`. Built on the `compareRef`
+read from the prior entry.
+
+Driven live against a throwaway repo with a local bare remote (a scratch
+session started fine over CDP once the write-line was clicked into focus
+before `Input.insertText`, rather than only `.focus()`ed): watched "bring
+main in" appear once the project's checkout moved ahead, pressed it and
+watched the session's worktree fast-forward; committed in the session's
+worktree, watched "bring it into main here" appear, pressed it and watched
+the project's own checkout gain that commit and "it has gone into main."
+replace the line; then edited the same README line on both sides and pressed
+"bring main in" again to get a real conflict — the board listed `README.md`,
+"hand this to it" queued the conflict onto the session's gatepost as its next
+thing said, and a first press of "give up" turned into "press again and the
+merge is undone", with the second press running `git merge --abort` for
+real and landing back on the session's yard.
+
+Found and fixed while driving: the two new lines never actually drew. The
+`Place` object `main.ts` builds for a session's board was given a `tail`
+field carrying `landingLines`, but `district.ts`'s `Place` interface never
+declared one and `build()` never read it, so the rows silently never joined
+the board. Added `tail?: () => Row[]` to `Place` and spliced it in right
+after the existing `sending(head)` push/pull lines, which is the only change
+beyond driving.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

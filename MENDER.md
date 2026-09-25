@@ -285,6 +285,18 @@ nobody has seen, send up what has run ahead, bring down whatever is new. Nothing
 here goes and asks the other end what it has, so bringing it down is also how
 you find out.
 
+**A session's own board offers to catch it up, or land it, without a remote
+in the way.** When the branch it was cut from has moved, a line offers to
+bring that base in, merging it straight into the session's worktree; unless
+it has already gone in, another always offers to bring the session's own
+branch into the base's checkout right there on disk, which is a real local
+landing for a project with nowhere else to send a pull request. A merge
+that cannot settle on its own lays a conflict over the checkout instead of
+finishing it: the files it stopped on, one line each, a way to hand the
+whole thing to whoever is working in the session as the next thing said to
+them, and a two-press way to give up and put the checkout back exactly how
+it stood before the merge was tried.
+
 **The checkout is a place you walk into.** Under a project's or a session's
 name is where it is, and pressing that walks into the folder: what is in it,
 folders first, each one walked into the same way a district is. Escape walks

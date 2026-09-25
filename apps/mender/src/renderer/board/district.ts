@@ -71,6 +71,46 @@ export interface Place {
    * Null is a session whose base nobody wrote down.
    */
   since?: string | null;
+  /** Extra rows to lay in after the branch's own standing, read fresh on
+      every rewrite — a session's offer to bring its base in or land itself. */
+  tail?: () => Row[];
+}
+
+/** How a session's branch stands against the base it forked from. */
+export interface Landing {
+  base: string;
+  ahead: number;
+  behind: number;
+  landed: boolean;
+}
+
+/**
+ * What can still be done about landing this session's work, if this is a
+ * session at all. A branch nobody has caught up with is brought in; one
+ * that has not gone anywhere yet is offered a local landing right here.
+ */
+export function landingLines(on: Landing | null): Row[] {
+  if (!on) return [];
+  const rows: Row[] = [{ kind: 'gap' }];
+  if (on.behind) {
+    rows.push({
+      kind: 'entry',
+      mark: '+',
+      text: `bring ${on.base} in`,
+      pick: 'bring-base',
+    });
+  }
+  if (on.landed) {
+    rows.push({ kind: 'line', text: `it has gone into ${on.base}.`, tone: 'faded' });
+  } else {
+    rows.push({
+      kind: 'entry',
+      mark: '+',
+      text: `bring it into ${on.base} here`,
+      pick: 'land-here',
+    });
+  }
+  return rows;
 }
 
 /** One file that is not as it was committed, as the board says it. */
@@ -184,6 +224,7 @@ function build(
     { kind: 'gap' },
     { kind: 'line', text: standing(head) },
     ...sending(head),
+    ...(place.tail?.() ?? []),
     { kind: 'gap' },
     // The one thing a checkout is for that git has no word for.
     { kind: 'entry', mark: '→', text: 'open a shell in here', tone: 'faded', pick: 'shell' },
