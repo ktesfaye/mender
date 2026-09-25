@@ -453,6 +453,11 @@ asking or hurt, the app's own icon gets a small dot; the moment nothing is,
 it is gone. No number on it, because a count is a convention this app does
 not otherwise keep anywhere.
 
+**And the Mac stays awake for exactly as long as it has to.** A working
+turn holds the machine's own lid open, however long it takes; the moment
+the last lit fire on the whole island stops, it lets go. Nothing to look
+at, nothing to press.
+
 The board's timber is the dock, widened by `tools/make-board.py` out of the
 artist's own planks, and the writing is Departure Mono under the SIL OFL. There
 is still no windmill, no parchment, no frame, no icon.

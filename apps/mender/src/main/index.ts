@@ -6,6 +6,7 @@ import { MENDER_WATCH_CHANNEL, type Watching } from '../shared/channels';
 import { createAgents } from './agents';
 import { createAgentsController } from './agents-controller';
 import { watchForAttention } from './attend';
+import { watchStayingAwake } from './awake';
 import { watchDockBadge } from './badge';
 import { createBoard } from './board';
 import { createBoardController } from './board-controller';
@@ -63,6 +64,7 @@ export async function main(): Promise<void> {
   const agents = createAgents(runtimes, tasks);
   watchForAttention({ scope, agents, tasks });
   watchDockBadge({ scope, agents });
+  watchStayingAwake({ scope, agents });
   const changes = createChanges(runtimes);
   const finding = createFinding(runtimes);
   scope.add(() => agents.dispose());

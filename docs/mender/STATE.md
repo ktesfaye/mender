@@ -880,6 +880,17 @@ the debug-port window is deliberately an accessory app with no dock tile at
 all (see `openVillageWindow`'s own comment on why), so there was nothing on
 screen for a badge to sit on.
 
+And the Mac cannot sleep out from under a working agent any more: for exactly
+as long as any lantern anywhere is lit — actually generating, not merely
+asking or resting — a `powerSaveBlocker` holds the lid open
+(`apps/mender/src/main/awake.ts`, watching the same mood map as the rest of
+this wave), and it lets go the instant the last one stops. Nothing to look at
+and nothing to press. Verified for real, not just read: sent a real Claude
+session a shell command with a few seconds of work in it and watched
+`pmset -g assertions` show a `NoIdleSleepAssertion` against the app's own
+process while it ran, then confirmed the assertion was gone once the turn
+was cancelled — the actual macOS power state, not a mocked call.
+
 Not here yet: recovering from a bad boot.
 
 Closes UI-01 through UI-04, UI-27 through UI-29, UI-42, ST-09, ST-34,
