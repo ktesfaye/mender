@@ -19,25 +19,48 @@ export interface Hand {
   here: boolean;
 }
 
+/** What an agent was last asked to think with, on whatever session asked. */
+export interface LastKit {
+  model: string | null;
+  mode: string | null;
+}
+
 export interface AppSettings {
   /** Whoever a fresh session starts with. Falls back to Claude Code. */
   defaultHand(): Promise<string>;
   setDefaultHand(id: string): Promise<string>;
   /** Every agent Mender knows how to speak to, and whether it is installed. */
   hands(): Promise<Hand[]>;
+  /** The model and mode a fresh session with this agent starts on. */
+  lastKit(agent: string): Promise<LastKit>;
+  rememberModel(agent: string, model: string): Promise<void>;
+  rememberMode(agent: string, mode: string): Promise<void>;
 }
 
 const KEY = 'app';
 const FALLBACK = 'claude';
+const NO_KIT: LastKit = { model: null, mode: null };
+
+interface Stored {
+  defaultHand?: string;
+  perAgent?: Record<string, { model?: string | null; mode?: string | null }>;
+}
 
 export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'app-settings.json') });
 
-  const stored = async (): Promise<{ defaultHand?: string }> => {
+  const stored = async (): Promise<Stored> => {
     const loaded = await store.get(KEY);
     return loaded.success && loaded.data && typeof loaded.data === 'object'
-      ? (loaded.data as { defaultHand?: string })
+      ? (loaded.data as Stored)
       : {};
+  };
+
+  const rememberKit = async (agent: string, patch: { model?: string; mode?: string }): Promise<void> => {
+    const now = await stored();
+    const perAgent = { ...now.perAgent };
+    perAgent[agent] = { ...perAgent[agent], ...patch };
+    await store.set(KEY, { ...now, perAgent } as unknown as never);
   };
 
   return {
@@ -49,6 +72,20 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
       const now = await stored();
       await store.set(KEY, { ...now, defaultHand: id } as unknown as never);
       return id;
+    },
+
+    async lastKit(agent) {
+      const held = (await stored()).perAgent?.[agent];
+      if (!held) return NO_KIT;
+      return { model: held.model ?? null, mode: held.mode ?? null };
+    },
+
+    async rememberModel(agent, model) {
+      await rememberKit(agent, { model });
+    },
+
+    async rememberMode(agent, mode) {
+      await rememberKit(agent, { mode });
     },
 
     async hands() {

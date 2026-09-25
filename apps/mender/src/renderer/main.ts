@@ -111,6 +111,23 @@ async function boot(): Promise<void> {
     await loadCuts();
     const layer = makeLayer();
     const shelf = makeShelf(layer.root, (id) => void go(`project:${id}`));
+
+    /* What was half-written on a session's line, kept against that session so
+       it is still there after the app itself restarts. Written a moment
+       after the keys stop, not on every one of them. */
+    const draftTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    const saveDraft = (task: string, text: string): void => {
+      const already = draftTimers.get(task);
+      if (already) clearTimeout(already);
+      draftTimers.set(
+        task,
+        setTimeout(() => {
+          draftTimers.delete(task);
+          void client.agents.setDraft({ task, text });
+        }, 400)
+      );
+    };
+
     const yard = makeYard(layer, {
       open: (id) => void go(`task:${id}`),
       answer: (id, requestId) => void answered(id, requestId),
@@ -133,6 +150,9 @@ async function boot(): Promise<void> {
         }
         watching?.typed(text);
         yard.narrowing(...narrowing());
+        /* Half-written and said to nobody yet: kept against the session it
+           was written in, so it is still there after the app restarts. */
+        if (inside) saveDraft(inside.id, text);
       },
       say: (text) => {
         if (talking) {
@@ -1022,7 +1042,13 @@ async function boot(): Promise<void> {
          transcript across a restart but the agent is not running, and a
          sleeping agent cannot say what it can do — so walking into the yard is
          what starts it, not the first thing you say. */
-      if (here) void client.agents.wake({ task: here.id }, { timeoutMs: 0 });
+      if (here) {
+        void client.agents.wake({ task: here.id }, { timeoutMs: 0 });
+        /* Whatever was half-written last time is still on the line. */
+        void client.agents.draft({ task: here.id }).then((text) => {
+          if (open === aim && text && !yard.line.written()) said(text);
+        });
+      }
     };
 
     /**
@@ -2450,6 +2476,11 @@ async function boot(): Promise<void> {
       }
       saying.handed();
       if (text) yard.fly(text);
+      /* Said, not half-written any more. */
+      const pending = draftTimers.get(task.id);
+      if (pending) clearTimeout(pending);
+      draftTimers.delete(task.id);
+      void client.agents.setDraft({ task: task.id, text: '' });
       const heard = await client.agents.tell(
         { task: task.id, text, ...(carrying.length ? { carrying } : {}) },
         { timeoutMs: 0 }

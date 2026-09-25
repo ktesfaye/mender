@@ -772,10 +772,32 @@ and connecting accounts.
 
 ### W8 — the island itself
 
-There is no settings island. No windmill, no workshop, nowhere for any of it.
+The windmill exists now, reached by ⌘, or "settings" in the finder, over
+everything, closing on click-outside or Escape like a project's own settings
+do. Its General page is one real thing so far: who a fresh session starts
+with, a row of the same "who works here" names the card already knows, driven
+end to end — picking one is saved, survives a restart, and a fresh session
+now actually launches that agent rather than always Claude Code (it silently
+never had before this: the launch call was reading a hardcoded name and never
+consulted the setting at all, so nothing past the display line worked until
+now). Everything else the windmill wants to hold — updating and
+authenticating agents, MCP, skills, accounts, task defaults — is still not
+here.
 
-Closes ST-01, ST-04 through ST-07, ST-10 through ST-14, ST-17 through ST-21,
-ST-28 through ST-31, AG-07, AG-09, AG-10, AG-11, TR-07, FS-32, UI-16.
+Riding alongside it, two more session defaults, both driven: an agent's model
+and mode are now remembered against the agent itself the moment you change
+either on a live session, and a fresh session with that same agent starts on
+whichever was last picked rather than on nothing. And the line is no longer
+silent about what you were in the middle of saying — a half-written line is
+kept against its session as you type and put back the moment you return to
+it, restart included, and cleared the moment it is actually said. "Allow
+everything chosen at the start" — a switch on starting a fresh session itself
+— is not done: modes are only known once an agent is awake, so setting one
+before it has even spoken needs a real design pass, not a guess.
+
+Closes ST-01 (part), ST-04 through ST-06, ST-10 through ST-14, ST-17 through
+ST-21, ST-28 through ST-31, AG-07, AG-09, AG-10, AG-11, TR-07, FS-32, UI-16.
+ST-07 is done.
 
 Done when: the island exists and holds every app-wide setting; agent CLIs can be
 installed, updated, authenticated and pinned from it; MCP servers can be added
@@ -1176,13 +1198,13 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-33 | Disk usage measurement | kept |  |
 | FS-34 | Directory selector (in-app column browser) |  | W7 |
 | FS-35 | Workspace path containment (security) | kept |  |
-| ST-01 | 13 settings pages (General, Integrations, Interface, Browser, Repository, Prompts, System, Workspaces, Conversations, Agents/CLIs, MCP, Skills, Machines) |  | W8 |
+| ST-01 | 13 settings pages (General, Integrations, Interface, Browser, Repository, Prompts, System, Workspaces, Conversations, Agents/CLIs, MCP, Skills, Machines) | part | W8 |
 | ST-02 | Settings storage model (SQLite override + safeStorage secrets) | kept |  |
 | ST-03 | Provider/integration accounts registry | kept |  |
 | ST-04 | `tasks` settings (7 fields: auto-name, auto-approve, auto-trust, create-branch, delete-branch, capitalization, issue-context) |  | W8 |
 | ST-05 | `project` settings (push-on-create, branch prefix, random suffix, tmux-by-default) |  | W8 |
 | ST-06 | `localProject` settings (default projects dir, default worktree dir) |  | W8 |
-| ST-07 | `defaultAgent` setting |  | W8 |
+| ST-07 | `defaultAgent` setting | done | W8 |
 | ST-08 | `keyboard` overrides |  | W1 |
 | ST-09 | `notifications` settings (enabled, sound, custom sound path, OS notifications, sound-focus-mode) |  | W11 |
 | ST-10 | `theme` setting |  | W8 |

@@ -64,7 +64,7 @@ export async function main(): Promise<void> {
   /* Forgetting a project sends everybody in it home, which means the projects
      have to be able to reach the tasks and the tasks already reach back. */
   projects.sweeps((project) => tasks.sweep(project));
-  const agents = createAgents(runtimes, tasks, () => appSettings.defaultHand());
+  const agents = createAgents(runtimes, tasks, appSettings);
   watchForAttention({ scope, agents, tasks });
   watchDockBadge({ scope, agents });
   watchStayingAwake({ scope, agents });

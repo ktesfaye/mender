@@ -8,6 +8,7 @@ import { pluginRegistry } from '@emdash/plugins/agents';
 import { ReplicaState } from '@emdash/wire/live';
 import { cell, type Cell } from '@emdash/wire/state';
 import type { Choice, Hand, Kit, Knack, Tool } from '@shared/agents';
+import type { AppSettings } from './app-settings';
 import type { MenderRuntimes } from './runtimes';
 import type { Tasks } from './tasks';
 
@@ -75,8 +76,8 @@ export function createKits(
   tasks: Tasks,
   /** Called when who works here changes, because that is a different villager. */
   moveOut: (task: string) => Promise<void>,
-  /** Whoever the windmill says a fresh session starts with. */
-  defaultHand: () => Promise<string>
+  /** The windmill's own memory: who starts fresh, and what they last thought with. */
+  settings: AppSettings
 ): Kits {
   const cards = new Map<string, Card>();
   /** Which agents are on this machine, kept current by the host itself. */
@@ -93,7 +94,7 @@ export function createKits(
   const cardOf = (task: string): Card => {
     let card = cards.get(task);
     if (!card) {
-      card = new Card(task, runtimes, tasks, () => installed, defaultHand);
+      card = new Card(task, runtimes, tasks, () => installed, () => settings.defaultHand());
       cards.set(task, card);
       void card.redraw();
     }
@@ -135,6 +136,10 @@ export function createKits(
          take: the static list a plugin carries is spelled differently and is
          dropped on the floor without a word. */
       if (what === 'model') await tasks.remodel(task, id);
+      /* Also remembered against the agent itself, not just this task, so the
+         next fresh session with the same hand starts on it too. */
+      if (what === 'model') await settings.rememberModel(await card.hand(), id);
+      if (what === 'mode') await settings.rememberMode(await card.hand(), id);
       return fine;
     },
 

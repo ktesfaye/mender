@@ -64,6 +64,7 @@ type Fetched =
         | { kind: 'nothing-to-run' }
         | { kind: 'refused'; because: string };
     };
+import type { AppSettings } from './app-settings';
 import { createKits } from './kit';
 import type { MenderRuntimes } from './runtimes';
 import type { Tasks } from './tasks';
@@ -83,8 +84,6 @@ import type { Tasks } from './tasks';
  * the rest.
  */
 
-/** Who moves in when nobody has said otherwise. */
-const PROVIDER = 'claude';
 
 /** How much of what happened the board keeps behind it. */
 const KEPT = 400;
@@ -140,6 +139,9 @@ export interface Agents {
   evict(task: string): Promise<void>;
   /** Sends them home for the night: the process stops, everything else stays. */
   rest(task: string): Promise<Told>;
+  /** What was half-written on this session's line, so it survives a restart. */
+  draft(task: string): Promise<string>;
+  setDraft(task: string, text: string): Promise<void>;
   dispose(): Promise<void>;
 }
 
@@ -174,20 +176,28 @@ const EMPTY: WorkingState = {
 };
 
 const KEY = 'agents';
+const DRAFTS_KEY = 'drafts';
 
 export function createAgents(
   runtimes: MenderRuntimes,
   tasks: Tasks,
-  /** Whoever the windmill says a fresh session starts with. */
-  defaultHand: () => Promise<string>
+  /** The windmill's own memory: who starts fresh, and what they last thought with. */
+  settings: AppSettings
 ): Agents {
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'agents.json') });
   /** Which conversation lives in which building. */
   let lodgers: Record<string, string> = {};
+  /** What was half-written on a session's line, keyed by task, so it is
+      still there after the app itself restarts. */
+  let drafts: Record<string, string> = {};
   const loaded = (async () => {
     const held = await store.get(KEY);
     if (held.success && held.data && typeof held.data === 'object') {
       lodgers = held.data as unknown as Record<string, string>;
+    }
+    const heldDrafts = await store.get(DRAFTS_KEY);
+    if (heldDrafts.success && heldDrafts.data && typeof heldDrafts.data === 'object') {
+      drafts = heldDrafts.data as unknown as Record<string, string>;
     }
   })();
 
@@ -209,7 +219,7 @@ export function createAgents(
   const island = cell<Record<string, Mood>>({}, { name: 'agents:island' });
   /* Changing who works in a building empties it: a different agent is a
      different villager, not the same one with a new hat. */
-  const kits = createKits(runtimes, tasks, (task) => evict(task), defaultHand);
+  const kits = createKits(runtimes, tasks, (task) => evict(task), settings);
 
   /* The host's conversation index, held open for the life of the app. It is
      where the provider's own session id lands when a session starts, which is
@@ -285,7 +295,7 @@ export function createAgents(
     const conversation = crypto.randomUUID();
     const made = await runtimes.conversations.create({
       conversationId: conversation,
-      provider: record.agent ?? PROVIDER,
+      provider: record.agent ?? (await settings.defaultHand()),
       type: 'acp',
       cwd: record.path,
       workspacePath: record.path,
@@ -404,16 +414,21 @@ export function createAgents(
        be dated. Everything before it might be a week old. */
     house.watched();
     house.arriving();
+    const hand = record.agent ?? (await settings.defaultHand());
+    /* A session with a choice of its own keeps it; one that has never said
+       either starts on whatever this agent was last asked for anywhere. */
+    const remembered = await settings.lastKit(hand);
     // No deadline on either: starting an agent means spawning its CLI and
     // waiting for it to say hello, and a prompt is open for as long as the
     // work takes.
     const started = await runtimes.acp.launch(
       {
         conversationId: conversation,
-        providerId: record.agent ?? PROVIDER,
+        providerId: hand,
         cwd: record.path,
         sessionId: records[conversation]?.providerSessionId ?? null,
-        model: record.model ?? null,
+        model: record.model ?? remembered.model,
+        modeId: remembered.mode,
       },
       { timeoutMs: 0 }
     );
@@ -520,13 +535,16 @@ export function createAgents(
       if (!record) return { success: false, error: { kind: 'no-such-task' } };
       const house = houseOf(task);
       await Promise.all([house.settle(conversation), kits.settle(task, conversation)]);
+      const hand = record.agent ?? (await settings.defaultHand());
+      const remembered = await settings.lastKit(hand);
       const started = await runtimes.acp.launch(
         {
           conversationId: conversation,
-          providerId: record.agent ?? PROVIDER,
+          providerId: hand,
           cwd: record.path,
           sessionId: records[conversation]?.providerSessionId ?? null,
-          model: record.model ?? null,
+          model: record.model ?? remembered.model,
+          modeId: remembered.mode,
         },
         { timeoutMs: 0 }
       );
@@ -671,6 +689,21 @@ export function createAgents(
 
     evict,
     rest,
+
+    async draft(task) {
+      await loaded;
+      return drafts[task] ?? '';
+    },
+
+    async setDraft(task, text) {
+      await loaded;
+      if (text) drafts = { ...drafts, [task]: text };
+      else {
+        drafts = { ...drafts };
+        delete drafts[task];
+      }
+      await store.set(DRAFTS_KEY, drafts as unknown as never);
+    },
 
     async dispose() {
       clearInterval(sweep);

@@ -1,4 +1,4 @@
-import { defineContract, fallible, liveModel, liveState, uploadFile } from '@emdash/wire/rpc';
+import { defineContract, fallible, liveModel, liveState, procedure, uploadFile } from '@emdash/wire/rpc';
 import { z } from 'zod';
 
 /**
@@ -537,6 +537,9 @@ export const agentsContract = defineContract({
     data: z.void(),
     error: agentErrorSchema,
   }),
+  /** What was half-written on this session's line, so a restart does not lose it. */
+  draft: procedure({ input: z.object({ task: z.string() }), output: z.string() }),
+  setDraft: procedure({ input: z.object({ task: z.string(), text: z.string() }), output: z.void() }),
   /**
    * The mood of every building with somebody in it.
    *

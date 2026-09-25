@@ -489,8 +489,26 @@ the last lit fire on the whole island stops, it lets go. Nothing to look
 at, nothing to press.
 
 The board's timber is the dock, widened by `tools/make-board.py` out of the
-artist's own planks, and the writing is Departure Mono under the SIL OFL. There
-is still no windmill, no parchment, no frame, no icon.
+artist's own planks, and the writing is Departure Mono under the SIL OFL.
+There is still no parchment, no frame, no icon.
+
+**The windmill is the app's own settings, and it is real now, if small.**
+There is no sprite for it yet, so it is reached the way any other doing is:
+⌘, or "settings" in the finder, over everything, closing the same three ways
+a project's settings do. One page so far, General, and one real switch on
+it — who a fresh session starts with, the same "who works here" names the
+card already knows. Picking one is remembered and a fresh session actually
+starts that agent, not always Claude Code. Everything else the windmill will
+eventually hold — updating and authenticating agents, MCP, skills, accounts,
+task defaults — still has nowhere to live.
+
+**A session remembers what it was last thinking with.** Change an agent's
+model or mode on one session and every fresh session with that same agent
+starts on it too, not on whatever it happens to open with. And the line does
+not forget what you were in the middle of saying: a half-written line is kept
+against its own session as you type, put back the moment you stand in that
+yard again, restart of the app included, and let go the moment it is actually
+said.
 
 The villagers are ours and drawn from nothing. The kit's four "character" files
 are an unfinished template — a featureless slab with cat ears, taller than the

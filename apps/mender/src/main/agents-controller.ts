@@ -25,5 +25,7 @@ export function createAgentsController(agents: Agents): Controller {
     choose: ({ task, what, id }) => agents.choose(task, what, id),
     tool: ({ task, name, on }) => agents.tool(task, name, on),
     fetch: ({ hand }) => agents.fetch(hand),
+    draft: ({ task }) => agents.draft(task),
+    setDraft: ({ task, text }) => agents.setDraft(task, text),
   });
 }
