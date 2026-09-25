@@ -1593,10 +1593,19 @@ function standing(hand: Hand, i: number, wide: number): HTMLElement {
   figure.style.filter = out ? 'brightness(.5) saturate(.6)' : 'brightness(.95)';
   if (out) figure.style.animation = 'yard-step 800ms steps(2,end) infinite';
   if (spot.flip) figure.style.transform = 'scaleX(-1)';
-  /* Identity, never status: an agent keeps its colour for the life of the
-     session, so you can follow the same one across the yard. */
   figure.style.mixBlendMode = 'normal';
   it.appendChild(figure);
+
+  /* Identity, never status: an agent keeps its own colour for the life of
+     the session, worn at its feet rather than over the sprite itself, so
+     you can follow the same one across the yard without it reading as hurt
+     or well the way a status colour would. */
+  it.appendChild(
+    box(
+      { left: 9, top: 50, width: 8, height: 6 },
+      `border-radius:2px;background:${hand.tint}`
+    )
+  );
 
   if (out) {
     it.appendChild(
@@ -1606,7 +1615,7 @@ function standing(hand: Hand, i: number, wide: number): HTMLElement {
       )
     );
     const name = box({ left: -66, top: 52 });
-    name.appendChild(exact(`${hand.errand} · out ${hand.gone ?? ''}`.trim(), 11, '#ffc98a'));
+    name.appendChild(exact(`${hand.errand} · out ${hand.gone ?? ''}`.trim(), 11, hand.tint));
     it.appendChild(name);
   }
   return it;
