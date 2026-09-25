@@ -1,4 +1,11 @@
-import { defineContract, fallible, liveModel, liveState, procedure, uploadFile } from '@emdash/wire/rpc';
+import {
+  defineContract,
+  fallible,
+  liveModel,
+  liveState,
+  procedure,
+  uploadFile,
+} from '@emdash/wire/rpc';
 import { z } from 'zod';
 
 /**
@@ -278,6 +285,11 @@ export const workingStateSchema = z.object({
    * losing its beginning. Null until the agent says, which not all of them do.
    */
   room: z.number().nullable(),
+  /**
+   * What it has cost so far, when the agent reports it. Null until the agent
+   * says, which not all of them do.
+   */
+  cost: z.object({ amount: z.number(), currency: z.string() }).nullable(),
   /** A typed failure worth its own line, or null when there isn't one. */
   failure: failureSchema.nullable(),
   /**
@@ -549,7 +561,10 @@ export const agentsContract = defineContract({
   }),
   /** What was half-written on this session's line, so a restart does not lose it. */
   draft: procedure({ input: z.object({ task: z.string() }), output: z.string() }),
-  setDraft: procedure({ input: z.object({ task: z.string(), text: z.string() }), output: z.void() }),
+  setDraft: procedure({
+    input: z.object({ task: z.string(), text: z.string() }),
+    output: z.void(),
+  }),
   /**
    * The mood of every building with somebody in it.
    *

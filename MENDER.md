@@ -96,7 +96,9 @@ them off.
 
 **The bottom of the board is what is coming.** Under everything that has
 happened, and above the line you write on, is what the session says it means to
-do next, then how much room it has left to think in, then anything you said
+do next, then how much room it has left to think in, and what it has cost so
+far when the agent says, in plain words rather than a currency badge, then
+anything you said
 while it was busy and it has not heard yet, which you can take back by pressing
 it. Nothing warns an agent that it is running out of room; it simply starts
 losing the beginning of the conversation, so the village says it instead.

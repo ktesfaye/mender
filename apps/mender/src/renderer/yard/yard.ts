@@ -613,13 +613,22 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
      village says it instead: orange once it is getting low, red once it is
      nearly gone. */
   const room = yard.session?.room;
+  const cost = yard.session?.cost;
   const it = box({ right: edge, top: HEAD.under }, 'display:flex;gap:6px;align-items:baseline');
   if (room !== undefined) {
     const ink = room < TIGHT ? 'var(--yard-wrong)' : room < LOW ? 'var(--yard-warn)' : undefined;
     it.appendChild(exact(`context ${Math.round(room * 100)}%`, 12, ink));
   }
-  if (yard.session?.model) {
+  if (cost) {
     if (room !== undefined) {
+      const dot = exact('·', 12, '#6b5a40');
+      dot.style.position = 'relative';
+      it.appendChild(dot);
+    }
+    it.appendChild(exact(costText(cost), 12));
+  }
+  if (yard.session?.model) {
+    if (room !== undefined || cost) {
       const dot = exact('·', 12, '#6b5a40');
       dot.style.position = 'relative';
       it.appendChild(dot);
@@ -673,6 +682,17 @@ function shortOf(path: string): string {
 const LOW = 0.4;
 /** And below this, it is about to start forgetting. */
 const TIGHT = 0.15;
+
+/** What it has cost so far, in plain words rather than a currency badge. */
+function costText(cost: { amount: number; currency: string }): string {
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: cost.currency }).format(
+      cost.amount
+    );
+  } catch {
+    return `${cost.amount.toFixed(2)} ${cost.currency}`;
+  }
+}
 
 const TITLE = [
   "font-family:'Josefin Sans',sans-serif",

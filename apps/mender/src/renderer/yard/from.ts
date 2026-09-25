@@ -101,6 +101,8 @@ export interface Standing {
   plan?: readonly { text: string; state: 'done' | 'doing' | 'ahead' }[];
   /** How much room it has left to think in, when it says. */
   room?: number;
+  /** What it has cost so far, when the agent reports it. */
+  cost?: { amount: number; currency: string };
   /** What was said while it was busy and has not been heard yet. */
   waiting?: readonly { id: string; text: string }[];
   /** What is in your hands. */
@@ -178,6 +180,7 @@ function sessionOf(
     fire: fireOf(from.mood, Boolean(from.asking)),
     ...(live ? { live } : {}),
     ...(from.room === undefined ? {} : { room: from.room }),
+    ...(from.cost === undefined ? {} : { cost: from.cost }),
     ...(coldFor(told) ? { cold: coldFor(told) } : {}),
     notes: notes.slice(0, 3),
     ...(notes.length > 3 ? { olderNotes: notes.length - 3 } : {}),

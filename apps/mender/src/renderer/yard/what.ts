@@ -98,6 +98,8 @@ export interface Session {
   model?: string;
   /** How much room it has left to think in, nought to one. */
   room?: number;
+  /** What it has cost so far, when the agent reports it. */
+  cost?: { amount: number; currency: string };
   /** What it answers for itself, which the header says in plain words. */
   permissions?: string;
   /** What the session is doing, said by the fire rather than by a word. */

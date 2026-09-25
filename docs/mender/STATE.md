@@ -1177,7 +1177,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-42 | Model selector with hover-detail card | done |  |
 | AG-43 | Permission mode & collaboration mode selectors | part | W2 |
 | AG-44 | Session MCP servers indicator | done |  |
-| AG-45 | Context-window usage indicator | done | W2 |
+| AG-45 | Context-window usage indicator, with what it has cost so far on the same line | done | W2 |
 | AG-46 | Attachments (image drag/drop/paste) | done | W2 |
 | AG-47 | Send/stop/queue button | done | W2 |
 | AG-48 | Notice band (session-state banners) | part | W2 |
@@ -1384,7 +1384,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-40 | Preview-server pills (titlebar) | cut | W6 |
 | UI-41 | Connection status dot |  | W10 |
 | UI-42 | Update indicator (sidebar footer) |  | W11 |
-| UI-43 | Context-usage indicator (composer) | done | W2 |
+| UI-43 | Context-usage indicator (composer), plain-words cost alongside it | done | W2 |
 | UI-44 | Boot/crash telemetry (not user-facing) | kept |  |
 
 ---

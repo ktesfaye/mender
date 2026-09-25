@@ -84,7 +84,6 @@ import type { Tasks } from './tasks';
  * the rest.
  */
 
-
 /** How much of what happened the board keeps behind it. */
 const KEPT = 400;
 /** How many turns to ask the session for when we first look in. */
@@ -171,6 +170,7 @@ const EMPTY: WorkingState = {
   plan: [],
   queued: [],
   room: null,
+  cost: null,
   failure: null,
   carryOn: null,
 };
@@ -990,6 +990,7 @@ class House {
       plan: stepsOf(this.plan),
       queued: waitingOf(this.lifecycle),
       room: roomOf(this.usage),
+      cost: costOf(this.usage),
       failure: !this.trouble && failure ? failureViewOf(failure, bankable(failure.category)) : null,
       carryOn: this.carryOnAt,
     };
@@ -1171,6 +1172,11 @@ function roomOf(usage: SessionUsage | null): number | null {
   if (!usage || usage.contextSize <= 0) return null;
   const left = 1 - usage.contextUsed / usage.contextSize;
   return Math.min(1, Math.max(0, left));
+}
+
+/** What it has cost so far, straight off the provider's own report. */
+function costOf(usage: SessionUsage | null): { amount: number; currency: string } | null {
+  return usage?.cost ?? null;
 }
 
 function askOf(
