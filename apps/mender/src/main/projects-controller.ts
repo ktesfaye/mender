@@ -6,7 +6,7 @@ import type { Projects } from './projects';
 export function createProjectsController(projects: Projects): Controller {
   return createController(projectsContract, {
     list: () => projects.list(),
-    found: () => projects.found(),
+    found: ({ from }) => projects.found(from),
     abandon: ({ id }) => projects.abandon(id),
     rename: ({ id, name }) => projects.rename(id, name),
     pictures: ({ id, many }) => projects.pictures(id, many),

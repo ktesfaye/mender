@@ -15,7 +15,7 @@ import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Mood } from '@shared/agents';
 import type { At, Change } from '@shared/changes';
-import type { Project } from '@shared/projects';
+import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
 import type { Task } from '@shared/tasks';
 import { openCard, type LiveCard } from './board/card';
@@ -45,6 +45,7 @@ import './yard/tokens.css';
 import { say } from './village/notice';
 import { buildScene } from './village/scene';
 import { wire, type MenderClient } from './wire';
+import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
 import { openYard, type Watching } from './yard/live';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
@@ -357,6 +358,8 @@ async function boot(): Promise<void> {
     let card: LiveCard | null = null;
     /** A project's settings, while that window is up over everything. */
     let settings: { ui: Settings; state: SettingsState } | null = null;
+    /** Founding a project, while that board is up over the island. */
+    let founding: Founding | null = null;
     /* Which file's change is on the board, over the checkout it came from.
        The checkout board underneath stays open and stays live; it is simply
        not what the wood is showing. */
@@ -502,7 +505,7 @@ async function boot(): Promise<void> {
         return;
       }
       if (id === 'do:found') {
-        void settle();
+        openFound();
         return;
       }
       if (id === 'do:out') {
@@ -640,14 +643,18 @@ async function boot(): Promise<void> {
     };
 
     /** Put a checkout on the island. The one thing the campfire is for. */
-    const settle = async (): Promise<void> => {
-      const moved = await found(client, async () => {
-        await shut();
-        drawn = await draw(world, client);
-        projects = await client.projects.list({});
-        people();
-        frame(camera, drawn.island);
-      });
+    const settle = async (from?: FoundFrom): Promise<void> => {
+      const moved = await found(
+        client,
+        async () => {
+          await shut();
+          drawn = await draw(world, client);
+          projects = await client.projects.list({});
+          people();
+          frame(camera, drawn.island);
+        },
+        from
+      );
       /* And the first thing a project that has just moved in is asked is what
          it looks like, standing in its own yard, with the pictures its checkout
          already has laid out to choose from. */
@@ -656,6 +663,19 @@ async function boot(): Promise<void> {
       await openDistrict({ kind: 'district', district });
       const project = projects.find((one) => one.id === moved.id);
       if (project) configure(project, true);
+    };
+
+    /** What the campfire opens: which of the three ways a checkout arrives. */
+    const openFound = (): void => {
+      founding?.close();
+      founding = openFounding({
+        folder: () => void settle(),
+        clone: (url) => void settle({ kind: 'clone', url }),
+        create: (name, isPrivate) => void settle({ kind: 'create', name, private: isPrivate }),
+        closed: () => {
+          founding = null;
+        },
+      });
     };
 
     const shut = async (): Promise<void> => {
@@ -2258,16 +2278,16 @@ async function boot(): Promise<void> {
         if (yard.open) dismiss();
       },
       held: (event) => {
-        const up = settings;
+        const up = founding ?? (settings ? settings.ui : null);
         if (!up) return false;
         if (event.key === 'Escape') {
           event.preventDefault();
-          up.ui.escaped();
+          up.escaped();
           return true;
         }
         /* Keys meant for the window go to it as a browser would send them;
            anything else is kept off the session behind it. */
-        if (!up.ui.holds(event) && event.key !== 'Tab') event.preventDefault();
+        if (!up.holds(event) && event.key !== 'Tab') event.preventDefault();
         return true;
       },
       hover: (aim) => drawn.ground.hover(aim),
@@ -2786,11 +2806,15 @@ async function draw(world: Container, client: MenderClient): Promise<Drawn> {
   };
 }
 
-async function found(client: MenderClient, grown: () => Promise<void>): Promise<Project | null> {
-  // No deadline on this one. The call is open for exactly as long as someone is
-  // looking through their folders for the right checkout, and wire's default
-  // half minute is a perfectly reasonable amount of time to spend doing that.
-  const result = await client.projects.found({}, { timeoutMs: 0 });
+async function found(
+  client: MenderClient,
+  grown: () => Promise<void>,
+  from?: FoundFrom
+): Promise<Project | null> {
+  // No deadline on this one. A folder pick waits on someone looking through
+  // their own folders; a clone or a fresh repository waits on the network,
+  // and neither has a length that is fair to guess at.
+  const result = await client.projects.found({ from }, { timeoutMs: 0 });
   if (result.success) {
     await grown();
     say(`${result.data.name} has moved in.`, 4000);
@@ -2803,7 +2827,11 @@ async function found(client: MenderClient, grown: () => Promise<void>): Promise<
       ? 'That folder is not a checkout, so nothing can be built on it.'
       : error.kind === 'already-founded'
         ? 'There is already a district on that checkout.'
-        : 'Every plot on the island is taken.',
+        : error.kind === 'clone-failed'
+          ? `That would not clone: ${error.said}`
+          : error.kind === 'create-failed'
+            ? `That would not start: ${error.said}`
+            : 'Every plot on the island is taken.',
     5000
   );
   return null;

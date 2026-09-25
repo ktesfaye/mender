@@ -128,6 +128,18 @@ in the top right, over both the island and the yard, one slot each with the
 project's own face in it, its app icon or its logo, and a prop from the kit
 until it has one, and no names until you hover. It folds away.
 
+**A checkout arrives one of three ways, and the campfire is where you say
+which.** Command-N or the campfire itself opens a small board over the
+island with one question and three lines to answer it: pick a folder
+already on disk, clone one from somewhere else, or start one that does not
+exist anywhere yet. The first is the plain folder picker it always was.
+Clone asks for an address on the same line the question opened on. Start
+asks for a name and lets you flip it between private and public, then makes
+it for real, on whatever GitHub this machine is signed in to, and clones it
+straight back down. Whichever way it arrived, it lands the same place a
+folder pick always did: a fresh district, its settings open, asking what it
+looks like standing in its own yard.
+
 **A project's name opens its settings, in a window of their own.** Settings
 are about the place, not the work, so they are the one thing that is not laid
 over the yard: a window pops up over everything with a close mark, and it goes

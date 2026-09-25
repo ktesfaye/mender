@@ -639,6 +639,24 @@ Driven: typed both fields on a scratch project, watched the record hold them
 after a close and reopen, and confirmed the same write function sets a real
 checkout's local git config correctly.
 
+**A checkout can arrive three ways now, not just already on disk.** Command-N
+or the campfire opens a small board over the island — "found a project" —
+with three lines: pick a folder (the old dialog, unchanged), clone a
+repository, or start a new one. Cloning asks for an address and hands it to
+the same git runtime a worktree is cut with; starting a new one asks for a
+name and toggles private/public, then runs whatever `gh` this machine has
+signed in. Both land the checkout under `~/mender/projects`, inspect it the
+same way a picked folder is inspected, and open straight into its settings
+the way a fresh folder-pick already did. Driven: cloned a local bare
+repository end to end — the district appeared, its settings opened with
+"has moved in", and a bad address came back on the same banner a folder pick's
+own errors use ("That would not clone: fatal: repository '…' does not
+exist"). Not driven: starting a new one, on purpose — the only backend for it
+is the real `gh` on this machine, signed in to a real account, and creating a
+real repository to test with is exactly what this job is not allowed to do.
+That path was read closely instead of run, and it is the one place in this
+feature to look first if it turns out to be wrong.
+
 ### W7 — the rest of it
 
 The largest wave, and the least glamorous. Everything about founding, naming,

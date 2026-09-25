@@ -19,6 +19,16 @@ export const projectSchema = z.object({
 
 export type Project = z.infer<typeof projectSchema>;
 
+/** How a checkout is meant to arrive: already on disk, cloned, or made fresh. */
+export const foundFromSchema = z.discriminatedUnion('kind', [
+  /** The native folder picker. */
+  z.object({ kind: z.literal('folder') }),
+  z.object({ kind: z.literal('clone'), url: z.string() }),
+  z.object({ kind: z.literal('create'), name: z.string(), private: z.boolean() }),
+]);
+
+export type FoundFrom = z.infer<typeof foundFromSchema>;
+
 export const foundErrorSchema = z.discriminatedUnion('kind', [
   /** The folder picker was dismissed. Not a failure, just nothing to do. */
   z.object({ kind: z.literal('cancelled') }),
@@ -26,6 +36,8 @@ export const foundErrorSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('already-founded'), path: z.string() }),
   /** Eleven districts, and every one of them taken. */
   z.object({ kind: z.literal('island-full') }),
+  z.object({ kind: z.literal('clone-failed'), said: z.string() }),
+  z.object({ kind: z.literal('create-failed'), said: z.string() }),
 ]);
 
 export const pictureSchema = z.object({
@@ -63,8 +75,12 @@ export type Carrying = z.infer<typeof carryingSchema>;
 
 export const projectsContract = defineContract({
   list: procedure({ input: z.object({}), output: z.array(projectSchema) }),
-  /** Ask for a folder and put a district on it. */
-  found: fallible({ input: z.object({}), data: projectSchema, error: foundErrorSchema }),
+  /** Put a district on a checkout: pick a folder, clone one, or make one new. */
+  found: fallible({
+    input: z.object({ from: foundFromSchema.optional() }),
+    data: projectSchema,
+    error: foundErrorSchema,
+  }),
   abandon: procedure({ input: z.object({ id: z.string() }), output: z.array(projectSchema) }),
   rename: procedure({
     input: z.object({ id: z.string(), name: z.string() }),

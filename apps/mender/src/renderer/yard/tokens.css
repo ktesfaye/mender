@@ -546,6 +546,47 @@
 .settings-danger {
   padding-top: 18px;
 }
+/* Founding is over the island, not inside `.yard`, so it carries its own
+   copy of the one rule everything pressable in this app follows. */
+.founding .press {
+  color: var(--yard-gold);
+  cursor: default;
+  pointer-events: auto;
+}
+.founding .press:hover {
+  color: var(--yard-gold-hover);
+}
+.founding .press:active {
+  color: var(--yard-gold-down);
+  transform: translate(2px, 2px);
+}
+.founding .press[data-busy] {
+  color: var(--yard-ink-bright);
+  pointer-events: none;
+}
+.founding .press:focus-visible {
+  outline: 2px solid var(--yard-gold);
+  outline-offset: 3px;
+}
+.founding-heading {
+  cursor: default;
+}
+.founding-body {
+  padding-top: 4px;
+}
+.founding-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.founding-row {
+  font-size: 16px;
+}
+.founding-field {
+  width: 100%;
+  margin: 10px 0 16px;
+  font-size: 15px;
+}
 .settings-remove {
   color: var(--yard-broken);
 }

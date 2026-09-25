@@ -1,10 +1,13 @@
 import { execFile } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
+import { mkdir, rm } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
+import { gitContract } from '@emdash/core/runtimes/git/api';
+import { LiveJobFailedError, createLiveJobReplicaCache } from '@emdash/wire/live';
 import { COMMON, createPlan, type DistrictSpec } from '@mender/village';
 import { app, dialog } from 'electron';
 import { keep, picturesIn, shown, type Picture } from './pictures';
@@ -64,12 +67,22 @@ export type FoundError =
   | { kind: 'cancelled' }
   | { kind: 'not-a-repository'; path: string }
   | { kind: 'already-founded'; path: string }
-  | { kind: 'island-full' };
+  | { kind: 'island-full' }
+  | { kind: 'clone-failed'; said: string }
+  | { kind: 'create-failed'; said: string };
+
+/** How a checkout is meant to arrive: already on disk, cloned, or made fresh. */
+export type FoundFrom =
+  | { kind: 'folder' }
+  | { kind: 'clone'; url: string }
+  | { kind: 'create'; name: string; private: boolean };
 
 export interface Projects {
   list(): Promise<Project[]>;
-  /** Ask for a folder and put a district on it. */
-  found(): Promise<{ success: true; data: Project } | { success: false; error: FoundError }>;
+  /** Put a district on a checkout: pick a folder, clone one, or make one new. */
+  found(
+    from?: FoundFrom
+  ): Promise<{ success: true; data: Project } | { success: false; error: FoundError }>;
   abandon(id: string): Promise<Project[]>;
   /** Called something else on the island. The folder keeps its name. */
   rename(id: string, name: string): Promise<Project[]>;
@@ -199,7 +212,7 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
     list,
     standing: async () => standingIn(await list()),
 
-    async found() {
+    async found(from = { kind: 'folder' }) {
       const projects = await stored();
       /* The next district is the first one his growth order offers that nobody
          is on and that can be walked to from what is already there. The order
@@ -215,36 +228,41 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
             !taken.has(district) &&
             plan().reachable(here).includes(district)
         );
-      // Eleven districts, and every one of them taken.
+      // Eleven districts, and every one of them taken. Checked before a clone or
+      // a fresh repository spends any time, since neither would have anywhere
+      // to stand.
       if (!free.length) return { success: false, error: { kind: 'island-full' } };
 
-      const chosen = await dialog.showOpenDialog({
-        title: 'Found a project',
-        message: 'Which checkout is moving in?',
-        properties: ['openDirectory', 'createDirectory'],
-        buttonLabel: 'Found',
-      });
-      const path = chosen.filePaths[0];
-      if (chosen.canceled || !path) return { success: false, error: { kind: 'cancelled' } };
+      const path =
+        from.kind === 'folder'
+          ? await pickFolder()
+          : from.kind === 'clone'
+            ? await cloneInto(runtimes, from.url)
+            : await createInto(from.name, from.private);
+      if (!path.success) return path;
 
-      if (projects.some((project) => project.path === path)) {
-        return { success: false, error: { kind: 'already-founded', path } };
+      if (projects.some((project) => project.path === path.data)) {
+        return { success: false, error: { kind: 'already-founded', path: path.data } };
       }
 
       // A district stands on a checkout. Asking git rather than looking for a
       // `.git` directory is what makes a worktree, a submodule and a bare repo
-      // answer correctly.
-      const parsed = parseNativeAbsolute(path);
-      if (!parsed.success) return { success: false, error: { kind: 'not-a-repository', path } };
+      // answer correctly. A clone or a fresh repository is already known-good,
+      // but asked again anyway: the cost is one more `git` call, and never
+      // trusting a path we did not just inspect ourselves is worth that.
+      const parsed = parseNativeAbsolute(path.data);
+      if (!parsed.success) {
+        return { success: false, error: { kind: 'not-a-repository', path: path.data } };
+      }
       const inspection = await runtimes.git.inspectPath({ path: parsed.data });
       if (!inspection.success || inspection.data.kind !== 'repository') {
-        return { success: false, error: { kind: 'not-a-repository', path } };
+        return { success: false, error: { kind: 'not-a-repository', path: path.data } };
       }
 
       const project: Project = {
         id: crypto.randomUUID(),
-        name: basename(path),
-        path,
+        name: basename(path.data),
+        path: path.data,
         district: free[0],
         foundedAt: new Date().toISOString(),
       };
@@ -363,6 +381,120 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
       sweeping = sweep;
     },
   };
+}
+
+type Landed = { success: true; data: string } | { success: false; error: FoundError };
+
+/** The native folder picker: the one path here that was always a dialog. */
+async function pickFolder(): Promise<Landed> {
+  const chosen = await dialog.showOpenDialog({
+    title: 'Found a project',
+    message: 'Which checkout is moving in?',
+    properties: ['openDirectory', 'createDirectory'],
+    buttonLabel: 'Found',
+  });
+  const path = chosen.filePaths[0];
+  if (chosen.canceled || !path) return { success: false, error: { kind: 'cancelled' } };
+  return { success: true, data: path };
+}
+
+/** Where a cloned or freshly made checkout lands, absent anywhere better. */
+function projectsRoot(): string {
+  return process.env.MENDER_PROJECTS_ROOT ?? join(homedir(), 'mender', 'projects');
+}
+
+/** A folder name out of a clone URL: the last path segment, `.git` dropped. */
+function repoNameFrom(url: string): string {
+  const bare = url.replace(/\/+$/, '').replace(/\.git$/, '');
+  const last = bare.split(/[/:]/).at(-1) ?? 'project';
+  return last.replace(/[^a-zA-Z0-9._-]/g, '-') || 'project';
+}
+
+/** A folder that does not exist yet, trying the plain name before numbering it. */
+function freeTarget(root: string, name: string): string {
+  let candidate = join(root, name);
+  let n = 2;
+  while (existsSync(candidate)) candidate = join(root, `${name}-${n++}`);
+  return candidate;
+}
+
+async function cloneInto(runtimes: MenderRuntimes, url: string): Promise<Landed> {
+  const written = url.trim();
+  if (!written) return { success: false, error: { kind: 'clone-failed', said: 'no address.' } };
+  const root = projectsRoot();
+  await mkdir(root, { recursive: true });
+  const target = freeTarget(root, repoNameFrom(written));
+  const parsed = parseNativeAbsolute(target);
+  if (!parsed.success) {
+    return { success: false, error: { kind: 'clone-failed', said: 'that path will not do.' } };
+  }
+  const jobs = createLiveJobReplicaCache(gitContract.cloneRepository, runtimes.git.cloneRepository);
+  const lease = await jobs.start({ repositoryUrl: written, targetPath: parsed.data });
+  try {
+    const job = await lease.ready();
+    await job.result;
+    return { success: true, data: target };
+  } catch (error) {
+    const said = error instanceof LiveJobFailedError ? whatCloneSaid(error.error) : String(error);
+    return { success: false, error: { kind: 'clone-failed', said } };
+  } finally {
+    await lease.release();
+    await jobs.dispose();
+  }
+}
+
+function whatCloneSaid(error: { type: string; message?: string; stderr?: string }): string {
+  switch (error.type) {
+    case 'target_exists':
+      return 'something is already there.';
+    case 'auth_required':
+    case 'auth_failed':
+      return 'that needs signing in first.';
+    case 'network_error':
+      return 'the network would not answer.';
+    case 'remote_not_found':
+      return 'nothing answers at that address.';
+    default:
+      return error.message ?? 'the clone did not take.';
+  }
+}
+
+/** A repository made fresh on GitHub, through whatever `gh` this machine has. */
+async function createInto(name: string, isPrivate: boolean): Promise<Landed> {
+  const written = name.trim();
+  if (!written) return { success: false, error: { kind: 'create-failed', said: 'no name.' } };
+  const root = projectsRoot();
+  await mkdir(root, { recursive: true });
+  // `gh --clone` always lands the checkout at `<cwd>/<bare repo name>`, so the
+  // target it will use has to be worked out the same way rather than chosen.
+  const bare = written.split('/').at(-1) ?? written;
+  const target = join(root, bare);
+  if (existsSync(target)) {
+    return {
+      success: false,
+      error: { kind: 'create-failed', said: `${bare} is already on disk here.` },
+    };
+  }
+  try {
+    await ran(
+      'gh',
+      ['repo', 'create', written, isPrivate ? '--private' : '--public', '--clone', '--add-readme'],
+      { cwd: root }
+    );
+    return { success: true, data: target };
+  } catch (error) {
+    const said =
+      error && typeof error === 'object' && 'stderr' in error
+        ? String((error as { stderr: unknown }).stderr)
+            .trim()
+            .split('\n')
+            .at(-1)
+        : undefined;
+    return {
+      success: false,
+      error: { kind: 'create-failed', said: said || 'gh would not make it.' },
+    };
+  }
 }
 
 /** Where the artist's map and his partition are kept. */
