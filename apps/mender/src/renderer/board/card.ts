@@ -228,7 +228,9 @@ function written(task: Task, kit: Kit | null, ending?: Ending, showing?: boolean
   }
 
   rows.push({ kind: 'gap' }, { kind: 'heading', text: 'what it has been taught' });
-  if (!kit.knacks.length) {
+  if (!kit.knacksSupported) {
+    rows.push({ kind: 'line', text: 'this agent keeps none.', tone: 'faded' });
+  } else if (!kit.knacks.length) {
     rows.push({ kind: 'line', text: 'nothing yet.', tone: 'faded' });
   }
   for (const knack of kit.knacks) {

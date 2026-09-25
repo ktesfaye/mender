@@ -38,6 +38,7 @@ const NOTHING: Kit = {
   collabs: [],
   tools: [],
   knacks: [],
+  knacksSupported: true,
   orders: [],
   awake: false,
 };
@@ -229,7 +230,7 @@ class Card {
       }))
       .sort((a, b) => Number(b.here) - Number(a.here) || a.name.localeCompare(b.name));
 
-    const [tools, knacks] = await Promise.all([this.toolsOf(hand), knacksFor(record?.path)]);
+    const [tools, taught] = await Promise.all([this.toolsOf(hand), knacksFor(hand, record?.path)]);
     const awake = Boolean(this.config?.modelOptions ?? this.config?.modeOptions);
 
     this.state.set({
@@ -244,7 +245,8 @@ class Card {
       collab: this.config?.collaborationModeOptions?.selected ?? null,
       collabs: choicesOf(this.config?.collaborationModeOptions?.available),
       tools,
-      knacks,
+      knacks: taught.knacks,
+      knacksSupported: taught.supported,
       orders: (this.config?.availableCommands ?? []).map((command) => ({
         name: command.name,
         about: command.description,
@@ -288,20 +290,43 @@ function choicesOf(available: { id: string; name: string; description?: string }
 }
 
 /**
+ * Where each agent keeps a taught skill, verified against its own docs
+ * rather than assumed from Claude's: a folder per skill with a `SKILL.md` in
+ * it, under a personal path true of every checkout and a project path true
+ * only of this one. An agent missing from this table has no such notion at
+ * all — asking it for skills is asking a question it has no word for, which
+ * reads differently on the card from an agent that has the notion and
+ * simply hasn't been taught anything yet.
+ */
+const SKILLS_HOME: Partial<Record<string, { personal: string[]; project: string[] }>> = {
+  claude: { personal: ['.claude', 'skills'], project: ['.claude', 'skills'] },
+  qwen: { personal: ['.qwen', 'skills'], project: ['.qwen', 'skills'] },
+  hermes: { personal: ['.hermes', 'skills'], project: ['.hermes', 'skills'] },
+  codex: { personal: ['.codex', 'skills'], project: ['.codex', 'skills'] },
+  // OpenCode also reads Claude- and agents.md-compatible skill folders; its
+  // own is the one worth naming here.
+  opencode: { personal: ['.config', 'opencode', 'skills'], project: ['.opencode', 'skills'] },
+};
+
+/**
  * What the agent has been taught.
  *
- * Read from where the agent actually looks rather than from anywhere of ours:
- * a folder per skill with a `SKILL.md` in it, kept either in the home
- * directory, where it is true of every checkout, or in this one, where it is
- * true only here. Emdash keeps its own shelf of these somewhere else entirely
- * and nothing on this machine reads it, so the village does not pretend to.
+ * Read from where that particular agent actually looks rather than from
+ * anywhere of ours. Emdash keeps its own shelf of these somewhere else
+ * entirely and nothing on this machine reads it, so the village does not
+ * pretend to.
  */
-async function knacksFor(worktree: string | undefined): Promise<Knack[]> {
+export async function knacksFor(
+  hand: string,
+  worktree: string | undefined
+): Promise<{ supported: boolean; knacks: Knack[] }> {
+  const home = SKILLS_HOME[hand];
+  if (!home) return { supported: false, knacks: [] };
   const found = await Promise.all([
-    shelf(join(homedir(), '.claude', 'skills'), 'everywhere'),
-    worktree ? shelf(join(worktree, '.claude', 'skills'), 'here') : Promise.resolve([]),
+    shelf(join(homedir(), ...home.personal), 'everywhere'),
+    worktree ? shelf(join(worktree, ...home.project), 'here') : Promise.resolve([]),
   ]);
-  return found.flat().sort((a, b) => a.name.localeCompare(b.name));
+  return { supported: true, knacks: found.flat().sort((a, b) => a.name.localeCompare(b.name)) };
 }
 
 async function shelf(path: string, from: 'everywhere' | 'here'): Promise<Knack[]> {

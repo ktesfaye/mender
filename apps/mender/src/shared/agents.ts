@@ -311,6 +311,10 @@ export const kitSchema = z.object({
   collabs: z.array(choiceSchema),
   tools: z.array(toolSchema),
   knacks: z.array(knackSchema),
+  /** Whether this agent has a notion of a taught skill at all. False is "this
+      agent keeps none", which reads differently from a true agent with an
+      empty shelf. */
+  knacksSupported: z.boolean(),
   orders: z.array(orderSchema),
   /** True once the session has started and the agent has said what it offers. */
   awake: z.boolean(),
