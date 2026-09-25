@@ -1,5 +1,6 @@
 import '@xterm/xterm/css/xterm.css';
 import { Terminal as Xterm } from '@xterm/xterm';
+import { pastedPaths } from './dropped-paths';
 
 /**
  * A real terminal, in the board's own faces and tones.
@@ -18,6 +19,9 @@ import { Terminal as Xterm } from '@xterm/xterm';
  * `ctrl+]`, which steps back out to the board behind it — the same bracket
  * the app already answers `ctrl+[`/`ctrl+]` with for stepping through boards,
  * used here for stepping out of one.
+ *
+ * A file dropped or pasted on it lands as its own path, on the input line,
+ * unsent — see `dropped-paths.ts`.
  */
 
 /** The shape the shell is started at, before the board has laid it out. */
@@ -100,6 +104,41 @@ export function makeTerminal(hooks: TerminalHooks): LiveTerminal {
      this terminal is what is open, every key belongs to whatever is running
      in it — none of it is this app's to also act on. */
   container.addEventListener('keydown', (event) => event.stopPropagation());
+
+  /* A file dropped or pasted here is the shell's, not the write line's —
+     caught on the way down, ahead of xterm's own drop/paste handling and the
+     app's, so it lands once, as the paths themselves rather than as
+     something carried to an agent. A picture is a path here too: a shell
+     cannot be shown one, so there is nothing special about it the way there
+     is on the write line. */
+  container.addEventListener('dragover', (event) => event.preventDefault(), { capture: true });
+  container.addEventListener(
+    'drop',
+    (event) => {
+      const files = [...(event.dataTransfer?.files ?? [])];
+      if (!files.length) return;
+      event.preventDefault();
+      event.stopPropagation();
+      void dropped(files);
+    },
+    { capture: true }
+  );
+  container.addEventListener(
+    'paste',
+    (event) => {
+      const files = [...(event.clipboardData?.files ?? [])];
+      // Plain text still goes to xterm's own paste handling, untouched.
+      if (!files.length) return;
+      event.preventDefault();
+      event.stopPropagation();
+      void dropped(files);
+    },
+    { capture: true }
+  );
+  const dropped = (files: File[]): void => {
+    const paths = files.map((file) => window.mender.pathOf(file)).filter((path) => path.length > 0);
+    if (paths.length) hooks.onData(pastedPaths(paths));
+  };
 
   let known: { width: number; height: number } | null = null;
   const fit = (): void => {

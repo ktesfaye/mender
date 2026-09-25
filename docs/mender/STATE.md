@@ -555,11 +555,9 @@ you a path to open somewhere else.
 ### W6 — there is a terminal in the village · started
 
 There is a real shell on the wood. Under where the checkout stands is a line
-that opens one, and what comes up is a zsh running in that checkout: you type
-at the bottom of the board the way you type at anything else here, return hands
-it the line, and what it says back is written above. It is the same board,
-because a board already is a column of writing with one line at the bottom you
-type into, which is what a terminal is.
+that opens one, and what comes up is a zsh running in that checkout, on a real
+terminal grid mounted on the board: while it is what is open, the keyboard is
+its own, not the board's write line.
 
 It survives the app being killed. The shell lives in emdash's terminals runtime
 in its own process, wrapped in tmux, so closing the window leaves it running
@@ -579,6 +577,13 @@ a picker, an agent's own TUI draws and answers exactly as it would at a real
 terminal. `ctrl+]` is the one chord this board keeps for itself, written on
 it, and it steps back out to wherever you were. Scrollback, copy and paste
 are xterm's own.
+
+A file dropped or pasted on the shell lands as its own path, shell-escaped,
+sitting on the input line unsent — a picture included, since a shell has no
+way to be shown one, only told where it is. It goes in as one bracketed
+paste, the same mechanism a real paste already is, with the trailing space
+kept inside the paste markers: Claude Code's own CLI (run as a shell command
+today, its own kind of session later) drops the whole paste otherwise.
 
 tmux was not on this machine either. Like ripgrep, that is a host dependency
 rather than a code change, and it is installed.

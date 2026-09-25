@@ -335,7 +335,10 @@ of it: the keyboard is the shell's own while it is what is open, so vim,
 would anywhere else. `ctrl+]` is the one chord this board keeps for itself,
 and it steps back out to wherever you were; Escape is the program's. It lives
 outside the window, so closing the app leaves it running and coming back
-walks into it with everything it said still there.
+walks into it with everything it said still there. A file or a picture
+dropped or pasted on it lands as its own path, shell-escaped and unsent, on
+the input line — a shell has no way to be shown a picture, only told where it
+is.
 
 **And a piece of work ends here rather than in a browser.** A line under the
 checkout asks what is open for this branch: what it is for, which branch is
