@@ -11,6 +11,7 @@ export function createTasksController(tasks: Tasks): Controller {
     begin: ({ project, name, slot, kind }) => tasks.begin(project, name, slot, kind),
     files: ({ id, like }) => tasks.files(id, like),
     rename: ({ id, title }) => tasks.rename(id, title),
+    retool: ({ id }) => tasks.retool(id),
     abandon: ({ id }) => tasks.abandon(id),
     revivable: ({ project }) => tasks.revivable(project),
     revive: ({ project }) => tasks.revive(project),

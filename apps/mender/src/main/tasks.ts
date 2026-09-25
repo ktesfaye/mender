@@ -108,6 +108,9 @@ export interface Tasks {
   retitle(id: string, title: string): Promise<void>;
   /** Somebody else works here now. */
   rehand(id: string, agent: string): Promise<Task[]>;
+  /** Turns a session nobody has spoken to yet into its own terminal — the
+      agent's raw CLI rather than a chat. A no-op once it is awake. */
+  retool(id: string): Promise<Task[]>;
   /** What whoever is in here thinks with, next time they start. */
   remodel(id: string, model: string | null): Promise<Task[]>;
   abandon(id: string): Promise<Task[]>;
@@ -344,6 +347,18 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       const task = tasks.find((candidate) => candidate.id === id);
       if (!task || task.named || task.title === written) return;
       await save(tasks.map((each) => (each.id === id ? { ...each, title: written } : each)));
+    },
+
+    async retool(id) {
+      const tasks = await all();
+      // Only ever a not-yet-awake session's to do: once an ACP conversation
+      // exists there is a transcript to lose, and the board it opens is
+      // decided at open time, purely off this field.
+      return await save(
+        tasks.map((task) =>
+          task.id === id && !task.kind ? { ...task, kind: 'terminal' } : task
+        )
+      );
     },
 
     async rehand(id, agent) {

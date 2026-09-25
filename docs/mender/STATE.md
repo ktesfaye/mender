@@ -2272,6 +2272,22 @@ exercised by the daily one) — an hours-scale or a push-triggered fire is
 consistent with the code but wasn't sat through or manufactured with a real
 commit.
 
+### The `/agent` card offers a session's own terminal too (2026-09-25)
+
+Part of TR-09's own follow-up ("not done: a signed-in `/agent`-card gold
+line to start one — only the naming board offers it so far"). A session
+nobody has spoken to yet — `kit.awake` false, so there is nothing to lose —
+now gets a line on its own card, "start one like this in its own terminal",
+beside the agent choice. Backed by `tasks.retool`, which flips a task's
+`kind` to `terminal` only while it is still unspoken-to (a no-op otherwise):
+which board opens was already decided purely off that field at open time
+(`openTask`), so flipping it and reopening is the whole change — no new
+worktree, no second session.
+
+Not done: "more than one shell per checkout" and "killing a shell (or a
+terminal session's agent) from the board" — both still open, see the shell
+section above.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

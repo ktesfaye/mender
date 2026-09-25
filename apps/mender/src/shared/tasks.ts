@@ -94,6 +94,8 @@ export const tasksContract = defineContract({
     input: z.object({ id: z.string(), title: z.string() }),
     output: z.array(taskSchema),
   }),
+  /** Turns a session nobody has spoken to yet into its own terminal. */
+  retool: procedure({ input: z.object({ id: z.string() }), output: z.array(taskSchema) }),
   abandon: procedure({ input: z.object({ id: z.string() }), output: z.array(taskSchema) }),
   /**
    * The last session taken down in this project this sitting, if putting it

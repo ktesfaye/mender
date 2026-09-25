@@ -562,8 +562,14 @@ where it doesn't — and one, two presses like a taught skill or a server, that
 takes it back off the machine entirely, the second press naming which agent
 is about to go.
 
-A server is added from the same card: a `+` opens the catalogue of the ones
-worth suggesting, pressing one adds it as it stands, and a second `+` takes a
+A session nobody has spoken to yet can still turn into its own terminal from
+the same card — there is nothing to lose, since a chat has not started —
+offering the naming board's own choice a second time, after the fact: "start
+one like this in its own terminal." Pressing it is the whole change; the
+board it opens was already only ever decided by what kind of session it is.
+
+A server is added from the same card: one line opens the catalogue of the ones
+worth suggesting, pressing one adds it as it stands, and another takes a
 name and the command that starts it on the one line every board writes on.
 Thrown away the same way everything irreversible is, two presses, the first
 naming which one.

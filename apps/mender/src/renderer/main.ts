@@ -3709,6 +3709,16 @@ async function boot(): Promise<void> {
         });
         return;
       }
+      if (meant.does === 'terminal') {
+        const aim = open;
+        void (async () => {
+          const now = await client.tasks.retool({ id: task.id }, { timeoutMs: 0 });
+          const again = now.find((one) => one.id === task.id);
+          if (again) tasks = now;
+          if (aim && again) await openTask(aim, again);
+        })();
+        return;
+      }
       if (meant.does === 'browse') {
         rewrite(card?.rows() ?? []);
         return;

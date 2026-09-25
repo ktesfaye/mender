@@ -63,7 +63,9 @@ export type Meant =
   /** Write the transcript out as a markdown file, outside any checkout. */
   | { does: 'export' }
   /** The just-written transcript, shown where it actually landed. */
-  | { does: 'show-export'; path: string };
+  | { does: 'show-export'; path: string }
+  /** Turn a not-yet-awake session into the agent's own CLI, raw. */
+  | { does: 'terminal' };
 
 interface KnackUi {
   catalogShowing: boolean;
@@ -242,6 +244,7 @@ function read(pick: string, kit: Kit | null): Meant | null {
   if (pick.startsWith('updatehand:')) return { does: 'updatehand', id: pick.slice(11) };
   if (pick.startsWith('rmhand:')) return { does: 'rmhand', id: pick.slice(7), asked: false };
   if (pick === 'export') return { does: 'export' };
+  if (pick === 'terminal') return { does: 'terminal' };
   if (pick.startsWith('show-export:')) return { does: 'show-export', path: pick.slice(12) };
   if (pick === 'browseknacks') return { does: 'browseknacks' };
   if (pick === 'addcustomknack') return { does: 'addcustomknack' };
@@ -383,6 +386,18 @@ function written(
         tone: 'faded',
       }
     );
+    /* Nothing has been said yet, so nothing is lost turning this into the
+       agent's own CLI, raw, instead of a chat — the one thing offered here
+       that the naming board already offers before a session even exists. */
+    if (task.kind !== 'terminal') {
+      rows.push({
+        kind: 'entry',
+        mark: '→',
+        text: 'start one like this in its own terminal',
+        tone: 'faded',
+        pick: 'terminal',
+      });
+    }
     /* A finished conversation is exactly the one worth taking a copy of, so
        the export line stands even while nobody is awake to be configured. */
     rows.push({ kind: 'gap' }, exportRow(exported));
