@@ -59,6 +59,19 @@ const RINGS = 18;
 const FIRE_REACH = CELL * 2.2;
 const FIRE_GLOW = CELL * 3.4;
 
+/** How many cells in from a district's edge its light takes to come up full. */
+const GLOW_DEPTH = 6;
+/** The light in the middle of a pointed-at district. */
+const GLOW_ALPHA = 0.22;
+/** How much of it is left at the edge, so the border with the next one shows. */
+const GLOW_RIM = 0.35;
+const NEIGHBOURS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+] as const;
+
 export class Ground {
   /** The light on the land. Belongs under the things standing on it. */
   readonly overlay = new Container();
@@ -174,22 +187,61 @@ export class Ground {
     this.over = aim;
     this.highlight.clear();
     if (!aim || aim.district.id === CAMP) return;
-    /* The same light the fire gives, over a whole district.
-       Filling its cells was the obvious thing and it was wrong twice over: a
-       district is a third of the island, so a flat lift over all of it is an
-       enormous pale rectangle rather than a thing being pointed at, and a
-       tile-shaped edge on light reads as a selection box from a different kind
-       of app. Light has no edges. This falls off. */
-    const box = boundsOf(aim.district);
-    this.glow(box.x + box.width / 2, -(box.y + box.height / 2), box.width, box.height, 0.015);
+    /* Light over a whole district, and only that district.
+       A flat lift over all of it is an enormous pale slab rather than a thing
+       being pointed at, so it is brightest in the middle of its own ground and
+       thins toward where it meets the next one. It was an ellipse over the
+       district's box once, and a box is not a district: with the island full,
+       half of that light landed on the neighbours, and nothing said which
+       place a click would open. */
+    this.glow(aim.district);
   }
 
-  private glow(cx: number, cy: number, width: number, height: number, alpha: number): void {
-    const rx = (width / 2) * 1.35;
-    const ry = (height / 2) * 1.35;
-    for (let i = 0; i < RINGS; i++) {
-      const at = 1 - i / RINGS;
-      this.highlight.ellipse(cx, cy, rx * at, ry * at).fill({ color: 0xffdf9e, alpha });
+  private glow(district: District): void {
+    const land = new Set<string>();
+    for (const [x, y0, y1] of district.cells) {
+      for (let y = y0; y <= y1; y++) land.add(`${x},${y}`);
+    }
+    // How far in from its own edge each cell is, walked inward from the rim.
+    const depth = new Map<string, number>();
+    let rim: string[] = [];
+    for (const key of land) {
+      const [x, y] = key.split(',').map(Number);
+      const edge = NEIGHBOURS.some(([dx, dy]) => !land.has(`${x + dx},${y + dy}`));
+      if (edge) {
+        depth.set(key, 1);
+        rim.push(key);
+      }
+    }
+    for (let level = 2; rim.length && level <= GLOW_DEPTH; level++) {
+      const next: string[] = [];
+      for (const key of rim) {
+        const [x, y] = key.split(',').map(Number);
+        for (const [dx, dy] of NEIGHBOURS) {
+          const near = `${x + dx},${y + dy}`;
+          if (!land.has(near) || depth.has(near)) continue;
+          depth.set(near, level);
+          next.push(near);
+        }
+      }
+      rim = next;
+    }
+    // A thin district never gets far from its edge, so full is as deep as it goes.
+    const full = Math.max(1, ...depth.values());
+    for (let level = 1; level <= GLOW_DEPTH; level++) {
+      let any = false;
+      for (const key of land) {
+        if (Math.min(depth.get(key) ?? GLOW_DEPTH, full) !== level) continue;
+        const [x, y] = key.split(',').map(Number);
+        this.highlight.rect(x * CELL, -(y + 1) * CELL, CELL, CELL);
+        any = true;
+      }
+      if (!any) continue;
+      const lift = level / Math.min(full, GLOW_DEPTH);
+      this.highlight.fill({
+        color: 0xffdf9e,
+        alpha: GLOW_ALPHA * (GLOW_RIM + (1 - GLOW_RIM) * lift),
+      });
     }
   }
 
@@ -224,13 +276,14 @@ export class Ground {
 
 export function districtBounds(district: District): DistrictBounds {
   const box = boundsOf(district);
+  // Already in screen space: boundsOf turns the world's y over itself.
   return {
     x: box.x,
-    y: -(box.y + box.height),
+    y: box.y,
     width: box.width,
     height: box.height,
     centerX: box.x + box.width / 2,
-    centerY: -(box.y + box.height / 2),
+    centerY: box.y + box.height / 2,
   };
 }
 
