@@ -622,6 +622,13 @@ async function boot(): Promise<void> {
       /** In its own terminal — the agent's own CLI, raw — rather than the
           ordinary chat yard. */
       terminal: boolean;
+      /** The project's open issues, offered as a way to name and start the
+          session; `null` means never asked, an empty array means asked and
+          none came back or `gh` had nothing to say. */
+      issues?: { number: number; title: string }[] | null;
+      /** Whether the issue list is what is on the board right now, rather
+          than the ordinary typed name. */
+      pickingIssue?: boolean;
     } | null = null;
     /** Set while an existing session is being called something else, or —
         the same one line, the same keys — while a custom server is being
@@ -2661,6 +2668,8 @@ async function boot(): Promise<void> {
         written: '',
         revivable: null,
         terminal: false,
+        issues: null,
+        pickingIssue: false,
       };
       paintRail();
       /* Asking what is going to happen in a new session is laid over the yard
@@ -2680,6 +2689,35 @@ async function boot(): Promise<void> {
         naming = { ...naming, revivable: held };
         rewrite(asking(naming));
       });
+    };
+
+    /**
+     * Turning the naming board over to the project's own open issues,
+     * read-only against GitHub — asked fresh every time, never cached, since
+     * an issue closed a minute ago has no business still being offered.
+     */
+    const openIssuePicker = async (): Promise<void> => {
+      if (!naming) return;
+      naming = { ...naming, pickingIssue: true, issues: naming.issues ?? null };
+      yard.line.blur();
+      rewrite(asking(naming));
+      const mine = naming;
+      const found = await client.github.issues({ repository: mine.project.path });
+      if (naming !== mine) return;
+      naming = { ...naming, issues: found.success ? found.data.issues : [] };
+      rewrite(asking(naming));
+    };
+
+    /** Naming the session for the issue just picked, and saying what it is
+        for — the same as typing its title straight onto the line. */
+    const pickIssue = (number: number): void => {
+      if (!naming) return;
+      const found = naming.issues?.find((issue) => issue.number === number);
+      const written = found ? `#${found.number} ${found.title}` : `#${number}`;
+      naming = { ...naming, pickingIssue: false, written };
+      yard.line.write(written);
+      yard.line.take();
+      rewrite(asking(naming));
     };
 
     /** Putting the last session taken down here back up, worktree and all. */
@@ -3122,6 +3160,14 @@ async function boot(): Promise<void> {
         if (!naming) return;
         naming = { ...naming, terminal: !naming.terminal };
         rewrite(asking(naming));
+        return;
+      }
+      if (pick === 'issue-toggle') {
+        void openIssuePicker();
+        return;
+      }
+      if (pick.startsWith('issue:')) {
+        pickIssue(Number(pick.slice(6)));
         return;
       }
       if (pick === 'rest') {
@@ -3940,7 +3986,11 @@ function asking(naming: {
   written: string;
   revivable: { title: string } | null;
   terminal: boolean;
+  issues?: { number: number; title: string }[] | null;
+  pickingIssue?: boolean;
 }): Row[] {
+  if (naming.pickingIssue) return pickingIssue(naming.issues ?? null);
+
   const offer: Row[] =
     naming.revivable && !naming.written
       ? [
@@ -3968,7 +4018,35 @@ function asking(naming: {
       text: naming.terminal ? 'in its own terminal — on' : 'in its own terminal',
       pick: 'terminal-toggle',
     },
+    { kind: 'line', text: 'start from an open issue', tone: 'faded', pick: 'issue-toggle' },
   ];
+}
+
+/** The naming board turned over to the project's own open issues. */
+function pickingIssue(issues: { number: number; title: string }[] | null): Row[] {
+  const rows: Row[] = [
+    { kind: 'title', text: 'an open issue' },
+    { kind: 'line', text: 'picking one names the session and says what it is for.', tone: 'faded' },
+    { kind: 'gap' },
+  ];
+  if (issues === null) {
+    rows.push({ kind: 'line', text: 'asking github…', tone: 'faded' });
+    return rows;
+  }
+  if (!issues.length) {
+    rows.push({ kind: 'line', text: 'nothing open, or nothing to ask.', tone: 'faded' });
+    return rows;
+  }
+  for (const issue of issues) {
+    rows.push({
+      kind: 'entry',
+      mark: '→',
+      text: `#${issue.number} ${issue.title}`,
+      keep: 'tail',
+      pick: `issue:${issue.number}`,
+    });
+  }
+  return rows;
 }
 
 /** The board, asking what to call this instead. */

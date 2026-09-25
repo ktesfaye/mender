@@ -81,7 +81,43 @@ export function createGitHubStatus(): Controller {
   return createController(githubContract, {
     status: () => status(),
     signIn: () => signIn(),
+    issues: ({ repository }) => issues(repository),
   });
+}
+
+/**
+ * The project's own open issues, read-only.
+ *
+ * `gh` works this out from the folder it is run in rather than being told a
+ * repository slug, since that is the one thing it already knows how to get
+ * right across github.com and an enterprise host alike.
+ */
+async function issues(
+  repository: string
+): Promise<
+  | { success: true; data: { issues: { number: number; title: string }[] } }
+  | {
+      success: false;
+      error: { kind: 'no-gh' } | { kind: 'not-a-repository' } | { kind: 'refused'; said: string };
+    }
+> {
+  try {
+    const { stdout } = await ran(
+      'gh',
+      ['issue', 'list', '--state', 'open', '--limit', '30', '--json', 'number,title'],
+      { timeout: 10_000, cwd: repository }
+    );
+    const parsed = JSON.parse(stdout) as { number: number; title: string }[];
+    return { success: true, data: { issues: parsed } };
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') return { success: false, error: { kind: 'no-gh' } };
+    const said = error instanceof Error ? error.message : String(error);
+    if (/not a git repository|no git remotes/i.test(said)) {
+      return { success: false, error: { kind: 'not-a-repository' } };
+    }
+    return { success: false, error: { kind: 'refused', said } };
+  }
 }
 
 async function status(): Promise<

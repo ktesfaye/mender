@@ -405,6 +405,13 @@ hangs its lantern, the rack, `Cmd+U` and a system notification still all read
 its mood, because a mood is a mood whichever runtime is behind it. `ctrl+]`
 steps back out to the yard behind it, the same as the plain shell.
 
+**Naming a session can start from a ticket instead of a blank line.** Beside
+"say what you want doing" is "start from an open issue," and pressing it turns
+the naming board over to the project's own open issues, read out of `gh`
+read-only. Picking one writes `#<number> <title>` on the line, the same as if
+you had typed it: it becomes the session's name and the first thing said to
+whoever moves in.
+
 **Something the shell starts listening on is noticed, not hunted for.**
 Whatever a checkout's own shell prints an address in — `npm run dev`, a test
 server, anything — turns into a line on the checkout board, most recent

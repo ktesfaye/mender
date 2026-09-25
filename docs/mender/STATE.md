@@ -1014,6 +1014,20 @@ wiring (`askName`, `asking()`, `press('revive')`) follows the exact pattern
 every other pressable board line already uses and was typechecked and linted
 clean, but only the back end was driven live.
 
+The naming board also offers "start from an open issue" now, under the usual
+"say what you want doing" line. Pressing it turns the board over to the
+project's own open issues — `gh issue list --state open --json number,title`,
+run in the project's own folder so `gh` works out which repository that is
+the same way it already does everywhere else in the village, read-only.
+Picking one writes `#<number> <title>` onto the line, exactly as if it had
+been typed, so it becomes the session's name and the first thing said to the
+agent the same way anything else typed there does. Driven for real: the line
+appears, pressing it shows "asking github…" and then resolves — against a
+throwaway local repository with no GitHub remote it correctly falls back to
+"nothing open, or nothing to ask." rather than hanging or throwing. The happy
+path (a real repository with open issues) is typechecked and reviewed but not
+driven against real data, since the throwaway test repo has no remote.
+
 Also confirmed, without writing any new code for it: a session that was
 mid-turn genuinely is not silently lost when the app dies rather than quits
 cleanly. Began a real task, `kill -9`'d the whole Electron process tree
@@ -1251,7 +1265,8 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-53 | Operation-scoped credential injection | kept |  |
 | WS-54 | Integration plugin architecture (account-level) |  | W4 |
 | WS-55 | Issues plugin architecture | kept |  |
-| WS-56 | Issue linking UI |  | W4 |
+| WS-56 | Issue linking UI | done | W4 |
+| FS-31 | Open a checkout or a file in the owner's own external editor | done | W5 |
 | WS-57 | PR selector (linking a PR to a task) |  | W4 |
 | WS-58 | Shared exclusion-policy engine | kept |  |
 | TR-01 | Interactive terminal panes | done | W6 |

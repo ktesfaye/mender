@@ -21,6 +21,19 @@ export const signInErrorSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('refused'), said: z.string() }),
 ]);
 
+export const githubIssueSchema = z.object({
+  number: z.number().int(),
+  title: z.string(),
+});
+
+export type GitHubIssue = z.infer<typeof githubIssueSchema>;
+
+export const issuesErrorSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('no-gh') }),
+  z.object({ kind: z.literal('not-a-repository') }),
+  z.object({ kind: z.literal('refused'), said: z.string() }),
+]);
+
 export const githubContract = defineContract({
   status: procedure({ input: z.object({}), output: githubStatusSchema }),
   /** Starts the device flow and resolves once the code and URL are known;
@@ -29,6 +42,13 @@ export const githubContract = defineContract({
     input: z.object({}),
     data: z.object({ code: z.string(), url: z.string() }),
     error: signInErrorSchema,
+  }),
+  /** The project's own open issues, read-only — for naming a session from
+      one at the empty hook. */
+  issues: fallible({
+    input: z.object({ repository: z.string() }),
+    data: z.object({ issues: z.array(githubIssueSchema) }),
+    error: issuesErrorSchema,
   }),
 });
 
