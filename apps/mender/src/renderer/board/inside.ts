@@ -1,6 +1,10 @@
 import { DEFAULT_WATCHER_EXCLUDE } from '@emdash/core/primitives/exclusion-policy/api';
 import { parseNativeAbsolute, type HostAbsolutePath } from '@emdash/core/primitives/path/api';
-import type { FileEntry, FileTreeModel } from '@emdash/core/runtimes/files/api';
+import {
+  isExpandableFileEntry,
+  type FileEntry,
+  type FileTreeModel,
+} from '@emdash/core/runtimes/files/api';
 import { ReplicaState } from '@emdash/wire/live';
 import type { MenderClient } from '../wire';
 import type { Row } from './row';
@@ -66,7 +70,17 @@ export async function openTree(
   await replica.ready;
   tree = replica.current();
 
+  /* Walking back into a checkout you already hold open resubscribes to the
+     same server-side tree session (it is kept warm rather than torn down),
+     so the snapshot this replica seeds from can already have the folder
+     loaded. Asking the server to expand it again then waits on a revision
+     the reused session will never re-announce to this new subscriber, which
+     is what left the board reading "reading it…" forever. Skipping the
+     mutation when the entry we asked for is already loaded avoids that wait
+     entirely rather than trying to out-race it. */
   async function open(path: string): Promise<void> {
+    const entry = tree?.entries[path];
+    if (entry && isExpandableFileEntry(entry) && entry.childrenLoaded) return;
     await model.mutate('expand', { key, input: { path: path as never } });
   }
 
