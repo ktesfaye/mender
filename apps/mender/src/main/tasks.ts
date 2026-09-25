@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import type { ActiveRootStatus } from '@emdash/core/runtimes/file-search/api';
+import { shortName } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import { cell, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
@@ -155,13 +156,16 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       const parsed = parseNativeAbsolute(found.path);
       if (!parsed.success) return fail({ kind: 'refused', because: 'that checkout has moved.' });
       // A task starts from the branch the project calls home, not from whatever
-      // happens to be checked out; HEAD is the fallback for a checkout with no
-      // remote to ask.
+      // happens to be checked out. A repository made with `git init` and pushed
+      // up rather than cloned has no remote HEAD pointer to ask, so the next
+      // fallback is the branch the project's own checkout is actually on, and
+      // only a detached checkout falls all the way back to HEAD itself.
       const asked = await runtimes.git.repository.getDefaultBranch({
         repository: parsed.data,
         remote: 'origin',
       });
-      const baseRef = (asked.success && asked.data.branch) || 'HEAD';
+      const baseRef =
+        (asked.success && asked.data.branch) || (await currentBranch(runtimes, parsed.data)) || 'HEAD';
 
       /* Under the folder's own name, not the project's: a project renamed on
          the island is not a reason for its next worktree to live somewhere
@@ -334,6 +338,26 @@ async function repositoryOf(
   });
   if (!registered.success) return fail({ kind: 'refused', because: whatItSaid(registered.error) });
   return { success: true as const, data: registered.data.parentId ?? registered.data.id };
+}
+
+/**
+ * The branch the project's own checkout is actually on, when there is no
+ * remote to ask instead: a repository made with `git init` and pushed up
+ * rather than cloned never gets a remote HEAD pointer, so a session cut in
+ * one recorded no base and its board said nothing about its history. A
+ * detached checkout has no branch to give, so it comes back empty like the
+ * remote lookup this backs up.
+ */
+async function currentBranch(
+  runtimes: MenderRuntimes,
+  root: Parameters<MenderRuntimes['git']['checkout']['model']['state']>[0]['checkout']
+): Promise<string | null> {
+  try {
+    const head = await runtimes.git.checkout.model.state({ checkout: root }, 'head').snapshot();
+    return head.data.kind === 'detached' ? null : shortName(head.data.ref);
+  } catch {
+    return null;
+  }
 }
 
 /** What the registry actually said, in a sentence rather than a type name. */
