@@ -2025,6 +2025,47 @@ same `home()` every other "nothing laid over the yard" case already calls).
 Started a second session the same way and watched the first read `asleep`
 then `resting` on the rail from the second one's own yard, live.
 
+### MCP servers, every worktree on the machine, and what it is costing (2026-09-25)
+
+Three small builds, none of them a new pattern. MCP (AG-07, ST-19): the
+`/agent` card's "what it can reach" gets a `+` — a gold word now, not a
+marked line — for the catalogue (Emdash's own `catalog.ts`, read straight off
+it rather than kept twice) and one for a custom server, named and started on
+the board's own writing line the same way a session is renamed; each server
+throws away with the app's usual two presses, scoped to the one agent whose
+card it was pressed on (`removeMcpForAgent`, not the blanket `removeMcpServer`
+every provider shares). Reuses Emdash's agent-config runtime wholesale —
+`saveMcpServer`/`removeMcpForAgent`/`listMcpForAgent` were already there,
+already wired into `kit.ts`'s per-agent tool list.
+
+Worktrees (WS-24, part of WS-25): the windmill's "what is on disk" lists
+every worktree the workspace registry knows of, any project, with a measured
+size and a stale mark (branch already merged upstream, or nothing in the
+app's own task list still points at its path) — needed forwarding the
+workspace-registry contract straight through to the renderer for the first
+time, the same way git/files/terminals already are. Two presses clears one;
+the first press now says exactly what it costs, reusing the session
+takedown's own preflight (`unsentIn`/`counted`, exported from `card.ts`):
+uncommitted files are always lost, but a branch with commits nowhere else has
+— or one that has simply never been pushed — is kept, only the worktree and
+its registration go. Only a branch that is already fully upstream is deleted
+with it.
+
+Resource usage: no ledger number (cmux's idea, not Emdash's) — a "this
+machine" line on the windmill, cpu/memory/disk in plain words, resampled
+every few seconds while it is open (`packages/core/src/runtimes/resource-usage`,
+wired in-process rather than as its own subprocess worker, since a sample is
+a few syscalls). Deliberately not cmux's whole per-process Task Manager —
+Mender's own audit already called that a non-goal.
+
+Driven: added a custom server and one from the catalogue, then threw the
+custom one away, verifying against a throwaway `HOME`'s own `.claude.json`
+after each press rather than trusting the board alone. Cut a zero-cost
+worktree (a terminal-kind session, no agent call), made a real unpushed
+commit on it with plain git, cleared it from the windmill and confirmed on
+disk: the worktree gone, the branch and its commit still there. Watched the
+machine line read real numbers and count back up a few seconds later.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

@@ -14,6 +14,8 @@ import { filesWorkerSpec } from '@emdash/core/runtimes/files/node';
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { gitWorkerSpec } from '@emdash/core/runtimes/git/node';
 import { hostSettingsWorkerSpec } from '@emdash/core/runtimes/host-settings/node';
+import { resourceUsageContract } from '@emdash/core/runtimes/resource-usage/api';
+import { resourceUsageComponent } from '@emdash/core/runtimes/resource-usage/node';
 import { scriptsWorkerSpec } from '@emdash/core/runtimes/scripts/node';
 import { terminalsContract } from '@emdash/core/runtimes/terminals/api';
 import { terminalsWorkerSpec } from '@emdash/core/runtimes/terminals/node';
@@ -172,6 +174,15 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
     },
   });
   const resolver = hostDependencies.client.resolver;
+
+  // What this machine is spending: CPU, memory and disk, sampled on demand
+  // rather than a worker of its own — the sample is a few syscalls, not
+  // something worth a subprocess.
+  const resourceUsage = resourceUsageComponent.create({
+    scope: workerScope,
+    dependencies: {},
+    config: {},
+  });
 
   const watcherReady = observed(
     host
@@ -387,6 +398,10 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
       workspaces: createController(
         workspaceRegistryContract,
         forwardContractImpl(workspaceRegistryContract, workspaces)
+      ),
+      resourceUsage: createController(
+        resourceUsageContract,
+        forwardContractImpl(resourceUsageContract, resourceUsage.client)
       ),
     },
     git,

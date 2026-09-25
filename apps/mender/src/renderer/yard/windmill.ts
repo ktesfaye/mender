@@ -34,11 +34,22 @@ export interface WorktreeRow {
   unsent: number | null;
 }
 
+/** What this machine is spending, the last time it was asked. */
+export interface MachineSample {
+  cpuPercent: number;
+  memUsedBytes: number;
+  memTotalBytes: number;
+  diskUsedBytes: number;
+  diskTotalBytes: number;
+}
+
 export interface WindmillState {
   hand: string | null;
   hands: Hand[] | null;
   /** null while the registry's first answer hasn't arrived yet. */
   worktrees: WorktreeRow[] | null;
+  /** null until the first sample answers. */
+  machine: MachineSample | null;
 }
 
 export interface WindmillDoings {
@@ -87,7 +98,8 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   const body = el('div', 'settings-body');
   const general = section('General');
   const worktrees = section('What is on disk');
-  body.append(general.root, worktrees.root);
+  const machine = section('This machine');
+  body.append(general.root, worktrees.root, machine.root);
   panel.append(head, body);
 
   /** The worktree armed for a second press to clear it, if any. */
@@ -187,9 +199,24 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     worktrees.fill(rows);
   }
 
+  function drawMachine(): void {
+    if (!now.machine) {
+      machine.fill([hintLine('reading it…')]);
+      return;
+    }
+    const one = now.machine;
+    const lines = [
+      `cpu — ${Math.round(one.cpuPercent)}%`,
+      `memory — ${sized(one.memUsedBytes)} of ${sized(one.memTotalBytes)}`,
+      `disk — ${sized(one.diskUsedBytes)} of ${sized(one.diskTotalBytes)}`,
+    ];
+    machine.fill(lines.map((text) => hintLine(text)));
+  }
+
   function draw(): void {
     drawGeneral();
     drawWorktrees();
+    drawMachine();
   }
 
   draw();

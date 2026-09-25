@@ -1,5 +1,6 @@
 import { filesContract } from '@emdash/core/runtimes/files/api';
 import { gitContract } from '@emdash/core/runtimes/git/api';
+import { resourceUsageContract } from '@emdash/core/runtimes/resource-usage/api';
 import { terminalsContract } from '@emdash/core/runtimes/terminals/api';
 import { tuiAgentsContract } from '@emdash/core/runtimes/tui-agents/api';
 import { workspaceRegistryContract } from '@emdash/core/runtimes/workspace-registry/api';
@@ -36,6 +37,7 @@ export const menderDomainContracts = {
   projects: projectsContract,
   prompts: promptsContract,
   pulls: pullRequestsContract,
+  resourceUsage: resourceUsageContract,
   tasks: tasksContract,
   terminals: terminalsContract,
   tuiAgents: tuiAgentsContract,

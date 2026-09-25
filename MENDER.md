@@ -582,8 +582,13 @@ starts that agent, not always Claude Code. A second page, "what is on disk,"
 lists every worktree Mender has ever cut on this machine, whichever project
 cut it: its branch, how much room it takes and whether it is stale — its
 branch already sitting upstream, or nothing left pointing at it — and clears
-it in two presses, the same line saying what that press would free before it
-does. Everything else the windmill will eventually hold — updating and
+it in two presses, the first press saying what that would actually cost:
+whatever is uncommitted in there is gone regardless, but a branch with
+commits nowhere else has, or one that has simply never been sent anywhere,
+is kept — only the worktree goes, not the history. A third page says what
+this machine is spending right now, cpu, memory and disk in plain words,
+counting back up every few seconds rather than sitting still. Everything
+else the windmill will eventually hold — updating and
 authenticating agents, MCP, skills, accounts, task defaults — still has
 nowhere to live.
 

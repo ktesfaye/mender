@@ -62,7 +62,13 @@ import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
-import { keepsBranch, openWindmill, type WorktreeRow, type Windmill } from './yard/windmill';
+import {
+  keepsBranch,
+  openWindmill,
+  type MachineSample,
+  type WorktreeRow,
+  type Windmill,
+} from './yard/windmill';
 import { makeYard } from './yard/yard';
 
 /** The kinds of picture an agent can actually be shown. */
@@ -965,6 +971,7 @@ async function boot(): Promise<void> {
         hand: null as string | null,
         hands: null as Hand[] | null,
         worktrees: null as WorktreeRow[] | null,
+        machine: null as MachineSample | null,
       };
       let records: ReplicaState<Record<string, WorkspaceRecord>> | null = null;
       const ui = openWindmill(state, {
@@ -982,10 +989,28 @@ async function boot(): Promise<void> {
         closed: () => {
           if (windmill === ui) windmill = null;
           void records?.dispose();
+          clearInterval(sampling);
           yard.line.take();
         },
       });
       windmill = ui;
+      // A number counting up rather than a spinner, resampled every few
+      // seconds while the windmill is actually open.
+      const sample = (): void => {
+        void client.resourceUsage.sample(undefined, { timeoutMs: 0 }).then((done) => {
+          if (!done.success) return;
+          state.machine = {
+            cpuPercent: done.data.cpu.usedPercent,
+            memUsedBytes: done.data.memory.usedBytes,
+            memTotalBytes: done.data.memory.totalBytes,
+            diskUsedBytes: done.data.disk.usedBytes,
+            diskTotalBytes: done.data.disk.totalBytes,
+          };
+          ui.update(state);
+        });
+      };
+      sample();
+      const sampling = setInterval(sample, 5000);
       void (async () => {
         const [hand, hands] = await Promise.all([
           client.appSettings.defaultHand({}, { timeoutMs: 0 }),
