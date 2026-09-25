@@ -79,7 +79,15 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
   /* A real terminal wants the whole room this board has, not the height of
      its own writing — so it is a flex item that fills what is left under the
      title, rather than another line the wash sizes itself around. */
-  const termHost = box({}, 'display:none;flex:1;min-height:240px;width:100%;margin-top:8px');
+  /* `box()` always opens with `position:absolute`, for every other box on
+     this layer; this is the one box that needs to be a normal flex item
+     instead, sized by the column around it rather than by its own left/top,
+     so it lands under the title and the address line rather than over
+     them — `position:relative` here wins because it comes after. */
+  const termHost = box(
+    {},
+    'position:relative;display:none;flex:1;min-height:240px;width:100%;margin-top:8px'
+  );
   under.appendChild(termHost);
 
   /* Held so a terminal reading can give the wash a real height to shrink its

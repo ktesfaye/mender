@@ -588,14 +588,31 @@ today, its own kind of session later) drops the whole paste otherwise.
 tmux was not on this machine either. Like ripgrep, that is a host dependency
 rather than a code change, and it is installed.
 
-Not here yet: more than one shell per checkout, a dev server's port being
-noticed and offered, and killing a shell from the board.
+Not here yet: more than one shell per checkout, and killing a shell from the
+board. (A dev server's port being noticed and offered is done — see below.)
 
 Closes TR-01 through TR-04, TR-06, TR-09 through TR-12, UI-12, UI-40.
 
 Done when: a real shell runs on the board, is usable rather than only legible
 for a full-screen program, survives the app closing, and a dev server it
 starts is reachable without you hunting for the port.
+
+TR-09 and TR-12, cut above, were brought back afterwards: a checkout's own
+shell is watched for a `localhost`/`127.0.0.1` address in what it prints, the
+same pattern Emdash's own terminal-output sniffing used, and the port itself
+is polled (fast while it might just be starting, steady once it has answered,
+two misses before it is called gone) so the checkout board's own `listening
+on :<port>` line comes and goes with the server rather than only ever
+growing. A session with something live in its checkout gets a small second
+mark beside its lantern on the rail, the way a tool in trouble gets `✗` on
+the `/agent` card. Pressing the line lays a browser board over the yard —
+title, an address line, the page itself in the app's own `<webview>` — thin
+on purpose, no history, no profiles, no DevTools. Driven: `python3 -m
+http.server` started in a checkout's shell, the line appeared on the checkout
+board, the page opened and rendered (a real directory listing) on the board,
+and killing the server took the line back off within a couple of seconds.
+Not here yet: the element-picker/screenshot handoff to the agent, and the
+cart's own line for "set something running."
 
 ### W7 — a project is fully yours · started
 
@@ -940,8 +957,9 @@ Kept here so none of it quietly returns as a panel.
   (TR-02), keeping them warm off-screen for instant tab switching (TR-03), and
   the drawer they would live in (UI-12). One board shows one thing, and the
   shell is on it.
-- The preview-server pill and the titlebar it sits in (TR-11, UI-40), and the
-  in-app browser (TR-12). There is no titlebar, and a browser is a browser.
+- The preview-server pill and the titlebar it sits in (TR-11, UI-40). There is
+  no titlebar. (The in-app browser itself, TR-12, was cut here and later
+  brought back in its own village shape — see W6.)
 - Pull requests as a list to filter (WS-46) and as a panel inside the changes
   view (WS-47). A pull request belongs to the branch you are on, and that is
   where the village asks about it.
@@ -1145,10 +1163,10 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | TR-06 | Shell resolution & selection |  | W6 |
 | TR-07 | Terminal appearance & behavior settings |  | W8 |
 | TR-08 | Terminal environment (theme signaling, agent env) | kept |  |
-| TR-09 | Automatic dev-server URL detection |  | W6 |
+| TR-09 | Automatic dev-server URL detection | done | W6 |
 | TR-10 | Manual port forwarding (SSH workspaces) |  | W6 |
 | TR-11 | Preview server pill (task titlebar) | cut | W6 |
-| TR-12 | In-app browser (Emdash Browser) | cut | W6 |
+| TR-12 | In-app browser (Emdash Browser) | done | W6 |
 | TR-13 | Add/edit/connect a machine |  | W10 |
 | TR-14 | Machine status indicator |  | W10 |
 | TR-15 | Host settings (per-machine defaults) |  | W10 |

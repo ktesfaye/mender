@@ -26,11 +26,21 @@ export interface LiveShell {
   close(): Promise<void>;
 }
 
+/** A dev server's own address, wherever it says so in what it printed. */
+const SERVER_URL = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?[^\s"'<>)]*/gi;
+
+/** Normalized so `0.0.0.0` (what a server binds) reads as `localhost` (what opens). */
+function normalized(url: string): string {
+  return url.replace(/0\.0\.0\.0/, 'localhost');
+}
+
 export async function openShell(
   client: MenderClient,
   checkout: string,
   /** `ctrl+]` was pressed — step back out to the board behind this one. */
-  steppedOut: () => void
+  steppedOut: () => void,
+  /** A dev server's own address, noticed in what the shell printed. */
+  onServer?: (url: string) => void
 ): Promise<LiveShell | null> {
   const parsed = parseNativeAbsolute(checkout);
   if (!parsed.success) return null;
@@ -71,6 +81,14 @@ export async function openShell(
   let asking = false;
   let again = false;
 
+  /* Only what is newly printed is scanned, and only once — reading the whole
+     scrollback fresh every catch-up would say a server had just started every
+     time this shell is reopened, long after it moved on. */
+  const notice = (added: string): void => {
+    if (!onServer) return;
+    for (const match of added.matchAll(SERVER_URL)) onServer(normalized(match[0]));
+  };
+
   /**
    * Ask what the whole thing says now and write the part this terminal has
    * not seen yet, straight onto its grid.
@@ -95,8 +113,11 @@ export async function openShell(
         if (from < 0 || from > snap.text.length) {
           term.reset();
           term.write(snap.text);
+          notice(snap.text);
         } else if (from < snap.text.length) {
-          term.write(snap.text.slice(from));
+          const added = snap.text.slice(from);
+          term.write(added);
+          notice(added);
         }
         written = snap.baseOffset + snap.text.length;
       } while (again);

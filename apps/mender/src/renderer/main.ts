@@ -23,6 +23,7 @@ import type { Prompt } from '@shared/prompts';
 import type { Task } from '@shared/tasks';
 import { branchMade, branchUnmade, unbranchMade } from './board/branch';
 import { openCard, type LiveCard } from './board/card';
+import { browsing, openPage, safe as safeAddress } from './board/browsing';
 import { opening, readOut, unreadable } from './board/changed';
 import { committing } from './board/committing';
 import { landingLines, openCheckout, type Landing, type LiveBoard } from './board/district';
@@ -291,6 +292,7 @@ async function boot(): Promise<void> {
           path: where.path,
           ...(session ? { since: session.base ?? null } : {}),
           ...(session?.base ? { tail: () => landingLines(landing) } : {}),
+          servers: () => servers.get(where.path) ?? [],
         },
         (rows) => {
           if (open === aim && plainCheckout()) rewrite(rows);
@@ -544,6 +546,13 @@ async function boot(): Promise<void> {
     let hunt: (Hunt & { checkout: string; asked: number }) | null = null;
     /* The shell running in this checkout, while its board is the one open. */
     let talking: { shell: LiveShell | null; name: string } | null = null;
+    /* A browser laid over the yard, showing one page. `url` is what is
+       actually loaded; `written` is what the foot-of-board line currently
+       says, which differs from it while an address is being typed. */
+    let browsingAt: { url: string; written: string; el: HTMLElement } | null = null;
+    /* What each checkout's own shell has noticed listening, most recent
+       first. Never asked for; only ever noticed in what the shell printed. */
+    const servers = new Map<string, string[]>();
     /* What is open against the other end for this checkout's branch. */
     let sending: (Sent & { repository: string; number?: number }) | null = null;
     let looked: {
@@ -1019,6 +1028,7 @@ async function boot(): Promise<void> {
           tasks: tasks.filter((task) => task.project === project.id),
           moods: seen,
           ...(here ? { here } : {}),
+          servers: servingCheckouts(),
         },
         (now) => {
           if (open === aim && !reading && !looked && !walking && !talking && !sending && !card) {
@@ -1888,12 +1898,17 @@ async function boot(): Promise<void> {
       talking = { shell: null, name };
       const mine = talking;
       wood(shell({ name, running: false }));
-      const running = await openShell(client, place.path, () => {
-        if (talking === mine && open === aim) {
-          stopTalking();
-          home();
-        }
-      });
+      const running = await openShell(
+        client,
+        place.path,
+        () => {
+          if (talking === mine && open === aim) {
+            stopTalking();
+            home();
+          }
+        },
+        (url) => noteServer(place.path, url)
+      );
       if (talking !== mine || open !== aim) {
         await running?.close();
         return;
@@ -1911,6 +1926,115 @@ async function boot(): Promise<void> {
       const was = talking;
       talking = null;
       void was?.shell?.close();
+      closeBrowser();
+    };
+
+    /**
+     * Something is listening on a port, noticed in a checkout's own shell.
+     *
+     * Kept per checkout rather than per session, since a dev server belongs to
+     * the working tree it was started in and not to any one conversation
+     * about it. If the checkout board for this one is on the wood right now,
+     * it says so without you touching anything.
+     */
+    const noteServer = (checkout: string, url: string): void => {
+      const had = servers.get(checkout) ?? [];
+      if (had[0] === url) {
+        startProbing(checkout, url);
+        return;
+      }
+      servers.set(checkout, [url, ...had.filter((one) => one !== url)].slice(0, 5));
+      if (live && plainCheckout() && onPlace()?.path === checkout) rewrite(live.rows());
+      watching?.noticed(servingCheckouts());
+      startProbing(checkout, url);
+    };
+
+    /** Every checkout (by path) with something currently noticed listening. */
+    const servingCheckouts = (): ReadonlySet<string> =>
+      new Set([...servers.entries()].filter(([, urls]) => urls.length > 0).map(([path]) => path));
+
+    /* Once a server is noticed, this is the only thing that ever takes it
+       back off the list: nothing here asks the shell whether it is still
+       running, so the board asks the port itself, the same way a browser
+       tab would find out. Fast while it might just be starting, steady once
+       it has answered, and two misses in a row before it is called gone —
+       one dropped probe is not a server stopping. */
+    const stopProbe = new Map<string, () => void>();
+    const PROBE_FAST_MS = 1_000;
+    const PROBE_STEADY_MS = 15_000;
+    const PROBE_MISSES_TO_DROP = 2;
+
+    const startProbing = (checkout: string, url: string): void => {
+      const key = `${checkout}\u0000${url}`;
+      if (stopProbe.has(key)) return;
+      let stopped = false;
+      let misses = 0;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const tick = async (): Promise<void> => {
+        if (stopped) return;
+        const open = await pingsOpen(url);
+        if (stopped) return;
+        if (open) {
+          misses = 0;
+        } else {
+          misses += 1;
+          if (misses >= PROBE_MISSES_TO_DROP) {
+            stopped = true;
+            stopProbe.delete(key);
+            dropServer(checkout, url);
+            return;
+          }
+        }
+        timer = setTimeout(() => void tick(), open ? PROBE_STEADY_MS : PROBE_FAST_MS);
+      };
+      stopProbe.set(key, () => {
+        stopped = true;
+        if (timer) clearTimeout(timer);
+      });
+      timer = setTimeout(() => void tick(), PROBE_FAST_MS);
+    };
+
+    const pingsOpen = async (url: string): Promise<boolean> => {
+      try {
+        await fetch(url, { mode: 'no-cors', cache: 'no-store' });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    const dropServer = (checkout: string, url: string): void => {
+      const had = servers.get(checkout) ?? [];
+      const next = had.filter((one) => one !== url);
+      if (next.length === had.length) return;
+      servers.set(checkout, next);
+      if (live && plainCheckout() && onPlace()?.path === checkout) rewrite(live.rows());
+      watching?.noticed(servingCheckouts());
+    };
+
+    /** A browser, laid over the yard, showing one page. */
+    const openBrowserBoard = (url: string): void => {
+      stopWalking();
+      stopTalking();
+      hunt = null;
+      browsingAt = { url, written: url, el: openPage(url) };
+      wood(browsing(browsingAt), browsingAt.el);
+    };
+
+    const closeBrowser = (): void => {
+      const was = browsingAt;
+      browsingAt = null;
+      was?.el.remove();
+    };
+
+    /** What is being typed on the browser's own address line, sent. */
+    const navigated = (): void => {
+      if (!browsingAt) return;
+      const to = browsingAt.written.trim();
+      if (!safeAddress(to)) return;
+      browsingAt.el.setAttribute('src', to);
+      browsingAt = { ...browsingAt, url: to };
+      wood(browsing(browsingAt), browsingAt.el);
     };
 
     /**
@@ -2653,6 +2777,10 @@ async function boot(): Promise<void> {
         void talk();
         return;
       }
+      if (pick.startsWith('page:')) {
+        openBrowserBoard(pick.slice(5));
+        return;
+      }
       if (pick === 'end' || pick === 'end!') {
         void ending(pick === 'end!');
         return;
@@ -2975,6 +3103,16 @@ async function boot(): Promise<void> {
           home();
           return;
         }
+        if (browsingAt) {
+          if (browsingAt.written !== browsingAt.url) {
+            browsingAt.written = browsingAt.url;
+            rewrite(browsing(browsingAt), browsingAt.el);
+            return;
+          }
+          closeBrowser();
+          home();
+          return;
+        }
         if (hunt && !opened) {
           if (hunt.written) {
             hunt.written = '';
@@ -3200,6 +3338,18 @@ async function boot(): Promise<void> {
           else if (event.key.length === 1) hunt.written += event.key;
           else return yard.scrolled(event.key);
           void lookFor();
+          return true;
+        }
+        /* The browser's own address line. */
+        if (browsingAt) {
+          if (event.key === 'Enter') {
+            navigated();
+            return true;
+          }
+          if (event.key === 'Backspace') browsingAt.written = browsingAt.written.slice(0, -1);
+          else if (event.key.length === 1) browsingAt.written += event.key;
+          else return false;
+          rewrite(browsing(browsingAt), browsingAt.el);
           return true;
         }
         /* Naming something new in the folder you are standing in. */

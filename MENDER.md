@@ -374,6 +374,22 @@ dropped or pasted on it lands as its own path, shell-escaped and unsent, on
 the input line — a shell has no way to be shown a picture, only told where it
 is.
 
+**Something the shell starts listening on is noticed, not hunted for.**
+Whatever a checkout's own shell prints an address in — `npm run dev`, a test
+server, anything — turns into a line on the checkout board, most recent
+first, and it comes back off the moment the port stops answering: nothing
+here asks the shell whether it is still running, so the board asks the port
+itself, the way a real browser tab would. A session with something live in
+its checkout carries a small second mark beside its lantern on the rail, so
+"something's running here" reads from across the room without opening it.
+Pressing the line lays a browser board over the yard the way a file or the
+shell does: an address line at the top, written the way you write anywhere
+else in this app, and the page itself underneath, in the village's own
+`<webview>` rather than this window navigating anywhere. Only a page already
+running on this machine opens here — there is no history, no profiles, no
+DevTools, and nothing here goes and fetches a stranger's page. Escape closes
+it the same way everything else does.
+
 **And a piece of work ends here rather than in a browser.** A line under the
 checkout asks what is open for this branch: what it is for, which branch is
 going where, what the machines think, whether anybody has looked, and the ways

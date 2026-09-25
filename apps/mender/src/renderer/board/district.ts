@@ -74,6 +74,8 @@ export interface Place {
   /** Extra rows to lay in after the branch's own standing, read fresh on
       every rewrite — a session's offer to bring its base in or land itself. */
   tail?: () => Row[];
+  /** What this checkout's own shell has noticed listening, most recent first. */
+  servers?: () => string[];
 }
 
 /** How a session's branch stands against the base it forked from. */
@@ -241,6 +243,7 @@ function build(
     { kind: 'entry', mark: '→', text: 'find a file', tone: 'faded', pick: 'hunt' },
     // And the way this piece of work ends, which is not in a browser.
     { kind: 'entry', mark: '→', text: 'what is open for this branch', tone: 'faded', pick: 'sent' },
+    ...listening(place.servers?.() ?? []),
     { kind: 'gap' },
   ];
 
@@ -357,6 +360,27 @@ function sending(head: CheckoutHeadState | undefined): Row[] {
 
 function counted(many: number, thing: string): string {
   return many === 1 ? `the one ${thing}` : `all ${many} ${thing}s`;
+}
+
+/** What this checkout's own shell has noticed listening, most recent first. */
+function listening(urls: readonly string[]): Row[] {
+  return urls.map((url) => ({
+    kind: 'entry',
+    mark: '→',
+    text: `listening on ${shortAddress(url)}`,
+    tone: 'faded',
+    pick: `page:${url}`,
+  }));
+}
+
+function shortAddress(url: string): string {
+  try {
+    const at = new URL(url);
+    const path = at.pathname === '/' ? '' : at.pathname;
+    return `:${at.port || (at.protocol === 'https:' ? '443' : '80')}${path}`;
+  } catch {
+    return url;
+  }
 }
 
 /** The one line that says where the checkout stands. */

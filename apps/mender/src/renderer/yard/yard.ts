@@ -1726,6 +1726,16 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     }
     beam.appendChild(lamp);
 
+    /* A session with something live in its checkout gets a small second mark
+       beside its lantern — not a new color, the same plain glyph a tool in
+       trouble gets on the /agent card, so "something's running here" reads
+       from across the room without opening the session. */
+    if (one.serving) {
+      const mark = exact('⚡', 10, '#a89272');
+      mark.style.cssText += `;position:absolute;left:${x + 15}px;top:${top - 5}px`;
+      beam.appendChild(mark);
+    }
+
     /* The one place in this app where a pressable thing is not gold.
        Everywhere else gold means "press me" and nothing else is gold; the rail
        keeps its posture tints because the rail's whole job is telling you, from

@@ -29,6 +29,8 @@ import type { Health, Yard } from './what';
 export interface Watching {
   /** Everything else moved: the task list, somebody's mood, the project. */
   moved(now: { project: Project; tasks: Task[]; moods: Record<string, Mood> }): void;
+  /** Which checkouts (by path) now have something noticed listening. */
+  noticed(servers: ReadonlySet<string>): void;
   /** What the yard says right now, for anything that needs to ask. */
   yard(): Yard;
   /** The question at the gate, for whoever is listening for a number key. */
@@ -58,6 +60,8 @@ export interface Opening {
   moods: Record<string, Mood>;
   /** The session you are standing in. A project nobody has worked has none. */
   here?: Task;
+  /** Checkouts (by path) with something noticed listening on a port. */
+  servers?: ReadonlySet<string>;
 }
 
 export async function openYard(
@@ -96,6 +100,7 @@ export async function openYard(
       tasks: from.tasks,
       moods: from.moods,
       ...(from.here ? { here: from.here } : {}),
+      ...(from.servers ? { servers: from.servers } : {}),
       ...(working ? { mood: working.mood } : {}),
       ...(working?.told ? { told: working.told } : {}),
       ...(kit ? { kit } : {}),
@@ -165,6 +170,10 @@ export async function openYard(
   return {
     moved: (now) => {
       from = { ...from, ...now };
+      again();
+    },
+    noticed: (servers) => {
+      from = { ...from, servers };
       again();
     },
     yard: build,

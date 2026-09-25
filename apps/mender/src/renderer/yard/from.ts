@@ -93,6 +93,8 @@ export interface Standing {
   health?: Health;
   /** A question standing at the gate, which outranks everything else. */
   asking?: Ask | null;
+  /** Checkouts (by path) with something noticed listening on a port. */
+  servers?: ReadonlySet<string>;
   /** What it has said it means to do, if it has said. */
   plan?: readonly { text: string; state: 'done' | 'doing' | 'ahead' }[];
   /** How much room it has left to think in, when it says. */
@@ -141,7 +143,9 @@ export function yardOf(from: Standing): Yard {
         }
       : {}),
     ...(here ? { session: sessionOf(here, told, kit, from) } : {}),
-    rail: tasks.map((task) => lanternOf(task, moods[task.id], task.id === here?.id)),
+    rail: tasks.map((task) =>
+      lanternOf(task, moods[task.id], task.id === here?.id, from.servers?.has(task.path) ?? false)
+    ),
   };
 }
 
@@ -429,7 +433,7 @@ function hashOf(text: string): number {
   return at;
 }
 
-function lanternOf(task: Task, mood: Mood | undefined, here: boolean): Lantern {
+function lanternOf(task: Task, mood: Mood | undefined, here: boolean, serving: boolean): Lantern {
   const posture = postureOf(mood);
   /* Lit means somebody is awake in there. Nobody has moved in, they have gone
      home, or it broke, and the lantern is out. A dark, otherwise-resting
@@ -450,6 +454,7 @@ function lanternOf(task: Task, mood: Mood | undefined, here: boolean): Lantern {
     here,
     unread: false,
     ground: 'ready',
+    ...(serving ? { serving: true } : {}),
   };
 }
 

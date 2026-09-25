@@ -124,6 +124,11 @@ async function openVillageWindow(): Promise<BrowserWindow> {
       // means the fire stops breathing and any move already under way crawls to
       // a halt and finishes minutes later, in the corner of your eye.
       backgroundThrottling: false,
+      // The one place a session's own dev server is shown, in its own <webview>
+      // rather than the village's window navigating anywhere. contextIsolation
+      // and nodeIntegration stay at their (on/off) defaults for it; the page in
+      // there is somebody else's, not this app's.
+      webviewTag: true,
     },
   });
 
