@@ -54,6 +54,11 @@ function said(error: { type?: string; message?: string; exitCode?: number | null
   return error.type ? error.type.replaceAll('-', ' ') : 'nothing said what went wrong.';
 }
 
+/** What came of asking to read a taught skill. */
+type KnackRead =
+  | { success: true; data: { content: string } }
+  | { success: false; error: { kind: 'refused'; because: string } };
+
 /** What came of putting an agent on this machine. */
 type Fetched =
   | { success: true; data: { here: boolean } }
@@ -111,6 +116,16 @@ export interface Agents {
   addCustomTool(task: string, name: string, command: string): Promise<Told>;
   /** Throw one away, for this agent only. */
   removeTool(task: string, name: string): Promise<Told>;
+  /** The catalogue of skills Emdash ships, to install one from. */
+  skillsCatalogue(): { id: string; name: string; about: string }[];
+  /** Install one from the catalogue, for this agent everywhere. */
+  addKnack(task: string, id: string): Promise<Told>;
+  /** Write one of your own: a name, then what it is for. */
+  addCustomKnack(task: string, name: string, about: string): Promise<Told>;
+  /** Throw one away. */
+  removeKnack(task: string, name: string, from: 'everywhere' | 'here'): Promise<Told>;
+  /** What it actually says, read on demand. */
+  knackText(task: string, name: string, from: 'everywhere' | 'here'): Promise<KnackRead>;
   /** Put an agent's CLI on this machine, so somebody else could work here. */
   fetch(hand: string): Promise<Fetched>;
   /** Every building with somebody in it, for the island. */
@@ -546,6 +561,27 @@ export function createAgents(
     async removeTool(task, name) {
       const done = await kits.removeTool(task, name);
       return done.success ? { success: true, data: undefined } : done;
+    },
+
+    skillsCatalogue: () => kits.catalogueSkills(),
+
+    async addKnack(task, id) {
+      const done = await kits.addKnack(task, id);
+      return done.success ? { success: true, data: undefined } : done;
+    },
+
+    async addCustomKnack(task, name, about) {
+      const done = await kits.addCustomKnack(task, name, about);
+      return done.success ? { success: true, data: undefined } : done;
+    },
+
+    async removeKnack(task, name, from) {
+      const done = await kits.removeKnack(task, name, from);
+      return done.success ? { success: true, data: undefined } : done;
+    },
+
+    async knackText(task, name, from) {
+      return await kits.knackText(task, name, from);
     },
 
     async wake(task) {

@@ -1370,7 +1370,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-18 | Per-agent executable override |  | W8 |
 | ST-19 | MCP server management (catalog + custom) | done |  |
 | ST-20 | MCP "sync to agents" |  | W8 |
-| ST-21 | Skills catalog |  | W8 |
+| ST-21 | Skills catalog | done |  |
 | ST-22 | Automations (scheduled/cron agent runs) |  | W10 |
 | ST-23 | Per-project settings — provenance model |  | W7 |
 | ST-24 | Per-project "base" settings (GitHub account, worktree root, default branch, base/push remote, git-credential mode, tmux) |  | W7 |

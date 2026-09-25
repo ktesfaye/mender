@@ -33,6 +33,7 @@ export type Asking =
   | 'changes'
   | 'answer'
   | 'server'
+  | 'skill'
   | 'built';
 
 const PROMPTS: Record<Asking, string> = {
@@ -48,6 +49,7 @@ const PROMPTS: Record<Asking, string> = {
   changes: '› say something about these changes',
   answer: '› answer it',
   server: '› its name, then the command',
+  skill: '› its name',
 };
 
 export interface Line {

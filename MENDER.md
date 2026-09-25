@@ -510,8 +510,16 @@ A server is added from the same card: a `+` opens the catalogue of the ones
 worth suggesting, pressing one adds it as it stands, and a second `+` takes a
 name and the command that starts it on the one line every board writes on.
 Thrown away the same way everything irreversible is, two presses, the first
-naming which one. Nothing yet teaches a skill: that shelf is still read-only,
-and the rest is still done in the agent's own files.
+naming which one.
+
+A skill is read, taught and thrown away from the same card too. Pressing one
+already on the shelf opens what it actually says, right there under its own
+line; pressed again it closes. Teaching it one from Emdash's own catalogue
+folds that catalogue open the same way the server one does, and pressing an
+entry fetches what it actually teaches and writes it down. Teaching it one of
+your own is a name on the one line every board writes on, which writes a
+plain started skill under that name. Thrown away the same two presses as
+everything else here that cannot be undone.
 
 **A district is the artist's, or it is sea. Nothing grows.** The map is his
 `base-layout.json`, untouched, and his own partition of it into thirteen

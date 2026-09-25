@@ -1,7 +1,8 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { McpServer } from '@emdash/core/primitives/mcp/api';
+import { generateSkillMd, isValidSkillName } from '@emdash/core/primitives/skills/api';
 import type { SessionConfigState, SessionMcpServer } from '@emdash/core/runtimes/acp/api';
 import type { AgentConfigList } from '@emdash/core/runtimes/agent-config/api';
 import { pluginRegistry } from '@emdash/plugins/agents';
@@ -11,6 +12,7 @@ import type { Choice, Hand, Kit, Knack, Tool } from '@shared/agents';
 import { serverFromCatalog } from '@shared/mcp-catalog';
 import type { AppSettings } from './app-settings';
 import type { MenderRuntimes } from './runtimes';
+import { catalogueContent, catalogueSkills, type CatalogueSkill } from './skills-catalog';
 import type { Tasks } from './tasks';
 
 /**
@@ -64,12 +66,26 @@ export interface Kits {
   addCustomTool(task: string, name: string, command: string): Promise<Wrong>;
   /** Throw one away, for this agent only. */
   removeTool(task: string, name: string): Promise<Wrong>;
+  /** The catalogue of skills Emdash ships, to install one from. */
+  catalogueSkills(): CatalogueSkill[];
+  /** Install one from the catalogue, for this agent everywhere. */
+  addKnack(task: string, id: string): Promise<Wrong>;
+  /** Write one of your own: a name, then what it is for. */
+  addCustomKnack(task: string, name: string, about: string): Promise<Wrong>;
+  /** Throw one away. */
+  removeKnack(task: string, name: string, from: 'everywhere' | 'here'): Promise<Wrong>;
+  /** What it actually says, read on demand. */
+  knackText(task: string, name: string, from: 'everywhere' | 'here'): Promise<Read>;
   forget(task: string): Promise<void>;
   dispose(): Promise<void>;
 }
 
 type Wrong =
   | { success: true; data: void }
+  | { success: false; error: { kind: 'refused'; because: string } };
+
+type Read =
+  | { success: true; data: { content: string } }
   | { success: false; error: { kind: 'refused'; because: string } };
 
 const fine = { success: true as const, data: undefined };
@@ -206,6 +222,67 @@ export function createKits(
       if (!removed.success) return refused(said(removed.error));
       await card.redraw();
       return fine;
+    },
+
+    catalogueSkills,
+
+    async addKnack(task, id) {
+      const card = cardOf(task);
+      const hand = await card.hand();
+      const home = SKILLS_HOME[hand];
+      if (!home) return refused(`${hand} keeps no notion of a taught skill.`);
+      const entry = catalogueSkills().find((one) => one.id === id);
+      if (!entry) return refused(`${id} is not one the catalogue knows.`);
+      if (!isValidSkillName(entry.id)) return refused(`"${entry.id}" is not a name a skill can have.`);
+      const content = await catalogueContent(id);
+      if (!content) return refused('could not read it from the catalogue.');
+      const dir = join(homedir(), ...home.personal, entry.id);
+      await mkdir(dir, { recursive: true });
+      await writeFile(join(dir, 'SKILL.md'), content, 'utf8');
+      await card.redraw();
+      return fine;
+    },
+
+    async addCustomKnack(task, name, about) {
+      const card = cardOf(task);
+      const hand = await card.hand();
+      const home = SKILLS_HOME[hand];
+      if (!home) return refused(`${hand} keeps no notion of a taught skill.`);
+      const trimmed = name.trim();
+      if (!isValidSkillName(trimmed)) return refused('a skill needs a plain, lowercase name.');
+      const dir = join(homedir(), ...home.personal, trimmed);
+      await mkdir(dir, { recursive: true });
+      await writeFile(join(dir, 'SKILL.md'), generateSkillMd(trimmed, about.trim() || trimmed), 'utf8');
+      await card.redraw();
+      return fine;
+    },
+
+    async removeKnack(task, name, from) {
+      const card = cardOf(task);
+      const hand = await card.hand();
+      const home = SKILLS_HOME[hand];
+      if (!home) return refused(`${hand} keeps no notion of a taught skill.`);
+      const base = await baseOf(tasks, home, task, from);
+      if (!base) return refused('nowhere to remove it from.');
+      await rm(join(base, name), { recursive: true, force: true });
+      await card.redraw();
+      return fine;
+    },
+
+    async knackText(task, name, from) {
+      const refusedRead = (because: string): Read => ({
+        success: false,
+        error: { kind: 'refused', because },
+      });
+      const card = cardOf(task);
+      const hand = await card.hand();
+      const home = SKILLS_HOME[hand];
+      if (!home) return refusedRead(`${hand} keeps no notion of a taught skill.`);
+      const base = await baseOf(tasks, home, task, from);
+      if (!base) return refusedRead('nowhere to read it from.');
+      const content = await readFile(join(base, name, 'SKILL.md'), 'utf8').catch(() => null);
+      if (content == null) return refusedRead('could not read it.');
+      return { success: true, data: { content } };
     },
 
     async forget(task) {
@@ -436,6 +513,20 @@ export async function knacksFor(
     worktree ? shelf(join(worktree, ...home.project), 'here') : Promise.resolve([]),
   ]);
   return { supported: true, knacks: found.flat().sort((a, b) => a.name.localeCompare(b.name)) };
+}
+
+/** Where a taught skill of this agent's actually lives, for the one asked
+    about: the home folder true of every checkout, or this task's own
+    worktree. Null if the task has no worktree to keep one in. */
+async function baseOf(
+  tasks: Tasks,
+  home: { personal: string[]; project: string[] },
+  task: string,
+  from: 'everywhere' | 'here'
+): Promise<string | null> {
+  if (from === 'everywhere') return join(homedir(), ...home.personal);
+  const record = (await tasks.list()).find((each) => each.id === task);
+  return record?.path ? join(record.path, ...home.project) : null;
 }
 
 async function shelf(path: string, from: 'everywhere' | 'here'): Promise<Knack[]> {

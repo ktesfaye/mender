@@ -467,7 +467,11 @@ async function boot(): Promise<void> {
       const steps: { said: string; go?: () => void }[] = [{ said: 'yard', go: back }];
       if (looking) steps.push({ said: 'looking for something', go: back });
       if (naming) steps.push({ said: 'a new session', go: back });
-      if (titling) steps.push({ said: titling.mode === 'mcp' ? 'a server' : 'its name', go: back });
+      if (titling)
+        steps.push({
+          said: titling.mode === 'mcp' ? 'a server' : titling.mode === 'skill' ? 'a skill' : 'its name',
+          go: back,
+        });
       if (live) steps.push({ said: 'the checkout', go: back });
       if (walking) steps.push({ said: 'files', go: back });
       if (hunt) steps.push({ said: 'looking', go: back });
@@ -639,7 +643,7 @@ async function boot(): Promise<void> {
     /** Set while an existing session is being called something else, or —
         the same one line, the same keys — while a custom server is being
         named for the card. */
-    let titling: { task: Task; written: string; mode?: 'title' | 'mcp' } | null = null;
+    let titling: { task: Task; written: string; mode?: 'title' | 'mcp' | 'skill' } | null = null;
     /** Set while the board is the finder, and what has been typed into it. */
     let looking: { written: string; from: Spot } | null = null;
     /** What everybody is doing, as the main process sees it. */
@@ -2831,6 +2835,23 @@ async function boot(): Promise<void> {
       yard.line.take();
     };
 
+    /** Naming a skill of your own, the same one line and the same keys. */
+    const askKnackAdd = (task: Task): void => {
+      naming = null;
+      reading = null;
+      writing = null;
+      looked = null;
+      branchLooked = null;
+      stopWalking();
+      stopTalking();
+      sending = null;
+      titling = { task, written: '', mode: 'skill' };
+      yard.asks('skill');
+      yard.line.write('');
+      wood(addingSkill(titling));
+      yard.line.take();
+    };
+
     const wrote = (written: string): void => {
       if (reading?.noting) {
         reading = { ...reading, noting: { ...reading.noting, text: written } };
@@ -2852,7 +2873,13 @@ async function boot(): Promise<void> {
       }
       if (titling) {
         titling = { ...titling, written };
-        rewrite(titling.mode === 'mcp' ? addingServer(titling) : retitling(titling));
+        rewrite(
+          titling.mode === 'mcp'
+            ? addingServer(titling)
+            : titling.mode === 'skill'
+              ? addingSkill(titling)
+              : retitling(titling)
+        );
         return;
       }
       if (!naming) return;
@@ -2936,6 +2963,20 @@ async function boot(): Promise<void> {
             task: asked.task.id,
             name,
             command: rest.join(' '),
+          });
+          if (!done.success && done.error.kind === 'refused') say(done.error.because, 6000);
+        }
+        if (aim) await showCard(aim, asked.task);
+        return;
+      }
+      if (asked.mode === 'skill') {
+        const name = asked.written.trim();
+        const aim = open;
+        if (name) {
+          const done = await client.agents.addCustomKnack({
+            task: asked.task.id,
+            name,
+            about: '',
           });
           if (!done.success && done.error.kind === 'refused') say(done.error.because, 6000);
         }
@@ -3459,6 +3500,18 @@ async function boot(): Promise<void> {
         rewrite(card?.rows() ?? []);
         return;
       }
+      if (meant.does === 'browseknacks' || meant.does === 'knack') {
+        rewrite(card?.rows() ?? []);
+        return;
+      }
+      if (meant.does === 'addcustomknack') {
+        askKnackAdd(task);
+        return;
+      }
+      if (meant.does === 'rmknack' && !meant.asked) {
+        rewrite(card?.rows() ?? []);
+        return;
+      }
       void (async () => {
         const done =
           meant.does === 'choose'
@@ -3470,8 +3523,17 @@ async function boot(): Promise<void> {
               ? await client.agents.addTool({ task: task.id, key: meant.key })
               : meant.does === 'rmtool'
                 ? await client.agents.removeTool({ task: task.id, name: meant.name })
-                : await client.agents.tool({ task: task.id, name: meant.name, on: meant.on });
+                : meant.does === 'addknack'
+                  ? await client.agents.addKnack({ task: task.id, id: meant.id })
+                  : meant.does === 'rmknack'
+                    ? await client.agents.removeKnack({
+                        task: task.id,
+                        name: meant.name,
+                        from: meant.from,
+                      })
+                    : await client.agents.tool({ task: task.id, name: meant.name, on: meant.on });
         if (!done.success && done.error.kind === 'refused') say(done.error.because, 6000);
+        else rewrite(card?.rows() ?? []);
       })();
     };
 
@@ -3747,7 +3809,7 @@ async function boot(): Promise<void> {
           const mode = titling.mode;
           const asked = titling.task;
           titling = null;
-          if (mode === 'mcp' && open) void showCard(open, asked);
+          if ((mode === 'mcp' || mode === 'skill') && open) void showCard(open, asked);
           else {
             const task = inside;
             if (task && open) void openTask(open, task);
@@ -4181,6 +4243,22 @@ function addingServer(titling: { task: Task; written: string }): Row[] {
     {
       kind: 'line',
       text: 'return adds it. escape clears it, again to leave it alone.',
+      tone: 'faded',
+    },
+  ];
+}
+
+/** Naming a skill of your own, the one line every board writes on. */
+function addingSkill(titling: { task: Task; written: string }): Row[] {
+  return [
+    { kind: 'title', text: 'teach it a skill' },
+    { kind: 'gap' },
+    { kind: 'line', text: 'its name.' },
+    { kind: 'typed', text: titling.written },
+    { kind: 'gap' },
+    {
+      kind: 'line',
+      text: 'return teaches it. escape clears it, again to leave it alone.',
       tone: 'faded',
     },
   ];

@@ -46,10 +46,27 @@ export type Meant =
   | { does: 'addcustom' }
   /** Arm or fire the two-press removal of one server. */
   | { does: 'rmtool'; name: string; asked: boolean }
+  /** Fold the catalogue of installable skills open or shut. */
+  | { does: 'browseknacks' }
+  /** Install one from the catalogue. */
+  | { does: 'addknack'; id: string }
+  /** Write one of your own: a name, then what it is for. */
+  | { does: 'addcustomknack' }
+  /** Read, or stop reading, one it already knows. */
+  | { does: 'knack'; name: string; from: 'everywhere' | 'here' }
+  /** Arm or fire the two-press removal of one it already knows. */
+  | { does: 'rmknack'; name: string; from: 'everywhere' | 'here'; asked: boolean }
   /** Write the transcript out as a markdown file, outside any checkout. */
   | { does: 'export' }
   /** The just-written transcript, shown where it actually landed. */
   | { does: 'show-export'; path: string };
+
+interface KnackUi {
+  catalogShowing: boolean;
+  catalog: { id: string; name: string; about: string }[] | null;
+  removing: { name: string; from: 'everywhere' | 'here' } | null;
+  reading: { name: string; from: 'everywhere' | 'here'; text: string | null } | null;
+}
 
 export async function openCard(
   client: MenderClient,
@@ -69,11 +86,19 @@ export async function openCard(
   let removing: string | null = null;
   /** What the export line says while its own result is sitting on it. */
   let exported: { text: string; path?: string } | null = null;
+  /** The catalogue of skills, what it is reading, and what it is about to
+      throw away — all folded together since none of it is a fact the kit
+      itself carries. */
+  let knackUi: KnackUi = { catalogShowing: false, catalog: null, removing: null, reading: null };
+
+  const redraw = (): void => {
+    changed(written(task, kit, ending, showing, catalogShowing, removing, exported, knackUi));
+  };
 
   const replica = new ReplicaState<Kit>(client.agents.kit.state({ task: task.id }, 'state'), {
     onChange: (value) => {
       kit = value;
-      changed(written(task, value, ending, showing, catalogShowing, removing, exported));
+      redraw();
     },
   });
 
@@ -86,7 +111,7 @@ export async function openCard(
         {
           onChange: (value) => {
             ending = { ...ending, uncommitted: Object.keys(value.entries ?? {}).length };
-            changed(written(task, kit, ending, showing, catalogShowing, removing, exported));
+            redraw();
           },
         }
       )
@@ -95,7 +120,7 @@ export async function openCard(
     ? new ReplicaState<CheckoutHeadState>(model.state({ checkout }, 'head'), {
         onChange: (value) => {
           ending = { ...ending, unsent: unsentIn(value) };
-          changed(written(task, kit, ending, showing, catalogShowing, removing, exported));
+          redraw();
         },
       })
     : null;
@@ -109,7 +134,7 @@ export async function openCard(
   };
 
   return {
-    rows: () => written(task, kit, ending, showing, catalogShowing, removing, exported),
+    rows: () => written(task, kit, ending, showing, catalogShowing, removing, exported, knackUi),
     setExported: (said) => {
       exported = said;
     },
@@ -139,6 +164,47 @@ export async function openCard(
         return { ...meant, asked: false };
       }
       if (meant?.does === 'browse') catalogShowing = !catalogShowing;
+      if (meant?.does === 'browseknacks') {
+        knackUi = { ...knackUi, catalogShowing: !knackUi.catalogShowing };
+        if (knackUi.catalogShowing && !knackUi.catalog) {
+          void client.agents.skillsCatalogue().then((list) => {
+            knackUi = { ...knackUi, catalog: list };
+            redraw();
+          });
+        }
+      }
+      if (meant?.does === 'rmknack') {
+        if (knackUi.removing?.name === meant.name && knackUi.removing.from === meant.from) {
+          knackUi = { ...knackUi, removing: null };
+          return { ...meant, asked: true };
+        }
+        knackUi = { ...knackUi, removing: { name: meant.name, from: meant.from } };
+        return { ...meant, asked: false };
+      }
+      if (meant?.does === 'knack') {
+        if (knackUi.reading?.name === meant.name && knackUi.reading.from === meant.from) {
+          knackUi = { ...knackUi, reading: null };
+        } else {
+          knackUi = { ...knackUi, reading: { name: meant.name, from: meant.from, text: null } };
+          const asked = meant;
+          void client.agents
+            .knackText({ task: task.id, name: asked.name, from: asked.from })
+            .then((got) => {
+              if (knackUi.reading?.name !== asked.name || knackUi.reading.from !== asked.from) return;
+              knackUi = {
+                ...knackUi,
+                reading: {
+                  name: asked.name,
+                  from: asked.from,
+                  text: got.success
+                    ? got.data.content
+                    : `could not read it${got.error.kind === 'refused' ? `: ${got.error.because}` : '.'}`,
+                },
+              };
+              redraw();
+            });
+        }
+      }
       return meant;
     },
     close: async () => {
@@ -158,6 +224,17 @@ function read(pick: string, kit: Kit | null): Meant | null {
   if (pick.startsWith('rmtool:')) return { does: 'rmtool', name: pick.slice(7), asked: false };
   if (pick === 'export') return { does: 'export' };
   if (pick.startsWith('show-export:')) return { does: 'show-export', path: pick.slice(12) };
+  if (pick === 'browseknacks') return { does: 'browseknacks' };
+  if (pick === 'addcustomknack') return { does: 'addcustomknack' };
+  if (pick.startsWith('addknack:')) return { does: 'addknack', id: pick.slice(9) };
+  if (pick.startsWith('rmknack:')) {
+    const [, from, name] = pick.split(':');
+    return { does: 'rmknack', name, from: from as 'everywhere' | 'here', asked: false };
+  }
+  if (pick.startsWith('knack:')) {
+    const [, from, name] = pick.split(':');
+    return { does: 'knack', name, from: from as 'everywhere' | 'here' };
+  }
   const cut = pick.indexOf(':');
   if (cut === -1) return null;
   const kind = pick.slice(0, cut);
@@ -189,7 +266,8 @@ function written(
   showing?: boolean,
   catalogShowing?: boolean,
   removing?: string | null,
-  exported?: { text: string; path?: string } | null
+  exported?: { text: string; path?: string } | null,
+  knackUi?: KnackUi
 ): Row[] {
   const rows: Row[] = [
     { kind: 'title', text: task.title, pick: 'card' },
@@ -324,16 +402,50 @@ function written(
   rows.push({ kind: 'gap' }, { kind: 'heading', text: 'what it has been taught' });
   if (!kit.knacksSupported) {
     rows.push({ kind: 'line', text: 'this agent keeps none.', tone: 'faded' });
-  } else if (!kit.knacks.length) {
-    rows.push({ kind: 'line', text: 'nothing yet.', tone: 'faded' });
-  }
-  for (const knack of kit.knacks) {
-    rows.push({
-      kind: 'entry',
-      mark: knack.from === 'here' ? '■' : OFF,
-      text: knack.about ? `${knack.name} · ${knack.about}` : knack.name,
-      tone: 'ink',
-    });
+  } else {
+    if (!kit.knacks.length) {
+      rows.push({ kind: 'line', text: 'nothing yet.', tone: 'faded' });
+    }
+    for (const knack of kit.knacks) {
+      const open =
+        knackUi?.reading?.name === knack.name && knackUi.reading.from === knack.from;
+      rows.push({
+        kind: 'entry',
+        mark: knack.from === 'here' ? '■' : OFF,
+        text: knack.about ? `${knack.name} · ${knack.about}` : knack.name,
+        tone: 'ink',
+        pick: `knack:${knack.from}:${knack.name}`,
+      });
+      if (open) {
+        rows.push({
+          kind: 'prose',
+          text: knackUi?.reading?.text ?? 'reading…',
+          tone: 'faded',
+        });
+        const asking = knackUi?.removing?.name === knack.name && knackUi.removing.from === knack.from;
+        rows.push({
+          kind: 'entry',
+          mark: '✗',
+          text: asking ? `press again and ${knack.name} is gone` : 'throw it away',
+          tone: asking ? 'sore' : 'faded',
+          pick: `rmknack:${knack.from}:${knack.name}`,
+        });
+      }
+    }
+    if (knackUi?.catalogShowing) {
+      const has = new Set(kit.knacks.map((knack) => knack.name));
+      for (const entry of (knackUi.catalog ?? []).filter((one) => !has.has(one.id))) {
+        rows.push({
+          kind: 'line',
+          text: `${entry.name} · ${entry.about}`,
+          pick: `addknack:${entry.id}`,
+        });
+      }
+      rows.push({ kind: 'line', text: 'fold the catalogue away', pick: 'browseknacks' });
+    } else {
+      rows.push({ kind: 'line', text: 'teach it one from the catalogue', pick: 'browseknacks' });
+    }
+    rows.push({ kind: 'line', text: 'teach it one of your own', pick: 'addcustomknack' });
   }
   rows.push({ kind: 'gap' }, exportRow(exported));
   return [...rows, ...over(ending, kit.awake)];

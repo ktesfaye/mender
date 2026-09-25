@@ -450,6 +450,35 @@ export const agentsContract = defineContract({
     data: z.void(),
     error: agentErrorSchema,
   }),
+  /** The catalogue of skills Emdash ships, to install one from. */
+  skillsCatalogue: procedure({
+    input: z.void(),
+    output: z.array(z.object({ id: z.string(), name: z.string(), about: z.string() })),
+  }),
+  /** Install one from the catalogue, for this agent everywhere. */
+  addKnack: fallible({
+    input: z.object({ task: z.string(), id: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** Write one of your own: a name, then what it is for. */
+  addCustomKnack: fallible({
+    input: z.object({ task: z.string(), name: z.string(), about: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** Throw one away. */
+  removeKnack: fallible({
+    input: z.object({ task: z.string(), name: z.string(), from: z.enum(['everywhere', 'here']) }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** What it actually says, read on demand. */
+  knackText: fallible({
+    input: z.object({ task: z.string(), name: z.string(), from: z.enum(['everywhere', 'here']) }),
+    data: z.object({ content: z.string() }),
+    error: agentErrorSchema,
+  }),
   /** What is going on in one building, as it goes on. */
   work: liveModel({
     key: z.object({ task: z.string() }),
