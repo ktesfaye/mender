@@ -585,7 +585,18 @@ async function boot(): Promise<void> {
     /* `shell` is a plain shell's own live terminal most of the time, and an
        agent's own CLI running raw when the session behind it is a terminal
        one instead — the same slot, the same cleanup, whichever it is. */
-    let talking: { shell: LiveShell | LiveTuiTerminal | null; name: string } | null = null;
+    let talking: {
+      shell: LiveShell | LiveTuiTerminal | null;
+      name: string;
+      /** Which of a checkout's shells this is — unset for the agent's own
+          terminal, which only ever has the one. */
+      shellId?: string;
+      /** Set when this slot is a session's own terminal rather than a plain
+          shell — its own process to end, not a shell's. */
+      tuiTask?: string;
+      /** Armed for the second press, and what that press would end. */
+      ending?: { armed: boolean; what: string | null } | null;
+    } | null = null;
     /* A browser laid over the yard, showing one page. `url` is what is
        actually loaded; `written` is what the foot-of-board line currently
        says, which differs from it while an address is being typed. */
@@ -2199,16 +2210,23 @@ async function boot(): Promise<void> {
      * while it is what is open. `ctrl+]` is the one chord this board keeps
      * for itself, and it steps back out to wherever you were.
      */
-    const talk = async (): Promise<void> => {
+    const talk = async (id = 'village'): Promise<void> => {
       const place = onPlace();
       if (!place || !open) return;
       const aim = open;
       stopTalking();
       stopWalking();
       const name = 'title' in place ? place.title : place.name;
-      talking = { shell: null, name };
+      const second = id !== 'village';
+      talking = { shell: null, name, shellId: id, ending: null };
       const mine = talking;
-      wood(shell({ name, running: false }));
+      const redrawShell = (running: boolean, stopped?: string): void => {
+        wood(
+          shell({ name, running, stopped, second, ending: mine.ending }),
+          running && mine.shell ? mine.shell.el : undefined
+        );
+      };
+      redrawShell(false);
       const running = await openShell(
         client,
         place.path,
@@ -2222,19 +2240,83 @@ async function boot(): Promise<void> {
             else home();
           }
         },
-        (url) => noteServer(place.path, url)
+        (url) => noteServer(place.path, url),
+        id
       );
       if (talking !== mine || open !== aim) {
         await running?.close();
         return;
       }
       if (!running) {
-        wood(shell({ name, running: true, stopped: 'no shell would start here.' }));
+        redrawShell(true, 'no shell would start here.');
         return;
       }
       mine.shell = running;
-      wood(shell({ name, running: true }), running.el);
+      redrawShell(true);
       running.focus();
+    };
+
+    /**
+     * Ending a shell from the board, in two presses: the first asks what is
+     * running under it, the second actually ends it.
+     *
+     * The armed line names what it would lose, read off the machine itself
+     * (`board.runningIn`) rather than guessed — a shell with nothing but its
+     * own prompt running says so plainly instead of pretending there is
+     * something to weigh.
+     */
+    const endShell = async (): Promise<void> => {
+      const mine = talking;
+      if (!mine?.shell) return;
+      const key = 'key' in mine.shell ? mine.shell.key : null;
+      const task = mine.tuiTask;
+      if (!key && !task) return;
+
+      const redraw = (): void => {
+        if (key) {
+          wood(
+            shell({
+              name: mine.name,
+              running: true,
+              second: mine.shellId !== 'village',
+              ending: mine.ending,
+            }),
+            mine.shell?.el
+          );
+        } else {
+          wood(
+            tuiSession({
+              name: mine.name,
+              hand: tasks.find((one) => one.id === task)?.agent ?? 'the agent',
+              running: true,
+              ending: Boolean(mine.ending?.armed),
+            }),
+            mine.shell?.el
+          );
+        }
+      };
+
+      if (!mine.ending?.armed) {
+        mine.ending = { armed: false, what: null };
+        redraw();
+        const found = key ? await client.board.runningIn({ key }, { timeoutMs: 0 }) : null;
+        if (talking !== mine) return;
+        mine.ending = { armed: true, what: found?.name ?? null };
+        redraw();
+        return;
+      }
+      if (key) {
+        await client.terminals.kill({ key }, { timeoutMs: 0 });
+        if (talking !== mine) return;
+        stopTalking();
+        if (live) wood(live.rows());
+        else home();
+        return;
+      }
+      if (task) await client.tuiAgents.stop({ conversationId: task }, { timeoutMs: 0 });
+      if (talking !== mine) return;
+      stopTalking();
+      home();
     };
 
     const stopTalking = (): void => {
@@ -2809,7 +2891,7 @@ async function boot(): Promise<void> {
       if (open !== aim) return;
       stopTalking();
       const name = task.title;
-      talking = { shell: null, name };
+      talking = { shell: null, name, tuiTask: task.id, ending: null };
       const mine = talking;
       const hand = task.agent ?? 'the agent';
       wood(tuiSession({ name, hand, running: false }));
@@ -3461,6 +3543,14 @@ async function boot(): Promise<void> {
         const rest = pick.slice('installdep:'.length);
         const cut = rest.indexOf('\u0000');
         if (cut !== -1) void runInstall(rest.slice(cut + 1));
+        return;
+      }
+      if (pick === 'shell2') {
+        void talk('village-2');
+        return;
+      }
+      if (pick === 'shell-end') {
+        void endShell();
         return;
       }
       if (pick.startsWith('page:')) {

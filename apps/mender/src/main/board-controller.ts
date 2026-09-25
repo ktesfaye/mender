@@ -6,5 +6,6 @@ import type { Board } from './board';
 export function createBoardController(board: Board): Controller {
   return createController(boardContract, {
     picture: async ({ path, width }) => ({ picture: await board.picture(path, width) }),
+    runningIn: async ({ key }) => ({ name: await board.runningIn(key) }),
   });
 }

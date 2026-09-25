@@ -617,8 +617,9 @@ today, its own kind of session later) drops the whole paste otherwise.
 tmux was not on this machine either. Like ripgrep, that is a host dependency
 rather than a code change, and it is installed.
 
-Not here yet: more than one shell per checkout, and killing a shell from the
-board. (A dev server's port being noticed and offered is done — see below.)
+(A dev server's port being noticed and offered is done — see below. More
+than one shell per checkout, and ending a shell or a terminal session's
+agent from the board, followed on 2026-09-25 — see further down.)
 
 Closes TR-01 through TR-04, TR-06, TR-09 through TR-12, UI-12, UI-40.
 
@@ -2287,6 +2288,48 @@ worktree, no second session.
 Not done: "more than one shell per checkout" and "killing a shell (or a
 terminal session's agent) from the board" — both still open, see the shell
 section above.
+
+### A second shell, and ending one, or a terminal session's agent (2026-09-25)
+
+TR-09/TR-12's own follow-up, closed. A checkout's board now offers "open a
+second shell in here" beside the first: a second tmux, its own place,
+alive independently of the first's whether or not either is what the board
+is showing right now — pressing "open a shell in here" always reattaches to
+the first, the second entry always reattaches to (or cuts) the second.
+Only two, addressed as such, rather than an open-ended list: reaching a
+third or naming them is left for whenever more than two is a real ask
+rather than a guess.
+
+Both a plain shell and a session's own terminal now offer to end what they
+are running, in the app's usual two presses. The armed line names what the
+second press would actually lose — read fresh each time from the machine
+itself (`main/board.ts`'s new `runningIn`), never guessed: for a plain
+shell it walks from the terminal runtime's own tracked pid to the real
+pane (tmux tracks the *attaching client's* pid, not the pane, so this reads
+the client's own command line for which session it names and asks tmux for
+that pane directly — two shells sharing one checkout's working directory
+would otherwise be indistinguishable by path alone) and then to that pane's
+own most recent child, naming it unless it is only another shell. For a
+session's own terminal the second press is `tuiAgents.stop`, the same
+"send home" the rest of the app already uses elsewhere. Ending either steps
+the board back the same way `ctrl+]` already does.
+
+Caught along the way: the first version of `runningIn` compared a parsed
+absolute path with `===`, which is never true of two separate reads of the
+same checkout — a parsed path is a structured value, not a string. Fixed by
+formatting both sides before comparing.
+
+Driven, in a throwaway checkout: opened its shell, ran `sleep 400` in it,
+pressed "end this shell" — armed to "ends sleep. click again to end it."
+— and the second press ended both the process and its tmux session,
+confirmed gone from `ps`/`tmux list-sessions`, and the board stepped back
+to the checkout. Opened a second shell beside the first, wrote a marker in
+each (`echo IN_SHELL_ONE` / `IN_SHELL_TWO`), stepped out and back into the
+first by name and read its own marker back, with `tmux list-sessions`
+showing both alive at once the whole time. On an existing terminal-kind
+session, pressed "end this session" — armed to "ends the agent's process.
+click again to end it." — and confirmed the `claude` process and its tmux
+session were gone afterward.
 
 ### Next
 

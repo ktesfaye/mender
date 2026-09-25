@@ -17,11 +17,17 @@ export interface Shell {
   running: boolean;
   /** Set when it would not start, or has stopped. */
   stopped?: string;
+  /** The second shell in this checkout, alive beside the first one's own
+      tmux rather than in place of it. */
+  second?: boolean;
+  /** Armed for the second press, and what that press would end — null once
+      asked and found to be nothing but the shell itself. */
+  ending?: { armed: boolean; what: string | null } | null;
 }
 
 export function shell(state: Shell): Row[] {
   const rows: Row[] = [
-    { kind: 'title', text: state.name },
+    { kind: 'title', text: state.second ? `${state.name} — second shell` : state.name },
     { kind: 'line', text: 'a real shell, in this checkout — ctrl+] steps back out', tone: 'faded' },
   ];
 
@@ -31,6 +37,22 @@ export function shell(state: Shell): Row[] {
   }
   if (!state.running) {
     rows.push({ kind: 'gap' }, { kind: 'line', text: 'starting it…', tone: 'faded' });
+    return rows;
   }
+  const said = state.ending?.armed
+    ? state.ending.what
+      ? `ends ${state.ending.what}. click again to end it.`
+      : 'click again to end it.'
+    : 'end this shell';
+  rows.push(
+    { kind: 'gap' },
+    {
+      kind: 'entry',
+      mark: '→',
+      text: said,
+      tone: state.ending?.armed ? 'sore' : 'faded',
+      pick: 'shell-end',
+    }
+  );
   return rows;
 }

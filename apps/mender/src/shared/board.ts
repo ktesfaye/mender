@@ -1,3 +1,4 @@
+import { terminalKeySchema } from '@emdash/core/runtimes/terminals/api';
 import { defineContract, procedure } from '@emdash/wire/rpc';
 import { z } from 'zod';
 
@@ -25,6 +26,12 @@ export const boardContract = defineContract({
   picture: procedure({
     input: z.object({ path: z.string(), width: z.number() }),
     output: z.object({ picture: boardPictureSchema.nullable() }),
+  }),
+  /** What a shell would actually lose, so ending it can say so rather than
+      asking blind. Null when there is nothing under the shell itself. */
+  runningIn: procedure({
+    input: z.object({ key: terminalKeySchema }),
+    output: z.object({ name: z.string().nullable() }),
   }),
 });
 

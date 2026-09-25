@@ -92,7 +92,7 @@ export async function main(): Promise<void> {
     ...runtimes.controllers,
     agents: createAgentsController(agents, moods, tuiSessions),
     appSettings: createAppSettingsController(appSettings, sessionUsage),
-    board: createBoardController(createBoard()),
+    board: createBoardController(createBoard(runtimes)),
     changes: createChangesController(changes),
     finding: createFindingController(finding),
     github: createGitHubStatus(),

@@ -438,6 +438,15 @@ the line that would fetch it onto the prompt, unsent, the same way a
 dropped file or an agent's own sign-in line already lands there: his own key
 in his own shell is what actually runs it.
 
+**A checkout can hold two shells at once.** A second line offers "open a
+second shell in here," its own tmux beside the first's, alive whether or not
+either one is what the board is showing right now — stepping out of one and
+back into the other finds it exactly where it was left. Either shell, and a
+session's own terminal too, ends from the board in the app's usual two
+presses: the armed line names what it would actually lose, asked of the
+machine fresh rather than guessed, so ending one that is only sitting at its
+own prompt says so plainly instead of pretending there is something to weigh.
+
 **A session can be its own terminal instead of a conversation.** Naming a new
 one on the empty hook offers a second line beside its name: in its own
 terminal. Taken, the worktree is cut exactly as always and the agent's own

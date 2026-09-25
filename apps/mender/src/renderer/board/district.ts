@@ -265,6 +265,9 @@ function build(
     ),
     // The one thing a checkout is for that git has no word for.
     { kind: 'entry', mark: '→', text: 'open a shell in here', tone: 'faded', pick: 'shell' },
+    // Two places to work at once — the first stays exactly where it was,
+    // still running in its own tmux, whichever one the board is showing.
+    { kind: 'entry', mark: '→', text: 'open a second shell in here', tone: 'faded', pick: 'shell2' },
     // Finding a file does not need walking to it first.
     { kind: 'entry', mark: '→', text: 'find a file', tone: 'faded', pick: 'hunt' },
     // And the way this piece of work ends, which is not in a browser.

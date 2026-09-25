@@ -18,6 +18,8 @@ export interface TuiSession {
   running: boolean;
   /** Set when it would not start, or has stopped. */
   stopped?: string;
+  /** Armed for the second press, ending the agent's own process. */
+  ending?: boolean;
 }
 
 export function tuiSession(state: TuiSession): Row[] {
@@ -36,6 +38,14 @@ export function tuiSession(state: TuiSession): Row[] {
   }
   if (!state.running) {
     rows.push({ kind: 'gap' }, { kind: 'line', text: 'starting it…', tone: 'faded' });
+    return rows;
   }
+  rows.push({
+    kind: 'entry',
+    mark: '→',
+    text: state.ending ? `ends ${state.hand}'s process. click again to end it.` : 'end this session',
+    tone: state.ending ? 'sore' : 'faded',
+    pick: 'shell-end',
+  });
   return rows;
 }

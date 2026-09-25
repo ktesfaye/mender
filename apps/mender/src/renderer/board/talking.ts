@@ -40,16 +40,18 @@ export async function openShell(
   /** `ctrl+]` was pressed — step back out to the board behind this one. */
   steppedOut: () => void,
   /** A dev server's own address, noticed in what the shell printed. */
-  onServer?: (url: string) => void
+  onServer?: (url: string) => void,
+  /** Which of a checkout's shells this is. Opening the same id twice is the
+      same shell, which is the whole point: it is a place. A second id is a
+      second place, its own tmux, alive independently of the first. */
+  id = 'village'
 ): Promise<LiveShell | null> {
   const parsed = parseNativeAbsolute(checkout);
   if (!parsed.success) return null;
 
-  /* One shell per checkout, named after it. Opening the same checkout's shell
-     twice is the same shell, which is the whole point: it is a place. */
   const key: TerminalKey = {
     workspace: { host: LOCAL_HOST_REF, path: parsed.data },
-    id: 'village',
+    id,
   };
 
   const term: LiveTerminal = makeTerminal({
