@@ -165,7 +165,11 @@ what every new session carries into its worktree that git would leave behind,
 what runs when a worktree is cut — prepare before a session starts, setup and
 run alongside it, teardown when it comes down, each just a line of shell —
 who its commits go out as when that should be someone other than whatever git
-would already say, where it is, and removing it. A project that has just moved
+would already say, whether this machine is signed in to GitHub and as whom —
+there is no per-project account here, the village is to GitHub whoever `gh`
+on this machine already signs in as, and signing in from a settings window
+that isn't signed in opens the same one-time code `gh` itself would give you
+in a terminal — where it is, and removing it. A project that has just moved
 in opens it first.
 
 **Everything else is laid over the yard, never instead of it.** A file, a

@@ -701,6 +701,26 @@ whole wait, prepare included, rather than naming the step), and a way to
 re-run setup, run or teardown by hand from the checkout board — both are
 sized right for a follow-up pass, not this one.
 
+**A fifth section says whether this machine is signed in to GitHub, and as
+whom.** Mender keeps no per-project account of its own — MENDER.md is
+explicit that the village is to GitHub whoever `gh` on this machine already
+signs in as — so this is a machine fact living on the one settings surface
+that exists today, not a per-project picker Emdash has and Mender doesn't
+want. Signed in shows "connected to `<host>` as `<login>`" and nothing to
+press, quiet being the default here same as an agent's own auth line. Signed
+out shows why and a "Sign in…" line: pressing it starts `gh`'s own device
+flow, opens the browser to it, and the line itself becomes the one-time code
+the moment `gh` prints it — the flow keeps running in the background after,
+so finishing it in the browser and reopening settings is what shows
+"connected" next. No `gh` on the machine at all says that plainly instead.
+Driven: real signed-in state read correctly against this machine's own `gh`;
+the signed-out and sign-in-started states were driven against an isolated
+`GH_CONFIG_DIR` pointed at an empty scratch folder, never against a real
+account, and the device-flow subprocess it started was killed before
+anyone could finish it in a browser. Not done: nothing pushes an update to
+an open settings window when the browser flow finishes on its own; reopening
+it is what asks again.
+
 ### W7 — the rest of it
 
 The largest wave, and the least glamorous. Everything about founding, naming,

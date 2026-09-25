@@ -12,6 +12,7 @@
  * mostly sets is what the project looks like on the rack.
  */
 
+import type { GitHubStatus } from '@shared/github';
 import type {
   Carrying,
   Picture,
@@ -32,6 +33,10 @@ export interface SettingsState {
   carrying: Carrying | null;
   /** What runs when a worktree is cut. Null while it is still being read. */
   scripts: Scripts | null;
+  /** Whether this machine is signed in to GitHub, and as whom. A machine
+      fact, not a project one — every project acts as the same one. Null
+      while it is still being read. */
+  github: GitHubStatus | null;
   /** How many sessions it has, which is what removing it costs. */
   sessions: number;
   /** Just moved in, so this is the first thing it is asked. */
@@ -48,6 +53,8 @@ export interface SettingsDoings {
   identity(name: string, email: string): Promise<void>;
   /** Blank clears that script, back to nothing running for it. */
   script(which: ScriptKind, value: string): Promise<void>;
+  /** Starts GitHub's device flow. Resolves to what went wrong, if it did. */
+  signIn(): Promise<{ code: string; url: string } | { wrong: string }>;
   show(): void;
   forget(): Promise<void>;
   closed(): void;
@@ -130,8 +137,9 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   const sessions = section('New sessions');
   const scripts = section('What runs when a worktree is cut');
   const identity = section('Commits go out as');
+  const github = section('GitHub');
   const danger = el('div', 'settings-danger');
-  body.append(welcome, faces.root, sessions.root, scripts.root, identity.root, danger);
+  body.append(welcome, faces.root, sessions.root, scripts.root, identity.root, github.root, danger);
   panel.append(head, body);
 
   document.body.appendChild(back);
@@ -358,6 +366,58 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     identity.fill([hint, row]);
   }
 
+  let signingIn: { code: string; url: string } | null = null;
+  let ghTrouble: string | null = null;
+
+  function drawGitHub(): void {
+    const now3 = now.github;
+    if (!now3) {
+      const hint = el('p', 'settings-hint');
+      hint.textContent = 'Reading it…';
+      github.fill([hint]);
+      return;
+    }
+    if (now3.kind === 'signed-in') {
+      const said = el('p', 'settings-hint');
+      said.textContent = `Connected to ${now3.host} as ${now3.login}.`;
+      github.fill([said]);
+      return;
+    }
+    if (signingIn) {
+      const said = el('p', 'settings-hint');
+      said.textContent = `Code ${signingIn.code} — opened in the browser.`;
+      github.fill([said]);
+      return;
+    }
+    const hint = el('p', 'settings-hint');
+    hint.textContent =
+      now3.kind === 'no-gh'
+        ? 'This machine has no `gh` installed, so nothing here can sign in.'
+        : 'Not signed in. Every project acts as whoever this machine signs in as.';
+    const children: HTMLElement[] = [hint];
+    if (now3.kind === 'signed-out') {
+      children.push(
+        button('Sign in…', 'settings-button', () => {
+          ghTrouble = null;
+          void does.signIn().then((said) => {
+            if ('wrong' in said) {
+              ghTrouble = said.wrong;
+            } else {
+              signingIn = said;
+            }
+            drawGitHub();
+          });
+        })
+      );
+    }
+    if (ghTrouble) {
+      const wrong = el('p', 'settings-trouble');
+      wrong.textContent = ghTrouble;
+      children.push(wrong);
+    }
+    github.fill(children);
+  }
+
   function drawDanger(): void {
     const cost = !now.sessions
       ? 'the folder stays where it is'
@@ -393,6 +453,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     drawSessions();
     if (document.activeElement?.closest('.settings-scripts-list') == null) drawScripts();
     if (document.activeElement?.closest('.settings-identity-row') == null) drawIdentity();
+    drawGitHub();
     drawDanger();
   }
 

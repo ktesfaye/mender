@@ -12,6 +12,7 @@ import { createChanges } from './changes';
 import { createChangesController } from './changes-controller';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
+import { createGitHubStatus } from './github';
 import { createProjects } from './projects';
 import { createProjectsController } from './projects-controller';
 import { createPromptsController } from './prompts';
@@ -70,6 +71,7 @@ export async function main(): Promise<void> {
     board: createBoardController(createBoard()),
     changes: createChangesController(changes),
     finding: createFindingController(finding),
+    github: createGitHubStatus(),
     projects: createProjectsController(projects),
     prompts: createPromptsController(),
     tasks: createTasksController(tasks),

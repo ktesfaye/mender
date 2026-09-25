@@ -963,6 +963,7 @@ async function boot(): Promise<void> {
         more: 0,
         carrying: null,
         scripts: null,
+        github: null,
         sessions: tasks.filter((task) => task.project === project.id).length,
         ...(fresh ? { fresh } : {}),
       };
@@ -1033,6 +1034,18 @@ async function boot(): Promise<void> {
           );
           redraw();
         },
+        signIn: async () => {
+          const started = await client.github.signIn({}, { timeoutMs: 0 });
+          if (!started.success) {
+            return {
+              wrong:
+                started.error.kind === 'no-gh'
+                  ? 'This machine has no `gh` installed.'
+                  : `gh would not start signing in: ${started.error.said}`,
+            };
+          }
+          return started.data;
+        },
         show: () => window.mender.showIt(project.path),
         forget: async () => {
           const went = await forget(project.id);
@@ -1051,6 +1064,10 @@ async function boot(): Promise<void> {
       })();
       void (async () => {
         state.scripts = await client.projects.scripts({ id: project.id }, { timeoutMs: 0 });
+        redraw();
+      })();
+      void (async () => {
+        state.github = await client.github.status({}, { timeoutMs: 0 });
         redraw();
       })();
     };
@@ -1205,7 +1222,12 @@ async function boot(): Promise<void> {
     const askAmend = (): void => {
       const on = looked;
       if (!on?.commit || !on.isHead) return;
-      amending = { aim: on.aim, checkout: on.checkout, hash: on.commit.hash, written: on.commit.subject };
+      amending = {
+        aim: on.aim,
+        checkout: on.checkout,
+        hash: on.commit.hash,
+        written: on.commit.subject,
+      };
       yard.asks('amend');
       yard.line.write(amending.written);
       wood(amendBoard(amending.written));
@@ -2780,8 +2802,10 @@ async function boot(): Promise<void> {
         if (amending) {
           const mine = amending;
           if (event.key === 'Enter') void amended();
-          else if (event.key === 'Backspace') amending = { ...mine, written: mine.written.slice(0, -1) };
-          else if (event.key.length === 1) amending = { ...mine, written: mine.written + event.key };
+          else if (event.key === 'Backspace')
+            amending = { ...mine, written: mine.written.slice(0, -1) };
+          else if (event.key.length === 1)
+            amending = { ...mine, written: mine.written + event.key };
           else return yard.scrolled(event.key);
           if (amending) rewrite(amendBoard(amending.written));
           return true;
