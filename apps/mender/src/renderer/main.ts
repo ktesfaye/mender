@@ -1915,7 +1915,11 @@ async function boot(): Promise<void> {
         () => {
           if (talking === mine && open === aim) {
             stopTalking();
-            home();
+            /* `ctrl+]` steps back to the board behind the shell, which is the
+               checkout board it was opened from when there is one — not all
+               the way home past it. */
+            if (live) wood(live.rows());
+            else home();
           }
         },
         (url) => noteServer(place.path, url)
@@ -3143,7 +3147,10 @@ async function boot(): Promise<void> {
            through to whatever is running, and `ctrl+]` is what steps out. */
         if (talking) {
           stopTalking();
-          home();
+          /* Steps back to the checkout board it was opened from, when there
+             is one, rather than all the way home past it. */
+          if (live) wood(live.rows());
+          else home();
           return;
         }
         if (browsingAt) {
@@ -3153,7 +3160,8 @@ async function boot(): Promise<void> {
             return;
           }
           closeBrowser();
-          home();
+          if (live) wood(live.rows());
+          else home();
           return;
         }
         if (hunt && !opened) {
