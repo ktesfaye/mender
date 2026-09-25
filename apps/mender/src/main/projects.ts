@@ -63,6 +63,16 @@ export interface Carrying {
   carries: { path: string; on: boolean; folder: boolean }[];
 }
 
+/** What runs at each point in a worktree's life. Blank means nothing does. */
+export interface Scripts {
+  prepare: string;
+  setup: string;
+  run: string;
+  teardown: string;
+}
+
+export type ScriptKind = keyof Scripts;
+
 export type FoundError =
   | { kind: 'cancelled' }
   | { kind: 'not-a-repository'; path: string }
@@ -98,6 +108,10 @@ export interface Projects {
   carry(id: string, path: string, on: boolean): Promise<Carrying>;
   /** Set or clear who this project's sessions commit as. Blank clears it. */
   identity(id: string, name: string, email: string): Promise<Project[]>;
+  /** What runs when a worktree is cut: prepare, setup, run, teardown. */
+  scripts(id: string): Promise<Scripts>;
+  /** Blank clears that script, back to nothing running for it. */
+  script(id: string, which: ScriptKind, value: string): Promise<Scripts>;
   /** Who takes a project's sessions down when the project is forgotten. */
   sweeps(sweep: (project: string) => Promise<void>): void;
   /** The state these projects make: the districts that are standing. */
@@ -172,6 +186,20 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
       path: project.path,
     });
     return made.success ? project.id : null;
+  };
+
+  const scriptsIn = async (project: Project): Promise<Scripts> => {
+    const workspace = await registered(project);
+    const config = workspace
+      ? await runtimes.workspaces.getProjectConfig({ workspaceId: workspace })
+      : null;
+    const resolved = config?.success ? config.data.resolved : null;
+    return {
+      prepare: resolved?.prepare?.value ?? '',
+      setup: resolved?.setup?.value ?? '',
+      run: resolved?.run?.value ?? '',
+      teardown: resolved?.teardown?.value ?? '',
+    };
   };
 
   const carryingIn = async (project: Project): Promise<Carrying> => {
@@ -362,6 +390,24 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
           };
         })
       );
+    },
+
+    async scripts(id) {
+      const project = await find(id);
+      return project ? scriptsIn(project) : { prepare: '', setup: '', run: '', teardown: '' };
+    },
+
+    async script(id, which, value) {
+      const project = await find(id);
+      if (!project) return { prepare: '', setup: '', run: '', teardown: '' };
+      const workspace = await registered(project);
+      if (workspace) {
+        await runtimes.workspaces.patchPersonalProjectConfig({
+          workspaceId: workspace,
+          patch: { scripts: { [which]: value.trim() || null } },
+        });
+      }
+      return scriptsIn(project);
     },
 
     async abandon(id) {

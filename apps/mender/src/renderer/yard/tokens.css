@@ -517,6 +517,25 @@
   outline: 2px solid var(--yard-gold);
   outline-offset: 2px;
 }
+.settings-scripts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.settings-script-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.settings-script-label {
+  flex: none;
+  width: 76px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--yard-ink-dim);
+  cursor: default;
+}
 .settings-identity-row {
   display: flex;
   gap: 10px;

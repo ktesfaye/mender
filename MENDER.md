@@ -151,6 +151,8 @@ on a click outside it or Escape, leaving the session under it untouched. In it
 is the icon it wears on the rack, picked from the images already in its
 checkout or chosen from anywhere, its name, typed straight into the window,
 what every new session carries into its worktree that git would leave behind,
+what runs when a worktree is cut — prepare before a session starts, setup and
+run alongside it, teardown when it comes down, each just a line of shell —
 who its commits go out as when that should be someone other than whatever git
 would already say, where it is, and removing it. A project that has just moved
 in opens it first.

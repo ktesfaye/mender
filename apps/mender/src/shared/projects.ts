@@ -73,6 +73,20 @@ export const carryingSchema = z.object({
 
 export type Carrying = z.infer<typeof carryingSchema>;
 
+/** What runs at each point in a worktree's life. Blank means nothing does. */
+export const scriptsSchema = z.object({
+  prepare: z.string(),
+  setup: z.string(),
+  run: z.string(),
+  teardown: z.string(),
+});
+
+export type Scripts = z.infer<typeof scriptsSchema>;
+
+export const scriptKindSchema = z.enum(['prepare', 'setup', 'run', 'teardown']);
+
+export type ScriptKind = z.infer<typeof scriptKindSchema>;
+
 export const projectsContract = defineContract({
   list: procedure({ input: z.object({}), output: z.array(projectSchema) }),
   /** Put a district on a checkout: pick a folder, clone one, or make one new. */
@@ -104,6 +118,13 @@ export const projectsContract = defineContract({
   identity: procedure({
     input: z.object({ id: z.string(), name: z.string(), email: z.string() }),
     output: z.array(projectSchema),
+  }),
+  /** What runs when a worktree is cut: prepare, setup, run, teardown. */
+  scripts: procedure({ input: z.object({ id: z.string() }), output: scriptsSchema }),
+  /** Blank clears that script, back to nothing running for it. */
+  script: procedure({
+    input: z.object({ id: z.string(), which: scriptKindSchema, value: z.string() }),
+    output: scriptsSchema,
   }),
 });
 

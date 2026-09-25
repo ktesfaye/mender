@@ -196,6 +196,21 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
         await identityIn(made.data.path, found.gitName, found.gitEmail);
       }
 
+      // Whatever the project says runs on a fresh worktree runs now: prepare
+      // gates on completing (the registry's own session-gating point), setup
+      // and run keep going after. A script failure is a notice on the
+      // registry's own record, never a reason this session fails to start —
+      // an agent staring at a checkout that never ran `npm install` is still
+      // better than no session at all.
+      try {
+        await runtimes.workspaces.activateWorkspace(
+          { workspaceId: made.data.id },
+          { timeoutMs: 0 }
+        );
+      } catch {
+        // Nothing this call can do about a registry that would not answer.
+      }
+
       const task: Task = {
         id: made.data.id,
         project,

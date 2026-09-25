@@ -878,6 +878,7 @@ async function boot(): Promise<void> {
         pictures: null,
         more: 0,
         carrying: null,
+        scripts: null,
         sessions: tasks.filter((task) => task.project === project.id).length,
         ...(fresh ? { fresh } : {}),
       };
@@ -941,6 +942,13 @@ async function boot(): Promise<void> {
           await client.projects.identity({ id: project.id, name, email }, { timeoutMs: 0 });
           await refreshed();
         },
+        script: async (which, value) => {
+          state.scripts = await client.projects.script(
+            { id: project.id, which, value },
+            { timeoutMs: 0 }
+          );
+          redraw();
+        },
         show: () => window.mender.showIt(project.path),
         forget: async () => {
           const went = await forget(project.id);
@@ -955,6 +963,10 @@ async function boot(): Promise<void> {
       void look(shown);
       void (async () => {
         state.carrying = await client.projects.carrying({ id: project.id }, { timeoutMs: 0 });
+        redraw();
+      })();
+      void (async () => {
+        state.scripts = await client.projects.scripts({ id: project.id }, { timeoutMs: 0 });
         redraw();
       })();
     };

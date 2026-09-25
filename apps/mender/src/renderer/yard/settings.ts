@@ -12,7 +12,14 @@
  * mostly sets is what the project looks like on the rack.
  */
 
-import type { Carrying, Picture, PictureFrom, Project } from '@shared/projects';
+import type {
+  Carrying,
+  Picture,
+  PictureFrom,
+  Project,
+  ScriptKind,
+  Scripts,
+} from '@shared/projects';
 import { slot, toolFor } from './face';
 
 export interface SettingsState {
@@ -23,6 +30,8 @@ export interface SettingsState {
   pictures: Picture[] | null;
   more: number;
   carrying: Carrying | null;
+  /** What runs when a worktree is cut. Null while it is still being read. */
+  scripts: Scripts | null;
   /** How many sessions it has, which is what removing it costs. */
   sessions: number;
   /** Just moved in, so this is the first thing it is asked. */
@@ -37,6 +46,8 @@ export interface SettingsDoings {
   carry(path: string, on: boolean): void;
   /** Who this project's sessions commit as. Blank clears an override. */
   identity(name: string, email: string): Promise<void>;
+  /** Blank clears that script, back to nothing running for it. */
+  script(which: ScriptKind, value: string): Promise<void>;
   show(): void;
   forget(): Promise<void>;
   closed(): void;
@@ -117,9 +128,10 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   const welcome = el('p', 'settings-welcome');
   const faces = section('Icon');
   const sessions = section('New sessions');
+  const scripts = section('What runs when a worktree is cut');
   const identity = section('Commits go out as');
   const danger = el('div', 'settings-danger');
-  body.append(welcome, faces.root, sessions.root, identity.root, danger);
+  body.append(welcome, faces.root, sessions.root, scripts.root, identity.root, danger);
   panel.append(head, body);
 
   document.body.appendChild(back);
@@ -268,6 +280,49 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     sessions.fill([hint, list]);
   }
 
+  const SCRIPT_ROWS: { which: ScriptKind; said: string; hint: string }[] = [
+    { which: 'prepare', said: 'prepare', hint: 'runs first; a session waits for it' },
+    { which: 'setup', said: 'setup', hint: 'runs after, alongside the session' },
+    { which: 'run', said: 'run', hint: 'a dev server, say — waits on setup' },
+    { which: 'teardown', said: 'teardown', hint: 'runs when the session comes down' },
+  ];
+
+  function drawScripts(): void {
+    const now2 = now.scripts;
+    if (!now2) {
+      const hint = el('p', 'settings-hint');
+      hint.textContent = 'Reading the project…';
+      scripts.fill([hint]);
+      return;
+    }
+    const list = el('div', 'settings-scripts-list');
+    for (const row of SCRIPT_ROWS) {
+      const line = el('div', 'settings-script-row');
+      const label = el('span', 'settings-script-label');
+      label.textContent = row.said;
+      label.title = row.hint;
+      const field = document.createElement('input');
+      field.className = 'settings-identity-field';
+      field.placeholder = 'nothing';
+      field.spellcheck = false;
+      field.value = now2[row.which];
+      const keep = async (): Promise<void> => {
+        if (field.value.trim() === now2[row.which]) return;
+        await does.script(row.which, field.value);
+      };
+      field.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          field.blur();
+        }
+      });
+      field.addEventListener('blur', () => void keep());
+      line.append(label, field);
+      list.appendChild(line);
+    }
+    scripts.fill([list]);
+  }
+
   function drawIdentity(): void {
     const hint = el('p', 'settings-hint');
     hint.textContent = 'Blank means whatever git would use anyway.';
@@ -336,6 +391,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     welcome.style.display = now.fresh ? '' : 'none';
     drawFaces();
     drawSessions();
+    if (document.activeElement?.closest('.settings-scripts-list') == null) drawScripts();
     if (document.activeElement?.closest('.settings-identity-row') == null) drawIdentity();
     drawDanger();
   }

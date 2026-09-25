@@ -655,6 +655,23 @@ real repository to test with is exactly what this job is not allowed to do.
 That path was read closely instead of run, and it is the one place in this
 feature to look first if it turns out to be wrong.
 
+**A project can say what runs when a worktree is cut.** A fourth section on
+the settings window, "what runs when a worktree is cut," holds four plain
+lines — prepare, setup, run, teardown — each just a line of shell, blank
+meaning nothing runs. No separate on/off switch: setting one is what turns it
+on, the same way ticking a carried file already worked. Prepare gates a
+session's start; setup and run keep going after, through Emdash's own
+workspace registry, unchanged. A session that fails to start over an
+unreachable registry still starts — a script that never got to run is a
+worse morning than a session with a plain checkout, never a reason to refuse
+one. Driven: set a project's prepare to `touch prepared.marker`, cut a real
+session, and watched `prepared.marker` land inside the fresh worktree before
+the agent's own first turn began. Not yet here: showing the script's own
+progress on the board while it runs (today "cutting a worktree…" covers the
+whole wait, prepare included, rather than naming the step), and a way to
+re-run setup, run or teardown by hand from the checkout board — both are
+sized right for a follow-up pass, not this one.
+
 ### W7 — the rest of it
 
 The largest wave, and the least glamorous. Everything about founding, naming,

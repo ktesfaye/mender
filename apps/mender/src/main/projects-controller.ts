@@ -14,5 +14,7 @@ export function createProjectsController(projects: Projects): Controller {
     carrying: ({ id }) => projects.carrying(id),
     carry: ({ id, path, on }) => projects.carry(id, path, on),
     identity: ({ id, name, email }) => projects.identity(id, name, email),
+    scripts: ({ id }) => projects.scripts(id),
+    script: ({ id, which, value }) => projects.script(id, which, value),
   });
 }
