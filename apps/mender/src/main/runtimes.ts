@@ -30,6 +30,7 @@ import {
 import {
   createShellEnvManager,
   createUserShellEnvController,
+  type ShellEnvManager,
 } from '@emdash/core/services/shell-env/node';
 import { pluginRegistry } from '@emdash/plugins/agents';
 import type { Scope } from '@emdash/shared/concurrency';
@@ -81,6 +82,15 @@ export interface MenderRuntimes {
   agentConfig: ReturnType<typeof agentConfigClient>;
   /** What is installed on this machine, which says who can work at all. */
   host: HostDependencies;
+  /**
+   * The resolved login-shell environment, for the handful of places Mender
+   * spawns `git` or `gh` itself rather than through a worker. A window opened
+   * from the Dock or Finder starts from launchd's bare environment, with none
+   * of the PATH a real shell would have built up, and `process.env` alone is
+   * not enough to fix that: it only carries what this happens to have been
+   * patched to by the time something asks.
+   */
+  env: Pick<ShellEnvManager, 'current'>;
 }
 
 /** The in-process host-dependency component's own client. */
@@ -272,7 +282,7 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
         name: 'pull-requests',
         executable: menderWorkerPath('pull-requests'),
         env: process.env,
-        dependencies: { githubAuth: createGitHubAuth() },
+        dependencies: { githubAuth: createGitHubAuth(shellEnv) },
         config: { databasePath: data('pull-requests.db'), incrementalIntervalMs: 60_000 },
       })
       .ready()
@@ -373,6 +383,7 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
     acp: acpClient(acpReady),
     agentConfig: agentConfigClient(agentConfigReady),
     host: hostDependencies.client,
+    env: shellEnv,
   };
 }
 

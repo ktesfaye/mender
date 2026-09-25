@@ -208,7 +208,7 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
       ? await runtimes.workspaces.getProjectConfig({ workspaceId: workspace })
       : null;
     const on = new Set(config?.success ? config.data.resolved.preservePatterns.value : []);
-    const left = await ignoredIn(project.path);
+    const left = await ignoredIn(runtimes, project.path);
     const carries = [
       ...left.map((path) => ({
         path: path.replace(/\/$/, ''),
@@ -266,7 +266,7 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
           ? await pickFolder()
           : from.kind === 'clone'
             ? await cloneInto(runtimes, from.url)
-            : await createInto(from.name, from.private);
+            : await createInto(runtimes, from.name, from.private);
       if (!path.success) return path;
 
       if (projects.some((project) => project.path === path.data)) {
@@ -309,7 +309,9 @@ export function createProjects(runtimes: MenderRuntimes): Projects {
 
     async pictures(id, many) {
       const project = await find(id);
-      return project ? picturesIn(project.path, many) : { pictures: [], more: 0 };
+      return project
+        ? picturesIn(project.path, many, runtimes.env)
+        : { pictures: [], more: 0 };
     },
 
     async picture(id, from) {
@@ -506,7 +508,11 @@ function whatCloneSaid(error: { type: string; message?: string; stderr?: string 
 }
 
 /** A repository made fresh on GitHub, through whatever `gh` this machine has. */
-async function createInto(name: string, isPrivate: boolean): Promise<Landed> {
+async function createInto(
+  runtimes: MenderRuntimes,
+  name: string,
+  isPrivate: boolean
+): Promise<Landed> {
   const written = name.trim();
   if (!written) return { success: false, error: { kind: 'create-failed', said: 'no name.' } };
   const root = projectsRoot();
@@ -525,7 +531,7 @@ async function createInto(name: string, isPrivate: boolean): Promise<Landed> {
     await ran(
       'gh',
       ['repo', 'create', written, isPrivate ? '--private' : '--public', '--clone', '--add-readme'],
-      { cwd: root }
+      { cwd: root, env: await runtimes.env.current() }
     );
     return { success: true, data: target };
   } catch (error) {
@@ -561,12 +567,12 @@ function iconPath(id: string): string {
  * down. Not what a build makes: nobody wants yesterday's `dist` in a fresh
  * worktree, and offering it only makes the real ones harder to find.
  */
-async function ignoredIn(checkout: string): Promise<string[]> {
+async function ignoredIn(runtimes: MenderRuntimes, checkout: string): Promise<string[]> {
   try {
     const { stdout } = await ran(
       'git',
       ['ls-files', '-o', '-i', '--exclude-standard', '--directory', '--no-empty-directory'],
-      { cwd: checkout, maxBuffer: 16 * 1024 * 1024 }
+      { cwd: checkout, maxBuffer: 16 * 1024 * 1024, env: await runtimes.env.current() }
     );
     return stdout
       .split('\n')

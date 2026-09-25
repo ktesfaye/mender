@@ -193,7 +193,7 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       // worktree's own git config, not the machine's — so it holds only here,
       // and never leaks into a session cut from a different project.
       if (found.gitName || found.gitEmail) {
-        await identityIn(made.data.path, found.gitName, found.gitEmail);
+        await identityIn(runtimes, made.data.path, found.gitName, found.gitEmail);
       }
 
       // Whatever the project says runs on a fresh worktree runs now: prepare
@@ -407,10 +407,16 @@ function worktreeRoot(): string {
 const ran = promisify(execFile);
 
 /** Sets a worktree's own git identity, local to that checkout alone. */
-async function identityIn(path: string, name?: string, email?: string): Promise<void> {
+async function identityIn(
+  runtimes: MenderRuntimes,
+  path: string,
+  name?: string,
+  email?: string
+): Promise<void> {
   try {
-    if (name) await ran('git', ['config', 'user.name', name], { cwd: path });
-    if (email) await ran('git', ['config', 'user.email', email], { cwd: path });
+    const env = await runtimes.env.current();
+    if (name) await ran('git', ['config', 'user.name', name], { cwd: path, env });
+    if (email) await ran('git', ['config', 'user.email', email], { cwd: path, env });
   } catch {
     // A worktree that refuses a local config write still works; it just
     // commits under whatever git would have used anyway.

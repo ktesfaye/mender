@@ -2,9 +2,12 @@ import { execFile } from 'node:child_process';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
+import type { ShellEnvManager } from '@emdash/core/services/shell-env/node';
 import { nativeImage, type NativeImage } from 'electron';
 
 const ran = promisify(execFile);
+
+type EnvSource = Pick<ShellEnvManager, 'current'>;
 
 /**
  * The pictures in a checkout, best guess at its own logo first.
@@ -125,13 +128,15 @@ async function looked(path: string): Promise<{ image: NativeImage | null; w: num
  */
 export async function picturesIn(
   checkout: string,
-  many: number
+  many: number,
+  env: EnvSource
 ): Promise<{ pictures: Picture[]; more: number }> {
   let listed: string[];
   try {
     const { stdout } = await ran('git', ['ls-files', '-co', '--exclude-standard', '-z'], {
       cwd: checkout,
       maxBuffer: 64 * 1024 * 1024,
+      env: await env.current(),
     });
     listed = stdout.split('\0').filter((path) => IMAGE.test(path));
   } catch {

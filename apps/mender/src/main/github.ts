@@ -1,11 +1,14 @@
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
+import type { ShellEnvManager } from '@emdash/core/services/shell-env/node';
 import { createController, type Controller } from '@emdash/wire/rpc';
 import { githubAuthContract } from '@upstream/services/pull-requests/api/github-auth-contract';
 import { shell } from 'electron';
 import { githubContract } from '../shared/github';
 
 const ran = promisify(execFile);
+
+type EnvSource = Pick<ShellEnvManager, 'current'>;
 
 /**
  * Who the village is, to GitHub.
@@ -19,11 +22,11 @@ const ran = promisify(execFile);
  * Nothing is stored, logged or written down. The token is fetched when it is
  * asked for and handed straight to the runtime that makes the request.
  */
-export function createGitHubAuth(): Controller {
+export function createGitHubAuth(env: EnvSource): Controller {
   return createController(githubAuthContract, {
     resolveAuth: async ({ repositoryUrl }) => {
       const host = hostOf(repositoryUrl);
-      const token = await tokenFor(host);
+      const token = await tokenFor(host, env);
       if (!token) {
         return {
           success: false,
@@ -53,12 +56,13 @@ export function createGitHubAuth(): Controller {
  * An environment variable wins, because somebody who set one meant it, and
  * that is also the only way this works on a machine without `gh` at all.
  */
-async function tokenFor(host: string): Promise<string | null> {
+async function tokenFor(host: string, env: EnvSource): Promise<string | null> {
   const said = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
   if (said) return said;
   try {
     const { stdout } = await ran('gh', ['auth', 'token', '--hostname', host], {
       timeout: 10_000,
+      env: await env.current(),
     });
     const token = stdout.trim();
     return token || null;
