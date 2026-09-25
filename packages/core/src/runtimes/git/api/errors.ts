@@ -145,6 +145,24 @@ export const pullErrorSchema = z.discriminatedUnion('type', [
 ]);
 export type PullError = z.infer<typeof pullErrorSchema>;
 
+/** A local merge (or a commit-revert, which is a merge-shaped operation) never
+    touches the network, so its vocabulary is the sync errors minus the ones
+    that only make sense once a remote is involved. */
+export const mergeErrorSchema = z.discriminatedUnion('type', [
+  conflictErrorSchema,
+  messageError('already_up_to_date'),
+  gitExecErrorSchema,
+  gitResolutionErrorSchema,
+]);
+export type MergeError = z.infer<typeof mergeErrorSchema>;
+
+export const uncommitErrorSchema = z.discriminatedUnion('type', [
+  messageError('nothing_to_uncommit'),
+  gitExecErrorSchema,
+  gitResolutionErrorSchema,
+]);
+export type UncommitError = z.infer<typeof uncommitErrorSchema>;
+
 export const downloadErrorSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('missing') }),
   z.object({ type: z.literal('too-large'), maxBytes: z.number().int() }),
@@ -238,6 +256,12 @@ export const gitErr = {
   },
   diverged(message: string): Err<TaggedError<'diverged'>> {
     return failure({ type: 'diverged', message });
+  },
+  alreadyUpToDate(message: string): Err<{ type: 'already_up_to_date'; message: string }> {
+    return failure({ type: 'already_up_to_date', message });
+  },
+  nothingToUncommit(message: string): Err<{ type: 'nothing_to_uncommit'; message: string }> {
+    return failure({ type: 'nothing_to_uncommit', message });
   },
   prNotFound(
     prNumber: number,

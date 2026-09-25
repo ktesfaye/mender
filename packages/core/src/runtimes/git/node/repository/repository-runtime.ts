@@ -43,6 +43,8 @@ export class GitRepositoryRuntime {
       {
         mutations: {
           addRemote: (context) => this.run(context.key, (resource) => resource.addRemote(context)),
+          deleteBranch: (context) =>
+            this.run(context.key, (resource) => resource.deleteBranch(context)),
         },
       }
     );

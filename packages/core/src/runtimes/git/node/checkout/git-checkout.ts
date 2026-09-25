@@ -21,9 +21,11 @@ import {
   type GitFileContentState,
   type GitLogOptions,
   type GitLogResult,
+  type MergeError,
   type PullError,
   type PushError,
   type PushOptions,
+  type UncommitError,
 } from '#runtimes/git/api';
 import type { CheckoutIdentity } from '#runtimes/git/node/allocation/identity';
 import { blame as readBlame } from '#runtimes/git/node/checkout/ops/blame';
@@ -159,6 +161,77 @@ export class GitCheckout {
       return ok({ hash: stdout.trim() });
     } catch (error) {
       return checkoutFailures.commit(error);
+    }
+  }
+
+  // -- Landing / undoing history ------------------------------------------------
+
+  /** Merging some other ref into HEAD, right here — the one operation that
+      both "bring the base in" (run in a session, ref is the base) and
+      "land it in main" (run in the project's own checkout, ref is the
+      session's branch) turn out to be. */
+  async merge(ref: string): Promise<Result<{ hash: string }, MergeError>> {
+    try {
+      await this.exec.exec(['merge', '--no-edit', ref]);
+      const { stdout } = await this.exec.exec(['rev-parse', 'HEAD']);
+      return ok({ hash: stdout.trim() });
+    } catch (error) {
+      return checkoutFailures.merge(error, await this.getConflictedPaths());
+    }
+  }
+
+  async mergeAbort(): Promise<Result<void, GitCommandError>> {
+    return this.commandMutation(() => this.exec.exec(['merge', '--abort']));
+  }
+
+  /** Undoing the last commit while keeping what it wrote: a soft reset one
+      commit back. What was committed lands back as uncommitted changes. */
+  async uncommit(): Promise<Result<void, UncommitError>> {
+    try {
+      await this.exec.exec(['reset', '--soft', 'HEAD~1']);
+      return ok(undefined);
+    } catch (error) {
+      if (checkoutFailures.isUnbornHead(error)) {
+        return gitErr.nothingToUncommit('there is nothing committed here yet.');
+      }
+      return checkoutFailures.command(error) as Result<void, UncommitError>;
+    }
+  }
+
+  /** A new commit that undoes an old one, read the same way any commit is. */
+  async revertCommit(hash: string): Promise<Result<{ hash: string }, MergeError>> {
+    try {
+      await this.exec.exec(['revert', '--no-edit', hash]);
+      const { stdout } = await this.exec.exec(['rev-parse', 'HEAD']);
+      return ok({ hash: stdout.trim() });
+    } catch (error) {
+      return checkoutFailures.merge(error, await this.getConflictedPaths());
+    }
+  }
+
+  /** How HEAD stands against some other ref: ahead, behind, and whether HEAD
+      has already landed in it. */
+  async compareRef(
+    ref: string
+  ): Promise<Result<{ ahead: number; behind: number; landed: boolean }, GitCommandError>> {
+    try {
+      const { stdout } = await this.exec.exec([
+        'rev-list',
+        '--left-right',
+        '--count',
+        `${ref}...HEAD`,
+      ]);
+      const [behind, ahead] = stdout.trim().split(/\s+/).map(Number);
+      let landed = false;
+      try {
+        await this.exec.exec(['merge-base', '--is-ancestor', 'HEAD', ref]);
+        landed = true;
+      } catch {
+        landed = false;
+      }
+      return ok({ ahead: ahead ?? 0, behind: behind ?? 0, landed });
+    } catch (error) {
+      return checkoutFailures.command(error);
     }
   }
 

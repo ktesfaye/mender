@@ -15,8 +15,10 @@ import {
   commitErrorSchema,
   downloadErrorSchema,
   gitCommandErrorSchema,
+  mergeErrorSchema,
   pullErrorSchema,
   pushErrorSchema,
+  uncommitErrorSchema,
 } from '#runtimes/git/api/errors';
 import { transferProgressSchema } from '#runtimes/git/api/schemas';
 import { checkoutSelectorSchema } from '#runtimes/git/api/selectors';
@@ -68,6 +70,18 @@ export const gitCheckoutContract = defineContract({
         data: z.object({ hash: z.string() }),
         error: commitErrorSchema,
       }),
+      merge: mutation({
+        input: z.object({ ref: z.string() }),
+        data: z.object({ hash: z.string() }),
+        error: mergeErrorSchema,
+      }),
+      mergeAbort: mutation({ input: z.object({}), data: z.void(), error: gitCommandErrorSchema }),
+      uncommit: mutation({ input: z.object({}), data: z.void(), error: uncommitErrorSchema }),
+      revertCommit: mutation({
+        input: z.object({ hash: z.string() }),
+        data: z.object({ hash: z.string() }),
+        error: mergeErrorSchema,
+      }),
     },
   }),
 
@@ -115,6 +129,15 @@ export const gitCheckoutContract = defineContract({
       ref: z.string().optional(),
     }),
     data: blameResultSchema,
+    error: gitCommandErrorSchema,
+  }),
+  /** How this checkout's HEAD stands against some other ref (its base, most
+      often): how far ahead, how far behind, and whether HEAD has already
+      landed in it. One read serves the "bring the base in" and the
+      "has this session's work gone in yet" questions alike. */
+  compareRef: fallible({
+    input: checkoutSelectorSchema.extend({ ref: z.string() }),
+    data: z.object({ ahead: z.number().int(), behind: z.number().int(), landed: z.boolean() }),
     error: gitCommandErrorSchema,
   }),
 

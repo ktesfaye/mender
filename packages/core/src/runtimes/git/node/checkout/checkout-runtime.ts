@@ -60,6 +60,12 @@ export class GitCheckoutRuntime {
           revert: (context) => this.run(context.key, (resource) => resource.revert(context)),
           revertAll: (context) => this.run(context.key, (resource) => resource.revertAll(context)),
           commit: (context) => this.run(context.key, (resource) => resource.commit(context)),
+          merge: (context) => this.run(context.key, (resource) => resource.merge(context)),
+          mergeAbort: (context) =>
+            this.run(context.key, (resource) => resource.mergeAbort(context)),
+          uncommit: (context) => this.run(context.key, (resource) => resource.uncommit(context)),
+          revertCommit: (context) =>
+            this.run(context.key, (resource) => resource.revertCommit(context)),
         },
       }
     );
@@ -116,6 +122,10 @@ export class GitCheckoutRuntime {
 
   blame(input: CheckoutSelector & { path: PortableRelativePath; ref?: string }) {
     return this.run(input, (checkout) => checkout.blame(input.path, input.ref));
+  }
+
+  compareRef(input: CheckoutSelector & { ref: string }) {
+    return this.run(input, (checkout) => checkout.compareRef(input.ref));
   }
 
   push(input: PushJobInput, context: LiveJobContext<GitTransferProgress>) {

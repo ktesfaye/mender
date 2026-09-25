@@ -69,6 +69,12 @@ export class GitRepository {
     return this.commandMutation(() => this.exec.exec(['remote', 'add', name, url]));
   }
 
+  async deleteBranch(branch: string, force?: boolean): Promise<Result<void, GitCommandError>> {
+    return this.commandMutation(() =>
+      this.exec.exec(['branch', force ? '-D' : '-d', branch])
+    );
+  }
+
   async fetch(
     remote?: string,
     context: GitOperationContext = {},

@@ -101,6 +101,14 @@ export class RepositoryResource {
     return result;
   }
 
+  async deleteBranch(context: RepositoryMutationContext<'deleteBranch'>) {
+    const result = await this.execute(() =>
+      this.commands.deleteBranch(context.input.branch, context.input.force)
+    );
+    if (result.success) this.invalidate('refs');
+    return result;
+  }
+
   async fetch(
     remote: string | undefined,
     context: GitOperationContext,

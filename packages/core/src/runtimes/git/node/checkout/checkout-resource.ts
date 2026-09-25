@@ -191,6 +191,35 @@ export class CheckoutResource {
     return result;
   }
 
+  async merge(context: CheckoutMutationContext<'merge'>) {
+    const result = await this.execute(() => this.commands.merge(context.input.ref));
+    this.historyChanged(result.success);
+    return result;
+  }
+
+  async mergeAbort(_context: CheckoutMutationContext<'mergeAbort'>) {
+    const result = await this.execute(() => this.commands.mergeAbort());
+    this.historyChanged(result.success);
+    return result;
+  }
+
+  async uncommit(_context: CheckoutMutationContext<'uncommit'>) {
+    const result = await this.execute(() => this.commands.uncommit());
+    this.historyChanged(result.success);
+    return result;
+  }
+
+  async revertCommit(context: CheckoutMutationContext<'revertCommit'>) {
+    const result = await this.execute(() => this.commands.revertCommit(context.input.hash));
+    this.historyChanged(result.success);
+    return result;
+  }
+
+  compareRef(ref: string) {
+    this.assertActive();
+    return this.commands.compareRef(ref);
+  }
+
   async push(options: Parameters<GitCheckout['push']>[0], context: GitOperationContext) {
     const result = await this.execute(() => this.commands.push(options, context));
     if (result.success) {

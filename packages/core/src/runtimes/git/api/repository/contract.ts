@@ -32,6 +32,14 @@ export const gitRepositoryContract = defineContract({
         data: z.void(),
         error: gitCommandErrorSchema,
       }),
+      /** Taking a branch down once its checkout is gone. `force` is what a
+          branch not fully merged into anything needs, which is exactly the
+          case worth asking about before it is used. */
+      deleteBranch: mutation({
+        input: z.object({ branch: z.string(), force: z.boolean().optional() }),
+        data: z.void(),
+        error: gitCommandErrorSchema,
+      }),
     },
   }),
 

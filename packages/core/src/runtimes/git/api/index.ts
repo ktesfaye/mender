@@ -41,8 +41,10 @@ export type {
   GitOperationError,
   GitResolutionError,
   InspectPathError,
+  MergeError,
   PullError,
   PushError,
+  UncommitError,
 } from '#runtimes/git/api/errors';
 export type {
   CloneRepositoryJobInput,

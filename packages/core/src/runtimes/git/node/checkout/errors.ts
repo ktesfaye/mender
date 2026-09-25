@@ -1,6 +1,12 @@
 import type { Err } from '@emdash/shared';
 import type { PortableRelativePath } from '#primitives/path/api';
-import { gitErr, type CommitError, type GitCommandError, type PullError } from '#runtimes/git/api';
+import {
+  gitErr,
+  type CommitError,
+  type GitCommandError,
+  type MergeError,
+  type PullError,
+} from '#runtimes/git/api';
 import {
   commandFailed,
   commandFailure,
@@ -56,6 +62,16 @@ export const checkoutFailures = {
     if (isAuthRequired(failure)) return gitErr.authRequired(failure.message);
     if (isAuthFailed(failure)) return gitErr.authFailed(failure.message);
     if (isNetworkFailure(failure)) return gitErr.networkError(failure.message);
+    return commandFailure(failure);
+  },
+
+  merge(error: unknown, conflictedFiles?: PortableRelativePath[]): Err<MergeError> {
+    const failure = gitFailure(error);
+    const message = failure.message.toLowerCase();
+    if (message.includes('conflict')) return gitErr.conflict(failure.message, conflictedFiles);
+    if (message.includes('already up to date')) {
+      return gitErr.alreadyUpToDate(failure.message);
+    }
     return commandFailure(failure);
   },
 
