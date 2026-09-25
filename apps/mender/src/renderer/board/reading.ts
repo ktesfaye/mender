@@ -1,7 +1,8 @@
 import type { FileContentModel } from '@emdash/core/runtimes/files/api';
 import type { BlameHunk } from '@emdash/core/runtimes/git/api';
+import { parseCSV } from './csv';
 import type { Row } from './row';
-import { saying } from './writing';
+import { columned, saying } from './writing';
 
 /**
  * A file, on the wood.
@@ -46,7 +47,12 @@ export function read(state: Read): Row[] {
     case 'binary':
       if (state.picture) {
         rows.push(
-          { kind: 'picture', src: state.picture.src, wide: state.picture.wide, tall: state.picture.tall },
+          {
+            kind: 'picture',
+            src: state.picture.src,
+            wide: state.picture.wide,
+            tall: state.picture.tall,
+          },
           { kind: 'line', text: sized(content.byteSize), tone: 'faded' }
         );
         return rows;
@@ -76,7 +82,12 @@ export function read(state: Read): Row[] {
      drop back to the raw text when that is what the writing itself is for. */
   if (isMarkdown(state.path) && !state.raw) {
     rows.push(
-      { kind: 'line', text: 'read as writing. press to read the raw text.', tone: 'faded', pick: 'raw' },
+      {
+        kind: 'line',
+        text: 'read as writing. press to read the raw text.',
+        tone: 'faded',
+        pick: 'raw',
+      },
       { kind: 'gap' },
       ...saying(content.content, undefined, 'ink'),
       { kind: 'gap' }
@@ -91,6 +102,36 @@ export function read(state: Read): Row[] {
       pick: 'raw',
     });
     rows.push({ kind: 'gap' });
+  }
+
+  /* A CSV reads as a table, the same padded columns markdown's own tables
+     get, because a spreadsheet's columns are the whole point of looking at
+     one and a raw line of commas says nothing about where they are. */
+  if (isCSV(state.path) && !state.raw) {
+    const grid = parseCSV(content.content);
+    rows.push(
+      {
+        kind: 'line',
+        text: 'read as a table. press to read the raw text.',
+        tone: 'faded',
+        pick: 'raw',
+      },
+      { kind: 'gap' },
+      ...columned(grid),
+      { kind: 'gap' }
+    );
+    return [...rows, ...over(state, content.readonly)];
+  }
+  if (isCSV(state.path) && state.raw) {
+    rows.push(
+      {
+        kind: 'line',
+        text: 'the raw text. press to read it as a table.',
+        tone: 'faded',
+        pick: 'raw',
+      },
+      { kind: 'gap' }
+    );
   }
 
   rows.push({ kind: 'line', text: how(lines.length, content.readonly), tone: 'faded' });
@@ -252,9 +293,14 @@ function openProperly(state: Read): Row[] {
 }
 
 const MARKDOWN = /\.mdx?$/i;
+const CSV = /\.csv$/i;
 
 function isMarkdown(path: string): boolean {
   return MARKDOWN.test(path);
+}
+
+function isCSV(path: string): boolean {
+  return CSV.test(path);
 }
 
 function notWriting(bytes: number): string {

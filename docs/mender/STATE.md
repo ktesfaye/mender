@@ -1363,8 +1363,8 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-19 | Open-file store (editor tab lifecycle) | kept |  |
 | FS-20 | File-kind renderer routing (text/csv/markdown/html/svg/image/too-large/binary) | part | W5 |
 | FS-21 | Monaco text editor | cut | W5 |
-| FS-22 | CSV renderer |  | W5 |
-| FS-23 | Markdown/HTML/SVG/image renderers | part | W5 |
+| FS-22 | CSV renderer, read as a padded table in the board's own type | done | W5 |
+| FS-23 | Markdown/HTML/SVG/image renderers (html and svg still route as plain text) | part | W5 |
 | FS-24 | Text diff (Monaco diff editor) | done | W3 |
 | FS-25 | Inline review comments on diff lines | done | W3 |
 | FS-26 | Stacked multi-file diff view | cut | W3 |

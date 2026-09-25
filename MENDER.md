@@ -405,6 +405,12 @@ mermaid block drawn rather than read — applies to a markdown file walked to in
 the folder, with one line to drop back to the raw text when a line of it is
 what you actually came to change.
 
+**A CSV file reads as a table, not as a line of commas.** The same padding
+that lines up a markdown table's columns does this one's, in the board's own
+type rather than the hand, because a column is only a column once every
+character in it is one. One line drops back to the raw text, the same as a
+markdown file's.
+
 **A file the board cannot show properly offers to be opened properly.** In
 whatever the machine opens it with, one gold line, the same door a checkout's
 own "show in Finder" already uses.
