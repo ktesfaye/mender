@@ -3246,6 +3246,14 @@ async function boot(): Promise<void> {
           return;
         }
         if (looked) {
+          // Asked whether to undo the commit with a new one, escape is the
+          // answer no — it disarms the offer rather than leaving the commit
+          // board entirely.
+          if (looked.asked) {
+            looked = { ...looked, asked: false };
+            rewrite(rowsForMade());
+            return;
+          }
           looked = null;
           branchLooked = null;
           home();

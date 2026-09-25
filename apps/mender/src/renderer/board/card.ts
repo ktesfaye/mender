@@ -94,6 +94,11 @@ export async function openCard(
     rows: () => written(task, kit, ending, showing),
     show: (open) => {
       showing = open;
+      /* Turned back to the transcript is backing out of the card, and the
+         offer to take the session down does not survive that — an accidental
+         second press the next time the card is turned over must land on
+         "send everybody home", not on "press again and it is gone". */
+      if (!open && ending.asked) ending = { ...ending, asked: false };
     },
     showing: () => showing,
     ending: () => ending,
