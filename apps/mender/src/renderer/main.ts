@@ -200,6 +200,18 @@ async function boot(): Promise<void> {
           void commit();
           return;
         }
+        /* A project nobody has worked in yet says "say what you want built,
+           or hang a lantern on the rail" — two ways to the same place. This
+           is the first: no session is open to hear it, so what was typed
+           becomes the name and the first thing said, in one move, exactly as
+           if the hook had been pressed first and this had been written on
+           the board it opened. */
+        if (!inside && open && !looking) {
+          const district = open.district;
+          askName({ kind: 'district', district }, freeSlot(district), text);
+          void begin();
+          return;
+        }
         void tell(text);
       },
       leave: () => void backOut(),
@@ -3117,7 +3129,7 @@ async function boot(): Promise<void> {
     };
 
     /** A new session is a question: what is going to happen in there. */
-    const askName = (aim: Aim, slot: number | null): void => {
+    const askName = (aim: Aim, slot: number | null, written = ''): void => {
       const project = projectOn(aim.district);
       if (!project) return;
       reading = null;
@@ -3133,7 +3145,7 @@ async function boot(): Promise<void> {
         district: aim.district,
         project,
         slot,
-        written: '',
+        written,
         revivable: null,
         terminal: false,
         issues: null,
