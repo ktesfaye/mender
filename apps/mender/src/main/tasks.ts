@@ -58,6 +58,9 @@ export interface Task {
   /** `terminal` for a session whose board is the agent's own CLI in a real
       terminal. Unset means the ordinary chat yard. */
   readonly kind?: 'chat' | 'terminal';
+  /** A pull request picked by hand, in place of matching this session's
+      branch. */
+  readonly pull?: string;
 }
 
 /**
@@ -112,6 +115,9 @@ export interface Tasks {
       the next time it is read; this never fails the call itself, the same
       way the registry never fails activation over a script. */
   retrySetup(id: string): Promise<void>;
+  /** Picks a pull request for this session by hand. */
+  linkPull(id: string, url: string): Promise<Task[]>;
+  unlinkPull(id: string): Promise<Task[]>;
   /**
    * What is in that checkout, by name, nearest first.
    *
@@ -426,6 +432,22 @@ export function createTasks(
         tasks.map((task) =>
           task.id === id && !task.kind ? { ...task, kind: 'terminal' } : task
         )
+      );
+    },
+
+    async linkPull(id, url) {
+      const tasks = await all();
+      return await save(tasks.map((task) => (task.id === id ? { ...task, pull: url } : task)));
+    },
+
+    async unlinkPull(id) {
+      const tasks = await all();
+      return await save(
+        tasks.map((task) => {
+          if (task.id !== id) return task;
+          const { pull: _pull, ...rest } = task;
+          return rest;
+        })
       );
     },
 

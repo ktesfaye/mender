@@ -25,6 +25,11 @@ export interface Sent {
   written?: string;
   /** Set while the other end is being asked or told something. */
   waiting?: string;
+  /** The repository's own open pull requests, offered as something to link
+      by hand instead of opening a fresh one; `null` means never asked. */
+  linkable?: PullRequest[] | null;
+  /** Whether the linkable list is what is on the board right now. */
+  linking?: boolean;
 }
 
 export function sent(state: Sent): Row[] {
@@ -105,19 +110,59 @@ export function toHandCheck(check: PullRequest['checks'][number]): string {
 
 /** When the branch has never been sent anywhere. */
 function opening(state: Sent): Row[] {
+  if (state.linking) return linking(state.linkable ?? null);
   const rows: Row[] = [
     { kind: 'title', text: state.name },
     { kind: 'line', text: `nothing is open for ${state.branch}.`, tone: 'faded' },
     { kind: 'gap' },
   ];
   if (state.written === undefined) {
-    return [...rows, { kind: 'entry', mark: '+', text: 'open one', pick: 'open-pull' }];
+    return [
+      ...rows,
+      { kind: 'entry', mark: '+', text: 'open one', pick: 'open-pull' },
+      { kind: 'line', text: 'link an existing one', tone: 'faded', pick: 'link-pull-toggle' },
+    ];
   }
   return [
     ...rows,
     { kind: 'line', text: 'say what this is for. return opens it.', tone: 'faded' },
     { kind: 'typed', text: state.written },
   ];
+}
+
+/** The board turned over to the repository's own open pull requests, for
+    picking one by hand rather than matching this session's branch. */
+function linking(prs: PullRequest[] | null): Row[] {
+  const rows: Row[] = [
+    { kind: 'title', text: 'an open pull request' },
+    { kind: 'line', text: 'picking one links it to this session.', tone: 'faded' },
+    { kind: 'gap' },
+  ];
+  if (prs === null) {
+    rows.push({ kind: 'line', text: 'asking github…', tone: 'faded' });
+    return rows;
+  }
+  if (!prs.length) {
+    rows.push({ kind: 'line', text: 'nothing open there.', tone: 'faded' });
+    return rows;
+  }
+  for (const pr of prs) {
+    rows.push({
+      kind: 'entry',
+      mark: '→',
+      text: `#${numberOf(pr.url) ?? '?'} ${pr.title}`,
+      keep: 'tail',
+      pick: `link-pull:${pr.url}`,
+    });
+  }
+  return rows;
+}
+
+/** The PR number out of its own URL — GitHub's number is the URL's last
+    segment, and nothing here keeps a second copy of it. */
+function numberOf(url: string): number | undefined {
+  const match = /\/(\d+)$/.exec(url);
+  return match ? Number(match[1]) : undefined;
 }
 
 /** Which branch is going where, and what has happened to it. */

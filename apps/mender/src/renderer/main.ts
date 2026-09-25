@@ -2581,7 +2581,21 @@ async function boot(): Promise<void> {
       });
       if (open !== aim) return;
 
-      const pull = found.success ? found.data.prs[0] : undefined;
+      /* No PR whose head matches this branch — the one picked by hand for
+         this session, if any, is the next thing to try before giving up
+         and offering to open one. */
+      const linked = inside?.pull;
+      const byHand =
+        !found.success || !found.data.prs.length
+          ? linked
+            ? await client.pulls.getPullRequestByUrl({ repositoryUrl: repository, url: linked })
+            : null
+          : null;
+      if (open !== aim) return;
+
+      const pull =
+        (found.success ? found.data.prs[0] : undefined) ??
+        (byHand?.success ? (byHand.data.pr ?? undefined) : undefined);
       sending = {
         name,
         branch,
@@ -2646,6 +2660,35 @@ async function boot(): Promise<void> {
         return;
       }
       say('opened.', 3000);
+      await openSent();
+    };
+
+    /** Turning the board over to the repository's own open pull requests,
+        read-only against GitHub, for linking one to this session by hand. */
+    const openLinkPicker = async (): Promise<void> => {
+      const mine = sending;
+      if (!mine) return;
+      sending = { ...mine, linking: true, linkable: mine.linkable ?? null };
+      rewrite(sent(sending));
+      const found = await client.pulls.listPullRequests({
+        repositoryUrls: [mine.repository],
+        cursor: null,
+        limit: 30,
+        filters: { status: 'open' },
+      });
+      if (sending !== mine && sending?.repository !== mine.repository) return;
+      sending = { ...sending!, linkable: found.success ? found.data.prs : [] };
+      rewrite(sent(sending));
+    };
+
+    /** Picking one — the session's own to remember, so the board finds it
+        again without matching a branch. */
+    const pickLinkPull = async (url: string): Promise<void> => {
+      const session = inside;
+      if (!session) return;
+      const now = await client.tasks.linkPull({ id: session.id, url }, { timeoutMs: 0 });
+      tasks = now;
+      inside = now.find((each) => each.id === session.id) ?? inside;
       await openSent();
     };
 
@@ -3691,6 +3734,14 @@ async function boot(): Promise<void> {
         void client.tasks.retrySetup({ id: session.id }, { timeoutMs: 0 }).then(() => {
           void refreshSetupFailure(aim, session);
         });
+        return;
+      }
+      if (pick === 'link-pull-toggle') {
+        void openLinkPicker();
+        return;
+      }
+      if (pick.startsWith('link-pull:')) {
+        void pickLinkPull(pick.slice('link-pull:'.length));
         return;
       }
       if (pick === 'setup-skip') {

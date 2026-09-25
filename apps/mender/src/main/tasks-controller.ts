@@ -13,6 +13,8 @@ export function createTasksController(tasks: Tasks): Controller {
     branches: ({ project }) => tasks.branches(project),
     setupFailure: ({ id }) => tasks.setupFailure(id),
     retrySetup: ({ id }) => tasks.retrySetup(id),
+    linkPull: ({ id, url }) => tasks.linkPull(id, url),
+    unlinkPull: ({ id }) => tasks.unlinkPull(id),
     files: ({ id, like }) => tasks.files(id, like),
     rename: ({ id, title }) => tasks.rename(id, title),
     retool: ({ id }) => tasks.retool(id),

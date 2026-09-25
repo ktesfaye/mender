@@ -27,6 +27,10 @@ export const taskSchema = z.object({
    * (or `chat`) is every session there has ever been until now.
    */
   kind: z.enum(['chat', 'terminal']).optional(),
+  /** A pull request picked by hand rather than found by matching this
+      session's branch — set when its own branch isn't what went up, or the
+      match never found it. */
+  pull: z.string().optional(),
 });
 
 export type Task = z.infer<typeof taskSchema>;
@@ -93,6 +97,13 @@ export const tasksContract = defineContract({
   }),
   /** Runs that script again. */
   retrySetup: procedure({ input: z.object({ id: z.string() }), output: z.void() }),
+  /** Picks a pull request for this session by hand, in place of matching its
+      branch. */
+  linkPull: procedure({
+    input: z.object({ id: z.string(), url: z.string() }),
+    output: z.array(taskSchema),
+  }),
+  unlinkPull: procedure({ input: z.object({ id: z.string() }), output: z.array(taskSchema) }),
   /**
    * What is in that checkout, by name.
    *

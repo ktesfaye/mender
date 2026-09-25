@@ -1324,7 +1324,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-55 | Issues plugin architecture | kept |  |
 | WS-56 | Issue linking UI | done | W4 |
 | FS-31 | Open a checkout or a file in the owner's own external editor | done | W5 |
-| WS-57 | PR selector (linking a PR to a task) |  | W4 |
+| WS-57 | PR selector (linking a PR to a task) | done |  |
 | WS-58 | Shared exclusion-policy engine | kept |  |
 | WS-59 | PR review comments + failed checks, handed to the agent | done | W4 |
 | TR-01 | Interactive terminal panes | done | W6 |
