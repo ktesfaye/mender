@@ -293,30 +293,16 @@ function written(
   if (catalogShowing) {
     for (const entry of MCP_CATALOG.filter((each) => !has.has(each.name.toLowerCase()))) {
       rows.push({
-        kind: 'entry',
-        mark: '+',
+        kind: 'line',
         text: `${entry.name} · ${entry.description}`,
-        tone: 'faded',
         pick: `addcat:${entry.key}`,
       });
     }
-    rows.push({ kind: 'entry', mark: '·', text: 'fold the catalogue away', pick: 'browse' });
+    rows.push({ kind: 'line', text: 'fold the catalogue away', pick: 'browse' });
   } else {
-    rows.push({
-      kind: 'entry',
-      mark: '+',
-      text: 'add one from the catalogue',
-      tone: 'faded',
-      pick: 'browse',
-    });
+    rows.push({ kind: 'line', text: 'add a server from the catalogue', pick: 'browse' });
   }
-  rows.push({
-    kind: 'entry',
-    mark: '+',
-    text: 'add one of your own',
-    tone: 'faded',
-    pick: 'addcustom',
-  });
+  rows.push({ kind: 'line', text: 'add a server of your own', pick: 'addcustom' });
 
   rows.push({ kind: 'gap' }, { kind: 'heading', text: 'what it has been taught' });
   if (!kit.knacksSupported) {
