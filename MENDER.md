@@ -282,11 +282,13 @@ return writes the file. Escape puts it back. Nothing is written if the file
 changed underneath you while you had a line of it down.
 
 **There is a real shell in the checkout.** A line under where the checkout
-stands opens one, and it is the same board: you type at the bottom, return
-hands it the line, what it says comes back above. It lives outside the window,
-so closing the app leaves it running and coming back walks into it with
-everything it said still there. Full-screen programs draw but are only legible,
-not usable, because the board has no cursor of its own.
+stands opens one, and it is a real terminal on the board rather than a line
+of it: the keyboard is the shell's own while it is what is open, so vim,
+`htop`, `less`, tmux, an agent's own CLI all draw and answer exactly as they
+would anywhere else. `ctrl+]` is the one chord this board keeps for itself,
+and it steps back out to wherever you were; Escape is the program's. It lives
+outside the window, so closing the app leaves it running and coming back
+walks into it with everything it said still there.
 
 **And a piece of work ends here rather than in a browser.** A line under the
 checkout asks what is open for this branch: what it is for, which branch is

@@ -29,6 +29,13 @@ export interface Reading {
   rows: Row[];
   /** What the line at the bottom asks for while this is open. */
   asks?: string;
+  /**
+   * A real terminal, mounted under the rows rather than written as one of
+   * them — a shell or an agent's own CLI, drawing its own screen. Kept in
+   * the DOM across a rewrite of the same reading, so a live grid is never
+   * torn down and rebuilt out from under whatever is running in it.
+   */
+  terminal?: HTMLElement;
 }
 
 export interface Scrim {
@@ -63,9 +70,25 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
 
   /* The writing scrolls and the chrome above it does not, which is why they
      are two boxes rather than one. */
-  const under = box({}, 'overflow-y:auto;position:relative;padding:20px 32px 24px;min-height:0');
+  const under = box(
+    {},
+    'display:flex;flex-direction:column;overflow-y:auto;position:relative;padding:20px 32px 24px;min-height:0'
+  );
   root.appendChild(under);
   const sheet = makeRows(under, press);
+  /* A real terminal wants the whole room this board has, not the height of
+     its own writing — so it is a flex item that fills what is left under the
+     title, rather than another line the wash sizes itself around. */
+  const termHost = box({}, 'display:none;flex:1;min-height:240px;width:100%;margin-top:8px');
+  under.appendChild(termHost);
+
+  /* Held so a terminal reading can give the wash a real height to shrink its
+     writing against — without this the wash sizes itself to its own content
+     as usual, `under`'s flex-shrink has nothing definite to shrink from, and
+     a 600-line grid collapses the whole board to a sliver. Everything else
+     keeps hugging its own content exactly as before. */
+  let room = '';
+  let inTerminal = false;
 
   let showing = false;
 
@@ -84,7 +107,9 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
       root.style.right = `${right}px`;
       root.style.top = `${top}px`;
       root.style.bottom = 'auto';
-      root.style.maxHeight = `${Math.max(120, window.innerHeight - top - bottom)}px`;
+      room = `${Math.max(120, window.innerHeight - top - bottom)}px`;
+      root.style.maxHeight = room;
+      if (inTerminal) root.style.height = room;
     },
     show: (reading) => {
       const was = showing;
@@ -110,6 +135,19 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
       way.replaceChildren(trailOf(reading.trail));
       meta.replaceChildren(reading.meta ? exact(reading.meta, 12, '#a89272') : '');
       sheet.write(reading.rows);
+      inTerminal = Boolean(reading.terminal);
+      root.style.height = inTerminal ? room : '';
+      if (reading.terminal) {
+        termHost.style.display = '';
+        /* Mounted once and left alone after that — replacing it would tear
+           down a live grid every time this board's title rewrites. */
+        if (termHost.firstElementChild !== reading.terminal) {
+          termHost.replaceChildren(reading.terminal);
+        }
+      } else {
+        termHost.style.display = 'none';
+        termHost.replaceChildren();
+      }
       under.scrollTop = 0;
     },
     scrolled: (key) => {

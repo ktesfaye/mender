@@ -538,32 +538,30 @@ and opening the board again walks back into it with everything it had said
 still there. That was driven: a command run, the app killed outright, the app
 started again, the same scrollback.
 
-Between the shell and the wood is a terminal screen, and it had to be written.
-A terminal is not a stream of lines; it is a grid somebody writes on with a
-cursor they move anywhere, and nearly everything worth running uses that — a
-progress bar rewrites one line forty times, a pager paints a page, tmux
-repaints whatever it thinks changed. Reading those bytes in order gave a board
-that was completely blank, which is how this was found. So there is a grid now,
-with a cursor, a scrolling region, erasures, insertions and an alternate screen
-that a pager paints on and does not leave behind. Colour and weight are dropped
-on purpose: the board has one typeface and two tones and is not going to grow
-more. What is kept is everything that decides which character ends up where.
-
-That means a full-screen program does draw — a pager, a picker — and it is
-legible, but it is legible rather than usable, because there is no cursor on
-the board to tell you where you are in it. A board is a board.
+Between the shell and the wood used to be a hand-rolled terminal screen, and
+it drew correctly and could not be driven: it read the bytes down to lines,
+so a full-screen program — a pager, a picker, vim, an agent's own CLI — drew
+but there was nowhere to move a keyboard's own cursor to but the one line at
+the foot of the board. That screen is gone. The grid is a real terminal now
+(xterm.js, the same one Emdash already carries), mounted on the board rather
+than written as rows of it, in the board's own type and ink. While it is what
+is open, every key is its own — vim's Escape leaves insert mode, arrows walk
+a picker, an agent's own TUI draws and answers exactly as it would at a real
+terminal. `ctrl+]` is the one chord this board keeps for itself, written on
+it, and it steps back out to wherever you were. Scrollback, copy and paste
+are xterm's own.
 
 tmux was not on this machine either. Like ripgrep, that is a host dependency
 rather than a code change, and it is installed.
 
 Not here yet: more than one shell per checkout, a dev server's port being
-noticed and offered, killing a shell from the board, and the shell knowing the
-board's actual width.
+noticed and offered, and killing a shell from the board.
 
 Closes TR-01 through TR-04, TR-06, TR-09 through TR-12, UI-12, UI-40.
 
-Done when: a real shell runs on the board, survives the app closing, and a dev
-server it starts is reachable without you hunting for the port.
+Done when: a real shell runs on the board, is usable rather than only legible
+for a full-screen program, survives the app closing, and a dev server it
+starts is reachable without you hunting for the port.
 
 ### W7 — a project is fully yours · started
 

@@ -24,6 +24,7 @@
     "@emdash/wire": "workspace:*",
     "@mender/village": "workspace:*",
     "@parcel/watcher": "^2.5.6",
+    "@xterm/xterm": "^6.0.0",
     "better-sqlite3": "^12.6.0",
     "drizzle-orm": "^0.32.1",
     "node-pty": "1.1.0",

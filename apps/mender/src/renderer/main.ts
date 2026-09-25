@@ -101,6 +101,14 @@ async function boot(): Promise<void> {
       answer: (id) => void answered(id),
       press: (pick) => press(pick),
       typed: (text) => {
+        /* A real terminal is open: every key is its own, including the ones
+           that land here because a click put the keyboard back on this line
+           instead. Handing it straight back is how "the terminal is what is
+           open" stays true no matter how the keyboard got away from it. */
+        if (talking) {
+          talking.shell?.focus();
+          return;
+        }
         /* One line, and whatever is open decides what is being written on it:
            a name for a new session, a new name for this one, a commit message,
            something to look for, or something to say to the agent. */
@@ -112,6 +120,10 @@ async function boot(): Promise<void> {
         yard.narrowing(...narrowing());
       },
       say: (text) => {
+        if (talking) {
+          talking.shell?.focus();
+          return;
+        }
         if (naming) {
           void begin();
           return;
@@ -122,17 +134,6 @@ async function boot(): Promise<void> {
         }
         if (writing) {
           void commit();
-          return;
-        }
-        /* A shell reads its keys through the one window listener, into its own
-           buffer, but the line at the foot of the board still owns Return and
-           hands it here first. Without this the line sent an empty Return on to
-           the agent and the command sat in the shell's buffer forever. */
-        if (talking) {
-          const shell = talking;
-          void shell.shell?.say(`${shell.written}\n`);
-          shell.written = '';
-          rewrite(rowsForShell());
           return;
         }
         void tell(text);
@@ -187,7 +188,7 @@ async function boot(): Promise<void> {
      * board it still carries has been moved onto the yard's own scrim, this is
      * what keeps them from being written over each other.
      */
-    const wood = (rows: Row[]): void => {
+    const wood = (rows: Row[], terminal?: HTMLElement): void => {
       /* Anything opened from inside a project is laid over its yard rather
          than shown instead of it: the world drops to silhouettes, a wash comes
          down over the middle and the right, and what you asked for is written
@@ -202,7 +203,12 @@ async function boot(): Promise<void> {
          either way; nothing here is ever a screen somewhere else. */
       if (!yard.showing) yard.up(true, true);
       const asks = prompting();
-      yard.reading({ trail: wayHome(), rows, ...(asks ? { asks } : {}) });
+      yard.reading({
+        trail: wayHome(),
+        rows,
+        ...(asks ? { asks } : {}),
+        ...(terminal ? { terminal } : {}),
+      });
     };
 
     /**
@@ -212,10 +218,15 @@ async function boot(): Promise<void> {
      * an agent says another sentence. Nothing here decides what the board says
      * — it is handed the rows again and writes them where they already were.
      */
-    const rewrite = (rows: Row[]): void => {
+    const rewrite = (rows: Row[], terminal?: HTMLElement): void => {
       if (!yard.open) return;
       const asks = prompting();
-      yard.reading({ trail: wayHome(), rows, ...(asks ? { asks } : {}) });
+      yard.reading({
+        trail: wayHome(),
+        rows,
+        ...(asks ? { asks } : {}),
+        ...(terminal ? { terminal } : {}),
+      });
     };
 
     /**
@@ -383,7 +394,7 @@ async function boot(): Promise<void> {
     /* Set while the checkout is being searched rather than walked. */
     let hunt: (Hunt & { checkout: string; asked: number }) | null = null;
     /* The shell running in this checkout, while its board is the one open. */
-    let talking: { shell: LiveShell | null; name: string; written: string } | null = null;
+    let talking: { shell: LiveShell | null; name: string } | null = null;
     /* What is open against the other end for this checkout's branch. */
     let sending: (Sent & { repository: string; number?: number }) | null = null;
     let looked: {
@@ -1471,11 +1482,11 @@ async function boot(): Promise<void> {
     /**
      * A real shell in this checkout, on the board.
      *
-     * The board already is a scrolling column of writing with one line at the
-     * bottom you type into, which is what a terminal is, so a shell needs no
-     * new shape at all. It only needs the bytes read down to lines, because
-     * what a shell writes is meant for a screen that has colour and a cursor
-     * and this one has neither.
+     * The grid is a real terminal (`board/terminal.ts`), mounted beside the
+     * title rather than drawn as rows of its own: full-screen programs are
+     * usable, not just legible, because the keyboard goes straight to it
+     * while it is what is open. `ctrl+]` is the one chord this board keeps
+     * for itself, and it steps back out to wherever you were.
      */
     const talk = async (): Promise<void> => {
       const place = onPlace();
@@ -1484,41 +1495,27 @@ async function boot(): Promise<void> {
       stopTalking();
       stopWalking();
       const name = 'title' in place ? place.title : place.name;
-      talking = { shell: null, name, written: '' };
+      talking = { shell: null, name };
       const mine = talking;
-      wood(shell({ name, lines: [], written: '', running: false }));
+      wood(shell({ name, running: false }));
       const running = await openShell(client, place.path, () => {
-        if (talking === mine && open === aim) rewrite(rowsForShell());
+        if (talking === mine && open === aim) {
+          stopTalking();
+          home();
+        }
       });
       if (talking !== mine || open !== aim) {
         await running?.close();
         return;
       }
       if (!running) {
-        wood(
-          shell({
-            name,
-            lines: [],
-            written: '',
-            running: true,
-            stopped: 'no shell would start here.',
-          })
-        );
+        wood(shell({ name, running: true, stopped: 'no shell would start here.' }));
         return;
       }
       mine.shell = running;
-      wood(rowsForShell());
+      wood(shell({ name, running: true }), running.el);
+      running.focus();
     };
-
-    const rowsForShell = (): Row[] =>
-      talking
-        ? shell({
-            name: talking.name,
-            lines: talking.shell?.lines() ?? [],
-            written: talking.written,
-            running: Boolean(talking.shell),
-          })
-        : [];
 
     const stopTalking = (): void => {
       const was = talking;
@@ -2461,13 +2458,10 @@ async function boot(): Promise<void> {
           showMade();
           return;
         }
+        /* Reached only when the terminal does not itself have the keyboard —
+           Escape is that terminal's own key otherwise, passed straight
+           through to whatever is running, and `ctrl+]` is what steps out. */
         if (talking) {
-          // What you have half typed at a shell is yours before the shell is.
-          if (talking.written) {
-            talking.written = '';
-            rewrite(rowsForShell());
-            return;
-          }
           stopTalking();
           home();
           return;
@@ -2645,17 +2639,13 @@ async function boot(): Promise<void> {
           if (amending) rewrite(amendBoard(amending.written));
           return true;
         }
-        /* Talking to a shell. Return hands it the line and a newline, which
-           is the whole protocol: everything else it says back comes as bytes. */
+        /* A real terminal is open and has its own keyboard handling, from
+           its own container down to the window — this whole listener never
+           sees a key while it is what is open. Reaching here with `talking`
+           set means the keyboard is back on the foot line instead, which is
+           this terminal's to take back, not this listener's to act on. */
         if (talking) {
-          const said = talking;
-          if (event.key === 'Enter') {
-            void said.shell?.say(`${said.written}\n`);
-            said.written = '';
-          } else if (event.key === 'Backspace') said.written = said.written.slice(0, -1);
-          else if (event.key.length === 1) said.written += event.key;
-          else return yard.scrolled(event.key);
-          rewrite(rowsForShell());
+          talking.shell?.focus();
           return true;
         }
         /* Looking for something in the checkout: letters narrow it, arrows

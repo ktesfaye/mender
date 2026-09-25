@@ -2,10 +2,10 @@ import { LOCAL_HOST_REF } from '@emdash/core/primitives/host/api';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import type { TerminalKey } from '@emdash/core/runtimes/terminals/api';
 import type { MenderClient } from '../wire';
-import { Screen } from './screen';
+import { COLS, makeTerminal, ROWS, type LiveTerminal } from './terminal';
 
 /**
- * A real shell running in a checkout, and everything it has said.
+ * A real shell running in a checkout, mounted straight onto the board.
  *
  * The shell itself lives in emdash's terminals runtime, in its own process,
  * wrapped in tmux. That is what makes it a shell in the village rather than a
@@ -21,20 +21,16 @@ import { Screen } from './screen';
  */
 export interface LiveShell {
   key: TerminalKey;
-  /** What it has left on its screen, oldest line first. */
-  lines(): readonly string[];
-  say(what: string): Promise<void>;
+  readonly el: HTMLElement;
+  focus(): void;
   close(): Promise<void>;
 }
-
-/** The shape of the screen the shell writes on. */
-const COLS = 120;
-const ROWS = 40;
 
 export async function openShell(
   client: MenderClient,
   checkout: string,
-  changed: () => void
+  /** `ctrl+]` was pressed — step back out to the board behind this one. */
+  steppedOut: () => void
 ): Promise<LiveShell | null> {
   const parsed = parseNativeAbsolute(checkout);
   if (!parsed.success) return null;
@@ -45,6 +41,12 @@ export async function openShell(
     workspace: { host: LOCAL_HOST_REF, path: parsed.data },
     id: 'village',
   };
+
+  const term: LiveTerminal = makeTerminal({
+    onData: (data) => void client.terminals.sendInput({ key, data }),
+    onResize: ({ cols, rows }) => void client.terminals.resize({ key, cols, rows }),
+    onStepOut: steppedOut,
+  });
 
   const started = await client.terminals.start({
     key,
@@ -59,26 +61,25 @@ export async function openShell(
       rows: ROWS,
     },
   });
-  if (!started.success) return null;
+  if (!started.success) {
+    term.dispose();
+    return null;
+  }
 
   const handle = client.terminals.output.handle(key);
-  /* The same shape the shell was started at. A screen the shell thinks is one
-     size and the village draws at another puts the wrapping in the wrong
-     place, which is the sort of wrong that looks like nothing at all. */
-  const screen = new Screen(COLS, ROWS);
-  let lines: readonly string[] = [];
   let written = 0;
   let asking = false;
   let again = false;
 
   /**
-   * Ask what the whole thing says now and feed it the part we have not seen.
+   * Ask what the whole thing says now and write the part this terminal has
+   * not seen yet, straight onto its grid.
    *
    * The log is a window over the shell's output with an offset, so what is
-   * new is whatever sits past the last byte handed to the screen. If the
-   * window has slid past that — a long silence, an enormous build — the
-   * screen is started again from what is left, because half a redraw painted
-   * onto a stale grid is worse than a clean start.
+   * new is whatever sits past the last byte handed to the grid. If the
+   * window has slid past that — a long silence, an enormous build — the grid
+   * starts over from what is left, because half a redraw painted onto a
+   * stale screen is worse than a clean start.
    */
   const catchUp = async (): Promise<void> => {
     if (asking) {
@@ -92,13 +93,12 @@ export async function openShell(
         const snap = (await handle.snapshot()).data;
         const from = written - snap.baseOffset;
         if (from < 0 || from > snap.text.length) {
-          screen.write(snap.text);
+          term.reset();
+          term.write(snap.text);
         } else if (from < snap.text.length) {
-          screen.write(snap.text.slice(from));
+          term.write(snap.text.slice(from));
         }
         written = snap.baseOffset + snap.text.length;
-        lines = screen.written();
-        changed();
       } while (again);
     } finally {
       asking = false;
@@ -110,12 +110,11 @@ export async function openShell(
 
   return {
     key,
-    lines: () => lines,
-    say: async (what) => {
-      await client.terminals.sendInput({ key, data: what });
-    },
+    el: term.el,
+    focus: () => term.focus(),
     close: async () => {
       await off();
+      term.dispose();
     },
   };
 }
