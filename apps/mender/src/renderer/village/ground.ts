@@ -99,7 +99,11 @@ export class Ground {
 
   constructor(districts: readonly District[], layout: Layout, buildings: readonly Building[]) {
     for (const district of districts) {
-      if (district.id === CAMP) continue;
+      /* The camp is handled on its own, by the fire's own reach, and the
+         islet is common ground with nothing on it to walk into — neither is
+         land a press does anything with, so neither hovers or answers a
+         click. Only a district standing a project is a thing you point at. */
+      if (district.kind === 'common') continue;
       for (const [x, y0, y1] of district.cells) {
         for (let y = y0; y <= y1; y++) this.owner.set(`${x},${y}`, district);
       }
