@@ -516,8 +516,58 @@ async function boot(): Promise<void> {
           at,
           here: project.id === here?.id,
           ...(project.icon ? { icon: project.icon } : {}),
+          ...(wantsOf(project.id) ? { wants: wantsOf(project.id) } : {}),
         }))
       );
+    };
+
+    /**
+     * Every session that wants him, island-wide, worst and oldest first.
+     *
+     * The same rule the rack's own light and the notification banner read
+     * off `seen`: hurt outranks asking, and merely working is not "wants
+     * you." `tasks` is already in the order sessions were cut in, which is
+     * the closest thing to "how long has it been asking" this house keeps.
+     */
+    const waiting = (): Task[] => [
+      ...tasks.filter((task) => seen[task.id] === 'hurt'),
+      ...tasks.filter((task) => seen[task.id] === 'asking'),
+    ];
+
+    /**
+     * Stand in whichever yard wants him most.
+     *
+     * Pressed again from inside one, it goes to the next — a bad morning
+     * with three sessions asking things is three presses apart. The
+     * notification's own click lands on this same door (`go('task:…')`),
+     * not a second way in that could disagree with this one.
+     */
+    const attendNext = (): void => {
+      const list = waiting();
+      if (!list.length) return;
+      const here = inside?.id;
+      const at = here ? list.findIndex((task) => task.id === here) : -1;
+      const next = list[(at + 1) % list.length];
+      if (next) go(`task:${next.id}`);
+    };
+
+    /**
+     * The worst thing anybody in a project wants, if anything does.
+     *
+     * The same mood map that lights every lantern and every house window,
+     * folded down to one project: hurt outranks asking, and everything else —
+     * working, resting, arriving — is not a reason to light the rack, which
+     * only ever answers "does somebody want me," not "is anybody home."
+     */
+    const wantsOf = (project: string): 'asking' | 'hurt' | undefined => {
+      let worst: 'asking' | 'hurt' | undefined;
+      for (const task of tasks) {
+        if (task.project !== project) continue;
+        const mood = seen[task.id];
+        if (mood === 'hurt') return 'hurt';
+        if (mood === 'asking') worst = 'asking';
+      }
+      return worst;
     };
 
     /**
@@ -564,6 +614,10 @@ async function boot(): Promise<void> {
       }
       if (id === 'do:back' || id === 'do:forward') {
         void retrace(id === 'do:back' ? -1 : 1);
+        return;
+      }
+      if (id === 'do:attend') {
+        attendNext();
         return;
       }
       // Taking back something you said while it was busy. It never reached the

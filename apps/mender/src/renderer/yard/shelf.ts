@@ -31,6 +31,8 @@ export interface OnShelf {
   /** Its own picture, which outranks the tool whenever it has one. */
   icon?: string;
   here: boolean;
+  /** Whether somebody in this project is asking or hurt, worst first. */
+  wants?: 'asking' | 'hurt';
 }
 
 export interface Shelf {
@@ -62,13 +64,32 @@ export function makeShelf(at: HTMLElement, open: (id: string) => void): Shelf {
     label.textContent = resting;
     label.dataset.shelf = 'fold';
     label.addEventListener('click', () => fold(!away));
+    /* Folded shut, the rack is only this label, so it carries the same
+       question the open slots would answer: does anywhere else want him.
+       Worst first, the same way a house's own light would read it. */
+    if (away) {
+      const worst = projects.some((project) => project.wants === 'hurt')
+        ? 'hurt'
+        : projects.some((project) => project.wants === 'asking')
+          ? 'asking'
+          : undefined;
+      label.style.transition = 'color 520ms cubic-bezier(.2,.8,.2,1),text-shadow 520ms';
+      if (worst) {
+        label.style.color = worst === 'hurt' ? '#ff7a52' : '#ffc46a';
+        label.style.textShadow = `0 0 10px ${worst === 'hurt' ? '#ff7a52aa' : '#ffc46aaa'}`;
+      }
+    }
     root.appendChild(label);
 
     if (away) return;
 
     for (const project of projects) {
       const one = slot(
-        { tool: toolFor(project.at), ...(project.icon ? { icon: project.icon } : {}) },
+        {
+          tool: toolFor(project.at),
+          ...(project.icon ? { icon: project.icon } : {}),
+          ...(project.wants ? { wants: project.wants } : {}),
+        },
         project.here
       );
       one.dataset.project = project.id;

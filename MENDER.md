@@ -132,6 +132,17 @@ in the top right, over both the island and the yard, one slot each with the
 project's own face in it, its app icon or its logo, and a prop from the kit
 until it has one, and no names until you hover. It folds away.
 
+A slot on the rack carries the same warm or red wash a lit house gets, the
+moment somebody in that project is asking or hurt, easing in and out the same
+way — the rack is visible even standing deep in another project's yard, so it
+is the one place that answers "does anywhere else want me" without leaving
+where you are. Folded shut, that same light plays across the "projects"
+handle itself. And a chord reaches whoever it is without walking there first:
+held with command, `U` stands you in the yard of whichever session wants you
+most, island-wide, asking or hurt outranking merely working and the oldest
+first; pressed again it goes to the next. A clicked notification lands on
+that same door.
+
 **A checkout arrives one of three ways, and the campfire is where you say
 which.** Command-N or the campfire itself opens a small board over the
 island with one question and three lines to answer it: pick a folder

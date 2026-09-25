@@ -30,6 +30,14 @@ const TOOLS = [
 
 export const SLOT = 44;
 
+/* The same two colours a lit house's window uses (`village/folk.ts`'s own
+   `LIGHT` table): amber for somebody asking, red for somebody hurt. */
+const WANTS: Record<'asking' | 'hurt' | 'none', string> = {
+  none: '0 0 0 rgba(0,0,0,0)',
+  asking: '0 0 14px 4px #ffc46aaa',
+  hurt: '0 0 14px 4px #ff7a52aa',
+};
+
 /** The kit's stand-in for the project that came in at `at`. */
 export function toolFor(at: number): string {
   return TOOLS[at % TOOLS.length] ?? TOOLS[0];
@@ -37,13 +45,18 @@ export function toolFor(at: number): string {
 
 /** One slot on the rack, with a picture or a tool standing in it. */
 export function slot(
-  face: { icon?: string; tool: string },
+  face: { icon?: string; tool: string; wants?: 'asking' | 'hurt' },
   here: boolean,
   size = SLOT
 ): HTMLDivElement {
   const box = document.createElement('div');
   box.className = 'face';
   box.style.cssText = here ? SLOT_HERE(size) : SLOT_EMPTY(size);
+  /* The same warm or red wash a lit house gets, eased in and out the same
+     way — the rack answers "does anywhere else want me" without gaining a
+     badge or a dot, the two things this app otherwise never draws. */
+  box.style.transition = 'box-shadow 520ms cubic-bezier(.2,.8,.2,1)';
+  box.style.boxShadow = WANTS[face.wants ?? 'none'];
 
   if (face.icon) {
     const picture = document.createElement('img');

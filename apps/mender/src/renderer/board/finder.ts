@@ -70,6 +70,13 @@ const DOINGS: Doing[] = [
     where: ['district', 'session'],
   },
   {
+    pick: 'do:attend',
+    name: 'go to whoever wants you',
+    about: 'asking or hurt outrank merely working, oldest first, island-wide',
+    chord: 'u',
+    where: ['island', 'district', 'session', 'card'],
+  },
+  {
     pick: 'do:found',
     name: 'found a project',
     about: 'put a checkout on the island',

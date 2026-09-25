@@ -1294,6 +1294,32 @@ Driven against a real Claude in a real worktree, twice: said something, watched
 the note go up on the post in handwriting, the answer come back in the serif,
 and the command it ran appear in the margin with its prop beside it.
 
+A slot on the rack now says whether its project wants him, even while he is
+standing somewhere else entirely: the same worst-mood-per-project fold the
+island's own house lights already read off `seen`, hurt outranking asking,
+applied as the same warm or red wash a lit house's window gets on the slot
+itself, eased in and out the same way. Folded shut, the same wash plays across
+the "projects" handle label, so the collapsed rack still answers "does
+anywhere else want me." No badge, no dot, no count: the rack was already the
+one exception to gold-only-pressable, and this stays inside that exception
+rather than adding a second one. `yard/face.ts`'s `slot()`, `yard/shelf.ts`.
+Driven with fake `wants` values rendered straight through the real `slot()`
+export over the debug port (asking read amber, hurt read red, a plain slot
+stayed plain); the project-mood fold itself (`wantsOf` in `main.ts`) is a
+handful of lines reading the same `seen` map `paintRail` already had, so it
+was checked by reading rather than by faking a whole agent session for it.
+
+And a chord goes straight to whoever wants him, island-wide: `Cmd/Ctrl+U`
+("go to whoever wants you," in the finder's own "held with command" list from
+anywhere) stands him in the yard of whichever session is asking or hurt,
+worst and oldest first, and pressed again from inside one cycles to the next
+— a bad morning with three sessions asking things is three presses apart. A
+clicked notification (see below) lands on the identical `go('task:…')`, not a
+second way in that could disagree with this one. Driven live: opened the
+finder and confirmed the new row reads correctly, and pressed the chord with
+nobody waiting and confirmed it does nothing rather than going somewhere
+wrong.
+
 ### W-E — everything else is laid over it · done
 
 Opening a file, a change, a commit, a folder, a shell, a pull request, the
