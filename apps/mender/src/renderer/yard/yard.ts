@@ -19,7 +19,7 @@
  */
 
 import type { Offer } from '../board/offer';
-import { GUTTER, MARGIN, WIDEST, type Layer } from './frame';
+import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
 import { makeLine, type Asking as Prompting, type Line } from './line';
 import { makeMenu } from './menu';
@@ -43,46 +43,26 @@ import type {
 } from './what';
 import { box, exact, firelight, folk, label, row, rule, said, stack, trim } from './write';
 
+/*
+ * On a Mac the window's own three buttons float over the top left corner of
+ * the world, so everything from the title down starts under them. Sitting
+ * beside them on the same line reads as the name being jammed into the
+ * window's frame, however much room there is between them.
+ */
+const LIFT = /Mac/.test(navigator.userAgent) ? 30 : 0;
+
 /* Where the bands sit, measured off the designs, with one change: the top
    right corner belongs to the projects shelf, so the two facts the designs put
    up there drop below it and the whole band is that much deeper. */
-/*
- * On a Mac the window's own three buttons float over the top left corner of
- * the world. Where the yard is wide enough that its edge is clear of them the
- * header sits in the corner beside them; where it is not, everything from the
- * title down comes lower, so the name is never written through the buttons.
- */
-const LIGHTS = { clear: 92, drop: 30 };
-const MAC = /Mac/.test(navigator.userAgent);
-
-function lifted(): number {
-  const edge = Math.max(MARGIN, Math.round((window.innerWidth - WIDEST) / 2));
-  return MAC && edge < LIGHTS.clear ? LIGHTS.drop : 0;
-}
-
 const HEAD = {
-  get title() {
-    return 22 + lifted();
-  },
-  get meta() {
-    return 56 + lifted();
-  },
-  get aside() {
-    return 70 + lifted();
-  },
-  get under() {
-    return 92 + lifted();
-  },
-  get rule() {
-    return 112 + lifted();
-  },
-  get label() {
-    return 132 + lifted();
-  },
-  get top() {
-    return 162 + lifted();
-  },
-};
+  title: 22 + LIFT,
+  meta: 56 + LIFT,
+  aside: 70 + LIFT,
+  under: 92 + LIFT,
+  rule: 112 + LIFT,
+  label: 132 + LIFT,
+  top: 162 + LIFT,
+} as const;
 /* From the beam down to the bottom edge, which is what the rail lives in. Less
    of it when the lanterns are hanging bare, since there are no words under
    them to leave room for. */
