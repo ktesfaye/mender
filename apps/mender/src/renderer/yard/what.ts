@@ -172,6 +172,8 @@ export interface Thought {
   earlier?: boolean;
   /** Reasoning rather than an answer. */
   quiet?: boolean;
+  /** The turn going wrong rather than an answer: `wrong` stopped it, `warn` cut it short. */
+  trouble?: 'wrong' | 'warn';
 }
 
 /** Something it did: a tool call, with a prop from the kit standing for it. */

@@ -116,11 +116,18 @@ async function carry(line: HTMLSpanElement, said: string, doing: Doing): Promise
   delete line.dataset.busy;
 
   if ('said' in outcome) {
+    /* Green while it says it worked, then gold again once it is the thing you
+       press next time. It is not pressable for as long as it is not gold. */
     line.textContent = outcome.said;
+    line.style.color = 'var(--yard-well)';
+    line.dataset.busy = 'said';
     /* It settles back on its own, because the line's job is to be the thing
        you press next time, not a record of the last time. */
     window.setTimeout(() => {
-      if (line.isConnected) line.textContent = said;
+      if (!line.isConnected) return;
+      line.textContent = said;
+      line.style.color = '';
+      delete line.dataset.busy;
     }, HOLD_MS);
     return;
   }
@@ -128,10 +135,11 @@ async function carry(line: HTMLSpanElement, said: string, doing: Doing): Promise
   /* A failure stays. Putting it back after three seconds would mean the one
      message worth reading is the one most likely to be missed. */
   line.textContent = outcome.wrong;
-  line.style.color = 'var(--yard-broken)';
+  line.style.color = 'var(--yard-wrong)';
   if (outcome.because) {
     const why = document.createElement('div');
-    why.style.cssText = 'color:var(--yard-ink-dim);font-size:13px';
+    why.style.cssText =
+      'color:color-mix(in srgb, var(--yard-wrong) 70%, var(--yard-ink-dim));font-size:13px';
     why.textContent = outcome.because;
     line.after(why);
   }

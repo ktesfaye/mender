@@ -71,10 +71,16 @@ const YARD_BOX = { wide: 380, tall: 214 };
 const TONE: Record<Posture, string> = {
   working: '#e8d3a6',
   'wants-you': '#ff9a6a',
-  done: '#a8c469',
-  broken: '#d98a5a',
+  done: 'var(--yard-well)',
+  broken: 'var(--yard-wrong)',
   resting: '#bfa476',
 };
+
+/** What a thought that went wrong is headed with, and written in. */
+const TROUBLE = {
+  wrong: { head: 'it stopped', ink: 'var(--yard-wrong)' },
+  warn: { head: 'it stopped short', ink: 'var(--yard-warn)' },
+} as const;
 
 export interface Doings {
   /** Walk into another session in this project. */
@@ -594,13 +600,14 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
 
   /* How much room it has left to think in. Nothing warns an agent when that
      runs out; the conversation simply starts losing its own beginning, so the
-     village says it instead, and says it warmly once there is little left. */
+     village says it instead: orange once it is getting low, red once it is
+     nearly gone. */
   const room = yard.session?.room;
   const it = box({ right: edge, top: HEAD.under }, 'display:flex;gap:6px;align-items:baseline');
   if (room !== undefined) {
-    it.appendChild(
-      exact(`context ${Math.round(room * 100)}%`, 12, room < TIGHT ? '#ff9a6a' : undefined)
-    );
+    const ink =
+      room < TIGHT ? 'var(--yard-wrong)' : room < LOW ? 'var(--yard-warn)' : undefined;
+    it.appendChild(exact(`context ${Math.round(room * 100)}%`, 12, ink));
   }
   if (yard.session?.model) {
     if (room !== undefined) {
@@ -636,7 +643,7 @@ const WRONG: Partial<Record<Yard['project']['health'], string>> = {
 const WOUND = [
   "font-family:'Josefin Sans',sans-serif",
   'font-size:14px',
-  'color:#e0735a',
+  'color:var(--yard-wrong)',
   'text-shadow:1px 1px 0 #120d07',
 ].join(';');
 
@@ -654,6 +661,8 @@ function shortOf(path: string): string {
 }
 
 /** Below this much room left, it stops being a footnote. */
+const LOW = 0.4;
+/** And below this, it is about to start forgetting. */
 const TIGHT = 0.15;
 
 const TITLE = [
@@ -933,7 +942,11 @@ function thinking(
       keep.add(one.id);
       const it = keyed(document.createElement('div'), `thought:${one.id}`);
       it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
-      const head = said(one.quiet ? 'thinking' : 'now', '#ffc98a');
+      const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
+      const head = said(
+        trouble?.head ?? (one.quiet ? 'thinking' : 'now'),
+        trouble?.ink ?? '#ffc98a'
+      );
       it.appendChild(head);
       const body = document.createElement('div');
       /* Set large, unless it is long enough that large is a wall: a whole
@@ -941,20 +954,27 @@ function thinking(
       const size = one.said.length > 700 ? 19 : 21;
       body.style.cssText = one.quiet
         ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
-        : `font-size:${size}px;line-height:1.35;color:#ffdca4;text-shadow:0 2px 10px rgba(0,0,0,.9)`;
+        : `font-size:${size}px;line-height:1.35;color:${trouble?.ink ?? '#ffdca4'};text-shadow:0 2px 10px rgba(0,0,0,.9)`;
       prose(body, one.id, one.said, !walkedIn, keepCode(does));
       it.appendChild(body);
       stream.appendChild(it);
       return;
     }
+    /* Trouble keeps its colour as it goes into the history, dimmed with the
+       rest, so scrolling back you can still see where it went wrong. */
+    const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
+    const fade = far > 2 ? 0.46 : 0.62;
     stream.appendChild(
       keyed(
         thought(
           one,
           far > 2 ? 15 : 16,
-          far > 2 ? 'rgba(244,227,192,.46)' : 'rgba(244,227,192,.62)',
-          undefined,
-          keepCode(does)
+          trouble
+            ? `color-mix(in srgb, ${trouble.ink} ${Math.round(fade * 140)}%, transparent)`
+            : `rgba(244,227,192,${fade})`,
+          trouble?.head,
+          keepCode(does),
+          trouble?.ink
         ),
         `thought:${one.id}`
       )
@@ -1043,7 +1063,7 @@ function ember(live: Live, since: number | undefined): HTMLElement {
 
 /** What a step of a posted plan looks like, behind them, under their hands, or ahead. */
 const STEP: Record<string, string> = {
-  done: 'rgba(244,227,192,.42)',
+  done: 'color-mix(in srgb, var(--yard-well) 70%, transparent)',
   doing: '#ffdca4',
   ahead: '#a89272',
 };
@@ -1108,14 +1128,15 @@ function thought(
   size: number,
   ink: string,
   name?: string,
-  keep?: (code: string) => void
+  keep?: (code: string) => void,
+  tone?: string
 ): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
   /* Only where there is something true to say. A thought with no clock on it
      gets no line above it at all rather than an empty one. */
   const label = name ? (one.when ? `${name} · ${one.when}` : name) : one.when;
-  if (label) it.appendChild(said(label));
+  if (label) it.appendChild(said(label, tone));
   const body = document.createElement('div');
   body.style.cssText = `font-size:${size}px;line-height:1.4;color:${ink}`;
   prose(body, one.id, one.said, false, keep);
@@ -1262,10 +1283,35 @@ function did(one: Step): HTMLElement {
      the step telling you more than you glanced over for. */
   text.style.cssText =
     'white-space:normal;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden';
-  text.style.color = one.running ? '#ffc98a' : '#f4e3c0';
-  text.textContent = one.note ? `${one.did} · ${one.note}` : one.did;
+  text.style.color =
+    one.tone === 'broken' ? 'var(--yard-wrong)' : one.running ? '#ffc98a' : '#f4e3c0';
+  text.textContent = one.did;
+  if (one.note) text.append(' · ', ...noted(one.note));
   line.appendChild(text);
   return line;
+}
+
+/**
+ * What a step cost or changed, in the colours a change is read in: what went
+ * in is green and what came out is red, the same as on a change's own board.
+ */
+function noted(note: string): (string | HTMLElement)[] {
+  const tinted = (text: string, ink: string): HTMLElement => {
+    const it = document.createElement('span');
+    it.style.color = ink;
+    it.textContent = text;
+    return it;
+  };
+  const counts = /^\+(\d+) −(\d+)$/.exec(note);
+  if (counts) {
+    return [
+      tinted(`+${counts[1]}`, 'var(--yard-well)'),
+      ' ',
+      tinted(`−${counts[2]}`, 'var(--yard-wrong)'),
+    ];
+  }
+  if (/^\d+ lines?$/.test(note)) return [tinted(note, 'var(--yard-well)')];
+  return [tinted(note, '#a89272')];
 }
 
 /**

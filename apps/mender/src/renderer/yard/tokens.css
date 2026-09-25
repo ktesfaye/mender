@@ -34,7 +34,19 @@
   --yard-working: #f4e3c0;
   --yard-wants-you: #ff9a6a;
   --yard-done: #a8c469;
-  --yard-broken: #e0735a;
+  --yard-broken: #f2665a;
+
+  /* ── what a thing is, by colour ────────────────────────────────────────────
+     The ink is the fire's, so everything ordinary is cream and everything
+     pressable is gold. Anything that is not ordinary says what it is in a
+     colour the fire does not make: red is wrong, orange wants you or ran
+     short, green went well, blue is exact, and violet is what the agent itself
+     stressed. None of these is ever pressable, and gold is never any of them. */
+  --yard-wrong: #f2665a;
+  --yard-warn: #ffa25e;
+  --yard-well: #a8c469;
+  --yard-quoted: #8cc4d6;
+  --yard-stress: #c9b2ff;
 
   /* ── timber ────────────────────────────────────────────────────────────── */
   --yard-timber-light: #5e4326;
@@ -512,7 +524,7 @@
   color: var(--yard-broken);
 }
 .settings-remove:hover {
-  color: #f08a70;
+  color: #ff8a7a;
 }
 .settings-remove.armed {
   color: var(--yard-shadow);
@@ -605,7 +617,7 @@
   color: var(--yard-ink-dim);
 }
 .yard .menu-row.sore .menu-about {
-  color: var(--yard-broken);
+  color: var(--yard-wrong);
 }
 /* The keyboard's mark, lifted rather than filled. Stronger than the plain
    `.picked` fill so that one does not paint the whole line gold. */
@@ -638,7 +650,8 @@
   font-size: max(11px, 0.56em);
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #c9b48a;
+  color: var(--yard-stress);
+  opacity: 0.8;
 }
 .yard .prose-heading:first-child {
   margin-top: 0;
@@ -655,7 +668,7 @@
 }
 .yard .prose-quote {
   padding-left: 0.7em;
-  border-left: 2px solid rgba(244, 227, 192, 0.22);
+  border-left: 2px solid color-mix(in srgb, var(--yard-stress) 45%, transparent);
   font-style: italic;
   opacity: 0.85;
 }
@@ -668,10 +681,13 @@
 .yard .prose-code {
   font-family: var(--yard-face-mono);
   font-size: 0.8em;
-  color: #9ab7c0;
+  color: var(--yard-quoted);
 }
+/* There is no second weight in these faces worth reading, so what the agent
+   stressed is said in its own colour instead. */
 .yard .prose-heavy {
   font-weight: 600;
+  color: var(--yard-stress);
 }
 .yard .prose-lean {
   font-style: italic;
@@ -686,7 +702,7 @@
   line-height: 1.45;
   color: #c9d6d9;
   background: rgba(0, 0, 0, 0.28);
-  border-left: 2px solid rgba(154, 183, 192, 0.45);
+  border-left: 2px solid color-mix(in srgb, var(--yard-quoted) 50%, transparent);
 }
 .yard .prose-block.press {
   color: #c9d6d9;

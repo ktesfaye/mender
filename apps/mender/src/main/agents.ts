@@ -945,7 +945,7 @@ function toldOf(
   let saidSince = false;
   for (let i = flat.length - 1; i >= 0; i -= 1) {
     const item = flat[i];
-    if (item.kind === 'said') saidSince = true;
+    if (item.kind === 'said' || item.kind === 'ended') saidSince = true;
     if (item.kind === 'note') answered[i] = item.hasOutcome || saidSince;
   }
 
@@ -971,7 +971,25 @@ function toldOf(
     } else if (item.kind === 'said') {
       const at = stamp(item.id, item.hasOutcome);
       earliest(at);
-      thoughts.push({ id: item.id, said: item.text, at, turn: item.turn });
+      /* The last thing said in a turn that broke is the agent saying why, and
+         a limit is said in so many words whether or not the turn noticed. */
+      const last = flat[i + 1]?.turn !== item.turn;
+      const trouble = limited(item.text) || (last && item.broke) ? 'wrong' : undefined;
+      thoughts.push({
+        id: item.id,
+        said: item.text,
+        at,
+        turn: item.turn,
+        ...(trouble ? { trouble } : {}),
+      });
+    } else if (item.kind === 'ended') {
+      thoughts.push({
+        id: item.id,
+        said: item.said,
+        at: stamp(item.id, true),
+        turn: item.turn,
+        trouble: item.trouble,
+      });
     } else if (item.kind === 'thinking') {
       earliest(item.item.startedAt);
       thoughts.push({
@@ -1006,15 +1024,19 @@ function toldOf(
 /** One chronological item, flattened out of the turn/message/tool tree. */
 type Flat = (
   | { kind: 'note'; id: string; text: string; hasOutcome: boolean }
-  | { kind: 'said'; id: string; text: string; hasOutcome: boolean }
+  | { kind: 'said'; id: string; text: string; hasOutcome: boolean; broke: boolean }
   | { kind: 'thinking'; item: TranscriptThinking }
   | { kind: 'tool'; node: ToolNode; hasOutcome: boolean }
+  /** A turn that ended badly without the agent saying why, said for it. */
+  | { kind: 'ended'; id: string; said: string; trouble: 'wrong' | 'warn' }
 ) & { turn: number };
 
 function flatten(turns: readonly TranscriptTurn[]): Flat[] {
   const flat: Flat[] = [];
   turns.forEach((turn, at) => {
     const hasOutcome = turn.outcome !== undefined;
+    const broke = turn.outcome?.kind === 'error';
+    let saidLast = false;
     for (const item of turn.items) {
       if (item.kind === 'message') {
         const text = item.text.trim();
@@ -1022,16 +1044,79 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
         flat.push(
           item.role === 'user'
             ? { kind: 'note', id: item.id, text, hasOutcome, turn: at }
-            : { kind: 'said', id: item.id, text, hasOutcome, turn: at }
+            : { kind: 'said', id: item.id, text, hasOutcome, broke, turn: at }
         );
+        saidLast = item.role !== 'user';
       } else if (item.kind === 'thinking') {
         if (item.text.trim()) flat.push({ kind: 'thinking', item, turn: at });
+        saidLast = false;
       } else {
         flat.push({ kind: 'tool', node: item, hasOutcome, turn: at });
+        saidLast = false;
       }
+    }
+    const ended = endedBadly(turn.outcome);
+    if (ended && !(broke && saidLast)) {
+      flat.push({ kind: 'ended', id: `${turn.id}:ended`, ...ended, turn: at });
     }
   });
   return flat;
+}
+
+/**
+ * What the Claude CLI says, word for word, when the account has run out.
+ *
+ * Copied from the Agent SDK's own list, which is how the ACP adapter tells a
+ * limit from an answer. Without the session-failure capability the adapter
+ * hands it over as ordinary talk, so this is the only way it reads as trouble.
+ */
+const LIMITS = [
+  "You've hit your",
+  "You've reached your",
+  "You're out of usage credits",
+  'Your org is out of usage · add funds to continue',
+  'Your org is out of usage · contact your admin',
+  "Your seat type doesn't include usage credits",
+  "Your seat type doesn't include usage",
+  'Your usage allocation has been disabled by your admin',
+  "Your group's usage limit is set to $0",
+  'Fable 5 requires usage credits',
+  "You're out of extra usage",
+  "Your seat type doesn't include extra usage",
+];
+
+function limited(text: string): boolean {
+  return text.length < 400 && LIMITS.some((one) => text.startsWith(one));
+}
+
+/** A turn's ending, when it is one worth saying on the board. */
+function endedBadly(
+  outcome: TranscriptTurn['outcome']
+): { said: string; trouble: 'wrong' | 'warn' } | null {
+  if (!outcome) return null;
+  if (outcome.kind === 'error') {
+    switch (outcome.reason) {
+      case 'process_closed':
+        return { said: 'The agent went away in the middle of it.', trouble: 'wrong' };
+      case 'spawn_failed':
+      case 'initialize_failed':
+      case 'new_session_failed':
+      case 'load_session_failed':
+        return { said: 'The agent would not start.', trouble: 'wrong' };
+      default:
+        return { said: 'It broke off without saying why.', trouble: 'wrong' };
+    }
+  }
+  if (outcome.kind === 'done' && outcome.reason === 'refusal') {
+    return { said: 'It would not do that.', trouble: 'wrong' };
+  }
+  if (outcome.kind === 'done' && outcome.reason === 'max_tokens') {
+    return { said: 'It ran out of room to answer and stopped short.', trouble: 'warn' };
+  }
+  if (outcome.kind === 'interrupted' && outcome.reason === 'process_closed') {
+    return { said: 'The agent went away in the middle of it.', trouble: 'wrong' };
+  }
+  return null;
 }
 
 /**

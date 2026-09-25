@@ -15,9 +15,11 @@
 /**
  * What a line is written in, which is what it means rather than what colour it
  * is. Something quoted exactly — a name, a path, a flag — reads cool against
- * the rest so it is a thing rather than a word.
+ * the rest so it is a thing rather than a word. `keen` went well, `sore` went
+ * wrong, `warn` wants you or fell short, and `stress` is something the writer
+ * leaned on.
  */
-export type Tone = 'ink' | 'faded' | 'keen' | 'sore' | 'quoted';
+export type Tone = 'ink' | 'faded' | 'keen' | 'sore' | 'warn' | 'quoted' | 'stress';
 
 /** A stretch of one line written differently from the rest of it. */
 export interface Run {

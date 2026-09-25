@@ -31,10 +31,14 @@ const MARKS: Record<string, string> = {
 };
 
 const TONE: Record<string, Tone> = {
+  M: 'quoted',
+  T: 'quoted',
   A: 'keen',
   '?': 'keen',
+  C: 'keen',
+  R: 'stress',
   D: 'sore',
-  U: 'sore',
+  U: 'warn',
 };
 
 type StatusState = {

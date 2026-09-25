@@ -1003,7 +1003,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-10 | External drag-in (import) |  | W5 |
 | FS-11 | Drag-out to compose/elsewhere |  | W5 |
 | FS-12 | Flat-mode listing | cut | W5 |
-| FS-13 | Row decoration (git-status badges, tone) |  | W5 |
+| FS-13 | Row decoration (git-status badges, tone) | done | W5 |
 | FS-14 | File icons by extension | cut | W5 |
 | FS-15 | Filename / quick-open search | done | W1 |
 | FS-16 | Content ("find in files") search | done | W5 |
@@ -1479,6 +1479,26 @@ answer with its line breaks thrown away, so `/context` came out as a paragraph
 of pipes and hashes. It reads the markdown now: headings as labels, lists,
 quotes, code set in the type and pressed to keep, and tables as tables with
 their numbers leaning right. Driven with a real `/context` in the running app.
+
+### Things say what they are in colour (2026-09-24)
+
+He hit his session limit and the board said so in the same cream as an answer,
+set large under "now". Every state was cream or gold. There is a palette under
+the gold now, and none of it is pressable: red is wrong, orange wants you or
+ran short, green went well, blue is exact, violet is what the agent stressed.
+
+A limit, a refusal, an agent that died or a turn that broke off without a word
+comes through from the main process marked as trouble, and the thinking column
+heads it "it stopped" in red instead of "now"; it stays red, dimmed, once it is
+history. The limit is recognised by the exact words the Claude Agent SDK uses,
+because without the session-failure capability the ACP adapter hands it over as
+ordinary talk. A step that failed is red on the right; what a change cost is
+green in and red out. The context meter goes orange under forty and red under
+fifteen. A line that did what it was pressed for says so in green before it goes
+back to gold. On a checkout board the mark beside each file is its colour
+(changed blue, new green, gone red, renamed violet, conflicted orange), since
+the file itself is gold. In an answer, bold is violet, code blue, headings and
+quotes carry the violet too. Driven on his real session that hit the limit.
 
 ### Next
 

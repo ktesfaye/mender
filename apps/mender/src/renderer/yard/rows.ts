@@ -20,12 +20,26 @@ import { astop } from './walk';
 const INK: Record<Tone, string> = {
   ink: '#f4e3c0',
   faded: '#a89272',
-  keen: '#a8c469',
-  sore: '#e0735a',
+  keen: 'var(--yard-well)',
+  sore: 'var(--yard-wrong)',
+  warn: 'var(--yard-warn)',
   /* Something quoted exactly — a name, a path, a flag — reads cool against the
      rest so it is a thing rather than a word. */
-  quoted: '#9ab7c0',
+  quoted: 'var(--yard-quoted)',
+  stress: 'var(--yard-stress)',
 };
+
+/**
+ * What the mark in the margin is written in.
+ *
+ * A pressable line is gold whatever it means, so on a list of files the one
+ * place left to say what happened to each is the mark beside it: the `D` of
+ * a file that went is red and the `?` of one git has never seen is green,
+ * while `→` and the ages of commits stay stone.
+ */
+function marked(tone: Tone | undefined): string {
+  return tone && tone !== 'ink' ? INK[tone] : INK.faded;
+}
 
 /** How far one level of nesting moves a line in. */
 const IN = 18;
@@ -104,7 +118,7 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
     case 'entry': {
       line.style.cssText = `${BODY};display:flex;gap:8px`;
       const mark = document.createElement('span');
-      mark.style.cssText = `width:${GUTTER}px;flex:none;color:${INK.faded};text-align:right;white-space:nowrap`;
+      mark.style.cssText = `width:${GUTTER}px;flex:none;color:${marked(row.tone)};text-align:right;white-space:nowrap`;
       mark.textContent = row.mark;
       const said = document.createElement('span');
       said.style.color = ink(row.tone);

@@ -135,6 +135,11 @@ export const musedSchema = z.object({
   at: z.number(),
   /** Reasoning rather than an answer, which reads differently. */
   quiet: z.boolean().optional(),
+  /**
+   * Not an answer at all but the turn going wrong: a limit hit, a refusal, a
+   * process that died. `wrong` stopped it; `warn` let it finish short.
+   */
+  trouble: z.enum(['wrong', 'warn']).optional(),
   /** Still going, and since when. */
   since: z.number().optional(),
   /** Which turn of the conversation it belongs to, so the board can tell an

@@ -223,6 +223,7 @@ function thoughtsOf(told: Told | undefined): Thought[] {
     ...(at === all.length - 1 && !one.since && !earlier(one.turn) ? { live: true } : {}),
     ...(earlier(one.turn) ? { earlier: true } : {}),
     ...(one.quiet ? { quiet: true } : {}),
+    ...(one.trouble ? { trouble: one.trouble } : {}),
   }));
 }
 
