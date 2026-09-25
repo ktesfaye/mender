@@ -18,7 +18,7 @@ import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Mood } from '@shared/agents';
-import type { Hand, ProviderConfig } from '@shared/app-settings';
+import type { Hand, ProviderConfig, SessionUsage } from '@shared/app-settings';
 import type { At, Change } from '@shared/changes';
 import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
@@ -993,6 +993,7 @@ async function boot(): Promise<void> {
         hands: null as Hand[] | null,
         worktrees: null as WorktreeRow[] | null,
         machine: null as MachineSample | null,
+        sessions: null as SessionUsage[] | null,
         providers: {} as Record<string, ProviderConfig>,
         installs: {} as Record<string, HostDependencyView>,
       };
@@ -1058,6 +1059,10 @@ async function boot(): Promise<void> {
             diskUsedBytes: done.data.disk.usedBytes,
             diskTotalBytes: done.data.disk.totalBytes,
           };
+          ui.update(state);
+        });
+        void client.appSettings.sessionUsage({}, { timeoutMs: 0 }).then((sessions) => {
+          state.sessions = sessions;
           ui.update(state);
         });
       };

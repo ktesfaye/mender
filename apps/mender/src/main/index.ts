@@ -7,6 +7,7 @@ import { createAgents } from './agents';
 import { createAgentsController } from './agents-controller';
 import { createAppSettings } from './app-settings';
 import { createAppSettingsController } from './app-settings-controller';
+import { createSessionUsageReader } from './session-usage';
 import { watchForAttention } from './attend';
 import { watchStayingAwake } from './awake';
 import { watchDockBadge } from './badge';
@@ -76,13 +77,14 @@ export async function main(): Promise<void> {
   watchStayingAwake({ scope, agents, moods });
   const changes = createChanges(runtimes);
   const finding = createFinding(runtimes);
+  const sessionUsage = createSessionUsageReader(runtimes, tasks);
   scope.add(() => agents.dispose());
   scope.add(() => tasks.dispose());
   scope.add(() => tuiSessions.dispose());
   installWire(scope, {
     ...runtimes.controllers,
     agents: createAgentsController(agents, moods, tuiSessions),
-    appSettings: createAppSettingsController(appSettings),
+    appSettings: createAppSettingsController(appSettings, sessionUsage),
     board: createBoardController(createBoard()),
     changes: createChangesController(changes),
     finding: createFindingController(finding),

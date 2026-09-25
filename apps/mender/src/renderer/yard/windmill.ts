@@ -13,7 +13,7 @@
  */
 
 import type { HostDependencyView } from '@emdash/core/primitives/host-dependencies/api';
-import type { Hand, ProviderConfig } from '@shared/app-settings';
+import type { Hand, ProviderConfig, SessionUsage } from '@shared/app-settings';
 import { counted } from '../board/card';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
@@ -51,6 +51,9 @@ export interface WindmillState {
   worktrees: WorktreeRow[] | null;
   /** null until the first sample answers. */
   machine: MachineSample | null;
+  /** Each open session's own share of this machine, resampled alongside it.
+      null until the first sample answers. */
+  sessions: SessionUsage[] | null;
   /** What this machine hands each agent's own CLI beyond its ordinary
       command, keyed by agent id. Filled in as each one is asked about. */
   providers: Record<string, ProviderConfig>;
@@ -324,7 +327,39 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       `memory — ${sized(one.memUsedBytes)} of ${sized(one.memTotalBytes)}`,
       `disk — ${sized(one.diskUsedBytes)} of ${sized(one.diskTotalBytes)}`,
     ];
-    machine.fill(lines.map((text) => hintLine(text)));
+    const rows: HTMLElement[] = lines.map((text) => hintLine(text));
+    if (now.sessions?.length) {
+      const heading = el('p', 'settings-hint');
+      heading.textContent = 'each session’s own share:';
+      rows.push(heading);
+      for (const session of now.sessions) {
+        rows.push(drawSessionUsage(session));
+      }
+    }
+    machine.fill(rows);
+  }
+
+  function drawSessionUsage(session: SessionUsage): HTMLElement {
+    const row = el('div', 'windmill-session-usage');
+    const title = el('div', 'windmill-agent-name');
+    title.textContent = session.title;
+    row.append(title);
+    if (!session.shares.length && !session.devServers) {
+      const nothing = el('p', 'settings-hint');
+      nothing.textContent = 'nothing this machine could measure.';
+      row.append(nothing);
+      return row;
+    }
+    for (const share of session.shares) {
+      const line = hintLine(
+        `${share.label} — cpu ${Math.round(share.cpuPercent)}%, memory ${sized(share.memBytes)}`
+      );
+      row.append(line);
+    }
+    if (session.devServers) {
+      row.append(hintLine(`${counted(session.devServers, 'dev server')} listening`));
+    }
+    return row;
   }
 
   function draw(): void {

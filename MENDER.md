@@ -638,9 +638,15 @@ changing. All three reach the same runtime a terminal session's CLI is
 actually spawned with, so what is set here is what `ps` on that process
 shows, not a village-side promise about it. A fourth page says what this
 machine is spending right now, cpu, memory and disk in plain words, counting
-back up every few seconds rather than sitting still. Everything else the
-windmill will eventually hold — updating and authenticating agents, MCP,
-skills, accounts, task defaults — still has nowhere to live.
+back up every few seconds rather than sitting still, and underneath it,
+every open session's own share of that: its agent process where this
+machine actually keeps a pid for one, its plain shells, and how many dev
+servers its checkout has listening — a session running as its own terminal
+names cpu and memory for real; an ordinary conversation, whose agent
+process the protocol does not hand this machine a pid for, cannot yet.
+Everything else the windmill will eventually hold — updating and
+authenticating agents, MCP, skills, accounts, task defaults — still has
+nowhere to live.
 
 **A session remembers what it was last thinking with.** Change an agent's
 model or mode on one session and every fresh session with that same agent

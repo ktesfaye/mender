@@ -617,6 +617,10 @@
   color: var(--yard-gold-hover);
   background: var(--yard-timber-light);
 }
+.windmill-session-usage {
+  padding: 6px 0 6px 10px;
+  border-left: 2px solid var(--yard-rule-soft);
+}
 .windmill-agent {
   display: flex;
   flex-direction: column;

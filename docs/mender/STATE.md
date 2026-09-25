@@ -1305,7 +1305,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | TR-14 | Machine status indicator |  | W10 |
 | TR-15 | Host settings (per-machine defaults) |  | W10 |
 | TR-16 | Workspace server (remote runtime daemon) |  | W10 |
-| TR-17 | Machine resource monitoring |  | W10 |
+| TR-17 | Machine resource monitoring | done | W10 |
 | TR-18 | Host system dependencies |  | W10 |
 | TR-19 | Machine's conversations/workspaces lists |  | W10 |
 | TR-20 | Workspace disk usage |  | W10 |
@@ -2095,8 +2095,15 @@ Resource usage: no ledger number (cmux's idea, not Emdash's) — a "this
 machine" line on the windmill, cpu/memory/disk in plain words, resampled
 every few seconds while it is open (`packages/core/src/runtimes/resource-usage`,
 wired in-process rather than as its own subprocess worker, since a sample is
-a few syscalls). Deliberately not cmux's whole per-process Task Manager —
-Mender's own audit already called that a non-goal.
+a few syscalls). Since asked for again explicitly, it now also lists each
+open session's own share underneath: the pid the tui-agents runtime already
+tracks for its agent process and each plain shell's own pid, `ps`'d for cpu
+and memory (`main/session-usage.ts`), plus how many dev servers that
+checkout has listening, counted rather than measured — a port is noticed by
+asking it, not owned by one pid this machine can always name. Ordinary chat
+sessions (ACP, not a terminal one) do not show an agent-process line yet:
+the ACP runtime does not put a pid on its own contract the way the terminal
+one does, so there is nothing here to `ps`.
 
 Driven: added a custom server and one from the catalogue, then threw the
 custom one away, verifying against a throwaway `HOME`'s own `.claude.json`
@@ -2104,7 +2111,13 @@ after each press rather than trusting the board alone. Cut a zero-cost
 worktree (a terminal-kind session, no agent call), made a real unpushed
 commit on it with plain git, cleared it from the windmill and confirmed on
 disk: the worktree gone, the branch and its commit still there. Watched the
-machine line read real numbers and count back up a few seconds later.
+machine line read real numbers and count back up a few seconds later. Set
+Claude Code's extra arguments to `--verbose` and an environment variable on
+the windmill's new Agents page, started a real terminal session, and read
+both off the actual spawned process with `ps eww` — the flag was on its
+command line, the variable in its tmux wrapper's own environment. Opened
+that same session's usage line and watched it name its agent process with a
+real cpu and memory number.
 
 ### Next
 
