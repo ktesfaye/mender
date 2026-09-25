@@ -1243,6 +1243,9 @@ async function boot(): Promise<void> {
       const lines = file.content.content.split('\n');
       file.fixing = { at, written: lines[at] ?? '' };
       rewrite(read(file));
+      /* The writing moved up onto the taken line, so the line at the foot of
+         the board stops looking like the place it is happening. */
+      yard.line.blur();
     };
 
     /** And putting it back, which writes the file. */
@@ -1254,6 +1257,7 @@ async function boot(): Promise<void> {
       if (lines[at] === written) {
         file.fixing = undefined;
         rewrite(read(file));
+        yard.line.take();
         return;
       }
       lines[at] = written;
@@ -1277,6 +1281,7 @@ async function boot(): Promise<void> {
       if (opened !== file) return;
       opened = { path: file.path, content: again.data };
       wood(read(opened));
+      yard.line.take();
       say('written.', 2000);
     };
 
@@ -2503,6 +2508,7 @@ async function boot(): Promise<void> {
           if (opened.fixing) {
             opened.fixing = undefined;
             rewrite(read(opened));
+            yard.line.take();
             return;
           }
           opened = null;

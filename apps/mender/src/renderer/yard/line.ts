@@ -59,6 +59,15 @@ export interface Line {
   /** Take the keyboard. */
   take(): void;
   /**
+   * Give the keyboard back without taking it anywhere else.
+   *
+   * Used while something taken off a board is being rewritten in place: the
+   * writing has moved to sit on that line rather than this one, and a cursor
+   * still blinking down here beside a prompt nothing is answering reads as
+   * two places to write at once.
+   */
+  blur(): void;
+  /**
    * A key nothing else wanted landed on nothing: take the keyboard back so it
    * lands here. True if the line was there to take it.
    */
@@ -268,6 +277,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       showing();
     },
     take,
+    blur: () => said.blur(),
     catches: (event) => {
       if (event.key.length !== 1 || !root.getClientRects().length) return false;
       const at = document.activeElement;

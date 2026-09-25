@@ -105,15 +105,20 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
       line.textContent = row.text;
       break;
 
-    case 'typed':
-      /* The line you write on is never one of these. A board that shows what
-         is being typed is showing it from somewhere else, so it is written
-         plainly and the real one, with the cursor, is at the foot of the
-         screen where it always is. */
-      line.style.cssText = BODY;
-      line.style.color = INK.ink;
-      line.textContent = row.text;
+    case 'typed': {
+      /* Something taken off a board to be rewritten is being written here
+         rather than on the line at the foot of the screen, so this is the
+         one place other than that line that carries a cursor: full ink, and
+         blinking after the text the way the real one does. */
+      line.style.cssText = `${BODY};display:flex`;
+      const said = document.createElement('span');
+      said.style.color = INK.ink;
+      said.textContent = row.text;
+      const cursor = document.createElement('span');
+      cursor.style.cssText = TYPED_CURSOR;
+      line.append(said, cursor);
       break;
+    }
 
     case 'entry': {
       line.style.cssText = `${BODY};display:flex;gap:8px`;
@@ -190,6 +195,15 @@ const HEADING = [
   'text-transform:uppercase',
   'color:#a89272',
   'padding:12px 0 4px',
+].join(';');
+
+const TYPED_CURSOR = [
+  'width:2px',
+  'height:16px',
+  'margin-left:2px',
+  'background:#f4e3c0',
+  'animation:yard-blink 900ms steps(1,end) infinite',
+  'flex:none',
 ].join(';');
 
 const BODY = [
