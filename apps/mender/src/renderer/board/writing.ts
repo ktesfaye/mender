@@ -1,4 +1,4 @@
-import { mermaidSVGStandalone } from '../diagram';
+import { mermaidSVG } from '../diagram';
 import type { Row, Run, Tone } from './row';
 
 /**
@@ -190,6 +190,18 @@ function tabled(block: readonly string[]): Row[] {
     // The row of dashes under the heading is how markdown says "that was the
     // heading"; the board says it with a rule instead.
     .filter((cells) => !cells.every((cell) => /^:?-{2,}:?$/.test(cell)));
+  return columned(grid);
+}
+
+/**
+ * A grid of cells, measured and padded into real columns.
+ *
+ * The shared part of `tabled`, for anything else that is a grid of cells
+ * before it is anything else — a CSV file, mainly, whose columns are a comma
+ * apart in the source but ought to line up on the board the way a spreadsheet
+ * would show them.
+ */
+export function columned(grid: readonly string[][]): Row[] {
   if (!grid.length) return [];
 
   const across = Math.max(...grid.map((cells) => cells.length));
@@ -288,22 +300,8 @@ function plainly(text: string): string {
   return out;
 }
 
-/** How wide a drawn diagram is let get before it is scaled down to fit. */
-const DIAGRAM_WIDE = 640;
-const SVG_SIZE = /width="([\d.]+)"\s+height="([\d.]+)"/;
-
-/** A `mermaid` fence, drawn as a picture row — or null when it will not parse. */
+/** A `mermaid` fence, drawn and pannable — or null when it will not parse. */
 function diagramRow(text: string): Row | null {
-  const svg = mermaidSVGStandalone(text);
-  const size = svg ? SVG_SIZE.exec(svg) : null;
-  const wide = size ? Number(size[1]) : 0;
-  const tall = size ? Number(size[2]) : 0;
-  if (!svg || !wide || !tall) return null;
-  const scale = wide > DIAGRAM_WIDE ? DIAGRAM_WIDE / wide : 1;
-  return {
-    kind: 'picture',
-    src: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-    wide: Math.round(wide * scale),
-    tall: Math.round(tall * scale),
-  };
+  const svg = mermaidSVG(text);
+  return svg ? { kind: 'diagram', svg } : null;
 }

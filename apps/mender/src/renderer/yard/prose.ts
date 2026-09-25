@@ -15,6 +15,7 @@
  */
 
 import { mermaidSVG } from '../diagram';
+import { makeDiagramView } from '../diagram-view';
 import { inkRuns, type InkRun } from './motion';
 
 const FENCE = /^\s*(```|~~~)(\s*\S*)?/;
@@ -279,7 +280,7 @@ function mermaidBlock(text: string, keep?: (code: string) => void): HTMLElement 
   }
   const wrap = document.createElement('div');
   wrap.className = 'prose-mermaid';
-  wrap.innerHTML = svg;
+  wrap.appendChild(makeDiagramView(svg));
   return wrap;
 }
 

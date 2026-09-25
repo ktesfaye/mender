@@ -55,5 +55,7 @@ export type Row = (
   | { kind: 'gap' }
   /** A picture, sized to fit the board's own width. Pixel art keeps its edges. */
   | { kind: 'picture'; src: string; wide: number; tall: number }
+  /** A drawn diagram, panned and zoomed rather than shrunk to fit. */
+  | { kind: 'diagram'; svg: string }
 ) &
   Pick;

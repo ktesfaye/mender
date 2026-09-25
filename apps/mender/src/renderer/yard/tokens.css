@@ -790,7 +790,9 @@
   color: var(--yard-ink-bright);
 }
 .settings-past-branch {
-  font: 12px/1.4 'Courier Prime', monospace;
+  font:
+    12px/1.4 'Courier Prime',
+    monospace;
   color: var(--yard-ink-dim);
   margin-bottom: 12px;
 }
@@ -1009,11 +1011,12 @@
 .yard .prose-mermaid {
   margin: 0.3em 0;
   max-width: 100%;
-  overflow-x: auto;
 }
-.yard .prose-mermaid svg {
-  max-width: 100%;
-  height: auto;
+.yard .yard-diagram {
+  background: rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(244, 227, 192, 0.14);
+}
+.yard .yard-diagram svg {
   display: block;
 }
 .yard .prose-table table {

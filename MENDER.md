@@ -92,7 +92,9 @@ read rather than shown: there is no second weight here to set anything bold in,
 and the gutter, the indent, the gap and the tone carry headings, lists, quotes,
 rules, tables and code without one. A fenced mermaid block is the one mark that
 was never going to read as prose, so it is drawn instead, in the same warm and
-sore tones everything else on the board already is. The last line of the board is where you write back; there is no
+sore tones everything else on the board already is, and opens in a window you
+can pan with a drag and zoom with the wheel rather than one that shrinks it to
+fit. The last line of the board is where you write back; there is no
 text field anywhere in this app. An empty line while somebody is working calls
 them off.
 

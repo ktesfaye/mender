@@ -14,6 +14,7 @@
  */
 
 import type { Row, Tone } from '../board/row';
+import { makeDiagramView } from '../diagram-view';
 import { astop } from './walk';
 
 /** What each tone is, in the light of the yard rather than on a plank. */
@@ -117,6 +118,12 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
       const crisp = Math.max(row.wide, row.tall) <= 256;
       img.style.cssText = `max-width:100%;height:auto;display:block;${crisp ? 'image-rendering:pixelated' : ''}`;
       line.appendChild(img);
+      return line;
+    }
+
+    case 'diagram': {
+      line.style.cssText = 'padding:8px 0';
+      line.appendChild(makeDiagramView(row.svg));
       return line;
     }
 

@@ -211,10 +211,13 @@ its marks and keeps its words, which is the right way round.
 
 A fenced ` ```mermaid ` block is now drawn — colored to the wood rather than
 left in whatever the diagram's own default is, via `beautiful-mermaid` (already
-in the lockfile, no DOM dependency of its own). What is still W9 is a
-pan-and-zoom viewer for a diagram too large to read at the board's own width;
-until then it draws at a capped size, which is drawing, not the second surface
-a real viewer would need.
+in the lockfile, no DOM dependency of its own) — and panned and zoomed rather
+than shrunk to fit: it opens in a clipped window at whatever size reads best,
+and the wheel and a drag move it, the same view shared by an answer's own
+fenced block and a `.md` file's. Driven on a `.md` file's diagram: the wheel
+zoomed toward the pointer and a drag panned it. The answer path shares the
+same view and the same code but was not separately driven with a live answer
+that draws one.
 
 A file can be named on the line you write on. An @ turns the lines under it into
 what is actually in that checkout, narrowing as you type, and picking one writes
@@ -1234,7 +1237,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-35 | Resource link card | cut | W2 |
 | AG-36 | Turn outcome / filler rows | part | W2 |
 | AG-37 | Markdown rendering (headings, tables, code, Mermaid, GFM, math) | part | W2 |
-| AG-38 | Mermaid diagram, drawn in an answer (colored to the wood, via `beautiful-mermaid`; no pan/zoom yet) | part | W9 |
+| AG-38 | Mermaid diagram, drawn in an answer (colored to the wood, via `beautiful-mermaid`, panned and zoomed with the wheel and a drag) | done | W9 |
 | AG-39 | Copy-to-clipboard affordance — a code block or a whole answer, pressed | done | W2 |
 | AG-39a | Links in an answer, pressable and gold, opening in the system browser | done | W2 |
 | AG-39b | Export the transcript as markdown, from the session card | done | W2 |
@@ -1367,7 +1370,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-26 | Stacked multi-file diff view | cut | W3 |
 | FS-27 | Image diff view | cut | W3 |
 | FS-28 | Binary diff fallback | done | W3 |
-| FS-29 | Mermaid diagram, drawn from a `.md` file's fenced block (no pan/zoom yet) | part | W9 |
+| FS-29 | Mermaid diagram, drawn from a `.md` file's fenced block, panned and zoomed the same as an answer's | done | W9 |
 | FS-30 | Image viewer (contained/expandable/standalone/zoom-pan chassis) | cut | W5 |
 | FS-31 | Shared file-watching service | kept |  |
 | FS-32 | Exclusion policy settings UI |  | W8 |
