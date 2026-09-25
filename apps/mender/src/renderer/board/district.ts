@@ -71,13 +71,6 @@ export interface Place {
    * Null is a session whose base nobody wrote down.
    */
   since?: string | null;
-  /** Whatever this particular place has to say above its working tree, asked
-      for fresh every rewrite so it can change while you are looking at it. */
-  lines?: () => Row[];
-  /** What pressing the name at the top of the board means, if anything. */
-  turn?: string;
-  /** And whatever it has to say after it, asked for fresh every rewrite. */
-  tail?: () => Row[];
 }
 
 /** One file that is not as it was committed, as the board says it. */
@@ -185,12 +178,9 @@ function build(
   lately: Commits['commits']
 ): Row[] {
   const rows: Row[] = [
-    { kind: 'title', text: place.name, ...(place.turn ? { pick: place.turn } : {}) },
+    { kind: 'title', text: place.name },
     // Where it is, and the way in to what is actually in there.
     { kind: 'line', text: place.path, tone: 'faded', keep: 'tail', pick: 'inside' },
-    // What is happening here comes before what the checkout looks like: you
-    // opened a project to get at the work in it, not to read its git status.
-    ...(place.lines?.() ?? []),
     { kind: 'gap' },
     { kind: 'line', text: standing(head) },
     ...sending(head),
@@ -246,7 +236,7 @@ function build(
       });
     }
   }
-  return [...rows, ...(place.tail?.() ?? [])];
+  return rows;
 }
 
 /** What is not as it was committed, in the order git lists it. */
