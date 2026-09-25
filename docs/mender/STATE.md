@@ -1212,8 +1212,8 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-21 | Task palette | done | W1 |
 | WS-22 | Activity badge (workspace lifecycle) |  | W7 |
 | WS-23 | Delete Task modal — informed preflight |  | W7 |
-| WS-24 | Workspaces tab (per project or per machine) |  | W7 |
-| WS-25 | Workspace row actions (Open in Task / Clean Artifacts / Delete) |  | W7 |
+| WS-24 | Workspaces tab (per project or per machine) | done |  |
+| WS-25 | Workspace row actions (Open in Task / Clean Artifacts / Delete) | part |  |
 | WS-26 | Bulk "Delete workspaces" |  | W7 |
 | WS-27 | Workspace removal / path-issue / script-issue states |  | W7 |
 | WS-28 | Observation freshness (fresh/stale/offline) |  | W7 |

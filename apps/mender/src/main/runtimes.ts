@@ -384,6 +384,10 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
         pullRequestsContract,
         forwardContractImpl(pullRequestsContract, pulls)
       ),
+      workspaces: createController(
+        workspaceRegistryContract,
+        forwardContractImpl(workspaceRegistryContract, workspaces)
+      ),
     },
     git,
     files: filesClient(filesReady),

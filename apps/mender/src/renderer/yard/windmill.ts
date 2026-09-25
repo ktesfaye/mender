@@ -14,13 +14,32 @@
 
 import type { Hand } from '@shared/app-settings';
 
+/** One worktree Mender cut, as the windmill reads it: what's on disk for it,
+ *  and whether anything still uses it. */
+export interface WorktreeRow {
+  id: string;
+  branch: string | null;
+  path: string;
+  /** Disk bytes, or null while it is still being measured. */
+  bytes: number | null;
+  /** Branch merged upstream, or nothing here still points at it. */
+  stale: boolean;
+  /** How far its branch has run ahead of whatever it follows, for the cost
+   *  line a removal shows before it happens. */
+  ahead: number | null;
+}
+
 export interface WindmillState {
   hand: string | null;
   hands: Hand[] | null;
+  /** null while the registry's first answer hasn't arrived yet. */
+  worktrees: WorktreeRow[] | null;
 }
 
 export interface WindmillDoings {
   choose(id: string): Promise<void>;
+  /** Deactivate, remove the worktree and its branch, and unregister it. */
+  clear(id: string): Promise<void>;
   closed(): void;
 }
 
@@ -60,8 +79,12 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
 
   const body = el('div', 'settings-body');
   const general = section('General');
-  body.append(general.root);
+  const worktrees = section('What is on disk');
+  body.append(general.root, worktrees.root);
   panel.append(head, body);
+
+  /** The worktree armed for a second press to clear it, if any. */
+  let clearing: string | null = null;
 
   document.body.appendChild(back);
   back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
@@ -109,8 +132,57 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     general.fill([hint, list]);
   }
 
+  function drawWorktrees(): void {
+    if (!now.worktrees) {
+      worktrees.fill([hintLine('reading it…')]);
+      return;
+    }
+    if (!now.worktrees.length) {
+      worktrees.fill([
+        hintLine('every worktree Mender ever cut is either in use or already gone.'),
+      ]);
+      return;
+    }
+    const rows: HTMLElement[] = [];
+    for (const one of now.worktrees) {
+      const row = el('div', 'windmill-worktree');
+      const head = el('div', 'windmill-worktree-head');
+      const name = el('span', 'windmill-worktree-branch');
+      name.textContent = one.branch ?? one.path;
+      const size = el('span', 'windmill-worktree-size');
+      size.textContent = one.bytes === null ? 'measuring…' : sized(one.bytes);
+      head.append(name, size);
+      if (one.stale) {
+        const stale = el('span', 'windmill-worktree-stale');
+        stale.textContent = 'stale';
+        head.append(stale);
+      }
+      row.append(head);
+      const path = el('div', 'windmill-worktree-path');
+      path.textContent = one.path;
+      row.append(path);
+      const clear = button(
+        clearing === one.id ? costOf(one) : 'clear this one',
+        'windmill-worktree-clear',
+        () => {
+          if (clearing === one.id) {
+            clearing = null;
+            void does.clear(one.id).then(() => drawWorktrees());
+            return;
+          }
+          clearing = one.id;
+          drawWorktrees();
+        }
+      );
+      row.append(clear);
+      rows.push(row);
+    }
+    worktrees.fill(rows);
+  }
+
   function draw(): void {
     drawGeneral();
+    drawWorktrees();
   }
 
   draw();
@@ -159,4 +231,28 @@ function section(title: string): { root: HTMLElement; fill(children: HTMLElement
   const inner = el('div', 'settings-inner');
   root.append(label, inner);
   return { root, fill: (children) => inner.replaceChildren(...children) };
+}
+
+function hintLine(text: string): HTMLElement {
+  const made = el('p', 'settings-hint');
+  made.textContent = text;
+  return made;
+}
+
+/** What a second press would actually cost, said before it happens. */
+function costOf(one: WorktreeRow): string {
+  const size = one.bytes === null ? 'an unmeasured amount' : sized(one.bytes);
+  const branch =
+    one.ahead === null || one.ahead === 0
+      ? 'its branch is already upstream'
+      : `its branch has ${one.ahead === 1 ? 'one commit' : `${one.ahead} commits`} nowhere else has`;
+  return `press again — frees ${size}, and ${branch}`;
+}
+
+/** How much room something takes, in plain words. */
+function sized(bytes: number): string {
+  if (bytes < 1024) return `${bytes} bytes`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}kb`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}mb`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}gb`;
 }

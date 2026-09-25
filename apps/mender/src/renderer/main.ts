@@ -12,6 +12,7 @@ import {
   type FileChange,
   type GitFilePath,
 } from '@emdash/core/runtimes/git/api';
+import type { WorkspaceRecord } from '@emdash/core/runtimes/workspace-registry/api';
 import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
@@ -61,7 +62,7 @@ import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
-import { openWindmill, type Windmill } from './yard/windmill';
+import { openWindmill, type WorktreeRow, type Windmill } from './yard/windmill';
 import { makeYard } from './yard/yard';
 
 /** The kinds of picture an agent can actually be shown. */
@@ -960,14 +961,27 @@ async function boot(): Promise<void> {
         doing is until it has an island of its own to stand on. */
     const openTheWindmill = (): void => {
       windmill?.close();
-      const state = { hand: null as string | null, hands: null as Hand[] | null };
+      const state = {
+        hand: null as string | null,
+        hands: null as Hand[] | null,
+        worktrees: null as WorktreeRow[] | null,
+      };
+      let records: ReplicaState<Record<string, WorkspaceRecord>> | null = null;
       const ui = openWindmill(state, {
         choose: async (id) => {
           state.hand = await client.appSettings.setDefaultHand({ id }, { timeoutMs: 0 });
           ui.update(state);
         },
+        clear: async (id) => {
+          const done = await client.workspaces.deleteWorktree({
+            workspaceId: id,
+            deleteBranch: true,
+          });
+          if (!done.success) say(worktreeTrouble(done.error), 6000);
+        },
         closed: () => {
           if (windmill === ui) windmill = null;
+          void records?.dispose();
           yard.line.take();
         },
       });
@@ -981,7 +995,43 @@ async function boot(): Promise<void> {
         state.hands = hands;
         ui.update(state);
       })();
+      const measured = new Map<string, number | null>();
+      const measure = (id: string): void => {
+        void client.workspaces.measureUsage({ workspaceId: id }).then((done) => {
+          measured.set(id, done.success ? done.data.totalBytes : null);
+          state.worktrees =
+            state.worktrees?.map((row) =>
+              row.id === id ? { ...row, bytes: measured.get(id) ?? null } : row
+            ) ?? null;
+          ui.update(state);
+        });
+      };
+      records = new ReplicaState<Record<string, WorkspaceRecord>>(
+        client.workspaces.records.state(undefined, 'list'),
+        {
+          onChange: (all) => {
+            const paths = new Set(tasks.map((task) => task.path));
+            const rows: WorktreeRow[] = Object.values(all)
+              .filter((each) => each.kind === 'worktree')
+              .map((each) => ({
+                id: each.id,
+                branch: each.git?.branch ?? null,
+                path: each.path,
+                bytes: measured.has(each.id) ? (measured.get(each.id) ?? null) : null,
+                stale: Boolean(each.git?.prunable) || !paths.has(each.path),
+                ahead: each.git?.ahead ?? null,
+              }))
+              .sort((a, b) => (b.stale ? 1 : 0) - (a.stale ? 1 : 0));
+            state.worktrees = rows;
+            ui.update(state);
+            for (const row of rows) if (!measured.has(row.id)) measure(row.id);
+          },
+        }
+      );
     };
+
+    const worktreeTrouble = (error: { type: string }): string =>
+      `that worktree would not clear: ${error.type}.`;
 
     const shut = async (): Promise<void> => {
       open = null;
@@ -3888,7 +3938,11 @@ function addingServer(titling: { task: Task; written: string }): Row[] {
     { kind: 'line', text: 'its name, then the command that starts it.' },
     { kind: 'typed', text: titling.written },
     { kind: 'gap' },
-    { kind: 'line', text: 'return adds it. escape clears it, again to leave it alone.', tone: 'faded' },
+    {
+      kind: 'line',
+      text: 'return adds it. escape clears it, again to leave it alone.',
+      tone: 'faded',
+    },
   ];
 }
 

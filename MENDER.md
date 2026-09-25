@@ -575,9 +575,14 @@ There is no sprite for it yet, so it is reached the way any other doing is:
 a project's settings do. One page so far, General, and one real switch on
 it — who a fresh session starts with, the same "who works here" names the
 card already knows. Picking one is remembered and a fresh session actually
-starts that agent, not always Claude Code. Everything else the windmill will
-eventually hold — updating and authenticating agents, MCP, skills, accounts,
-task defaults — still has nowhere to live.
+starts that agent, not always Claude Code. A second page, "what is on disk,"
+lists every worktree Mender has ever cut on this machine, whichever project
+cut it: its branch, how much room it takes and whether it is stale — its
+branch already sitting upstream, or nothing left pointing at it — and clears
+it in two presses, the same line saying what that press would free before it
+does. Everything else the windmill will eventually hold — updating and
+authenticating agents, MCP, skills, accounts, task defaults — still has
+nowhere to live.
 
 **A session remembers what it was last thinking with.** Change an agent's
 model or mode on one session and every fresh session with that same agent
