@@ -985,7 +985,7 @@ function thinking(
       body.style.cssText = one.quiet
         ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
         : `font-size:${size}px;line-height:1.35;color:${trouble?.ink ?? '#ffdca4'};text-shadow:0 2px 10px rgba(0,0,0,.9)`;
-      prose(body, one.id, one.said, !walkedIn, keepCode(does));
+      prose(body, one.id, one.said, !walkedIn, keepCode(does), openLink(does));
       it.appendChild(body);
       stream.appendChild(it);
       return;
@@ -1004,7 +1004,8 @@ function thinking(
             : `rgba(244,227,192,${fade})`,
           trouble?.head,
           keepCode(does),
-          trouble?.ink
+          trouble?.ink,
+          openLink(does)
         ),
         `thought:${one.id}`
       )
@@ -1229,13 +1230,19 @@ function keepCode(does: Doings): (code: string) => void {
   return (code) => does.press(`keep:${code}`);
 }
 
+/** A link an agent wrote, pressed out to whatever the machine reads the web with. */
+function openLink(does: Doings): (url: string) => void {
+  return (url) => does.press(`link:${url}`);
+}
+
 function thought(
   one: Thought,
   size: number,
   ink: string,
   name?: string,
   keep?: (code: string) => void,
-  tone?: string
+  tone?: string,
+  link?: (url: string) => void
 ): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
@@ -1245,7 +1252,7 @@ function thought(
   if (label) it.appendChild(said(label, tone));
   const body = document.createElement('div');
   body.style.cssText = `font-size:${size}px;line-height:1.4;color:${ink}`;
-  prose(body, one.id, one.said, false, keep);
+  prose(body, one.id, one.said, false, keep, link);
   it.appendChild(body);
   return it;
 }

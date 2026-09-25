@@ -11,6 +11,15 @@ describe('prose', () => {
     ]);
   });
 
+  it('keeps a web link as its words and its address, and drops any other kind', () => {
+    expect(runsOf('see [the docs](https://example.com/a) or [this](/local)')).toEqual([
+      { text: 'see ' },
+      { text: 'the docs', href: 'https://example.com/a' },
+      { text: ' or ' },
+      { text: 'this' },
+    ]);
+  });
+
   it('reads a table with its divider dropped and numbers leaning right', () => {
     const [table] = blocksOf('| Name | Tokens |\n|---|---|\n| a | 2.2k |\n| b | 33 |');
     expect(table).toEqual({

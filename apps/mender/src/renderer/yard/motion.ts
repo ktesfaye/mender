@@ -186,7 +186,7 @@ export function ink(into: HTMLElement, id: string, text: string, fresh: boolean)
 }
 
 /** A piece of writing with a look of its own, for `inkRuns`. */
-export type InkRun = { text: string; className?: string };
+export type InkRun = { text: string; className?: string; href?: string };
 
 /**
  * `ink`, for writing that is not all one look: a sentence with a bit of code
@@ -230,9 +230,22 @@ export function inkRuns(
   into.replaceChildren();
   let offset = 0;
   for (const run of runs) {
-    const holder: HTMLElement | DocumentFragment = run.className
-      ? Object.assign(document.createElement('span'), { className: run.className })
-      : document.createDocumentFragment();
+    /* A link is an anchor rather than a span, so pressing it is exactly the
+       gold press every other pressable thing in the village already is,
+       intercepted one level up rather than let navigate this page away. */
+    const holder: HTMLElement | DocumentFragment = run.href
+      ? Object.assign(document.createElement('a'), {
+          className: 'press',
+          href: run.href,
+        })
+      : run.className
+        ? Object.assign(document.createElement('span'), { className: run.className })
+        : document.createDocumentFragment();
+    /* Never let the page itself navigate; the click still reaches whoever is
+       listening one level up, where it means "open in the real world". */
+    if (holder instanceof HTMLAnchorElement) {
+      holder.addEventListener('click', (event) => event.preventDefault());
+    }
     let from = 0;
     while (from < run.text.length) {
       const at = offset + from;

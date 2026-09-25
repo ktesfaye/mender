@@ -116,4 +116,6 @@ contextBridge.exposeInMainWorld('mender', {
      the machine opens folders with, or showing it where it actually is. */
   openIt: (path: string) => void shell.openPath(path),
   showIt: (path: string) => shell.showItemInFolder(path),
+  /* A link an agent wrote, out to whatever the machine reads the web with. */
+  openLink: (url: string) => void shell.openExternal(url),
 });

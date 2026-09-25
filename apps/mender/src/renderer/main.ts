@@ -22,12 +22,12 @@ import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
 import type { Task } from '@shared/tasks';
 import { branchMade, branchUnmade, unbranchMade } from './board/branch';
-import { openCard, type LiveCard } from './board/card';
 import { browsing, openPage, safe as safeAddress } from './board/browsing';
+import { openCard, type LiveCard } from './board/card';
 import { opening, readOut, unreadable } from './board/changed';
 import { committing } from './board/committing';
-import { landingLines, openCheckout, type Landing, type LiveBoard } from './board/district';
 import { conflict, conflictMessage } from './board/conflict';
+import { landingLines, openCheckout, type Landing, type LiveBoard } from './board/district';
 import { chordFor, FIND, finding, type Standing as Where } from './board/finder';
 import { openTree, type LiveTree } from './board/inside';
 import { hunting, type Hunt } from './board/looking';
@@ -1445,7 +1445,13 @@ async function boot(): Promise<void> {
       const checkout = parsed.data;
       reading = null;
       looked = null;
-      branchLooked = { aim, checkout: session.path, base: session.base, mergeBase: '', files: undefined };
+      branchLooked = {
+        aim,
+        checkout: session.path,
+        base: session.base,
+        mergeBase: '',
+        files: undefined,
+      };
       const mine = branchLooked;
       wood(unbranchMade());
 
@@ -3060,6 +3066,10 @@ async function boot(): Promise<void> {
       if (pick.startsWith('keep:')) {
         window.mender.keep(pick.slice(5));
         say('copied.', 2000);
+        return;
+      }
+      if (pick.startsWith('link:')) {
+        window.mender.openLink(pick.slice(5));
         return;
       }
       if (pick.startsWith('putdown:')) {

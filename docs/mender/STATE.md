@@ -1171,7 +1171,8 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-36 | Turn outcome / filler rows | part | W2 |
 | AG-37 | Markdown rendering (headings, tables, code, Mermaid, GFM, math) | part | W2 |
 | AG-38 | Mermaid diagram pan/zoom viewer |  | W9 |
-| AG-39 | Copy-to-clipboard affordance | done | W2 |
+| AG-39 | Copy-to-clipboard affordance — a code block or a whole answer, pressed | done | W2 |
+| AG-39a | Links in an answer, pressable and gold, opening in the system browser | done | W2 |
 | AG-40 | Agent status glyph (inline indicator) | cut | W9 |
 | AG-41 | Agent selector | done |  |
 | AG-42 | Model selector with hover-detail card | done |  |

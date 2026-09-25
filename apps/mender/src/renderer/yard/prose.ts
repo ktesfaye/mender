@@ -140,16 +140,17 @@ function tabled(raw: readonly string[]): Block {
 }
 
 /**
- * The runs inside one line of writing: plain, code, heavy, leaning.
+ * The runs inside one line of writing: plain, code, heavy, leaning, linked.
  *
- * Emphasis keeps its words and loses its marks. A link is its words.
+ * Emphasis keeps its words and loses its marks. A link keeps its words and
+ * its address both: it is the one mark here worth pressing.
  */
 export function runsOf(text: string): InkRun[] {
   const runs: InkRun[] = [];
   /* Underscores only count at a word's edge: `mcp__server__tool` is a name,
      not a name with a bold word in the middle of it. */
   const pattern =
-    /`([^`]+)`|\*\*([^*]+)\*\*|(?<![\w])__([^_]+)__(?![\w])|(?<![\w*])\*([^*\s][^*]*)\*(?![\w*])|\[([^\]]+)\]\([^)]+\)/g;
+    /`([^`]+)`|\*\*([^*]+)\*\*|(?<![\w])__([^_]+)__(?![\w])|(?<![\w*])\*([^*\s][^*]*)\*(?![\w*])|\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
   let from = 0;
   for (const found of text.matchAll(pattern)) {
     const at = found.index ?? 0;
@@ -158,7 +159,9 @@ export function runsOf(text: string): InkRun[] {
     else if (found[2] !== undefined || found[3] !== undefined) {
       runs.push({ text: found[2] ?? found[3] ?? '', className: 'prose-heavy' });
     } else if (found[4] !== undefined) runs.push({ text: found[4], className: 'prose-lean' });
-    else runs.push({ text: found[5] ?? '' });
+    else if (found[6] !== undefined && /^https?:\/\//.test(found[6])) {
+      runs.push({ text: found[5] ?? '', href: found[6] });
+    } else runs.push({ text: found[5] ?? '' });
     from = at + found[0].length;
   }
   if (from < text.length) runs.push({ text: text.slice(from) });
@@ -170,17 +173,38 @@ export function runsOf(text: string): InkRun[] {
  *
  * `id` names it for the ink, and each block inks under its own part of that
  * name, so only the block still being written fades in as it arrives.
- * `keep` hears about a block of code being pressed.
+ * `keep` hears about a block of code being pressed, or the whole answer
+ * pressed anywhere that isn't a link or a code block of its own — the same
+ * way a code block already goes onto the clipboard by being pressed.
  */
 export function prose(
   into: HTMLElement,
   id: string,
   text: string,
   fresh: boolean,
-  keep?: (code: string) => void
+  keep?: (code: string) => void,
+  link?: (url: string) => void
 ): void {
   into.replaceChildren();
   into.classList.add('prose');
+  if (keep) {
+    into.classList.add('prose-press');
+    into.title = 'press to keep it';
+    into.addEventListener('mousedown', (event) => {
+      if ((event.target as HTMLElement).closest('a,.prose-block')) return;
+      event.preventDefault();
+    });
+    into.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      const anchor = target.closest('a');
+      if (anchor) {
+        link?.(anchor.href);
+        return;
+      }
+      if (target.closest('.prose-block')) return;
+      keep(text);
+    });
+  }
   blocksOf(text).forEach((block, i) => {
     const part = `${id}#${i}`;
     switch (block.kind) {
