@@ -10,7 +10,7 @@
  * said and returns a value.
  */
 
-import type { Ask, Kit, Mood, Told } from '@shared/agents';
+import type { Ask, Failure, Kit, Mood, Told } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { KIT_NAMES } from './sprite';
@@ -100,6 +100,10 @@ export interface Standing {
   waiting?: readonly { id: string; text: string }[];
   /** What is in your hands. */
   carrying?: readonly { id: string; name: string }[];
+  /** A typed failure worth its own line, or absent when there isn't one. */
+  failure?: Failure | null;
+  /** When set, a continue is scheduled to send itself at this epoch ms. */
+  carryOn?: number | null;
 }
 
 /** The turn the newest note opened, which is the one being answered now. */
@@ -166,6 +170,16 @@ function sessionOf(
     agents: (told?.errands ?? []).map(handOf),
     waiting: (from.waiting ?? []).map((one) => ({ id: one.id, said: one.text })),
     carrying: (from.carrying ?? []).map((one) => ({ id: one.id, name: one.name })),
+    ...(from.failure
+      ? {
+          failure: {
+            doing: from.failure.doing,
+            canRetry: from.failure.canRetry,
+            canCarryOn: from.failure.resetAt !== undefined,
+            ...(from.carryOn ? { carryOnAt: from.carryOn } : {}),
+          },
+        }
+      : {}),
   };
 }
 

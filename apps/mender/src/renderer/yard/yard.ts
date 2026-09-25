@@ -24,13 +24,14 @@ import { longFor } from './from';
 import { makeLine, type Asking as Prompting, type Line } from './line';
 import { makeMenu } from './menu';
 import { forgetInk, keyed, measure, play } from './motion';
-import { pressing } from './press';
+import { pressing, twice } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, sprite } from './sprite';
 import { astop, walking, type Walking } from './walk';
 import type {
   Asking as Ask,
+  FailureView,
   Fire,
   Hand,
   Live,
@@ -613,8 +614,7 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
   const room = yard.session?.room;
   const it = box({ right: edge, top: HEAD.under }, 'display:flex;gap:6px;align-items:baseline');
   if (room !== undefined) {
-    const ink =
-      room < TIGHT ? 'var(--yard-wrong)' : room < LOW ? 'var(--yard-warn)' : undefined;
+    const ink = room < TIGHT ? 'var(--yard-wrong)' : room < LOW ? 'var(--yard-warn)' : undefined;
     it.appendChild(exact(`context ${Math.round(room * 100)}%`, 12, ink));
   }
   if (yard.session?.model) {
@@ -928,7 +928,8 @@ function thinking(
   }
 
   const live = yard.session?.live;
-  if (!thoughts.length && !live) return;
+  const failure = yard.session?.failure;
+  if (!thoughts.length && !live && !failure) return;
 
   const room = Math.max(60, floor - top);
   const stream = stack({ left: at.x, top, width: at.wide, height: room }, 20);
@@ -991,6 +992,7 @@ function thinking(
   forgetInk(keep);
 
   if (live) stream.appendChild(ember(live, since));
+  if (failure) stream.appendChild(failureEmber(failure, does));
 
   root.appendChild(stream);
   /* It follows the live edge while you are at it, and stays put while you have
@@ -1007,6 +1009,81 @@ function thinking(
 
 /** Where the column was left scrolled to, for a session somebody scrolled up in. */
 const followed = new Map<string, number>();
+
+/**
+ * The fire banked — a limit, an overload, a lost connection — with what there
+ * is to do about it.
+ *
+ * Not the same shape as `ember`: nothing is burning, so there is no hearth and
+ * nothing animates. What is here instead is what a wait like this actually
+ * needs: try again now, let it try itself once the wait is over, or leave the
+ * conversation behind and start clean. All three are ordinary gold lines —
+ * "carry on when it lifts" is the one that changes what it says once pressed,
+ * from an offer to what is now scheduled, and pressing it again is how you
+ * take that back.
+ */
+function failureEmber(failure: FailureView, does: Doings): HTMLElement {
+  const it = keyed(document.createElement('div'), 'failure');
+  it.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:6px 0 4px';
+
+  const said = document.createElement('div');
+  said.style.cssText = [
+    "font-family:'Josefin Sans',sans-serif",
+    'font-size:13px',
+    'letter-spacing:.1em',
+    'text-transform:uppercase',
+    'color:var(--yard-warn)',
+  ].join(';');
+  said.textContent = failure.doing;
+  it.appendChild(said);
+
+  const actions = document.createElement('div');
+  actions.style.cssText =
+    "display:flex;gap:18px;font-family:'Josefin Sans',sans-serif;font-size:14px";
+
+  if (failure.canRetry) {
+    actions.appendChild(
+      astop(
+        pressing('try again', () => does.press('failure:retry')),
+        'failure:retry'
+      )
+    );
+  }
+  if (failure.canCarryOn) {
+    const armed = failure.carryOnAt !== undefined;
+    const said2 = armed
+      ? `continuing automatically at ${clockOf(failure.carryOnAt!)} · esc to cancel`
+      : 'carry on when it lifts';
+    actions.appendChild(
+      astop(
+        pressing(said2, () => does.press(armed ? 'failure:cancel' : 'failure:carryon')),
+        'failure:carryon'
+      )
+    );
+  }
+  actions.appendChild(
+    astop(
+      twice('start over', 'this conversation is gone for good', {
+        while: 'starting over',
+        run: async () => {
+          does.press('failure:new');
+          return { said: 'started over.' };
+        },
+      }),
+      'failure:new'
+    )
+  );
+  it.appendChild(actions);
+  return it;
+}
+
+/** A clock time in this machine's own zone, the way the village says one. */
+function clockOf(at: number): string {
+  return new Date(at)
+    .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    .toLowerCase()
+    .replace(/\s+/g, '');
+}
 
 /**
  * The live edge: a small fire with sparks going up off it, what it is doing,
@@ -1647,7 +1724,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
        across the room and without reading, which session wants you. Six gold
        names in a row would say nothing at all. What says it is pressable is the
        lantern: a physical object hanging there, lighting under your hand. */
-    const hung = keyed(box({ left: x, top, width: bare ? 44 : step, height: 58 }), `hung:${one.id}`);
+    const hung = keyed(
+      box({ left: x, top, width: bare ? 44 : step, height: 58 }),
+      `hung:${one.id}`
+    );
     hung.style.pointerEvents = one.here ? 'none' : 'auto';
     hung.style.cursor = 'default';
 

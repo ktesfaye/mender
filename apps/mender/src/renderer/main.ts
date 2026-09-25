@@ -2258,6 +2258,21 @@ async function boot(): Promise<void> {
       if (!given.success && given.error.kind === 'refused') say(given.error.because, 6000);
     };
 
+    /** What one of the fire-banked lines under a typed failure means. */
+    const failed = async (task: string, action: string): Promise<void> => {
+      const done =
+        action === 'retry'
+          ? await client.agents.retryFailure({ task })
+          : action === 'carryon'
+            ? await client.agents.waitOutFailure({ task })
+            : action === 'cancel'
+              ? await client.agents.stopWaiting({ task })
+              : action === 'new'
+                ? await client.agents.startOver({ task })
+                : undefined;
+      if (done && !done.success && done.error.kind === 'refused') say(done.error.because, 6000);
+    };
+
     /** The same door, opened with a number key instead of a hand. */
     const answer = async (key: string): Promise<void> => {
       const asked = watching?.asked();
@@ -2318,6 +2333,11 @@ async function boot(): Promise<void> {
        because a line you can press and cannot reach with the keyboard is a
        line that is only half there. */
     const press = (pick: string): void => {
+      if (pick.startsWith('failure:')) {
+        const task = inside;
+        if (task) void failed(task.id, pick.slice(8));
+        return;
+      }
       if (pick === 'tend') {
         const project = open ? projectOn(open.district) : undefined;
         if (project) configure(project);
@@ -2613,6 +2633,14 @@ async function boot(): Promise<void> {
           }
           writing = null;
           home();
+          return;
+        }
+        /* A continue ticking down for a typed failure is the one wait in this
+           app Escape reaches for directly, the same as pressing its own line
+           again — it's the thing Claude Code's own "esc to interrupt" means,
+           and nothing else on the board is more worth backing out of first. */
+        if (inside && watching?.yard().session?.failure?.carryOnAt !== undefined) {
+          void failed(inside.id, 'cancel');
           return;
         }
         if (card?.ending()?.asked) {

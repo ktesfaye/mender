@@ -122,6 +122,23 @@ export interface Session {
   olderSteps?: { many: number; over: string };
   /** And how many thoughts sit between the posted plan and the ones shown. */
   olderThoughts?: number;
+  /**
+   * A typed failure worth its own line under the fire — a limit, an overload,
+   * a lost connection — with what there is to do about it.
+   */
+  failure?: FailureView;
+}
+
+export interface FailureView {
+  /** What the fire says, already in the village's voice. */
+  doing: string;
+  /** Whether an immediate try-again is worth offering. */
+  canRetry: boolean;
+  /** Whether a reset time is known, so "carry on when it lifts" can be offered. */
+  canCarryOn: boolean;
+  /** Set while a continue is scheduled — the target to count down to, and
+   *  pressing the line again (or Escape) cancels it. */
+  carryOnAt?: number;
 }
 
 /** The live edge of a session that is working. */

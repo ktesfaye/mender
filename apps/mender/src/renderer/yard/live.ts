@@ -104,6 +104,10 @@ export async function openYard(
       ...(working?.room === null || working?.room === undefined ? {} : { room: working.room }),
       ...(working?.queued.length ? { waiting: working.queued } : {}),
       ...(held.length ? { carrying: held } : {}),
+      ...(working?.failure ? { failure: working.failure } : {}),
+      ...(working?.carryOn === null || working?.carryOn === undefined
+        ? {}
+        : { carryOn: working.carryOn }),
       on: standing(from.project, head),
       health,
     });

@@ -22,6 +22,7 @@ import type {
   Carried,
   Deed,
   Errand,
+  Failure,
   Kit,
   Line,
   Mood,
@@ -100,7 +101,11 @@ export interface Agents {
   working(task: string): Cell<WorkingState>;
   /** What that session works with, for the card. */
   kit(task: string): Cell<Kit>;
-  choose(task: string, what: 'hand' | 'model' | 'mode' | 'effort' | 'collab', id: string): Promise<Told>;
+  choose(
+    task: string,
+    what: 'hand' | 'model' | 'mode' | 'effort' | 'collab',
+    id: string
+  ): Promise<Told>;
   tool(task: string, name: string, on: boolean): Promise<Told>;
   /** Put an agent's CLI on this machine, so somebody else could work here. */
   fetch(hand: string): Promise<Fetched>;
@@ -120,6 +125,15 @@ export interface Agents {
   /** Take back something said while it was busy, before it is heard. */
   unsay(task: string, id: string): Promise<Told>;
   hush(task: string): Promise<Told>;
+  /** Say the last thing said to this session again. */
+  retryFailure(task: string): Promise<Told>;
+  /** Schedule the last thing said to go out again on its own, once a typed
+   *  failure's reset time comes. */
+  waitOutFailure(task: string): Promise<Told>;
+  /** Disarm a scheduled continue. */
+  stopWaiting(task: string): Promise<Told>;
+  /** Leave this conversation behind and start a fresh one in its place. */
+  startOver(task: string): Promise<Told>;
   /** Whoever is in there moves out with the building. */
   evict(task: string): Promise<void>;
   /** Sends them home for the night: the process stops, everything else stays. */
@@ -153,6 +167,8 @@ const EMPTY: WorkingState = {
   plan: [],
   queued: [],
   room: null,
+  failure: null,
+  carryOn: null,
 };
 
 const KEY = 'agents';
@@ -169,6 +185,8 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
   })();
 
   const houses = new Map<string, House>();
+  /** One scheduled "carry on when it lifts" continue per task, at most. */
+  const carryOnTimers = new Map<string, ReturnType<typeof setTimeout>>();
   /* Where each session's checkout is, so a path written on the board can be
      the path inside it rather than the whole way from the root of the disk. */
   const wheres = new Map<string, string>();
@@ -308,6 +326,7 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
   const rest = async (task: string): Promise<Told> => {
     await loaded;
     const conversation = lodgers[task];
+    stopWaiting(task);
     await houses.get(task)?.dispose();
     houses.delete(task);
     await kits.forget(task);
@@ -335,6 +354,93 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
     }
   }, IDLE_SWEEP_MS);
   sweep.unref?.();
+
+  /** Disarms a scheduled "carry on when it lifts" continue, if one is armed. */
+  const stopWaiting = (task: string): void => {
+    const timer = carryOnTimers.get(task);
+    if (timer) clearTimeout(timer);
+    carryOnTimers.delete(task);
+    houses.get(task)?.carryOn(null);
+  };
+
+  /**
+   * Say something to whoever is in there, moving somebody in if nobody is.
+   *
+   * Pulled out of the `tell` RPC so "try again" and a scheduled continue can
+   * say the same thing again without going back out through the wire.
+   */
+  const doTell = async (
+    task: string,
+    text: string,
+    carrying?: readonly Carried[]
+  ): Promise<Told> => {
+    const said = text.trim();
+    // A picture handed over without a word is still something said.
+    if (!said && !carrying?.length) return { success: false, error: { kind: 'nothing' } };
+    await loaded;
+    const record = (await tasks.list()).find((candidate) => candidate.id === task);
+    if (!record) return { success: false, error: { kind: 'no-such-task' } };
+
+    const house = houseOf(task);
+    const moved = await moveIn(task, record);
+    if (!moved.success) return moved;
+    const conversation = moved.data;
+
+    /* Anything said fresh — by hand or by a scheduled continue — is this
+       session's own "retry" from here on, and stops any continue still armed
+       from an earlier limit. */
+    stopWaiting(task);
+    house.sent(said);
+
+    /* From here on the village is watching: you said something, so anything
+       that turns up after it is happening in front of you and can honestly
+       be dated. Everything before it might be a week old. */
+    house.watched();
+    house.arriving();
+    // No deadline on either: starting an agent means spawning its CLI and
+    // waiting for it to say hello, and a prompt is open for as long as the
+    // work takes.
+    const started = await runtimes.acp.launch(
+      {
+        conversationId: conversation,
+        providerId: record.agent ?? PROVIDER,
+        cwd: record.path,
+        sessionId: records[conversation]?.providerSessionId ?? null,
+        model: record.model ?? null,
+      },
+      { timeoutMs: 0 }
+    );
+    if (!started.success) {
+      house.broke(whatItSaid(started.error));
+      return refused(whatItSaid(started.error));
+    }
+
+    const sent = await runtimes.acp.sendPrompt(
+      {
+        conversationId: conversation,
+        promptId: crypto.randomUUID(),
+        prompt: {
+          text: said,
+          ...(carrying?.length
+            ? {
+                attachments: carrying.map((each) => ({
+                  type: 'attachment' as const,
+                  id: each.id,
+                  mimeType: each.mime,
+                  name: each.name,
+                })),
+              }
+            : {}),
+        },
+      },
+      { timeoutMs: 0 }
+    );
+    if (!sent.success) {
+      house.broke(whatItSaid(sent.error));
+      return refused(whatItSaid(sent.error));
+    }
+    return { success: true, data: undefined };
+  };
 
   return {
     working: (task) => houseOf(task).state,
@@ -424,66 +530,51 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
       return { success: true, data: undefined };
     },
 
-    async tell(task, text, carrying) {
-      const said = text.trim();
-      // A picture handed over without a word is still something said.
-      if (!said && !carrying?.length) return { success: false, error: { kind: 'nothing' } };
-      await loaded;
-      const record = (await tasks.list()).find((candidate) => candidate.id === task);
-      if (!record) return { success: false, error: { kind: 'no-such-task' } };
+    tell: doTell,
 
+    async retryFailure(task) {
+      const text = houseOf(task).retryText();
+      if (!text) return { success: false, error: { kind: 'nothing' } };
+      return doTell(task, text);
+    },
+
+    /**
+     * Arms a continue that sends itself once the failure's own reset time
+     * comes: the village's own take on Claude Code's "continuing
+     * automatically at 5pm". Needs both a reset time to aim for and
+     * something to say again; either missing means nothing to schedule.
+     */
+    async waitOutFailure(task) {
       const house = houseOf(task);
-      const moved = await moveIn(task, record);
-      if (!moved.success) return moved;
-      const conversation = moved.data;
-
-      /* From here on the village is watching: you said something, so anything
-         that turns up after it is happening in front of you and can honestly
-         be dated. Everything before it might be a week old. */
-      house.watched();
-      house.arriving();
-      // No deadline on either: starting an agent means spawning its CLI and
-      // waiting for it to say hello, and a prompt is open for as long as the
-      // work takes.
-      const started = await runtimes.acp.launch(
-        {
-          conversationId: conversation,
-          providerId: record.agent ?? PROVIDER,
-          cwd: record.path,
-          sessionId: records[conversation]?.providerSessionId ?? null,
-          model: record.model ?? null,
-        },
-        { timeoutMs: 0 }
-      );
-      if (!started.success) {
-        house.broke(whatItSaid(started.error));
-        return refused(whatItSaid(started.error));
-      }
-
-      const sent = await runtimes.acp.sendPrompt(
-        {
-          conversationId: conversation,
-          promptId: crypto.randomUUID(),
-          prompt: {
-            text: said,
-            ...(carrying?.length
-              ? {
-                  attachments: carrying.map((each) => ({
-                    type: 'attachment' as const,
-                    id: each.id,
-                    mimeType: each.mime,
-                    name: each.name,
-                  })),
-                }
-              : {}),
+      const text = house.retryText();
+      const resetAt = house.currentResetAt();
+      if (!text || !resetAt) return { success: false, error: { kind: 'nothing' } };
+      stopWaiting(task);
+      house.carryOn(resetAt);
+      carryOnTimers.set(
+        task,
+        setTimeout(
+          () => {
+            carryOnTimers.delete(task);
+            void doTell(task, text);
           },
-        },
-        { timeoutMs: 0 }
+          Math.max(0, resetAt - Date.now())
+        )
       );
-      if (!sent.success) {
-        house.broke(whatItSaid(sent.error));
-        return refused(whatItSaid(sent.error));
-      }
+      return { success: true, data: undefined };
+    },
+
+    async stopWaiting(task) {
+      stopWaiting(task);
+      return { success: true, data: undefined };
+    },
+
+    /** Leaves this conversation behind — its transcript included — and starts
+     *  a fresh one the next time something is said. The worktree and branch
+     *  are untouched; only the conversation this building is lodging is. */
+    async startOver(task) {
+      stopWaiting(task);
+      await evict(task);
       return { success: true, data: undefined };
     },
 
@@ -591,6 +682,12 @@ class House {
   private seen = new Map<string, number>();
   /* Whether the village has watched this conversation move. */
   private watching = false;
+  /** The last thing said to this session, for "try again" and the scheduled
+   *  continue to say again. */
+  private lastSent: string | undefined;
+  /** When a continue is scheduled to send itself, or null. */
+  private carryOnAt: number | null = null;
+  private carryOnTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly task: string,
@@ -740,6 +837,28 @@ class House {
     this.publish();
   }
 
+  /** The last thing said to this session, for "try again" and a scheduled
+   *  continue to say again — set every time something actually goes out. */
+  sent(text: string): void {
+    this.lastSent = text;
+  }
+
+  retryText(): string | undefined {
+    return this.lastSent;
+  }
+
+  currentResetAt(): number | undefined {
+    return this.lifecycle?.failure?.resetAt;
+  }
+
+  /** Arms or disarms the scheduled continue; the board reads this back as
+   *  `WorkingState.carryOn`. */
+  carryOn(at: number | null): void {
+    if (this.carryOnAt === at) return;
+    this.carryOnAt = at;
+    this.publish();
+  }
+
   async dispose(): Promise<void> {
     const going = this.replicas;
     this.replicas = [];
@@ -780,6 +899,8 @@ class House {
       plan: stepsOf(this.plan),
       queued: waitingOf(this.lifecycle),
       room: roomOf(this.usage),
+      failure: !this.trouble && failure ? failureViewOf(failure, bankable(failure.category)) : null,
+      carryOn: this.carryOnAt,
     };
   }
 }
@@ -852,6 +973,25 @@ function failureDoing(failure: SessionFailure): string {
     default:
       return sentence(failure.title);
   }
+}
+
+/**
+ * What the board offers about a typed failure, over the wire.
+ *
+ * `canRetry` is Mender's own read of whether an immediate try-again is worth
+ * offering, not a copy of the AIR extension's action list: a plain usage
+ * limit carries no actions at all, since retrying it immediately would only
+ * fail again the same way, so a limit only ever offers the scheduled
+ * "carry on when it lifts" (when a reset time is known) and starting over —
+ * never an immediate retry.
+ */
+function failureViewOf(failure: SessionFailure, bankable: boolean): Failure {
+  return {
+    bankable,
+    doing: failureDoing(failure),
+    canRetry: bankable && (failure.category === 'service' || failure.category === 'connection'),
+    ...(failure.resetAt !== undefined ? { resetAt: failure.resetAt } : {}),
+  };
 }
 
 /** A clock time in this machine's own zone, said the way the village talks:
@@ -1221,7 +1361,10 @@ function endedBadly(
     return { said: 'It ran out of room to answer and stopped short.', trouble: 'warn' };
   }
   if (outcome.kind === 'done' && outcome.reason === 'max_turn_requests') {
-    return { said: 'It reached how far it is allowed to go in one turn and stopped.', trouble: 'warn' };
+    return {
+      said: 'It reached how far it is allowed to go in one turn and stopped.',
+      trouble: 'warn',
+    };
   }
   if (outcome.kind === 'interrupted' && outcome.reason === 'process_closed') {
     return { said: 'The agent went away in the middle of it.', trouble: 'wrong' };

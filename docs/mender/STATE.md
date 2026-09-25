@@ -1665,7 +1665,7 @@ back to gold. On a checkout board the mark beside each file is its colour
 the file itself is gold. In an answer, bold is violet, code blue, headings and
 quotes carry the violet too. Driven on his real session that hit the limit.
 
-### Typed session failures, wired but not yet driven live (2026-09-24)
+### Typed session failures, with what there is to do about one (2026-09-24)
 
 Claude's ACP adapter can report a limit, an overload, an empty quota, a lost
 connection or a sign-in requirement as a typed report — its "AIR" `sessionFailure`
@@ -1686,13 +1686,34 @@ Sign-in and anything else stays sore. A turn that stopped for the turn limit
 (`max_turn_requests`) now gets its own sentence instead of reading as a plain,
 silent success.
 
-Not done: the gold retry/"carry on when it lifts"/new-session action lines the
-brief asks for, and the counting-down wait — today it's a static reset time, not
-a live countdown. Sign-in's own way-in (item 2) isn't built. All of this is
-unit-tested (the AIR `_meta` decoder and its reset-time parsing) and the app
-was driven end to end with a real session to confirm nothing broke, but no real
-rate limit was on hand in this session to see the failure itself rendered live —
-next session with a live limit should confirm the wording and mark this `done`.
+And now three gold lines under it, offered by what the failure actually allows
+rather than by copying the AIR extension's own action list (a plain usage limit
+carries none at all): "try again" when an immediate retry is worth it (an
+overloaded service, a lost connection), "carry on when it lifts" when a reset
+time is known — Claude Code's own "continuing automatically at 5pm", said the
+same way, with the same esc-to-cancel — and "start over", two presses, naming
+what it costs. Carrying on arms a real timer in the main process that resends
+the session's own last message once the reset time comes, and disarms the
+moment anything else is said, cancelled, or answered by the timer itself firing.
+Escape reaches for an armed wait before anything else on the board, the same
+priority as a half-written line.
+
+Verified: a new integration test drives the actual decode path (`cell.test.ts`)
+by faking an ACP peer whose prompt response carries the AIR `_meta`, confirming
+the failure lands on `sessionState.failure` and clears on retry — not just the
+decoder in isolation. The full rendering chain (wire → yard → board) was driven
+in the running app by temporarily forcing `House.read()`'s failure through an
+env flag (`MENDER_FAKE_FAILURE`, added and removed in the same session, never
+committed) against a real Claude session: watched "waiting out a limit · resets
+6:10pm" render in the warn colour, armed "carry on when it lifts" and watched it
+become "continuing automatically at 6:12pm · esc to cancel", cancelled it by
+pressing the line again and separately by Escape (confirmed it falls back to
+"carry on when it lifts" and stays on the session board rather than leaving),
+and armed "start over" far enough to see its cost line before backing off
+without actually discarding the transcript. Not driven: an actual live rate
+limit (none was hit this session) and the "try again"/service-overload path
+specifically, since the only failure category exercised was a plain usage limit.
+Sign-in's own way in (item 2 of this workstream) is still not built.
 
 ### A commit is said differently, taken back, or undone with a new one (2026-09-24)
 

@@ -57,6 +57,41 @@ describe('SessionCell prompts', () => {
     expect(history.committed[0].outcome).toEqual({ kind: 'done', reason: 'end_turn' });
   });
 
+  it('surfaces a typed session failure carried on the prompt response, and clears it on retry', async () => {
+    const { cell, agent } = makeCell();
+    agent.prompt = vi.fn().mockResolvedValue({
+      stopReason: 'end_turn',
+      _meta: {
+        jetbrains: {
+          air: {
+            version: 1,
+            sessionFailure: {
+              id: 'f1',
+              category: 'limit',
+              severity: 'error',
+              title: "you've hit your usage limit",
+              details: 'resets 9pm',
+              actions: [],
+            },
+          },
+        },
+      },
+    });
+
+    await cell.prompt({ text: 'hello' });
+
+    expect(cell.sessionState.failure).toMatchObject({
+      id: 'f1',
+      category: 'limit',
+      title: "you've hit your usage limit",
+    });
+    expect(cell.sessionState.failure?.resetAt).toBeGreaterThan(Date.now());
+
+    agent.prompt = vi.fn().mockResolvedValue({ stopReason: 'end_turn' });
+    await cell.prompt({ text: 'try again' });
+    expect(cell.sessionState.failure).toBeNull();
+  });
+
   it('queues while working and drains after the active turn settles', async () => {
     const { cell, agent } = makeCell();
     let resolveFirst!: (value: { stopReason: 'end_turn' }) => void;

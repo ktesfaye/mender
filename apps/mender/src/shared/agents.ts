@@ -115,6 +115,27 @@ export type Waiting = z.infer<typeof waitingSchema>;
  * re-derive any of it from prose.
  */
 
+/**
+ * A typed failure the agent has reported — a limit, an overload, a lost
+ * connection, sign-in required — and what there is to do about it.
+ *
+ * Not the raw AIR report: `doing` is already said in the village's voice
+ * (what `main/agents.ts`'s `failureDoing` writes for the fire), and the three
+ * action flags are Mender's own read of what's worth offering, not a copy of
+ * the AIR extension's own action list — the agent's typed usage-limit report
+ * carries no actions at all, and "carry on when it lifts" is the village's own
+ * invention for it.
+ */
+export const failureSchema = z.object({
+  /** Whether the fire banks (a wait with a next move) or stays sore. */
+  bankable: z.boolean(),
+  doing: z.string(),
+  canRetry: z.boolean(),
+  /** Set only when a reset time is known, so a wait can be scheduled. */
+  resetAt: z.number().optional(),
+});
+export type Failure = z.infer<typeof failureSchema>;
+
 /** Something you said, which is what is nailed to the gatepost. */
 export const notedSchema = z.object({
   id: z.string(),
@@ -239,6 +260,13 @@ export const workingStateSchema = z.object({
    * losing its beginning. Null until the agent says, which not all of them do.
    */
   room: z.number().nullable(),
+  /** A typed failure worth its own line, or null when there isn't one. */
+  failure: failureSchema.nullable(),
+  /**
+   * When set, a continue is scheduled to send itself at this epoch ms — you
+   * pressed "carry on when it lifts" and haven't cancelled it. Null otherwise.
+   */
+  carryOn: z.number().nullable(),
 });
 export type WorkingState = z.infer<typeof workingStateSchema>;
 
@@ -433,6 +461,30 @@ export const agentsContract = defineContract({
   }),
   /** Tell it to stop what it is doing. */
   hush: fallible({
+    input: z.object({ task: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** Say the last thing you said again, now that a limit's fire has banked. */
+  retryFailure: fallible({
+    input: z.object({ task: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** Schedule the last thing said to go out again on its own once a limit
+   *  lifts. Cancelled by pressing the same line again, or Escape. */
+  waitOutFailure: fallible({
+    input: z.object({ task: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  stopWaiting: fallible({
+    input: z.object({ task: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** Leave this conversation behind and start a fresh one in its place. */
+  startOver: fallible({
     input: z.object({ task: z.string() }),
     data: z.void(),
     error: agentErrorSchema,
