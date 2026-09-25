@@ -35,7 +35,9 @@ export interface LiveCard {
 
 export type Meant =
   | { does: 'choose'; what: 'hand' | 'model' | 'mode' | 'effort' | 'collab'; id: string }
-  | { does: 'tool'; name: string; on: boolean };
+  | { does: 'tool'; name: string; on: boolean }
+  /** Open the real shell here, with the agent's own sign-in line ready to run. */
+  | { does: 'signin'; command: string };
 
 export async function openCard(
   client: MenderClient,
@@ -107,6 +109,9 @@ export async function openCard(
 
 /** `kind:id`, so a pressed line says what it was without a lookup table. */
 function read(pick: string, kit: Kit | null): Meant | null {
+  if (pick === 'signin') {
+    return kit?.signIn ? { does: 'signin', command: kit.signIn.command } : null;
+  }
   const cut = pick.indexOf(':');
   if (cut === -1) return null;
   const kind = pick.slice(0, cut);
@@ -149,9 +154,19 @@ function written(task: Task, kit: Kit | null, ending?: Ending, showing?: boolean
     rows.push({
       kind: 'entry',
       mark: hand.id === kit.hand ? ON : OFF,
-      text: hand.name,
+      text: hand.signedIn === false ? `${hand.name}, not signed in` : hand.name,
       tone: hand.id === kit.hand ? 'ink' : 'faded',
       pick: `hand:${hand.id}`,
+    });
+  }
+  /* Only the one working here says how, because that is the one thing about
+     to fail without it. */
+  if (kit.signIn) {
+    rows.push({
+      kind: 'entry',
+      mark: '→',
+      text: `${kit.signIn.agent} needs you to sign in`,
+      pick: 'signin',
     });
   }
   /* Everyone who speaks the protocol and is not on this machine. Folded away
@@ -310,7 +325,11 @@ function homeward(awake: boolean): Row[] {
 
 function over(ending: Ending | undefined, awake: boolean): Row[] {
   if (!ending) return homeward(awake);
-  const rows: Row[] = [...homeward(awake), { kind: 'gap' }, { kind: 'heading', text: 'when it is over' }];
+  const rows: Row[] = [
+    ...homeward(awake),
+    { kind: 'gap' },
+    { kind: 'heading', text: 'when it is over' },
+  ];
 
   const losing = [
     ending.uncommitted

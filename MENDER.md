@@ -417,6 +417,16 @@ coloured dot anywhere.
 The agent runs under its own settings on this machine, the same ones a terminal
 session gets, so what it asks permission for is what it would ask there. When
 it does ask, the question lands on the board and a number key answers it.
+Several things asking at once are not several turns of that: a key marks
+which answer each one gets instead of sending it, and a last line, "that's
+everything," always there on that kind of question, is what actually sends
+them, together.
+
+An agent that needs signing in to work at all says so on its own `/agent`
+card, plainly, for whichever hand is not signed in. The one actually working
+here, when it needs it, offers the way in as a gold line: pressing it opens
+the checkout's own real shell with the agent's own sign-in line already on
+the input, unsent, so it is looked at and run rather than run for you.
 
 An agent who is not on this machine is brought here from the same card. The
 line saying how many more speak the protocol opens all of them, and pressing

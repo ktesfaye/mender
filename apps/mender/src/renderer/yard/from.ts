@@ -13,6 +13,7 @@
 import type { Ask, Failure, Kit, Mood, Told } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
+import { answersFor } from '../board/work';
 import { KIT_NAMES } from './sprite';
 import type {
   Fire,
@@ -130,7 +131,12 @@ export function yardOf(from: Standing): Yard {
       ? {
           asking: {
             said: from.asking.text,
-            answers: from.asking.options.map((one) => ({ id: one.optionId, said: one.name })),
+            multi: from.asking.multi,
+            answers: answersFor(from.asking).map((one) => ({
+              id: one.optionId,
+              said: one.name,
+              requestId: one.requestId,
+            })),
           },
         }
       : {}),
@@ -435,7 +441,11 @@ function lanternOf(task: Task, mood: Mood | undefined, here: boolean): Lantern {
     id: task.id,
     name: task.title,
     posture,
-    saying: here ? 'you are here' : !lit && posture === 'resting' ? 'asleep' : sayingOf(posture, task),
+    saying: here
+      ? 'you are here'
+      : !lit && posture === 'resting'
+        ? 'asleep'
+        : sayingOf(posture, task),
     lit,
     here,
     unread: false,

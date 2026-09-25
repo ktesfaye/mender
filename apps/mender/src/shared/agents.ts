@@ -60,11 +60,29 @@ export const lineSchema = z.object({
 });
 export type Line = z.infer<typeof lineSchema>;
 
-/** A villager standing at the door with a question, and the ways to answer it. */
+/**
+ * A villager standing at the door with a question, and the ways to answer it.
+ *
+ * Most of the time there is one thing to answer and a key sends it straight
+ * away. `multi` means several things are asking at once: a key marks which
+ * answer each one gets instead of sending it, `options` carries which pending
+ * question each answer belongs to and whether it is already marked, and
+ * nothing is sent until "that's everything" is pressed.
+ */
 export const askSchema = z.object({
   requestId: z.string(),
   text: z.string(),
-  options: z.array(z.object({ optionId: z.string(), name: z.string() })),
+  multi: z.boolean().optional(),
+  options: z.array(
+    z.object({
+      optionId: z.string(),
+      name: z.string(),
+      /** Which pending question this answers. Only set when `multi`. */
+      requestId: z.string().optional(),
+      /** Marked but not sent yet. Only meaningful when `multi`. */
+      picked: z.boolean().optional(),
+    })
+  ),
 });
 export type Ask = z.infer<typeof askSchema>;
 
@@ -285,6 +303,8 @@ export const handSchema = z.object({
   name: z.string(),
   /** Whether their CLI is actually on this machine. */
   here: z.boolean(),
+  /** Whether they are signed in, or null when this agent has no notion of it. */
+  signedIn: z.boolean().nullable(),
 });
 
 /** One of the things a session can be set to. */
@@ -346,6 +366,9 @@ export const kitSchema = z.object({
   orders: z.array(orderSchema),
   /** True once the session has started and the agent has said what it offers. */
   awake: z.boolean(),
+  /** Set only when the agent working here needs you to sign in: what it is
+   *  called and the line that does it, to open in the real shell. */
+  signIn: z.object({ agent: z.string(), command: z.string() }).nullable(),
 });
 
 export type Hand = z.infer<typeof handSchema>;
@@ -447,9 +470,21 @@ export const agentsContract = defineContract({
     data: z.void(),
     error: agentErrorSchema,
   }),
-  /** Answer the question it came to the door with. */
+  /**
+   * Answer the question it came to the door with.
+   *
+   * On a plain question this sends straight away. On a multi-select one it
+   * only marks the pick against its own pending question; nothing goes out
+   * until `finishAsking`.
+   */
   answer: fallible({
     input: z.object({ task: z.string(), requestId: z.string(), optionId: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** "That's everything": sends every mark a multi-select question has, at once. */
+  finishAsking: fallible({
+    input: z.object({ task: z.string() }),
     data: z.void(),
     error: agentErrorSchema,
   }),

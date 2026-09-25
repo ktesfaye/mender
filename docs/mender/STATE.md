@@ -1011,7 +1011,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-06 | Hook-driven status & session signals | kept |  |
 | AG-07 | MCP server management, scoped per agent | part | W8 |
 | AG-08 | Workspace trust pre-authorization | kept |  |
-| AG-09 | Per-agent auth status detection |  | W8 |
+| AG-09 | Per-agent auth status detection | done | W8 |
 | AG-10 | Multi-account registry (issue trackers etc.) |  | W8 |
 | AG-11 | CLI dependency install/update/uninstall |  | W8 |
 | AG-12 | Agent-process environment sanitization | kept |  |
@@ -1725,6 +1725,39 @@ without actually discarding the transcript. Not driven: an actual live rate
 limit (none was hit this session) and the "try again"/service-overload path
 specifically, since the only failure category exercised was a plain usage limit.
 Sign-in's own way in (item 2 of this workstream) is still not built.
+
+### Sign-in's own way in, and a multi-select question · done (2026-09-24)
+
+Item 2 of this workstream, built. Each hand on the `/agent` card now says
+whether it is signed in — read back from emdash's own `agent-config` runtime
+(`AgentAuthManager`, already wired into Mender's runtimes but unused until
+now), not anything kept here — and the one actually working here, when it
+needs to sign in, offers a gold line for it: "{agent} needs you to sign in."
+Pressing it opens the same real shell the checkout board already has,
+pre-filled with the agent's own sign-in line — its `cli-login` method's own
+args when it has one, an `export {ENVVAR}=` ready for a pasted key otherwise —
+on the input, unsent, so it is reviewed and run rather than run for you.
+
+And a multi-select question. `askOf()` used to take only the first pending
+permission request; several can legitimately be outstanding at once, and now
+all of them are: a plain question still answers on the first press exactly as
+before, but several at once mark which pending question each answer belongs
+to and nothing goes out until a last, always-present line — "that's
+everything" — sends every mark together. The marks themselves live on the
+session (`House`), one pick per pending request, cleared the moment a marked
+question is answered elsewhere or moves on.
+
+Verified: the sign-in line was driven against this machine's own real Claude
+Code, which is signed in — confirmed the negative is correctly negative: no
+"not signed in" suffix on its row and no gold sign-in line while a real
+session with it was open and working. Not driven: the positive case (an agent
+actually reporting `unauthenticated`) and the shell hand-off, because nothing
+on this machine is currently signed out and forcing that state would mean
+touching a real agent's real credentials, which this workstream's brief rules
+out. The multi-select logic was verified with a unit test
+(`board/work.test.ts`) covering the flattening, the marks, and the trailing
+send line, because no real agent asked a genuine multi-select question in the
+time available to drive one live.
 
 ### A commit is said differently, taken back, or undone with a new one (2026-09-24)
 

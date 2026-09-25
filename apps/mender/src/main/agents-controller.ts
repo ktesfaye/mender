@@ -14,6 +14,7 @@ export function createAgentsController(agents: Agents): Controller {
     carry: ({ task }, file) => agents.carry(task, file),
     putDown: ({ task, id }) => agents.putDown(task, id),
     answer: ({ task, requestId, optionId }) => agents.answer(task, requestId, optionId),
+    finishAsking: ({ task }) => agents.finishAsking(task),
     unsay: ({ task, id }) => agents.unsay(task, id),
     hush: ({ task }) => agents.hush(task),
     rest: ({ task }) => agents.rest(task),

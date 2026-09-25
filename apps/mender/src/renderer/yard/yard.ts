@@ -98,8 +98,9 @@ export interface Doings {
   press(pick: string): void;
   /** Something was typed, for whatever is narrowing under the line. */
   typed(said: string): void;
-  /** Answer the question somebody is standing at the gate with. */
-  answer(id: string): void;
+  /** Answer the question somebody is standing at the gate with, or, on a
+   *  multi-select one, mark which pending question this answer belongs to. */
+  answer(id: string, requestId?: string): void;
   /** Say something on the line. */
   say(said: string): void;
   /** Escape with nothing left on the line to throw away. */
@@ -1176,7 +1177,7 @@ function gate(root: HTMLElement, at: { x: number; wide: number }, asking: Ask, d
     key.textContent = String(i + 1);
     line.appendChild(key);
     const press = astop(
-      pressing(answer.said, () => does.answer(answer.id)),
+      pressing(answer.said, () => does.answer(answer.id, answer.requestId)),
       `answer:${answer.id}`
     );
     press.style.cssText += "font-family:'Josefin Sans',sans-serif;font-size:16px";
@@ -1431,7 +1432,8 @@ function diffPreview(one: Step, does: Doings): HTMLElement {
     const kind = marked[0];
     line.style.cssText =
       "font-family:'Josefin Sans',sans-serif;font-size:12px;line-height:1.35;white-space:pre;overflow:hidden;text-overflow:ellipsis";
-    line.style.color = kind === '+' ? 'var(--yard-well)' : kind === '-' ? 'var(--yard-wrong)' : '#a89272';
+    line.style.color =
+      kind === '+' ? 'var(--yard-well)' : kind === '-' ? 'var(--yard-wrong)' : '#a89272';
     line.textContent = marked;
     wrap.appendChild(line);
   }
@@ -1601,10 +1603,7 @@ function standing(hand: Hand, i: number, wide: number): HTMLElement {
      you can follow the same one across the yard without it reading as hurt
      or well the way a status colour would. */
   it.appendChild(
-    box(
-      { left: 9, top: 50, width: 8, height: 6 },
-      `border-radius:2px;background:${hand.tint}`
-    )
+    box({ left: 9, top: 50, width: 8, height: 6 }, `border-radius:2px;background:${hand.tint}`)
   );
 
   if (out) {

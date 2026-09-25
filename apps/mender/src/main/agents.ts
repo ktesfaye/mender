@@ -122,6 +122,8 @@ export interface Agents {
   /** Put one down again, before it goes anywhere. */
   putDown(task: string, id: string): Promise<Told>;
   answer(task: string, requestId: string, optionId: string): Promise<Told>;
+  /** Sends every mark a multi-select question has picked up, at once. */
+  finishAsking(task: string): Promise<Told>;
   /** Take back something said while it was busy, before it is heard. */
   unsay(task: string, id: string): Promise<Told>;
   hush(task: string): Promise<Told>;
@@ -582,12 +584,37 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
       await loaded;
       const conversation = lodgers[task];
       if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
+      const house = houseOf(task);
+      /* Several things asking at once only get marked here; they go out
+         together when `finishAsking` is pressed. */
+      if (peek(house.state).asking?.multi) {
+        house.mark(requestId, optionId);
+        return { success: true, data: undefined };
+      }
       const done = await runtimes.acp.resolvePermission({
         conversationId: conversation,
         requestId,
         optionId,
       });
       return done.success ? { success: true, data: undefined } : refused(whatItSaid(done.error));
+    },
+
+    async finishAsking(task) {
+      await loaded;
+      const conversation = lodgers[task];
+      if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
+      const house = houseOf(task);
+      const picks = house.picks();
+      house.clearPicks();
+      for (const { requestId, optionId } of picks) {
+        const done = await runtimes.acp.resolvePermission({
+          conversationId: conversation,
+          requestId,
+          optionId,
+        });
+        if (!done.success) return refused(whatItSaid(done.error));
+      }
+      return { success: true, data: undefined };
     },
 
     async carry(task, file) {
@@ -688,6 +715,9 @@ class House {
   /** When a continue is scheduled to send itself, or null. */
   private carryOnAt: number | null = null;
   private carryOnTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Marks on a multi-select question, one pick per pending request, kept
+   *  until `finishAsking` sends them or the question itself moves on. */
+  private marked = new Map<string, string>();
 
   constructor(
     private readonly task: string,
@@ -883,11 +913,34 @@ class House {
     if (was.mood !== next.mood) this.moved();
   }
 
+  /** Mark, or unmark, a pick on a multi-select question. */
+  mark(requestId: string, optionId: string): void {
+    if (this.marked.get(requestId) === optionId) this.marked.delete(requestId);
+    else this.marked.set(requestId, optionId);
+    this.publish();
+  }
+
+  /** Every mark on the question right now, one per pending request. */
+  picks(): { requestId: string; optionId: string }[] {
+    return [...this.marked.entries()].map(([requestId, optionId]) => ({ requestId, optionId }));
+  }
+
+  clearPicks(): void {
+    this.marked.clear();
+  }
+
   private read(): WorkingState {
     if (!this.conversation) return EMPTY;
     const turns = this.live ? [...this.before, this.live] : this.before;
     const lines = linesOf(turns, this.where()).slice(-KEPT);
-    const asking = askOf(this.lifecycle?.pendingPermissions?.[0], this.where());
+    const pending = this.lifecycle?.pendingPermissions ?? [];
+    /* A mark against a question that has moved on — answered elsewhere,
+       cancelled, the turn replaced — is stale and never sent. */
+    for (const requestId of this.marked.keys()) {
+      if (!pending.some((request) => request.requestId === requestId))
+        this.marked.delete(requestId);
+    }
+    const asking = askOf(pending, this.where(), this.marked);
     const failure = this.lifecycle?.failure ?? null;
     const mood = moodOf(this.lifecycle, asking, this.trouble, failure);
     return {
@@ -1082,15 +1135,38 @@ function roomOf(usage: SessionUsage | null): number | null {
   return Math.min(1, Math.max(0, left));
 }
 
-function askOf(request: AcpPermissionRequest | undefined, root: string | undefined): Ask | null {
-  if (!request) return null;
+function askOf(
+  requests: readonly AcpPermissionRequest[],
+  root: string | undefined,
+  marked: ReadonlyMap<string, string>
+): Ask | null {
+  if (requests.length === 0) return null;
+  if (requests.length === 1) {
+    const request = requests[0];
+    return {
+      requestId: request.requestId,
+      text: deedOf(request.toolCall, root),
+      options: request.options.map((option) => ({
+        optionId: option.optionId,
+        name: option.name.toLowerCase(),
+      })),
+    };
+  }
+  /* Several things are asking at once: every option says which question it
+     answers, and whether it is marked, so the board can hold them all open
+     until "that's everything" sends them together. */
   return {
-    requestId: request.requestId,
-    text: deedOf(request.toolCall, root),
-    options: request.options.map((option) => ({
-      optionId: option.optionId,
-      name: option.name.toLowerCase(),
-    })),
+    requestId: requests[0].requestId,
+    text: `${requests.length} things are asking.`,
+    multi: true,
+    options: requests.flatMap((request) =>
+      request.options.map((option) => ({
+        optionId: option.optionId,
+        name: `${deedOf(request.toolCall, root)} — ${option.name.toLowerCase()}`,
+        requestId: request.requestId,
+        picked: marked.get(request.requestId) === option.optionId,
+      }))
+    ),
   };
 }
 

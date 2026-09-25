@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { McpServer } from '@emdash/core/primitives/mcp/api';
 import type { SessionConfigState, SessionMcpServer } from '@emdash/core/runtimes/acp/api';
+import type { AgentConfigList } from '@emdash/core/runtimes/agent-config/api';
 import { pluginRegistry } from '@emdash/plugins/agents';
 import { ReplicaState } from '@emdash/wire/live';
 import { cell, type Cell } from '@emdash/wire/state';
@@ -41,6 +42,7 @@ const NOTHING: Kit = {
   knacksSupported: true,
   orders: [],
   awake: false,
+  signIn: null,
 };
 
 export interface Kits {
@@ -48,7 +50,11 @@ export interface Kits {
   kit(task: string): Cell<Kit>;
   /** The conversation a session is holding, once it has one. */
   settle(task: string, conversation: string): Promise<void>;
-  choose(task: string, what: 'hand' | 'model' | 'mode' | 'effort' | 'collab', id: string): Promise<Wrong>;
+  choose(
+    task: string,
+    what: 'hand' | 'model' | 'mode' | 'effort' | 'collab',
+    id: string
+  ): Promise<Wrong>;
   tool(task: string, name: string, on: boolean): Promise<Wrong>;
   forget(task: string): Promise<void>;
   dispose(): Promise<void>;
@@ -166,6 +172,10 @@ class Card {
   private config: SessionConfigState | undefined;
   private servers: SessionMcpServer[] = [];
   private replicas: ReplicaState<unknown>[] = [];
+  /** Every agent's sign-in state on this machine, read back from the host's
+   *  own auth check rather than kept here. */
+  private auth: AgentConfigList = {};
+  private authReplica: ReplicaState<AgentConfigList> | undefined;
 
   constructor(
     private readonly task: string,
@@ -174,6 +184,15 @@ class Card {
     private readonly installed: () => Record<string, boolean>
   ) {
     this.state = cell<Kit>(NOTHING, { name: `kit:${task}` });
+    this.authReplica = new ReplicaState<AgentConfigList>(
+      this.runtimes.agentConfig.agents.state(undefined, 'list'),
+      {
+        onChange: (value) => {
+          this.auth = value;
+          void this.redraw();
+        },
+      }
+    );
   }
 
   get awake(): boolean {
@@ -227,11 +246,14 @@ class Card {
         id: plugin.metadata.id,
         name: plugin.metadata.name,
         here: here[plugin.metadata.id] ?? false,
+        signedIn: signedInOf(this.auth[plugin.metadata.id]),
       }))
       .sort((a, b) => Number(b.here) - Number(a.here) || a.name.localeCompare(b.name));
 
     const [tools, taught] = await Promise.all([this.toolsOf(hand), knacksFor(hand, record?.path)]);
     const awake = Boolean(this.config?.modelOptions ?? this.config?.modeOptions);
+    const working = hands.find((one) => one.id === hand);
+    const signIn = working?.signedIn === false ? signInFor(hand, working.name) : null;
 
     this.state.set({
       hand,
@@ -253,6 +275,7 @@ class Card {
         ...(command.inputHint ? { takes: command.inputHint } : {}),
       })),
       awake,
+      signIn,
     });
   }
 
@@ -279,8 +302,35 @@ class Card {
   async dispose(): Promise<void> {
     const going = this.replicas;
     this.replicas = [];
-    await Promise.all(going.map((replica) => replica.dispose()));
+    const auth = this.authReplica;
+    this.authReplica = undefined;
+    await Promise.all([...going.map((replica) => replica.dispose()), auth?.dispose()]);
   }
+}
+
+/** Whether this agent is signed in, read back from the host's own auth
+ *  check. Absent from the list entirely means it has no notion of it. */
+function signedInOf(entry: AgentConfigList[string] | undefined): boolean | null {
+  if (!entry) return null;
+  if (entry.auth.status.kind === 'authenticated') return true;
+  if (entry.auth.status.kind === 'unauthenticated') return false;
+  return null;
+}
+
+/**
+ * The line that signs an agent in, in its own words: the CLI's own login
+ * command when it has one, or an `export` ready for a pasted key otherwise.
+ * Opened in the real shell rather than run for you, because a real shell is
+ * what this is to begin with.
+ */
+function signInFor(providerId: string, name: string): { agent: string; command: string } | null {
+  const auth = pluginRegistry.get(providerId)?.capabilities.auth;
+  if (!auth || auth.kind !== 'supported') return null;
+  const login = auth.methods.find((method) => method.kind === 'cli-login');
+  if (login) return { agent: name, command: `${providerId} ${login.args.join(' ')}` };
+  const key = auth.methods.find((method) => method.kind === 'api-key');
+  if (key) return { agent: name, command: `export ${key.envVars[0].name}=` };
+  return null;
 }
 
 function choicesOf(available: { id: string; name: string; description?: string }[] | undefined) {

@@ -40,8 +40,12 @@ export interface Yard {
 
 export interface Asking {
   said: string;
+  /** Several things are asking at once: an answer marks its own pending
+   *  question instead of sending, until the last one — "that's everything" —
+   *  is pressed. */
+  multi?: boolean;
   /** In the order the number keys answer them. */
-  answers: { id: string; said: string }[];
+  answers: { id: string; said: string; requestId?: string }[];
 }
 
 export interface Project {

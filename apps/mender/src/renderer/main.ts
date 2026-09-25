@@ -38,7 +38,7 @@ import { sent, type Sent } from './board/sent';
 import { shell } from './board/shell';
 import { openShell, type LiveShell } from './board/talking';
 import { refused, trouble, unwritten } from './board/trouble';
-import { answerFor } from './board/work';
+import { answerFor, SEND_ALL } from './board/work';
 import { ran } from './job';
 import { setPace } from './pace';
 import { createCamera, flyOut, flyToYard, frame, type Extent } from './village/camera';
@@ -111,7 +111,7 @@ async function boot(): Promise<void> {
     const shelf = makeShelf(layer.root, (id) => void go(`project:${id}`));
     const yard = makeYard(layer, {
       open: (id) => void go(`task:${id}`),
-      answer: (id) => void answered(id),
+      answer: (id, requestId) => void answered(id, requestId),
       press: (pick) => press(pick),
       typed: (text) => {
         /* A real terminal is open: every key is its own, including the ones
@@ -2422,13 +2422,20 @@ async function boot(): Promise<void> {
       }
     };
 
-    const answered = async (optionId: string): Promise<void> => {
+    const answered = async (optionId: string, requestId?: string): Promise<void> => {
       const task = inside;
       const asked = watching?.asked();
       if (!task || !asked) return;
+      /* Not an answer at all: sends every mark a multi-select question has
+         picked up so far. */
+      if (optionId === SEND_ALL) {
+        const sent = await client.agents.finishAsking({ task: task.id });
+        if (!sent.success && sent.error.kind === 'refused') say(sent.error.because, 6000);
+        return;
+      }
       const given = await client.agents.answer({
         task: task.id,
-        requestId: asked.requestId,
+        requestId: requestId ?? asked.requestId,
         optionId,
       });
       if (!given.success && given.error.kind === 'refused') say(given.error.because, 6000);
@@ -2452,8 +2459,8 @@ async function boot(): Promise<void> {
     /** The same door, opened with a number key instead of a hand. */
     const answer = async (key: string): Promise<void> => {
       const asked = watching?.asked();
-      const optionId = asked ? answerFor(asked, key) : null;
-      if (optionId) await answered(optionId);
+      const picked = asked ? answerFor(asked, key) : undefined;
+      if (picked) await answered(picked.optionId, picked.requestId);
     };
 
     /**
@@ -2735,6 +2742,19 @@ async function boot(): Promise<void> {
       const task = inside;
       const meant = card?.meant(pick);
       if (!task || !meant) return;
+      if (meant.does === 'signin') {
+        /* The same real shell, with the agent's own sign-in line waiting on
+           the input rather than a blank prompt. Not sent: they still press
+           return themselves. */
+        void talk().then(() => {
+          if (talking?.shell)
+            void client.terminals.sendInput({
+              key: talking.shell.key,
+              data: meant.command,
+            });
+        });
+        return;
+      }
       void (async () => {
         const done =
           meant.does === 'choose'
