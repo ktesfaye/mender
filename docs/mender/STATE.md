@@ -56,13 +56,19 @@ there, and the islet sails its bridge to whatever coast exists. Every state the
 app can reach was composed in both this app and `world/his.py` and compared tile
 for tile: identical, mooring and all.
 
-Of the 253 ledger rows: 54 done, 24 partly done, 34 inherited working from
-emdash's back end and needing no village surface, 43 deliberately cut, and
-**98 not started**.
+Of the 255 ledger rows, as of 2026-09-25: 82 done, 28 partly done, 34
+inherited working from emdash's back end and needing no village surface, 71
+deliberately cut, and **40 not started**.
 
-What is still genuinely missing: the settings island and everything that would
-live on it, other machines over SSH, work that runs itself, and the wave that
-makes the island say from the water who is working and who is stuck.
+What is still genuinely missing: agents driving other Mac apps; mermaid you
+can pan and zoom, and a CSV table; the thinner transcript cards (thinking, the
+plan, how a turn ended) and a transcript that scrolls a long session cheaply;
+rebinding keys; the settings nobody has placed yet (branch naming, default
+folders, per-project environment, the terminal's font and shell, what search
+and watching leave out); dragging files out of the board and a folder from
+Finder onto the island; linking an existing pull request and starting from a
+chosen branch; a missing folder or a failed setup step as a state of its own;
+and issue trackers other than GitHub.
 
 ## What "not started" actually means
 
@@ -1113,6 +1119,16 @@ Kept here so none of it quietly returns as a panel.
   (AG-54). The last line of the board is where you write, always.
 - An OS deep-link scheme (UI-24), which emdash does not have either.
 - The workspace-server artifact URL (ST-16), which stays build configuration.
+- Everything emdash needs because it is a conventional app (cut 2026-09-25): a
+  boot splash, a recovery window, onboarding and a welcome screen (UI-01..04),
+  its project header menu and task titlebar (UI-06, UI-10), a settings view
+  (UI-16, the windmill is it), a system tray (UI-28), the modal catalogue
+  (UI-36), activity badges, a connection dot and an update indicator (UI-38,
+  UI-41, UI-42, WS-22), the update card and stepped loader (TR-23, TR-25), a
+  theme (ST-10), the interface and browser-profile settings (ST-12, ST-14),
+  importing other tools' config (ST-26), an emdash account (ST-28), several
+  GitHub accounts or one per project (ST-29, WS-10; the village is whoever
+  `gh` signs in as), self-update (ST-34) and telemetry (ST-35).
 - Other machines (WS-04, TR-10, TR-13, TR-14, TR-16, TR-19, ST-32). Every
   project lives on this Mac. The same goes for the rail on a phone, which was
   only ever a cmux idea and is not a row.
@@ -1238,15 +1254,15 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-53 | Submit keybindings & multiline editing | part | W1 |
 | AG-54 | Prompt editor imperative API | cut |  |
 | WS-01 | Add Project modal — Pick Directory | done |  |
-| WS-02 | Add Project modal — Create Repository |  | W7 |
-| WS-03 | Add Project modal — Clone Repository |  | W7 |
+| WS-02 | Add Project modal — Create Repository | done | W7 |
+| WS-03 | Add Project modal — Clone Repository | done | W7 |
 | WS-04 | Project host — local vs SSH ("Machine") | cut |  |
 | WS-05 | Repository inspection / creation errors | part | W7 |
 | WS-06 | Rename / delete / relink a project | part | W7 |
 | WS-07 | Project availability banner / disabled-action guard |  | W7 |
 | WS-08 | Project settings & config sharing | part | W7 |
 | WS-09 | Worktree directory setting |  | W7 |
-| WS-10 | GitHub account per project |  | W7 |
+| WS-10 | GitHub account per project | cut |  |
 | WS-11 | Project directory/file tree browsing (for pickers) |  | W7 |
 | WS-12 | Create Task modal | done |  |
 | WS-13 | Workspace presets (5 kinds) | part | W7 |
@@ -1258,7 +1274,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-19 | Worktree creation/removal execution (git ops) | part | W7 |
 | WS-20 | Task lifecycle actions | part | W7 |
 | WS-21 | Task palette | done | W1 |
-| WS-22 | Activity badge (workspace lifecycle) |  | W7 |
+| WS-22 | Activity badge (workspace lifecycle) | cut |  |
 | WS-23 | Delete Task modal — informed preflight |  | W7 |
 | WS-24 | Workspaces tab (per project or per machine) | done |  |
 | WS-25 | Workspace row actions (Open in Task / Clean Artifacts / Delete) | part |  |
@@ -1316,12 +1332,12 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | TR-17 | Machine resource monitoring | done | W10 |
 | TR-18 | Host system dependencies | part | W10 |
 | TR-19 | Machine's conversations/workspaces lists | cut |  |
-| TR-20 | Workspace disk usage |  | W10 |
+| TR-20 | Workspace disk usage | done | W10 |
 | TR-21 | Bound exec primitive | kept |  |
 | TR-22 | Execution planning / shell quoting | kept |  |
-| TR-23 | Update card (shared component) |  | W11 |
+| TR-23 | Update card (shared component) | cut |  |
 | TR-24 | Script status indicator |  | W7 |
-| TR-25 | Stepped loader |  | W7 |
+| TR-25 | Stepped loader | cut |  |
 | TR-26 | Runtime broker & host runtime contract | kept |  |
 | FS-01 | "Open In ▾" catalog (29 apps) | cut | W5 |
 | FS-02 | Per-app detection & launch strategy | kept |  |
@@ -1367,11 +1383,11 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-07 | `defaultAgent` setting | done | W8 |
 | ST-08 | `keyboard` overrides |  | W1 |
 | ST-09 | `notifications` settings (enabled, sound, custom sound path, OS notifications, sound-focus-mode) |  | W11 |
-| ST-10 | `theme` setting |  | W8 |
+| ST-10 | `theme` setting | cut |  |
 | ST-11 | `openIn` settings (default + hidden apps) |  | W8 |
-| ST-12 | `interface` settings (task-hover action, auto-right-sidebar, 3× show-left-sidebar-metadata switches, hide-context-bar) |  | W8 |
+| ST-12 | `interface` settings (task-hover action, auto-right-sidebar, 3× show-left-sidebar-metadata switches, hide-context-bar) | cut |  |
 | ST-13 | `terminal` settings (font family/size, auto-copy, mac-option-as-meta, default shell) |  | W8 |
-| ST-14 | `browserPreview` / `browser` settings (profiles, CORS relax, clear-data) |  | W8 |
+| ST-14 | `browserPreview` / `browser` settings (profiles, CORS relax, clear-data) | cut |  |
 | ST-15 | `changesViewMode` setting (flat/tree per section) | cut | W3 |
 | ST-16 | `remoteMachine` install-source setting | cut |  |
 | ST-17 | Per-agent-provider config (extra CLI args, env vars) | done |  |
@@ -1381,35 +1397,35 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-21 | Skills catalog | done |  |
 | ST-22 | Automations (scheduled/cron agent runs) | done |  |
 | ST-23 | Per-project settings — provenance model |  | W7 |
-| ST-24 | Per-project "base" settings (GitHub account, worktree root, default branch, base/push remote, git-credential mode, tmux) |  | W7 |
+| ST-24 | Per-project "base" settings (GitHub account, worktree root, default branch, base/push remote, git-credential mode, tmux) | part | W7 |
 | ST-25 | Per-project "shareable" settings written to `.emdash.json` |  | W7 |
-| ST-26 | Config import ("migrate from Conductor/Superset/Paseo/Codex") |  | W7 |
+| ST-26 | Config import ("migrate from Conductor/Superset/Paseo/Codex") | cut |  |
 | ST-27 | Per-project environment variables |  | W7 |
-| ST-28 | Emdash account (sign-in/out, session states) |  | W8 |
-| ST-29 | GitHub accounts (multi-account) |  | W8 |
+| ST-28 | Emdash account (sign-in/out, session states) | cut |  |
+| ST-29 | GitHub accounts (multi-account) | cut |  |
 | ST-30 | Three ways to connect GitHub |  | W8 |
 | ST-31 | Other issue-tracker integrations (12 providers) |  | W8 |
 | ST-32 | SSH machine connections (form + validation) | cut |  |
 | ST-33 | Full keybinding catalog & conflict model | part | W1 |
-| ST-34 | App self-update flow |  | W11 |
-| ST-35 | Telemetry consent |  | W11 |
+| ST-34 | App self-update flow | cut |  |
+| ST-35 | Telemetry consent | cut |  |
 | ST-36 | `.emdash.json` (the one per-repo config file) | kept |  |
-| UI-01 | Boot splash |  | W11 |
-| UI-02 | Recovery window |  | W11 |
-| UI-03 | Onboarding (sign-in + legacy-data import) |  | W11 |
-| UI-04 | Welcome screen |  | W11 |
+| UI-01 | Boot splash | cut |  |
+| UI-02 | Recovery window | cut |  |
+| UI-03 | Onboarding (sign-in + legacy-data import) | cut |  |
+| UI-04 | Welcome screen | cut |  |
 | UI-05 | Home view | done |  |
-| UI-06 | Project view — header & actions menu |  | W7 |
+| UI-06 | Project view — header & actions menu | cut |  |
 | UI-07 | Project view — section tabs (Tasks/PRs/Workspaces/Settings) | cut |  |
 | UI-08 | Project view — non-ready states (creating/hydrating/context-error) |  | W7 |
 | UI-09 | Task titlebar — breadcrumb + git popover | cut | W3 |
-| UI-10 | Task titlebar — activity/preview/open-in/drawer-toggle/sidebar-toggle |  | W7 |
+| UI-10 | Task titlebar — activity/preview/open-in/drawer-toggle/sidebar-toggle | cut |  |
 | UI-11 | Task main column — split-pane tab workbench | cut |  |
 | UI-12 | Task main column — bottom terminal drawer | cut | W6 |
 | UI-13 | Task sidebar — 3-way toggle (Conversations/Changes/Files) | cut |  |
 | UI-14 | Task view — non-ready states (creating/provisioning/missing/teardown) |  | W7 |
-| UI-15 | Automations view |  | W10 |
-| UI-16 | Settings view |  | W8 |
+| UI-15 | Automations view | done | W10 |
+| UI-16 | Settings view | cut |  |
 | UI-17 | Typed view router (5 views) | done | W1 |
 | UI-18 | Back/forward history | done | W1 |
 | UI-19 | Sidebar tree for projects/tasks | cut |  |
@@ -1421,7 +1437,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-25 | Command palette (`cmdk`-based) | done | W1 |
 | UI-26 | Keyboard shortcuts (full default set) | part | W1 |
 | UI-27 | Native application menu | done | W11 |
-| UI-28 | System tray |  | W11 |
+| UI-28 | System tray | cut |  |
 | UI-29 | Window management (per-platform titlebar/frame) | done | W11 |
 | UI-30 | Drag and drop — OS folder → sidebar |  | W7 |
 | UI-31 | Drag and drop — workspace file → composer/tree | done | W2 |
@@ -1429,13 +1445,13 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-33 | Drag and drop — terminal tabs | cut |  |
 | UI-34 | System notifications | done | W11 |
 | UI-35 | Toasts | done | W3 |
-| UI-36 | The full modal catalog (30 modals) |  | W7 |
+| UI-36 | The full modal catalog (30 modals) | cut |  |
 | UI-37 | Agent status dots (sidebar) | cut |  |
-| UI-38 | Activity badge (workspace lifecycle) |  | W7 |
+| UI-38 | Activity badge (workspace lifecycle) | cut |  |
 | UI-39 | Diff stats and PR badges (sidebar rows) | cut | W3 |
 | UI-40 | Preview-server pills (titlebar) | cut | W6 |
-| UI-41 | Connection status dot |  | W10 |
-| UI-42 | Update indicator (sidebar footer) |  | W11 |
+| UI-41 | Connection status dot | cut |  |
+| UI-42 | Update indicator (sidebar footer) | cut |  |
 | UI-43 | Context-usage indicator (composer), plain-words cost alongside it | done | W2 |
 | UI-44 | Boot/crash telemetry (not user-facing) | kept |  |
 
