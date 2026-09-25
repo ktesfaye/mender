@@ -1726,16 +1726,6 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     }
     beam.appendChild(lamp);
 
-    /* A session with something live in its checkout gets a small second mark
-       beside its lantern — not a new color, the same plain glyph a tool in
-       trouble gets on the /agent card, so "something's running here" reads
-       from across the room without opening the session. */
-    if (one.serving) {
-      const mark = exact('⚡', 10, '#a89272');
-      mark.style.cssText += `;position:absolute;left:${x + 15}px;top:${top - 5}px`;
-      beam.appendChild(mark);
-    }
-
     /* The one place in this app where a pressable thing is not gold.
        Everywhere else gold means "press me" and nothing else is gold; the rail
        keeps its posture tints because the rail's whole job is telling you, from
@@ -1746,7 +1736,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       box({ left: x, top, width: bare ? 44 : step, height: 58 }),
       `hung:${one.id}`
     );
-    hung.style.pointerEvents = one.here ? 'none' : 'auto';
+    /* A lantern still being cut has nowhere to walk into yet: it hangs there
+       to say so, not to be pressed. */
+    const cutting = one.ground === 'cutting';
+    hung.style.pointerEvents = one.here || cutting ? 'none' : 'auto';
     hung.style.cursor = 'default';
 
     /* A short window keeps the lanterns and gives up the words beside them:
@@ -1771,7 +1764,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       hung.appendChild(under);
     }
 
-    if (!one.here) {
+    if (!one.here && !cutting) {
       if (bare) astop(lamp, `rail:${one.id}`);
       hung.addEventListener('mousedown', (event) => event.preventDefault());
       hung.addEventListener('click', () => does.open(one.id));

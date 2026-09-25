@@ -95,6 +95,8 @@ export interface Standing {
   asking?: Ask | null;
   /** Checkouts (by path) with something noticed listening on a port. */
   servers?: ReadonlySet<string>;
+  /** Sessions asked for whose worktree has no row yet, by that draft id. */
+  cutting?: ReadonlySet<string>;
   /** What it has said it means to do, if it has said. */
   plan?: readonly { text: string; state: 'done' | 'doing' | 'ahead' }[];
   /** How much room it has left to think in, when it says. */
@@ -124,7 +126,7 @@ export function yardOf(from: Standing): Yard {
       where: project.path,
       on: from.on ?? project.path,
       health: from.health ?? 'ok',
-      costs: costOf(tasks.length),
+      costs: costOf(tasks.filter((task) => !from.cutting?.has(task.id)).length),
       going: told?.began ? longFor(Date.now() - told.began) : undefined,
       turns: told?.turns,
       spawned: told?.errands.length,
@@ -144,7 +146,13 @@ export function yardOf(from: Standing): Yard {
       : {}),
     ...(here ? { session: sessionOf(here, told, kit, from) } : {}),
     rail: tasks.map((task) =>
-      lanternOf(task, moods[task.id], task.id === here?.id, from.servers?.has(task.path) ?? false)
+      lanternOf(
+        task,
+        moods[task.id],
+        task.id === here?.id,
+        from.servers?.has(task.path) ?? false,
+        from.cutting?.has(task.id) ?? false
+      )
     ),
   };
 }
@@ -433,7 +441,28 @@ function hashOf(text: string): number {
   return at;
 }
 
-function lanternOf(task: Task, mood: Mood | undefined, here: boolean, serving: boolean): Lantern {
+function lanternOf(
+  task: Task,
+  mood: Mood | undefined,
+  here: boolean,
+  serving: boolean,
+  cutting: boolean
+): Lantern {
+  /* Asked for, but nothing to stand in yet: no branch of its own, nothing to
+     open, nothing running. It hangs dark and says what it is waiting on
+     rather than reading as resting or, worse, as nothing asked for at all. */
+  if (cutting) {
+    return {
+      id: task.id,
+      name: task.title,
+      posture: 'resting',
+      saying: 'worktree being cut',
+      lit: false,
+      here: false,
+      unread: false,
+      ground: 'cutting',
+    };
+  }
   const posture = postureOf(mood);
   /* Lit means somebody is awake in there. Nobody has moved in, they have gone
      home, or it broke, and the lantern is out. A dark, otherwise-resting
@@ -441,20 +470,24 @@ function lanternOf(task: Task, mood: Mood | undefined, here: boolean, serving: b
      process itself is gone, not just idle — so it says so rather than
      reusing the same "resting" a session still running says. */
   const lit = mood !== undefined && mood !== 'empty' && mood !== 'hurt';
+  const said = here
+    ? 'you are here'
+    : !lit && posture === 'resting'
+      ? 'asleep'
+      : sayingOf(posture, task);
+  /* Something in this checkout is answering on a port right now. Said in the
+     same words the rest of the lantern speaks in, not a mark beside it — a
+     badge is what the design law forbids, and a lantern only has words. */
+  const saying = serving && lit ? `${said} · serving` : said;
   return {
     id: task.id,
     name: task.title,
     posture,
-    saying: here
-      ? 'you are here'
-      : !lit && posture === 'resting'
-        ? 'asleep'
-        : sayingOf(posture, task),
+    saying,
     lit,
     here,
     unread: false,
     ground: 'ready',
-    ...(serving ? { serving: true } : {}),
   };
 }
 

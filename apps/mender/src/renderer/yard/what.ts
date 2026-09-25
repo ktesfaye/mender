@@ -78,8 +78,6 @@ export interface Lantern {
   here: boolean;
   unread: boolean;
   ground: Ground;
-  /** Something in this checkout is listening on a port right now. */
-  serving?: boolean;
 }
 
 /**

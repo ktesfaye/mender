@@ -475,6 +475,15 @@ async function boot(): Promise<void> {
     let drawn = await draw(world, client);
     let projects = await client.projects.list({});
     let tasks: Task[] = [];
+    /* A session that has been asked for but whose worktree is still being cut
+       has no row in the registry yet, so it is not in `tasks` at all. It still
+       hangs a lantern, dark and saying so, rather than the rail pretending
+       nothing was asked until the cutting finishes. */
+    const cutting = new Map<string, Task>();
+    const tasksFor = (projectId: string): Task[] => [
+      ...tasks.filter((task) => task.project === projectId),
+      ...[...cutting.values()].filter((task) => task.project === projectId),
+    ];
     frame(camera, drawn.island);
     /* The window is not its real size when the renderer starts — it is
        restored to whatever it was last time a moment later — so the opening
@@ -1026,10 +1035,11 @@ async function boot(): Promise<void> {
         client,
         {
           project,
-          tasks: tasks.filter((task) => task.project === project.id),
+          tasks: tasksFor(project.id),
           moods: seen,
           ...(here ? { here } : {}),
           servers: servingCheckouts(),
+          ...(cutting.size ? { cutting: new Set(cutting.keys()) } : {}),
         },
         (now) => {
           if (open === aim && !reading && !looked && !walking && !talking && !sending && !card) {
@@ -1178,7 +1188,7 @@ async function boot(): Promise<void> {
         if (watching && here?.id === now.id) {
           watching.moved({
             project: now,
-            tasks: tasks.filter((task) => task.project === now.id),
+            tasks: tasksFor(now.id),
             moods: seen,
           });
         }
@@ -2509,6 +2519,20 @@ async function boot(): Promise<void> {
       rewrite(asking(naming));
     };
 
+    /** Whatever is watching the project a worktree is being cut in hears about
+        it at once, so its lantern hangs dark and says so rather than staying
+        unasked-for until the cutting finishes. */
+    const syncCutting = (projectId: string): void => {
+      const inside = open ? projectOn(open.district) : undefined;
+      if (!watching || !inside || inside.id !== projectId) return;
+      watching.moved({
+        project: inside,
+        tasks: tasksFor(projectId),
+        moods: seen,
+        cutting: new Set(cutting.keys()),
+      });
+    };
+
     const begin = async (): Promise<void> => {
       if (!naming) return;
       const { project, slot, written } = naming;
@@ -2519,12 +2543,30 @@ async function boot(): Promise<void> {
         { kind: 'gap' },
         { kind: 'line', text: 'cutting a worktree…', tone: 'faded' },
       ]);
+      const draftId = `cutting:${crypto.randomUUID()}`;
+      cutting.set(draftId, {
+        id: draftId,
+        project: project.id,
+        name: written,
+        title: written,
+        branch: written,
+        slot,
+        path: '',
+        startedAt: new Date().toISOString(),
+      });
+      syncCutting(project.id);
       // No deadline: a worktree on a big repository is minutes of copying, plus
       // whatever that project runs to make a checkout usable.
-      const made = await client.tasks.begin(
-        { project: project.id, name: written, slot },
-        { timeoutMs: 0 }
-      );
+      let made: Awaited<ReturnType<typeof client.tasks.begin>>;
+      try {
+        made = await client.tasks.begin(
+          { project: project.id, name: written, slot },
+          { timeoutMs: 0 }
+        );
+      } finally {
+        cutting.delete(draftId);
+        syncCutting(project.id);
+      }
       if (!made.success) {
         say(whyNot(made.error), 6000);
         await shut();
@@ -3466,7 +3508,7 @@ async function boot(): Promise<void> {
       if (watching && inside) {
         watching.moved({
           project: inside,
-          tasks: tasks.filter((task) => task.project === inside.id),
+          tasks: tasksFor(inside.id),
           moods: seen,
         });
       }

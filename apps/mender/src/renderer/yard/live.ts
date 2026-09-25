@@ -28,7 +28,13 @@ import type { Health, Yard } from './what';
 
 export interface Watching {
   /** Everything else moved: the task list, somebody's mood, the project. */
-  moved(now: { project: Project; tasks: Task[]; moods: Record<string, Mood> }): void;
+  moved(now: {
+    project: Project;
+    tasks: Task[];
+    moods: Record<string, Mood>;
+    /** Sessions asked for whose worktree has no row yet, by that draft id. */
+    cutting?: ReadonlySet<string>;
+  }): void;
   /** Which checkouts (by path) now have something noticed listening. */
   noticed(servers: ReadonlySet<string>): void;
   /** What the yard says right now, for anything that needs to ask. */
@@ -62,6 +68,8 @@ export interface Opening {
   here?: Task;
   /** Checkouts (by path) with something noticed listening on a port. */
   servers?: ReadonlySet<string>;
+  /** Sessions asked for whose worktree has no row yet, by that draft id. */
+  cutting?: ReadonlySet<string>;
 }
 
 export async function openYard(
@@ -101,6 +109,7 @@ export async function openYard(
       moods: from.moods,
       ...(from.here ? { here: from.here } : {}),
       ...(from.servers ? { servers: from.servers } : {}),
+      ...(from.cutting ? { cutting: from.cutting } : {}),
       ...(working ? { mood: working.mood } : {}),
       ...(working?.told ? { told: working.told } : {}),
       ...(kit ? { kit } : {}),
