@@ -1,6 +1,7 @@
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { shortName, type CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
+import type { MissingDep } from '@shared/app-settings';
 import type { MenderClient } from '../wire';
 import { saying } from './made';
 import type { Row, Tone } from './row';
@@ -167,12 +168,22 @@ export async function openCheckout(
   let head: CheckoutHeadState | undefined;
   let status: StatusState | undefined;
   let lately: Commits['commits'] = [];
+  /** Of what Mender itself leans on — git, gh, ripgrep, tmux, node — whatever
+   *  this machine doesn't have. Asked once on opening rather than kept live:
+   *  it only changes when he goes and installs one, and pressing the line
+   *  that offers to run that rereads it. */
+  let missing: MissingDep[] = [];
+  const readMissing = async (): Promise<void> => {
+    missing = await client.appSettings.missingCoreDeps({});
+    changed(build(place, head, status, lately, missing));
+  };
+  void readMissing();
 
   const model = client.git.checkout.model;
   const headReplica = new ReplicaState(model.state({ checkout }, 'head'), {
     onChange: (value) => {
       head = value;
-      changed(build(place, head, status, lately));
+      changed(build(place, head, status, lately, missing));
       // A new commit moves the head, and what was done here just changed.
       void readLog();
     },
@@ -180,7 +191,7 @@ export async function openCheckout(
   const statusReplica = new ReplicaState(model.state({ checkout }, 'status'), {
     onChange: (value) => {
       status = value as StatusState;
-      changed(build(place, head, status, lately));
+      changed(build(place, head, status, lately, missing));
     },
   });
 
@@ -209,12 +220,12 @@ export async function openCheckout(
     });
     if (log.success && log.data) {
       lately = log.data.commits;
-      changed(build(place, head, status, lately));
+      changed(build(place, head, status, lately, missing));
     }
   }
 
   return {
-    rows: () => build(place, head, status, lately),
+    rows: () => build(place, head, status, lately, missing),
     changed: () => changedIn(status),
     close: async () => {
       await Promise.all([headReplica.dispose(), statusReplica.dispose()]);
@@ -226,7 +237,8 @@ function build(
   place: Place,
   head: CheckoutHeadState | undefined,
   status: StatusState | undefined,
-  lately: Commits['commits']
+  lately: Commits['commits'],
+  missing: MissingDep[]
 ): Row[] {
   const rows: Row[] = [
     { kind: 'title', text: place.name },
@@ -237,6 +249,20 @@ function build(
     ...sending(head),
     ...(place.tail?.() ?? []),
     { kind: 'gap' },
+    // Whatever Mender itself needs that this machine doesn't have, named
+    // plainly rather than left to fail somewhere quieter — a missing `gh`
+    // otherwise only shows up as a pull request that mysteriously won't send.
+    ...missing.map(
+      (dep): Row => ({
+        kind: 'entry',
+        mark: '!',
+        text: dep.command
+          ? `${dep.name} is missing here. press to put \`${dep.command}\` on the shell, and return runs it`
+          : `${dep.name} is missing here.`,
+        tone: 'sore',
+        pick: dep.command ? `installdep:${dep.id}\u0000${dep.command}` : undefined,
+      })
+    ),
     // The one thing a checkout is for that git has no word for.
     { kind: 'entry', mark: '→', text: 'open a shell in here', tone: 'faded', pick: 'shell' },
     // Finding a file does not need walking to it first.

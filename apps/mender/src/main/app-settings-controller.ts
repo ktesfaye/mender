@@ -12,6 +12,7 @@ export function createAppSettingsController(
     defaultHand: () => settings.defaultHand(),
     setDefaultHand: ({ id }) => settings.setDefaultHand(id),
     hands: () => settings.hands(),
+    missingCoreDeps: () => settings.missingCoreDeps(),
     providerConfig: ({ agent }) => settings.providerConfig(agent),
     setExtraArgs: ({ agent, extraArgs }) => settings.setExtraArgs(agent, extraArgs),
     setEnvVar: ({ agent, key, value }) => settings.setEnvVar(agent, key, value),

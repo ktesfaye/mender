@@ -417,6 +417,15 @@ dropped or pasted on it lands as its own path, shell-escaped and unsent, on
 the input line — a shell has no way to be shown a picture, only told where it
 is.
 
+**A checkout says when this machine can't do what it needs.** Git, `gh`,
+ripgrep, tmux and node are the five things Mender itself leans on, past
+whatever an agent's own CLI separately needs, and a checkout board opened on
+a machine missing one says so above "open a shell in here" — sore-toned,
+plain, naming what's gone. Pressing it opens that same real shell and writes
+the line that would fetch it onto the prompt, unsent, the same way a
+dropped file or an agent's own sign-in line already lands there: his own key
+in his own shell is what actually runs it.
+
 **A session can be its own terminal instead of a conversation.** Naming a new
 one on the empty hook offers a second line beside its name: in its own
 terminal. Taken, the worktree is cut exactly as always and the agent's own

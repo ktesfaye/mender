@@ -106,6 +106,27 @@ export const NPM_DEPENDENCY_DESCRIPTOR: HostDependencyDefinition = {
   status: 'active',
 };
 
+export const GH_DEPENDENCY_DESCRIPTOR: HostDependencyDefinition = {
+  id: 'gh',
+  name: 'GitHub CLI',
+  category: 'core',
+  binaryNames: ['gh'],
+  installDocs: 'https://github.com/cli/cli#installation',
+  installCommands: {
+    macos: [{ method: 'homebrew', command: 'brew install gh', recommended: true, elevation: 'never' }],
+    linux: [aptInstallOption('gh')],
+    windows: [
+      {
+        method: 'winget',
+        command: 'winget install --id GitHub.cli',
+        recommended: true,
+        elevation: 'never',
+      },
+    ],
+  },
+  status: 'active',
+};
+
 export const TMUX_DEPENDENCY_DESCRIPTOR: HostDependencyDefinition = {
   id: 'tmux',
   name: 'tmux',
@@ -151,6 +172,7 @@ export const RECOMMENDED_CORE_DEPENDENCIES: HostDependencyDefinition[] = [
   NPM_DEPENDENCY_DESCRIPTOR,
   TMUX_DEPENDENCY_DESCRIPTOR,
   CURL_DEPENDENCY_DESCRIPTOR,
+  GH_DEPENDENCY_DESCRIPTOR,
 ];
 
 export const CORE_DEPENDENCIES: HostDependencyDefinition[] = [

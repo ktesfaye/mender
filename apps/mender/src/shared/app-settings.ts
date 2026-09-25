@@ -34,10 +34,23 @@ export const sessionUsageSchema = z.object({
 
 export type SessionUsage = z.infer<typeof sessionUsageSchema>;
 
+/** One of the machine's own tools Mender leans on, missing, and the line
+ *  that would put it there — homebrew's, on the one platform this runs on. */
+export const missingDepSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  /** Null on a platform, or for a dependency, with no known brew line. */
+  command: z.string().nullable(),
+});
+
+export type MissingDep = z.infer<typeof missingDepSchema>;
+
 export const appSettingsContract = defineContract({
   defaultHand: procedure({ input: z.object({}), output: z.string() }),
   setDefaultHand: procedure({ input: z.object({ id: z.string() }), output: z.string() }),
   hands: procedure({ input: z.object({}), output: z.array(handSchema) }),
+  /** Which of git, gh, ripgrep, tmux and node this machine doesn't have. */
+  missingCoreDeps: procedure({ input: z.object({}), output: z.array(missingDepSchema) }),
   providerConfig: procedure({ input: z.object({ agent: z.string() }), output: providerConfigSchema }),
   setExtraArgs: procedure({
     input: z.object({ agent: z.string(), extraArgs: z.string() }),

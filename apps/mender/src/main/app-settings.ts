@@ -1,9 +1,23 @@
 import { join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
+import { CORE_DEPENDENCIES } from '@emdash/core/services/host-dependencies/node';
 import { pluginRegistry } from '@emdash/plugins/agents';
 import { ReplicaState } from '@emdash/wire/live';
 import { app } from 'electron';
 import type { MenderRuntimes } from './runtimes';
+
+/** Missing here, and the line that would fetch it. */
+export interface MissingDep {
+  id: string;
+  name: string;
+  command: string | null;
+}
+
+/** Of everything `CORE_DEPENDENCIES` tracks, the ones Mender actually leans
+ *  on itself rather than only an agent's own CLI needing — git and the real
+ *  shell's own tools, plus GitHub's `gh`, which pull requests and issues go
+ *  through. */
+const LEANED_ON = ['git', 'gh', 'ripgrep', 'tmux', 'node'];
 
 /**
  * The app's own settings — the windmill. Not a project's: what agent a fresh
@@ -43,6 +57,8 @@ export interface AppSettings {
   setDefaultHand(id: string): Promise<string>;
   /** Every agent Mender knows how to speak to, and whether it is installed. */
   hands(): Promise<Hand[]>;
+  /** Which of git, gh, ripgrep, tmux and node this machine doesn't have. */
+  missingCoreDeps(): Promise<MissingDep[]>;
   /** The model and mode a fresh session with this agent starts on. */
   lastKit(agent: string): Promise<LastKit>;
   rememberModel(agent: string, model: string): Promise<void>;
@@ -184,6 +200,20 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
           here: here[plugin.metadata.id] ?? false,
         }))
         .sort((a, b) => Number(b.here) - Number(a.here) || a.name.localeCompare(b.name));
+    },
+
+    async missingCoreDeps() {
+      const state = new ReplicaState(runtimes.host.snapshot.state(undefined, 'current'), {
+        onChange: () => {},
+      });
+      await state.ready;
+      const value = state.current();
+      await state.dispose();
+      return LEANED_ON.filter((id) => value.dependencies[id]?.status !== 'available').map((id) => {
+        const definition = CORE_DEPENDENCIES.find((each) => each.id === id);
+        const brew = definition?.installCommands?.macos?.find((each) => each.method === 'homebrew');
+        return { id, name: definition?.name ?? id, command: brew?.command ?? null };
+      });
     },
   };
 }

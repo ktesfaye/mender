@@ -1313,7 +1313,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | TR-15 | Host settings (per-machine defaults) |  | W10 |
 | TR-16 | Workspace server (remote runtime daemon) | cut |  |
 | TR-17 | Machine resource monitoring | done | W10 |
-| TR-18 | Host system dependencies |  | W10 |
+| TR-18 | Host system dependencies | part | W10 |
 | TR-19 | Machine's conversations/workspaces lists | cut |  |
 | TR-20 | Workspace disk usage |  | W10 |
 | TR-21 | Bound exec primitive | kept |  |
@@ -2213,6 +2213,34 @@ stopped there rather than firing the second press, since that would really
 run `claude uninstall` on this machine. Did not press either for real; the
 command each would run was confirmed by reading the plugin's own descriptor
 (`claude uninstall`, `claude install latest`) rather than by running it.
+
+### A checkout says what this machine doesn't have (2026-09-25)
+
+Of everything Mender itself leans on — not an agent's own CLI, which is
+`AG-11`'s concern — git, GitHub's `gh`, ripgrep, tmux and node are now
+checked against the same host-dependency snapshot the windmill already
+reads. `gh` joined `CORE_DEPENDENCIES` (it had no descriptor at all before
+this). A checkout board that opens onto a machine missing one of the five
+says so in a plain line, sore-toned, above "open a shell in here" — 'ripgrep
+is missing here. press to put `brew install ripgrep` on the shell, and
+return runs it.' Pressing it opens the real shell for that checkout, the
+same one "open a shell in here" opens, and writes the install line onto its
+prompt without sending return — the approval is his own key in his own
+shell, not this app deciding a real command should run.
+
+Driven: confirmed the checkout board carries no such line on a machine that
+already has all five. Rather than launching the whole app with a
+homebrew-less `PATH` (pnpm's own dev pipeline needs node and several other
+tools on `PATH` before Electron is even up, which made that too fragile to
+drive end to end), called the same `resolveCommandPath` the host-dependency
+runtime resolves through directly, once with a real `PATH` and once
+restricted to `/usr/bin:/bin:/usr/sbin:/sbin` — `gh`, `rg`, `tmux` and the
+homebrew `node` all resolved to nothing under the restricted one while
+`git` still resolved, via Xcode's own `/usr/bin/git`, exactly the mixed
+result a real machine missing gh/ripgrep/tmux/node but not git would give
+the resolver the checkout board reads from. This one is `part`, not `done`:
+it is the plain-line notice, not the fuller one-click "workshop" surface
+TR-18 in the catalog also describes.
 
 ### Next
 
