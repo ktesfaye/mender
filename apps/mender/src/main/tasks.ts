@@ -130,6 +130,11 @@ export interface Tasks {
   fork(id: string): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
   /** Take down every session in one project, for when the project is forgotten. */
   sweep(project: string): Promise<void>;
+  /** Whoever is lodging in a session's building when it comes down, taken
+   *  down or swept alike, so nothing goes on answering for a place that no
+   *  longer exists. Set after construction, same reason as `Projects.sweeps`:
+   *  the two need each other and one has to be told second. */
+  onGone(hook: (task: string) => void): void;
   dispose(): Promise<void>;
 }
 
@@ -164,6 +169,8 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
      sitting — not written to disk, so a restart forgets it the same way the
      agent itself is not woken back up by a restart either. */
   const lastTakenDown = new Map<string, Task>();
+  /** Told once a session's building is gone, so its lodger can be let go too. */
+  let gone: ((task: string) => void) | undefined;
 
   const all = async (): Promise<Task[]> => {
     const loaded = await store.get(KEY);
@@ -379,6 +386,7 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
       }
       indexed.get(id)?.dispose();
       indexed.delete(id);
+      gone?.(id);
       return await save(tasks.filter((task) => task.id !== id));
     },
 
@@ -527,9 +535,14 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
         );
         indexed.get(task.id)?.dispose();
         indexed.delete(task.id);
+        gone?.(task.id);
       }
       if (going.length) await save(tasks.filter((task) => task.project !== project));
       lastTakenDown.delete(project);
+    },
+
+    onGone(hook) {
+      gone = hook;
     },
 
     async dispose() {

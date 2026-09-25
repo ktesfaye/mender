@@ -69,6 +69,14 @@ type Fetched =
         | { kind: 'nothing-to-run' }
         | { kind: 'refused'; because: string };
     };
+
+/** What came of asking an agent already here to bring itself up to date, or
+ *  of asking it to go. Nothing to run at all is the one case `fetch` and
+ *  `remove` can hit that this can't — there is nothing to update about an
+ *  agent that was never here — so this drops it. */
+type Changed =
+  | { success: true; data: { here: boolean } }
+  | { success: false; error: { kind: 'no-such-agent' } | { kind: 'refused'; because: string } };
 import type { AppSettings } from './app-settings';
 import { createKits } from './kit';
 import type { MenderRuntimes } from './runtimes';
@@ -128,6 +136,10 @@ export interface Agents {
   knackText(task: string, name: string, from: 'everywhere' | 'here'): Promise<KnackRead>;
   /** Put an agent's CLI on this machine, so somebody else could work here. */
   fetch(hand: string): Promise<Fetched>;
+  /** Bring an agent already here up to date, the plugin's own way. */
+  update(hand: string): Promise<Changed>;
+  /** Take an agent's CLI off this machine again. */
+  remove(hand: string): Promise<Changed>;
   /** Every building with somebody in it, for the island. */
   moods(): Cell<Record<string, Mood>>;
   /** Start whoever lives in there, so they can say what they work with. */
@@ -290,8 +302,19 @@ export function createAgents(
 
   /* Everyone who was already living here. The ACP runtime brings its own
      sessions back by itself when the app starts, so without this the island
-     would be empty until you happened to open the right building. */
-  void loaded.then(() => {
+     would be empty until you happened to open the right building.
+
+     A building taken down while the app was shut can still be in `lodgers` —
+     nothing prunes it on the way out, only on the way in — so this checks
+     each one against the buildings that actually still stand and forgets any
+     that don't, rather than waking a villager who has no house any more. */
+  void Promise.all([loaded, tasks.list()]).then(async ([, standing]) => {
+    const alive = new Set(standing.map((task) => task.id));
+    const orphaned = Object.keys(lodgers).filter((task) => !alive.has(task));
+    if (orphaned.length) {
+      lodgers = Object.fromEntries(Object.entries(lodgers).filter(([task]) => alive.has(task)));
+      await store.set(KEY, lodgers as unknown as never);
+    }
     for (const task of Object.keys(lodgers)) houseOf(task);
   });
 
@@ -534,6 +557,99 @@ export function createAgents(
           return {
             success: false,
             error: { kind: 'refused', because: said.message ?? 'it would not install.' },
+          };
+        }
+        throw error;
+      } finally {
+        await lease.release();
+        await jobs.dispose();
+      }
+    },
+
+    /**
+     * Bring an agent already on this machine up to date.
+     *
+     * The plugin's own self-update command wins when it has one — running the
+     * CLI itself is the surest way to end up on what it calls its own latest —
+     * and only falls back to the platform's per-method update command when it
+     * doesn't.
+     */
+    async update(hand) {
+      const plugin = pluginRegistry.getAll().find((each) => each.metadata.id === hand);
+      if (!plugin) return { success: false, error: { kind: 'no-such-agent' } };
+      const id = plugin.metadata.id;
+
+      const selfJobs = createLiveJobReplicaCache(
+        hostDependenciesContract.runSelfUpdateCommand,
+        runtimes.host.runSelfUpdateCommand
+      );
+      const selfLease = await selfJobs.start({ id });
+      try {
+        const job = await selfLease.ready();
+        const view = await job.result;
+        await runtimes.host.snapshot.mutate('refresh', { key: undefined, input: { id } });
+        return { success: true, data: { here: view.status === 'available' } };
+      } catch (error) {
+        if (!(error instanceof LiveJobFailedError)) throw error;
+        const because = error.error as { type?: string; message?: string };
+        if (because.type !== 'no-update-command') {
+          return {
+            success: false,
+            error: { kind: 'refused', because: because.message ?? 'it would not update.' },
+          };
+        }
+      } finally {
+        await selfLease.release();
+        await selfJobs.dispose();
+      }
+
+      const jobs = createLiveJobReplicaCache(
+        hostDependenciesContract.runInstallCommand,
+        runtimes.host.runInstallCommand
+      );
+      const lease = await jobs.start({ id, commandKind: 'update' });
+      try {
+        const job = await lease.ready();
+        const view = await job.result;
+        await runtimes.host.snapshot.mutate('refresh', { key: undefined, input: { id } });
+        return { success: true, data: { here: view.status === 'available' } };
+      } catch (error) {
+        if (error instanceof LiveJobFailedError) {
+          const because = error.error as { message?: string };
+          return {
+            success: false,
+            error: { kind: 'refused', because: because.message ?? 'it would not update.' },
+          };
+        }
+        throw error;
+      } finally {
+        await lease.release();
+        await jobs.dispose();
+      }
+    },
+
+    /** Take an agent's CLI back off this machine, the plugin's own way. */
+    async remove(hand) {
+      const plugin = pluginRegistry.getAll().find((each) => each.metadata.id === hand);
+      if (!plugin) return { success: false, error: { kind: 'no-such-agent' } };
+      const id = plugin.metadata.id;
+
+      const jobs = createLiveJobReplicaCache(
+        hostDependenciesContract.runInstallCommand,
+        runtimes.host.runInstallCommand
+      );
+      const lease = await jobs.start({ id, commandKind: 'uninstall' });
+      try {
+        const job = await lease.ready();
+        const view = await job.result;
+        await runtimes.host.snapshot.mutate('refresh', { key: undefined, input: { id } });
+        return { success: true, data: { here: view.status === 'available' } };
+      } catch (error) {
+        if (error instanceof LiveJobFailedError) {
+          const because = error.error as { message?: string };
+          return {
+            success: false,
+            error: { kind: 'refused', because: because.message ?? 'it would not remove.' },
           };
         }
         throw error;

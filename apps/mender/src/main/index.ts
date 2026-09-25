@@ -70,6 +70,9 @@ export async function main(): Promise<void> {
      have to be able to reach the tasks and the tasks already reach back. */
   projects.sweeps((project) => tasks.sweep(project));
   const agents = createAgents(runtimes, tasks, appSettings);
+  // Same reason as `projects.sweeps` just above: the two need each other, so
+  // one has to be told about the other after both exist.
+  tasks.onGone((task) => void agents.evict(task));
   const tuiSessions = createTuiSessions(runtimes, appSettings, tasks);
   const moods = mergedMoods(scope, agents.moods(), tuiSessions.moods());
   watchForAttention({ scope, agents, tasks, tuiDoing: (task) => tuiSessions.doing(task) });

@@ -2170,6 +2170,26 @@ appeared in it — and Claude in the new session confirmed it was on a clean,
 separate branch. Went back to the original session and confirmed its second
 turn, and Claude's reply to it, were both still there untouched.
 
+### An orphaned lantern is no longer woken (2026-09-25)
+
+`agents.ts` was waking `houseOf` for every entry in its own conversation
+store on boot, `lodgers` included, and nothing ever took an entry back out of
+that store when the building it named came down — `tasks.abandon` and
+`tasks.sweep` only ever cut the worktree. A village reopened after enough
+takedowns would spend a moment standing up villagers for houses that no
+longer exist. `tasks.ts` now carries a small `onGone` hook, called with a
+task's id the moment its building actually comes down (one session or a
+whole project's worth), and `index.ts` wires it straight to `agents.evict`
+— the same call a real takedown already used elsewhere. Boot itself now
+checks every lodger against the tasks that are actually still standing
+before waking any of them, and prunes the rest from the store rather than
+calling `houseOf` on them at all.
+
+Driven: seeded `agents.json` with a lodger for a task id that has no entry
+in `tasks.json`, started the app against that data directory, and read the
+file back once it had settled — the orphan was gone and the boot log carried
+nothing about it.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour
