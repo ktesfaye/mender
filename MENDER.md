@@ -421,6 +421,17 @@ read-only. Picking one writes `#<number> <title>` on the line, the same as if
 you had typed it: it becomes the session's name and the first thing said to
 whoever moves in.
 
+**A session can start already allowing everything.** A third line on that
+same naming board, offered for a conversation rather than a terminal: allow
+everything, from the start. Taken, the worktree is cut and the first thing
+you said is sent exactly as always, and the moment the agent is awake enough
+to say what its own modes are called, the village sets it to whichever one
+that agent itself calls bypassing permission or accepting all of them —
+never a village-side approximation, always the live name that agent just
+advertised. Nothing is asked twice: the modes list on the card still shows
+the same choice, live, for a session started the plain way to reach for
+later.
+
 **Something the shell starts listening on is noticed, not hunted for.**
 Whatever a checkout's own shell prints an address in — `npm run dev`, a test
 server, anything — turns into a line on the checkout board, most recent

@@ -639,6 +639,9 @@ async function boot(): Promise<void> {
       /** Whether the issue list is what is on the board right now, rather
           than the ordinary typed name. */
       pickingIssue?: boolean;
+      /** Start it already allowing everything, the agent's own most
+          permissive mode, applied the moment it is awake to hear it. */
+      allowAll: boolean;
     } | null = null;
     /** Set while an existing session is being called something else, or —
         the same one line, the same keys — while a custom server is being
@@ -2729,6 +2732,7 @@ async function boot(): Promise<void> {
         terminal: false,
         issues: null,
         pickingIssue: false,
+        allowAll: false,
       };
       paintRail();
       /* Asking what is going to happen in a new session is laid over the yard
@@ -2901,9 +2905,45 @@ async function boot(): Promise<void> {
       });
     };
 
+    /** Which name on a freshly awake kit's own modes is its most permissive —
+        whatever that agent's protocol calls bypassing or allowing everything,
+        never assumed to be the same word twice. */
+    const ALLOW_ALL_HINTS = ['bypass', 'yolo', 'danger', 'accepts all', 'full access'];
+    const mostPermissiveMode = (
+      modes: { id: string; name: string; about?: string }[]
+    ): string | undefined =>
+      modes.find((mode) =>
+        ALLOW_ALL_HINTS.some(
+          (hint) =>
+            mode.name.toLowerCase().includes(hint) || (mode.about ?? '').toLowerCase().includes(hint)
+        )
+      )?.id;
+
+    /** Set once, the moment a fresh session is awake enough to hear it: its
+        own most permissive mode, applied without being asked twice. */
+    const applyAllowAll = (task: string): void => {
+      const replica = new ReplicaState(client.agents.kit.state({ task }, 'state'), {
+        onChange: (value) => {
+          if (!value.awake) return;
+          const id = mostPermissiveMode(value.modes);
+          if (id && value.mode !== id) {
+            void client.agents.choose({ task, what: 'mode', id }, { timeoutMs: 0 });
+          }
+          void replica.dispose();
+        },
+      });
+      void replica.ready.then(() => {
+        const now = replica.current();
+        if (!now.awake) return;
+        const id = mostPermissiveMode(now.modes);
+        if (id && now.mode !== id) void client.agents.choose({ task, what: 'mode', id }, { timeoutMs: 0 });
+        void replica.dispose();
+      });
+    };
+
     const begin = async (): Promise<void> => {
       if (!naming) return;
-      const { project, slot, written, terminal } = naming;
+      const { project, slot, written, terminal, allowAll } = naming;
       const aim = open;
       naming = null;
       rewrite([
@@ -2945,8 +2985,10 @@ async function boot(): Promise<void> {
       // it. There is no separate step where you name it and then start it —
       // except in its own terminal, where what you wrote was only ever this
       // session's name: the agent's own CLI has no ACP prompt to hand it.
-      if (!terminal)
+      if (!terminal) {
         void client.agents.tell({ task: made.data.id, text: written }, { timeoutMs: 0 });
+        if (allowAll) applyAllowAll(made.data.id);
+      }
       if (aim) await openTask(aim, made.data);
     };
 
@@ -3258,6 +3300,12 @@ async function boot(): Promise<void> {
       }
       if (pick === 'revive') {
         void reviveSession();
+        return;
+      }
+      if (pick === 'allow-all-toggle') {
+        if (!naming) return;
+        naming = { ...naming, allowAll: !naming.allowAll };
+        rewrite(asking(naming));
         return;
       }
       if (pick === 'terminal-toggle') {
@@ -4153,6 +4201,7 @@ function asking(naming: {
   terminal: boolean;
   issues?: { number: number; title: string }[] | null;
   pickingIssue?: boolean;
+  allowAll: boolean;
 }): Row[] {
   if (naming.pickingIssue) return pickingIssue(naming.issues ?? null);
 
@@ -4184,6 +4233,15 @@ function asking(naming: {
       pick: 'terminal-toggle',
     },
     { kind: 'line', text: 'start from an open issue', tone: 'faded', pick: 'issue-toggle' },
+    ...(naming.terminal
+      ? []
+      : [
+          {
+            kind: 'line' as const,
+            text: naming.allowAll ? 'allowing everything — on' : 'allow everything, from the start',
+            pick: 'allow-all-toggle',
+          },
+        ]),
   ];
 }
 
