@@ -65,4 +65,11 @@ describe('turnsOf', () => {
       { who: 'agent', text: 'done with that too' },
     ]);
   });
+
+  it('stops after the given turn when carrying a conversation into a fork', () => {
+    expect(turnsOf(told, 1)).toEqual([
+      { who: 'you', text: 'do the thing' },
+      { who: 'agent', text: 'doing the thing' },
+    ]);
+  });
 });

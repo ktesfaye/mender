@@ -80,6 +80,8 @@ export type TaskError =
   | { kind: 'nameless' }
   | { kind: 'already-here'; name: string }
   | { kind: 'taken' }
+  /** The one being forked from is gone. */
+  | { kind: 'no-such-task' }
   /** The registry refused, and this is what it said. */
   | { kind: 'refused'; because: string };
 
@@ -118,6 +120,14 @@ export interface Tasks {
   history(project: string): Promise<HistoryEntry[]>;
   /** Cuts a fresh worktree from that same branch and stands it back up. */
   revive(project: string): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
+  /**
+   * A new session, its own worktree cut from the branch as it stands.
+   *
+   * The original is left alone — this only ever adds a lantern, never takes
+   * one away. What it was carrying in when it was cut is somebody else's to
+   * say, once the worktree is real.
+   */
+  fork(id: string): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
   /** Take down every session in one project, for when the project is forgotten. */
   sweep(project: string): Promise<void>;
   dispose(): Promise<void>;
@@ -439,6 +449,70 @@ export function createTasks(runtimes: MenderRuntimes, projects: Projects): Tasks
         startedAt: new Date().toISOString(),
       };
       await save([...(await all()), task]);
+      return { success: true as const, data: task };
+    },
+
+    async fork(id) {
+      const tasks = await all();
+      const original = tasks.find((task) => task.id === id);
+      if (!original) return fail({ kind: 'no-such-task' });
+      const found = (await projects.list()).find((candidate) => candidate.id === original.project);
+      if (!found) return fail({ kind: 'no-such-project' });
+
+      const repository = await repositoryOf(runtimes, found);
+      if (!repository.success) return repository;
+
+      const parsed = parseNativeAbsolute(found.path);
+      if (!parsed.success) return fail({ kind: 'refused', because: 'that checkout has moved.' });
+
+      const here = tasks.filter((task) => task.project === original.project);
+      // Cut from the branch as it stands: there is no per-turn commit kept
+      // anywhere to cut from instead, so this is the tip, not the moment the
+      // line being carried on from was actually said.
+      let branch = branchFor(`${original.name}-carry-on`);
+      if (here.some((task) => task.branch === branch)) {
+        branch = branchFor(`${original.name}-carry-on-${Date.now().toString(36)}`);
+      }
+      const path = join(worktreeRoot(), basename(found.path), branch.replaceAll('/', '-'));
+      const made = await runtimes.workspaces.createWorktree(
+        {
+          workspaceId: crypto.randomUUID(),
+          repositoryId: repository.data,
+          branch,
+          baseRef: original.branch,
+          path,
+          preservePatterns: [],
+        },
+        { timeoutMs: 0 }
+      );
+      if (!made.success) return fail({ kind: 'refused', because: whatItSaid(made.error) });
+
+      if (found.gitName || found.gitEmail) {
+        await identityIn(runtimes, made.data.path, found.gitName, found.gitEmail);
+      }
+      try {
+        await runtimes.workspaces.activateWorkspace(
+          { workspaceId: made.data.id },
+          { timeoutMs: 0 }
+        );
+      } catch {
+        // Nothing this call can do about a registry that would not answer.
+      }
+
+      const task: Task = {
+        id: made.data.id,
+        project: original.project,
+        name: `${original.name}-carry-on`,
+        title: `${original.title} · carried on`,
+        agent: original.agent,
+        branch,
+        base: original.branch,
+        slot: null,
+        path: made.data.path,
+        startedAt: new Date().toISOString(),
+        kind: original.kind,
+      };
+      await save([...tasks, task]);
       return { success: true as const, data: task };
     },
 

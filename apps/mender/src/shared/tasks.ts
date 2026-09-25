@@ -49,6 +49,8 @@ export const taskErrorSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('already-here'), name: z.string() }),
   /** Something is already standing in that building. */
   z.object({ kind: z.literal('taken') }),
+  /** The one being forked from is gone. */
+  z.object({ kind: z.literal('no-such-task') }),
   /** The workspace registry refused, and this is what it said. */
   z.object({ kind: z.literal('refused'), because: z.string() }),
 ]);
@@ -112,6 +114,13 @@ export const tasksContract = defineContract({
   history: procedure({
     input: z.object({ project: z.string() }),
     output: z.array(historyEntrySchema),
+  }),
+  /** A new session, its own worktree cut from the branch as it stands. The
+      original is left exactly as it was. */
+  fork: fallible({
+    input: z.object({ id: z.string() }),
+    data: taskSchema,
+    error: taskErrorSchema,
   }),
 });
 

@@ -121,6 +121,16 @@ on the checkout's own board. Under all of that is the ground itself, with
 whoever it sent out standing in the firelight with an answer or off in the
 dark still working.
 
+**Any note of your own on the gatepost is where a new session starts.** Under
+what you said is "carry on from here in a new session," gold and pressable
+like everything else that is. Pressing it cuts a new worktree from the branch
+as it stands — the tip, said honestly as that, since nothing here keeps the
+exact commit a line was said against — and hangs a new lantern with a
+conversation that opens by telling itself everything said up to that line: not
+a real fork of the session, since the agent's own protocol has no way to
+hand a second session the first one's history, so this is the honest
+approximation of one. The session you pressed it on is never touched.
+
 The fire is the session. Lit is somebody working, banked is somebody who has
 stopped and is standing at the gate, embers is finished, out is nobody home,
 and the light in the whole yard follows it. A place nobody has touched for days

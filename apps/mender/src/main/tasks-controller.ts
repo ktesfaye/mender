@@ -15,5 +15,6 @@ export function createTasksController(tasks: Tasks): Controller {
     revivable: ({ project }) => tasks.revivable(project),
     revive: ({ project }) => tasks.revive(project),
     history: ({ project }) => tasks.history(project),
+    fork: ({ id }) => tasks.fork(id),
   });
 }

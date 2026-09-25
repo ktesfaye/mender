@@ -70,6 +70,7 @@ import {
   type WorktreeRow,
   type Windmill,
 } from './yard/windmill';
+import type { Outcome } from './yard/press';
 import { makeYard } from './yard/yard';
 
 /** The kinds of picture an agent can actually be shown. */
@@ -195,6 +196,7 @@ async function boot(): Promise<void> {
         void tell(text);
       },
       leave: () => void backOut(),
+      fork: (noteId) => forkFrom(noteId),
     });
 
     /* Escape's whole ladder lives at the bottom of this file, and the yard is
@@ -3153,6 +3155,44 @@ async function boot(): Promise<void> {
       if (card !== mine) return;
       mine.setExported(path ? { text: `saved to ${name}`, path } : { text: 'it would not.' });
       rewrite(mine.rows());
+    };
+
+    /**
+     * Carrying on from one of your own earlier lines, in a new session.
+     *
+     * A new worktree, cut from the branch as it stands rather than from the
+     * commit that line was actually said against — nothing here keeps a
+     * per-turn commit to cut from instead. Its conversation is not forked at
+     * the protocol level either, since the ACP runtime has no way to seed a
+     * second session from the first's history: what is carried in is a
+     * compact telling of everything said up to that line, as the first thing
+     * said to the new one. The original session is never touched.
+     */
+    const forkFrom = async (noteId: string): Promise<Outcome> => {
+      const task = inside;
+      if (!task) return { wrong: 'nothing to carry on from.' };
+      const state = await client.agents.work.state({ task: task.id }, 'state').snapshot();
+      const told = state.data.told;
+      const note = told.notes.find((one) => one.id === noteId);
+      if (!note) return { wrong: 'that note is gone.' };
+      const made = await client.tasks.fork({ id: task.id }, { timeoutMs: 0 });
+      if (!made.success) return { wrong: whyNot(made.error) };
+      const carried = turnsOf(told, note.turn);
+      if (carried.length) {
+        const said = carried
+          .map((turn) => `${turn.who === 'you' ? 'you said' : 'it answered'}: ${turn.text}`)
+          .join('\n\n');
+        void client.agents.tell(
+          {
+            task: made.data.id,
+            text: `carrying on from an earlier session (${task.title}), up to here:\n\n${said}`,
+          },
+          { timeoutMs: 0 }
+        );
+      }
+      const aim = open;
+      if (aim) await openTask(aim, made.data);
+      return { said: 'a new session, carrying that forward.' };
     };
 
     const tell = async (said: string): Promise<void> => {

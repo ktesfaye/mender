@@ -600,11 +600,17 @@ export function unsentIn(head: CheckoutHeadState | undefined): number | null {
  */
 /**
  * The same pairing `transcriptMarkdown` writes as a document, as plain turns
- * instead — for reading an ended session back without any marks on it.
+ * instead — for reading an ended session back without any marks on it, or
+ * for carrying a conversation into a forked one up to a given turn.
  */
-export function turnsOf(told: Told): { who: 'you' | 'agent'; text: string }[] {
+export function turnsOf(
+  told: Told,
+  uptoTurn?: number
+): { who: 'you' | 'agent'; text: string }[] {
   const turns: { who: 'you' | 'agent'; text: string }[] = [];
-  const notes = [...told.notes].reverse();
+  const notes = [...told.notes]
+    .reverse()
+    .filter((note) => uptoTurn === undefined || (note.turn ?? 0) <= uptoTurn);
   for (const note of notes) {
     turns.push({ who: 'you', text: note.said });
     for (const thought of told.thoughts) {

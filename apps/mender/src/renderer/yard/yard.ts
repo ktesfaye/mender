@@ -24,7 +24,7 @@ import { longFor } from './from';
 import { makeLine, type Asking as Prompting, type Line } from './line';
 import { makeMenu } from './menu';
 import { forgetInk, keyed, measure, play } from './motion';
-import { pressing, twice } from './press';
+import { pressing, twice, type Outcome } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, sprite } from './sprite';
@@ -105,6 +105,12 @@ export interface Doings {
   say(said: string): void;
   /** Escape with nothing left on the line to throw away. */
   leave(): void;
+  /**
+   * Cut a new session from an earlier line of your own — its own worktree,
+   * the branch as it stands, the conversation up to that line carried in.
+   * The original session is left exactly as it was.
+   */
+  fork(noteId: string): Promise<Outcome>;
 }
 
 export interface Standing {
@@ -324,7 +330,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
        So it says the one true thing and lets the district behind it do the
        rest; the line at the bottom is already asking what to build. */
     if (yard.session) {
-      asked(root, columns.asked, yard, floor, layer.cramped());
+      asked(root, columns.asked, yard, floor, layer.cramped(), does);
       thinking(covered, columns.thinking, yard, floor, does, walkedIn, sinceOf(yard));
       made(covered, columns.made, yard, floor, does);
       still(stillAt, yard, does);
@@ -724,7 +730,8 @@ function asked(
   at: { x: number; wide: number },
   yard: Yard,
   floor: number,
-  cramped: boolean
+  cramped: boolean,
+  does: Doings
 ): void {
   root.appendChild(label('what you asked', { left: at.x, top: HEAD.label }));
 
@@ -750,7 +757,7 @@ function asked(
   }
 
   const card = keyed(
-    pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 }),
+    pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 }, does),
     `note:${newest.id}`
   );
   root.appendChild(card);
@@ -786,7 +793,7 @@ function asked(
   /* Not clipped: `trim` below takes off whatever does not fit, and a clipped
      list swallowed the note that was on the parchment while it slid down to
      join the others. */
-  for (const note of older) list.appendChild(keyed(weathered(note), `note:${note.id}`));
+  for (const note of older) list.appendChild(keyed(weathered(note, does), `note:${note.id}`));
   const tail = said('', '#a89272');
   tail.style.fontSize = '10px';
   list.appendChild(tail);
@@ -804,7 +811,11 @@ const NOTE_LINES = 7;
 const NOTE_LINE = 19 * 1.25;
 
 /** The newest note: on parchment, pinned, and not quite straight. */
-function pinned(note: Note, where: { left: number; top: number; width: number }): HTMLElement {
+function pinned(
+  note: Note,
+  where: { left: number; top: number; width: number },
+  does: Doings
+): HTMLElement {
   const card = box(where, CARD);
   const tack = box(
     { left: 14, top: -6, width: 10, height: 10 },
@@ -822,7 +833,22 @@ function pinned(note: Note, where: { left: number; top: number; width: number })
   body.dataset.note = 'said';
   body.textContent = note.said;
   card.appendChild(body);
+  card.appendChild(forkLine(note, does));
   return card;
+}
+
+/**
+ * The offer on every note of your own: cut a new session whose worktree
+ * starts from the branch as it stands, its conversation carried in up to
+ * this line. The original is never touched.
+ */
+function forkLine(note: Note, does: Doings): HTMLElement {
+  const line = pressing('carry on from here in a new session', () => ({
+    while: 'cutting a worktree…',
+    run: () => does.fork(note.id),
+  }));
+  line.style.cssText += ';display:block;margin-top:8px;font-size:11px';
+  return line;
 }
 
 const CARD = [
@@ -839,7 +865,7 @@ const CARD = [
 ].join(';');
 
 /** A note that has been on the post a while. */
-function weathered(note: Note): HTMLElement {
+function weathered(note: Note, does: Doings): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'display:flex;flex-direction:column;gap:3px';
   it.appendChild(
@@ -849,6 +875,7 @@ function weathered(note: Note): HTMLElement {
   body.style.cssText = "font-family:'Caveat',cursive;font-size:17px;line-height:1.25;color:#cbb491";
   body.textContent = note.said;
   it.appendChild(body);
+  it.appendChild(forkLine(note, does));
   return it;
 }
 

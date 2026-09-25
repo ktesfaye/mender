@@ -2138,6 +2138,31 @@ project's settings and pressed the entry that appeared under "sessions that
 have ended" — the transcript read back exactly, title and branch included,
 with `history.json` on disk holding the entry after restart.
 
+### Carrying on from an earlier line, in a new session (2026-09-25)
+
+Every note on the gatepost — every line you've said in a session — now
+carries "carry on from here in a new session" under it, gold and pressable.
+Pressing it calls a new `tasks.fork(id)`: a new worktree, cut from the
+branch as it stands (not the commit that line was actually said against —
+nothing here keeps a per-turn commit to cut from instead, so it is the tip,
+named honestly as such rather than pretending to a precision this app
+doesn't have). The ACP runtime has no way to fork a session's history at the
+protocol level either, so what is carried in is not a real fork of the
+conversation: it's a compact telling of everything said up to that line —
+built client-side from the same `Told` the board already reads, via
+`turnsOf(told, uptoTurn)` — sent as the first thing said to the new session.
+The original session is never touched: its own worktree, branch and
+conversation are exactly as they were, confirmed live by saying something to
+each and checking neither saw the other's line.
+
+Driven: started a session, said two things back to back (two turns), pressed
+"carry on from here" on the *older* of the two notes. A new lantern
+(`fork-test-one-carry-on`) appeared on the rail with its own worktree, its
+first line was the telling built from turn one only — turn two never
+appeared in it — and Claude in the new session confirmed it was on a clean,
+separate branch. Went back to the original session and confirmed its second
+turn, and Claude's reply to it, were both still there untouched.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour
