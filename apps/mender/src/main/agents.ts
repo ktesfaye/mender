@@ -175,7 +175,12 @@ const EMPTY: WorkingState = {
 
 const KEY = 'agents';
 
-export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
+export function createAgents(
+  runtimes: MenderRuntimes,
+  tasks: Tasks,
+  /** Whoever the windmill says a fresh session starts with. */
+  defaultHand: () => Promise<string>
+): Agents {
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'agents.json') });
   /** Which conversation lives in which building. */
   let lodgers: Record<string, string> = {};
@@ -204,7 +209,7 @@ export function createAgents(runtimes: MenderRuntimes, tasks: Tasks): Agents {
   const island = cell<Record<string, Mood>>({}, { name: 'agents:island' });
   /* Changing who works in a building empties it: a different agent is a
      different villager, not the same one with a new hat. */
-  const kits = createKits(runtimes, tasks, (task) => evict(task));
+  const kits = createKits(runtimes, tasks, (task) => evict(task), defaultHand);
 
   /* The host's conversation index, held open for the life of the app. It is
      where the provider's own session id lands when a session starts, which is

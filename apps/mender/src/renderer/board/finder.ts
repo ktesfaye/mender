@@ -104,6 +104,13 @@ const DOINGS: Doing[] = [
     chord: ']',
     where: ['island', 'district', 'session', 'card'],
   },
+  {
+    pick: 'do:windmill',
+    name: 'settings',
+    about: 'the app itself, not any one project',
+    chord: ',',
+    where: ['island', 'district', 'session', 'card'],
+  },
 ];
 
 /** The finder itself, which is one of the doings and opens the rest. */

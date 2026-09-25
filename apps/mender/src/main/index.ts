@@ -5,6 +5,8 @@ import { app, BrowserWindow } from 'electron';
 import { MENDER_WATCH_CHANNEL, type Watching } from '../shared/channels';
 import { createAgents } from './agents';
 import { createAgentsController } from './agents-controller';
+import { createAppSettings } from './app-settings';
+import { createAppSettingsController } from './app-settings-controller';
 import { watchForAttention } from './attend';
 import { watchStayingAwake } from './awake';
 import { watchDockBadge } from './badge';
@@ -56,12 +58,13 @@ export async function main(): Promise<void> {
   }
 
   const runtimes = startRuntimes(scope);
+  const appSettings = createAppSettings(runtimes);
   const projects = createProjects(runtimes);
   const tasks = createTasks(runtimes, projects);
   /* Forgetting a project sends everybody in it home, which means the projects
      have to be able to reach the tasks and the tasks already reach back. */
   projects.sweeps((project) => tasks.sweep(project));
-  const agents = createAgents(runtimes, tasks);
+  const agents = createAgents(runtimes, tasks, () => appSettings.defaultHand());
   watchForAttention({ scope, agents, tasks });
   watchDockBadge({ scope, agents });
   watchStayingAwake({ scope, agents });
@@ -72,6 +75,7 @@ export async function main(): Promise<void> {
   installWire(scope, {
     ...runtimes.controllers,
     agents: createAgentsController(agents),
+    appSettings: createAppSettingsController(appSettings),
     board: createBoardController(createBoard()),
     changes: createChangesController(changes),
     finding: createFindingController(finding),

@@ -16,6 +16,7 @@ import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
 import type { Mood } from '@shared/agents';
+import type { Hand } from '@shared/app-settings';
 import type { At, Change } from '@shared/changes';
 import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
@@ -56,6 +57,7 @@ import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
+import { openWindmill, type Windmill } from './yard/windmill';
 import { makeYard } from './yard/yard';
 
 /** The kinds of picture an agent can actually be shown. */
@@ -486,6 +488,8 @@ async function boot(): Promise<void> {
     let settings: { ui: Settings; state: SettingsState } | null = null;
     /** Founding a project, while that board is up over the island. */
     let founding: Founding | null = null;
+    /** The windmill, while that window is up over everything. */
+    let windmill: Windmill | null = null;
     /* Which file's change is on the board, over the checkout it came from.
        The checkout board underneath stays open and stays live; it is simply
        not what the wood is showing. */
@@ -708,6 +712,10 @@ async function boot(): Promise<void> {
         openFound();
         return;
       }
+      if (id === 'do:windmill') {
+        openTheWindmill();
+        return;
+      }
       if (id === 'hunt') {
         hunted(false);
         return;
@@ -890,6 +898,33 @@ async function boot(): Promise<void> {
           founding = null;
         },
       });
+    };
+
+    /** The windmill: the app's own settings, reached the same way any other
+        doing is until it has an island of its own to stand on. */
+    const openTheWindmill = (): void => {
+      windmill?.close();
+      const state = { hand: null as string | null, hands: null as Hand[] | null };
+      const ui = openWindmill(state, {
+        choose: async (id) => {
+          state.hand = await client.appSettings.setDefaultHand({ id }, { timeoutMs: 0 });
+          ui.update(state);
+        },
+        closed: () => {
+          if (windmill === ui) windmill = null;
+          yard.line.take();
+        },
+      });
+      windmill = ui;
+      void (async () => {
+        const [hand, hands] = await Promise.all([
+          client.appSettings.defaultHand({}, { timeoutMs: 0 }),
+          client.appSettings.hands({}, { timeoutMs: 0 }),
+        ]);
+        state.hand = hand;
+        state.hands = hands;
+        ui.update(state);
+      })();
     };
 
     const shut = async (): Promise<void> => {
@@ -1566,11 +1601,13 @@ async function boot(): Promise<void> {
       // A picture shows the picture, not its size in a binary line. Asked for
       // once, off the side: nothing here waits on it to show the rest.
       if (live.current().kind === 'binary' && isPicture(path)) {
-        void client.board.picture({ path: formatAbsolute(whole.data), width: PICTURE_WIDTH }).then((got) => {
-          if (gen !== openingGen || !opened || opened.path !== path) return;
-          opened = { ...opened, picture: got.picture };
-          rewrite(read(opened));
-        });
+        void client.board
+          .picture({ path: formatAbsolute(whole.data), width: PICTURE_WIDTH })
+          .then((got) => {
+            if (gen !== openingGen || !opened || opened.path !== path) return;
+            opened = { ...opened, picture: got.picture };
+            rewrite(read(opened));
+          });
       }
     };
 
@@ -2819,7 +2856,7 @@ async function boot(): Promise<void> {
         if (yard.open) dismiss();
       },
       held: (event) => {
-        const up = founding ?? (settings ? settings.ui : null);
+        const up = founding ?? windmill ?? (settings ? settings.ui : null);
         if (!up) return false;
         if (event.key === 'Escape') {
           event.preventDefault();

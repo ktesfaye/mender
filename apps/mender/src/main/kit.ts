@@ -74,7 +74,9 @@ export function createKits(
   runtimes: MenderRuntimes,
   tasks: Tasks,
   /** Called when who works here changes, because that is a different villager. */
-  moveOut: (task: string) => Promise<void>
+  moveOut: (task: string) => Promise<void>,
+  /** Whoever the windmill says a fresh session starts with. */
+  defaultHand: () => Promise<string>
 ): Kits {
   const cards = new Map<string, Card>();
   /** Which agents are on this machine, kept current by the host itself. */
@@ -91,7 +93,7 @@ export function createKits(
   const cardOf = (task: string): Card => {
     let card = cards.get(task);
     if (!card) {
-      card = new Card(task, runtimes, tasks, () => installed);
+      card = new Card(task, runtimes, tasks, () => installed, defaultHand);
       cards.set(task, card);
       void card.redraw();
     }
@@ -181,7 +183,9 @@ class Card {
     private readonly task: string,
     private readonly runtimes: MenderRuntimes,
     private readonly tasks: Tasks,
-    private readonly installed: () => Record<string, boolean>
+    private readonly installed: () => Record<string, boolean>,
+    /** Whoever the windmill says a fresh session starts with. */
+    private readonly defaultHand: () => Promise<string>
   ) {
     this.state = cell<Kit>(NOTHING, { name: `kit:${task}` });
     this.authReplica = new ReplicaState<AgentConfigList>(
@@ -201,7 +205,7 @@ class Card {
 
   async hand(): Promise<string> {
     const record = (await this.tasks.list()).find((each) => each.id === this.task);
-    return record?.agent ?? 'claude';
+    return record?.agent ?? (await this.defaultHand());
   }
 
   async settle(conversation: string): Promise<void> {
@@ -236,7 +240,7 @@ class Card {
   /** Put the card together out of everything that says something about it. */
   async redraw(): Promise<void> {
     const record = (await this.tasks.list()).find((each) => each.id === this.task);
-    const hand = record?.agent ?? 'claude';
+    const hand = record?.agent ?? (await this.defaultHand());
     const here = this.installed();
 
     const hands: Hand[] = pluginRegistry
