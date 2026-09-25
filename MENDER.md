@@ -348,6 +348,16 @@ running behind it. The icon is a square cut out of the island as the app itself
 draws it, because that is what the app is. No publishing, no update channel and
 no notarisation: there is nobody to release to yet.
 
+**It reaches him even when he has looked away.** A villager who asks him
+something, finishes what it was doing, or breaks, while the window is not the
+frontmost thing on his screen, gets him a plain macOS notification in the
+same voice the fire already speaks in: the session's name and the present-tense
+line it is showing right now. No settings and no toggle — this either happens
+or it doesn't — and nothing while the window is already in front of him,
+because a banner would only double a lantern he is already looking at.
+Clicking it brings the village forward and stands him in that session's yard,
+the same door a chord or a rail press already opens.
+
 The board's timber is the dock, widened by `tools/make-board.py` out of the
 artist's own planks, and the writing is Departure Mono under the SIL OFL. There
 is still no windmill, no parchment, no frame, no icon.

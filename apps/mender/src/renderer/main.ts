@@ -2607,6 +2607,10 @@ async function boot(): Promise<void> {
     backOut = () => hand.escaped();
     watchPointer((x, y) => yard.covers(x, y), pixi, camera, hand);
 
+    /* A clicked notification names a session the same way pressing it on the
+       rail or in the finder does: one path in, `go` decides the rest. */
+    window.mender?.attend?.((task) => go(`task:${task}`));
+
     /* Who is standing outside which building, kept true by the main process
        rather than by whatever board happens to be open: a villager is still
        working while you are looking at another district. */

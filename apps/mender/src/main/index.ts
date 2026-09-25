@@ -4,6 +4,7 @@ import { app, BrowserWindow } from 'electron';
 import { MENDER_WATCH_CHANNEL, type Watching } from '../shared/channels';
 import { createAgents } from './agents';
 import { createAgentsController } from './agents-controller';
+import { watchForAttention } from './attend';
 import { createChanges } from './changes';
 import { createChangesController } from './changes-controller';
 import { createFinding } from './finding';
@@ -54,6 +55,7 @@ export async function main(): Promise<void> {
      have to be able to reach the tasks and the tasks already reach back. */
   projects.sweeps((project) => tasks.sweep(project));
   const agents = createAgents(runtimes, tasks);
+  watchForAttention({ scope, agents, tasks });
   const changes = createChanges(runtimes);
   const finding = createFinding(runtimes);
   scope.add(() => agents.dispose());

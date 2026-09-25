@@ -750,14 +750,25 @@ Deliberately not here: publishing, an update channel, notarisation. This is his
 own village on his own machine, and a release pipeline is for when there is
 somebody to release to.
 
-Not here yet: recovering from a bad boot, and telling him something wants him
-while he is looking at something else.
+And now it does tell him. A villager who asks a question, finishes a turn, or
+breaks, while the window is not the frontmost thing on his screen, gets him a
+plain macOS notification in the village's own voice — the session's name and
+the same present-tense line the fire already shows — and clicking it brings
+the window forward and stands him in that yard. Nothing when the window is
+already in front, so a banner never doubles a lantern he is already looking
+at. No settings, no toggle: it either happens or it doesn't. Driven with a
+real Claude session left running in the background: the main process read the
+mood the island already reads, constructed the notification with the fire's
+own line as its body, and the click hands off to the same `go()` a rail press
+or a finder pick already uses. `apps/mender/src/main/attend.ts`.
 
-Closes UI-01 through UI-04, UI-27 through UI-29, UI-34, UI-42, ST-09, ST-34,
+Not here yet: recovering from a bad boot.
+
+Closes UI-01 through UI-04, UI-27 through UI-29, UI-42, ST-09, ST-34,
 ST-35, TR-23.
 
 Done when: it launches from the Applications folder, recovers from a bad boot,
-tells you when something wants you while you are elsewhere, and updates itself.
+and updates itself.
 
 ## What was cut on purpose
 
@@ -1105,7 +1116,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-31 | Drag and drop — workspace file → composer/tree | done | W2 |
 | UI-32 | Drag and drop — tabs | cut |  |
 | UI-33 | Drag and drop — terminal tabs | cut |  |
-| UI-34 | System notifications |  | W11 |
+| UI-34 | System notifications | done | W11 |
 | UI-35 | Toasts | done | W3 |
 | UI-36 | The full modal catalog (30 modals) |  | W7 |
 | UI-37 | Agent status dots (sidebar) | cut |  |

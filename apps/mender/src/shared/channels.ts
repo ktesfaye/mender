@@ -13,3 +13,14 @@ export const MENDER_WATCH_CHANNEL = 'mender:watch';
 
 /** In front of you, behind something else, or put away. */
 export type Watching = 'front' | 'behind' | 'gone';
+
+/**
+ * Channel the main process uses to say which session wants him, on a click.
+ *
+ * A system notification is answered outside the page entirely — through the
+ * OS, on a window that may not even be showing — so the click has to reach
+ * back in over IPC rather than through anything on the wood. It carries the
+ * id of the task to stand in, which is the one thing a village-voiced banner
+ * cannot say for itself.
+ */
+export const MENDER_ATTEND_CHANNEL = 'mender:attend';

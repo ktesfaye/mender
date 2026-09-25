@@ -1,6 +1,11 @@
 import { requestWirePort, type WindowLike } from '@emdash/wire/rpc';
 import { clipboard, contextBridge, ipcRenderer, shell, webUtils } from 'electron';
-import { MENDER_WATCH_CHANNEL, MENDER_WIRE_CHANNEL, type Watching } from '../shared/channels';
+import {
+  MENDER_ATTEND_CHANNEL,
+  MENDER_WATCH_CHANNEL,
+  MENDER_WIRE_CHANNEL,
+  type Watching,
+} from '../shared/channels';
 
 // Typechecked as node (no DOM lib) but runs in the renderer; declare `window`
 // with the structural type wire needs.
@@ -15,6 +20,14 @@ let told: ((now: Watching) => void) | null = null;
 ipcRenderer.on(MENDER_WATCH_CHANNEL, (_event, now: Watching) => {
   looking = now;
   told?.(now);
+});
+
+/* Whichever session a clicked notification named, before the page has asked. */
+let attended: ((task: string) => void) | null = null;
+let heldAttend: string | null = null;
+ipcRenderer.on(MENDER_ATTEND_CHANNEL, (_event, task: string) => {
+  if (attended) attended(task);
+  else heldAttend = task;
 });
 
 contextBridge.exposeInMainWorld('mender', {
@@ -37,6 +50,14 @@ contextBridge.exposeInMainWorld('mender', {
   watching: (to: (now: Watching) => void) => {
     told = to;
     to(looking);
+  },
+  /* Which session a clicked notification wants him standing in. */
+  attend: (to: (task: string) => void) => {
+    attended = to;
+    if (heldAttend) {
+      to(heldAttend);
+      heldAttend = null;
+    }
   },
   /* Taking something off the board. The host's own clipboard rather than the
      browser's, because the browser's needs a secure page and a packaged
