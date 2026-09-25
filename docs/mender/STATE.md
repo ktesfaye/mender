@@ -868,6 +868,18 @@ before it ever reaches the page — so the gate's own timing (first press asks,
 second within four seconds allows, a stale press or one after the window
 closes just says no) is instead pinned down with `quit-gate.test.ts`.
 
+And the dock icon carries a small mark whenever anything anywhere is asking
+or hurt, gone the moment nothing is — not a count, which is a UI convention
+this app otherwise avoids everywhere else, just the one dot answering "does
+anything want me" (`apps/mender/src/main/badge.ts`, watching the same mood
+map `attend.ts` and the rack already read). Verified the module loads and
+runs without error in the real dev app and pinned the one rule worth a test
+(`badge.test.ts`: nobody working is false, merely working or resting is
+false, anybody asking or hurt is true) — but could not see the mark itself:
+the debug-port window is deliberately an accessory app with no dock tile at
+all (see `openVillageWindow`'s own comment on why), so there was nothing on
+screen for a badge to sit on.
+
 Not here yet: recovering from a bad boot.
 
 Closes UI-01 through UI-04, UI-27 through UI-29, UI-42, ST-09, ST-34,

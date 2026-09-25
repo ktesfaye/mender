@@ -434,6 +434,11 @@ every other thing here that cannot be undone already takes. Pressing it
 again, or the chord again before it withdraws, is the only way through;
 anything else, including just waiting, is no.
 
+**The dock carries a mark, not a count.** The moment anything anywhere is
+asking or hurt, the app's own icon gets a small dot; the moment nothing is,
+it is gone. No number on it, because a count is a convention this app does
+not otherwise keep anywhere.
+
 The board's timber is the dock, widened by `tools/make-board.py` out of the
 artist's own planks, and the writing is Departure Mono under the SIL OFL. There
 is still no windmill, no parchment, no frame, no icon.
