@@ -35,6 +35,9 @@ declare global {
       showIt: (path: string) => void;
       /** A link an agent wrote, out to whatever the machine reads the web with. */
       openLink: (url: string) => void;
+      /** The one file this app writes unasked, outside any checkout. Returns
+          where it landed. */
+      saveExport: (name: string, content: string) => Promise<string>;
     };
   }
 }

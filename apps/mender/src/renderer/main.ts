@@ -23,7 +23,7 @@ import type { Prompt } from '@shared/prompts';
 import type { Task } from '@shared/tasks';
 import { branchMade, branchUnmade, unbranchMade } from './board/branch';
 import { browsing, openPage, safe as safeAddress } from './board/browsing';
-import { openCard, type LiveCard } from './board/card';
+import { openCard, transcriptMarkdown, type LiveCard } from './board/card';
 import { opening, readOut, unreadable } from './board/changed';
 import { committing } from './board/committing';
 import { conflict, conflictMessage } from './board/conflict';
@@ -40,8 +40,8 @@ import { sent, type Sent } from './board/sent';
 import { shell } from './board/shell';
 import { openShell, type LiveShell } from './board/talking';
 import { refused, trouble, unwritten } from './board/trouble';
-import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
 import { tuiSession } from './board/tui-session';
+import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
 import { answerFor, SEND_ALL } from './board/work';
 import { ran } from './job';
 import { setPace } from './pace';
@@ -74,6 +74,11 @@ function isPicture(path: string): boolean {
 }
 /** How wide a picture is asked for, sized to a board comfortably. */
 const PICTURE_WIDTH = 640;
+
+/** Now, as a filename-safe stamp, for the one file this app writes unasked. */
+function stamp(): string {
+  return new Date().toISOString().replace(/[:.]/g, '-');
+}
 
 /**
  * You open Mender and you see the village.
@@ -2545,7 +2550,14 @@ async function boot(): Promise<void> {
       sending = null;
       open = aim;
       titling = null;
-      naming = { district: aim.district, project, slot, written: '', revivable: null, terminal: false };
+      naming = {
+        district: aim.district,
+        project,
+        slot,
+        written: '',
+        revivable: null,
+        terminal: false,
+      };
       paintRail();
       /* Asking what is going to happen in a new session is laid over the yard
          you are standing in, like everything else you open, rather than
@@ -2704,7 +2716,8 @@ async function boot(): Promise<void> {
       // it. There is no separate step where you name it and then start it —
       // except in its own terminal, where what you wrote was only ever this
       // session's name: the agent's own CLI has no ACP prompt to hand it.
-      if (!terminal) void client.agents.tell({ task: made.data.id, text: written }, { timeoutMs: 0 });
+      if (!terminal)
+        void client.agents.tell({ task: made.data.id, text: written }, { timeoutMs: 0 });
       if (aim) await openTask(aim, made.data);
     };
 
@@ -2772,6 +2785,32 @@ async function boot(): Promise<void> {
      * Whatever is written on a task's board is said to whoever is in there —
      * and nothing written, while they are working, calls them off.
      */
+    /**
+     * The whole conversation, written out as a markdown file.
+     *
+     * Never into the checkout: a file dropped into a working tree unasked is
+     * exactly the kind of thing that quietly rides along into a commit. It
+     * goes to the real Downloads folder instead, the same place anything else
+     * on this machine lands when you save it, and the line itself becomes the
+     * way to it — pressable to show it in Finder, the same as a checkout
+     * already offers for itself.
+     */
+    const exportTranscript = async (task: Task): Promise<void> => {
+      const mine = card;
+      if (!mine) return;
+      const state = await client.agents.work.state({ task: task.id }, 'state').snapshot();
+      const name = `transcript-${stamp()}.md`;
+      let path: string | undefined;
+      try {
+        path = await window.mender.saveExport(name, transcriptMarkdown(task, state.data.told));
+      } catch {
+        path = undefined;
+      }
+      if (card !== mine) return;
+      mine.setExported(path ? { text: `saved to ${name}`, path } : { text: 'it would not.' });
+      rewrite(mine.rows());
+    };
+
     const tell = async (said: string): Promise<void> => {
       const task = inside;
       const saying = watching;
@@ -3138,6 +3177,14 @@ async function boot(): Promise<void> {
       const task = inside;
       const meant = card?.meant(pick);
       if (!task || !meant) return;
+      if (meant.does === 'export') {
+        void exportTranscript(task);
+        return;
+      }
+      if (meant.does === 'show-export') {
+        window.mender.showIt(meant.path);
+        return;
+      }
       if (meant.does === 'signin') {
         /* The same real shell, with the agent's own sign-in line waiting on
            the input rather than a blank prompt. Not sent: they still press

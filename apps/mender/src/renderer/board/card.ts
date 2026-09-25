@@ -1,7 +1,7 @@
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import type { CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
-import type { Kit } from '@shared/agents';
+import type { Kit, Told } from '@shared/agents';
 import { MCP_CATALOG } from '@shared/mcp-catalog';
 import type { Task } from '@shared/tasks';
 import type { MenderClient } from '../wire';
@@ -29,6 +29,8 @@ export interface LiveCard {
   /** Show, or fold away, everyone who could work here but is not installed. */
   show(showing: boolean): void;
   showing(): boolean;
+  /** What the export line says right now, in place of its own offer. */
+  setExported(said: { text: string; path?: string } | null): void;
   /** What a pressed line means, or nothing if it was only a heading. */
   meant(pick: string): Meant | null;
   close(): Promise<void>;
@@ -43,7 +45,11 @@ export type Meant =
   | { does: 'addcat'; key: string }
   | { does: 'addcustom' }
   /** Arm or fire the two-press removal of one server. */
-  | { does: 'rmtool'; name: string; asked: boolean };
+  | { does: 'rmtool'; name: string; asked: boolean }
+  /** Write the transcript out as a markdown file, outside any checkout. */
+  | { does: 'export' }
+  /** The just-written transcript, shown where it actually landed. */
+  | { does: 'show-export'; path: string };
 
 export async function openCard(
   client: MenderClient,
@@ -61,11 +67,13 @@ export async function openCard(
   let catalogShowing = false;
   /** The server armed for a second press to throw it away, if any. */
   let removing: string | null = null;
+  /** What the export line says while its own result is sitting on it. */
+  let exported: { text: string; path?: string } | null = null;
 
   const replica = new ReplicaState<Kit>(client.agents.kit.state({ task: task.id }, 'state'), {
     onChange: (value) => {
       kit = value;
-      changed(written(task, value, ending, showing, catalogShowing, removing));
+      changed(written(task, value, ending, showing, catalogShowing, removing, exported));
     },
   });
 
@@ -78,7 +86,7 @@ export async function openCard(
         {
           onChange: (value) => {
             ending = { ...ending, uncommitted: Object.keys(value.entries ?? {}).length };
-            changed(written(task, kit, ending, showing, catalogShowing, removing));
+            changed(written(task, kit, ending, showing, catalogShowing, removing, exported));
           },
         }
       )
@@ -87,7 +95,7 @@ export async function openCard(
     ? new ReplicaState<CheckoutHeadState>(model.state({ checkout }, 'head'), {
         onChange: (value) => {
           ending = { ...ending, unsent: unsentIn(value) };
-          changed(written(task, kit, ending, showing, catalogShowing, removing));
+          changed(written(task, kit, ending, showing, catalogShowing, removing, exported));
         },
       })
     : null;
@@ -101,7 +109,10 @@ export async function openCard(
   };
 
   return {
-    rows: () => written(task, kit, ending, showing, catalogShowing, removing),
+    rows: () => written(task, kit, ending, showing, catalogShowing, removing, exported),
+    setExported: (said) => {
+      exported = said;
+    },
     show: (open) => {
       showing = open;
       /* Turned back to the transcript is backing out of the card, and the
@@ -145,6 +156,8 @@ function read(pick: string, kit: Kit | null): Meant | null {
   if (pick === 'addcustom') return { does: 'addcustom' };
   if (pick.startsWith('addcat:')) return { does: 'addcat', key: pick.slice(7) };
   if (pick.startsWith('rmtool:')) return { does: 'rmtool', name: pick.slice(7), asked: false };
+  if (pick === 'export') return { does: 'export' };
+  if (pick.startsWith('show-export:')) return { does: 'show-export', path: pick.slice(12) };
   const cut = pick.indexOf(':');
   if (cut === -1) return null;
   const kind = pick.slice(0, cut);
@@ -175,7 +188,8 @@ function written(
   ending?: Ending,
   showing?: boolean,
   catalogShowing?: boolean,
-  removing?: string | null
+  removing?: string | null,
+  exported?: { text: string; path?: string } | null
 ): Row[] {
   const rows: Row[] = [
     { kind: 'title', text: task.title, pick: 'card' },
@@ -251,6 +265,9 @@ function written(
         tone: 'faded',
       }
     );
+    /* A finished conversation is exactly the one worth taking a copy of, so
+       the export line stands even while nobody is awake to be configured. */
+    rows.push({ kind: 'gap' }, exportRow(exported));
     /* A sleeping session still ends, and a session nobody has spoken to is
        exactly the one you are most likely to want rid of. */
     return [...rows, ...over(ending, false)];
@@ -318,7 +335,19 @@ function written(
       tone: 'ink',
     });
   }
+  rows.push({ kind: 'gap' }, exportRow(exported));
   return [...rows, ...over(ending, kit.awake)];
+}
+
+/** The one thing the card does to the conversation rather than to who has it. */
+function exportRow(exported: { text: string; path?: string } | null | undefined): Row {
+  return {
+    kind: 'entry',
+    mark: '→',
+    text: exported?.text ?? 'export the transcript as markdown',
+    tone: exported ? 'keen' : 'faded',
+    pick: exported ? (exported.path ? `show-export:${exported.path}` : undefined) : 'export',
+  };
 }
 
 function choices(
@@ -448,4 +477,24 @@ function unsentIn(head: CheckoutHeadState | undefined): number | null {
   if (head.upstream.kind === 'none') return null;
   const tracking = head.upstream.tracking;
   return tracking.kind === 'resolved' ? tracking.ahead : 0;
+}
+
+/**
+ * The whole conversation, oldest first, as a plain markdown document.
+ *
+ * `notes` arrive newest first and `thoughts` oldest first, so this reads the
+ * notes backwards and pairs each with whatever it answered by turn, which is
+ * the only thing that already ties the two together.
+ */
+export function transcriptMarkdown(task: Task, told: Told): string {
+  const lines: string[] = [`# ${task.title}`, '', `_${task.branch}_`];
+  const notes = [...told.notes].reverse();
+  for (const note of notes) {
+    lines.push('', '## you', '', note.said);
+    for (const thought of told.thoughts) {
+      if (thought.turn !== note.turn) continue;
+      lines.push('', '## agent', '', thought.said);
+    }
+  }
+  return `${lines.join('\n')}\n`;
 }

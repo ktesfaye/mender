@@ -428,7 +428,14 @@ None of it is a list anyone here keeps: the models and the modes are whatever
 that agent says it offers over the protocol when it starts, the servers are
 read out of the agent's own config file, and the skills are read from where the
 agent actually looks for them. Changing who works in a building sends the one
-who was there home, because a different agent is a different villager.
+who was there home, because a different agent is a different villager. At the
+bottom of the card is the one thing the card does to the conversation rather
+than to who is having it: writing the whole of it out as a markdown file. Never
+into the checkout — a file dropped into a working tree unasked is exactly the
+kind of thing that rides along into a commit — so it lands in Downloads
+instead, the same place anything else on this machine does. One line, pressed
+once, and the line itself says where it went, standing afterwards as the way
+to show it in Finder.
 
 **Opening a session starts it.** A session keeps its branch, its worktree and
 its transcript across a restart, but the agent itself is not running, and a

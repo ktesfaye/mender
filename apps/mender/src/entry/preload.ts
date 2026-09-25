@@ -1,3 +1,6 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { isAbsolute, join } from 'node:path';
 import { requestWirePort, type WindowLike } from '@emdash/wire/rpc';
 import { clipboard, contextBridge, ipcRenderer, shell, webUtils } from 'electron';
 import {
@@ -118,4 +121,20 @@ contextBridge.exposeInMainWorld('mender', {
   showIt: (path: string) => shell.showItemInFolder(path),
   /* A link an agent wrote, out to whatever the machine reads the web with. */
   openLink: (url: string) => void shell.openExternal(url),
+  /* The one file this app writes unasked, always outside any checkout so it
+     never lands as an uncommitted file on a branch nobody meant to touch.
+     `MENDER_EXPORT_DIR` overrides it for a dev copy; the real app has no such
+     variable set, so it always lands in the real Downloads folder. */
+  saveExport: async (name: string, content: string): Promise<string> => {
+    const override = process.env.MENDER_EXPORT_DIR;
+    const dir = override
+      ? isAbsolute(override)
+        ? override
+        : join(process.cwd(), override)
+      : join(homedir(), 'Downloads');
+    await mkdir(dir, { recursive: true });
+    const path = join(dir, name);
+    await writeFile(path, content, 'utf8');
+    return path;
+  },
 });
