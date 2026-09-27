@@ -145,6 +145,10 @@ export interface Agents {
   /** Start whoever lives in there, so they can say what they work with. */
   wake(task: string): Promise<Told>;
   tell(task: string, text: string, carrying?: readonly Carried[]): Promise<Told>;
+  /** Start a brand-new conversation already pointed at a foreign session
+      id — see `doTell` for the ordinary path this is a stripped-down
+      sibling of. */
+  resume(task: string, providerSessionId: string): Promise<Told>;
   /** Pick a picture up off the wood, into the session's own store. */
   carry(
     task: string,
@@ -508,6 +512,46 @@ export function createAgents(
     return { success: true, data: undefined };
   };
 
+  /**
+   * `doTell` without a prompt to send: creates the conversation if none
+   * exists yet, same as always, then launches it with the caller's own
+   * chosen `sessionId` instead of whatever this conversation last
+   * remembered (which, for a conversation this new, is nothing at all).
+   * Resuming that history *is* the first thing said, so nothing else goes
+   * out after the launch succeeds.
+   */
+  const resumeInto = async (task: string, providerSessionId: string): Promise<Told> => {
+    await loaded;
+    const record = (await tasks.list()).find((candidate) => candidate.id === task);
+    if (!record) return { success: false, error: { kind: 'no-such-task' } };
+
+    const house = houseOf(task);
+    const moved = await moveIn(task, record);
+    if (!moved.success) return moved;
+    const conversation = moved.data;
+
+    house.watched();
+    house.arriving();
+    const hand = record.agent ?? (await settings.defaultHand());
+    const remembered = await settings.lastKit(hand);
+    const started = await runtimes.acp.launch(
+      {
+        conversationId: conversation,
+        providerId: hand,
+        cwd: record.path,
+        sessionId: providerSessionId,
+        model: record.model ?? remembered.model,
+        modeId: remembered.mode,
+      },
+      { timeoutMs: 0 }
+    );
+    if (!started.success) {
+      house.broke(whatItSaid(started.error));
+      return refused(whatItSaid(started.error));
+    }
+    return { success: true, data: undefined };
+  };
+
   return {
     working: (task) => houseOf(task).state,
     kit: (task) => kits.kit(task),
@@ -729,6 +773,7 @@ export function createAgents(
     },
 
     tell: doTell,
+    resume: resumeInto,
 
     async retryFailure(task) {
       const text = houseOf(task).retryText();

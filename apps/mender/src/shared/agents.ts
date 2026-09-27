@@ -540,6 +540,19 @@ export const agentsContract = defineContract({
     error: agentErrorSchema,
   }),
   /**
+   * Start a brand-new conversation already pointed at somebody else's
+   * session id — the Claude Code CLI's own on-disk history, picked up off
+   * disk rather than typed fresh. No prompt is sent: resuming *is* the
+   * first thing said. If the provider can't find that session any more it
+   * falls back to starting clean, the same graceful fallback any ordinary
+   * relaunch already gets.
+   */
+  resume: fallible({
+    input: z.object({ task: z.string(), providerSessionId: z.string() }),
+    data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /**
    * Pick a picture up off the wood.
    *
    * It goes to the session's own store rather than anywhere of ours, because

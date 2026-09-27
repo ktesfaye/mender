@@ -29,6 +29,7 @@ export function createAgentsController(
         : { success: false as const, error: { kind: 'refused' as const, because: started.because } };
     },
     tell: ({ task, text, carrying }) => agents.tell(task, text, carrying),
+    resume: ({ task, providerSessionId }) => agents.resume(task, providerSessionId),
     carry: ({ task }, file) => agents.carry(task, file),
     putDown: ({ task, id }) => agents.putDown(task, id),
     answer: ({ task, requestId, optionId }) => agents.answer(task, requestId, optionId),
