@@ -93,7 +93,11 @@ describe('parseClaudeSessionLines', () => {
     const long = 'x'.repeat(200);
     const lines = [
       'not json at all',
-      JSON.stringify({ type: 'user', isSidechain: false, message: { role: 'user', content: long } }),
+      JSON.stringify({
+        type: 'user',
+        isSidechain: false,
+        message: { role: 'user', content: long },
+      }),
     ];
     const result = parseClaudeSessionLines(lines);
     expect(result.title?.length).toBeLessThanOrEqual(81);

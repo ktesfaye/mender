@@ -29,7 +29,7 @@ import type { At, Change } from '@shared/changes';
 import { parseEnvLines } from '@shared/env-lines';
 import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
-import type { Task } from '@shared/tasks';
+import type { ClaudeCliSession, Task } from '@shared/tasks';
 import { branchMade, branchUnmade, unbranchMade } from './board/branch';
 import { browsing, openPage, safe as safeAddress } from './board/browsing';
 import { openCard, transcriptMarkdown, turnsOf, type LiveCard } from './board/card';
@@ -712,6 +712,15 @@ async function boot(): Promise<void> {
       /** The existing branch picked to stand this session on, if any —
           `begin` cuts nothing fresh when this is set. */
       branch?: string | null;
+      /** The project's own Claude Code CLI session history, offered as a
+          thing to pick up instead of starting blank; `null` means never
+          asked. */
+      resumeSessions?: ClaudeCliSession[] | null;
+      /** Whether that history is what is on the board right now. */
+      pickingResume?: boolean;
+      /** The session picked to resume, if any — `begin` sends nothing of
+          its own when this is set: resuming *is* the first thing said. */
+      resume?: { id: string; title: string } | null;
       /** Start it already allowing everything, the agent's own most
           permissive mode, applied the moment it is awake to hear it. */
       allowAll: boolean;
@@ -3153,6 +3162,9 @@ async function boot(): Promise<void> {
         branches: null,
         pickingBranch: false,
         branch: null,
+        resumeSessions: null,
+        pickingResume: false,
+        resume: null,
         allowAll: false,
       };
       paintRail();
@@ -3226,6 +3238,40 @@ async function boot(): Promise<void> {
       if (!naming) return;
       naming = { ...naming, pickingBranch: false, branch: name, written: name };
       yard.line.write(name);
+      yard.line.take();
+      rewrite(asking(naming));
+    };
+
+    /**
+     * Turning the naming board over to the Claude Code CLI's own session
+     * history for this project — asked fresh every time, never cached, off
+     * the real filesystem rather than anything Mender stores itself.
+     */
+    const openResumePicker = async (): Promise<void> => {
+      if (!naming) return;
+      naming = { ...naming, pickingResume: true, resumeSessions: naming.resumeSessions ?? null };
+      yard.line.blur();
+      rewrite(asking(naming));
+      const mine = naming;
+      const found = await client.tasks.claudeHistory(
+        { project: mine.project.id },
+        { timeoutMs: 5000 }
+      );
+      if (naming !== mine) return;
+      naming = { ...naming, resumeSessions: found };
+      rewrite(asking(naming));
+    };
+
+    /** Naming the session after the one just picked to resume, and pointing
+        this new one's conversation at it — a fresh worktree still gets cut
+        the ordinary way, but nothing of the typed name goes out as a first
+        prompt: resuming is the first thing said. */
+    const pickResume = (id: string): void => {
+      if (!naming) return;
+      const found = naming.resumeSessions?.find((session) => session.id === id);
+      const written = found?.title ?? id;
+      naming = { ...naming, pickingResume: false, resume: { id, title: written }, written };
+      yard.line.write(written);
       yard.line.take();
       rewrite(asking(naming));
     };
@@ -3334,6 +3380,15 @@ async function boot(): Promise<void> {
         return;
       }
       if (!naming) return;
+      if (
+        !naming.pickingIssue &&
+        !naming.pickingBranch &&
+        !naming.pickingResume &&
+        written === '/resume'
+      ) {
+        void openResumePicker();
+        return;
+      }
       naming = { ...naming, written };
       rewrite(asking(naming));
     };
@@ -3390,7 +3445,7 @@ async function boot(): Promise<void> {
 
     const begin = async (): Promise<void> => {
       if (!naming) return;
-      const { project, slot, written, terminal, allowAll, branch } = naming;
+      const { project, slot, written, terminal, allowAll, branch, resume } = naming;
       const aim = open;
       naming = null;
       rewrite([
@@ -3439,7 +3494,21 @@ async function boot(): Promise<void> {
       // except in its own terminal, where what you wrote was only ever this
       // session's name: the agent's own CLI has no ACP prompt to hand it.
       if (!terminal) {
-        void client.agents.tell({ task: made.data.id, text: written }, { timeoutMs: 0 });
+        if (resume) {
+          // A resumed conversation must actually run on Claude: the picked
+          // session id is a Claude Code CLI session id, and only that
+          // provider's own adapter knows what to do with it. A no-op if the
+          // project's remembered hand was already Claude.
+          await client.agents.choose({ task: made.data.id, what: 'hand', id: 'claude' });
+          // Resuming *is* the first thing said — nothing of the typed name
+          // goes out as a prompt.
+          void client.agents.resume(
+            { task: made.data.id, providerSessionId: resume.id },
+            { timeoutMs: 0 }
+          );
+        } else {
+          void client.agents.tell({ task: made.data.id, text: written }, { timeoutMs: 0 });
+        }
         if (allowAll) applyAllowAll(made.data.id);
       }
       if (aim) await openTask(aim, made.data);
@@ -3861,6 +3930,14 @@ async function boot(): Promise<void> {
       }
       if (pick.startsWith('branch:')) {
         pickBranch(pick.slice(7));
+        return;
+      }
+      if (pick === 'resume-toggle') {
+        void openResumePicker();
+        return;
+      }
+      if (pick.startsWith('resume:')) {
+        pickResume(pick.slice(7));
         return;
       }
       if (pick === 'rest') {
@@ -4819,10 +4896,14 @@ function asking(naming: {
   branches?: string[] | null;
   pickingBranch?: boolean;
   branch?: string | null;
+  resumeSessions?: ClaudeCliSession[] | null;
+  pickingResume?: boolean;
+  resume?: { id: string; title: string } | null;
   allowAll: boolean;
 }): Row[] {
   if (naming.pickingIssue) return pickingIssue(naming.issues ?? null);
   if (naming.pickingBranch) return pickingBranch(naming.branches ?? null);
+  if (naming.pickingResume) return pickingResume(naming.resumeSessions ?? null);
 
   const offer: Row[] =
     naming.revivable && !naming.written
@@ -4861,6 +4942,12 @@ function asking(naming: {
     ...(naming.terminal
       ? []
       : [
+          {
+            kind: 'line' as const,
+            text: naming.resume ? `resuming ${naming.resume.title}` : 'pick up a past session',
+            tone: 'faded' as const,
+            pick: 'resume-toggle',
+          },
           {
             kind: 'line' as const,
             text: naming.allowAll ? 'allowing everything — on' : 'allow everything, from the start',
@@ -4914,6 +5001,34 @@ function pickingBranch(branches: string[] | null): Row[] {
   }
   for (const name of branches) {
     rows.push({ kind: 'entry', mark: '→', text: name, keep: 'tail', pick: `branch:${name}` });
+  }
+  return rows;
+}
+
+/** The naming board turned over to the Claude Code CLI's own session
+    history for this project. */
+function pickingResume(sessions: ClaudeCliSession[] | null): Row[] {
+  const rows: Row[] = [
+    { kind: 'title', text: 'a past session' },
+    { kind: 'line', text: 'picking one resumes it — nothing typed here is sent.', tone: 'faded' },
+    { kind: 'gap' },
+  ];
+  if (sessions === null) {
+    rows.push({ kind: 'line', text: 'reading the CLI’s own history…', tone: 'faded' });
+    return rows;
+  }
+  if (!sessions.length) {
+    rows.push({ kind: 'line', text: 'nothing there yet.', tone: 'faded' });
+    return rows;
+  }
+  for (const session of sessions) {
+    rows.push({
+      kind: 'entry',
+      mark: '→',
+      text: session.gitBranch ? `${session.title} · ${session.gitBranch}` : session.title,
+      keep: 'tail',
+      pick: `resume:${session.id}`,
+    });
   }
   return rows;
 }
