@@ -25,6 +25,9 @@ export type Meant =
   | { does: 'set'; what: 'model' | 'mode' | 'effort' | 'collab'; id: string; name: string }
   /** Turn the board over and show what the session works with. */
   | { does: 'card' }
+  /** Cut a fresh session here and turn straight to its own past terminal
+      history, the same door the empty hook's own naming board opens. */
+  | { does: 'resume' }
   /** Put this on the line instead, and keep writing. */
   | { does: 'write'; text: string }
   /** Say it to the agent as it stands. */
@@ -80,6 +83,7 @@ const OURS: Ours[] = [
     on: (kit) => kit.collab,
   },
   { name: '/agent', about: 'everything this session works with' },
+  { name: '/resume', about: 'pick up one of its own past terminal sessions, in a new one' },
   { name: '/keep', about: 'keep what you write after it, to say again', takes: 'what to keep' },
   {
     name: '/forget',
@@ -255,6 +259,7 @@ export class Palette {
     const ours = open.kind === 'all' ? OURS.find((each) => each.name === name) : undefined;
     if (ours) {
       if (ours.name === '/agent') return { does: 'card' };
+      if (ours.name === '/resume') return { does: 'resume' };
       return { does: 'write', text: `${ours.name} ` };
     }
     const order = kit.orders.find((each) => slashed(each.name) === name);

@@ -3181,7 +3181,14 @@ async function boot(): Promise<void> {
       // asked after the board is already up, since it never blocks a fresh
       // name from being typed straight away.
       void client.tasks.revivable({ project: project.id }, { timeoutMs: 5000 }).then((held) => {
-        if (naming?.district !== aim.district || naming.written) return;
+        if (
+          naming?.district !== aim.district ||
+          naming.written ||
+          naming.pickingIssue ||
+          naming.pickingBranch ||
+          naming.pickingResume
+        )
+          return;
         naming = { ...naming, revivable: held };
         rewrite(asking(naming));
       });
@@ -3764,6 +3771,14 @@ async function boot(): Promise<void> {
       if (meant.does === 'card') {
         said('');
         if (aim) await showCard(aim, task);
+        return;
+      }
+      if (meant.does === 'resume') {
+        said('');
+        if (aim) {
+          askName({ kind: 'district', district: aim.district }, freeSlot(aim.district));
+          void openResumePicker();
+        }
         return;
       }
       if (meant.does !== 'set') return;
