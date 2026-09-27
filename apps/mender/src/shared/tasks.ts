@@ -46,6 +46,19 @@ export const historyEntrySchema = z.object({
 
 export type HistoryEntry = z.infer<typeof historyEntrySchema>;
 
+/** One of the Claude Code CLI's own past terminal sessions for this
+    project's checkout — entirely separate from `historyEntrySchema` above,
+    which is Mender's own ledger of tasks it took down itself. */
+export const claudeCliSessionSchema = z.object({
+  id: z.string(),
+  gitBranch: z.string().nullable(),
+  mtimeMs: z.number(),
+  size: z.number(),
+  title: z.string(),
+});
+
+export type ClaudeCliSession = z.infer<typeof claudeCliSessionSchema>;
+
 export const taskErrorSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('no-such-project') }),
   /** Nothing was written on the board. */
@@ -89,6 +102,13 @@ export const tasksContract = defineContract({
   /** The branches this project's checkout already knows about, for the
       naming step to offer alongside a fresh one. */
   branches: procedure({ input: z.object({ project: z.string() }), output: z.array(z.string()) }),
+  /** Every past session the Claude Code CLI itself has kept for this
+      project's own checkout path — offered when starting a new session, as
+      a thing to pick up rather than start blank. */
+  claudeHistory: procedure({
+    input: z.object({ project: z.string() }),
+    output: z.array(claudeCliSessionSchema),
+  }),
   /** The script that failed setting this task's worktree up, if any is
       still unresolved. */
   setupFailure: procedure({

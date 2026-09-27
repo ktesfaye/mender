@@ -11,6 +11,7 @@ export function createTasksController(tasks: Tasks): Controller {
     begin: ({ project, name, slot, kind, branch }) =>
       tasks.begin(project, name, slot, kind, branch),
     branches: ({ project }) => tasks.branches(project),
+    claudeHistory: ({ project }) => tasks.claudeHistory(project),
     setupFailure: ({ id }) => tasks.setupFailure(id),
     retrySetup: ({ id }) => tasks.retrySetup(id),
     linkPull: ({ id, url }) => tasks.linkPull(id, url),

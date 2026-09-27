@@ -11,6 +11,7 @@ import { ReplicaState } from '@emdash/wire/live';
 import { cell, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
 import type { AppSettings } from './app-settings';
+import { listClaudeSessions, type ClaudeCliSession } from './claude-cli-history';
 import type { Project, Projects } from './projects';
 import type { MenderRuntimes } from './runtimes';
 
@@ -107,6 +108,10 @@ export interface Tasks {
   /** The branches this project's checkout already knows about, for the
       naming step to offer alongside a fresh one. */
   branches(project: string): Promise<string[]>;
+  /** Every past session the Claude Code CLI has kept for this project's own
+      checkout path, for the naming step to offer as a thing to pick up
+      instead of starting blank. */
+  claudeHistory(project: string): Promise<ClaudeCliSession[]>;
   /** The script that failed setting this task's worktree up, if any is still
       unresolved — read off the workspace registry's own record, never
       guessed. */
@@ -249,6 +254,12 @@ export function createTasks(
       } catch {
         return [];
       }
+    },
+
+    async claudeHistory(project) {
+      const found = (await projects.list()).find((candidate) => candidate.id === project);
+      if (!found) return [];
+      return await listClaudeSessions(found.path);
     },
 
     async setupFailure(id) {
