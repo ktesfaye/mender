@@ -643,12 +643,60 @@ export function createAgents(
     }
   };
 
+  const wake = async (task: string): Promise<Told> => {
+    await loaded;
+    const conversation = lodgers[task];
+    if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
+    const record = (await tasks.list()).find((candidate) => candidate.id === task);
+    if (!record) return { success: false, error: { kind: 'no-such-task' } };
+    const house = houseOf(task);
+    await Promise.all([house.settle(conversation), kits.settle(task, conversation)]);
+    /* Waking somebody who is already up has nothing to load, so only a
+       sleeping session says it is waking. */
+    const sleeping = !house.awake();
+    if (sleeping) house.waking(true);
+    try {
+      const hand = record.agent ?? (await settings.defaultHand());
+      const remembered = await settings.lastKit(hand);
+      const started = await runtimes.acp.launch(
+        {
+          conversationId: conversation,
+          providerId: hand,
+          cwd: record.path,
+          sessionId: sessionFor(task, conversation),
+          model: record.model ?? remembered.model,
+          modeId: remembered.mode,
+        },
+        { timeoutMs: 0 }
+      );
+      if (!started.success) {
+        house.broke(whatItSaid(started.error));
+        return refused(whatItSaid(started.error));
+      }
+      /* The launch is back once the history has been read in, but the
+         session's own word that it is ready can trail it by a beat. */
+      if (sleeping) await house.pastStarting(1500);
+      return { success: true, data: undefined };
+    } finally {
+      if (sleeping) house.waking(false);
+    }
+  };
+
   return {
     working: (task) => houseOf(task).state,
     kit: (task) => kits.kit(task),
     moods: () => island,
 
     async choose(task, what, id) {
+      /* A session that went home still lists what it thinks with, so picking
+         one wakes it first, the same as saying something to it does. */
+      if (what !== 'hand' && !kits.awake(task)) {
+        await loaded;
+        if (lodgers[task]) {
+          const woke = await wake(task);
+          if (!woke.success) return woke;
+        }
+      }
       const done = await kits.choose(task, what, id);
       return done.success ? { success: true, data: undefined } : done;
     },
@@ -835,44 +883,7 @@ export function createAgents(
       return await kits.knackText(task, name, from);
     },
 
-    async wake(task) {
-      await loaded;
-      const conversation = lodgers[task];
-      if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
-      const record = (await tasks.list()).find((candidate) => candidate.id === task);
-      if (!record) return { success: false, error: { kind: 'no-such-task' } };
-      const house = houseOf(task);
-      await Promise.all([house.settle(conversation), kits.settle(task, conversation)]);
-      /* Waking somebody who is already up has nothing to load, so only a
-         sleeping session says it is waking. */
-      const sleeping = !house.awake();
-      if (sleeping) house.waking(true);
-      try {
-        const hand = record.agent ?? (await settings.defaultHand());
-        const remembered = await settings.lastKit(hand);
-        const started = await runtimes.acp.launch(
-          {
-            conversationId: conversation,
-            providerId: hand,
-            cwd: record.path,
-            sessionId: sessionFor(task, conversation),
-            model: record.model ?? remembered.model,
-            modeId: remembered.mode,
-          },
-          { timeoutMs: 0 }
-        );
-        if (!started.success) {
-          house.broke(whatItSaid(started.error));
-          return refused(whatItSaid(started.error));
-        }
-        /* The launch is back once the history has been read in, but the
-           session's own word that it is ready can trail it by a beat. */
-        if (sleeping) await house.pastStarting(1500);
-        return { success: true, data: undefined };
-      } finally {
-        if (sleeping) house.waking(false);
-      }
-    },
+    wake,
 
     tell: doTell,
     resume: resumeInto,

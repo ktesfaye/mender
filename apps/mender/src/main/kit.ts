@@ -76,6 +76,9 @@ export interface Kits {
   removeKnack(task: string, name: string, from: 'everywhere' | 'here'): Promise<Wrong>;
   /** What it actually says, read on demand. */
   knackText(task: string, name: string, from: 'everywhere' | 'here'): Promise<Read>;
+  /** Whether the agent behind this card is up and answering. */
+  awake(task: string): boolean;
+  /** The agent went home: its card stays, since the yard is still reading it. */
   forget(task: string): Promise<void>;
   dispose(): Promise<void>;
 }
@@ -285,9 +288,14 @@ export function createKits(
       return { success: true, data: { content } };
     },
 
+    awake: (task) => cards.get(task)?.awake ?? false,
+
+    /* The card is kept rather than thrown away: a yard left open while its
+       villager went home is still holding this card's cell, and a new card
+       would publish to nobody while the old one kept offering models off a
+       conversation that had stopped. */
     async forget(task) {
-      await cards.get(task)?.dispose();
-      cards.delete(task);
+      await cards.get(task)?.sleep();
     },
 
     async dispose() {
@@ -332,7 +340,21 @@ class Card {
   }
 
   get awake(): boolean {
-    return Boolean(this.config?.modelOptions ?? this.config?.modeOptions);
+    return (
+      this.conversation !== undefined &&
+      Boolean(this.config?.modelOptions ?? this.config?.modeOptions)
+    );
+  }
+
+  /** Unhooks from a conversation whose agent has stopped. What it last
+   *  offered stays listed, so the slash still reads true to what waking it
+   *  brings back. */
+  async sleep(): Promise<void> {
+    const going = this.replicas;
+    this.replicas = [];
+    this.conversation = undefined;
+    await Promise.all(going.map((replica) => replica.dispose()));
+    await this.redraw();
   }
 
   async hand(): Promise<string> {
@@ -387,7 +409,7 @@ class Card {
       .sort((a, b) => Number(b.here) - Number(a.here) || a.name.localeCompare(b.name));
 
     const [tools, taught] = await Promise.all([this.toolsOf(hand), knacksFor(hand, record?.path)]);
-    const awake = Boolean(this.config?.modelOptions ?? this.config?.modeOptions);
+    const awake = this.awake;
     const working = hands.find((one) => one.id === hand);
     const signIn = working?.signedIn === false ? signInFor(hand, working.name) : null;
 
