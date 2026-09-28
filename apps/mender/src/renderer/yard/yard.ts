@@ -1499,6 +1499,15 @@ function made(
   const id = session?.id ?? '';
   const kept = stepsFollowed.get(id);
   steps.scrollTop = kept === undefined ? steps.scrollHeight : kept;
+  /* The props are pictures, and a picture has no height until it arrives, so
+     the live end is found again once they have. */
+  if (kept === undefined) {
+    for (const wait of [60, 250, 700]) {
+      window.setTimeout(() => {
+        if (!stepsFollowed.has(id)) steps.scrollTop = steps.scrollHeight;
+      }, wait);
+    }
+  }
   steps.addEventListener('scroll', () => {
     const atEdge = steps.scrollTop + steps.clientHeight >= steps.scrollHeight - 24;
     if (atEdge) stepsFollowed.delete(id);
