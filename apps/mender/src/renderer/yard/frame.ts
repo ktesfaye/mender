@@ -136,7 +136,9 @@ export function makeLayer(): Layer {
     const right = !(hidden('now') && hidden('did'));
     const set = arrangement();
     let asked = left ? Math.round(set.asked ?? COLUMN.asked * shrink) : 0;
-    let made = right ? Math.round(set.made ?? COLUMN.made * shrink) : 0;
+    /* The right column starts as narrow as it goes: it is a glance down the
+       side, and the answer in the middle is what has the room. */
+    let made = right ? Math.round(set.made ?? SIDE_LEAST) : 0;
     asked = left ? clamp(asked, SIDE_LEAST, SIDE_MOST) : 0;
     made = right ? clamp(made, SIDE_LEAST, SIDE_MOST) : 0;
     const gutters = (left ? gutter : 0) + (right ? gutter : 0);
