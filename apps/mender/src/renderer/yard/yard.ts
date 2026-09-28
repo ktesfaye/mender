@@ -19,6 +19,18 @@
  */
 
 import type { Offer } from '../board/offer';
+import {
+  arrange,
+  arrangement,
+  bringBack,
+  hidden,
+  moved,
+  PART_NAME,
+  putAway,
+  save as keepArrangement,
+  unmove,
+  type Part,
+} from './arrange';
 import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
 import { makeLine, type Asking as Prompting, type Line } from './line';
@@ -331,6 +343,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
        The columns live in here and the bands top and bottom do not. */
     const floor = window.innerHeight - MARGIN - (layer.cramped() ? RAIL_BARE : RAIL_TALL) - 60;
 
+    regions = [];
     scrims(root);
     lay();
     carried(hands, yard, does);
@@ -344,7 +357,16 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       stillAt.replaceChildren();
     } else if (yard.session) {
       asked(root, columns.asked, yard, floor, layer.cramped(), does);
-      thinking(covered, columns.thinking, yard, floor, does, walkedIn, sinceOf(yard));
+      thinking(
+        covered,
+        columns.thinking,
+        yard,
+        floor,
+        does,
+        walkedIn,
+        sinceOf(yard),
+        columns.asked.wide > 0
+      );
       made(covered, columns.made, yard, floor, does);
       still(stillAt, yard, does);
     } else {
@@ -353,6 +375,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     }
     said_line(root, layer.edge());
     rail(root, yard, layer.cramped(), layer.edge(), does);
+    if (yard.session) grips(columns, floor);
     /* What the line asks for follows what the yard is: somebody at the gate
        wants an answer, an empty project wants to know what to build, and
        anything else is the next thing you have to say. Not while something is
@@ -479,6 +502,138 @@ export function makeYard(layer: Layer, does: Doings): Standing {
         () => el.remove()
       );
     }, 8000);
+  }
+
+  /* ── dragging a rule, and right-clicking a part away ───────────────────── */
+
+  /** Redraw at most once a frame while a rule is being dragged. */
+  let redrawing = 0;
+  function redraw(): void {
+    if (redrawing || !last) return;
+    redrawing = requestAnimationFrame(() => {
+      redrawing = 0;
+      if (last) show(last, false);
+    });
+  }
+
+  /**
+   * Every rule between two parts can be taken hold of and moved, and the parts
+   * on either side take the room. There is nothing to see until the pointer is
+   * on one: the rule itself warms, and the cursor says which way it goes.
+   */
+  function grips(columns: ReturnType<Layer['columns']>, floor: number): void {
+    const top = HEAD.rule + 12;
+    const tall = floor - top;
+    if (columns.asked.wide) {
+      const x = columns.asked.x + columns.asked.wide + (columns.thinking.x - columns.asked.x - columns.asked.wide) / 2;
+      grip('col', { left: x - 5, top, width: 11, height: tall }, 'asked', columns.asked.wide);
+    }
+    if (columns.made.wide) {
+      const end = columns.thinking.x + columns.thinking.wide;
+      const x = end + (columns.made.x - end) / 2;
+      grip('col', { left: x - 5, top, width: 11, height: tall }, 'made', columns.made.wide);
+    }
+    for (const line of root.querySelectorAll<HTMLElement>('[data-grip]')) {
+      const at = line.getBoundingClientRect();
+      grip(
+        'row',
+        { left: at.left, top: at.top - 5, width: at.width, height: 11 },
+        line.dataset.grip as 'changelog' | 'now',
+        Number(line.dataset.value)
+      );
+    }
+  }
+
+  function grip(
+    way: 'col' | 'row',
+    where: { left: number; top: number; width: number; height: number },
+    what: 'asked' | 'made' | 'changelog' | 'now',
+    from: number
+  ): void {
+    const it = box(where);
+    it.className = `grip grip-${way}`;
+    it.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      const start = way === 'col' ? event.clientX : event.clientY;
+      document.body.classList.add(`gripping-${way}`);
+      const move = (next: PointerEvent): void => {
+        const by = (way === 'col' ? next.clientX : next.clientY) - start;
+        /* The left column and the post grow toward the pointer; the right
+           column and the changelog grow away from it. */
+        const size = what === 'asked' || what === 'now' ? from + by : from - by;
+        arrange({ [what]: Math.round(size) }, false);
+        redraw();
+      };
+      const up = (): void => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        document.body.classList.remove(`gripping-${way}`);
+        keepArrangement();
+        redraw();
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    });
+    root.appendChild(it);
+  }
+
+  /** The small slab a right-click opens: put this away, bring that back. */
+  let slab: HTMLElement | null = null;
+  function unslab(): void {
+    slab?.remove();
+    slab = null;
+  }
+  window.addEventListener('contextmenu', (event) => {
+    unslab();
+    if (!showing() || root.style.display === 'none' || scrim.up || !last?.session) return;
+    const part = partAt(event.clientX, event.clientY);
+    const offers: { said: string; run: () => void }[] = [];
+    if (part) offers.push({ said: `put ${PART_NAME[part]} away`, run: () => putAway(part) });
+    for (const gone of arrangement().hidden) {
+      offers.push({ said: `bring back ${PART_NAME[gone]}`, run: () => bringBack(gone) });
+    }
+    if (moved()) offers.push({ said: 'put the dividers back', run: unmove });
+    if (!offers.length) return;
+    event.preventDefault();
+    const it = document.createElement('div');
+    it.className = 'menu slab';
+    for (const offer of offers) {
+      const line = pressing(offer.said, () => {
+        offer.run();
+        unslab();
+        if (last) show(last, false);
+      });
+      line.className += ' slab-line';
+      it.appendChild(line);
+    }
+    stage.appendChild(it);
+    const wide = it.offsetWidth;
+    const tall = it.offsetHeight;
+    it.style.left = `${Math.min(event.clientX, window.innerWidth - wide - 12)}px`;
+    it.style.top = `${Math.min(event.clientY, window.innerHeight - tall - 12)}px`;
+    slab = it;
+  });
+  window.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (slab && !slab.contains(event.target as Node)) unslab();
+    },
+    true
+  );
+  window.addEventListener(
+    'keydown',
+    (event) => {
+      if (slab && event.key === 'Escape') {
+        event.stopPropagation();
+        event.preventDefault();
+        unslab();
+      }
+    },
+    true
+  );
+  function showing(): boolean {
+    return stage.style.display !== 'none';
   }
 
   return {
@@ -745,6 +900,32 @@ const FLAG = [
   'white-space:nowrap',
 ].join(';');
 
+/* ── where each part is, for a right-click to find ──────────────────────── */
+
+interface Region {
+  part: Part;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/** Where each part that can be put away was drawn, last time the yard was. */
+let regions: Region[] = [];
+
+function region(part: Part, at: { x: number; wide: number }, top: number, bottom: number): void {
+  regions.push({ part, left: at.x, right: at.x + at.wide, top, bottom });
+}
+
+function partAt(x: number, y: number): Part | undefined {
+  return regions.find((one) => x >= one.left && x <= one.right && y >= one.top && y <= one.bottom)
+    ?.part;
+}
+
+function clamp(value: number, least: number, most: number): number {
+  return Math.min(most, Math.max(least, value));
+}
+
 /* ── what you asked ────────────────────────────────────────────────────────
    A gatepost with your notes on it. The newest is on parchment and slightly
    crooked, because somebody pinned it there; the ones under it have been up
@@ -758,9 +939,15 @@ function asked(
   cramped: boolean,
   does: Doings
 ): void {
+  if (!at.wide) return;
   /* The changelog sits at the foot of the column, so the post and the notes
-     on it get everything above that and no more. */
-  const under = changelog(root, at, yard, floor, !yard.session?.notes.length);
+     on it get everything above that and no more. Either can be put away, and
+     then the other has the column. */
+  const under = hidden('changelog')
+    ? floor
+    : changelog(root, at, yard, floor, hidden('asked') || !yard.session?.notes.length, hidden('asked'));
+  if (hidden('asked')) return;
+  region('asked', at, HEAD.label, under - 20);
   /* Clear air between the last of the post and the changelog's rule, rather
      than the notes running into it. */
   const room = under - 44 - HEAD.top;
@@ -927,15 +1114,32 @@ function changelog(
   at: { x: number; wide: number },
   yard: Yard,
   floor: number,
-  alone = false
+  alone = false,
+  whole = false
 ): number {
   const versions = yard.versions ?? [];
   if (!versions.length) return floor;
-  const tall = Math.min(260, Math.max(130, Math.round((floor - HEAD.top) * 0.34)));
+  /* As tall as it was dragged to, or a share of the column, or all of it
+     when the post has been put away. */
+  const tall = whole
+    ? floor - HEAD.label
+    : clamp(
+        arrangement().changelog ??
+          Math.min(260, Math.max(130, Math.round((floor - HEAD.top) * 0.34))),
+        90,
+        Math.max(90, floor - HEAD.top - 160)
+      );
   const top = floor - tall;
+  region('changelog', at, whole ? HEAD.label : top - 20, floor);
   /* The rule divides it from the post, so with nothing on the post there is
-     nothing to divide it from. */
-  if (!alone) root.appendChild(rule({ left: at.x, top: top - 20, width: at.wide - 20 }));
+     nothing to divide it from. It is also what you drag to give either of
+     them more room. */
+  if (!alone) {
+    const line = rule({ left: at.x, top: top - 20, width: at.wide - 20 });
+    line.dataset.grip = 'changelog';
+    line.dataset.value = String(tall);
+    root.appendChild(line);
+  }
   root.appendChild(label('changelog', { left: at.x, top }));
 
   /* In the type and the cream the glance at the other sessions used to be
@@ -983,8 +1187,8 @@ function changelog(
   /* Only whole lines: one sliced through the middle by the bottom edge reads
      as the board being broken rather than as there being more. */
   const room = tall - 30;
-  const whole = lines.filter((one) => one.offsetTop + one.offsetHeight <= room).at(-1);
-  if (whole) list.style.height = `${whole.offsetTop + whole.offsetHeight}px`;
+  const last = lines.filter((one) => one.offsetTop + one.offsetHeight <= room).at(-1);
+  if (last) list.style.height = `${last.offsetTop + last.offsetHeight}px`;
 
   const id = yard.project.id;
   list.scrollTop = logScrolled.get(id) ?? 0;
@@ -1007,16 +1211,21 @@ function thinking(
   floor: number,
   does: Doings,
   walkedIn: boolean,
-  since: number | undefined
+  since: number | undefined,
+  ruled = true
 ): void {
   const thoughts = yard.session?.thoughts ?? [];
   const heading = label('what it said', { left: at.x, top: HEAD.label });
   /* A heading over an empty column, or a rule down the side of one, says the
      board is broken, not that nothing has been said yet. */
   if (thoughts.length || yard.session?.live || yard.session?.failure) {
-    root.appendChild(
-      rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
-    );
+    /* No rule down the left of it once the left column has been put away:
+       there is nothing on the other side of it to divide it from. */
+    if (ruled) {
+      root.appendChild(
+        rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
+      );
+    }
     root.appendChild(heading);
   }
   const top = HEAD.top;
@@ -1492,10 +1701,13 @@ function made(
   floor: number,
   does: Doings
 ): void {
+  if (!at.wide) return;
   const session = yard.session;
-  const steps_ = session?.steps ?? [];
-  const hands = session?.agents ?? [];
-  const plan = session?.plan ?? [];
+  /* A question is never put away with the plan: it is the one thing on the
+     board that stops the work until it is answered. */
+  const plan = hidden('now') ? [] : (session?.plan ?? []);
+  const steps_ = hidden('did') ? [] : (session?.steps ?? []);
+  const hands = hidden('did') ? [] : (session?.agents ?? []);
 
   /* NOTHING IS WRITTEN OVER NOTHING.
    *
@@ -1526,8 +1738,13 @@ function made(
     above.appendChild(now);
     /* A plan longer than half the column scrolls inside itself, because the
        steps under it are the other half of what this column is for. */
-    const most = Math.round(above.offsetHeight * (yard.asking ? 0.62 : 0.42));
-    if (now.offsetHeight > most) {
+    const dragged = arrangement().now;
+    const most =
+      dragged === undefined
+        ? Math.round(above.offsetHeight * (yard.asking ? 0.62 : 0.42))
+        : clamp(dragged, 60, Math.max(60, above.offsetHeight - 120));
+    if (dragged !== undefined) now.style.height = `${most}px`;
+    if (now.offsetHeight > most || dragged !== undefined) {
       now.style.height = `${most}px`;
       now.style.overflowY = 'auto';
       now.style.pointerEvents = 'auto';
@@ -1536,13 +1753,20 @@ function made(
       if (doing) now.scrollTop = Math.max(0, doing.offsetTop - now.clientHeight / 3);
     }
     y = now.offsetHeight + 18;
+    region('now', at, HEAD.label, HEAD.label + y);
   }
+  if (steps_.length || hands.length) region('did', at, HEAD.label + y, floor);
 
   if (!steps_.length) {
     if (hands.length) ground(root, at, yard, floor);
     return;
   }
-  if (now) above.appendChild(rule({ left: 0, top: y, width: at.wide }));
+  if (now) {
+    const line = rule({ left: 0, top: y, width: at.wide });
+    line.dataset.grip = 'now';
+    line.dataset.value = String(now.offsetHeight);
+    above.appendChild(line);
+  }
   const labelAt = now ? y + 20 : 0;
   above.appendChild(label('what it did', { left: 0, top: labelAt }));
 
@@ -1784,7 +2008,7 @@ function nobody(
      same place it sits when there is work here, so it does not move when the
      first session arrives. Nothing else: an empty project has no ground worth
      framing, no cart and nothing to have done. */
-  changelog(root, at, yard, floor, true);
+  if (!hidden('changelog') && at.wide) changelog(root, at, yard, floor, true);
 }
 
 /**

@@ -1081,3 +1081,62 @@
     opacity: 1;
   }
 }
+
+/* ── the rules you can take hold of, and the slab a right-click opens ─────── */
+.yard .grip {
+  position: absolute;
+  z-index: 3;
+  pointer-events: auto;
+}
+.yard .grip-col {
+  cursor: col-resize;
+}
+.yard .grip-row {
+  cursor: row-resize;
+}
+.yard .grip::after {
+  content: '';
+  position: absolute;
+  background: rgba(224, 181, 106, 0);
+  transition: background 160ms ease;
+}
+.yard .grip-col::after {
+  left: 5px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.yard .grip-row::after {
+  top: 5px;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+.yard .grip:hover::after,
+body.gripping-col .yard .grip-col:hover::after,
+body.gripping-row .yard .grip-row:hover::after {
+  background: rgba(224, 181, 106, 0.6);
+}
+body.gripping-col,
+body.gripping-col * {
+  cursor: col-resize !important;
+  user-select: none;
+}
+body.gripping-row,
+body.gripping-row * {
+  cursor: row-resize !important;
+  user-select: none;
+}
+.yard .slab {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  min-width: 180px;
+}
+.yard .slab-line {
+  display: block;
+  padding: 6px 18px;
+  font-family: var(--yard-face-label);
+  font-size: 13px;
+  white-space: nowrap;
+}

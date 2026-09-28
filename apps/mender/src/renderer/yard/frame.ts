@@ -19,6 +19,8 @@
  * yard's business.
  */
 
+import { arrangement, hidden } from './arrange';
+
 /** The width every position in the designs is measured against. */
 export const DRAWN_WIDE = 1440;
 /** And the height. A window shorter than this is the normal case, not an edge. */
@@ -45,6 +47,16 @@ export const COLUMN = { asked: 360, thinking: 500, made: 380 } as const;
 
 /** The gap between two columns, which is also where the rule between them goes. */
 export const GUTTER = (DRAWN_WIDE - MARGIN * 2 - COLUMN.asked - COLUMN.thinking - COLUMN.made) / 2;
+
+/** How narrow and how wide a side column can be dragged. */
+const SIDE_LEAST = 220;
+const SIDE_MOST = 640;
+/** And the least the middle is ever left with. */
+const MIDDLE_LEAST = 380;
+
+function clamp(value: number, least: number, most: number): number {
+  return Math.min(most, Math.max(least, value));
+}
 
 export interface Layer {
   /** Where everything is written. Absolutely positioned children, in pixels. */
@@ -112,18 +124,37 @@ export function makeLayer(): Layer {
        window wider than the designs gives the surplus to the middle, because
        the middle is the one you are reading and the other two are a glance
        each; a narrower one squeezes all three together, which gets tight but
-       never pushes a column off the edge, and the type never changes size. */
+       never pushes a column off the edge, and the type never changes size.
+
+       Unless the reader has had their say: a side column dragged wider or
+       narrower keeps the width it was left at, and one with everything in it
+       put away is gone, its gutter with it, and the middle has the room. */
     const drawn = DRAWN_WIDE - MARGIN * 2;
     const shrink = Math.min(1, wide / drawn);
     const gutter = Math.round(GUTTER * shrink);
-    const asked = Math.round(COLUMN.asked * shrink);
-    const made = Math.round(COLUMN.made * shrink);
-    const thinking = Math.max(240, wide - asked - made - gutter * 2);
+    const left = !(hidden('asked') && hidden('changelog'));
+    const right = !(hidden('now') && hidden('did'));
+    const set = arrangement();
+    let asked = left ? Math.round(set.asked ?? COLUMN.asked * shrink) : 0;
+    let made = right ? Math.round(set.made ?? COLUMN.made * shrink) : 0;
+    asked = left ? clamp(asked, SIDE_LEAST, SIDE_MOST) : 0;
+    made = right ? clamp(made, SIDE_LEAST, SIDE_MOST) : 0;
+    const gutters = (left ? gutter : 0) + (right ? gutter : 0);
+    /* The middle never goes under what a paragraph needs; the sides give
+       way first, the wider of them the most. */
+    const short = MIDDLE_LEAST - (wide - asked - made - gutters);
+    if (short > 0) {
+      const give = asked + made || 1;
+      asked = Math.max(left ? SIDE_LEAST : 0, asked - Math.round((short * asked) / give));
+      made = Math.max(right ? SIDE_LEAST : 0, made - Math.round((short * made) / give));
+    }
+    const thinking = Math.max(240, wide - asked - made - gutters);
     const x = edge();
+    const middle = x + asked + (left ? gutter : 0);
     return {
       asked: { x, wide: asked },
-      thinking: { x: x + asked + gutter, wide: thinking },
-      made: { x: x + asked + gutter + thinking + gutter, wide: made },
+      thinking: { x: middle, wide: thinking },
+      made: { x: middle + thinking + (right ? gutter : 0), wide: made },
     };
   }
 

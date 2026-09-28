@@ -139,6 +139,18 @@ checkout's own board. Under all of that is the ground itself, with whoever it
 sent out standing in the firelight with an answer or off in the dark still
 working.
 
+**Everything but the middle can be put away, and every rule can be moved.**
+Right-clicking what you asked, the changelog, the plan or what it did offers
+to put it away; right-clicking anywhere in the yard offers back whatever has
+been, and puts the rules back where they started. A column with nothing left
+in it goes entirely and the answer has its width. Every rule between two
+parts can be taken hold of, the columns sideways and the changelog's and the
+plan's up and down, and whatever is on either side takes the room. Nothing
+shows it until the pointer is on one: the rule warms, and the cursor says
+which way it goes. It is one arrangement for the whole village, kept on this
+machine. A question is never put away with the plan, since it is the one
+thing that stops the work until it is answered.
+
 **Any note of your own on the gatepost is where a new session starts.** Under
 what you said is "carry on from here in a new session," gold and pressable
 like everything else that is. Pressing it cuts a new worktree from the branch

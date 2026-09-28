@@ -2427,6 +2427,19 @@ Driven over the debug port on a copy of the real data folder: the Aurio
 audiobook session, which has a long history, showed the fire for about a
 second and then its whole board in one fade, with nothing moving after.
 
+### Parts put away, rules moved (2026-09-27) — done
+
+Right-click any part of a session's board but the middle to put it away,
+right-click anywhere to bring it back or reset the rules; a side column with
+nothing left in it goes and the middle takes its width. The two column rules
+drag sideways and the changelog's and plan's rules drag up and down. Kept in
+the renderer's own storage, one arrangement for the village.
+
+Driven over the debug port on the Aurio scrubbing session: dragged both
+column rules and the changelog's, put away what it did, the changelog and
+what you asked one by one until the answer ran the full width, then brought
+all three back and reset the rules from the same right-click slab.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour
