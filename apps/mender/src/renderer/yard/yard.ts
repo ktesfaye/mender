@@ -2035,11 +2035,9 @@ function diffPreview(one: Step, does: Doings): HTMLElement {
 /**
  * A project with nobody in it yet.
  *
- * The ground is still the ground and the fire is still cold in the middle of
- * it, so the yard is drawn as it always is. What is missing is every word: no
- * notes on the gatepost, nothing being thought, nothing on the cart. Writing
- * three headings over three empty columns says the board is broken rather than
- * that the work has not started, so it says that instead, once.
+ * It is never read on its own: walking into one opens the new-session board
+ * straight over it, so this is only what sits under that board, and it says
+ * nothing the board does not already.
  */
 function nobody(
   root: HTMLElement,
@@ -2048,16 +2046,6 @@ function nobody(
   yard: Yard,
   floor: number
 ): void {
-  const line = box({ left: at.x, top: HEAD.top + 6, width: 520 }, EMPTY);
-  line.textContent = 'nobody has worked in here yet.';
-  root.appendChild(line);
-
-  const how = box({ left: at.x, top: HEAD.top + 34, width: 520 });
-  how.appendChild(
-    exact('write below and somebody starts on it, right here in this folder.', 12, '#8a7a5e')
-  );
-  root.appendChild(how);
-
   /* The one thing this board still offers about the project itself, in the
      same place it sits when there is work here, so it does not move when the
      first session arrives. Nothing else: an empty project has no ground worth
@@ -2149,10 +2137,6 @@ function ground(
 
   root.appendChild(patch);
 }
-
-const EMPTY = ["font-family:'Josefin Sans',sans-serif", 'font-size:14px', 'color:#a89272'].join(
-  ';'
-);
 
 const HEAD_ROW =
   'display:flex;align-items:baseline;justify-content:space-between;white-space:nowrap';

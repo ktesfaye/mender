@@ -79,8 +79,9 @@ runtime, terminals, scripts, host settings, and the workspace registry that
 cuts worktrees. A new session works right in the project's checkout, on
 whatever branch it is on, beside every other session there, the way several
 Claude Code terminals opened in one folder do; the agents are left to stay
-out of each other's way. Opening a project nobody has worked in says so, and
-what you write on its line starts somebody on it right there. A copy of its
+out of each other's way. Opening a project nobody has worked in opens
+straight onto the new-session board, the same one the empty hook does, since
+there is no work yet to land in. A copy of its
 own, a worktree on a fresh branch, is one line on the new-session board,
 "in its own copy, on its own branch," taken on purpose; starting from an
 existing branch implies it. Taking a shared session down leaves every file

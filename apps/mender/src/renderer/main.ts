@@ -1494,7 +1494,21 @@ async function boot(): Promise<void> {
       const last = lastIn.get(project.id);
       const here = standing.find((task) => task.id === last) ?? standing[0];
       await showYard(aim, project, here);
+      /* Nobody here yet, so there is no work to land in: you land on the
+         question that starts some, the same board the empty hook opens, rather
+         than a yard that only says it is empty. */
+      if (!here) askName(aim, freeSlot(aim.district));
       arrived();
+    };
+
+    /* Backing off a new session lands in the work it would have joined, or,
+       with nobody in the project to land on, back out on the water. */
+    const unname = (): void => {
+      naming = null;
+      if (!open) return;
+      const district = open.district;
+      if (tasksOn(district).length) void openDistrict({ kind: 'district', district });
+      else void picked(null);
     };
 
     /**
@@ -1760,8 +1774,7 @@ async function boot(): Promise<void> {
         return;
       }
       if (naming) {
-        naming = null;
-        if (open) void openDistrict({ kind: 'district', district: open.district });
+        unname();
         return;
       }
       reading = null;
@@ -4661,8 +4674,7 @@ async function boot(): Promise<void> {
             wrote('');
             return;
           }
-          naming = null;
-          if (open) void openDistrict({ kind: 'district', district: open.district });
+          unname();
           return;
         }
         if (yard.line.written()) {

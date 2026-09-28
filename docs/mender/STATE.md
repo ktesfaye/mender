@@ -2443,6 +2443,17 @@ column rules and the changelog's, put away what it did, the changelog and
 what you asked one by one until the answer ran the full width, then brought
 all three back and reset the rules from the same right-click slab.
 
+### An empty project opens on a new session (2026-09-27) — done
+
+Walking into a project nobody has worked in used to stand you in a yard that
+only said so, a screen of its own before any session. It opens straight onto
+the new-session board instead, with every way to start one on it; Escape goes
+back out to the water, since there is nothing under it to land in.
+
+Driven over the debug port on mender with no sessions: the rack slot landed on
+the board, nothing stale beside it, Escape went out to the island and walking
+back in landed on the board again.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour
