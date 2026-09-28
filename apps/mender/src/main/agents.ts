@@ -289,8 +289,24 @@ export function createAgents(
     },
   });
 
+  /* A house whose villager went home, kept rather than thrown away: whoever
+     is watching the yard is still holding its state, and a new house would
+     publish to nobody. Waking the session moves it straight back in. */
+  const asleep = new Map<string, House>();
+
   const houseOf = (task: string): House => {
     let house = houses.get(task);
+    const sleeping = house ? undefined : asleep.get(task);
+    if (sleeping) {
+      asleep.delete(task);
+      houses.set(task, sleeping);
+      house = sleeping;
+      void loaded.then(async () => {
+        const conversation = lodgers[task];
+        if (!conversation) return;
+        await Promise.all([sleeping.settle(conversation), kits.settle(task, conversation)]);
+      });
+    }
     if (!house) {
       house = new House(
         task,
@@ -373,6 +389,15 @@ export function createAgents(
     return { success: true as const, data: conversation };
   };
 
+  /** Unhooks a house from its conversation and keeps it for the next one. */
+  const putToBed = async (task: string): Promise<void> => {
+    const house = houses.get(task);
+    if (!house) return;
+    houses.delete(task);
+    await house.dispose();
+    asleep.set(task, house);
+  };
+
   const refusal = (because: string) => ({
     success: false as const,
     error: { kind: 'refused' as const, because },
@@ -382,8 +407,7 @@ export function createAgents(
   const evict = async (task: string): Promise<void> => {
     await loaded;
     const conversation = lodgers[task];
-    await houses.get(task)?.dispose();
-    houses.delete(task);
+    await putToBed(task);
     island.set(moodsOf(houses));
     if (!conversation) return;
     await runtimes.acp.terminate({ conversationId: conversation });
@@ -406,8 +430,7 @@ export function createAgents(
     await loaded;
     const conversation = lodgers[task];
     stopWaiting(task);
-    await houses.get(task)?.dispose();
-    houses.delete(task);
+    await putToBed(task);
     await kits.forget(task);
     lastActive.delete(task);
     island.set(moodsOf(houses));
@@ -1173,6 +1196,8 @@ class House {
     const going = this.replicas;
     this.replicas = [];
     this.seen.clear();
+    // So settling on a conversation again, even the same one, hooks back up.
+    this.conversation = undefined;
     await Promise.all(going.map((replica) => replica.dispose()));
   }
 
