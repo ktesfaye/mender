@@ -129,8 +129,13 @@ over every answer was one more thing to read. The right column is whatever the s
 in the middle of: a question it is standing at the gate with, its answers
 pressable and numbered, or the plan it is working through, done steps inked
 out and the one it is on lit, and nothing when it is neither. Under that is
-everything it did, scrolling and following the live end, a prop from the kit
-standing for each: a signpost for something read, a crate for something
+everything it did, scrolling and following the live end, said in plain words
+worked out from the command itself rather than the command: what changed
+something gets its own line, built, installed, tested and whether it passed,
+committed with its message, pushed, a file written or changed, and every run
+of reading and grepping and checking between them folds into one quiet line
+that says how much looking it was and opens to show it. A prop from the kit
+stands for each: a signpost for something read, a crate for something
 written, an anvil for something changed, a tub over the fire for something set
 running. A crate's or an anvil's own step carries the lines it actually wrote
 right under it, capped, in the same warm and sore tones a change is read in

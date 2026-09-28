@@ -1878,10 +1878,64 @@ function planned(plan: Session['plan']): HTMLElement {
 function did(one: Step, does: Doings): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'display:flex;flex-direction:column;gap:2px';
+  if (one.group) {
+    it.appendChild(lookedLine(one));
+    return it;
+  }
   it.appendChild(deedLine(one));
   if (one.diff?.length) it.appendChild(diffPreview(one, does));
   return it;
 }
+
+/**
+ * A run of looking around, as one quiet line. Pressing it opens what each of
+ * those actually was, small, under it; pressing it again folds them away.
+ */
+function lookedLine(one: Step): HTMLElement {
+  const it = document.createElement('div');
+  it.style.cssText = 'display:flex;flex-direction:column;gap:2px';
+  const line = row(8);
+  const slot = document.createElement('span');
+  slot.style.cssText =
+    'width:28px;height:18px;display:flex;justify-content:center;align-items:center;flex:none;position:relative;opacity:.55';
+  const prop = sprite(one.prop, 1);
+  prop.style.cssText += ';position:relative;flex:none;transform:scale(.45)';
+  slot.appendChild(prop);
+  line.appendChild(slot);
+  const text = document.createElement('span');
+  const open = openLooks.has(one.id);
+  text.style.cssText = 'color:#8f7c5f;cursor:pointer;pointer-events:auto;white-space:normal';
+  text.textContent = `${open ? '\u25be' : '\u25b8'} ${one.did}`;
+  text.addEventListener('mousedown', (event) => event.preventDefault());
+  line.appendChild(text);
+  it.appendChild(line);
+  const list = document.createElement('div');
+  list.style.cssText = 'margin-left:36px;display:flex;flex-direction:column;gap:2px';
+  const fill = (): void => {
+    list.replaceChildren();
+    if (!openLooks.has(one.id)) return;
+    for (const each of one.group ?? []) {
+      const said = document.createElement('span');
+      said.style.cssText =
+        'font-size:10.5px;line-height:1.35;color:#8f7c5f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+      said.textContent = each.did;
+      said.title = each.did;
+      list.appendChild(said);
+    }
+  };
+  text.addEventListener('click', () => {
+    if (openLooks.has(one.id)) openLooks.delete(one.id);
+    else openLooks.add(one.id);
+    text.textContent = `${openLooks.has(one.id) ? '\u25be' : '\u25b8'} ${one.did}`;
+    fill();
+  });
+  fill();
+  it.appendChild(list);
+  return it;
+}
+
+/** Which runs of looking around have been opened, across redraws. */
+const openLooks = new Set<string>();
 
 /** The line itself: the prop, what it did, and what it cost. */
 function deedLine(one: Step): HTMLElement {

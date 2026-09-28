@@ -240,6 +240,9 @@ export interface Step {
   diff?: string[];
   /** How many more marked lines there were than `diff` carries. */
   diffMore?: number;
+  /** A run of looking around, folded into this one quiet line; what each of
+      them actually was, for when it is opened. */
+  group?: { id: string; did: string }[];
 }
 
 /** Something it produced, which is what the cart is carrying. */

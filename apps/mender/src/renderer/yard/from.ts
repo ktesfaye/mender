@@ -14,6 +14,7 @@ import type { Ask, Failure, Kit, Mood, Told } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { answersFor } from '../board/work';
+import { lookedAround, plainCommand, plainRead, type Plain } from './deeds';
 import { KIT_NAMES } from './sprite';
 import type {
   Fire,
@@ -201,7 +202,7 @@ function sessionOf(
     notes,
     thoughts,
     plan: (from.plan ?? []).map((one) => ({ said: one.text, state: one.state })),
-    steps: (told?.deeds ?? []).map(stepOf),
+    steps: stepsOf(told?.deeds ?? []),
     made: madeOf(told),
     agents: (told?.errands ?? []).map(handOf),
     waiting: (from.waiting ?? []).map((one) => ({ id: one.id, said: one.text })),
@@ -350,6 +351,67 @@ function doingOf(deed: { did: string; why?: string; tool: string }): string {
       return 'making a plan';
     default:
       return deed.did;
+  }
+}
+
+type DeedIn = Parameters<typeof stepOf>[0];
+
+/**
+ * The steps as they are worth reading: everything that changed something on
+ * its own line, in words, and every run of looking around in between folded
+ * into one quiet line that says how much looking it was.
+ */
+function stepsOf(deeds: readonly DeedIn[]): Step[] {
+  const out: Step[] = [];
+  let run: { deed: DeedIn; plain: Plain }[] = [];
+  const flush = (): void => {
+    const first = run[0];
+    if (!first) return;
+    out.push({
+      id: `look:${first.deed.id}`,
+      did: lookedAround(run.map((one) => one.plain.looked)),
+      prop: KIT_NAMES.sign,
+      group: run.map((one) => ({ id: one.deed.id, did: one.deed.why ?? one.deed.did })),
+    });
+    run = [];
+  };
+  for (const deed of deeds) {
+    const plain = plainOf(deed);
+    if (plain.kind === 'look' && !deed.running && !deed.wrong) {
+      run.push({ deed, plain });
+      continue;
+    }
+    flush();
+    const step = stepOf(deed);
+    if (deed.tool === 'execute-tool-call') {
+      step.did = plain.said ?? (deed.running ? 'looking around' : deed.did);
+      if (plain.said === 'ran the tests' && !deed.running) step.note = deed.wrong ? 'failed' : 'passed';
+      else if (deed.wrong) step.note = 'failed';
+    }
+    out.push(step);
+  }
+  flush();
+  return out;
+}
+
+function plainOf(deed: DeedIn): Plain {
+  switch (deed.tool) {
+    case 'read-tool-call':
+    case 'web-fetch-tool-call':
+      return plainRead(deed.did);
+    case 'search-tool-call':
+      return { kind: 'look', looked: 'search' };
+    case 'execute-tool-call': {
+      const plain = plainCommand(deed.did);
+      /* Where the agent did say what a command was for, that is the words. */
+      return plain.kind === 'act' && deed.why ? { ...plain, said: deed.why } : plain;
+    }
+    case 'tool-group':
+      return { kind: 'look', looked: 'check' };
+    default:
+      return /^(ToolSearch|ListAgents|TodoWrite|Skill)\b/.test(deed.did)
+        ? { kind: 'look', looked: 'check' }
+        : { kind: 'act' };
   }
 }
 
