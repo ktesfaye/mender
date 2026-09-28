@@ -76,7 +76,7 @@ export async function createAcpAgentConnection(
 
   if (handle.stderr) {
     const onStderr = (data: Buffer): void => {
-      logger.debug('createAcpAgentConnection: agent stderr', { text: data.toString().trim() });
+      logger.info('createAcpAgentConnection: agent stderr', { text: data.toString().trim() });
     };
     handle.stderr.on('data', onStderr);
     connectionScope.add(() => {

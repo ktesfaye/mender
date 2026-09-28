@@ -135,12 +135,21 @@ export class SessionCell {
    *  the hood. Turn-ending failures are recorded from the prompt response
    *  itself, in `sendPromptInternal`. */
   applySessionFailure(failure: SessionFailure): void {
+    this.deps.logger.info('SessionCell: session failure', {
+      conversationId: this.conversationId,
+      failure,
+      phase: this.machine.phase.kind,
+    });
     this.currentFailure = failure;
     this.deps.callbacks?.onSessionStateChanged?.();
   }
 
   clearSessionFailure(): void {
     if (!this.currentFailure) return;
+    this.deps.logger.info('SessionCell: session failure cleared', {
+      conversationId: this.conversationId,
+      failureId: this.currentFailure.id,
+    });
     this.currentFailure = null;
     this.deps.callbacks?.onSessionStateChanged?.();
   }
@@ -253,6 +262,13 @@ export class SessionCell {
         phase: this.machine.phase.kind,
       });
       return;
+    }
+
+    /* A warning is the adapter saying it is retrying under the hood ("reconnecting,
+       attempt 1 of 10"), and it never sends an all-clear when the retry lands.
+       The agent saying or doing anything again is that all-clear. */
+    if (this.currentFailure?.severity === 'warning' && this.isTranscriptEvent(event)) {
+      this.clearSessionFailure();
     }
 
     const previousRunningAgentCount = this.lastRunningAgentCount;
@@ -547,6 +563,12 @@ export class SessionCell {
       (effect) => effect.type === 'agentEvent' && effect.phase === 'start'
     );
     if (!started) {
+      this.deps.logger.info('SessionCell: prompt queued', {
+        conversationId: this.conversationId,
+        promptId: prompt.id,
+        chars: prompt.text?.length ?? 0,
+        phase: this.machine.phase.kind,
+      });
       acceptance?.onAccepted({ queued: true });
       return ok({ queued: true });
     }
@@ -599,7 +621,18 @@ export class SessionCell {
         content: promptRequest.prompt,
       });
       acceptance?.onAccepted({ queued: false });
+      this.deps.logger.info('SessionCell: prompt sent', {
+        conversationId: this.conversationId,
+        promptId: prompt.id,
+        chars: prompt.text?.length ?? 0,
+        attachments: resolvedAttachments.length,
+      });
       const response = await this.deps.agent.prompt(promptRequest);
+      this.deps.logger.info('SessionCell: prompt settled', {
+        conversationId: this.conversationId,
+        promptId: prompt.id,
+        stopReason: response.stopReason,
+      });
       this.rawLog.record({
         kind: 'prompt_result',
         sessionId: this.acpSessionId,
@@ -613,9 +646,15 @@ export class SessionCell {
         (response as { _meta?: unknown })._meta
       );
       if (failure) this.applySessionFailure(failure);
+      else if (this.currentFailure?.severity === 'warning') this.clearSessionFailure();
       this.settleTurn(outcomeFromStopReason(response.stopReason));
       return ok({ queued: false });
     } catch (e) {
+      this.deps.logger.error('SessionCell: prompt failed', {
+        conversationId: this.conversationId,
+        promptId: prompt.id,
+        error: e,
+      });
       const err = acpErr.promptFailed(toSerializedError(e));
       this.rawLog.record({
         kind: 'prompt_result',

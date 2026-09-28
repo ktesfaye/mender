@@ -14,6 +14,7 @@ import type {
 import type { ConversationRecords } from '@emdash/core/runtimes/conversations/api';
 import { hostDependenciesContract } from '@emdash/core/services/host-dependencies/api';
 import { pluginRegistry } from '@emdash/plugins/agents';
+import { log } from '@emdash/shared/logger';
 import { createLiveJobReplicaCache, LiveJobFailedError, ReplicaState } from '@emdash/wire/live';
 import type { WireFile } from '@emdash/wire/rpc';
 import { cell, peek, type Cell } from '@emdash/wire/state';
@@ -532,8 +533,18 @@ export function createAgents(
 
     const house = houseOf(task);
     const moved = await moveIn(task, record);
-    if (!moved.success) return moved;
+    if (!moved.success) {
+      log.warn('agents: tell could not move in', { area: 'agents', task, error: moved.error });
+      return moved;
+    }
     const conversation = moved.data;
+    log.info('agents: tell', {
+      area: 'agents',
+      task,
+      conversation,
+      chars: said.length,
+      carrying: carrying?.length ?? 0,
+    });
 
     /* Anything said fresh — by hand or by a scheduled continue — is this
        session's own "retry" from here on, and stops any continue still armed
@@ -575,6 +586,7 @@ export function createAgents(
       { timeoutMs: 0 }
     );
     if (!started.success) {
+      log.error('agents: launch failed', { area: 'agents', task, error: started.error });
       house.broke(whatItSaid(started.error));
       return refused(whatItSaid(started.error));
     }
@@ -600,9 +612,11 @@ export function createAgents(
       { timeoutMs: 0 }
     );
     if (!sent.success) {
+      log.error('agents: prompt refused', { area: 'agents', task, error: sent.error });
       house.broke(whatItSaid(sent.error));
       return refused(whatItSaid(sent.error));
     }
+    log.info('agents: tell landed', { area: 'agents', task, queued: sent.data?.queued });
     return { success: true, data: undefined };
   };
 
@@ -1287,6 +1301,7 @@ class House {
   }
 
   broke(because: string): void {
+    log.warn('agents: broke', { area: 'agents', task: this.task, because });
     this.trouble = because;
     this.publish();
   }
@@ -1336,7 +1351,21 @@ class House {
     const was = peek(this.state);
     const next = this.read();
     this.state.set(next);
-    if (was.mood !== next.mood) this.moved();
+    if (was.mood !== next.mood) {
+      log.info('agents: mood', {
+        area: 'agents',
+        task: this.task,
+        conversation: this.conversation,
+        from: was.mood,
+        to: next.mood,
+        doing: next.doing,
+        lifecycle: this.lifecycle?.lifecycle,
+        generating: this.lifecycle?.isGenerating,
+        failure: this.lifecycle?.failure ?? undefined,
+        queued: this.lifecycle?.queuedPrompts?.length,
+      });
+      this.moved();
+    }
   }
 
   /** Mark, or unmark, a pick on a multi-select question. */
@@ -1379,7 +1408,11 @@ class House {
       queued: waitingOf(this.lifecycle),
       room: roomOf(this.usage),
       cost: costOf(this.usage),
-      failure: !this.trouble && failure ? failureViewOf(failure, bankable(failure.category)) : null,
+      /* Mid-retry it is a line on the fire, not a board of ways out of it. */
+      failure:
+        !this.trouble && failure && mood !== 'working'
+          ? failureViewOf(failure, bankable(failure.category))
+          : null,
       carryOn: this.carryOnAt,
       ...(this.wakingUp ? { waking: true as const } : {}),
     };
@@ -1408,7 +1441,10 @@ function moodOf(
      a real next move (wait, retry, start again) rather than something broken
      to go and fix. Sign-in and a request the agent flatly would not make are
      the ones that stay sore. */
-  if (failure) return bankable(failure.category) ? 'resting' : 'hurt';
+  /* A warning mid-turn is the agent retrying under its own steam; it is still
+     working, and banking the fire over it invites a second copy of the prompt. */
+  const retrying = failure?.severity === 'warning' && lifecycle.isGenerating;
+  if (failure && !retrying) return bankable(failure.category) ? 'resting' : 'hurt';
   if (asking) return 'asking';
   if (lifecycle.lifecycle === 'starting' || lifecycle.lifecycle === 'replaying') return 'arriving';
   if (lifecycle.isGenerating) return 'working';
@@ -1442,6 +1478,10 @@ function bankable(category: SessionFailure['category']): boolean {
  *  would say it — what kind of wait it is, and when it lifts, in local time. */
 function failureDoing(failure: SessionFailure): string {
   const resets = failure.resetAt ? ` · resets ${localClock(failure.resetAt)}` : '';
+  if (failure.severity === 'warning' && failure.category === 'connection')
+    return 'the line to the agent dropped, and it is trying again.';
+  if (failure.severity === 'warning' && failure.category === 'service')
+    return `a rough patch at the other end, and it is trying again${resets}`;
   switch (failure.category) {
     case 'limit':
       return `waiting out a limit${resets}`;

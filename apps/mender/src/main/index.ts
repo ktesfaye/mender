@@ -19,6 +19,7 @@ import { installDragOut } from './drag';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
 import { createGitHubStatus } from './github';
+import { logWindow } from './logging';
 import { installAppMenu } from './menu';
 import { watchMissed } from './missed';
 import { createProjects } from './projects';
@@ -35,18 +36,8 @@ import { createVillageController } from './village';
 import { installWire } from './wire';
 import { restoredBounds, watchWindowBounds } from './window-state';
 
-const scope = createScope({ label: 'mender' });
-
 export async function main(): Promise<void> {
-  // Before anything asks for a path: userData is derived from the app's name,
-  // and the package is called @emdash/mender, which would put his village under
-  // a scoped folder named after the thing we forked.
-  app.setName('Mender');
-  /* A second village with a data folder of its own, for driving a build
-     beside the one in the Applications folder without the two writing into
-     the same databases. */
-  if (process.env.MENDER_DATA_DIR) app.setPath('userData', process.env.MENDER_DATA_DIR);
-
+  const scope = createScope({ label: 'mender' });
   /* A way to look at the village without standing in front of it.
      Verifying a change here means driving the real window and reading real
      pixels, and doing that through the mouse means taking over the screen of
@@ -185,6 +176,7 @@ async function openVillageWindow(): Promise<BrowserWindow> {
   window.webContents.on('console-message', (_event, _level, message, line, source) => {
     process.stdout.write(`[renderer] ${message} (${source}:${line})\n`);
   });
+  logWindow(window.webContents);
   window.webContents.on('render-process-gone', (_event, details) => {
     process.stdout.write(`[renderer] gone: ${details.reason}\n`);
   });

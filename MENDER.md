@@ -53,6 +53,7 @@ tab strip.
 
 | | |
 |---|---|
+| `~/Library/Application Support/Mender/logs/` | what the app, every worker, every agent's CLI and the window said, one JSON-lines file a day, a month kept. Not for him: read it first when something went wrong. Mood changes, what was said to a session and whether it queued, every failure the agent reported and when it cleared |
 | `docs/mender/STATE.md` | how far along this actually is: every ledger row's state and the wave it belongs to. The only thing allowed to answer "how much is left" |
 | `docs/mender/BUILD-CATALOG.md` | the feature ledger, the open design questions, the build list, the art list, the risks |
 | `docs/mender/catalog/` | the nine source audits that document was built from |

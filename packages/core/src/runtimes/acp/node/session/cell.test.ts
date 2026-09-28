@@ -92,6 +92,29 @@ describe('SessionCell prompts', () => {
     expect(cell.sessionState.failure).toBeNull();
   });
 
+  it('drops a retrying warning once the agent carries on', async () => {
+    const { cell, agent } = makeCell();
+    let settle!: (value: { stopReason: 'end_turn' }) => void;
+    agent.prompt = vi.fn().mockImplementation(() => new Promise((resolve) => (settle = resolve)));
+    const turn = cell.prompt({ text: 'hello' });
+    await vi.waitFor(() => expect(agent.prompt).toHaveBeenCalled());
+
+    cell.applySessionFailure({
+      id: 'n1',
+      category: 'connection',
+      severity: 'warning',
+      title: 'Reconnecting to Claude, attempt 1 of 10.',
+      actions: [],
+    });
+    expect(cell.sessionState.failure?.id).toBe('n1');
+
+    cell.push({ kind: 'message', role: 'assistant', messageId: 'm1', text: 'back' });
+    expect(cell.sessionState.failure).toBeNull();
+
+    settle({ stopReason: 'end_turn' });
+    await turn;
+  });
+
   it('queues while working and drains after the active turn settles', async () => {
     const { cell, agent } = makeCell();
     let resolveFirst!: (value: { stopReason: 'end_turn' }) => void;
