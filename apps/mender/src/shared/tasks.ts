@@ -31,6 +31,8 @@ export const taskSchema = z.object({
       session's branch — set when its own branch isn't what went up, or the
       match never found it. */
   pull: z.string().optional(),
+  /** Works in the project's own folder rather than a worktree of its own. */
+  shared: z.boolean().optional(),
 });
 
 export type Task = z.infer<typeof taskSchema>;
@@ -82,7 +84,7 @@ export const tasksContract = defineContract({
     input: z.object({ project: z.string().optional() }),
     output: z.array(taskSchema),
   }),
-  /** Cut a worktree and start a session in it. */
+  /** Start a session, in the project's own folder or a worktree cut for it. */
   begin: fallible({
     input: z.object({
       project: z.string(),
@@ -95,6 +97,9 @@ export const tasksContract = defineContract({
       /** An existing branch to stand the session on, in place of cutting a
           fresh one from the name. */
       branch: z.string().optional(),
+      /** Its own worktree on its own branch, rather than the project's own
+          folder. */
+      isolated: z.boolean().optional(),
     }),
     data: taskSchema,
     error: taskErrorSchema,

@@ -145,7 +145,17 @@ export async function openCard(
 
   return {
     rows: () =>
-      written(task, kit, ending, showing, catalogShowing, removing, removingHand, exported, knackUi),
+      written(
+        task,
+        kit,
+        ending,
+        showing,
+        catalogShowing,
+        removing,
+        removingHand,
+        exported,
+        knackUi
+      ),
     setExported: (said) => {
       exported = said;
     },
@@ -209,7 +219,8 @@ export async function openCard(
           void client.agents
             .knackText({ task: task.id, name: asked.name, from: asked.from })
             .then((got) => {
-              if (knackUi.reading?.name !== asked.name || knackUi.reading.from !== asked.from) return;
+              if (knackUi.reading?.name !== asked.name || knackUi.reading.from !== asked.from)
+                return;
               knackUi = {
                 ...knackUi,
                 reading: {
@@ -298,7 +309,7 @@ function written(
   ];
   if (!kit) {
     rows.push({ kind: 'gap' }, { kind: 'line', text: 'looking…', tone: 'faded' });
-    return [...rows, ...over(ending, false)];
+    return [...rows, ...over(ending, false, task.shared)];
   }
 
   rows.push({ kind: 'gap' }, { kind: 'heading', text: 'who works here' });
@@ -328,7 +339,9 @@ function written(
         kind: 'entry',
         mark: '✗',
         text:
-          removingHand === hand.id ? `press again and ${hand.name} is off this machine` : 'take it off this machine',
+          removingHand === hand.id
+            ? `press again and ${hand.name} is off this machine`
+            : 'take it off this machine',
         tone: removingHand === hand.id ? 'sore' : 'faded',
         pick: `rmhand:${hand.id}`,
       });
@@ -403,7 +416,7 @@ function written(
     rows.push({ kind: 'gap' }, exportRow(exported));
     /* A sleeping session still ends, and a session nobody has spoken to is
        exactly the one you are most likely to want rid of. */
-    return [...rows, ...over(ending, false)];
+    return [...rows, ...over(ending, false, task.shared)];
   }
 
   choices(rows, 'thinking with', 'model', kit.model, kit.models);
@@ -462,8 +475,7 @@ function written(
       rows.push({ kind: 'line', text: 'nothing yet.', tone: 'faded' });
     }
     for (const knack of kit.knacks) {
-      const open =
-        knackUi?.reading?.name === knack.name && knackUi.reading.from === knack.from;
+      const open = knackUi?.reading?.name === knack.name && knackUi.reading.from === knack.from;
       rows.push({
         kind: 'entry',
         mark: knack.from === 'here' ? '■' : OFF,
@@ -477,7 +489,8 @@ function written(
           text: knackUi?.reading?.text ?? 'reading…',
           tone: 'faded',
         });
-        const asking = knackUi?.removing?.name === knack.name && knackUi.removing.from === knack.from;
+        const asking =
+          knackUi?.removing?.name === knack.name && knackUi.removing.from === knack.from;
         rows.push({
           kind: 'entry',
           mark: '✗',
@@ -503,7 +516,7 @@ function written(
     rows.push({ kind: 'line', text: 'teach it one of your own', pick: 'addcustomknack' });
   }
   rows.push({ kind: 'gap' }, exportRow(exported));
-  return [...rows, ...over(ending, kit.awake)];
+  return [...rows, ...over(ending, kit.awake, task.shared)];
 }
 
 /** The one thing the card does to the conversation rather than to who has it. */
@@ -575,14 +588,35 @@ function homeward(awake: boolean): Row[] {
     },
     {
       kind: 'prose',
-      text: 'the worktree and everything said stay. opening this again wakes the same one back up.',
+      text: 'the files and everything said stay. opening this again wakes the same one back up.',
       tone: 'faded',
     },
   ];
 }
 
-function over(ending: Ending | undefined, awake: boolean): Row[] {
+function over(ending: Ending | undefined, awake: boolean, shared?: boolean): Row[] {
   if (!ending) return homeward(awake);
+  if (shared) {
+    /* Nothing of its own to lose: the folder is the project's, and whatever
+       was changed in it stays for whoever is next. */
+    return [
+      ...homeward(awake),
+      { kind: 'gap' },
+      { kind: 'heading', text: 'when it is over' },
+      {
+        kind: 'line',
+        text: 'it works in the project’s own folder, so taking it down leaves every file where it is.',
+        tone: 'faded',
+      },
+      {
+        kind: 'entry',
+        mark: '✗',
+        text: 'send them home and take this down',
+        tone: 'faded',
+        pick: 'end!',
+      },
+    ];
+  }
   const rows: Row[] = [
     ...homeward(awake),
     { kind: 'gap' },
@@ -658,10 +692,7 @@ export function unsentIn(head: CheckoutHeadState | undefined): number | null {
  * instead — for reading an ended session back without any marks on it, or
  * for carrying a conversation into a forked one up to a given turn.
  */
-export function turnsOf(
-  told: Told,
-  uptoTurn?: number
-): { who: 'you' | 'agent'; text: string }[] {
+export function turnsOf(told: Told, uptoTurn?: number): { who: 'you' | 'agent'; text: string }[] {
   const turns: { who: 'you' | 'agent'; text: string }[] = [];
   const notes = [...told.notes]
     .reverse()

@@ -18,11 +18,11 @@ import type { MenderRuntimes } from './runtimes';
 /**
  * The tasks, which are the sessions.
  *
- * A task is a checkout of its own: its own branch, its own worktree, its own
- * working tree to leave in a mess without touching anyone else's. That is the
- * whole reason it is a task and not just a conversation — two agents loose in
- * one working tree trample each other, and nothing in the village is worth
- * that.
+ * A task works in the project's own folder, alongside every other session in
+ * that project, the way several Claude Code terminals opened in one checkout
+ * do. The agents are left to stay out of each other's way. A task can instead
+ * be a checkout of its own, its own branch and its own worktree, when that is
+ * asked for on purpose; that is the only time anything is cut.
  *
  * It may also stand in one of its district's buildings, and when it does the
  * island lights up for it. That is decoration. A project can have more
@@ -62,6 +62,10 @@ export interface Task {
   /** A pull request picked by hand, in place of matching this session's
       branch. */
   readonly pull?: string;
+  /** Works in the project's own folder alongside everybody else, rather than
+      a worktree of its own. There is nothing to cut and nothing to tear
+      down: taking it off the rail leaves every file exactly where it is. */
+  readonly shared?: boolean;
 }
 
 /**
@@ -103,7 +107,10 @@ export interface Tasks {
     /** An existing branch to stand the session on, instead of cutting a
         fresh one out of the name. `createWorktree` reuses it rather than
         cutting from a base ref when it finds one already there. */
-    branch?: string
+    branch?: string,
+    /** Its own worktree on its own branch. Without it, and without a
+        branch to stand on, the session works in the project's own folder. */
+    isolated?: boolean
   ): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
   /** The branches this project's checkout already knows about, for the
       naming step to offer alongside a fresh one. */
@@ -150,7 +157,9 @@ export interface Tasks {
   /** Every session taken down in this project, newest first. */
   history(project: string): Promise<HistoryEntry[]>;
   /** Cuts a fresh worktree from that same branch and stands it back up. */
-  revive(project: string): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
+  revive(
+    project: string
+  ): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
   /**
    * A new session, its own worktree cut from the branch as it stands.
    *
@@ -229,6 +238,24 @@ export function createTasks(
   // rather than empty until the first thing changes.
   void all().then((tasks) => standing.set(tasks));
 
+  /** A session in the project's own folder, on whatever branch it is on. */
+  const sharedIn = async (
+    found: Project,
+    rest: Omit<Task, 'id' | 'branch' | 'base' | 'path' | 'startedAt' | 'shared'>
+  ): Promise<Task | null> => {
+    const parsed = parseNativeAbsolute(found.path);
+    if (!parsed.success) return null;
+    return {
+      ...rest,
+      id: crypto.randomUUID(),
+      branch: (await currentBranch(runtimes, parsed.data)) ?? 'HEAD',
+      base: null,
+      path: found.path,
+      startedAt: new Date().toISOString(),
+      shared: true,
+    };
+  };
+
   return {
     watch: () => standing,
 
@@ -289,13 +316,29 @@ export function createTasks(
       }
     },
 
-    async begin(project, name, slot, kind, branch) {
+    async begin(project, name, slot, kind, branch, isolated) {
       const written = name.trim();
       if (!written) return fail({ kind: 'nameless' });
 
       const tasks = await all();
       const found = (await projects.list()).find((candidate) => candidate.id === project);
       if (!found) return fail({ kind: 'no-such-project' });
+
+      if (!isolated && !branch?.trim()) {
+        if (slot !== null && tasks.some((task) => task.project === project && task.slot === slot)) {
+          return fail({ kind: 'taken' });
+        }
+        const task = await sharedIn(found, {
+          project,
+          name: written,
+          title: written,
+          slot,
+          ...(kind === 'terminal' ? { kind: 'terminal' as const } : {}),
+        });
+        if (!task) return fail({ kind: 'refused', because: 'that checkout has moved.' });
+        await save([...tasks, task]);
+        return { success: true as const, data: task };
+      }
 
       const settings = await appSettings.checkoutSettings();
       const cut = branch?.trim() || branchFor(written, settings);
@@ -320,12 +363,18 @@ export function createTasks(
         remote: 'origin',
       });
       const baseRef =
-        (asked.success && asked.data.branch) || (await currentBranch(runtimes, parsed.data)) || 'HEAD';
+        (asked.success && asked.data.branch) ||
+        (await currentBranch(runtimes, parsed.data)) ||
+        'HEAD';
 
       /* Under the folder's own name, not the project's: a project renamed on
          the island is not a reason for its next worktree to live somewhere
          else from its last. */
-      const path = join(await worktreeRoot(appSettings), basename(found.path), cut.replaceAll('/', '-'));
+      const path = join(
+        await worktreeRoot(appSettings),
+        basename(found.path),
+        cut.replaceAll('/', '-')
+      );
       const made = await runtimes.workspaces.createWorktree(
         {
           workspaceId: crypto.randomUUID(),
@@ -440,9 +489,7 @@ export function createTasks(
       // exists there is a transcript to lose, and the board it opens is
       // decided at open time, purely off this field.
       return await save(
-        tasks.map((task) =>
-          task.id === id && !task.kind ? { ...task, kind: 'terminal' } : task
-        )
+        tasks.map((task) => (task.id === id && !task.kind ? { ...task, kind: 'terminal' } : task))
       );
     },
 
@@ -481,11 +528,14 @@ export function createTasks(
       const going = tasks.find((task) => task.id === id);
       if (going) {
         // The branch outlives the building. Abandoning a task takes down the
-        // place the work was done, not the work.
-        await runtimes.workspaces.deleteWorktree(
-          { workspaceId: id, deleteBranch: false },
-          { timeoutMs: 0 }
-        );
+        // place the work was done, not the work. A shared session never had
+        // a place of its own: the folder is the project's.
+        if (!going.shared) {
+          await runtimes.workspaces.deleteWorktree(
+            { workspaceId: id, deleteBranch: false },
+            { timeoutMs: 0 }
+          );
+        }
         // The empty hook remembers this one, in case letting go of it was a
         // slip on the second press.
         lastTakenDown.set(going.project, going);
@@ -522,6 +572,23 @@ export function createTasks(
       const found = (await projects.list()).find((candidate) => candidate.id === project);
       if (!found) return fail({ kind: 'no-such-project' });
 
+      if (stash.shared) {
+        const task = await sharedIn(found, {
+          project,
+          name: stash.name,
+          title: stash.title,
+          named: stash.named,
+          agent: stash.agent,
+          model: stash.model,
+          slot: stash.slot,
+          kind: stash.kind,
+        });
+        if (!task) return fail({ kind: 'refused', because: 'that checkout has moved.' });
+        lastTakenDown.delete(project);
+        await save([...(await all()), task]);
+        return { success: true as const, data: task };
+      }
+
       const repository = await repositoryOf(runtimes, found);
       if (!repository.success) return repository;
 
@@ -531,7 +598,11 @@ export function createTasks(
       // The branch outlived the building, so this is the same branch, not a
       // new one — `createWorktree` reuses an existing `refs/heads/<branch>`
       // rather than cutting from `baseRef` when it finds one already there.
-      const path = join(await worktreeRoot(appSettings), basename(found.path), stash.branch.replaceAll('/', '-'));
+      const path = join(
+        await worktreeRoot(appSettings),
+        basename(found.path),
+        stash.branch.replaceAll('/', '-')
+      );
       const made = await runtimes.workspaces.createWorktree(
         {
           workspaceId: crypto.randomUUID(),
@@ -583,6 +654,20 @@ export function createTasks(
       const found = (await projects.list()).find((candidate) => candidate.id === original.project);
       if (!found) return fail({ kind: 'no-such-project' });
 
+      if (original.shared) {
+        const task = await sharedIn(found, {
+          project: original.project,
+          name: `${original.name}-carry-on`,
+          title: `${original.title} · carried on`,
+          agent: original.agent,
+          slot: null,
+          kind: original.kind,
+        });
+        if (!task) return fail({ kind: 'refused', because: 'that checkout has moved.' });
+        await save([...tasks, task]);
+        return { success: true as const, data: task };
+      }
+
       const repository = await repositoryOf(runtimes, found);
       if (!repository.success) return repository;
 
@@ -598,7 +683,11 @@ export function createTasks(
       if (here.some((task) => task.branch === branch)) {
         branch = branchFor(`${original.name}-carry-on-${Date.now().toString(36)}`, naming);
       }
-      const path = join(await worktreeRoot(appSettings), basename(found.path), branch.replaceAll('/', '-'));
+      const path = join(
+        await worktreeRoot(appSettings),
+        basename(found.path),
+        branch.replaceAll('/', '-')
+      );
       const made = await runtimes.workspaces.createWorktree(
         {
           workspaceId: crypto.randomUUID(),
@@ -646,10 +735,12 @@ export function createTasks(
       const tasks = await all();
       const going = tasks.filter((task) => task.project === project);
       for (const task of going) {
-        await runtimes.workspaces.deleteWorktree(
-          { workspaceId: task.id, deleteBranch: false },
-          { timeoutMs: 0 }
-        );
+        if (!task.shared) {
+          await runtimes.workspaces.deleteWorktree(
+            { workspaceId: task.id, deleteBranch: false },
+            { timeoutMs: 0 }
+          );
+        }
         indexed.get(task.id)?.dispose();
         indexed.delete(task.id);
         gone?.(task.id);

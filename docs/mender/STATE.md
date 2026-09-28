@@ -19,8 +19,8 @@ mistaken for the build.
 ## Where it is, in one paragraph
 
 The village is real and so is the back end. The island draws, grows, pans and
-opens; a project is a district; a session is its own worktree with a real Claude
-agent in it that resumes across restarts; a project's board lists its sessions
+opens; a project is a district; a session works in the project's own folder (or, asked for, a worktree of
+its own) with a real Claude agent in it that resumes across restarts; a project's board lists its sessions
 and starts new ones; a slash on the line reaches Claude's own commands and skills
 and sets the model, mode and effort of the running session; and the card behind
 `/agent` shows what that session works with. That is roughly the first three
@@ -2362,6 +2362,23 @@ showing both alive at once the whole time. On an existing terminal-kind
 session, pressed "end this session" — armed to "ends the agent's process.
 click again to end it." — and confirmed the `claude` process and its tmux
 session were gone afterward.
+
+### Sessions share the project's folder by default — done
+
+A new session no longer cuts a worktree. It runs in the project's own
+checkout, on whatever branch that is on, beside every other session there;
+the empty project says "write below and somebody starts on it, right here in
+this folder." The new-session board carries "in its own copy, on its own
+branch" for the isolated kind, and picking an existing branch implies it.
+A shared session's take-down leaves the folder alone, and reviving or
+carrying one on makes another shared one. Schedules start shared too.
+
+Driven, in a throwaway repo under a separate data folder: typed on the
+empty project's line, got an answer, and git showed no new worktree or
+branch with the task recorded against the repo's own path. Turned the
+isolated line on, started one, and a worktree and `mender/…` branch
+appeared. Took the shared session down from its card and the repo's files
+were all still there.
 
 ### Next
 

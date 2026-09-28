@@ -73,13 +73,19 @@ on it and brings the board in beside it, with that checkout's branch, its
 uncommitted files and its last commits written on the wood, changing as the
 tree changes.
 
-**Sessions are real, and each one is a checkout of its own.** Emdash's whole
-runtime chain is up underneath: conversations, ACP, the TUI agent runtime,
-terminals, scripts, host settings, and the workspace registry that cuts
-worktrees. Starting a session asks what is going to happen in it; what you type
-on the wood becomes a branch and a worktree, and that session is then its own
-checkout with its own board. Two agents are never loose in one working tree.
-Nothing about any of it is a stand-in.
+**Sessions are real, and they share the project's own folder.** Emdash's
+whole runtime chain is up underneath: conversations, ACP, the TUI agent
+runtime, terminals, scripts, host settings, and the workspace registry that
+cuts worktrees. A new session works right in the project's checkout, on
+whatever branch it is on, beside every other session there, the way several
+Claude Code terminals opened in one folder do; the agents are left to stay
+out of each other's way. Opening a project nobody has worked in says so, and
+what you write on its line starts somebody on it right there. A copy of its
+own, a worktree on a fresh branch, is one line on the new-session board,
+"in its own copy, on its own branch," taken on purpose; starting from an
+existing branch implies it. Taking a shared session down leaves every file
+where it is, since the folder was never its to take. Nothing about any of it
+is a stand-in.
 
 **An agent runs in a task, and it is a villager.** Hanging a lantern on the
 empty hook at the end of the rail moves somebody in: the ACP runtime spawns

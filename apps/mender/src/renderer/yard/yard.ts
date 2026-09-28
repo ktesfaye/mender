@@ -42,8 +42,8 @@ import type {
   Thought,
   Yard,
 } from './what';
-import { box, exact, firelight, folk, label, row, rule, said, stack, trim } from './write';
 import { hiddenCount, revealMore, windowStart } from './window';
+import { box, exact, firelight, folk, label, row, rule, said, stack, trim } from './write';
 
 /*
  * On a Mac the window's own three buttons float over the top left corner of
@@ -1581,7 +1581,9 @@ function nobody(
   root.appendChild(line);
 
   const how = box({ left: at.x, top: HEAD.top + 34, width: 520 });
-  how.appendChild(exact('say what you want built, or hang a lantern on the rail.', 12, '#8a7a5e'));
+  how.appendChild(
+    exact('write below and somebody starts on it, right here in this folder.', 12, '#8a7a5e')
+  );
   root.appendChild(how);
 
   /* The one thing this board still offers about the project itself, in the

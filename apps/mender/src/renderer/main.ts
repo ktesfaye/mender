@@ -1,10 +1,10 @@
+import type { HostDependencyView } from '@emdash/core/primitives/host-dependencies/api';
 import {
   formatAbsolute,
   joinAbsolute,
   parseNativeAbsolute,
   type PortableRelativePath,
 } from '@emdash/core/primitives/path/api';
-import type { HostDependencyView } from '@emdash/core/primitives/host-dependencies/api';
 import type { FileContentModel } from '@emdash/core/runtimes/files/api';
 import {
   gitContract,
@@ -66,6 +66,7 @@ import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
 import { openYard, type Watching } from './yard/live';
 import { showMissed } from './yard/missed';
+import type { Outcome } from './yard/press';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf } from './yard/shelf';
@@ -77,7 +78,6 @@ import {
   type WorktreeRow,
   type Windmill,
 } from './yard/windmill';
-import type { Outcome } from './yard/press';
 import { makeYard } from './yard/yard';
 
 /** The kinds of picture an agent can actually be shown. */
@@ -504,7 +504,8 @@ async function boot(): Promise<void> {
       if (naming) steps.push({ said: 'a new session', go: back });
       if (titling)
         steps.push({
-          said: titling.mode === 'mcp' ? 'a server' : titling.mode === 'skill' ? 'a skill' : 'its name',
+          said:
+            titling.mode === 'mcp' ? 'a server' : titling.mode === 'skill' ? 'a skill' : 'its name',
           go: back,
         });
       if (live) steps.push({ said: 'the checkout', go: back });
@@ -585,11 +586,9 @@ async function boot(): Promise<void> {
     /** How a shell looks and what it starts as, read once at the start so a
         shell opened before the windmill ever is still gets it. */
     let terminalSettings: TerminalSettings | null = null;
-    void client.appSettings
-      .terminalSettings({}, { timeoutMs: 0 })
-      .then((read) => {
-        terminalSettings = read;
-      });
+    void client.appSettings.terminalSettings({}, { timeoutMs: 0 }).then((read) => {
+      terminalSettings = read;
+    });
     /** Every chord this session has rebound away from the table's own
         default, read once at the start the same way the terminal settings
         are — a rebind made on the windmill updates this in place, so a
@@ -724,6 +723,9 @@ async function boot(): Promise<void> {
       /** Start it already allowing everything, the agent's own most
           permissive mode, applied the moment it is awake to hear it. */
       allowAll: boolean;
+      /** Its own worktree on its own branch, rather than the project's own
+          folder beside everybody else. */
+      isolated: boolean;
     } | null = null;
     /** Set while an existing session is being called something else, or —
         the same one line, the same keys — while a custom server is being
@@ -1105,11 +1107,17 @@ async function boot(): Promise<void> {
           if (!done.success) say(worktreeTrouble(done.error), 6000);
         },
         setExtraArgs: async (agent, extraArgs) => {
-          const config = await client.appSettings.setExtraArgs({ agent, extraArgs }, { timeoutMs: 0 });
+          const config = await client.appSettings.setExtraArgs(
+            { agent, extraArgs },
+            { timeoutMs: 0 }
+          );
           state.providers = { ...state.providers, [agent]: config };
         },
         setEnvVar: async (agent, key, value) => {
-          const config = await client.appSettings.setEnvVar({ agent, key, value }, { timeoutMs: 0 });
+          const config = await client.appSettings.setEnvVar(
+            { agent, key, value },
+            { timeoutMs: 0 }
+          );
           state.providers = { ...state.providers, [agent]: config };
         },
         removeEnvVar: async (agent, key) => {
@@ -2704,7 +2712,10 @@ async function boot(): Promise<void> {
       if (pull) {
         const number = numberOf(pull.url);
         if (number) {
-          const got = await client.pulls.getPullRequestComments({ repositoryUrl: repository, number });
+          const got = await client.pulls.getPullRequestComments({
+            repositoryUrl: repository,
+            number,
+          });
           if (open !== aim || sending?.pull?.url !== pull.url) return;
           sending = { ...sending, comments: got.success ? got.data.comments : [] };
           wood(sent(sending));
@@ -3166,6 +3177,7 @@ async function boot(): Promise<void> {
         pickingResume: false,
         resume: null,
         allowAll: false,
+        isolated: false,
       };
       paintRail();
       /* Asking what is going to happen in a new session is laid over the yard
@@ -3430,7 +3442,8 @@ async function boot(): Promise<void> {
       modes.find((mode) =>
         ALLOW_ALL_HINTS.some(
           (hint) =>
-            mode.name.toLowerCase().includes(hint) || (mode.about ?? '').toLowerCase().includes(hint)
+            mode.name.toLowerCase().includes(hint) ||
+            (mode.about ?? '').toLowerCase().includes(hint)
         )
       )?.id;
 
@@ -3451,7 +3464,8 @@ async function boot(): Promise<void> {
         const now = replica.current();
         if (!now.awake) return;
         const id = mostPermissiveMode(now.modes);
-        if (id && now.mode !== id) void client.agents.choose({ task, what: 'mode', id }, { timeoutMs: 0 });
+        if (id && now.mode !== id)
+          void client.agents.choose({ task, what: 'mode', id }, { timeoutMs: 0 });
         void replica.dispose();
       });
     };
@@ -3459,12 +3473,17 @@ async function boot(): Promise<void> {
     const begin = async (): Promise<void> => {
       if (!naming) return;
       const { project, slot, written, terminal, allowAll, branch, resume } = naming;
+      const isolated = naming.isolated || !!branch;
       const aim = open;
       naming = null;
       rewrite([
         { kind: 'title', text: written },
         { kind: 'gap' },
-        { kind: 'line', text: 'cutting a worktree…', tone: 'faded' },
+        {
+          kind: 'line',
+          text: isolated ? 'making its own copy of the project…' : 'starting…',
+          tone: 'faded',
+        },
       ]);
       const draftId = `cutting:${crypto.randomUUID()}`;
       cutting.set(draftId, {
@@ -3489,6 +3508,7 @@ async function boot(): Promise<void> {
             slot,
             kind: terminal ? 'terminal' : undefined,
             ...(branch ? { branch } : {}),
+            ...(isolated ? { isolated: true } : {}),
           },
           { timeoutMs: 0 }
         );
@@ -3928,6 +3948,12 @@ async function boot(): Promise<void> {
       if (pick === 'allow-all-toggle') {
         if (!naming) return;
         naming = { ...naming, allowAll: !naming.allowAll };
+        rewrite(asking(naming));
+        return;
+      }
+      if (pick === 'isolated-toggle') {
+        if (!naming) return;
+        naming = { ...naming, isolated: !(naming.isolated || naming.branch), branch: null };
         rewrite(asking(naming));
         return;
       }
@@ -4921,6 +4947,7 @@ function asking(naming: {
   pickingResume?: boolean;
   resume?: { id: string; title: string } | null;
   allowAll: boolean;
+  isolated: boolean;
 }): Row[] {
   if (naming.pickingIssue) return pickingIssue(naming.issues ?? null);
   if (naming.pickingBranch) return pickingBranch(naming.branches ?? null);
@@ -4940,14 +4967,26 @@ function asking(naming: {
     ...offer,
     {
       kind: 'prose',
-      text: naming.terminal
-        ? 'say what to call it. it gets its own branch, and opens in its own terminal — the agent’s own CLI, raw.'
-        : 'say what you want doing. it gets its own branch, and it will name itself.',
+      text: `${naming.terminal ? 'say what to call it.' : 'say what you want doing.'} ${
+        naming.branch
+          ? `it works in its own copy of the project, on ${naming.branch}.`
+          : naming.isolated
+            ? 'it works in its own copy of the project, on a branch of its own, so nothing it does touches your folder.'
+            : 'it works right in the project’s own folder, alongside anyone else in there.'
+      }`,
       tone: 'faded',
     },
     { kind: 'gap' },
     { kind: 'typed', text: naming.written },
     { kind: 'gap' },
+    {
+      kind: 'line',
+      text:
+        naming.isolated || naming.branch
+          ? 'in its own copy, on its own branch — on'
+          : 'in its own copy, on its own branch',
+      pick: 'isolated-toggle',
+    },
     {
       kind: 'line',
       text: naming.terminal ? 'in its own terminal — on' : 'in its own terminal',
@@ -5009,7 +5048,11 @@ function pickingIssue(issues: { number: number; title: string }[] | null): Row[]
 function pickingBranch(branches: string[] | null): Row[] {
   const rows: Row[] = [
     { kind: 'title', text: 'an existing branch' },
-    { kind: 'line', text: 'picking one stands the session there instead of a fresh branch.', tone: 'faded' },
+    {
+      kind: 'line',
+      text: 'picking one stands the session there instead of a fresh branch.',
+      tone: 'faded',
+    },
     { kind: 'gap' },
   ];
   if (branches === null) {
