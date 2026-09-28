@@ -7,7 +7,7 @@
  * What it has made is loaded on the cart to the right, and under that is the
  * ground itself, with everybody it sent out standing either in the firelight
  * with an answer or out in the dark still working. Along the bottom, one
- * lantern per session in the project, yours hanging lowest.
+ * lantern per session in the project, yours the brightest.
  *
  * There is no roster board and there is no second board. A session is not
  * something you navigate to from a list; it is where you already are, and the
@@ -83,7 +83,7 @@ const HEAD = {
 const RAIL_TALL = 118;
 const RAIL_BARE = 76;
 /* How much of a lantern is the lantern itself. */
-const LANTERN = { wide: 22, tall: 38, cord: 16, cordHere: 30 };
+const LANTERN = { wide: 22, tall: 38, cord: 16 };
 /* The ground you can see under the cart, which is bottom-anchored so it stays
    above the line you write on however short the window is. */
 const YARD_BOX = { wide: 380, tall: 214 };
@@ -2269,7 +2269,8 @@ function said_line(root: HTMLElement, edge: number): void {
 /* ── the rail ──────────────────────────────────────────────────────────────
    One lantern per session, hung off a beam. Lit means somebody is awake in
    there; dark is resting, still being cut, or broken. The one you are standing
-   in hangs lowest and brightest, and the one that wants you flickers. */
+   in burns brightest, every one on the same cord so the rail sits level, and
+   the one that wants you flickers. */
 function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, does: Doings): void {
   /* The beam scrolls, so it clips; it reaches past the rule on both sides by
      enough that a lantern's glow is not cut straight down the middle. */
@@ -2296,7 +2297,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       : 34 +
         Math.max(
           RAIL_NAME_MIN,
-          widthOf(one.name, one.here ? 13 : 12),
+          widthOf(one.name, 12),
           Math.min(widthOf(one.saying, 11), RAIL_SAYING_MAX)
         ) +
         WORDS_GAP
@@ -2306,7 +2307,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   for (const [i, one] of yard.rail.entries()) {
     const x = at[i]!;
     const step = spans[i]!;
-    const cord = one.here ? LANTERN.cordHere : LANTERN.cord;
+    const cord = LANTERN.cord;
     const top = 3 + cord;
     beam.appendChild(box({ left: x + 10, top: 3, width: 3, height: cord }, 'background:#3a2712'));
 
@@ -2352,13 +2353,13 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     hung.style.cursor = 'default';
 
     /* A short window keeps the lanterns and gives up the words beside them:
-       lit, dark, flickering and hanging lowest still say which is which. */
+       lit, dark, flickering and brightest still say which is which. */
     if (!bare) {
       /* Everything beside a lantern stops short of the next one. A long name
          running on under its neighbour reads as the two sessions being one. */
       const wide = step - 34 - WORDS_GAP;
       const name = box({ left: 34, top: 2, width: wide }, CLIPPED);
-      const written = exact(one.name, one.here ? 13 : 12, one.here ? '#ffdca4' : TONE[one.posture]);
+      const written = exact(one.name, 12, one.here ? '#ffdca4' : TONE[one.posture]);
       clipped(written, one.name);
       /* The keyboard stands on the name rather than on the whole lantern,
          because the mark it leaves is a fill and a fill the size of a lantern
@@ -2411,17 +2412,16 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       pressing('a new session', () => does.press('new')),
       'rail:new'
     );
-    start.style.cssText += "font-family:'Courier Prime',monospace;font-size:13px";
+    start.style.cssText +=
+      "font-family:'Courier Prime',monospace;font-size:12px;display:inline-block;vertical-align:top";
     /* The words already pressed; the hook round them must not press again. */
     start.addEventListener('click', (event) => event.stopPropagation());
     name.appendChild(start);
     hook.appendChild(name);
     const under = box({ left: 34, top: 20 });
-    under.appendChild(
-      standing
-        ? exact('press again for other ways', 11, '#a89272')
-        : exact('the hook is empty', 11, '#a89272')
-    );
+    const doing = exact(standing ? 'press again for other ways' : 'the hook is empty', 11, '#a89272');
+    doing.style.cssText += ';display:inline-block;vertical-align:top';
+    under.appendChild(doing);
     hook.appendChild(under);
   } else {
     astop(lamp, 'rail:new');
