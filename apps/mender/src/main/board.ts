@@ -6,6 +6,7 @@ import { ReplicaState } from '@emdash/wire/live';
 import type { LiveClientHandle } from '@emdash/wire/rpc';
 import { load } from './pictures';
 import type { MenderRuntimes } from './runtimes';
+import { versionsOf, type Version } from './versions';
 
 const ran = promisify(execFile);
 
@@ -23,6 +24,8 @@ export interface Board {
       without a real process-supervision protocol: its own pid's most
       recent child, if that child is not just another shell. */
   runningIn(key: TerminalKey): Promise<string | null>;
+  /** A checkout's history by version, newest first. */
+  versions(path: string): Promise<Version[]>;
 }
 
 /** Shell binaries themselves say nothing about what somebody is doing. */
@@ -30,6 +33,7 @@ const SHELLLIKE = /^(-?)(ba|z|fi|d)?sh$|^tmux/;
 
 export function createBoard(runtimes: MenderRuntimes): Board {
   return {
+    versions: (path) => versionsOf(path),
     async picture(path, width) {
       const image = await load(path, Math.max(1, Math.round(width)));
       if (!image) return null;

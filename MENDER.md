@@ -105,8 +105,7 @@ text field anywhere in this app. An empty line while somebody is working calls
 them off.
 
 **The bottom of the board is what is coming.** Under everything that has
-happened, and above the line you write on, is what the session says it means to
-do next, then how much room it has left to think in, and what it has cost so
+happened, and above the line you write on, is how much room it has left to think in, and what it has cost so
 far when the agent says, in plain words rather than a currency badge, then
 anything you said
 while it was busy and it has not heard yet, which you can take back by pressing
@@ -116,18 +115,26 @@ losing the beginning of the conversation, so the village says it instead.
 **Opening a project is walking into the work.** Not a list you press into: you
 land in the session you were last in, standing in its yard at night. What you
 asked for is nailed to a gatepost on the left, newest on parchment and the ones
-under it weathered into the post. What it is thinking rises off the fire in the
-middle, oldest first and brightening as it comes down to what is happening now,
-which is the one thing on this screen set large. What it made is loaded on a
-cart to the right, with everything it did listed under it, a prop from the kit
+under it weathered into the post, and at the foot of that column is the
+project's changelog: the version it is on and the lines that went into it,
+every version before further down, read straight off whichever commits moved
+the version in the project's own manifest rather than kept anywhere. What it
+said is in the middle, the answer set large, and everything it thought and said
+on the way there folded into one quiet gold "thinking" line right above it;
+pressing that opens the trail upward out of it and pressing it again folds it,
+and it stays however you left it. The right column is whatever the session is
+in the middle of: a question it is standing at the gate with, its answers
+pressable and numbered, or the plan it is working through, done steps inked
+out and the one it is on lit, and nothing when it is neither. Under that is
+everything it did, scrolling and following the live end, a prop from the kit
 standing for each: a signpost for something read, a crate for something
 written, an anvil for something changed, a tub over the fire for something set
-running. An anvil's own step carries a few marked lines of what it actually
-changed right under it, capped, in the same warm and sore tones a change is
-read in anywhere else in the village; pressing the cap opens the whole change
-on the checkout's own board. Under all of that is the ground itself, with
-whoever it sent out standing in the firelight with an answer or off in the
-dark still working.
+running. A crate's or an anvil's own step carries the lines it actually wrote
+right under it, capped, in the same warm and sore tones a change is read in
+anywhere else in the village; pressing the cap opens the whole change on the
+checkout's own board. Under all of that is the ground itself, with whoever it
+sent out standing in the firelight with an answer or off in the dark still
+working.
 
 **Any note of your own on the gatepost is where a new session starts.** Under
 what you said is "carry on from here in a new session," gold and pressable

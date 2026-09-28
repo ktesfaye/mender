@@ -2392,6 +2392,27 @@ Driven over the debug port on a copy of the real data folder: Aurio with
 three lit lanterns, Cmd+W three times. The first two each put one lantern
 out and landed in the next lit one; the third flew out to the island.
 
+### The yard's columns say what is useful (2026-09-27) — done
+
+The right column is no longer a cart of the newest file plus a clipped log.
+On top is whatever the session is in the middle of: the question it is
+asking, moved over from the middle, or the plan it posted, done steps inked
+out. Under it, what it did scrolls and follows the live end, with the lines
+every write and edit actually changed under its crate or anvil; paths outside
+the checkout read as a file name or `~/…` instead of a run of temp folders.
+The middle is "what it said": the answer, with everything before it folded
+into one gold "thinking" line that opens and closes and remembers which. The
+gatepost's foot is the project's changelog, versions read off the commits that
+moved the version in `pubspec.yaml`, `package.json`, a gradle `versionName` or
+`Cargo.toml`, the commits since the last bump under "not in a version yet".
+"Elsewhere in" is gone; the rail already says it.
+
+Driven over the debug port on the Aurio sessions: the scrubbing session's
+edits showed their written lines under the crates, the fold opened the whole
+trail above the answer and folded it back, the changelog listed Aurio's
+commits (none versioned yet, which is true), and a plan and a question
+injected into the yard for one look drew in the right column.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

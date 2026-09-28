@@ -36,6 +36,14 @@ export interface Yard {
   session?: Session;
   /** Every session in the project, this one included, in rail order. */
   rail: Lantern[];
+  /** What went into each version of this checkout, newest first. */
+  versions?: Version[];
+}
+
+/** One version and what went into it. Null is what has not gone into one yet. */
+export interface Version {
+  version: string | null;
+  lines: string[];
 }
 
 export interface Asking {

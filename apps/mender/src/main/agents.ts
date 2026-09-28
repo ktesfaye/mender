@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import type {
@@ -2066,6 +2067,12 @@ function inside(path: string, root: string | undefined): string {
     const rest = path.slice(root.length).replace(/^[/\\]+/, '');
     if (rest) return rest;
   }
+  /* Outside the checkout, a scratch file the agent's own tooling wrote is a
+     long run of temp folders and ids ending in the one name that says
+     anything, and a file under home reads the way anybody would say it. */
+  if (/^\/(private\/)?(tmp|var\/folders)\//.test(path)) return path.split('/').at(-1) || path;
+  const home = homedir();
+  if (home && path.startsWith(`${home}/`)) return `~${path.slice(home.length)}`;
   return path;
 }
 

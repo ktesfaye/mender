@@ -35,15 +35,15 @@ import type {
   Fire,
   Hand,
   Live,
-  Made,
   Note,
   Posture,
+  Session,
   Step,
   Thought,
   Yard,
 } from './what';
 import { hiddenCount, revealMore, windowStart } from './window';
-import { box, exact, firelight, folk, label, row, rule, said, stack, trim } from './write';
+import { box, exact, firelight, folk, label, row, rule, said, stack } from './write';
 
 /*
  * On a Mac the window's own three buttons float over the top left corner of
@@ -724,8 +724,8 @@ const FLAG = [
 /* ── what you asked ────────────────────────────────────────────────────────
    A gatepost with your notes on it. The newest is on parchment and slightly
    crooked, because somebody pinned it there; the ones under it have been up
-   long enough to have weathered into the post. Under the whole column, a
-   glance at the other sessions that want something. */
+   long enough to have weathered into the post. Under the whole column, what
+   went into each version of the checkout. */
 function asked(
   root: HTMLElement,
   at: { x: number; wide: number },
@@ -736,9 +736,9 @@ function asked(
 ): void {
   root.appendChild(label('what you asked', { left: at.x, top: HEAD.label }));
 
-  /* The glance at the other sessions sits at the foot of the column, so the
-     post and the notes on it get everything above that and no more. */
-  const under = elsewhere(root, at, yard, floor);
+  /* The changelog sits at the foot of the column, so the post and the notes
+     on it get everything above that and no more. */
+  const under = changelog(root, at, yard, floor);
   const room = under - 20 - HEAD.top;
 
   /* The post is only as long as what is nailed to it, plus a little bare wood
@@ -882,52 +882,75 @@ function weathered(note: Note, does: Doings): HTMLElement {
 }
 
 /**
- * Everything else going on in this project, as three lines and no more.
+ * What went into each version of this checkout, newest first, at the foot of
+ * the column.
  *
- * Not the roster: that is the rail along the bottom, and this is the glance
- * you take without looking down. Returns the top of the block, which is where
+ * The other sessions are the rail's to show, so this corner is the project's
+ * own history instead: the version it is on and the few lines that went into
+ * it, and every version before that further down the same small list. Nothing
+ * here keeps a changelog; it is read off whichever commits moved the version
+ * in the project's own manifest. Returns the top of the block, which is where
  * the gatepost above it has to stop.
  */
-function elsewhere(
+function changelog(
   root: HTMLElement,
   at: { x: number; wide: number },
   yard: Yard,
   floor: number
 ): number {
-  const others = yard.rail.filter((one) => !one.here).slice(0, 3);
-  /* Only when there is an elsewhere. One session in a project is not
-     "elsewhere in" anything, and the gatepost can have the room. */
-  if (!others.length) return floor;
-  const tall = 30 + others.length * 23;
+  const versions = yard.versions ?? [];
+  if (!versions.length) return floor;
+  const tall = Math.min(300, Math.max(150, Math.round((floor - HEAD.top) * 0.4)));
   const top = floor - tall;
   root.appendChild(rule({ left: at.x, top: top - 20, width: at.wide - 20 }));
-  root.appendChild(label(`elsewhere in ${yard.project.name.toLowerCase()}`, { left: at.x, top }));
+  root.appendChild(label('changelog', { left: at.x, top }));
 
-  const list = stack({ left: at.x, top: top + 30, width: at.wide }, 9);
-  list.style.fontSize = '14px';
-  list.style.fontFamily = "'Josefin Sans',sans-serif";
-  for (const one of others) {
-    const line = row(10);
-    line.appendChild(
-      box({ width: 8, height: 8 }, `background:${TONE[one.posture]};position:relative`)
-    );
-    const text = document.createElement('span');
-    text.style.color = one.posture === 'wants-you' ? '#ff9a6a' : '#dcc8a0';
-    text.textContent = `${one.name} · ${one.saying}`;
-    line.appendChild(text);
-    list.appendChild(line);
+  const list = stack({ left: at.x, top: top + 28, width: at.wide - 20, height: tall - 28 }, 16);
+  list.style.cssText += [
+    '',
+    'overflow-y:auto',
+    'overflow-x:hidden',
+    'pointer-events:auto',
+    'scrollbar-width:none',
+    "font-family:'Josefin Sans',sans-serif",
+    /* The bottom edge fades rather than cuts, which is the only thing that
+       says there is more under it without a bar or an arrow. */
+    '-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 22px),transparent)',
+  ].join(';');
+  for (const [i, one] of versions.entries()) {
+    const block = document.createElement('div');
+    block.style.cssText = 'display:flex;flex-direction:column;gap:5px;flex:none';
+    const name = document.createElement('span');
+    name.style.cssText = `font-size:14px;color:${
+      one.version === null ? '#a89272' : i < 2 ? '#f4e3c0' : '#dcc8a0'
+    };text-shadow:1px 1px 0 #120d07`;
+    name.textContent = one.version === null ? 'not in a version yet' : `v${one.version}`;
+    block.appendChild(name);
+    for (const said of one.lines) {
+      const line = document.createElement('span');
+      line.style.cssText =
+        'font-size:13px;line-height:1.35;color:#bfa476;padding-left:12px;overflow-wrap:anywhere';
+      line.textContent = said;
+      block.appendChild(line);
+    }
+    list.appendChild(block);
   }
   root.appendChild(list);
 
+  const id = yard.project.id;
+  list.scrollTop = logScrolled.get(id) ?? 0;
+  list.addEventListener('scroll', () => logScrolled.set(id, list.scrollTop));
   return top;
 }
 
-/* ── what it is thinking ───────────────────────────────────────────────────
-   The plan it posted at the start sits at the top and stays there, because it
-   is the thing everything since is measured against. Under it, how many
-   thoughts went by that you are not being shown, then the last few, each one
-   a little brighter and a little larger than the one above it. The live one is
-   at the bottom and is the only thing on this screen set large. */
+/** Where the changelog was left scrolled to, per project, across redraws. */
+const logScrolled = new Map<string, number>();
+
+/* ── what it said ──────────────────────────────────────────────────────────
+   The answer, set large at the bottom, and everything it thought and said on
+   the way there folded into one quiet line right above it. Opened, the trail
+   comes back as it always was: each one a little brighter and a little larger
+   than the one above it, down to the answer. */
 function thinking(
   root: HTMLElement,
   at: { x: number; wide: number },
@@ -940,42 +963,10 @@ function thinking(
   root.appendChild(
     rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
   );
-  if (yard.asking) {
-    gate(root, at, yard.asking, does);
-    return;
-  }
-
-  root.appendChild(label('what it is thinking', { left: at.x, top: HEAD.label }));
+  root.appendChild(label('what it said', { left: at.x, top: HEAD.label }));
 
   const thoughts = yard.session?.thoughts ?? [];
-  const posted = yard.session?.plan ?? [];
-  let top = HEAD.top;
-
-  /* What it said it was going to do stays at the top and everything since
-     scrolls under it, because the plan is what all of it is being measured
-     against and scrolling away from it loses the measure. Only when it has
-     actually posted one: the first thing an agent says is not a plan. */
-  if (posted.length) {
-    const said = box({ left: at.x, top, width: at.wide }, "font-family:'Josefin Sans',sans-serif");
-    said.appendChild(label('what it means to do', {}));
-    const list = stack({}, 4);
-    list.style.position = 'relative';
-    list.style.marginTop = '8px';
-    for (const step of posted) {
-      const line = row(10);
-      const mark = document.createElement('span');
-      mark.style.cssText = `width:14px;flex:none;color:${STEP[step.state]}`;
-      mark.textContent = step.state === 'done' ? '·' : step.state === 'doing' ? '›' : ' ';
-      const text = document.createElement('span');
-      text.style.cssText = `font-size:14px;color:${STEP[step.state]}`;
-      text.textContent = step.said;
-      line.append(mark, text);
-      list.appendChild(line);
-    }
-    said.appendChild(list);
-    root.appendChild(said);
-    top += said.offsetHeight + 20;
-  }
+  const top = HEAD.top;
 
   const live = yard.session?.live;
   const failure = yard.session?.failure;
@@ -1007,7 +998,7 @@ function thinking(
   function laidOlder(): void {
     const hidden = hiddenCount(wholeSize, shown, server);
     older.replaceChildren();
-    if (!hidden) return;
+    if (!hidden || !thinkingOpen()) return;
     const line = exact(`\u25b8 ${hidden} more before these`, 12, '#8a7452');
     if (windowStart(wholeSize, shown) > 0) {
       line.style.cursor = 'pointer';
@@ -1038,9 +1029,36 @@ function thinking(
   }
   function laidOne(): void {
     const start = windowStart(wholeSize, shown);
+    const open = thinkingOpen();
+    /* Everything on the way to the answer folds into one quiet line, and
+       only the answer itself stays out: most of the time what it said back is
+       all anybody came for. The line sits right above the answer, so the trail
+       opens upward out of it and the answer never moves. */
+    let answer = -1;
+    thoughts.forEach((one, i) => {
+      if (one.live && !one.quiet) answer = i;
+    });
+    const folds = thoughts.length > (answer >= 0 ? 1 : 0) || server > 0;
+    const fold = (): HTMLElement => {
+      const line = astop(
+        pressing(open ? '\u25be thinking' : '\u25b8 thinking', () => {
+          setThinkingOpen(!open);
+          laidOlder();
+          laidItems();
+          if (!open) stream.scrollTop = stream.scrollHeight;
+        }),
+        'thinking:fold'
+      );
+      line.style.cssText +=
+        ";font-family:'Josefin Sans',sans-serif;font-size:12px;letter-spacing:.14em;opacity:.7;align-self:flex-start";
+      return keyed(line, 'thinking:fold');
+    };
+    if (folds && answer < 0 && !open) items.appendChild(fold());
     thoughts.slice(start).forEach((one, si) => {
       const i = start + si;
       const far = thoughts.length - 1 - i;
+      if (i === answer && folds) items.insertBefore(fold(), null);
+      if (!open && i !== answer) return;
       if (one.live) {
         keep.add(one.id);
         const it = keyed(document.createElement('div'), `thought:${one.id}`);
@@ -1084,6 +1102,7 @@ function thinking(
         )
       );
     });
+    if (folds && answer < 0 && open) items.appendChild(fold());
     forgetInk(keep);
   }
 
@@ -1108,6 +1127,30 @@ function thinking(
 
 /** Where the column was left scrolled to, for a session somebody scrolled up in. */
 const followed = new Map<string, number>();
+
+/* Whether the trail on the way to an answer is open. Folded until somebody
+   opens it, and remembered the way they left it, across sessions and launches,
+   because it is a way of reading rather than a fact about any one session. */
+const THINKING_KEY = 'mender.yard.thinking-open';
+let thinkingOpenNow: boolean | undefined;
+function thinkingOpen(): boolean {
+  if (thinkingOpenNow === undefined) {
+    try {
+      thinkingOpenNow = localStorage.getItem(THINKING_KEY) === '1';
+    } catch {
+      thinkingOpenNow = false;
+    }
+  }
+  return thinkingOpenNow;
+}
+function setThinkingOpen(open: boolean): void {
+  thinkingOpenNow = open;
+  try {
+    localStorage.setItem(THINKING_KEY, open ? '1' : '0');
+  } catch {
+    // Only a convenience; the fold still works for this sitting.
+  }
+}
 
 /** How many of a session's most recent thoughts are actually drawn, keyed by
     session id, so a long transcript's cost is what a screen's worth of it
@@ -1268,15 +1311,22 @@ const STEP: Record<string, string> = {
  * press by hand and not by key is only half there and the other way round is
  * no better.
  */
-function gate(root: HTMLElement, at: { x: number; wide: number }, asking: Ask, does: Doings): void {
-  root.appendChild(label('it is asking', { left: at.x, top: HEAD.label }));
-  const said = box({ left: at.x, top: HEAD.top, width: at.wide }, ASKED);
+function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
+  const it = document.createElement('div');
+  it.style.cssText = 'position:relative';
+  const head = label('it is asking you', {});
+  head.style.color = '#ffc98a';
+  it.appendChild(head);
+  const said = document.createElement('div');
+  said.style.cssText = `${ASKED};margin-top:14px;max-width:${wide}px`;
   said.textContent = asking.said;
-  root.appendChild(said);
+  it.appendChild(said);
 
-  const answers = stack({ left: at.x, top: HEAD.top + 90, width: at.wide }, 12);
+  const answers = document.createElement('div');
+  answers.style.cssText = 'display:flex;flex-direction:column;gap:12px;margin-top:18px';
   for (const [i, answer] of asking.answers.entries()) {
     const line = row(12);
+    line.style.whiteSpace = 'normal';
     const key = document.createElement('span');
     key.style.cssText = KEY;
     key.textContent = String(i + 1);
@@ -1285,11 +1335,12 @@ function gate(root: HTMLElement, at: { x: number; wide: number }, asking: Ask, d
       pressing(answer.said, () => does.answer(answer.id, answer.requestId)),
       `answer:${answer.id}`
     );
-    press.style.cssText += "font-family:'Josefin Sans',sans-serif;font-size:16px";
+    press.style.cssText += "font-family:'Josefin Sans',sans-serif;font-size:15px";
     line.appendChild(press);
     answers.appendChild(line);
   }
-  root.appendChild(answers);
+  it.appendChild(answers);
+  return it;
 }
 
 const ASKED = [
@@ -1341,11 +1392,14 @@ function thought(
   return it;
 }
 
-/* ── what it made, what it did, and the ground ─────────────────────────────
-   The cart at the top with whatever came out of the session on it, then the
-   steps it took to get there with a prop from the kit standing for each, and
-   at the foot of the column the yard itself: the fire, and everybody it sent
-   out, placed by what they are doing rather than listed. */
+/* ── what it is doing, what it did, and the ground ─────────────────────────
+   At the top, whatever the session is in the middle of right now: a question
+   it is standing at the gate with, or the plan it is working through, and
+   nothing when it is neither. Under that, every step it took with a prop from
+   the kit standing for each and the lines it actually changed under each
+   edit, scrolling, following the live end the way the answer does. At the
+   foot of the column the yard itself: the fire, and everybody it sent out,
+   placed by what they are doing rather than listed. */
 function made(
   root: HTMLElement,
   at: { x: number; wide: number },
@@ -1354,19 +1408,20 @@ function made(
   does: Doings
 ): void {
   const session = yard.session;
-  const output = session?.made[0];
   const steps_ = session?.steps ?? [];
   const hands = session?.agents ?? [];
+  const plan = session?.plan ?? [];
 
   /* NOTHING IS WRITTEN OVER NOTHING.
    *
    * A heading with an empty column under it does not say "this has not
    * happened yet", it says the screen is broken. So a section that has nothing
-   * in it is not drawn at all: no cart until something has come off one, no
-   * list of what it did until it has done something, no yard until it has sent
-   * somebody out. The column's own rule goes with them, because a line down an
-   * empty third of the screen is the same lie in thinner form. */
-  if (!output && !steps_.length && !hands.length) return;
+   * in it is not drawn at all: no question unless one is asked, no plan until
+   * it has posted one, no list of what it did until it has done something, no
+   * yard until it has sent somebody out. The column's own rule goes with them,
+   * because a line down an empty third of the screen is the same lie in
+   * thinner form. */
+  if (!yard.asking && !plan.length && !steps_.length && !hands.length) return;
 
   root.appendChild(
     rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
@@ -1374,44 +1429,81 @@ function made(
 
   /* The ground is the foot of this column whatever happened above it, so
      everything else in here gets the room between the header and the yard and
-     not one pixel more. In a short window that means the cart loses its
-     itinerary and then what it did loses its beginning, in that order, rather
-     than either of them being written over the ground. */
+     not one pixel more. */
   const patch = hands.length ? floor - YARD_BOX.tall : floor;
   const room = Math.max(0, patch - 44 - HEAD.top);
-  const above = box({ left: at.x, top: HEAD.top, width: at.wide, height: room }, 'overflow:hidden');
+  const above = box({ left: at.x, top: HEAD.label, width: at.wide, height: room + HEAD.top - HEAD.label });
   root.appendChild(above);
 
   let y = 0;
-  if (output) {
-    root.appendChild(label('what it made', { left: at.x, top: HEAD.label }));
-    y = cart(above, at.wide, output);
+  const now = yard.asking ? gate(at.wide, yard.asking, does) : plan.length ? planned(plan) : null;
+  if (now) {
+    above.appendChild(now);
+    /* A plan longer than half the column scrolls inside itself, because the
+       steps under it are the other half of what this column is for. */
+    const most = Math.round(above.offsetHeight * (yard.asking ? 0.62 : 0.42));
+    if (now.offsetHeight > most) {
+      now.style.height = `${most}px`;
+      now.style.overflowY = 'auto';
+      now.style.pointerEvents = 'auto';
+      now.style.scrollbarWidth = 'none';
+      const doing = now.querySelector<HTMLElement>('[data-doing]');
+      if (doing) now.scrollTop = Math.max(0, doing.offsetTop - now.clientHeight / 3);
+    }
+    y = now.offsetHeight + 18;
   }
 
-  if (steps_.length) {
-    if (output) above.appendChild(rule({ left: 0, top: y + 10, width: at.wide }));
-    const where = output ? { left: 0, top: y + 30 } : { left: at.x, top: HEAD.label };
-    (output ? above : root).appendChild(label('what it did', where));
+  if (!steps_.length) {
+    if (hands.length) ground(root, at, yard, floor);
+    return;
   }
+  if (now) above.appendChild(rule({ left: 0, top: y, width: at.wide }));
+  const labelAt = now ? y + 20 : 0;
+  above.appendChild(label('what it did', { left: 0, top: labelAt }));
 
-  const top = output ? y + 60 : 0;
-  const left = Math.max(0, room - top);
-  const steps = stack({ left: 0, top, width: at.wide, height: left }, 10);
-  steps.style.cssText +=
-    ";font-size:14px;line-height:1.3;font-family:'Josefin Sans',sans-serif;overflow:hidden";
+  const top = labelAt + (HEAD.top - HEAD.label);
+  const steps = stack(
+    { left: 0, top, width: at.wide, height: Math.max(0, above.offsetHeight - top) },
+    10
+  );
+  steps.style.cssText += [
+    '',
+    'font-size:14px',
+    'line-height:1.3',
+    "font-family:'Josefin Sans',sans-serif",
+    'overflow-y:auto',
+    'overflow-x:hidden',
+    'pointer-events:auto',
+    'scrollbar-width:none',
+    '-webkit-mask-image:linear-gradient(180deg,transparent,#000 14px,#000 calc(100% - 14px),transparent)',
+  ].join(';');
   const earlier = session?.olderSteps;
-  const count = exact('', 12, '#8a7452');
-  steps.appendChild(count);
-  for (const one of steps_) steps.appendChild(keyed(did(one, does), `step:${one.id}`));
-  if (steps_.length) above.appendChild(steps);
+  if (earlier?.many) {
+    const count = exact(
+      `\u25b8 ${earlier.many} earlier steps \u00b7 ${earlier.over}`,
+      12,
+      '#8a7452'
+    );
+    count.style.cssText += ';position:relative;flex:none;padding-top:6px';
+    steps.appendChild(count);
+  }
+  for (const one of steps_) {
+    const it = keyed(did(one, does), `step:${one.id}`);
+    it.style.flex = 'none';
+    steps.appendChild(it);
+  }
+  above.appendChild(steps);
 
-  /* Appended first and counted after, because how many fit is a thing only the
-     browser knows once the sprites in them have a height. */
-  const dropped = trim(steps, left, 1);
-  const many = (earlier?.many ?? 0) + dropped;
-  count.textContent = many
-    ? `\u25b8 ${many} earlier steps${earlier ? ` \u00b7 ${earlier.over}` : ''}`
-    : '';
+  /* It follows the live end while you are at it, and stays where you left it
+     once you have scrolled up to read something, the same as the answer. */
+  const id = session?.id ?? '';
+  const kept = stepsFollowed.get(id);
+  steps.scrollTop = kept === undefined ? steps.scrollHeight : kept;
+  steps.addEventListener('scroll', () => {
+    const atEdge = steps.scrollTop + steps.clientHeight >= steps.scrollHeight - 24;
+    if (atEdge) stepsFollowed.delete(id);
+    else stepsFollowed.set(id, steps.scrollTop);
+  });
 
   /* And the ground only once there is somebody standing on it. The fire is
      already said by the light of the whole screen and by the lantern on the
@@ -1420,44 +1512,29 @@ function made(
   if (hands.length) ground(root, at, yard, floor);
 }
 
-/** The billboard and what is nailed to it. Returns where the next thing goes. */
-function cart(root: HTMLElement, wide: number, output: Made): number {
-  const board = sprite(KIT_NAMES.billboard, 2);
-  board.style.cssText += ';left:0;top:-4px;filter:brightness(1.35)';
-  root.appendChild(board);
+/** Where the steps were left scrolled to, for a session somebody scrolled up in. */
+const stepsFollowed = new Map<string, number>();
 
-  const beside = stack({ left: 148, top: 4, width: wide - 148, height: 104 }, 4);
-  beside.style.overflow = 'hidden';
-  const name = document.createElement('span');
-  name.style.cssText =
-    "font-family:'Caveat',cursive;font-size:22px;color:#f4e3c0;text-shadow:1px 2px 0 #120d07";
-  name.textContent = output.what;
-  beside.appendChild(name);
-  const when = said(output.when, '#a8c469');
-  when.style.cssText += ';font-size:12px;letter-spacing:.14em';
-  beside.appendChild(when);
-  if (output.warning) {
-    const warn = document.createElement('span');
-    warn.style.cssText = 'font-size:13px;color:#ff9a6a;margin-top:4px';
-    warn.textContent = output.warning;
-    beside.appendChild(warn);
+/** The plan it posted, done steps inked out and the one it is on lit. */
+function planned(plan: Session['plan']): HTMLElement {
+  const it = document.createElement('div');
+  it.style.cssText = "position:relative;font-family:'Josefin Sans',sans-serif";
+  it.appendChild(label('the plan', {}));
+  const list = document.createElement('div');
+  list.style.cssText = 'display:flex;flex-direction:column;gap:7px;margin-top:14px';
+  for (const step of plan) {
+    const line = document.createElement('div');
+    line.style.cssText = `font-size:14px;line-height:1.3;color:${STEP[step.state]}`;
+    if (step.state === 'done') {
+      line.style.textDecoration = 'line-through';
+      line.style.textDecorationColor = 'rgba(168,146,114,.55)';
+    }
+    if (step.state === 'doing') line.dataset.doing = '';
+    line.textContent = step.said;
+    list.appendChild(line);
   }
-  root.appendChild(beside);
-  /* What is nailed beside the board is the name, then when, then what is wrong
-     with it, in that order of importance, and a board with no room for the
-     third says two things rather than two and a half. */
-  while (beside.scrollHeight > 104 && beside.children.length > 1) beside.lastChild?.remove();
-
-  const lines = stack({ left: 0, top: 120, width: wide }, 6);
-  for (const said of output.lines) {
-    const line = document.createElement('span');
-    line.style.cssText =
-      "font-family:'Josefin Sans',sans-serif;font-size:14px;line-height:1.45;color:#dcc8a0";
-    line.textContent = said;
-    lines.appendChild(line);
-  }
-  root.appendChild(lines);
-  return 120 + output.lines.length * 26 + 10;
+  it.appendChild(list);
+  return it;
 }
 
 /** One thing it did, with the prop that stands for it in a fixed slot. */
@@ -1591,7 +1668,7 @@ function nobody(
      same place it sits when there is work here, so it does not move when the
      first session arrives. Nothing else: an empty project has no ground worth
      framing, no cart and nothing to have done. */
-  elsewhere(root, at, yard, floor);
+  changelog(root, at, yard, floor);
 }
 
 /**

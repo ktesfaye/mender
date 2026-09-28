@@ -119,6 +119,8 @@ export interface Standing {
   failure?: Failure | null;
   /** When set, a continue is scheduled to send itself at this epoch ms. */
   carryOn?: number | null;
+  /** The checkout's history by version, newest first. */
+  versions?: readonly { version: string | null; lines: readonly string[] }[];
 }
 
 /** The turn the newest note opened, which is the one being answered now. */
@@ -155,6 +157,9 @@ export function yardOf(from: Standing): Yard {
         }
       : {}),
     ...(here ? { session: sessionOf(here, told, kit, from) } : {}),
+    ...(from.versions
+      ? { versions: from.versions.map((one) => ({ version: one.version, lines: [...one.lines] })) }
+      : {}),
     rail: tasks.map((task) =>
       lanternOf(
         task,

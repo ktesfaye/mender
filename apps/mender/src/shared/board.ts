@@ -20,6 +20,15 @@ export const boardPictureSchema = z.object({
 
 export type BoardPicture = z.infer<typeof boardPictureSchema>;
 
+/** One version of a checkout and what went into it. Null is the commits since
+    the last one. */
+export const boardVersionSchema = z.object({
+  version: z.string().nullable(),
+  lines: z.array(z.string()),
+});
+
+export type BoardVersion = z.infer<typeof boardVersionSchema>;
+
 export const boardContract = defineContract({
   /** A file's own pixels, sized to fit a board of the given width. Null for
       anything the machine cannot decode as a picture. */
@@ -32,6 +41,12 @@ export const boardContract = defineContract({
   runningIn: procedure({
     input: z.object({ key: terminalKeySchema }),
     output: z.object({ name: z.string().nullable() }),
+  }),
+  /** A checkout's history by version, newest first, read off whichever commits
+      moved the version in its own manifest. */
+  versions: procedure({
+    input: z.object({ path: z.string() }),
+    output: z.object({ versions: z.array(boardVersionSchema) }),
   }),
 });
 

@@ -18,6 +18,7 @@ import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { shortName, type CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import type { Ask, Carried, Kit, Mood, WorkingState } from '@shared/agents';
+import type { BoardVersion } from '@shared/board';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { Naming } from '../board/naming';
@@ -108,6 +109,9 @@ export async function openYard(
      speak the moment it is subscribed to and a value the build reaches for
      before it exists takes the whole board down with it. */
   let health: Health = 'ok';
+  /* The checkout's history by version, read again whenever where it stands
+     moves, since that is what a new commit looks like from here. */
+  let versions: BoardVersion[] | undefined;
 
   const shut: (() => Promise<void>)[] = [];
   let held: readonly Carried[] = [];
@@ -149,6 +153,7 @@ export async function openYard(
         : { carryOn: working.carryOn }),
       on: standing(from.project, head),
       health,
+      ...(versions ? { versions } : {}),
     });
   }
 
@@ -186,12 +191,30 @@ export async function openYard(
      saying before anything else about it, because nothing else on the board
      means anything until it is put right. */
   if (!parsed.success) health = 'path-moved';
+  /* Only the newest ask is kept, so a slow read never lands over a newer one. */
+  let reading = 0;
+  let readAt: string | undefined;
+  const readVersions = (): void => {
+    const oid = head && 'oid' in head ? head.oid : '';
+    if (oid === readAt) return;
+    readAt = oid;
+    const mine = ++reading;
+    void client.board.versions({ path: where }, { timeoutMs: 0 }).then(
+      (found) => {
+        if (mine !== reading) return;
+        versions = found.versions;
+        again();
+      },
+      () => {}
+    );
+  };
   if (parsed.success) {
     const model = client.git.checkout.model;
     const watch = new ReplicaState(model.state({ checkout: parsed.data }, 'head'), {
       onChange: (value) => {
         head = value;
         health = value ? 'ok' : 'not-git';
+        readVersions();
         again();
       },
     });
@@ -199,6 +222,7 @@ export async function openYard(
     await watch.ready;
     head = watch.current();
     if (!head) health = 'not-git';
+    readVersions();
   }
 
   return {
