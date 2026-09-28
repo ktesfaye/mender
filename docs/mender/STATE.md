@@ -2380,6 +2380,18 @@ isolated line on, started one, and a worktree and `mender/…` branch
 appeared. Took the shared session down from its card and the repo's files
 were all still there.
 
+### Cmd+W closes one session at a time — done
+
+Cmd+W in a session sends that one home and stands you in the next one
+still awake in the project, the way closing tabs does. Only once nobody in
+the project is left awake does it fly back out to the island. A terminal
+session's own CLI outlives its board, so it is stepped past rather than
+stopped.
+
+Driven over the debug port on a copy of the real data folder: Aurio with
+three lit lanterns, Cmd+W three times. The first two each put one lantern
+out and landed in the next lit one; the third flew out to the island.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

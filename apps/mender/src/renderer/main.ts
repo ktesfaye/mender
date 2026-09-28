@@ -862,6 +862,8 @@ async function boot(): Promise<void> {
      * session opens it, and the one you are already inside is how you call it
      * something else.
      */
+    /** Sessions Cmd+W has closed on its way out of a project. */
+    const shutting = new Set<string>();
     const go = (id: string): void => {
       // The finder is a board like any other, so picking something on it is
       // picking that thing: it steps out of the way first and then answers.
@@ -894,6 +896,31 @@ async function boot(): Promise<void> {
       }
       if (id === 'do:out') {
         void (async () => {
+          /* Closing is one session at a time, the way closing tabs is: the one
+             you are standing in goes home and you land in the next one still
+             awake in this project, and only once nobody is left does it let go
+             of the project altogether. A terminal session's own CLI outlives
+             its board by design, so it is only stepped past, and remembered as
+             stepped past so two of them never hand you back and forth. */
+          const task = inside;
+          const aim = open;
+          if (task && aim) {
+            shutting.add(task.id);
+            if (task.kind !== 'terminal') {
+              await client.agents.rest({ task: task.id }, { timeoutMs: 0 });
+            }
+            if (open !== aim) return;
+            const here = tasksOn(aim.district);
+            const from = here.findIndex((one) => one.id === task.id);
+            const next = [...here.slice(from + 1), ...here.slice(0, Math.max(from, 0))].find(
+              (one) => !shutting.has(one.id) && seen[one.id] && seen[one.id] !== 'empty'
+            );
+            if (next) {
+              await openTask(aim, next);
+              return;
+            }
+          }
+          shutting.clear();
           await shut();
           flyOut(camera, drawn.island);
           arrived();
