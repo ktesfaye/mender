@@ -277,6 +277,38 @@ export function catching(lamp: HTMLElement, settled: string): void {
   );
 }
 
+/** A lantern's light coming up round it, from the lantern outwards. */
+export function swelling(glow: HTMLElement): void {
+  if (reduced()) return;
+  glow.animate(
+    [
+      { transform: 'scale(.25)', opacity: 0 },
+      { transform: 'scale(1.12)', opacity: 1, offset: 0.6 },
+      { transform: 'scale(1)', opacity: 1 },
+    ],
+    { duration: 560, delay: 90, easing: SETTLE, fill: 'backwards' }
+  );
+}
+
+/** And one going out, back into its lantern. Removes it when it has. */
+export function dwindling(glow: HTMLElement): void {
+  if (reduced()) {
+    glow.remove();
+    return;
+  }
+  const going = glow.animate(
+    [
+      { transform: 'scale(1)', opacity: 1 },
+      { transform: 'scale(.25)', opacity: 0 },
+    ],
+    { duration: 300, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }
+  );
+  void going.finished.then(
+    () => glow.remove(),
+    () => glow.remove()
+  );
+}
+
 /** And the one you let go of, turning down to where the others are. */
 export function lettingGo(lamp: HTMLElement, settled: string): void {
   if (reduced()) return;

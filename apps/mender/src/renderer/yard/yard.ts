@@ -37,6 +37,7 @@ import { makeLine, type Asking as Prompting, type Line } from './line';
 import { makeMenu } from './menu';
 import {
   catching,
+  dwindling,
   forgetInk,
   keyed,
   leavingInPlace,
@@ -45,6 +46,7 @@ import {
   play,
   steppingOff,
   sweepingIn,
+  swelling,
 } from './motion';
 import { pressing, twice } from './press';
 import { prose } from './prose';
@@ -625,6 +627,17 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const left = lamp(before.rail.find((one) => one.here)?.id);
     if (took) catching(took, took.style.filter);
     if (left) lettingGo(left, left.style.filter);
+    const glow = root.querySelector<HTMLElement>('[data-glow="here"]');
+    if (glow) swelling(glow);
+    /* The light the one you let go of was throwing, drawn again for as long
+       as it takes to go out. */
+    if (left && before.rail.find((one) => one.here)?.lit) {
+      const x = parseFloat(left.style.left);
+      const y = parseFloat(left.style.top);
+      const out = firelight({ left: x - 34, top: y - 24, width: 90, height: 90 }, 0.3);
+      left.before(out);
+      dwindling(out);
+    }
   }
 
   /** When a session started waking, for the count beside its fire. */
@@ -2565,9 +2578,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       const strength = one.here ? 0.3 : one.posture === 'wants-you' ? 0.16 : 0;
       if (strength) {
         const glow = firelight({ left: x - 34, top: top - 24, width: 90, height: 90 }, strength);
-        /* The light you are standing in is one light, carried along the beam
-           to whichever lantern you took, not put out here and lit there. */
-        beam.appendChild(one.here ? keyed(glow, 'glow:here') : glow);
+        /* The light you are standing in belongs to its lantern: taking another
+           one lets this one's light go and swells the new one's up in place. */
+        if (one.here) glow.dataset.glow = 'here';
+        beam.appendChild(glow);
       }
     }
 

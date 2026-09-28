@@ -306,8 +306,8 @@ what was there steps off the way you came from the moment you press, what is
 there now sweeps in from the side its lantern hangs on, the column nearest
 that side first, and everything that is the project's rather than the
 session's, the headings, the rules, the changelog and the rail itself, stands
-still under it. The light you are standing in slides along the beam to the
-lantern you took, which catches as you take it. A session still waking keeps
+still under it. The light round the lantern you left goes back into it, and
+the one you took catches and its light swells up round it. A session still waking keeps
 the place standing round it and only the middle waits.
 
 **A slash on the line is how a session is worked.** Writing one opens
