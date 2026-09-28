@@ -58,6 +58,8 @@ export interface Playing {
   quiet?: Set<string>;
   /** Everything arrives, in order, as when you walk into a place. */
   entering?: boolean;
+  /** Only these move on their own; the rest are carried by something else. */
+  only?: (el: HTMLElement) => boolean;
 }
 
 /**
@@ -68,6 +70,7 @@ export function play(root: HTMLElement, was: Before, how: Playing = {}): void {
   if (reduced()) return;
   let arriving = 0;
   for (const el of root.querySelectorAll<HTMLElement>('[data-key]')) {
+    if (how.only && !how.only(el)) continue;
     const key = el.dataset.key!;
     const now = el.getBoundingClientRect();
     if (!now.width && !now.height) continue;
@@ -157,6 +160,130 @@ function flyFrom(el: HTMLElement, from: DOMRect, to: DOMRect): void {
     () => (el.style.transformOrigin = was),
     () => {}
   );
+}
+
+/**
+ * Going from one session to its neighbour.
+ *
+ * A switch used to be three cuts in a row: the whole yard blanked, rail and
+ * all, a fire sat alone in the dark, and then it blanked again and faded up.
+ * Nothing about it said you had moved sideways along the rail. Now what was
+ * there steps off the way you came from, and what is there now sweeps in from
+ * the side you pressed, the column nearest that side first, while everything
+ * that belongs to the place and not the session stands still under it.
+ */
+const SWITCH_OUT_MS = 230;
+const SWITCH_IN_MS = 520;
+const SWITCH_TRAVEL = 72;
+
+/** The session you left, stepping off. Removes it when it has gone. */
+export function steppingOff(ghost: HTMLElement, way: number): void {
+  if (reduced()) {
+    ghost.remove();
+    return;
+  }
+  /* It gathers speed as it goes, but its light goes first: two sessions'
+     words on the same spot at once is the one thing this must never show. */
+  ghost.animate(
+    [
+      { transform: 'translate(0,0)' },
+      { transform: way ? `translateX(${-way * SWITCH_TRAVEL * 0.6}px)` : 'translateY(-6px)' },
+    ],
+    { duration: SWITCH_OUT_MS, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }
+  );
+  const going = ghost.animate(
+    [
+      { opacity: 1, filter: 'blur(0)' },
+      { opacity: 0, filter: 'blur(2px)' },
+    ],
+    { duration: SWITCH_OUT_MS, easing: 'cubic-bezier(0,0,.3,1)', fill: 'forwards' }
+  );
+  void going.finished.then(
+    () => ghost.remove(),
+    () => ghost.remove()
+  );
+}
+
+/**
+ * The same leaving, done where it stands, for when the next session is not
+ * ready to be drawn yet: pressing a lantern answers at once either way.
+ */
+export function leavingInPlace(movers: readonly HTMLElement[], way: number): void {
+  if (reduced()) return;
+  for (const el of movers) {
+    el.animate(
+      [
+        { transform: 'translate(0,0)' },
+        { transform: way ? `translateX(${-way * SWITCH_TRAVEL * 0.6}px)` : 'translateY(-6px)' },
+      ],
+      {
+        duration: SWITCH_OUT_MS,
+        easing: 'cubic-bezier(.4,0,1,1)',
+        fill: 'forwards',
+        composite: 'add',
+      }
+    );
+    el.animate([{ opacity: 1 }, { opacity: 0 }], {
+      duration: SWITCH_OUT_MS,
+      easing: 'cubic-bezier(0,0,.3,1)',
+      fill: 'forwards',
+    });
+  }
+}
+
+/** The session you went to, sweeping in from the side it hangs on. */
+export function sweepingIn(movers: readonly HTMLElement[], way: number, gone = false): void {
+  if (reduced()) return;
+  const wide = window.innerWidth || 1;
+  for (const el of movers) {
+    const at = el.getBoundingClientRect();
+    if (!at.width && !at.height) continue;
+    const middle = Math.min(1, Math.max(0, (at.left + at.width / 2) / wide));
+    /* The column nearest the side it comes from lands first, so the board
+       reads as one thing arriving from over there rather than all at once. */
+    const lead = way > 0 ? 1 - middle : middle;
+    const delay = Math.round((gone ? 0 : SWITCH_OUT_MS * 0.55) + lead * 140);
+    slide(
+      el,
+      way ? `translateX(${way * SWITCH_TRAVEL}px)` : 'translateY(10px)',
+      SWITCH_IN_MS,
+      delay
+    );
+    fade(el, 0, SWITCH_IN_MS * 0.7, delay);
+  }
+}
+
+/**
+ * A lantern taken off the beam in your hand: it catches, brighter than it
+ * will burn, and settles. The hop is stepped, because a lantern is a sprite.
+ */
+export function catching(lamp: HTMLElement, settled: string): void {
+  if (reduced()) return;
+  lamp.animate(
+    [
+      { filter: 'brightness(.75)' },
+      { filter: 'brightness(1.9) saturate(1.2)', offset: 0.3 },
+      { filter: settled || 'brightness(1)' },
+    ],
+    { duration: 640, easing: 'ease-out' }
+  );
+  lamp.animate(
+    [
+      { transform: 'translateY(0)' },
+      { transform: 'translateY(-4px)' },
+      { transform: 'translateY(0)' },
+    ],
+    { duration: 300, easing: 'steps(3,end)', composite: 'add' }
+  );
+}
+
+/** And the one you let go of, turning down to where the others are. */
+export function lettingGo(lamp: HTMLElement, settled: string): void {
+  if (reduced()) return;
+  lamp.animate([{ filter: 'brightness(1)' }, { filter: settled }], {
+    duration: 420,
+    easing: 'ease-out',
+  });
 }
 
 function reduced(): boolean {

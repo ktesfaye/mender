@@ -35,7 +35,17 @@ import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
 import { makeLine, type Asking as Prompting, type Line } from './line';
 import { makeMenu } from './menu';
-import { forgetInk, keyed, measure, play } from './motion';
+import {
+  catching,
+  forgetInk,
+  keyed,
+  leavingInPlace,
+  lettingGo,
+  measure,
+  play,
+  steppingOff,
+  sweepingIn,
+} from './motion';
 import { pressing, twice } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
@@ -165,6 +175,33 @@ export interface Standing {
 function same(a: string, b: string): boolean {
   return a.replace(/\s+/g, ' ').trim() === b.replace(/\s+/g, ' ').trim();
 }
+
+/**
+ * Which way along the rail from one yard to the next: right is on, left is
+ * back, and the empty hook is past the last lantern.
+ */
+function wayAlong(before: Yard, yard: Yard): number {
+  const at = (of: Yard): number => {
+    const i = of.rail.findIndex((one) => one.here);
+    return i < 0 ? of.rail.length : i;
+  };
+  return Math.sign(at(yard) - at(before));
+}
+
+/** Part of the place rather than the session, so a switch leaves it standing. */
+function stays<T extends HTMLElement>(el: T, name: string): T {
+  el.dataset.stays = name;
+  return el;
+}
+
+/** The session's own, even sitting inside something that stays. */
+function moves<T extends HTMLElement>(el: T): T {
+  el.dataset.moves = '';
+  return el;
+}
+
+/** How long a switch waits on a waking session before showing it waking. */
+const WAKE_HELD_MS = 320;
 
 /** Which lanterns were on the beam last time, so a new one can be seen to
     arrive rather than simply being there. */
@@ -351,13 +388,34 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   /** When each session was first seen working, for a count with nothing else to start from. */
   const workingSince = new Map<string, number>();
 
+  /** Which way along the rail the last switch went, for the board that
+      arrives once a session it switched to has finished waking. */
+  let lastWay = 0;
+
+  /** The yard as it is actually drawn, which a held switch runs behind. */
+  let drawn: Yard | undefined;
+  /** A switch into a session still waking, held for a moment in case it wakes. */
+  let holding = 0;
+  /** Whether the session being left has already gone, while a switch was held. */
+  let gone = false;
+
   function show(yard: Yard, moving = true): void {
-    const before = last;
+    const before = drawn;
     last = yard;
     const walkedIn =
       entering ||
       before?.project.id !== yard.project.id ||
       before?.session?.id !== yard.session?.id;
+    /* Along the rail to a neighbour, rather than in from the island or over
+       from another project. That is a step sideways, and it moves like one. */
+    const switched =
+      moving &&
+      !entering &&
+      before !== undefined &&
+      before.project.id === yard.project.id &&
+      before.session?.id !== yard.session?.id;
+    if (switched) lastWay = wayAlong(before, yard);
+    else if (walkedIn) lastWay = 0;
     /* A session being woken reads its whole history back in a piece at a
        time, and every piece is a rewrite. Drawing each one is the board
        flickering through every half-loaded state of the conversation, so while
@@ -365,10 +423,33 @@ export function makeYard(layer: Layer, does: Doings): Standing {
        whole of it comes in together. */
     const waking = Boolean(yard.session?.waking);
     const wasWaking = Boolean(before?.session?.waking) && !walkedIn;
+    /* Every session is opened as waking until it says otherwise, and one that
+       is already up says so a moment later. Drawn straight away, that was two
+       switches on top of each other: into a waking board, then out of it. So
+       the board you are leaving stays a beat, and only a wake long enough to
+       notice gets a board of its own. */
+    if (switched && waking && holding !== -1) {
+      if (!holding) {
+        leavingInPlace([...movers(root), ...movers(stillAt)], lastWay);
+        gone = true;
+        holding = window.setTimeout(() => {
+          holding = -1;
+          if (last && stage.style.display !== 'none') show(last);
+          holding = 0;
+        }, WAKE_HELD_MS);
+      }
+      return;
+    }
+    if (holding > 0) window.clearTimeout(holding);
+    if (holding > 0) holding = 0;
     if (waking && wasWaking && moving) return;
+    drawn = yard;
     const woke = wasWaking && !waking;
     entering = false;
-    const was = moving && !walkedIn ? measure(stage) : new Map();
+    const was = moving && (!walkedIn || switched) ? measure(stage) : new Map();
+    const off = (switched && !gone) || (woke && moving) ? stepOff() : null;
+    const wentAlready = switched && gone;
+    gone = false;
     root.replaceChildren(covered);
     covered.replaceChildren();
     const columns = layer.columns();
@@ -386,7 +467,22 @@ export function makeYard(layer: Layer, does: Doings): Standing {
        So it says the one true thing and lets the district behind it do the
        rest; the line at the bottom is already asking what to build. */
     if (yard.session && waking) {
-      wakingUp(covered, columns, floor, wakingSinceOf(yard.session.id));
+      /* The place stands while its session wakes: the headings, the rules
+         and the changelog are the project's and already known, so only the
+         middle waits, with the fire where the answer is about to land. */
+      const blank: Yard = { ...yard, session: { ...BLANK, id: yard.session.id } };
+      asked(root, columns.asked, blank, floor, layer.cramped(), pickNote);
+      thinking(
+        covered,
+        columns.thinking,
+        blank,
+        floor,
+        does,
+        walkedIn,
+        undefined,
+        columns.asked.wide > 0
+      );
+      wakingUp(covered, columns.thinking, floor, wakingSinceOf(yard.session.id));
       stillAt.replaceChildren();
     } else if (yard.session) {
       asked(root, columns.asked, yard, floor, layer.cramped(), pickNote);
@@ -435,8 +531,32 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     walk.again();
 
     if (!moving) return;
-    if (woke) {
-      root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: 'ease-out' });
+    if (off || wentAlready) {
+      /* What is the place's and not the session's stands where it was, so
+         only what is actually changing is seen to go. */
+      const standing = new Set(
+        [...root.querySelectorAll<HTMLElement>('[data-stays]')].map((el) => el.dataset.stays)
+      );
+      if (off) {
+        for (const el of off.ghost.querySelectorAll<HTMLElement>('[data-stays]')) {
+          if (standing.has(el.dataset.stays)) el.style.visibility = 'hidden';
+        }
+        for (const el of off.ghost.querySelectorAll<HTMLElement>('[data-moves]')) {
+          el.style.visibility = 'visible';
+        }
+        stage.insertBefore(off.ghost, root);
+        for (const [el, top, left] of off.scrolled) {
+          el.scrollTop = top;
+          el.scrollLeft = left;
+        }
+        steppingOff(off.ghost, lastWay);
+      }
+      play(stage, was, {
+        only: (el) => Boolean(el.closest('[data-stays]')) && !el.closest('[data-moves]'),
+      });
+      sweepingIn([...movers(root), ...movers(stillAt)], lastWay, wentAlready);
+      if (switched) relit(before, yard);
+      if (woke) lastWay = 0;
       return;
     }
     /* The note that was just said, landing. The agent's own record of it has
@@ -455,6 +575,56 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     if (walkedIn) {
       root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: 'ease-out' });
     }
+  }
+
+  /**
+   * Lift what is on the yard off it, whole, so it can be seen leaving while
+   * the next session is written in underneath. The nodes themselves go rather
+   * than copies, so a column scrolled halfway down leaves from halfway down.
+   */
+  function stepOff(): { ghost: HTMLElement; scrolled: [HTMLElement, number, number][] } {
+    const scrolled: [HTMLElement, number, number][] = [];
+    for (const el of stage.querySelectorAll<HTMLElement>('*')) {
+      if (el.scrollTop || el.scrollLeft) scrolled.push([el, el.scrollTop, el.scrollLeft]);
+    }
+    const ghost = box({ left: 0, top: 0, right: 0, bottom: 0 }, 'pointer-events:none');
+    ghost.inert = true;
+    const under = box({ left: 0, top: 0, right: 0, bottom: 0 });
+    under.append(...covered.childNodes);
+    const kept = stillAt.cloneNode(false) as HTMLElement;
+    kept.append(...stillAt.childNodes);
+    ghost.append(under, ...[...root.childNodes].filter((node) => node !== covered), kept);
+    /* It is not there any more as far as anything else is concerned: nothing
+       measures it, walks onto it or presses it on its way out. */
+    for (const el of ghost.querySelectorAll<HTMLElement>('[data-key],[data-walk]')) {
+      delete el.dataset.key;
+      delete el.dataset.walk;
+    }
+    return { ghost, scrolled };
+  }
+
+  /** Everything on the yard that is the session's, at the size it moves in. */
+  function movers(parent: HTMLElement): HTMLElement[] {
+    const out: HTMLElement[] = [];
+    for (const child of parent.children) {
+      if (!(child instanceof HTMLElement) || child.dataset.ownMotion !== undefined) continue;
+      if (child.dataset.stays !== undefined) {
+        out.push(...child.querySelectorAll<HTMLElement>('[data-moves]'));
+      } else if (child === covered || child.querySelector('[data-stays]')) {
+        out.push(...movers(child));
+      } else out.push(child);
+    }
+    return out;
+  }
+
+  /** The lantern you took catches; the one you let go of turns down. */
+  function relit(before: Yard, yard: Yard): void {
+    const lamp = (id: string | undefined): HTMLElement | null =>
+      id ? root.querySelector<HTMLElement>(`[data-key="lantern:${CSS.escape(id)}"]`) : null;
+    const took = lamp(yard.rail.find((one) => one.here)?.id);
+    const left = lamp(before.rail.find((one) => one.here)?.id);
+    if (took) catching(took, took.style.filter);
+    if (left) lettingGo(left, left.style.filter);
   }
 
   /** When a session started waking, for the count beside its fire. */
@@ -601,7 +771,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     what: 'asked' | 'made' | 'changelog' | 'now',
     from: number
   ): void {
-    const it = box(where);
+    const it = stays(box(where), `grip:${what}`);
     it.className = `grip grip-${way}`;
     it.addEventListener('pointerdown', (event) => {
       if (event.button !== 0) return;
@@ -721,6 +891,11 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     },
     up: (on, bare = false) => {
       if (on && stage.style.display === 'none') entering = true;
+      if (!on && holding > 0) {
+        window.clearTimeout(holding);
+        holding = 0;
+        gone = false;
+      }
       stage.style.display = on ? '' : 'none';
       if (on) lay();
       root.style.display = on && !bare ? '' : 'none';
@@ -774,15 +949,21 @@ export function makeYard(layer: Layer, does: Doings): Standing {
    something, without putting a panel there. */
 function scrims(root: HTMLElement): void {
   root.appendChild(
-    box(
-      { left: 0, right: 0, bottom: 0, height: 260 },
-      'background:linear-gradient(180deg,rgba(0,0,0,0),rgba(18,13,7,.55))'
+    stays(
+      box(
+        { left: 0, right: 0, bottom: 0, height: 260 },
+        'background:linear-gradient(180deg,rgba(0,0,0,0),rgba(18,13,7,.55))'
+      ),
+      'scrim:up'
     )
   );
   root.appendChild(
-    box(
-      { left: 0, right: 0, bottom: 0, height: 160 },
-      'background:linear-gradient(0deg,rgba(18,13,7,.92),rgba(18,13,7,0))'
+    stays(
+      box(
+        { left: 0, right: 0, bottom: 0, height: 160 },
+        'background:linear-gradient(0deg,rgba(18,13,7,.92),rgba(18,13,7,0))'
+      ),
+      'scrim:down'
     )
   );
 }
@@ -796,7 +977,7 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
   /* The name is the project, so pressing it opens the project: what it looks
      like on the rack, what it is called, what its sessions take with them,
      and forgetting it. Nothing about the place itself lives anywhere else. */
-  const title = box({ left: edge, top: HEAD.title }, TITLE);
+  const title = stays(box({ left: edge, top: HEAD.title }, TITLE), 'title');
   title.appendChild(
     astop(
       pressing(yard.project.name, () => does.press('tend')),
@@ -812,7 +993,7 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
     /* The rail's name, which follows the session being renamed as it works;
        the session's own is only what it was called when you walked in. */
     const named = yard.rail.find((one) => one.here)?.name ?? yard.session.name;
-    const here = exact(named, 20, '#ffdca4');
+    const here = moves(exact(named, 20, '#ffdca4'));
     here.style.cssText +=
       ';letter-spacing:0;text-transform:none;font-weight:400;max-width:44vw;' +
       'overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom';
@@ -899,7 +1080,7 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
     root.appendChild(said);
   }
 
-  root.appendChild(rule({ left: edge, right: edge, top: HEAD.rule }, true));
+  root.appendChild(stays(rule({ left: edge, right: edge, top: HEAD.rule }, true), 'rule:head'));
 }
 
 /** What each way a project can be wrong reads as, in words rather than a mark. */
@@ -1036,7 +1217,7 @@ function asked(
 
   const notes = yard.session?.notes ?? [];
   const [newest, ...older] = notes;
-  root.appendChild(label('what you asked', { left: at.x, top: HEAD.label }));
+  root.appendChild(stays(label('what you asked', { left: at.x, top: HEAD.label }), 'label:asked'));
   /* Nothing said yet is nothing nailed up, so no bare post, but the heading
      stays: it is a session, and a session has these columns from the start. */
   if (!newest) {
@@ -1198,12 +1379,15 @@ function changelog(
      nothing to divide it from. It is also what you drag to give either of
      them more room. */
   if (!alone) {
-    const line = rule({ left: at.x, top: top - 20, width: at.wide - 20 });
+    const line = keyed(
+      stays(rule({ left: at.x, top: top - 20, width: at.wide - 20 }), 'rule:log'),
+      'rule:log'
+    );
     line.dataset.grip = 'changelog';
     line.dataset.value = String(tall);
     root.appendChild(line);
   }
-  root.appendChild(label('changelog', { left: at.x, top }));
+  root.appendChild(keyed(stays(label('changelog', { left: at.x, top }), 'label:log'), 'label:log'));
 
   /* In the type and the cream the glance at the other sessions used to be
      written in: each version on its own line behind the same small square,
@@ -1247,7 +1431,7 @@ function changelog(
     }
     list.appendChild(block);
   }
-  root.appendChild(list);
+  root.appendChild(keyed(stays(list, 'log'), 'log'));
   /* Only whole lines: one sliced through the middle by the bottom edge reads
      as the board being broken rather than as there being more. */
   const room = tall - 30;
@@ -1287,15 +1471,18 @@ function thinking(
        there is nothing on the other side of it to divide it from. */
     if (ruled) {
       root.appendChild(
-        rule({
-          left: at.x - GUTTER / 2,
-          top: HEAD.rule + 12,
-          width: 1,
-          height: floor - HEAD.rule - 12,
-        })
+        stays(
+          rule({
+            left: at.x - GUTTER / 2,
+            top: HEAD.rule + 12,
+            width: 1,
+            height: floor - HEAD.rule - 12,
+          }),
+          'rule:said'
+        )
       );
     }
-    root.appendChild(heading);
+    root.appendChild(stays(heading, 'label:said'));
   }
   const top = HEAD.top;
 
@@ -1636,16 +1823,17 @@ function ember(live: Live, since: number | undefined): HTMLElement {
  */
 function wakingUp(
   root: HTMLElement,
-  columns: { asked: { x: number }; made: { x: number; wide: number } },
+  at: { x: number; wide: number },
   floor: number,
   since: number
 ): void {
-  const left = columns.asked.x;
-  const wide = columns.made.x + columns.made.wide - left;
   const it = box(
-    { left, top: HEAD.top, width: wide, height: Math.max(0, floor - HEAD.top) },
+    { left: at.x, top: HEAD.top, width: at.wide, height: Math.max(0, floor - HEAD.top) },
     'display:flex;align-items:center;justify-content:center;opacity:0;animation:yard-waking 420ms ease-out 350ms forwards'
   );
+  /* It keeps its own pause before it shows, so a wake too quick to notice
+     says nothing; a switch sweeping it in would show it straight away. */
+  it.dataset.ownMotion = '';
   it.appendChild(ember({ doing: 'waking up', answering: false }, since));
   root.appendChild(it);
 }
@@ -1790,7 +1978,15 @@ function made(
   if (!yard.asking && !plan.length && !steps_.length && !hands.length) return;
 
   root.appendChild(
-    rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
+    stays(
+      rule({
+        left: at.x - GUTTER / 2,
+        top: HEAD.rule + 12,
+        width: 1,
+        height: floor - HEAD.rule - 12,
+      }),
+      'rule:did'
+    )
   );
 
   /* The ground is the foot of this column whatever happened above it, so
@@ -2317,7 +2513,7 @@ function still(at: HTMLElement, yard: Yard, does: Doings): void {
 }
 
 function said_line(root: HTMLElement, edge: number): void {
-  root.appendChild(rule({ left: edge, right: edge, bottom: 186 }, true));
+  root.appendChild(stays(rule({ left: edge, right: edge, bottom: 186 }, true), 'rule:line'));
 }
 
 /* ── the rail ──────────────────────────────────────────────────────────────
@@ -2368,9 +2564,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     if (one.lit) {
       const strength = one.here ? 0.3 : one.posture === 'wants-you' ? 0.16 : 0;
       if (strength) {
-        beam.appendChild(
-          firelight({ left: x - 34, top: top - 24, width: 90, height: 90 }, strength)
-        );
+        const glow = firelight({ left: x - 34, top: top - 24, width: 90, height: 90 }, strength);
+        /* The light you are standing in is one light, carried along the beam
+           to whichever lantern you took, not put out here and lit there. */
+        beam.appendChild(one.here ? keyed(glow, 'glow:here') : glow);
       }
     }
 
@@ -2473,7 +2670,11 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     name.appendChild(start);
     hook.appendChild(name);
     const under = box({ left: 34, top: 20 });
-    const doing = exact(standing ? 'press again for other ways' : 'the hook is empty', 11, '#a89272');
+    const doing = exact(
+      standing ? 'press again for other ways' : 'the hook is empty',
+      11,
+      '#a89272'
+    );
     doing.style.cssText += ';display:inline-block;vertical-align:top';
     under.appendChild(doing);
     hook.appendChild(under);
@@ -2486,6 +2687,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   hook.addEventListener('pointerleave', () => (lamp.style.filter = 'brightness(.7)'));
   beam.appendChild(hook);
   root.appendChild(beam);
+  stays(beam, 'rail');
   beam.scrollLeft = railScrolled;
   beam.addEventListener('scroll', () => (railScrolled = beam.scrollLeft));
 }

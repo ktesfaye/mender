@@ -301,6 +301,14 @@ and pins itself to the gatepost. While a session works, the bottom of the middle
 column is a small fire throwing sparks, with what it is doing in the present
 tense and how long it has been at it, and the answer inks in as it comes. Words
 ease; the sprites still step, because they are pixel art and writing is not.
+Going along the rail to another session is a step sideways and moves like one:
+what was there steps off the way you came from the moment you press, what is
+there now sweeps in from the side its lantern hangs on, the column nearest
+that side first, and everything that is the project's rather than the
+session's, the headings, the rules, the changelog and the rail itself, stands
+still under it. The light you are standing in slides along the beam to the
+lantern you took, which catches as you take it. A session still waking keeps
+the place standing round it and only the middle waits.
 
 **A slash on the line is how a session is worked.** Writing one opens
 everything you could mean right where you are writing it: a small dark slab

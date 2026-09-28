@@ -2481,6 +2481,18 @@ Driven over the debug port: a fresh session read "claude", then "Yard
 staleness logic" seconds after the question, then "How yards become cold"
 once it had answered; the header changed with it.
 
+### Switching sessions moves sideways (2026-09-28) — done
+
+Pressing another lantern used to blank the whole yard, rail and all, show a
+lone fire in the dark, blank again and fade up. Now the old session slides off
+away from the lantern pressed and the new one sweeps in from its side, column
+by column, while the headings, rules, changelog and rail hold still and the
+lantern glow slides along the beam. A session still waking keeps the place
+standing and waits only in the middle, and the changelog stays up rather than
+dropping out while it is read again. Driven over the debug port and filmed at a
+fifth of the speed, left and right, into an awake session and into one asleep
+after a restart: no blank frame, no doubled writing.
+
 ### Saying something again (2026-09-28) — done
 
 Up on an empty write line brings back the last thing said in that session, and

@@ -105,6 +105,9 @@ export interface Opening {
  */
 const WAKE_GIVES_UP_MS = 20_000;
 
+/** The last history read off each checkout, to stand in while it is read again. */
+const readBefore = new Map<string, BoardVersion[]>();
+
 export async function openYard(
   client: MenderClient,
   opening: Opening,
@@ -212,6 +215,10 @@ export async function openYard(
      one and the project's own folder when you are not, because a project board
      with nobody in it is still standing on a branch. */
   const where = here?.path ?? from.project.path;
+  /* What was last read here, or in the project's own folder, stands until the
+     read comes back: the changelog is the place's, and a switch between two
+     sessions that took it down and put it back up was the place blinking. */
+  versions ??= readBefore.get(where) ?? readBefore.get(from.project.path);
   const parsed = parseNativeAbsolute(where);
   /* A checkout that is not where it was is the one thing about a project worth
      saying before anything else about it, because nothing else on the board
@@ -229,6 +236,7 @@ export async function openYard(
       (found) => {
         if (mine !== reading) return;
         versions = found.versions;
+        readBefore.set(where, found.versions);
         again();
       },
       () => {}
