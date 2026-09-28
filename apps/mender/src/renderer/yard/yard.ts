@@ -905,39 +905,53 @@ function changelog(
   root.appendChild(rule({ left: at.x, top: top - 20, width: at.wide - 20 }));
   root.appendChild(label('changelog', { left: at.x, top }));
 
-  /* Written exactly the way the glance at the other sessions used to be,
-     one line a change with its version in front of it, only scrolling. */
-  const list = stack({ left: at.x, top: top + 30, width: at.wide, height: tall - 30 }, 9);
+  /* In the type and the cream the glance at the other sessions used to be
+     written in: each version on its own line behind the same small square,
+     and what went into it bulleted and indented under it, scrolling. */
+  const list = stack({ left: at.x, top: top + 30, width: at.wide - 20, height: tall - 30 }, 14);
   list.style.fontSize = '14px';
   list.style.fontFamily = "'Josefin Sans',sans-serif";
   list.style.cssText += ';overflow-y:auto;overflow-x:hidden;pointer-events:auto;scrollbar-width:none';
   const newest = versions.find((one) => one.version !== null);
+  const lines: HTMLElement[] = [];
   for (const one of versions) {
+    const block = document.createElement('div');
+    block.style.cssText = 'display:flex;flex-direction:column;gap:6px;flex:none';
+    const head = row(10);
+    head.appendChild(
+      box(
+        { width: 8, height: 8 },
+        `background:${one === newest ? TONE.working : TONE.resting};position:relative;flex:none`
+      )
+    );
+    const name = document.createElement('span');
+    name.style.color = one === newest ? '#f4e3c0' : '#dcc8a0';
+    name.textContent = one.version === null ? 'not in a version yet' : `v${one.version}`;
+    head.appendChild(name);
+    block.appendChild(head);
+    lines.push(head);
     for (const said of one.lines) {
-      const line = row(10);
-      line.style.flex = 'none';
-      line.appendChild(
-        box(
-          { width: 8, height: 8 },
-          `background:${one === newest ? TONE.working : TONE.resting};position:relative;flex:none`
-        )
-      );
+      const line = document.createElement('div');
+      line.style.cssText =
+        'display:flex;gap:9px;align-items:baseline;padding-left:18px;font-size:13px;line-height:1.35;color:#dcc8a0';
+      const dot = document.createElement('span');
+      dot.style.cssText = 'flex:none;color:#a89272';
+      dot.textContent = '\u2022';
       const text = document.createElement('span');
-      text.style.cssText = 'color:#dcc8a0;min-width:0;overflow:hidden;text-overflow:ellipsis';
-      text.textContent = `${one.version === null ? 'unversioned' : `v${one.version}`} · ${said}`;
-      text.title = said;
-      line.appendChild(text);
-      list.appendChild(line);
+      text.style.cssText = 'min-width:0;overflow-wrap:anywhere';
+      text.textContent = said;
+      line.append(dot, text);
+      block.appendChild(line);
+      lines.push(line);
     }
+    list.appendChild(block);
   }
   root.appendChild(list);
   /* Only whole lines: one sliced through the middle by the bottom edge reads
      as the board being broken rather than as there being more. */
-  const step = (list.firstElementChild as HTMLElement | null)?.offsetHeight ?? 0;
-  if (step) {
-    const fits = Math.max(1, Math.floor((tall - 30 + 9) / (step + 9)));
-    list.style.height = `${fits * (step + 9) - 9}px`;
-  }
+  const room = tall - 30;
+  const whole = lines.filter((one) => one.offsetTop + one.offsetHeight <= room).at(-1);
+  if (whole) list.style.height = `${whole.offsetTop + whole.offsetHeight}px`;
 
   const id = yard.project.id;
   list.scrollTop = logScrolled.get(id) ?? 0;
