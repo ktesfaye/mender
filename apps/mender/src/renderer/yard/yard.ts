@@ -758,12 +758,12 @@ function asked(
   cramped: boolean,
   does: Doings
 ): void {
-  root.appendChild(label('what you asked', { left: at.x, top: HEAD.label }));
-
   /* The changelog sits at the foot of the column, so the post and the notes
      on it get everything above that and no more. */
-  const under = changelog(root, at, yard, floor);
-  const room = under - 20 - HEAD.top;
+  const under = changelog(root, at, yard, floor, !yard.session?.notes.length);
+  /* Clear air between the last of the post and the changelog's rule, rather
+     than the notes running into it. */
+  const room = under - 44 - HEAD.top;
 
   /* The post is only as long as what is nailed to it, plus a little bare wood
      under the last note. A post running the height of the window with nothing
@@ -776,10 +776,12 @@ function asked(
 
   const notes = yard.session?.notes ?? [];
   const [newest, ...older] = notes;
+  /* Nothing said yet is nothing nailed up: no heading and no bare post. */
   if (!newest) {
-    post.style.height = '120px';
+    post.remove();
     return;
   }
+  root.appendChild(label('what you asked', { left: at.x, top: HEAD.label }));
 
   const card = keyed(
     pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 }, does),
@@ -813,10 +815,12 @@ function asked(
      scrolls when there are more than it is tall. */
   const below = HEAD.top + card.offsetHeight + 22;
   const list = stack(
-    { left: at.x + 22, top: below, width: at.wide - 60, height: Math.max(0, under - 20 - below) },
+    { left: at.x + 22, top: below, width: at.wide - 60, height: Math.max(0, under - 44 - below) },
     14
   );
-  list.style.cssText += ';overflow-y:auto;overflow-x:hidden;pointer-events:auto';
+  /* The foot fades rather than slicing a note through the middle. */
+  list.style.cssText +=
+    ';overflow-y:auto;overflow-x:hidden;pointer-events:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 36px),transparent)';
   for (const note of older) list.appendChild(keyed(weathered(note, does), `note:${note.id}`));
   root.appendChild(list);
 
@@ -901,7 +905,9 @@ function weathered(note: Note, does: Doings): HTMLElement {
   body.style.cssText = "font-family:'Caveat',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
   body.textContent = note.said;
   it.appendChild(body);
-  it.appendChild(forkLine(note, does));
+  const fork = forkLine(note, does);
+  fork.style.cssText += ";font-family:'Josefin Sans',sans-serif;margin-top:4px";
+  it.appendChild(fork);
   return it;
 }
 
@@ -920,13 +926,16 @@ function changelog(
   root: HTMLElement,
   at: { x: number; wide: number },
   yard: Yard,
-  floor: number
+  floor: number,
+  alone = false
 ): number {
   const versions = yard.versions ?? [];
   if (!versions.length) return floor;
   const tall = Math.min(260, Math.max(130, Math.round((floor - HEAD.top) * 0.34)));
   const top = floor - tall;
-  root.appendChild(rule({ left: at.x, top: top - 20, width: at.wide - 20 }));
+  /* The rule divides it from the post, so with nothing on the post there is
+     nothing to divide it from. */
+  if (!alone) root.appendChild(rule({ left: at.x, top: top - 20, width: at.wide - 20 }));
   root.appendChild(label('changelog', { left: at.x, top }));
 
   /* In the type and the cream the glance at the other sessions used to be
@@ -1000,13 +1009,16 @@ function thinking(
   walkedIn: boolean,
   since: number | undefined
 ): void {
-  root.appendChild(
-    rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
-  );
-  const heading = label('what it said', { left: at.x, top: HEAD.label });
-  root.appendChild(heading);
-
   const thoughts = yard.session?.thoughts ?? [];
+  const heading = label('what it said', { left: at.x, top: HEAD.label });
+  /* A heading over an empty column, or a rule down the side of one, says the
+     board is broken, not that nothing has been said yet. */
+  if (thoughts.length || yard.session?.live || yard.session?.failure) {
+    root.appendChild(
+      rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
+    );
+    root.appendChild(heading);
+  }
   const top = HEAD.top;
 
   const live = yard.session?.live;
@@ -1551,7 +1563,6 @@ function made(
     'overflow-x:hidden',
     'pointer-events:auto',
     'scrollbar-width:none',
-    '-webkit-mask-image:linear-gradient(180deg,transparent,#000 14px,#000 calc(100% - 14px),transparent)',
   ].join(';');
   const earlier = session?.olderSteps;
   if (earlier?.many) {
@@ -1574,16 +1585,33 @@ function made(
      once you have scrolled up to read something, the same as the answer. */
   const id = session?.id ?? '';
   const kept = stepsFollowed.get(id);
-  steps.scrollTop = kept === undefined ? steps.scrollHeight : kept;
-  /* The props are pictures, and a picture has no height until it arrives, so
-     the live end is found again once they have. */
-  if (kept === undefined) {
-    for (const wait of [60, 250, 700]) {
-      window.setTimeout(() => {
-        if (!stepsFollowed.has(id)) steps.scrollTop = steps.scrollHeight;
-      }, wait);
+  const baseTop = top;
+  const baseTall = Math.max(0, above.offsetHeight - top);
+  /* Following the live end, the list starts on a whole step rather than one
+     sliced in half under the heading: the window is shortened from the top by
+     however much of the first visible step would have been cut. */
+  const settle = (): void => {
+    if (stepsFollowed.has(id)) return;
+    steps.style.top = `${baseTop}px`;
+    steps.style.height = `${baseTall}px`;
+    steps.scrollTop = steps.scrollHeight;
+    const at = steps.scrollTop;
+    const first = [...steps.children].find(
+      (one) => (one as HTMLElement).offsetTop >= at
+    ) as HTMLElement | undefined;
+    const cut = first ? first.offsetTop - at : 0;
+    if (cut > 0 && cut < baseTall) {
+      steps.style.top = `${baseTop + cut}px`;
+      steps.style.height = `${baseTall - cut}px`;
+      steps.scrollTop = steps.scrollHeight;
     }
-  }
+  };
+  if (kept === undefined) {
+    settle();
+    /* The props are pictures, and a picture has no height until it arrives, so
+       the live end is found again once they have. */
+    for (const wait of [60, 250, 700]) window.setTimeout(settle, wait);
+  } else steps.scrollTop = kept;
   steps.addEventListener('scroll', () => {
     const atEdge = steps.scrollTop + steps.clientHeight >= steps.scrollHeight - 24;
     if (atEdge) stepsFollowed.delete(id);
@@ -1756,7 +1784,7 @@ function nobody(
      same place it sits when there is work here, so it does not move when the
      first session arrives. Nothing else: an empty project has no ground worth
      framing, no cart and nothing to have done. */
-  changelog(root, at, yard, floor);
+  changelog(root, at, yard, floor, true);
 }
 
 /**
