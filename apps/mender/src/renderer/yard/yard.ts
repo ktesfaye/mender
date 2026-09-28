@@ -1480,11 +1480,14 @@ function made(
   const top = labelAt + (HEAD.top - HEAD.label);
   const steps = stack(
     { left: 0, top, width: at.wide, height: Math.max(0, above.offsetHeight - top) },
-    10
+    6
   );
+  /* A glance down the side, not a second thing to read: small, quiet type
+     and the props shrunk to match, so the answer in the middle stays the one
+     thing on this screen that is loud. */
   steps.style.cssText += [
     '',
-    'font-size:14px',
+    'font-size:12px',
     'line-height:1.3',
     "font-family:'Josefin Sans',sans-serif",
     'overflow-y:auto',
@@ -1497,7 +1500,7 @@ function made(
   if (earlier?.many) {
     const count = exact(
       `\u25b8 ${earlier.many} earlier steps \u00b7 ${earlier.over}`,
-      12,
+      11,
       '#8a7452'
     );
     count.style.cssText += ';position:relative;flex:none;padding-top:6px';
@@ -1573,21 +1576,24 @@ function did(one: Step, does: Doings): HTMLElement {
 
 /** The line itself: the prop, what it did, and what it cost. */
 function deedLine(one: Step): HTMLElement {
-  const line = row(10);
+  const line = row(8);
   const slot = document.createElement('span');
-  slot.style.cssText = 'width:44px;display:flex;justify-content:center;flex:none;position:relative';
+  slot.style.cssText =
+    'width:28px;height:26px;display:flex;justify-content:center;align-items:center;flex:none;position:relative';
   if (one.running) {
     /* Nothing spins in this village. Something happening now is a light that
        goes on and off, which is what a fire does. */
     slot.appendChild(
       box(
-        { width: 11, height: 11 },
-        'position:relative;border-radius:50%;background:#ff8a4a;box-shadow:0 0 0 5px rgba(255,138,74,.22);animation:yard-blink 700ms steps(1,end) infinite'
+        { width: 7, height: 7 },
+        'position:relative;border-radius:50%;background:#ff8a4a;box-shadow:0 0 0 3px rgba(255,138,74,.22);animation:yard-blink 700ms steps(1,end) infinite'
       )
     );
   } else {
     const prop = sprite(one.prop, 1);
     prop.style.position = 'relative';
+    prop.style.flex = 'none';
+    prop.style.transform = 'scale(.6)';
     slot.appendChild(prop);
   }
   line.appendChild(slot);
@@ -1598,7 +1604,7 @@ function deedLine(one: Step): HTMLElement {
   text.style.cssText =
     'white-space:normal;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden';
   text.style.color =
-    one.tone === 'broken' ? 'var(--yard-wrong)' : one.running ? '#ffc98a' : '#f4e3c0';
+    one.tone === 'broken' ? 'var(--yard-wrong)' : one.running ? '#ffc98a' : '#cbb491';
   text.textContent = one.did;
   if (one.note) text.append(' · ', ...noted(one.note));
   line.appendChild(text);
@@ -1639,12 +1645,12 @@ function noted(note: string): (string | HTMLElement)[] {
  */
 function diffPreview(one: Step, does: Doings): HTMLElement {
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'margin-left:44px;display:flex;flex-direction:column;gap:1px';
+  wrap.style.cssText = 'margin-left:36px;display:flex;flex-direction:column;gap:0';
   for (const marked of one.diff ?? []) {
     const line = document.createElement('span');
     const kind = marked[0];
     line.style.cssText =
-      "font-family:'Josefin Sans',sans-serif;font-size:12px;line-height:1.35;white-space:pre;overflow:hidden;text-overflow:ellipsis";
+      "font-family:'Josefin Sans',sans-serif;font-size:10.5px;line-height:1.35;white-space:pre;overflow:hidden;text-overflow:ellipsis;opacity:.8";
     line.style.color =
       kind === '+' ? 'var(--yard-well)' : kind === '-' ? 'var(--yard-wrong)' : '#a89272';
     line.textContent = marked;
@@ -1652,11 +1658,11 @@ function diffPreview(one: Step, does: Doings): HTMLElement {
   }
   if (one.diffMore && one.path) {
     const more = pressing(`and ${one.diffMore} more lines`, () => does.press(`change:${one.path}`));
-    more.style.cssText += ';font-size:12px';
+    more.style.cssText += ';font-size:10.5px';
     wrap.appendChild(more);
   } else if (one.diffMore) {
     const more = document.createElement('span');
-    more.style.cssText = "font-family:'Josefin Sans',sans-serif;font-size:12px;color:#8a7452";
+    more.style.cssText = "font-family:'Josefin Sans',sans-serif;font-size:10.5px;color:#8a7452";
     more.textContent = `and ${one.diffMore} more lines`;
     wrap.appendChild(more);
   }
