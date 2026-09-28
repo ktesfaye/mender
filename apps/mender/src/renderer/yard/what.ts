@@ -114,6 +114,9 @@ export interface Session {
   fire: Fire;
   /** What it is doing this second, while it is doing anything at all. */
   live?: Live;
+  /** Still being woken and reading back everything said in here, so there is
+      nothing yet worth drawing but the fire. */
+  waking?: boolean;
   /** How long since anything happened in here, when that is a long time. */
   cold?: string;
   /** Newest first. */

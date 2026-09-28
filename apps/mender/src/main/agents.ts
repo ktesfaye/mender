@@ -800,24 +800,35 @@ export function createAgents(
       if (!record) return { success: false, error: { kind: 'no-such-task' } };
       const house = houseOf(task);
       await Promise.all([house.settle(conversation), kits.settle(task, conversation)]);
-      const hand = record.agent ?? (await settings.defaultHand());
-      const remembered = await settings.lastKit(hand);
-      const started = await runtimes.acp.launch(
-        {
-          conversationId: conversation,
-          providerId: hand,
-          cwd: record.path,
-          sessionId: sessionFor(task, conversation),
-          model: record.model ?? remembered.model,
-          modeId: remembered.mode,
-        },
-        { timeoutMs: 0 }
-      );
-      if (!started.success) {
-        house.broke(whatItSaid(started.error));
-        return refused(whatItSaid(started.error));
+      /* Waking somebody who is already up has nothing to load, so only a
+         sleeping session says it is waking. */
+      const sleeping = !house.awake();
+      if (sleeping) house.waking(true);
+      try {
+        const hand = record.agent ?? (await settings.defaultHand());
+        const remembered = await settings.lastKit(hand);
+        const started = await runtimes.acp.launch(
+          {
+            conversationId: conversation,
+            providerId: hand,
+            cwd: record.path,
+            sessionId: sessionFor(task, conversation),
+            model: record.model ?? remembered.model,
+            modeId: remembered.mode,
+          },
+          { timeoutMs: 0 }
+        );
+        if (!started.success) {
+          house.broke(whatItSaid(started.error));
+          return refused(whatItSaid(started.error));
+        }
+        /* The launch is back once the history has been read in, but the
+           session's own word that it is ready can trail it by a beat. */
+        if (sleeping) await house.pastStarting(1500);
+        return { success: true, data: undefined };
+      } finally {
+        if (sleeping) house.waking(false);
       }
-      return { success: true, data: undefined };
     },
 
     tell: doTell,
@@ -1013,6 +1024,10 @@ class House {
   private seen = new Map<string, number>();
   /* Whether the village has watched this conversation move. */
   private watching = false;
+  /* Whether a wake is reading this session's history back in right now. */
+  private wakingUp = false;
+  /* Whoever is waiting to hear the session has got past starting. */
+  private past = new Set<() => void>();
   /** The last thing said to this session, for "try again" and the scheduled
    *  continue to say again. */
   private lastSent: string | undefined;
@@ -1045,6 +1060,7 @@ class House {
         onChange: (value) => {
           this.lifecycle = value;
           this.publish();
+          if (this.started()) for (const hear of [...this.past]) hear();
         },
       }
     );
@@ -1157,6 +1173,38 @@ class House {
     this.watching = true;
   }
 
+  /** Whether an agent is already running in here. */
+  awake(): boolean {
+    const now = this.lifecycle;
+    return Boolean(now && !now.suspended && now.lifecycle !== 'closed');
+  }
+
+  /** A wake has started reading this session back in, or has finished. */
+  waking(on: boolean): void {
+    if (this.wakingUp === on) return;
+    this.wakingUp = on;
+    this.publish();
+  }
+
+  private started(): boolean {
+    const now = this.lifecycle?.lifecycle;
+    return now !== undefined && now !== 'starting' && now !== 'replaying' && now !== 'closed';
+  }
+
+  /** Resolves once the session says it is past starting, or after `ms` regardless. */
+  pastStarting(ms: number): Promise<void> {
+    if (this.started()) return Promise.resolve();
+    return new Promise((done) => {
+      const hear = (): void => {
+        clearTimeout(timer);
+        this.past.delete(hear);
+        done();
+      };
+      const timer = setTimeout(hear, ms);
+      this.past.add(hear);
+    });
+  }
+
   /** Somebody is on their way in, before the session says anything itself. */
   arriving(): void {
     this.trouble = undefined;
@@ -1261,6 +1309,7 @@ class House {
       cost: costOf(this.usage),
       failure: !this.trouble && failure ? failureViewOf(failure, bankable(failure.category)) : null,
       carryOn: this.carryOnAt,
+      ...(this.wakingUp ? { waking: true as const } : {}),
     };
   }
 }

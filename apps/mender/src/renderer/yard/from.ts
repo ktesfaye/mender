@@ -121,6 +121,8 @@ export interface Standing {
   carryOn?: number | null;
   /** The checkout's history by version, newest first. */
   versions?: readonly { version: string | null; lines: readonly string[] }[];
+  /** Whether the session is still being woken and reading its history back. */
+  waking?: boolean;
 }
 
 /** The turn the newest note opened, which is the one being answered now. */
@@ -192,6 +194,7 @@ function sessionOf(
       : {}),
     fire: fireOf(from.mood, Boolean(from.asking)),
     ...(live ? { live } : {}),
+    ...(from.waking ? { waking: true } : {}),
     ...(from.room === undefined ? {} : { room: from.room }),
     ...(from.cost === undefined ? {} : { cost: from.cost }),
     ...(coldFor(told) ? { cold: coldFor(told) } : {}),

@@ -297,6 +297,12 @@ export const workingStateSchema = z.object({
    * pressed "carry on when it lifts" and haven't cancelled it. Null otherwise.
    */
   carryOn: z.number().nullable(),
+  /**
+   * Present and true while a sleeping session is being woken: its agent is
+   * starting and reading its whole history back in, and nothing on the board
+   * is worth drawing until that is over.
+   */
+  waking: z.literal(true).optional(),
 });
 export type WorkingState = z.infer<typeof workingStateSchema>;
 

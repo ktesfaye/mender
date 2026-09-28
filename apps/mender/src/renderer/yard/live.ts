@@ -64,6 +64,8 @@ export interface Watching {
   unnote(id: string): void;
   /** Everything carried, and every pinned note, went with what was just said. */
   handed(): void;
+  /** The wake that opening the yard sent, so the yard knows when it is over. */
+  woke(wake: Promise<unknown>): void;
   close(): Promise<void>;
 }
 
@@ -93,7 +95,15 @@ export interface Opening {
   servers?: ReadonlySet<string>;
   /** Sessions asked for whose worktree has no row yet, by that draft id. */
   cutting?: ReadonlySet<string>;
+  /** Whether walking in is about to wake whoever lives there. */
+  waking?: boolean;
 }
+
+/**
+ * Past this a wake that has not finished is shown anyway, however far through
+ * it is. A board held behind a fire forever is worse than one still filling.
+ */
+const WAKE_GIVES_UP_MS = 20_000;
 
 export async function openYard(
   client: MenderClient,
@@ -114,6 +124,21 @@ export async function openYard(
   let versions: BoardVersion[] | undefined;
 
   const shut: (() => Promise<void>)[] = [];
+  /* A sleeping session comes back by reading its whole history in, a piece at
+     a time, and a yard drawn over that is a yard flickering through every
+     half of it. So until the wake is over the yard says only that it is
+     waking. Assumed from the start, since the first thing drawn comes before
+     the agent's own side has heard it is being woken; the agent's side says
+     for itself from then on. */
+  let assumed = Boolean(opening.waking && opening.here);
+  let gaveUp = false;
+  const giving = window.setTimeout(() => {
+    gaveUp = true;
+    again();
+  }, WAKE_GIVES_UP_MS);
+  shut.push(async () => window.clearTimeout(giving));
+  const waking = (): boolean =>
+    !gaveUp && working?.mood !== 'hurt' && (assumed || Boolean(working?.waking));
   let held: readonly Carried[] = [];
   let pinned: readonly PinnedNote[] = [];
 
@@ -154,6 +179,7 @@ export async function openYard(
       on: standing(from.project, head),
       health,
       ...(versions ? { versions } : {}),
+      ...(waking() ? { waking: true } : {}),
     });
   }
 
@@ -285,6 +311,14 @@ export async function openYard(
       held = [];
       pinned = [];
       again();
+    },
+    woke: (wake) => {
+      const over = (): void => {
+        if (!assumed) return;
+        assumed = false;
+        again();
+      };
+      wake.then(over, over);
     },
     close: async () => {
       await Promise.all(shut.map((run) => run()));

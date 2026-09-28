@@ -1071,3 +1071,13 @@
 .yard .prose-table tr + tr td {
   border-top: 1px solid rgba(244, 227, 192, 0.06);
 }
+
+/** A waking board's fire, coming up only once the wait is long enough to notice. */
+@keyframes yard-waking {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

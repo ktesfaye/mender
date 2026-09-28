@@ -2413,6 +2413,20 @@ trail above the answer and folded it back, the changelog listed Aurio's
 commits (none versioned yet, which is true), and a plan and a question
 injected into the yard for one look drew in the right column.
 
+### Waking a session is one wait, not a flicker (2026-09-27) — done
+
+Walking into a sleeping session used to draw every piece of its history as
+the agent read it back in, so a long one blinked through every half-loaded
+state of itself. Now the yard holds just the fire and "waking up" with a
+count, coming up only if the wait is long enough to notice, and the whole
+board comes in at once when the agent is up. An agent already awake shows
+nothing extra; a wake that has not finished in twenty seconds is shown
+anyway.
+
+Driven over the debug port on a copy of the real data folder: the Aurio
+audiobook session, which has a long history, showed the fire for about a
+second and then its whole board in one fade, with nothing moving after.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

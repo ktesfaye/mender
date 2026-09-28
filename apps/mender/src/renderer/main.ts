@@ -1389,6 +1389,7 @@ async function boot(): Promise<void> {
           ...(here ? { here } : {}),
           servers: servingCheckouts(),
           ...(cutting.size ? { cutting: new Set(cutting.keys()) } : {}),
+          waking: Boolean(here && here.kind !== 'terminal'),
         },
         (now) => {
           if (open === aim && !reading && !looked && !walking && !talking && !sending && !card) {
@@ -1416,7 +1417,7 @@ async function boot(): Promise<void> {
       // `openTuiTask`, which calls `showYard` for the rail and gatepost and
       // then takes the board itself over.
       if (here && here.kind !== 'terminal') {
-        void client.agents.wake({ task: here.id }, { timeoutMs: 0 });
+        opened.woke(client.agents.wake({ task: here.id }, { timeoutMs: 0 }));
         /* Whatever was half-written last time is still on the line. */
         void client.agents.draft({ task: here.id }).then((text) => {
           if (open === aim && text && !yard.line.written()) said(text);
