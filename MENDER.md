@@ -116,8 +116,9 @@ losing the beginning of the conversation, so the village says it instead.
 land in the session you were last in, standing in its yard at night. What you
 asked for is nailed to a gatepost on the left, newest on parchment and the ones
 under it weathered into the post, and at the foot of that column is the
-project's changelog: the version it is on and the lines that went into it,
-every version before further down, read straight off whichever commits moved
+project's changelog, in the same small squares and cream lines the glance at
+the other sessions used to be written in: one line a change with its version
+in front of it, newest first and scrolling, read straight off whichever commits moved
 the version in the project's own manifest rather than kept anywhere. What it
 said is in the middle, the answer set large, and everything it thought and said
 on the way there folded into one quiet gold "thinking" line right above it;

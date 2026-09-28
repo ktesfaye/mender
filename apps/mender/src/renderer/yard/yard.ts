@@ -900,42 +900,44 @@ function changelog(
 ): number {
   const versions = yard.versions ?? [];
   if (!versions.length) return floor;
-  const tall = Math.min(300, Math.max(150, Math.round((floor - HEAD.top) * 0.4)));
+  const tall = Math.min(260, Math.max(130, Math.round((floor - HEAD.top) * 0.34)));
   const top = floor - tall;
   root.appendChild(rule({ left: at.x, top: top - 20, width: at.wide - 20 }));
   root.appendChild(label('changelog', { left: at.x, top }));
 
-  const list = stack({ left: at.x, top: top + 28, width: at.wide - 20, height: tall - 28 }, 16);
-  list.style.cssText += [
-    '',
-    'overflow-y:auto',
-    'overflow-x:hidden',
-    'pointer-events:auto',
-    'scrollbar-width:none',
-    "font-family:'Josefin Sans',sans-serif",
-    /* The bottom edge fades rather than cuts, which is the only thing that
-       says there is more under it without a bar or an arrow. */
-    '-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 22px),transparent)',
-  ].join(';');
-  for (const [i, one] of versions.entries()) {
-    const block = document.createElement('div');
-    block.style.cssText = 'display:flex;flex-direction:column;gap:5px;flex:none';
-    const name = document.createElement('span');
-    name.style.cssText = `font-size:14px;color:${
-      one.version === null ? '#a89272' : i < 2 ? '#f4e3c0' : '#dcc8a0'
-    };text-shadow:1px 1px 0 #120d07`;
-    name.textContent = one.version === null ? 'not in a version yet' : `v${one.version}`;
-    block.appendChild(name);
+  /* Written exactly the way the glance at the other sessions used to be,
+     one line a change with its version in front of it, only scrolling. */
+  const list = stack({ left: at.x, top: top + 30, width: at.wide, height: tall - 30 }, 9);
+  list.style.fontSize = '14px';
+  list.style.fontFamily = "'Josefin Sans',sans-serif";
+  list.style.cssText += ';overflow-y:auto;overflow-x:hidden;pointer-events:auto;scrollbar-width:none';
+  const newest = versions.find((one) => one.version !== null);
+  for (const one of versions) {
     for (const said of one.lines) {
-      const line = document.createElement('span');
-      line.style.cssText =
-        'font-size:13px;line-height:1.35;color:#bfa476;padding-left:12px;overflow-wrap:anywhere';
-      line.textContent = said;
-      block.appendChild(line);
+      const line = row(10);
+      line.style.flex = 'none';
+      line.appendChild(
+        box(
+          { width: 8, height: 8 },
+          `background:${one === newest ? TONE.working : TONE.resting};position:relative;flex:none`
+        )
+      );
+      const text = document.createElement('span');
+      text.style.cssText = 'color:#dcc8a0;min-width:0;overflow:hidden;text-overflow:ellipsis';
+      text.textContent = `${one.version === null ? 'unversioned' : `v${one.version}`} · ${said}`;
+      text.title = said;
+      line.appendChild(text);
+      list.appendChild(line);
     }
-    list.appendChild(block);
   }
   root.appendChild(list);
+  /* Only whole lines: one sliced through the middle by the bottom edge reads
+     as the board being broken rather than as there being more. */
+  const step = (list.firstElementChild as HTMLElement | null)?.offsetHeight ?? 0;
+  if (step) {
+    const fits = Math.max(1, Math.floor((tall - 30 + 9) / (step + 9)));
+    list.style.height = `${fits * (step + 9) - 9}px`;
+  }
 
   const id = yard.project.id;
   list.scrollTop = logScrolled.get(id) ?? 0;
