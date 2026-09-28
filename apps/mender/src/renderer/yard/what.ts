@@ -221,7 +221,7 @@ export interface Thought {
   /** Reasoning rather than an answer. */
   quiet?: boolean;
   /** The turn going wrong rather than an answer: `wrong` stopped it, `warn` cut it short. */
-  trouble?: 'wrong' | 'warn';
+  trouble?: 'wrong' | 'warn' | 'aside';
 }
 
 /** Something it did: a tool call, with a prop from the kit standing for it. */
