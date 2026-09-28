@@ -626,7 +626,10 @@ than written as rows of it, in the board's own type and ink. While it is what
 is open, every key is its own — vim's Escape leaves insert mode, arrows walk
 a picker, an agent's own TUI draws and answers exactly as it would at a real
 terminal. `ctrl+]` is the one chord this board keeps for itself, written on
-it, and it steps back out to wherever you were. Scrollback, copy and paste
+it, and it steps back out to wherever you were. Command and a number is the one
+thing that gets past it the other way: it means nothing to a program in a
+pty, so it still walks the rail to that session, shell or not. Driven: typed
+into an open shell, pressed command-4, stood in the fourth session. Scrollback, copy and paste
 are xterm's own.
 
 A file dropped or pasted on the shell lands as its own path, shell-escaped,

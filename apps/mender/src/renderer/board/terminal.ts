@@ -84,6 +84,7 @@ export function makeTerminal(hooks: TerminalHooks, fontSize = 14): LiveTerminal 
   /* xterm sees the key first — this only ever fires for the one chord this
      terminal claims for itself, and blocks it from reaching the program. */
   term.attachCustomKeyEventHandler((event) => {
+    if (railChord(event)) return false;
     if (
       event.type === 'keydown' &&
       event.ctrlKey &&
@@ -103,7 +104,9 @@ export function makeTerminal(hooks: TerminalHooks, fontSize = 14): LiveTerminal 
      app's whole keyboard runs through one listener on the window, and while
      this terminal is what is open, every key belongs to whatever is running
      in it — none of it is this app's to also act on. */
-  container.addEventListener('keydown', (event) => event.stopPropagation());
+  container.addEventListener('keydown', (event) => {
+    if (!railChord(event)) event.stopPropagation();
+  });
 
   /* A file dropped or pasted here is the shell's, not the write line's —
      caught on the way down, ahead of xterm's own drop/paste handling and the
@@ -202,4 +205,11 @@ function theme() {
     black: '#2a2117',
     brightBlack: read('--yard-ink-dim', '#a89272'),
   };
+}
+
+/** Command and a number walks the rail, even from inside a terminal. It means
+    nothing to the program running there, since command never reaches a pty,
+    and a session that is its own terminal is still a lantern on that rail. */
+function railChord(event: KeyboardEvent): boolean {
+  return event.metaKey && !event.ctrlKey && !event.altKey && /^[1-9]$/.test(event.key);
 }
