@@ -124,7 +124,8 @@ losing the beginning of the conversation, so the village says it instead.
 **Opening a project is walking into the work.** Not a list you press into: you
 land in the session you were last in, standing in its yard at night. What you
 asked for is nailed to a gatepost on the left, newest on parchment and the ones
-under it weathered into the post, and at the foot of that column is the
+under it weathered into the post, any of them written back on the line by
+pressing it, and up on an empty line walks back through them, and at the foot of that column is the
 project's changelog, in the same small squares and cream lines the glance at
 the other sessions used to be written in: each version on its own line and
 what went into it bulleted and indented under it, newest first and scrolling, read straight off whichever commits moved

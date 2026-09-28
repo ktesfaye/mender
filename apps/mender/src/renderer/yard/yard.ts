@@ -227,7 +227,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   /* Walk and press it by key, before anything else hears about the key: the
      line is where your hands are and this is what the line has open. */
   line.onKey((event) => {
-    if (menu.root.style.display === 'none') return false;
+    if (menu.root.style.display === 'none') return recall(event);
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       walk.step(event.key === 'ArrowDown' ? 1 : -1);
       return true;
@@ -241,10 +241,44 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     }
     return false;
   });
+  /* The arrows on the line walk back through what you have said here, the way
+     a shell's do: up is the one before, down comes forward again and past the
+     newest gives back whatever you had half-written. Only while the line is
+     empty or still holding one it put there, so arrowing through a sentence
+     you are in the middle of moves the caret, not the sentence. */
+  let recalled = -1;
+  let draft = '';
+  let recalledIn: string | undefined;
+  function fill(text: string): void {
+    line.write(text);
+    line.take();
+    does.typed(text);
+  }
+  function recall(event: KeyboardEvent): boolean {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return false;
+    if (event.shiftKey || event.metaKey || event.altKey || event.ctrlKey) return false;
+    const notes = last?.session?.notes ?? [];
+    if (recalledIn !== last?.session?.id) recalled = -1;
+    const written = line.written();
+    const untouched = recalled < 0 ? written === '' : written === notes[recalled]?.said;
+    if (!untouched) {
+      recalled = -1;
+      return false;
+    }
+    const to = recalled + (event.key === 'ArrowUp' ? 1 : -1);
+    if (recalled < 0 && (to < 0 || !notes.length)) return false;
+    if (to >= notes.length) return true;
+    if (recalled < 0) draft = written;
+    recalled = to;
+    recalledIn = last?.session?.id;
+    fill(to < 0 ? draft : (notes[to]?.said ?? ''));
+    return true;
+  }
   /* Where the words were on the line the moment they were said, so that if
      they turn out to be for the agent they can be seen leaving from there. */
   let lastSaid: { text: string; rect: DOMRect } | null = null;
   line.onSay((text, rect) => {
+    recalled = -1;
     lastSaid = rect ? { text, rect } : null;
     does.say(text);
   });
@@ -295,6 +329,12 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const at = line.at(narrowedFrom);
     const top = line.root.getBoundingClientRect().top;
     menu.place(at?.left ?? layer.edge(), window.innerHeight - top + 10, top - HEAD.rule - 40);
+  }
+
+  /** A note pressed on the gatepost is written back on the line, to say again. */
+  function pickNote(text: string): void {
+    recalled = -1;
+    fill(text);
   }
 
   let last: Yard | undefined;
@@ -349,7 +389,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       wakingUp(covered, columns, floor, wakingSinceOf(yard.session.id));
       stillAt.replaceChildren();
     } else if (yard.session) {
-      asked(root, columns.asked, yard, floor, layer.cramped());
+      asked(root, columns.asked, yard, floor, layer.cramped(), pickNote);
       thinking(
         covered,
         columns.thinking,
@@ -367,7 +407,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
          three columns, nothing in them, and the line under them is how it
          starts. A yard that looked different here was a screen of its own. */
       const blank: Yard = { ...yard, session: BLANK };
-      asked(root, columns.asked, blank, floor, layer.cramped());
+      asked(root, columns.asked, blank, floor, layer.cramped(), pickNote);
       thinking(
         covered,
         columns.thinking,
@@ -962,7 +1002,8 @@ function asked(
   at: { x: number; wide: number },
   yard: Yard,
   floor: number,
-  cramped: boolean
+  cramped: boolean,
+  pick: (said: string) => void
 ): void {
   if (!at.wide) return;
   /* The changelog sits at the foot of the column, so the post and the notes
@@ -1007,7 +1048,7 @@ function asked(
     pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 }),
     `note:${newest.id}`
   );
-  root.appendChild(card);
+  root.appendChild(pickable(card, newest.said, pick));
   /* A note is a note. Something long enough to fill the post on its own is
      not one, and it is usually not yours either: a resumed session hands back
      whatever was said to start it, summaries and instructions and all. So the
@@ -1041,13 +1082,23 @@ function asked(
   /* The foot fades rather than slicing a note through the middle. */
   list.style.cssText +=
     ';overflow-y:auto;overflow-x:hidden;pointer-events:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 36px),transparent)';
-  for (const note of older) list.appendChild(keyed(weathered(note), `note:${note.id}`));
+  for (const note of older)
+    list.appendChild(pickable(keyed(weathered(note), `note:${note.id}`), note.said, pick));
   root.appendChild(list);
 
   const id = yard.session?.id ?? '';
   list.scrollTop = postScrolled.get(id) ?? 0;
   list.addEventListener('scroll', () => postScrolled.set(id, list.scrollTop));
   post.style.height = `${Math.min(room, below + list.scrollHeight - HEAD.top + 40)}px`;
+}
+
+/** A note that writes itself back on the line when pressed, and looks no different. */
+function pickable<T extends HTMLElement>(el: T, said: string, pick: (said: string) => void): T {
+  el.style.pointerEvents = 'auto';
+  el.style.cursor = 'pointer';
+  el.addEventListener('mousedown', (event) => event.preventDefault());
+  el.addEventListener('click', () => pick(said));
+  return el;
 }
 
 /** Where the post was left scrolled to, per session, across redraws. */

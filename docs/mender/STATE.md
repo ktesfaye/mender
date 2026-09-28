@@ -2478,6 +2478,17 @@ Driven over the debug port: a fresh session read "claude", then "Yard
 staleness logic" seconds after the question, then "How yards become cold"
 once it had answered; the header changed with it.
 
+### Saying something again (2026-09-28) — done
+
+Up on an empty write line brings back the last thing said in that session, and
+keeps going back; down comes forward again, and past the newest gives back
+whatever was half-written. It only takes the arrows while the line is empty or
+still holding one it recalled, so a sentence being written keeps its caret.
+Pressing any note on the gatepost writes it on the line the same way. Driven
+over the debug port: up three times walked all three notes and stopped at the
+oldest, down walked back to an empty line, and pressing the oldest note put it
+on the line whole.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour
