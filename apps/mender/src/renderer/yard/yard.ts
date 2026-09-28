@@ -763,6 +763,18 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
       'head:project'
     )
   );
+  /* And after it, which session in there you are standing in, the same name
+     and the same warm ink its lantern hangs under at the bottom, so the top of
+     the yard says where you are without looking down to the rail. */
+  if (yard.session) {
+    const slash = exact('/', 20, '#6b5a40');
+    slash.style.cssText += ';letter-spacing:0;text-transform:none;padding:0 14px 0 18px';
+    const here = exact(yard.session.name, 20, '#ffdca4');
+    here.style.cssText +=
+      ';letter-spacing:0;text-transform:none;font-weight:400;max-width:44vw;' +
+      'overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom';
+    title.append(slash, here);
+  }
   root.appendChild(title);
 
   /* The head of the board is pressable wherever it leads somewhere. Where the
