@@ -774,37 +774,36 @@ function asked(
     const line = Math.max(1, Math.round(NOTE_LINE));
     const lines = Math.round(body.scrollHeight / line);
     if (lines > NOTE_LINES) {
+      /* All of it is still there, it scrolls inside the parchment. */
       body.style.height = `${NOTE_LINES * line}px`;
-      body.style.overflow = 'hidden';
-      const more = said(`${lines - NOTE_LINES} more lines on this note`, '#b3651f');
-      more.style.cssText += ';display:block;font-size:9px;padding-top:7px';
-      card.appendChild(more);
+      body.style.overflowY = 'auto';
+      body.style.pointerEvents = 'auto';
     }
   }
   post.style.height = `${Math.min(room, card.offsetHeight + 60)}px`;
 
   if (!older.length || cramped) return;
   /* The card is as tall as whatever was written on it, which nothing knows
-     until it is in, so the rest of the post is placed off its real height. */
+     until it is in, so the rest of the post is placed off its real height.
+     Everything said before it is on the post, every note, and the post
+     scrolls when there are more than it is tall. */
   const below = HEAD.top + card.offsetHeight + 22;
   const list = stack(
     { left: at.x + 22, top: below, width: at.wide - 60, height: Math.max(0, under - 20 - below) },
     14
   );
-  /* Not clipped: `trim` below takes off whatever does not fit, and a clipped
-     list swallowed the note that was on the parchment while it slid down to
-     join the others. */
+  list.style.cssText += ';overflow-y:auto;overflow-x:hidden;pointer-events:auto';
   for (const note of older) list.appendChild(keyed(weathered(note, does), `note:${note.id}`));
-  const tail = said('', '#a89272');
-  tail.style.fontSize = '10px';
-  list.appendChild(tail);
   root.appendChild(list);
 
-  const dropped = trim(list, under - 20 - below);
-  const many = (yard.session?.olderNotes ?? 0) + dropped;
-  tail.textContent = many ? `${many} older notes further down the post` : '';
+  const id = yard.session?.id ?? '';
+  list.scrollTop = postScrolled.get(id) ?? 0;
+  list.addEventListener('scroll', () => postScrolled.set(id, list.scrollTop));
   post.style.height = `${Math.min(room, below + list.scrollHeight - HEAD.top + 40)}px`;
 }
+
+/** Where the post was left scrolled to, per session, across redraws. */
+const postScrolled = new Map<string, number>();
 
 /** How many lines of one note the parchment holds, however long it was. */
 const NOTE_LINES = 7;
@@ -863,17 +862,19 @@ const CARD = [
   "font-family:'Caveat',cursive",
   'font-size:19px',
   'line-height:1.25',
+  /* However long a line runs without a space, it wraps on the card. */
+  'overflow-wrap:anywhere',
 ].join(';');
 
 /** A note that has been on the post a while. */
 function weathered(note: Note, does: Doings): HTMLElement {
   const it = document.createElement('div');
-  it.style.cssText = 'display:flex;flex-direction:column;gap:3px';
+  it.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0';
   it.appendChild(
     said(`${note.when} · ${note.standing ? 'standing' : note.answered ? 'answered' : 'unanswered'}`)
   );
   const body = document.createElement('span');
-  body.style.cssText = "font-family:'Caveat',cursive;font-size:17px;line-height:1.25;color:#cbb491";
+  body.style.cssText = "font-family:'Caveat',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
   body.textContent = note.said;
   it.appendChild(body);
   it.appendChild(forkLine(note, does));
