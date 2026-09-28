@@ -3269,18 +3269,24 @@ async function boot(): Promise<void> {
       rewrite(asking(naming));
     };
 
-    /** Naming the session after the one just picked to resume, and pointing
-        this new one's conversation at it — a fresh worktree still gets cut
-        the ordinary way, but nothing of the typed name goes out as a first
-        prompt: resuming is the first thing said. */
+    /** Picking a past session is the whole ask: it is named after that
+        session, a fresh worktree is cut the ordinary way, and its
+        conversation opens on that session's own history. Nothing of the
+        name goes out as a first prompt; resuming is the first thing said. */
     const pickResume = (id: string): void => {
       if (!naming) return;
       const found = naming.resumeSessions?.find((session) => session.id === id);
       const written = found?.title ?? id;
-      naming = { ...naming, pickingResume: false, resume: { id, title: written }, written };
-      yard.line.write(written);
-      yard.line.take();
-      rewrite(asking(naming));
+      naming = {
+        ...naming,
+        pickingResume: false,
+        pickingIssue: false,
+        pickingBranch: false,
+        terminal: false,
+        resume: { id, title: written },
+        written,
+      };
+      void begin();
     };
 
     /** Putting the last session taken down here back up, worktree and all. */
