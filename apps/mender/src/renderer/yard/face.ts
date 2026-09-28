@@ -43,20 +43,44 @@ export function toolFor(at: number): string {
   return TOOLS[at % TOOLS.length] ?? TOOLS[0];
 }
 
+type Face = { icon?: string; tool: string; wants?: 'asking' | 'hurt' };
+
 /** One slot on the rack, with a picture or a tool standing in it. */
-export function slot(
-  face: { icon?: string; tool: string; wants?: 'asking' | 'hurt' },
-  here: boolean,
-  size = SLOT
-): HTMLDivElement {
+export function slot(face: Face, here: boolean, size = SLOT): HTMLDivElement {
   const box = document.createElement('div');
   box.className = 'face';
   box.style.cssText = here ? SLOT_HERE(size) : SLOT_EMPTY(size);
   /* The same warm or red wash a lit house gets, eased in and out the same
      way — the rack answers "does anywhere else want me" without gaining a
-     badge or a dot, the two things this app otherwise never draws. */
-  box.style.transition = 'box-shadow 520ms cubic-bezier(.2,.8,.2,1)';
+     badge or a dot, the two things this app otherwise never draws. Its own
+     colour eases the same way, so the slot that is yours never snaps into
+     that from one paint to the next. */
+  box.style.transition = 'box-shadow 520ms cubic-bezier(.2,.8,.2,1),background-color 320ms ease';
   box.style.boxShadow = WANTS[face.wants ?? 'none'];
+  paintFace(box, face, size);
+  return box;
+}
+
+/**
+ * The same slot, repainted in place rather than rebuilt.
+ *
+ * The rack is repainted on every mood that changes island-wide, which is
+ * often; tearing every slot down and standing it back up on each one is what
+ * made it read as jittery, since it also restarted every wash already easing
+ * in or out. Only what actually changed here — which one is yours, what it
+ * wants, the picture it wears — is worth touching.
+ */
+export function updateSlot(box: HTMLDivElement, face: Face, here: boolean, size = SLOT): void {
+  box.style.background = here ? '#e0b56a' : '#a48961';
+  box.style.boxShadow = WANTS[face.wants ?? 'none'];
+  paintFace(box, face, size);
+}
+
+function paintFace(box: HTMLDivElement, face: Face, size: number): void {
+  const key = face.icon ?? face.tool;
+  if (box.dataset.face === key) return;
+  box.dataset.face = key;
+  box.replaceChildren();
 
   if (face.icon) {
     const picture = document.createElement('img');
@@ -78,7 +102,7 @@ export function slot(
       }
     });
     box.appendChild(picture);
-    return box;
+    return;
   }
 
   const cut = cutOf(face.tool);
@@ -91,7 +115,6 @@ export function slot(
   prop.style.position = 'relative';
   prop.style.margin = 'auto';
   box.appendChild(prop);
-  return box;
 }
 
 const SLOT_EMPTY = (size: number): string =>

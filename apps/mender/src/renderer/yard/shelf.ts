@@ -18,10 +18,11 @@
  * the wood follows the rule.
  */
 
-import { slot, toolFor } from './face';
+import { SLOT, slot, toolFor, updateSlot } from './face';
 import { box } from './write';
 
 const PAD = 6;
+const EASE = 'cubic-bezier(.2,.8,.2,1)';
 
 export interface OnShelf {
   id: string;
@@ -46,70 +47,137 @@ export function makeShelf(at: HTMLElement, open: (id: string) => void): Shelf {
   const root = box({ right: 0, top: 0 }, RACK);
   at.appendChild(root);
 
+  /* The label is also the handle. Pressing it folds the rack away, which is
+     the only thing on this shelf that is not a project. It doubles as where
+     a name appears when you are over a slot, so nothing has to be drawn
+     under the rack and nothing collides with the two facts the header keeps
+     in that corner. It is made once and kept: swapping its text is a cross
+     fade, not a jump cut. */
+  const label = document.createElement('div');
+  label.style.cssText = LABEL;
+  label.dataset.shelf = 'fold';
+  label.addEventListener('click', () => fold(!away));
+  root.appendChild(label);
+
+  const strip = document.createElement('div');
+  strip.style.cssText = STRIP;
+  root.appendChild(strip);
+
+  const nodes = new Map<string, HTMLDivElement>();
+  const held = new Map<string, OnShelf>();
   let away = false;
   let last: OnShelf[] = [];
+  let labelGen = 0;
 
-  function show(projects: OnShelf[]): void {
-    last = projects;
-    root.replaceChildren();
+  const width = (count: number): number => (count === 0 ? 0 : count * SLOT + (count - 1) * PAD);
 
-    /* The label is also the handle. Pressing it folds the rack away, which is
-       the only thing on this shelf that is not a project. */
-    /* The label doubles as where a name appears when you are over a slot, so
-       nothing has to be drawn under the rack and nothing collides with the
-       two facts the header keeps in that corner. */
-    const label = document.createElement('div');
-    label.style.cssText = LABEL;
-    const resting = away ? `projects · ${projects.length}` : 'projects';
-    label.textContent = resting;
-    label.dataset.shelf = 'fold';
-    label.addEventListener('click', () => fold(!away));
-    /* Folded shut, the rack is only this label, so it carries the same
-       question the open slots would answer: does anywhere else want him.
-       Worst first, the same way a house's own light would read it. */
-    if (away) {
-      const worst = projects.some((project) => project.wants === 'hurt')
-        ? 'hurt'
-        : projects.some((project) => project.wants === 'asking')
-          ? 'asking'
-          : undefined;
-      label.style.transition = 'color 520ms cubic-bezier(.2,.8,.2,1),text-shadow 520ms';
-      if (worst) {
-        label.style.color = worst === 'hurt' ? '#ff7a52' : '#ffc46a';
-        label.style.textShadow = `0 0 10px ${worst === 'hurt' ? '#ff7a52aa' : '#ffc46aaa'}`;
-      }
+  const worstWant = (projects: OnShelf[]): 'asking' | 'hurt' | undefined =>
+    projects.some((project) => project.wants === 'hurt')
+      ? 'hurt'
+      : projects.some((project) => project.wants === 'asking')
+        ? 'asking'
+        : undefined;
+
+  const paintLabel = (text: string, color: string, glow?: string): void => {
+    label.textContent = text;
+    label.style.color = color;
+    label.style.textShadow = glow ? `0 0 10px ${glow}` : 'none';
+  };
+
+  /* Folded shut, the rack is only this label, so it carries the same
+     question the open slots would answer: does anywhere else want him.
+     Worst first, the same way a house's own light would read it. */
+  const settle = (): void => {
+    const worst = away ? worstWant(last) : undefined;
+    const text = away ? `projects · ${last.length}` : 'projects';
+    if (!worst) {
+      paintLabel(text, '#c4b186');
+      return;
     }
-    root.appendChild(label);
+    paintLabel(
+      text,
+      worst === 'hurt' ? '#ff7a52' : '#ffc46a',
+      worst === 'hurt' ? '#ff7a52aa' : '#ffc46aaa'
+    );
+  };
+
+  /* A hover swaps the label to that project's name and back, and folding
+     swaps it between "projects" and its resting count. All three fade the
+     old text out before the new one fades in, rather than jump-cutting, and
+     a crossed-out generation stops a quick in-and-out from landing the wrong
+     text after its own fade has already moved on. */
+  const crossfade = (paint: () => void): void => {
+    const gen = ++labelGen;
+    label.style.opacity = '0';
+    window.setTimeout(() => {
+      if (gen !== labelGen) return;
+      paint();
+      label.style.opacity = '1';
+    }, 130);
+  };
+
+  function show(projects: OnShelf[], fading = false): void {
+    last = projects;
+    for (const project of projects) held.set(project.id, project);
+
+    if (fading) crossfade(settle);
+    else settle();
+    strip.style.width = `${away ? 0 : width(projects.length)}px`;
+    strip.style.opacity = away ? '0' : '1';
+    strip.style.pointerEvents = away ? 'none' : 'auto';
+
+    const wanted = new Set(projects.map((project) => project.id));
+    for (const [id, node] of nodes) {
+      if (wanted.has(id)) continue;
+      node.style.opacity = '0';
+      node.style.transform = 'scale(.6)';
+      window.setTimeout(() => node.remove(), 220);
+      nodes.delete(id);
+      held.delete(id);
+    }
 
     if (away) return;
 
     for (const project of projects) {
-      const one = slot(
-        {
-          tool: toolFor(project.at),
-          ...(project.icon ? { icon: project.icon } : {}),
-          ...(project.wants ? { wants: project.wants } : {}),
-        },
-        project.here
-      );
-      one.dataset.project = project.id;
-      one.title = project.name;
-      one.addEventListener('pointerenter', () => {
-        label.textContent = project.name;
-        label.style.color = '#f4e3c0';
-      });
-      one.addEventListener('pointerleave', () => {
-        label.textContent = resting;
-        label.style.color = '#c4b186';
-      });
-      one.addEventListener('click', () => open(project.id));
-      root.appendChild(one);
+      const face = {
+        tool: toolFor(project.at),
+        ...(project.icon ? { icon: project.icon } : {}),
+        ...(project.wants ? { wants: project.wants } : {}),
+      };
+      let node = nodes.get(project.id);
+      if (!node) {
+        node = slot(face, project.here);
+        node.style.transition += `,opacity 220ms ease,transform 220ms ${EASE}`;
+        node.style.opacity = '0';
+        node.style.transform = 'scale(.6)';
+        node.dataset.project = project.id;
+        node.addEventListener('pointerenter', () => {
+          const now = held.get(project.id);
+          if (now) crossfade(() => paintLabel(now.name, '#f4e3c0'));
+        });
+        node.addEventListener('pointerleave', () => crossfade(settle));
+        node.addEventListener('click', () => open(project.id));
+        nodes.set(project.id, node);
+        strip.appendChild(node);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (!node) return;
+            node.style.opacity = '1';
+            node.style.transform = 'scale(1)';
+          });
+        });
+      } else {
+        updateSlot(node, face, project.here);
+        strip.appendChild(node); // re-append moves it into place without touching it
+      }
+      node.title = project.name;
     }
   }
 
   function fold(shut = true): void {
+    if (away === shut) return;
     away = shut;
-    show(last);
+    show(last, true);
   }
 
   return {
@@ -122,7 +190,6 @@ export function makeShelf(at: HTMLElement, open: (id: string) => void): Shelf {
 const RACK = [
   'display:flex',
   'align-items:center',
-  `gap:${PAD}px`,
   `padding:${PAD}px ${PAD * 2}px`,
   'background:#54391e',
   'border:2px solid #482510',
@@ -142,4 +209,16 @@ const LABEL = [
   'white-space:nowrap',
   `padding-right:${PAD}px`,
   'cursor:default',
+  `transition:opacity 130ms ease,color 520ms ${EASE},text-shadow 520ms`,
+].join(';');
+
+/* Its own strip so folding is a real collapse: the width eases to nothing
+   and the slots ride along inside it, rather than every slot just
+   vanishing while the shelf reflows around them in one frame. */
+const STRIP = [
+  'display:flex',
+  'align-items:center',
+  `gap:${PAD}px`,
+  'overflow:hidden',
+  `transition:width 340ms ${EASE},opacity 260ms ease`,
 ].join(';');
