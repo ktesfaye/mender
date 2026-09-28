@@ -262,6 +262,13 @@ export function createAgents(
      where the provider's own session id lands when a session starts, which is
      the handle that lets a village reopened tomorrow pick up where it was. */
   let records: ConversationRecords = {};
+  /* A past session being picked back up, by task, from the moment it is
+     picked until the agent has it. Opening the board wakes the session at
+     the same time, and whichever launch lands first is the session it gets,
+     so every launch in that window has to ask for the same past one. */
+  const resuming = new Map<string, string>();
+  const sessionFor = (task: string, conversation: string): string | null =>
+    resuming.get(task) ?? records[conversation]?.providerSessionId ?? null;
   const index = new ReplicaState(runtimes.conversations.records.state(undefined, 'list'), {
     onChange: (value) => {
       records = value;
@@ -474,7 +481,7 @@ export function createAgents(
         conversationId: conversation,
         providerId: hand,
         cwd: record.path,
-        sessionId: records[conversation]?.providerSessionId ?? null,
+        sessionId: sessionFor(task, conversation),
         model: record.model ?? remembered.model,
         modeId: remembered.mode,
       },
@@ -521,35 +528,42 @@ export function createAgents(
    * out after the launch succeeds.
    */
   const resumeInto = async (task: string, providerSessionId: string): Promise<Told> => {
-    await loaded;
-    const record = (await tasks.list()).find((candidate) => candidate.id === task);
-    if (!record) return { success: false, error: { kind: 'no-such-task' } };
+    // Before the first await: the wake that opening the board sends is
+    // already on its way, and it has to find this.
+    resuming.set(task, providerSessionId);
+    try {
+      await loaded;
+      const record = (await tasks.list()).find((candidate) => candidate.id === task);
+      if (!record) return { success: false, error: { kind: 'no-such-task' } };
 
-    const house = houseOf(task);
-    const moved = await moveIn(task, record);
-    if (!moved.success) return moved;
-    const conversation = moved.data;
+      const house = houseOf(task);
+      const moved = await moveIn(task, record);
+      if (!moved.success) return moved;
+      const conversation = moved.data;
 
-    house.watched();
-    house.arriving();
-    const hand = record.agent ?? (await settings.defaultHand());
-    const remembered = await settings.lastKit(hand);
-    const started = await runtimes.acp.launch(
-      {
-        conversationId: conversation,
-        providerId: hand,
-        cwd: record.path,
-        sessionId: providerSessionId,
-        model: record.model ?? remembered.model,
-        modeId: remembered.mode,
-      },
-      { timeoutMs: 0 }
-    );
-    if (!started.success) {
-      house.broke(whatItSaid(started.error));
-      return refused(whatItSaid(started.error));
+      house.watched();
+      house.arriving();
+      const hand = record.agent ?? (await settings.defaultHand());
+      const remembered = await settings.lastKit(hand);
+      const started = await runtimes.acp.launch(
+        {
+          conversationId: conversation,
+          providerId: hand,
+          cwd: record.path,
+          sessionId: providerSessionId,
+          model: record.model ?? remembered.model,
+          modeId: remembered.mode,
+        },
+        { timeoutMs: 0 }
+      );
+      if (!started.success) {
+        house.broke(whatItSaid(started.error));
+        return refused(whatItSaid(started.error));
+      }
+      return { success: true, data: undefined };
+    } finally {
+      resuming.delete(task);
     }
-    return { success: true, data: undefined };
   };
 
   return {
@@ -759,7 +773,7 @@ export function createAgents(
           conversationId: conversation,
           providerId: hand,
           cwd: record.path,
-          sessionId: records[conversation]?.providerSessionId ?? null,
+          sessionId: sessionFor(task, conversation),
           model: record.model ?? remembered.model,
           modeId: remembered.mode,
         },
