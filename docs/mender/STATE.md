@@ -2481,6 +2481,14 @@ Driven over the debug port: a fresh session read "claude", then "Yard
 staleness logic" seconds after the question, then "How yards become cold"
 once it had answered; the header changed with it.
 
+A session picked up with `/resume` from a conversation started elsewhere used
+to keep that conversation's first line, cut off with an ellipsis, since
+nothing new had been said to prompt a name. Now it is named off the history it
+already holds as soon as that is read in, and one already sitting there under
+a cut-off first line is named the next time it is opened. Driven on a copy of
+the real data: walking into the old "Okay, so right now what I want you to…"
+session renamed it "Organizing what's left" within seconds.
+
 ### Switching sessions moves sideways (2026-09-28) — done
 
 Pressing another lantern used to blank the whole yard, rail and all, show a

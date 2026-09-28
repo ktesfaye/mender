@@ -320,6 +320,19 @@ export function createAgents(
         if (again.delete(task) && here) retitleFromWork(task, here);
       });
   };
+  /** Named off the history it already has, for a session picked up from a
+      conversation started elsewhere: nothing new is going to be said to
+      prompt it, and until then it is called by its first line, cut short.
+      Tried again as the history finishes arriving. */
+  const nameFromHistory = (task: string): void => {
+    worked.add(task);
+    for (const wait of [1500, 5000, 12000]) {
+      setTimeout(() => {
+        const here = houses.get(task);
+        if (here && !titledAt.has(task)) retitleFromWork(task, here);
+      }, wait);
+    }
+  };
 
   /* A house whose villager went home, kept rather than thrown away: whoever
      is watching the yard is still holding its state, and a new house would
@@ -637,6 +650,7 @@ export function createAgents(
         house.broke(whatItSaid(started.error));
         return refused(whatItSaid(started.error));
       }
+      nameFromHistory(task);
       return { success: true, data: undefined };
     } finally {
       resuming.delete(task);
@@ -676,6 +690,10 @@ export function createAgents(
       /* The launch is back once the history has been read in, but the
          session's own word that it is ready can trail it by a beat. */
       if (sleeping) await house.pastStarting(1500);
+      /* A title cut short with an ellipsis is somebody's first line, never
+         a name: the namer's are short enough to need no cutting. One picked
+         up before anything named it is named now, off what it holds. */
+      if (!record.named && record.title.endsWith('…')) nameFromHistory(task);
       return { success: true, data: undefined };
     } finally {
       if (sleeping) house.waking(false);
