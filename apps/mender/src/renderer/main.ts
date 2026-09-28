@@ -16,7 +16,7 @@ import {
 import type { WorkspaceRecord } from '@emdash/core/runtimes/workspace-registry/api';
 import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
-import { Application, Container, type FederatedPointerEvent } from 'pixi.js';
+import { Application, Container, type FederatedPointerEvent, type Renderer } from 'pixi.js';
 import type { Mood } from '@shared/agents';
 import type {
   CheckoutSettings,
@@ -68,6 +68,7 @@ import { loadKit } from './village/kit';
 import './yard/tokens.css';
 import { say } from './village/notice';
 import { buildScene } from './village/scene';
+import { Water } from './village/water';
 import { wire, type MenderClient } from './wire';
 import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
@@ -536,7 +537,7 @@ async function boot(): Promise<void> {
     /** What the line asks for while a particular thing is open. */
     const prompting = (): 'file' | 'changes' | undefined =>
       reading ? 'changes' : opened ? 'file' : undefined;
-    let drawn = await draw(world, client);
+    let drawn = await draw(world, client, pixi.renderer);
     let projects = await client.projects.list({});
     let tasks: Task[] = [];
     /* A session that has been asked for but whose worktree is still being cut
@@ -560,6 +561,7 @@ async function boot(): Promise<void> {
     pixi.ticker.add((ticker) => {
       drawn.ground.tick(ticker);
       drawn.folk.tick(ticker);
+      drawn.water.tick(ticker);
     });
 
     /** The place the board is standing in front of, while it is in. */
@@ -1115,7 +1117,7 @@ async function boot(): Promise<void> {
         client,
         async () => {
           await shut();
-          drawn = await draw(world, client);
+          drawn = await draw(world, client, pixi.renderer);
           projects = await client.projects.list({});
           people();
           frame(camera, drawn.island);
@@ -2957,7 +2959,7 @@ async function boot(): Promise<void> {
          same way founding one draws it: the island is composed again from
          what is standing now, rather than left showing a place nobody has. */
       await shut();
-      drawn = await draw(world, client);
+      drawn = await draw(world, client, pixi.renderer);
       projects = await client.projects.list({});
       tasks = tasks.filter((task) => task.project !== project.id);
       people();
@@ -4424,7 +4426,7 @@ async function boot(): Promise<void> {
       const moved = await found(
         client,
         async () => {
-          drawn = await draw(world, client);
+          drawn = await draw(world, client, pixi.renderer);
           projects = await client.projects.list({});
           people();
           frame(camera, drawn.island);
@@ -5256,6 +5258,7 @@ function whyNot(error: { kind: string; because?: string; name?: string }): strin
 
 interface Drawn {
   ground: Ground;
+  water: Water;
   folk: Folk;
   /** The districts by plot, which is how a project finds its own land. */
   districts: Map<string, District>;
@@ -5263,24 +5266,28 @@ interface Drawn {
 }
 
 /** Compose the island for the state the app is in, and put it on screen. */
-async function draw(world: Container, client: MenderClient): Promise<Drawn> {
+async function draw(world: Container, client: MenderClient, renderer: Renderer): Promise<Drawn> {
   say('drawing the island…');
   const map = await client.village.map({});
   const scene = buildScene(new Document(map.layout).items(), map.layout);
   if (scene.missing.length) {
     console.warn(`${scene.missing.length} sprites are not in the kit`, scene.missing.slice(0, 8));
   }
+  const island = extentOf(map.layout);
+  /* Before the light goes on the land, so the mask is the ground alone. */
+  const water = new Water(renderer, scene.root, scene.groundTop, island);
   const ground = new Ground(map.districts, map.layout, scene.buildings);
   scene.root.addChildAt(ground.overlay, scene.groundTop);
 
   for (const old of world.removeChildren()) old.destroy({ children: true });
-  world.addChild(scene.root);
+  world.addChild(water.mesh, scene.root);
   say(null);
   return {
     ground,
+    water,
     folk: new Folk(ground.windows),
     districts: new Map(map.districts.map((district) => [district.id, district])),
-    island: extentOf(map.layout),
+    island,
   };
 }
 

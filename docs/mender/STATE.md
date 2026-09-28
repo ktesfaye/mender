@@ -2504,6 +2504,20 @@ over the debug port: up three times walked all three notes and stopped at the
 oldest, down walked back to an empty line, and pressing the oldest note put it
 on the line whole.
 
+### The sea is water (2026-09-28) — done
+
+The sea was the colour behind the picture. It is water now, drawn by a shader of
+our own because the artist's is Unity's and ships nowhere else: shallow and green
+against the land deepening to blue in the open, slow swells of light moving across
+it, a scalloped line of foam at the foot of every cliff with a net of it washing
+up the rock and pulling back, not all along the coast at once, and short flecks
+of light blinking on the open water. The coast is measured off the ground the
+scene actually draws, so the foam sits where the cliffs stand, pixel for pixel,
+and everything on it lands on the art's own pixel grid. Zoomed out, the fine
+marks fade rather than crawl. Driven over the debug port against his real
+island: whole-island, close on the camp's cliffs, and a strip of the cliff foot
+photographed eight times across three seconds to see the wash come and go.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

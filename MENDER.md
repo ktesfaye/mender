@@ -685,6 +685,14 @@ your own is a name on the one line every board writes on, which writes a
 plain started skill under that name. Thrown away the same two presses as
 everything else here that cannot be undone.
 
+**The sea is water, not the colour behind the picture.** Shallow and green
+against the land, deepening to blue out in the open, with slow swells of light
+across it; a scalloped line of foam at the foot of every cliff and a net of it
+washing up the rock and back, never all along the coast at once; and short
+flecks of light coming and going on the open water. The artist's own water is a
+Unity shader that works nowhere else, so this one is ours, and the coast it
+foams against is measured off the ground the island actually draws.
+
 **A district is the artist's, or it is sea. Nothing grows.** The map is his
 `base-layout.json`, untouched, and his own partition of it into thirteen
 places. A project takes one whole and it appears exactly as he drew it, tile
