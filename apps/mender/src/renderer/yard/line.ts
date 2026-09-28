@@ -37,7 +37,7 @@ export type Asking =
   | 'built';
 
 const PROMPTS: Record<Asking, string> = {
-  say: '›',
+  say: '',
   start: '› say what you want built',
   built: '› say what you want built',
   branch: '› call it something',
