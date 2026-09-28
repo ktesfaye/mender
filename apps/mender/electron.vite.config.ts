@@ -26,9 +26,14 @@ const workspacePackages = [
  *
  * Without this the app runs out of the checkout perfectly and cannot start a
  * single agent once it is installed, which is the kind of break that only ever
- * shows up in the Applications folder.
+ * shows up in the Applications folder. So a one-off build with nothing to
+ * carry fails outright rather than making an app that cannot start an agent;
+ * only a watching dev build, which falls back to node_modules, lets it go.
  */
-function carryTheAdapters(): { name: string; closeBundle: () => Promise<void> } {
+function carryTheAdapters(): {
+  name: string;
+  closeBundle: (this: { meta: { watchMode: boolean } }) => Promise<void>;
+} {
   return {
     name: 'mender-carry-adapters',
     async closeBundle(): Promise<void> {
@@ -38,7 +43,13 @@ function carryTheAdapters(): { name: string; closeBundle: () => Promise<void> } 
         await rm(to, { recursive: true, force: true });
         await cp(from, to, { recursive: true });
       } catch (trouble) {
-        if (trouble instanceof Error && 'code' in trouble && trouble.code === 'ENOENT') return;
+        const missing = trouble instanceof Error && 'code' in trouble && trouble.code === 'ENOENT';
+        if (missing && this.meta.watchMode) return;
+        if (missing) {
+          throw new Error(
+            `no agent adapters at ${from}: build @emdash/plugins first, or the app cannot start an agent`
+          );
+        }
         throw trouble;
       }
     },

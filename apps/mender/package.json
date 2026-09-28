@@ -14,7 +14,7 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "typecheck": "tsgo --noEmit -p tsconfig.json",
-    "package": "pnpm run build && electron-builder --mac --config electron-builder.config.ts"
+    "package": "pnpm --filter @emdash/plugins run build && pnpm run build && electron-builder --mac --config electron-builder.config.ts"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "^1.1.0",
