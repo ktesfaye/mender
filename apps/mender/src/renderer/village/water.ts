@@ -35,14 +35,20 @@ const STEP = 2;
 const REACH = 384;
 /** How much of it is foam, in world pixels, stored at finer precision. */
 const NEAR = 64;
+/** World pixels per texel of the far field, which only ever sets the colour. */
+const DEEP_STEP = 16;
+/** How far out the water keeps getting deeper, in world pixels. */
+const FAR = 2400;
 /** Sea beyond the field in every direction, far enough that the camera never finds its edge. */
 const SEA = 40000;
 
 const vertex = /* glsl */ `#version 300 es
 in vec2 aPosition;
 in vec2 aField;
+in vec2 aDeep;
 out vec2 vWorld;
 out vec2 vField;
+out vec2 vDeep;
 
 uniform mat3 uProjectionMatrix;
 uniform mat3 uWorldTransformMatrix;
@@ -53,6 +59,7 @@ void main() {
   gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
   vWorld = aPosition;
   vField = aField;
+  vDeep = aDeep;
 }
 `;
 
@@ -61,10 +68,13 @@ precision highp float;
 
 in vec2 vWorld;
 in vec2 vField;
+in vec2 vDeep;
 out vec4 finalColor;
 
 uniform sampler2D uField;
+uniform sampler2D uDeep;
 uniform float uTime;
+uniform float uFar;
 uniform float uReach;
 uniform float uNear;
 
@@ -118,6 +128,24 @@ vec2 texel(ivec2 at) {
   return vec2(t.r, (t.g * 255.0 * 256.0 + t.b * 255.0) / 65535.0);
 }
 
+/* The far field is coarse and only ever blended, two bytes of one distance. */
+float deepTexel(ivec2 at) {
+  ivec2 size = textureSize(uDeep, 0);
+  vec4 t = texelFetch(uDeep, clamp(at, ivec2(0), size - 1), 0);
+  return (t.r * 255.0 * 256.0 + t.g * 255.0) / 65535.0;
+}
+
+float sampleDeep(vec2 uv) {
+  vec2 at = uv * vec2(textureSize(uDeep, 0)) - 0.5;
+  ivec2 i = ivec2(floor(at));
+  vec2 f = fract(at);
+  return mix(
+    mix(deepTexel(i), deepTexel(i + ivec2(1, 0)), f.x),
+    mix(deepTexel(i + ivec2(0, 1)), deepTexel(i + ivec2(1, 1)), f.x),
+    f.y
+  );
+}
+
 vec2 sampleField(vec2 uv) {
   vec2 at = uv * vec2(textureSize(uField, 0)) - 0.5;
   ivec2 i = ivec2(floor(at));
@@ -127,6 +155,32 @@ vec2 sampleField(vec2 uv) {
     mix(texel(i + ivec2(0, 1)), texel(i + ivec2(1, 1)), f.x),
     f.y
   );
+}
+
+/* The open water's own detail: a small wave that rises out of the flat,
+   stretches, and sinks back, somewhere new in its patch each time. Laid out on
+   the grid it is drawn in, so it is always whole pixels: a light crest, a row of
+   shade under it, and on the longest ones a row lifted over the middle. x is the
+   crest, y the shade. */
+vec2 wavelet(vec2 q, vec2 bin, float t, float seed) {
+  vec2 slot = floor(q / bin);
+  vec2 local = q - slot * bin;
+  vec2 s = slot + seed;
+  if (hash(s + 1.3) < 0.35) return vec2(0.0);
+  float period = 4.5 + 4.0 * hash(s + 2.1);
+  float clock = t / period + hash(s + 4.7);
+  float n = floor(clock);
+  float life = fract(clock);
+  vec2 at = floor(hash2(s + n * 3.17) * (bin - vec2(16.0, 6.0))) + vec2(8.0, 3.0);
+  float swell = sin(3.14159 * clamp(life * 1.4, 0.0, 1.0));
+  float reach = 2.0 + floor(hash(s + n * 5.5) * 4.0);
+  float span = floor(swell * reach + 0.5);
+  if (span < 1.0) return vec2(0.0);
+  vec2 d = local - at;
+  float crest = step(abs(d.x), span) * step(abs(d.y), 0.5);
+  float lifted = step(3.0, span) * step(abs(d.x), span - 2.0) * step(abs(d.y + 1.0), 0.5);
+  float under = step(abs(d.x + 1.0), span - 1.0) * step(abs(d.y - 1.0), 0.5);
+  return vec2(max(crest, lifted), under);
 }
 
 void main() {
@@ -145,24 +199,27 @@ void main() {
   vec2 field = sampleField(vField);
   float near = field.x * uNear;
   float far = field.y * uReach;
+  float out_ = sampleDeep(vDeep) * uFar;
 
-  vec3 deep = vec3(0.118, 0.333, 0.420);
-  vec3 mid = vec3(0.200, 0.471, 0.518);
-  vec3 shallow = vec3(0.310, 0.604, 0.596);
+  vec3 abyss = vec3(0.105, 0.290, 0.380);
+  vec3 deep = vec3(0.160, 0.396, 0.463);
+  vec3 mid = vec3(0.208, 0.475, 0.518);
+  vec3 shallow = vec3(0.330, 0.600, 0.580);
   vec3 foam = vec3(0.86, 0.95, 0.92);
 
+  /* Deeper the further out, all the way to the edge of the view: the colour
+     alone says which way the land is. */
   float open = smoothstep(0.0, uReach, far);
   vec3 c = mix(mid, deep, open);
+  c = mix(c, abyss, smoothstep(uReach, uFar, out_));
   float shoal = 1.0 - smoothstep(0.0, 110.0, far);
   c = mix(c, shallow, shoal * shoal * 0.8);
 
-  /* Broad swells, and long streaks the wind draws across them. */
-  float swell = noise(p / 300.0 + vec2(t * 0.015, t * 0.010));
-  swell += 0.5 * noise(p / 120.0 - vec2(t * 0.030, -t * 0.018));
-  float streak = noise(vec2(p.x / 170.0 - t * 0.05, p.y / 26.0 + t * 0.01));
-  streak = smoothstep(0.55, 0.85, streak);
-  c *= 0.95 + 0.06 * swell;
-  c = mix(c, shallow, streak * 0.10 * open);
+  /* The shadows of clouds, a long way up and slow, too big to read as marks
+     on the water. */
+  vec2 sky = p / 1100.0 + vec2(t * 0.0035, t * 0.0012);
+  float cloud = noise(sky) * 0.65 + noise(sky * 2.3 + 5.1) * 0.35;
+  c *= 1.0 - 0.09 * smoothstep(0.48, 0.72, cloud);
 
   /* Waves coming in: lines that follow the coast outward, a few at a time,
      each broken along its length and gone before it is far from land. */
@@ -193,19 +250,27 @@ void main() {
   float line = 1.0 - step(lip, near);
   c = mix(c, foam, line * 0.9);
 
-  /* Flecks: short dashes of light on the open water, each on its own clock,
-     laid out in screen pixels once the view is further out than the art. */
-  vec2 q = floor((vWorld + vec2(t * 2.0, 0.0)) / u);
-  vec2 bin = vec2(58.0, 30.0) / sqrt(u);
-  bin = max(bin, vec2(26.0, 14.0));
-  vec2 slot = floor(q / bin);
-  vec2 local = q - slot * bin;
-  vec2 at = floor(hash2(slot) * (bin - vec2(8.0, 2.0)));
-  float len = 2.0 + floor(hash(slot + 3.1) * 4.0);
-  float on = step(at.x, local.x) * step(local.x, at.x + len - 1.0) * step(at.y, local.y) * step(local.y, at.y);
-  float blink = smoothstep(0.55, 1.0, sin(t * (0.5 + 0.6 * hash(slot + 7.7)) + 6.2831 * hash(slot + 9.3)));
-  float offShore = smoothstep(18.0, 48.0, far);
-  c = mix(c, vec3(0.62, 0.82, 0.83), on * blink * offShore * 0.7);
+  /* Small waves rising and sinking all over the open water, drifting with
+     the wind, in whole pixels of whatever grid the view is on. Two sets on
+     different grids, so neither's rows ever line up into a pattern. */
+  float offShore = smoothstep(24.0, 60.0, far);
+  vec2 q = floor((vWorld + vec2(t * 3.0, t * 0.7)) / u);
+  vec2 bin = max(vec2(78.0, 44.0) / sqrt(u), vec2(40.0, 24.0));
+  vec2 w = wavelet(q, bin, t, 0.0);
+  vec2 w2 = wavelet(q + floor(bin * vec2(0.5, 0.37)), bin * vec2(1.3, 1.2), t * 0.9, 41.0);
+  w = max(w, w2);
+  vec3 crestLight = mix(c, vec3(0.62, 0.83, 0.84), 0.55);
+  c = mix(c, c * 0.84, w.y * (1.0 - w.x) * offShore);
+  c = mix(c, crestLight, w.x * offShore);
+
+  /* Glints: a single pixel of sun catching a wave, gone almost as soon as it
+     is there. */
+  vec2 gbin = max(vec2(70.0, 52.0) / sqrt(u), vec2(36.0, 27.0));
+  vec2 gslot = floor(q / gbin);
+  vec2 gat = floor(hash2(gslot + 71.0) * gbin);
+  float glint = step(abs(q.x - gslot.x * gbin.x - gat.x), 0.5) * step(abs(q.y - gslot.y * gbin.y - gat.y), 0.5);
+  float flash = pow(max(0.0, sin(t * (0.7 + 0.8 * hash(gslot + 7.7)) + 6.2831 * hash(gslot + 9.3))), 24.0);
+  c = mix(c, vec3(0.93, 0.98, 0.96), glint * flash * offShore * 0.9);
 
   /* A breath of noise under everything, or a gradient this gentle breaks into
      visible terraces in eight bits a channel. */
@@ -249,14 +314,38 @@ export class Water {
     });
     const texture = new Texture({ source });
 
+    const deepX = island.x - FAR;
+    const deepY = island.y - FAR;
+    const deepWidth = Math.ceil((island.width + FAR * 2) / DEEP_STEP);
+    const deepHeight = Math.ceil((island.height + FAR * 2) / DEEP_STEP);
+    const deepLand = new Uint8Array(deepWidth * deepHeight);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (!land[y * width + x]) continue;
+        const dx = Math.floor((originX + x * STEP - deepX) / DEEP_STEP);
+        const dy = Math.floor((originY + y * STEP - deepY) / DEEP_STEP);
+        deepLand[dy * deepWidth + dx] = 1;
+      }
+    }
+    const deepSource = new BufferImageSource({
+      resource: deepFieldOf(deepLand, deepWidth, deepHeight),
+      width: deepWidth,
+      height: deepHeight,
+      format: 'rgba8unorm',
+      scaleMode: 'nearest',
+      addressMode: 'clamp-to-edge',
+    });
+    const deep = new Texture({ source: deepSource });
+
     const uniforms = {
       uTime: { value: 0, type: 'f32' },
       uReach: { value: REACH, type: 'f32' },
       uNear: { value: NEAR, type: 'f32' },
+      uFar: { value: FAR, type: 'f32' },
     } as const;
     const shader = Shader.from({
       gl: { vertex, fragment },
-      resources: { uField: texture.source, waterUniforms: uniforms },
+      resources: { uField: texture.source, uDeep: deep.source, waterUniforms: uniforms },
     });
     this.uniforms = shader.resources.waterUniforms as { uniforms: { uTime: number } };
 
@@ -270,6 +359,9 @@ export class Water {
         aField: [x0, y0, x1, y0, x1, y1, x0, y1].map((v, i) =>
           i % 2 ? (v - originY) / (height * STEP) : (v - originX) / (width * STEP)
         ),
+        aDeep: [x0, y0, x1, y0, x1, y1, x0, y1].map((v, i) =>
+          i % 2 ? (v - deepY) / (deepHeight * DEEP_STEP) : (v - deepX) / (deepWidth * DEEP_STEP)
+        ),
       },
       indexBuffer: [0, 1, 2, 0, 2, 3],
     });
@@ -277,7 +369,10 @@ export class Water {
     this.mesh.eventMode = 'none';
     /* The field is a texture of its own and a mesh does not own its shader's
        resources, so it goes when the island is redrawn and this is thrown away. */
-    this.mesh.once('destroyed', () => texture.destroy(true));
+    this.mesh.once('destroyed', () => {
+      texture.destroy(true);
+      deep.destroy(true);
+    });
   }
 
   tick(_ticker: Ticker): void {
@@ -334,6 +429,20 @@ function fieldOf(land: Uint8Array, width: number, height: number): Uint8Array {
     const reach = Math.round(Math.min(1, d / REACH) * 65535);
     out[i * 4 + 1] = reach >> 8;
     out[i * 4 + 2] = reach & 255;
+    out[i * 4 + 3] = 255;
+  }
+  return out;
+}
+
+/** How far each texel is from land over the whole view, two bytes of it. */
+function deepFieldOf(land: Uint8Array, width: number, height: number): Uint8Array {
+  const squared = distanceSquared(land, width, height);
+  const out = new Uint8Array(width * height * 4);
+  for (let i = 0; i < squared.length; i++) {
+    const d = Math.sqrt(squared[i] ?? 0) * DEEP_STEP;
+    const far = Math.round(Math.min(1, d / FAR) * 65535);
+    out[i * 4] = far >> 8;
+    out[i * 4 + 1] = far & 255;
     out[i * 4 + 3] = 255;
   }
   return out;

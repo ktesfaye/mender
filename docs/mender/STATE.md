@@ -2529,6 +2529,17 @@ the rock stays. Close in it is unchanged. Driven over the debug port at the
 opening view and close on the camp, and filmed across a few seconds to see the
 waves roll in.
 
+### The open sea is drawn as carefully as the coast (2026-09-28) — done
+
+Out past the shore the water was soft smudges of noise, nothing like the
+crisp coast beside it. Now it is small pixel waves, a light crest with a row
+of shade under it, each rising out of the flat, stretching, sinking back and
+coming up somewhere else, drifting with the wind; single glints of sun that
+flash and go; the water deepening all the way to the edge of the view rather
+than stopping a little way out; and the slow shadows of clouds passing over.
+Driven over the debug port at the opening view and close in, and filmed
+across a few seconds to see the waves rise and sink.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

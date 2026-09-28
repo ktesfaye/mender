@@ -688,8 +688,10 @@ everything else here that cannot be undone.
 **The sea is water, not the colour behind the picture.** Shallow and green
 against the land, deepening to blue out in the open, with slow swells of light
 across it; a scalloped line of foam at the foot of every cliff and a net of it
-washing up the rock and back, never all along the coast at once; and short
-flecks of light coming and going on the open water. The artist's own water is a
+washing up the rock and back, never all along the coast at once; and out on the
+open water small waves in whole pixels rising, stretching and sinking back,
+glints of sun, and the shadows of clouds passing slowly over, the blue
+deepening all the way to the edge of the view. The artist's own water is a
 Unity shader that works nowhere else, so this one is ours, and the coast it
 foams against is measured off the ground the island actually draws.
 
