@@ -2380,17 +2380,20 @@ isolated line on, started one, and a worktree and `mender/…` branch
 appeared. Took the shared session down from its card and the repo's files
 were all still there.
 
-### Cmd+W closes one session at a time — done
+### Cmd+W closes a session like a tab — done
 
-Cmd+W in a session sends that one home and stands you in the next one
-still awake in the project, the way closing tabs does. Only once nobody in
-the project is left awake does it fly back out to the island. A terminal
-session's own CLI outlives its board, so it is stepped past rather than
-stopped.
+Cmd+W in a session takes it off the rail altogether, the same as taking it
+down from its card, and stands you in the next one along; once none are
+left it flies out to the island. One press, since the branch outlives it
+and the conversation stays in the ledger. The one exception is a session in
+its own worktree with uncommitted files: the first press says how many and
+only a second press inside a few seconds closes it anyway. The window menu's
+Close moved to Cmd+Shift+W so Cmd+W can never reach the window.
 
-Driven over the debug port on a copy of the real data folder: Aurio with
-three lit lanterns, Cmd+W three times. The first two each put one lantern
-out and landed in the next lit one; the third flew out to the island.
+Driven over the debug port on a scratch project with two shared sessions
+and one dirty worktree: the first two presses each took a lantern off and
+landed in the next; the third warned about one uncommitted file, the fourth
+closed it and flew out to the island.
 
 ### The yard's columns say what is useful (2026-09-27) — done
 

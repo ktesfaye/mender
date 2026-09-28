@@ -32,12 +32,19 @@ import type { Prompt } from '@shared/prompts';
 import type { ClaudeCliSession, Task } from '@shared/tasks';
 import { branchMade, branchUnmade, unbranchMade } from './board/branch';
 import { browsing, openPage, safe as safeAddress } from './board/browsing';
-import { openCard, transcriptMarkdown, turnsOf, type LiveCard } from './board/card';
+import { counted, openCard, transcriptMarkdown, turnsOf, type LiveCard } from './board/card';
 import { lineNumberOf, opening, readOut, unreadable, type Noting } from './board/changed';
 import { committing } from './board/committing';
 import { conflict, conflictMessage } from './board/conflict';
 import { landingLines, openCheckout, type Landing, type LiveBoard } from './board/district';
-import { chordFor, FIND, finding, type Keybindings, type Standing as Where } from './board/finder';
+import {
+  chordFor,
+  chordOf,
+  FIND,
+  finding,
+  type Keybindings,
+  type Standing as Where,
+} from './board/finder';
 import { openTree, type LiveTree } from './board/inside';
 import { hunting, type Hunt } from './board/looking';
 import { amending as amendBoard, made, unmade, unread } from './board/made';
@@ -862,8 +869,29 @@ async function boot(): Promise<void> {
      * session opens it, and the one you are already inside is how you call it
      * something else.
      */
-    /** Sessions Cmd+W has closed on its way out of a project. */
-    const shutting = new Set<string>();
+    /** The session Cmd+W has already warned about, and when: a second press
+        inside the window takes it down regardless of what goes with it. */
+    let closing: { task: string; at: number } | null = null;
+    /** What in a session's own worktree nobody has committed, said as words,
+        or nothing when it is clean. */
+    const uncommittedIn = async (task: Task): Promise<string | null> => {
+      const parsed = parseNativeAbsolute(task.path);
+      if (!parsed.success) return null;
+      const status = new ReplicaState<{ kind: string; entries?: Record<string, unknown> }>(
+        client.git.checkout.model.state({ checkout: parsed.data }, 'status')
+      );
+      try {
+        await status.ready;
+        const now = status.current();
+        if (now?.kind === 'too-many-files') return 'more files than git will count';
+        const many = Object.keys(now?.entries ?? {}).length;
+        return many ? counted(many, 'file') : null;
+      } catch {
+        return null;
+      } finally {
+        void status.dispose();
+      }
+    };
     const go = (id: string): void => {
       // The finder is a board like any other, so picking something on it is
       // picking that thing: it steps out of the way first and then answers.
@@ -896,31 +924,41 @@ async function boot(): Promise<void> {
       }
       if (id === 'do:out') {
         void (async () => {
-          /* Closing is one session at a time, the way closing tabs is: the one
-             you are standing in goes home and you land in the next one still
-             awake in this project, and only once nobody is left does it let go
-             of the project altogether. A terminal session's own CLI outlives
-             its board by design, so it is only stepped past, and remembered as
-             stepped past so two of them never hand you back and forth. */
+          /* Closing a tab. The session you are standing in comes off the rail
+             altogether, the same as taking it down from its card, and you
+             land in the next one along; once nobody is left the project lets
+             go too. It is one press, because the branch outlives it and the
+             empty hook offers it straight back. The one thing that would not
+             come back is work in its own worktree nobody committed, so only
+             then does the first press say so and the second do it. */
           const task = inside;
           const aim = open;
           if (task && aim) {
-            shutting.add(task.id);
-            if (task.kind !== 'terminal') {
-              await client.agents.rest({ task: task.id }, { timeoutMs: 0 });
+            const armed = closing?.task === task.id && Date.now() - closing.at < 4000;
+            closing = null;
+            if (!armed && !task.shared) {
+              const left = await uncommittedIn(task);
+              if (left) {
+                closing = { task: task.id, at: Date.now() };
+                const again = (chordOf('do:out', keybindings) ?? 'w').toUpperCase();
+                say(
+                  `${left} in here nobody has committed. ⌘${again} again to close it anyway.`,
+                  4000
+                );
+                return;
+              }
             }
-            if (open !== aim) return;
             const here = tasksOn(aim.district);
             const from = here.findIndex((one) => one.id === task.id);
-            const next = [...here.slice(from + 1), ...here.slice(0, Math.max(from, 0))].find(
-              (one) => !shutting.has(one.id) && seen[one.id] && seen[one.id] !== 'empty'
-            );
+            const next = [...here.slice(from + 1), ...here.slice(0, Math.max(from, 0))][0];
+            await client.tasks.abandon({ id: task.id }, { timeoutMs: 0 });
+            say(null);
+            if (open !== aim) return;
             if (next) {
               await openTask(aim, next);
               return;
             }
           }
-          shutting.clear();
           await shut();
           flyOut(camera, drawn.island);
           arrived();

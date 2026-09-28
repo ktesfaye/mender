@@ -59,7 +59,13 @@ export function installAppMenu(): void {
 
   const windowMenu: MenuItemConstructorOptions = {
     label: 'Window',
-    submenu: [{ role: 'minimize' }, { role: 'zoom' }, { role: 'close' }],
+    // Close keeps its place but not its key: ⌘W is the village's, and closes
+    // the session you are in the way it closes a tab, never the window.
+    submenu: [
+      { role: 'minimize' },
+      { role: 'zoom' },
+      { role: 'close', accelerator: 'CmdOrCtrl+Shift+W' },
+    ],
   };
 
   const template: MenuItemConstructorOptions[] =

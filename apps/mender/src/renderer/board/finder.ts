@@ -86,7 +86,7 @@ export const DOINGS: Doing[] = [
   {
     pick: 'do:out',
     name: 'close',
-    about: 'close this session, and the project once none are left',
+    about: 'take this session off the rail, and leave the project once none are left',
     chord: 'w',
     where: ['district', 'session', 'card'],
   },
