@@ -121,9 +121,11 @@ the other sessions used to be written in: each version on its own line and
 what went into it bulleted and indented under it, newest first and scrolling, read straight off whichever commits moved
 the version in the project's own manifest rather than kept anywhere. What it
 said is in the middle, the answer set large, and everything it thought and said
-on the way there folded into one quiet gold "thinking" line right above it;
-pressing that opens the trail upward out of it and pressing it again folds it,
-and it stays however you left it. The right column is whatever the session is
+on the way there folded out of sight; pressing "now" over the answer, or the
+column's own heading, opens the trail upward out of it and pressing either
+again folds it, and it stays however you left it. They look no different for
+being pressable, the one place the gold rule gives way, because a gold word
+over every answer was one more thing to read. The right column is whatever the session is
 in the middle of: a question it is standing at the gate with, its answers
 pressable and numbered, or the plan it is working through, done steps inked
 out and the one it is on lit, and nothing when it is neither. Under that is

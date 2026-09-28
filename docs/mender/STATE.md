@@ -2401,7 +2401,7 @@ out. Under it, what it did scrolls and follows the live end, with the lines
 every write and edit actually changed under its crate or anvil; paths outside
 the checkout read as a file name or `~/…` instead of a run of temp folders.
 The middle is "what it said": the answer, with everything before it folded
-into one gold "thinking" line that opens and closes and remembers which. The
+away; pressing "now" or the heading opens and closes it and remembers which. The
 gatepost's foot is the project's changelog, versions read off the commits that
 moved the version in `pubspec.yaml`, `package.json`, a gradle `versionName` or
 `Cargo.toml`, the commits since the last bump under "not in a version yet".

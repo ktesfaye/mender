@@ -313,6 +313,15 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       entering ||
       before?.project.id !== yard.project.id ||
       before?.session?.id !== yard.session?.id;
+    /* A session being woken reads its whole history back in a piece at a
+       time, and every piece is a rewrite. Drawing each one is the board
+       flickering through every half-loaded state of the conversation, so while
+       it wakes the fire is drawn once and left alone, and when it is up the
+       whole of it comes in together. */
+    const waking = Boolean(yard.session?.waking);
+    const wasWaking = Boolean(before?.session?.waking) && !walkedIn;
+    if (waking && wasWaking && moving) return;
+    const woke = wasWaking && !waking;
     entering = false;
     const was = moving && !walkedIn ? measure(stage) : new Map();
     root.replaceChildren(covered);
@@ -325,12 +334,15 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     scrims(root);
     lay();
     carried(hands, yard, does);
-    head(root, yard, layer.edge(), does);
+    head(root, waking ? hushed(yard) : yard, layer.edge(), does);
     /* A project nobody has worked in yet has nothing to put in three columns,
        and three headings over three empty columns is scaffolding, not a place.
        So it says the one true thing and lets the district behind it do the
        rest; the line at the bottom is already asking what to build. */
-    if (yard.session) {
+    if (yard.session && waking) {
+      wakingUp(covered, columns, floor, wakingSinceOf(yard.session.id));
+      stillAt.replaceChildren();
+    } else if (yard.session) {
       asked(root, columns.asked, yard, floor, layer.cramped(), does);
       thinking(covered, columns.thinking, yard, floor, does, walkedIn, sinceOf(yard));
       made(covered, columns.made, yard, floor, does);
@@ -352,6 +364,10 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     walk.again();
 
     if (!moving) return;
+    if (woke) {
+      root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: 'ease-out' });
+      return;
+    }
     /* The note that was just said, landing. The agent's own record of it has
        arrived on the post, so the one in flight hands over to it: the card
        carries on from wherever the words had got to. */
@@ -368,6 +384,14 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     if (walkedIn) {
       root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: 'ease-out' });
     }
+  }
+
+  /** When a session started waking, for the count beside its fire. */
+  const wakingSince = new Map<string, number>();
+  function wakingSinceOf(id: string): number {
+    const seen = wakingSince.get(id) ?? Date.now();
+    wakingSince.set(id, seen);
+    return seen;
   }
 
   /** When the live count starts, from the note if it has a time and otherwise from now. */
@@ -979,7 +1003,8 @@ function thinking(
   root.appendChild(
     rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
   );
-  root.appendChild(label('what it said', { left: at.x, top: HEAD.label }));
+  const heading = label('what it said', { left: at.x, top: HEAD.label });
+  root.appendChild(heading);
 
   const thoughts = yard.session?.thoughts ?? [];
   const top = HEAD.top;
@@ -1046,34 +1071,18 @@ function thinking(
   function laidOne(): void {
     const start = windowStart(wholeSize, shown);
     const open = thinkingOpen();
-    /* Everything on the way to the answer folds into one quiet line, and
-       only the answer itself stays out: most of the time what it said back is
-       all anybody came for. The line sits right above the answer, so the trail
-       opens upward out of it and the answer never moves. */
+    /* Everything on the way to the answer is folded away, and only the
+       answer itself stays out: most of the time what it said back is all
+       anybody came for. Pressing "now", or the column's own heading, opens
+       the trail upward out of it and folds it again, so the answer never
+       moves and there is no extra line on the board to do it with. */
     let answer = -1;
     thoughts.forEach((one, i) => {
       if (one.live && !one.quiet) answer = i;
     });
-    const folds = thoughts.length > (answer >= 0 ? 1 : 0) || server > 0;
-    const fold = (): HTMLElement => {
-      const line = astop(
-        pressing(open ? '\u25be thinking' : '\u25b8 thinking', () => {
-          setThinkingOpen(!open);
-          laidOlder();
-          laidItems();
-          if (!open) stream.scrollTop = stream.scrollHeight;
-        }),
-        'thinking:fold'
-      );
-      line.style.cssText +=
-        ";font-family:'Josefin Sans',sans-serif;font-size:12px;letter-spacing:.14em;opacity:.7;align-self:flex-start";
-      return keyed(line, 'thinking:fold');
-    };
-    if (folds && answer < 0 && !open) items.appendChild(fold());
     thoughts.slice(start).forEach((one, si) => {
       const i = start + si;
       const far = thoughts.length - 1 - i;
-      if (i === answer && folds) items.insertBefore(fold(), null);
       if (!open && i !== answer) return;
       if (one.live) {
         keep.add(one.id);
@@ -1084,6 +1093,7 @@ function thinking(
           trouble?.head ?? (one.quiet ? 'thinking' : 'now'),
           trouble?.ink ?? '#ffc98a'
         );
+        folding(head);
         it.appendChild(head);
         const body = document.createElement('div');
         /* Set large, unless it is long enough that large is a wall: a whole
@@ -1118,9 +1128,25 @@ function thinking(
         )
       );
     });
-    if (folds && answer < 0 && open) items.appendChild(fold());
     forgetInk(keep);
   }
+
+  /** Open or fold the trail on the way to the answer. */
+  function toggle(): void {
+    setThinkingOpen(!thinkingOpen());
+    laidOlder();
+    laidItems();
+    stream.scrollTop = stream.scrollHeight;
+  }
+  /** Something that opens and folds the trail when pressed, and looks no different. */
+  function folding(el: HTMLElement): void {
+    el.style.pointerEvents = 'auto';
+    el.style.cursor = 'pointer';
+    el.style.alignSelf = 'flex-start';
+    el.addEventListener('mousedown', (event) => event.preventDefault());
+    el.addEventListener('click', toggle);
+  }
+  folding(heading);
 
   laidOlder();
   laidItems();
@@ -1309,6 +1335,37 @@ function ember(live: Live, since: number | undefined): HTMLElement {
   }
   it.appendChild(words);
   return it;
+}
+
+/**
+ * A session being woken: the fire, and how long it has been at it, in the
+ * middle of the board and nothing else.
+ *
+ * It comes up only after a moment, because most wakes are over before you
+ * would notice, and a wait too short to notice says nothing at all.
+ */
+function wakingUp(
+  root: HTMLElement,
+  columns: { asked: { x: number }; made: { x: number; wide: number } },
+  floor: number,
+  since: number
+): void {
+  const left = columns.asked.x;
+  const wide = columns.made.x + columns.made.wide - left;
+  const it = box(
+    { left, top: HEAD.top, width: wide, height: Math.max(0, floor - HEAD.top) },
+    'display:flex;align-items:center;justify-content:center;opacity:0;animation:yard-waking 420ms ease-out 350ms forwards'
+  );
+  it.appendChild(ember({ doing: 'waking up', answering: false }, since));
+  root.appendChild(it);
+}
+
+/** The head of a waking board, without the counts that are still being read in. */
+function hushed(yard: Yard): Yard {
+  const { going: _going, turns: _turns, spawned: _spawned, ...project } = yard.project;
+  if (!yard.session) return { ...yard, project };
+  const { room: _room, cost: _cost, model: _model, ...session } = yard.session;
+  return { ...yard, project, session };
 }
 
 /** What a step of a posted plan looks like, behind them, under their hands, or ahead. */
