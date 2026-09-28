@@ -214,8 +214,9 @@ async function boot(): Promise<void> {
            if the hook had been pressed first and this had been written on
            the board it opened. */
         if (!inside && open && !looking) {
-          const district = open.district;
-          askName({ kind: 'district', district }, freeSlot(district), text);
+          const project = projectOn(open.district);
+          if (!project) return;
+          naming = blankNaming(open.district, project, freeSlot(open.district), text);
           void begin();
           return;
         }
@@ -896,9 +897,18 @@ async function boot(): Promise<void> {
       // The finder is a board like any other, so picking something on it is
       // picking that thing: it steps out of the way first and then answers.
       if (looking && id !== FIND) looking = null;
+      /* A new session is a blank one, the same yard as any other with
+         nobody in it yet; the first thing written there starts it. Asked for
+         again while already standing in one, it turns over to the other ways
+         of starting one: its own copy, its own terminal, an issue, a branch. */
       if (id === 'new') {
         const district = open?.district;
-        if (district) askName({ kind: 'district', district }, freeSlot(district));
+        const project = district ? projectOn(district) : undefined;
+        if (!district || !project) return;
+        const aim: Aim = { kind: 'district', district };
+        if (naming) return;
+        if (!inside && !yard.open) askName(aim, freeSlot(district));
+        else void showYard(aim, project);
         return;
       }
       if (id === FIND) {
@@ -1493,22 +1503,20 @@ async function boot(): Promise<void> {
       const standing = tasksOn(aim.district);
       const last = lastIn.get(project.id);
       const here = standing.find((task) => task.id === last) ?? standing[0];
+      /* Nobody here yet lands in a session nobody has started: the same
+         yard every other one is, empty, and the first thing written starts it. */
       await showYard(aim, project, here);
-      /* Nobody here yet, so there is no work to land in: you land on the
-         question that starts some, the same board the empty hook opens, rather
-         than a yard that only says it is empty. */
-      if (!here) askName(aim, freeSlot(aim.district));
       arrived();
     };
 
-    /* Backing off a new session lands in the work it would have joined, or,
-       with nobody in the project to land on, back out on the water. */
+    /* Backing off the board of other ways to start one lands back in the
+       blank session it was opened from. */
     const unname = (): void => {
       naming = null;
       if (!open) return;
-      const district = open.district;
-      if (tasksOn(district).length) void openDistrict({ kind: 'district', district });
-      else void picked(null);
+      const aim: Aim = { kind: 'district', district: open.district };
+      const project = projectOn(aim.district);
+      if (project) void showYard(aim, project);
     };
 
     /**
@@ -3227,6 +3235,32 @@ async function boot(): Promise<void> {
       arrived();
     };
 
+    /** A new session as plain as they come: in the project's own folder,
+        on a conversation, started from nothing. */
+    const blankNaming = (
+      district: District,
+      project: Project,
+      slot: number | null,
+      written: string
+    ): NonNullable<typeof naming> => ({
+      district,
+      project,
+      slot,
+      written,
+      revivable: null,
+      terminal: false,
+      issues: null,
+      pickingIssue: false,
+      branches: null,
+      pickingBranch: false,
+      branch: null,
+      resumeSessions: null,
+      pickingResume: false,
+      resume: null,
+      allowAll: false,
+      isolated: false,
+    });
+
     /** A new session is a question: what is going to happen in there. */
     const askName = (aim: Aim, slot: number | null, written = ''): void => {
       const project = projectOn(aim.district);
@@ -3240,24 +3274,7 @@ async function boot(): Promise<void> {
       sending = null;
       open = aim;
       titling = null;
-      naming = {
-        district: aim.district,
-        project,
-        slot,
-        written,
-        revivable: null,
-        terminal: false,
-        issues: null,
-        pickingIssue: false,
-        branches: null,
-        pickingBranch: false,
-        branch: null,
-        resumeSessions: null,
-        pickingResume: false,
-        resume: null,
-        allowAll: false,
-        isolated: false,
-      };
+      naming = blankNaming(aim.district, project, slot, written);
       paintRail();
       /* Asking what is going to happen in a new session is laid over the yard
          you are standing in, like everything else you open, rather than

@@ -2443,16 +2443,19 @@ column rules and the changelog's, put away what it did, the changelog and
 what you asked one by one until the answer ran the full width, then brought
 all three back and reset the rules from the same right-click slab.
 
-### An empty project opens on a new session (2026-09-27) — done
+### A new session is a blank session (2026-09-27) — done
 
-Walking into a project nobody has worked in used to stand you in a yard that
-only said so, a screen of its own before any session. It opens straight onto
-the new-session board instead, with every way to start one on it; Escape goes
-back out to the water, since there is nothing under it to land in.
+The empty hook and a project nobody has worked in both stand you in a blank
+session: the yard any session is, nothing in it, the hook hanging bright as
+the one you are in, and the first line written starts it with no board in
+between. The board of other ways to start one (own copy, own terminal, issue,
+branch, past session, allow everything) is the hook pressed a second time.
+The hook's click also no longer lands twice.
 
-Driven over the debug port on mender with no sessions: the rack slot landed on
-the board, nothing stale beside it, Escape went out to the island and walking
-back in landed on the board again.
+Driven over the debug port on mender: walked in, typed a line, the session
+started and answered with nothing flashing; pressed the hook from inside that
+session and landed in a blank one with the first lantern still on the rail;
+pressed again for the board, Escape back to the blank one.
 
 ### Next
 

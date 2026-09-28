@@ -370,7 +370,22 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       made(covered, columns.made, yard, floor, does);
       still(stillAt, yard, does);
     } else {
-      nobody(root, columns.asked, columns.made, yard, floor);
+      /* Nobody has started this one yet, and it is still a session: the same
+         three columns, nothing in them, and the line under them is how it
+         starts. A yard that looked different here was a screen of its own. */
+      const blank: Yard = { ...yard, session: BLANK };
+      asked(root, columns.asked, blank, floor, layer.cramped(), does);
+      thinking(
+        covered,
+        columns.thinking,
+        blank,
+        floor,
+        does,
+        walkedIn,
+        undefined,
+        columns.asked.wide > 0
+      );
+      made(covered, columns.made, blank, floor, does);
       stillAt.replaceChildren();
     }
     said_line(root, layer.edge());
@@ -2032,26 +2047,23 @@ function diffPreview(one: Step, does: Doings): HTMLElement {
   return wrap;
 }
 
-/**
- * A project with nobody in it yet.
- *
- * It is never read on its own: walking into one opens the new-session board
- * straight over it, so this is only what sits under that board, and it says
- * nothing the board does not already.
- */
-function nobody(
-  root: HTMLElement,
-  at: { x: number; wide: number },
-  patch: { x: number; wide: number },
-  yard: Yard,
-  floor: number
-): void {
-  /* The one thing this board still offers about the project itself, in the
-     same place it sits when there is work here, so it does not move when the
-     first session arrives. Nothing else: an empty project has no ground worth
-     framing, no cart and nothing to have done. */
-  if (!hidden('changelog') && at.wide) changelog(root, at, yard, floor, true);
-}
+/** A session nobody has started: everything a session has, none of it yet. */
+const BLANK: Session = {
+  id: 'blank',
+  name: '',
+  branch: '',
+  agent: '',
+  fire: 'out',
+  notes: [],
+  thoughts: [],
+  plan: [],
+  steps: [],
+  made: [],
+  agents: [],
+  waiting: [],
+  carrying: [],
+  pinnedNotes: [],
+};
 
 /**
  * The ground, and everybody on it.
@@ -2363,7 +2375,11 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   beam.appendChild(box({ left: spare + 10, top: 3, width: 3, height: LANTERN.cord }, HOOK));
 
   const lamp = sprite(KIT_NAMES.lanternOff, 2);
-  lamp.style.cssText += `;left:${spare}px;top:${cord}px;filter:brightness(.7)`;
+  /* With no session open, the one you are standing in is the one on the hook,
+     so it hangs as the one you are in: brighter, and saying so. Pressed again
+     it turns over to the other ways of starting one. */
+  const standing = !yard.session;
+  lamp.style.cssText += `;left:${spare}px;top:${cord}px;filter:brightness(${standing ? 1 : 0.7})`;
   beam.appendChild(lamp);
 
   const hook = box({ left: spare, top: cord, width: bare ? 44 : Math.max(step, 150), height: 58 });
@@ -2376,10 +2392,16 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       'rail:new'
     );
     start.style.cssText += "font-family:'Courier Prime',monospace;font-size:13px";
+    /* The words already pressed; the hook round them must not press again. */
+    start.addEventListener('click', (event) => event.stopPropagation());
     name.appendChild(start);
     hook.appendChild(name);
     const under = box({ left: 34, top: 20 });
-    under.appendChild(exact('the hook is empty', 11, '#a89272'));
+    under.appendChild(
+      standing
+        ? exact('you are in it · press for other ways', 11, '#dcc8a0')
+        : exact('the hook is empty', 11, '#a89272')
+    );
     hook.appendChild(under);
   } else {
     astop(lamp, 'rail:new');
@@ -2387,7 +2409,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   hook.addEventListener('mousedown', (event) => event.preventDefault());
   hook.addEventListener('click', () => does.press('new'));
   hook.addEventListener('pointerenter', () => (lamp.style.filter = 'brightness(1.1)'));
-  hook.addEventListener('pointerleave', () => (lamp.style.filter = 'brightness(.7)'));
+  hook.addEventListener(
+    'pointerleave',
+    () => (lamp.style.filter = `brightness(${standing ? 1 : 0.7})`)
+  );
   beam.appendChild(hook);
   root.appendChild(beam);
 }
