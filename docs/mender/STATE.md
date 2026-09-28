@@ -2518,6 +2518,17 @@ marks fade rather than crawl. Driven over the debug port against his real
 island: whole-island, close on the camp's cliffs, and a strip of the cliff foot
 photographed eight times across three seconds to see the wash come and go.
 
+### The sea reads as water from out on it too (2026-09-28) — done
+
+The whole-island view, which is where the village is looked at most, had the
+water's detail fade out and left a smooth glow round the coast. Every mark is
+now sized so it never gets thinner than a pixel of the screen: waves follow the
+coast in towards it a few at a time, broken along their length, long streaks of
+lighter water drift across the open sea, the flecks stay, and the foam line at
+the rock stays. Close in it is unchanged. Driven over the debug port at the
+opening view and close on the camp, and filmed across a few seconds to see the
+waves roll in.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

@@ -130,12 +130,15 @@ vec2 sampleField(vec2 uv) {
 }
 
 void main() {
-  /* Whole world pixels, so every mark on the water lands on the same grid as
-     the art standing next to it. */
-  vec2 p = floor(vWorld) + 0.5;
-  /* How many world pixels one screen pixel covers. Zoomed out, a one-pixel
-     line is less than a pixel wide and would crawl, so the fine work fades. */
+  /* How many world pixels one screen pixel covers. Most of the time the whole
+     island is in view and this is well over one, and the water is still water
+     then: every mark below is sized so it never gets thinner than a pixel of
+     the screen, rather than fading out. */
   float px = max(fwidth(vWorld.x), fwidth(vWorld.y));
+  float u = max(1.0, px);
+  /* Close in, whole world pixels, the same grid as the art beside it; far
+     out, whole screen pixels. */
+  vec2 p = (floor(vWorld / u) + 0.5) * u;
   float fine = 1.0 - smoothstep(1.2, 2.6, px);
   float t = uTime;
 
@@ -143,27 +146,38 @@ void main() {
   float near = field.x * uNear;
   float far = field.y * uReach;
 
-  vec3 deep = vec3(0.141, 0.357, 0.427);
-  vec3 mid = vec3(0.224, 0.502, 0.529);
-  vec3 shallow = vec3(0.365, 0.651, 0.624);
+  vec3 deep = vec3(0.118, 0.333, 0.420);
+  vec3 mid = vec3(0.200, 0.471, 0.518);
+  vec3 shallow = vec3(0.310, 0.604, 0.596);
+  vec3 foam = vec3(0.86, 0.95, 0.92);
 
   float open = smoothstep(0.0, uReach, far);
   vec3 c = mix(mid, deep, open);
-  float shoal = 1.0 - smoothstep(0.0, 150.0, far);
-  c = mix(c, shallow, shoal * shoal * 0.75);
+  float shoal = 1.0 - smoothstep(0.0, 110.0, far);
+  c = mix(c, shallow, shoal * shoal * 0.8);
 
-  /* Slow broad swells of light across the open water. */
-  float swell = noise(p / 260.0 + vec2(t * 0.020, t * 0.012));
-  swell += 0.5 * noise(p / 110.0 - vec2(t * 0.035, -t * 0.02));
-  c *= 0.96 + 0.05 * swell;
+  /* Broad swells, and long streaks the wind draws across them. */
+  float swell = noise(p / 300.0 + vec2(t * 0.015, t * 0.010));
+  swell += 0.5 * noise(p / 120.0 - vec2(t * 0.030, -t * 0.018));
+  float streak = noise(vec2(p.x / 170.0 - t * 0.05, p.y / 26.0 + t * 0.01));
+  streak = smoothstep(0.55, 0.85, streak);
+  c *= 0.95 + 0.06 * swell;
+  c = mix(c, shallow, streak * 0.10 * open);
+
+  /* Waves coming in: lines that follow the coast outward, a few at a time,
+     each broken along its length and gone before it is far from land. */
+  float spacing = 30.0;
+  float phase = far / spacing + t * 0.10;
+  float ring = step(fract(phase), max(1.0, 1.2 * u) / spacing);
+  float lapping = smoothstep(10.0, 22.0, far) * (1.0 - smoothstep(40.0, 150.0, far));
+  float broken = smoothstep(0.4, 0.62, noise(p / 46.0 + floor(phase) * 7.31 + vec2(t * 0.04, 0.0)));
+  c = mix(c, foam, ring * lapping * broken * 0.28);
 
   /* The wash: how far up the water the foam reaches right now. It breathes in
      and out, and not all along the coast at once. */
   float along = noise(p / 90.0) * 6.2831;
   float wash = 17.0 + 5.0 * sin(t * 1.1 + along);
   float inWash = 1.0 - smoothstep(0.0, wash, near);
-
-  vec3 foam = vec3(0.86, 0.95, 0.92);
   c = mix(c, foam, 0.3 * inWash * inWash * fine);
 
   /* Measured in world pixels, so a crack is one pixel wide at any size. */
@@ -173,21 +187,25 @@ void main() {
   float fray = smoothstep(0.2, 0.5, noise(p / 7.0 + vec2(t * 0.3, -t * 0.2)));
   c = mix(c, foam, crack * fray * sqrt(inWash) * 0.7 * fine);
 
-  /* The line right at the foot of the rock, scalloped. */
-  float lip = 1.6 + 1.1 * abs(sin(p.x * 0.27 + p.y * 0.21 + t * 0.9));
+  /* The line right at the foot of the rock, scalloped, and never thinner
+     than a pixel on the screen. */
+  float lip = max(1.6 + 1.1 * abs(sin(p.x * 0.27 + p.y * 0.21 + t * 0.9)), 1.5 * u);
   float line = 1.0 - step(lip, near);
   c = mix(c, foam, line * 0.9);
 
-  /* Flecks: short dashes of light on the open water, each on its own clock. */
-  vec2 bin = vec2(58.0, 30.0);
-  vec2 slot = floor((p + vec2(t * 2.0, 0.0)) / bin);
-  vec2 local = mod(p + vec2(t * 2.0, 0.0), bin);
-  vec2 at = hash2(slot) * (bin - vec2(10.0, 2.0));
+  /* Flecks: short dashes of light on the open water, each on its own clock,
+     laid out in screen pixels once the view is further out than the art. */
+  vec2 q = floor((vWorld + vec2(t * 2.0, 0.0)) / u);
+  vec2 bin = vec2(58.0, 30.0) / sqrt(u);
+  bin = max(bin, vec2(26.0, 14.0));
+  vec2 slot = floor(q / bin);
+  vec2 local = q - slot * bin;
+  vec2 at = floor(hash2(slot) * (bin - vec2(8.0, 2.0)));
   float len = 2.0 + floor(hash(slot + 3.1) * 4.0);
-  float on = step(at.x, local.x) * step(local.x, at.x + len) * step(at.y, local.y) * step(local.y, at.y + 1.0);
+  float on = step(at.x, local.x) * step(local.x, at.x + len - 1.0) * step(at.y, local.y) * step(local.y, at.y);
   float blink = smoothstep(0.55, 1.0, sin(t * (0.5 + 0.6 * hash(slot + 7.7)) + 6.2831 * hash(slot + 9.3)));
   float offShore = smoothstep(18.0, 48.0, far);
-  c = mix(c, vec3(0.66, 0.84, 0.84), on * blink * offShore * 0.75 * fine);
+  c = mix(c, vec3(0.62, 0.82, 0.83), on * blink * offShore * 0.7);
 
   /* A breath of noise under everything, or a gradient this gentle breaks into
      visible terraces in eight bits a channel. */
