@@ -346,7 +346,14 @@ export function createAgents(
     record: { agent?: string; path: string; title: string }
   ): Promise<{ success: true; data: string } | { success: false; error: TellError }> => {
     const already = lodgers[task];
-    if (already) return { success: true as const, data: already };
+    if (already) {
+      /* Going home throws the house and the card away but keeps the
+         conversation, so saying something to a session that went home has
+         to hang them back on it, or the agent answers and the yard never
+         hears. Both are no-ops when they are already on it. */
+      await Promise.all([houseOf(task).settle(already), kits.settle(task, already)]);
+      return { success: true as const, data: already };
+    }
     const conversation = crypto.randomUUID();
     const made = await runtimes.conversations.create({
       conversationId: conversation,
