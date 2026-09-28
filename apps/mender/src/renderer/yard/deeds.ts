@@ -41,7 +41,7 @@ function message(command: string): string | undefined {
   /* A message written out long comes in a heredoc, and then the first line
      of that is the message, whatever the `-m` around it says. */
   const long = /<<-?\s*'?"?([A-Z]+)'?"?\s*\n\s*([^\n]+)/.exec(command)?.[2];
-  const quoted = /-m\s+(?:"([^"$]+)"|'([^']+)')/.exec(command);
+  const quoted = /(?:^|\s)-[a-zA-Z]*m\s+(?:"([^"$]+)"|'([^']+)')/.exec(command);
   const text = long ?? quoted?.[1] ?? quoted?.[2];
   if (!text) return undefined;
   const line = text.split('\n')[0]!.replace(/^[a-z]+(\([^)]*\))?!?:\s+/, '').trim();
