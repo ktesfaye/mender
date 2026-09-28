@@ -82,6 +82,7 @@ import type { AppSettings } from './app-settings';
 import { createKits } from './kit';
 import type { MenderRuntimes } from './runtimes';
 import type { Tasks } from './tasks';
+import { createTitler } from './titler';
 
 /**
  * The agents, which are the villagers.
@@ -276,19 +277,49 @@ export function createAgents(
     },
   });
 
-  /* What the agent decided the session is about. Claude's own adapter sends a
-     title over the protocol once it knows one, and that is a better name for a
-     session than the line that happened to start it. His own name for it wins;
-     `retitle` is the one that knows that. */
-  const named = new ReplicaState(runtimes.acp.sessions.state(undefined, 'list'), {
-    onChange: (value) => {
-      for (const [conversation, session] of Object.entries(value)) {
-        if (!session.title) continue;
-        const task = Object.keys(lodgers).find((key) => lodgers[key] === conversation);
-        if (task) void tasks.retitle(task, session.title);
-      }
-    },
-  });
+  /* What the session is about, worked out from the whole of it rather than
+     taken from the adapter, whose title is the first line said, tidied. It is
+     worked out once as soon as the first thing is said, again as each of the
+     first few turns settles, and then every third, so a session that wanders
+     off into something else is renamed for what it is now. His own name for it
+     wins; `retitle` is the one that knows that. */
+  const titler = createTitler(runtimes.env);
+  /** Where each session stood when it was last named: how much had been
+      said, and whether that turn had settled. */
+  const titledAt = new Map<string, { said: number; settled: boolean }>();
+  /** Sessions seen at work since the app opened. Only those are named: one
+      that has merely woken up with its history is not news, and its history
+      arrives after it first reports resting, so it would read as brand new. */
+  const worked = new Set<string>();
+  const titling = new Set<string>();
+  /** Sessions that moved on while being named, to look at again after. */
+  const again = new Set<string>();
+  const retitleFromWork = (task: string, house: House): void => {
+    const state = peek(house.state);
+    const said = state.told.notes.length;
+    if (state.mood === 'working') worked.add(task);
+    if (!worked.has(task) || !said) return;
+    if (titling.has(task)) {
+      again.add(task);
+      return;
+    }
+    const settled = state.mood === 'resting';
+    const last = titledAt.get(task);
+    const due = settled
+      ? !last || ((last.said !== said || !last.settled) && (said <= 3 || said - last.said >= 3))
+      : !last;
+    if (!due) return;
+    titledAt.set(task, { said, settled });
+    titling.add(task);
+    void titler
+      .title(state.told)
+      .then((title) => (title ? tasks.retitle(task, title) : undefined))
+      .finally(() => {
+        titling.delete(task);
+        const here = houses.get(task);
+        if (again.delete(task) && here) retitleFromWork(task, here);
+      });
+  };
 
   /* A house whose villager went home, kept rather than thrown away: whoever
      is watching the yard is still holding its state, and a new house would
@@ -315,6 +346,8 @@ export function createAgents(
         () => {
           lastActive.set(task, Date.now());
           island.set(moodsOf(houses));
+          const here = houses.get(task);
+          if (here) retitleFromWork(task, here);
         },
         () => wheres.get(task)
       );
@@ -494,6 +527,16 @@ export function createAgents(
        from an earlier limit. */
     stopWaiting(task);
     house.sent(said);
+    /* Named off what was just said, once it has landed in the transcript —
+       which for a fresh agent is after it has finished starting — rather than
+       left as "claude" for however long the first turn takes. */
+    worked.add(task);
+    for (const wait of [3000, 8000, 15000, 25000]) {
+      setTimeout(() => {
+        const here = houses.get(task);
+        if (here && !titledAt.has(task)) retitleFromWork(task, here);
+      }, wait);
+    }
 
     /* From here on the village is watching: you said something, so anything
        that turns up after it is happening in front of you and can honestly
@@ -986,7 +1029,7 @@ export function createAgents(
       clearInterval(sweep);
       await Promise.all([...houses.values()].map((house) => house.dispose()));
       houses.clear();
-      await Promise.all([index.dispose(), named.dispose(), kits.dispose()]);
+      await Promise.all([index.dispose(), kits.dispose()]);
     },
   };
 }

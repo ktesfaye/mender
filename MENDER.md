@@ -81,8 +81,13 @@ whatever branch it is on, beside every other session there, the way several
 Claude Code terminals opened in one folder do; the agents are left to stay
 out of each other's way. A new session is just a session: the empty hook,
 or walking into a project nobody has worked in yet, starts a real one on the
-spot, called claude until the agent names it after what it is about, and
-stands you in it with the agent waking and its columns up. Pressing the hook
+spot, called claude until it has a name, and stands you in it with the
+agent waking and its columns up. The name is worked out, not taken from the
+first line: a small model reads what was asked, what came back and what was
+touched, names it within seconds of the first thing said, again as the first
+few turns settle and then every third, so a session that has wandered onto
+something else is called what it is now. A name you gave it yourself is
+never touched. Pressing the hook
 again while nothing has been said in it turns over the board of other ways to
 start one, and whichever is taken replaces that untouched one. A copy of its
 own, a worktree on a fresh branch, is one line on that board,

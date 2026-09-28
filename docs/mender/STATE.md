@@ -2463,6 +2463,21 @@ in a new "claude" session with its columns; pressed again for the board and
 Escape came back to it; typed a line, it answered and retitled itself; walking
 into an empty project landed in a new session the same way.
 
+### A session is named for what it is about (2026-09-28) — done
+
+Sessions used to take the adapter's title, which is the first line said,
+tidied, and never changed. Now a small model (Haiku, through the `claude` CLI
+already signed in here, with hooks, tools, MCP and history off) reads what was
+asked, the last few answers and the files changed, and names it: a few seconds
+after the first thing is said, again as each of the first three turns settles,
+then every third. Only sessions seen working since launch are named, so waking
+old ones leaves their names alone; a name given by hand still wins. The top of
+the yard follows the rename rather than keeping the name it walked in with.
+
+Driven over the debug port: a fresh session read "claude", then "Yard
+staleness logic" seconds after the question, then "How yards become cold"
+once it had answered; the header changed with it.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

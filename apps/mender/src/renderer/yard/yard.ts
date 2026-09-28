@@ -769,7 +769,10 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
   if (yard.session) {
     const slash = exact('/', 20, '#6b5a40');
     slash.style.cssText += ';letter-spacing:0;text-transform:none;padding:0 14px 0 18px';
-    const here = exact(yard.session.name, 20, '#ffdca4');
+    /* The rail's name, which follows the session being renamed as it works;
+       the session's own is only what it was called when you walked in. */
+    const named = yard.rail.find((one) => one.here)?.name ?? yard.session.name;
+    const here = exact(named, 20, '#ffdca4');
     here.style.cssText +=
       ';letter-spacing:0;text-transform:none;font-weight:400;max-width:44vw;' +
       'overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom';
