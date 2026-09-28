@@ -541,7 +541,10 @@ export function createAgents(
       if (!moved.success) return moved;
       const conversation = moved.data;
 
-      house.watched();
+      /* Not `watched()`: nothing has been said yet, and everything the agent
+         sends back now is its old history, the same as waking a session the
+         app last saw yesterday. Watching would date all of it to now and read
+         its last unfinished turn as somebody working. */
       house.arriving();
       const hand = record.agent ?? (await settings.defaultHand());
       const remembered = await settings.lastKit(hand);
