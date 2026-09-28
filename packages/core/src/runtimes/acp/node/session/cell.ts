@@ -203,6 +203,10 @@ export class SessionCell {
 
   endReplay(at = Date.now()): void {
     const previousRunningAgentCount = this.lastRunningAgentCount;
+    // Anything still out at the end of a replayed history is history too: the
+    // process that sent it is gone, and nothing will ever report it back, so
+    // counting it would leave a loaded session "working" for good.
+    this.settleRunningAgents('all', 'completed');
     this.transcript.endReplay(at);
     this.dispatchAgentsChangedIfNeeded(previousRunningAgentCount);
     this.applyEvent({ type: 'ReplayEnded', status: 'complete' });
