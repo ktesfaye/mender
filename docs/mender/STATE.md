@@ -2467,3 +2467,12 @@ into an empty project landed in a new session the same way.
 
 The long tail of the 162 states that do have a source, and the behaviour
 groups. A good deal of both came across with the boards that carried them.
+
+### A lantern's name is never cut short (2026-09-27)
+
+Each lantern on the rail now takes as much beam as its whole name needs, and
+the ones after it, the empty hook included, are pushed along to make room,
+rather than every lantern getting the same slot and a long name ending in an
+ellipsis. Past the window the beam scrolls sideways and keeps where it was
+scrolled across redraws. Driven in the dev window: a session named "Where did
+we leave things off" reads whole with the hook sliding along after it.

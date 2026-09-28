@@ -82,8 +82,7 @@ const HEAD = {
    them to leave room for. */
 const RAIL_TALL = 118;
 const RAIL_BARE = 76;
-/* How far apart two lanterns hang, and how much of one is the lantern itself. */
-const LANTERN_STEP = 232;
+/* How much of a lantern is the lantern itself. */
 const LANTERN = { wide: 22, tall: 38, cord: 16, cordHere: 30 };
 /* The ground you can see under the cart, which is bottom-anchored so it stays
    above the line you write on however short the window is. */
@@ -2260,25 +2259,41 @@ function said_line(root: HTMLElement, edge: number): void {
    there; dark is resting, still being cut, or broken. The one you are standing
    in hangs lowest and brightest, and the one that wants you flickers. */
 function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, does: Doings): void {
+  /* The beam scrolls, so it clips; it reaches past the rule on both sides by
+     enough that a lantern's glow is not cut straight down the middle. */
   const beam = box({
-    left: edge,
-    right: edge,
+    left: edge - GLOW_ROOM,
+    right: edge - GLOW_ROOM,
     bottom: 0,
     height: cramped ? RAIL_BARE : RAIL_TALL,
   });
-  beam.appendChild(box({ left: 0, right: 0, top: 0, height: 3 }, 'background:#3a2712'));
+  beam.appendChild(
+    box({ left: GLOW_ROOM, right: GLOW_ROOM, top: 0, height: 3 }, 'background:#3a2712')
+  );
 
-  /* Evenly along whatever beam there is, never wider apart than the designs
-     hang them and never so close that two names touch. Past that the beam
-     scrolls sideways rather than the lanterns getting any nearer. */
-  const room = window.innerWidth - edge * 2;
-  /* One more hook than there are lanterns, because the end of the rail is
-     where a new session gets hung. */
-  const step = Math.min(LANTERN_STEP, Math.floor(room / (yard.rail.length + 1)));
-  const bare = cramped || step < 140;
+  /* Each lantern takes as much beam as its whole name needs, and the ones
+     after it are pushed along to make room: a name cut short is two sessions
+     that can't be told apart. Past the window the beam scrolls sideways. */
+  const bare = cramped;
+  beam.style.overflowX = 'auto';
+  beam.style.overflowY = 'hidden';
+  beam.style.scrollbarWidth = 'none';
+  const spans = yard.rail.map((one) =>
+    bare
+      ? 44 + WORDS_GAP
+      : 34 +
+        Math.max(
+          RAIL_NAME_MIN,
+          widthOf(one.name, one.here ? 13 : 12),
+          Math.min(widthOf(one.saying, 11), RAIL_SAYING_MAX)
+        ) +
+        WORDS_GAP
+  );
+  const at = spans.map((_, i) => GLOW_ROOM + spans.slice(0, i).reduce((a, b) => a + b, 0));
 
   for (const [i, one] of yard.rail.entries()) {
-    const x = i * step;
+    const x = at[i]!;
+    const step = spans[i]!;
     const cord = one.here ? LANTERN.cordHere : LANTERN.cord;
     const top = 3 + cord;
     beam.appendChild(box({ left: x + 10, top: 3, width: 3, height: cord }, 'background:#3a2712'));
@@ -2364,7 +2379,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
    * hook, its name in gold where their names are, and what it does underneath
    * where their doing is. The whole of it takes the press, so the target is a
    * lantern rather than a line of twelve-point monospace. */
-  const spare = yard.rail.length * step;
+  const spare = GLOW_ROOM + spans.reduce((a, b) => a + b, 0);
   const cord = 3 + LANTERN.cord;
   beam.appendChild(box({ left: spare + 10, top: 3, width: 3, height: LANTERN.cord }, HOOK));
 
@@ -2375,7 +2390,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   lamp.style.cssText += `;left:${spare}px;top:${cord}px;filter:brightness(.7)`;
   beam.appendChild(lamp);
 
-  const hook = box({ left: spare, top: cord, width: bare ? 44 : Math.max(step, 150), height: 58 });
+  const hook = box({ left: spare, top: cord, width: bare ? 44 : 150, height: 58 });
   hook.style.pointerEvents = 'auto';
   hook.style.cursor = 'default';
   if (!bare) {
@@ -2405,13 +2420,29 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   hook.addEventListener('pointerleave', () => (lamp.style.filter = 'brightness(.7)'));
   beam.appendChild(hook);
   root.appendChild(beam);
+  beam.scrollLeft = railScrolled;
+  beam.addEventListener('scroll', () => (railScrolled = beam.scrollLeft));
 }
 
 const HOOK = 'background:#3a2712';
+/* Where the beam was scrolled to, so hanging a lantern doesn't throw it back to the start. */
+let railScrolled = 0;
 
 /** How much bare beam there is between the words beside one lantern and the next. */
 const WORDS_GAP = 18;
 const CLIPPED = 'overflow:hidden';
+/** The least beam the words beside a lantern get, and the most its doing line may ask for. */
+const RAIL_NAME_MIN = 120;
+const RAIL_SAYING_MAX = 200;
+const GLOW_ROOM = 40;
+
+const ruler = document.createElement('canvas').getContext('2d');
+/** How wide a line of the rail's type comes out, so a lantern can be hung that wide. */
+function widthOf(text: string, size: number): number {
+  if (!ruler) return text.length * size * 0.6;
+  ruler.font = `${size}px 'Courier Prime', monospace`;
+  return Math.ceil(ruler.measureText(text).width);
+}
 
 /** Cut off with an ellipsis at the box it is in, and whole on hover. */
 function clipped(it: HTMLElement, whole: string): void {
