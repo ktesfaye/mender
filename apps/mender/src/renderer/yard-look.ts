@@ -114,10 +114,6 @@ async function boot(): Promise<void> {
     typed: () => {},
     say: (text) => console.log('said', text),
     leave: () => console.log('back out'),
-    fork: (noteId) => {
-      console.log('fork from', noteId);
-      return Promise.resolve({ said: 'a new session, carrying that forward.' });
-    },
   });
   yard.up(true);
   yard.show(SAMPLE);

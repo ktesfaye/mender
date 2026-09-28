@@ -36,7 +36,7 @@ import { longFor } from './from';
 import { makeLine, type Asking as Prompting, type Line } from './line';
 import { makeMenu } from './menu';
 import { forgetInk, keyed, measure, play } from './motion';
-import { pressing, twice, type Outcome } from './press';
+import { pressing, twice } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, sprite } from './sprite';
@@ -118,12 +118,6 @@ export interface Doings {
   say(said: string): void;
   /** Escape with nothing left on the line to throw away. */
   leave(): void;
-  /**
-   * Cut a new session from an earlier line of your own — its own worktree,
-   * the branch as it stands, the conversation up to that line carried in.
-   * The original session is left exactly as it was.
-   */
-  fork(noteId: string): Promise<Outcome>;
 }
 
 export interface Standing {
@@ -356,7 +350,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       wakingUp(covered, columns, floor, wakingSinceOf(yard.session.id));
       stillAt.replaceChildren();
     } else if (yard.session) {
-      asked(root, columns.asked, yard, floor, layer.cramped(), does);
+      asked(root, columns.asked, yard, floor, layer.cramped());
       thinking(
         covered,
         columns.thinking,
@@ -374,7 +368,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
          three columns, nothing in them, and the line under them is how it
          starts. A yard that looked different here was a screen of its own. */
       const blank: Yard = { ...yard, session: BLANK };
-      asked(root, columns.asked, blank, floor, layer.cramped(), does);
+      asked(root, columns.asked, blank, floor, layer.cramped());
       thinking(
         covered,
         columns.thinking,
@@ -540,7 +534,10 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const top = HEAD.rule + 12;
     const tall = floor - top;
     if (columns.asked.wide) {
-      const x = columns.asked.x + columns.asked.wide + (columns.thinking.x - columns.asked.x - columns.asked.wide) / 2;
+      const x =
+        columns.asked.x +
+        columns.asked.wide +
+        (columns.thinking.x - columns.asked.x - columns.asked.wide) / 2;
       grip('col', { left: x - 5, top, width: 11, height: tall }, 'asked', columns.asked.wide);
     }
     if (columns.made.wide) {
@@ -951,8 +948,7 @@ function asked(
   at: { x: number; wide: number },
   yard: Yard,
   floor: number,
-  cramped: boolean,
-  does: Doings
+  cramped: boolean
 ): void {
   if (!at.wide) return;
   /* The changelog sits at the foot of the column, so the post and the notes
@@ -960,7 +956,14 @@ function asked(
      then the other has the column. */
   const under = hidden('changelog')
     ? floor
-    : changelog(root, at, yard, floor, hidden('asked') || !yard.session?.notes.length, hidden('asked'));
+    : changelog(
+        root,
+        at,
+        yard,
+        floor,
+        hidden('asked') || !yard.session?.notes.length,
+        hidden('asked')
+      );
   if (hidden('asked')) return;
   region('asked', at, HEAD.label, under - 20);
   /* Clear air between the last of the post and the changelog's rule, rather
@@ -987,7 +990,7 @@ function asked(
   }
 
   const card = keyed(
-    pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 }, does),
+    pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 }),
     `note:${newest.id}`
   );
   root.appendChild(card);
@@ -1024,7 +1027,7 @@ function asked(
   /* The foot fades rather than slicing a note through the middle. */
   list.style.cssText +=
     ';overflow-y:auto;overflow-x:hidden;pointer-events:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 36px),transparent)';
-  for (const note of older) list.appendChild(keyed(weathered(note, does), `note:${note.id}`));
+  for (const note of older) list.appendChild(keyed(weathered(note), `note:${note.id}`));
   root.appendChild(list);
 
   const id = yard.session?.id ?? '';
@@ -1042,11 +1045,7 @@ const NOTE_LINES = 7;
 const NOTE_LINE = 19 * 1.25;
 
 /** The newest note: on parchment, pinned, and not quite straight. */
-function pinned(
-  note: Note,
-  where: { left: number; top: number; width: number },
-  does: Doings
-): HTMLElement {
+function pinned(note: Note, where: { left: number; top: number; width: number }): HTMLElement {
   const card = box(where, CARD);
   const tack = box(
     { left: 14, top: -6, width: 10, height: 10 },
@@ -1064,22 +1063,7 @@ function pinned(
   body.dataset.note = 'said';
   body.textContent = note.said;
   card.appendChild(body);
-  card.appendChild(forkLine(note, does));
   return card;
-}
-
-/**
- * The offer on every note of your own: cut a new session whose worktree
- * starts from the branch as it stands, its conversation carried in up to
- * this line. The original is never touched.
- */
-function forkLine(note: Note, does: Doings): HTMLElement {
-  const line = pressing('carry on from here in a new session', () => ({
-    while: 'cutting a worktree…',
-    run: () => does.fork(note.id),
-  }));
-  line.style.cssText += ';display:block;margin-top:8px;font-size:11px';
-  return line;
 }
 
 const CARD = [
@@ -1098,19 +1082,17 @@ const CARD = [
 ].join(';');
 
 /** A note that has been on the post a while. */
-function weathered(note: Note, does: Doings): HTMLElement {
+function weathered(note: Note): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0';
   it.appendChild(
     said(`${note.when} · ${note.standing ? 'standing' : note.answered ? 'answered' : 'unanswered'}`)
   );
   const body = document.createElement('span');
-  body.style.cssText = "font-family:'Caveat',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
+  body.style.cssText =
+    "font-family:'Caveat',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
   body.textContent = note.said;
   it.appendChild(body);
-  const fork = forkLine(note, does);
-  fork.style.cssText += ";font-family:'Josefin Sans',sans-serif;margin-top:4px";
-  it.appendChild(fork);
   return it;
 }
 
@@ -1164,7 +1146,8 @@ function changelog(
   const list = stack({ left: at.x, top: top + 30, width: at.wide - 20, height: tall - 30 }, 14);
   list.style.fontSize = '14px';
   list.style.fontFamily = "'Josefin Sans',sans-serif";
-  list.style.cssText += ';overflow-y:auto;overflow-x:hidden;pointer-events:auto;scrollbar-width:none';
+  list.style.cssText +=
+    ';overflow-y:auto;overflow-x:hidden;pointer-events:auto;scrollbar-width:none';
   const newest = versions.find((one) => one.version !== null);
   const lines: HTMLElement[] = [];
   for (const one of versions) {
@@ -1239,7 +1222,12 @@ function thinking(
        there is nothing on the other side of it to divide it from. */
     if (ruled) {
       root.appendChild(
-        rule({ left: at.x - GUTTER / 2, top: HEAD.rule + 12, width: 1, height: floor - HEAD.rule - 12 })
+        rule({
+          left: at.x - GUTTER / 2,
+          top: HEAD.rule + 12,
+          width: 1,
+          height: floor - HEAD.rule - 12,
+        })
       );
     }
     root.appendChild(heading);
@@ -1745,7 +1733,12 @@ function made(
      not one pixel more. */
   const patch = hands.length ? floor - YARD_BOX.tall : floor;
   const room = Math.max(0, patch - 44 - HEAD.top);
-  const above = box({ left: at.x, top: HEAD.label, width: at.wide, height: room + HEAD.top - HEAD.label });
+  const above = box({
+    left: at.x,
+    top: HEAD.label,
+    width: at.wide,
+    height: room + HEAD.top - HEAD.label,
+  });
   root.appendChild(above);
 
   let y = 0;
@@ -1836,9 +1829,9 @@ function made(
     steps.style.height = `${baseTall}px`;
     steps.scrollTop = steps.scrollHeight;
     const at = steps.scrollTop;
-    const first = [...steps.children].find(
-      (one) => (one as HTMLElement).offsetTop >= at
-    ) as HTMLElement | undefined;
+    const first = [...steps.children].find((one) => (one as HTMLElement).offsetTop >= at) as
+      | HTMLElement
+      | undefined;
     const cut = first ? first.offsetTop - at : 0;
     if (cut > 0 && cut < baseTall) {
       steps.style.top = `${baseTop + cut}px`;

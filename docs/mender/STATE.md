@@ -2203,6 +2203,10 @@ appeared in it — and Claude in the new session confirmed it was on a clean,
 separate branch. Went back to the original session and confirmed its second
 turn, and Claude's reply to it, were both still there untouched.
 
+Taken back off the gatepost (2026-09-27): he didn't want the line under
+every note, so the offer is gone from the yard. `tasks.fork` is still in the
+main process, just with nothing in the village pressing it.
+
 ### An orphaned lantern is no longer woken (2026-09-25)
 
 `agents.ts` was waking `houseOf` for every entry in its own conversation
