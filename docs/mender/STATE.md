@@ -2443,19 +2443,21 @@ column rules and the changelog's, put away what it did, the changelog and
 what you asked one by one until the answer ran the full width, then brought
 all three back and reset the rules from the same right-click slab.
 
-### A new session is a blank session (2026-09-27) — done
+### A new session is a real session, straight away (2026-09-27) — done
 
-The empty hook and a project nobody has worked in both stand you in a blank
-session: the yard any session is, nothing in it, the hook hanging bright as
-the one you are in, and the first line written starts it with no board in
-between. The board of other ways to start one (own copy, own terminal, issue,
-branch, past session, allow everything) is the hook pressed a second time.
-The hook's click also no longer lands twice.
+The empty hook, and walking into a project nobody has worked in, cut a real
+session on the spot, named claude until the agent titles it, and stand you in
+it: agent waking, header, the what-you-asked and what-it-said columns up even
+before anything is said. No board, no placeholder yard. Pressing the hook
+again while that session is untouched turns over the board of other ways to
+start one (own copy, own terminal, issue, branch, past session, allow
+everything), and whichever is taken there replaces the untouched one; Escape
+from it goes back into that session. The hook's click no longer lands twice.
 
-Driven over the debug port on mender: walked in, typed a line, the session
-started and answered with nothing flashing; pressed the hook from inside that
-session and landed in a blank one with the first lantern still on the rail;
-pressed again for the board, Escape back to the blank one.
+Driven over the debug port on mender: hook from inside a session cut and stood
+in a new "claude" session with its columns; pressed again for the board and
+Escape came back to it; typed a line, it answered and retitled itself; walking
+into an empty project landed in a new session the same way.
 
 ### Next
 

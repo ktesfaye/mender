@@ -897,18 +897,23 @@ async function boot(): Promise<void> {
       // The finder is a board like any other, so picking something on it is
       // picking that thing: it steps out of the way first and then answers.
       if (looking && id !== FIND) looking = null;
-      /* A new session is a blank one, the same yard as any other with
-         nobody in it yet; the first thing written there starts it. Asked for
-         again while already standing in one, it turns over to the other ways
-         of starting one: its own copy, its own terminal, an issue, a branch. */
+      /* A new session is a real one, straight away: the hook cuts it and you
+         are standing in it, agent waking, with the line ready. The agent names
+         it once it knows what it is about. Pressed again while nothing has
+         been said in it yet, the hook turns over to the other ways of starting
+         one instead (its own copy, its own terminal, an issue, a branch), and
+         whichever of those is taken replaces the untouched one. */
       if (id === 'new') {
         const district = open?.district;
         const project = district ? projectOn(district) : undefined;
         if (!district || !project) return;
         const aim: Aim = { kind: 'district', district };
         if (naming) return;
-        if (!inside && !yard.open) askName(aim, freeSlot(district));
-        else void showYard(aim, project);
+        const here = inside;
+        if (here && untouched()) {
+          replacing = here.id;
+          askName(aim, freeSlot(district));
+        } else void startNow(aim);
         return;
       }
       if (id === FIND) {
@@ -1503,20 +1508,53 @@ async function boot(): Promise<void> {
       const standing = tasksOn(aim.district);
       const last = lastIn.get(project.id);
       const here = standing.find((task) => task.id === last) ?? standing[0];
-      /* Nobody here yet lands in a session nobody has started: the same
-         yard every other one is, empty, and the first thing written starts it. */
+      /* Nobody here yet: there is no work to land in, so a session is
+         started and you land in that, the same as pressing the hook. */
+      if (!here) {
+        await startNow(aim);
+        arrived();
+        return;
+      }
       await showYard(aim, project, here);
       arrived();
     };
 
+    /** Nothing said yet in the session you are standing in, and nobody at work. */
+    const untouched = (): boolean => {
+      const session = watching?.yard().session;
+      return Boolean(session && !session.notes.length && !session.live);
+    };
+
+    /** The untouched session the board of other ways was opened over, which
+        whatever is started from that board replaces. */
+    let replacing: string | null = null;
+
+    /**
+     * A session, now: cut in the project's own folder with nothing said, and
+     * stood in, so the agent wakes and the line is where it starts.
+     */
+    const startNow = async (aim: Aim): Promise<void> => {
+      const project = projectOn(aim.district);
+      if (!project) return;
+      const made = await client.tasks.begin(
+        { project: project.id, name: 'claude', slot: freeSlot(aim.district) },
+        { timeoutMs: 0 }
+      );
+      if (!made.success) {
+        say(whyNot(made.error), 6000);
+        return;
+      }
+      await openTask(aim, made.data);
+    };
+
     /* Backing off the board of other ways to start one lands back in the
-       blank session it was opened from. */
+       session it was opened over. */
     const unname = (): void => {
       naming = null;
-      if (!open) return;
-      const aim: Aim = { kind: 'district', district: open.district };
-      const project = projectOn(aim.district);
-      if (project) void showYard(aim, project);
+      replacing = null;
+      const task = inside;
+      if (open && task) void openTask({ kind: 'district', district: open.district }, task);
+      else if (open) void openDistrict({ kind: 'district', district: open.district });
     };
 
     /**
@@ -3640,6 +3678,11 @@ async function boot(): Promise<void> {
         }
         if (allowAll) applyAllowAll(made.data.id);
       }
+      /* The untouched session this board was opened over was only ever a
+         placeholder for this one. */
+      const stale = replacing;
+      replacing = null;
+      if (stale && stale !== made.data.id) void client.tasks.abandon({ id: stale }, { timeoutMs: 0 });
       if (aim) await openTask(aim, made.data);
     };
 

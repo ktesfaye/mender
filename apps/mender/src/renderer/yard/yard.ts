@@ -978,12 +978,13 @@ function asked(
 
   const notes = yard.session?.notes ?? [];
   const [newest, ...older] = notes;
-  /* Nothing said yet is nothing nailed up: no heading and no bare post. */
+  root.appendChild(label('what you asked', { left: at.x, top: HEAD.label }));
+  /* Nothing said yet is nothing nailed up, so no bare post, but the heading
+     stays: it is a session, and a session has these columns from the start. */
   if (!newest) {
     post.remove();
     return;
   }
-  root.appendChild(label('what you asked', { left: at.x, top: HEAD.label }));
 
   const card = keyed(
     pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 }, does),
@@ -1231,9 +1232,9 @@ function thinking(
 ): void {
   const thoughts = yard.session?.thoughts ?? [];
   const heading = label('what it said', { left: at.x, top: HEAD.label });
-  /* A heading over an empty column, or a rule down the side of one, says the
-     board is broken, not that nothing has been said yet. */
-  if (thoughts.length || yard.session?.live || yard.session?.failure) {
+  /* A session has its columns from the moment it exists, said to or not, so a
+     new one reads as the same place every other one is. */
+  if (yard.session) {
     /* No rule down the left of it once the left column has been put away:
        there is nothing on the other side of it to divide it from. */
     if (ruled) {
@@ -2375,11 +2376,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   beam.appendChild(box({ left: spare + 10, top: 3, width: 3, height: LANTERN.cord }, HOOK));
 
   const lamp = sprite(KIT_NAMES.lanternOff, 2);
-  /* With no session open, the one you are standing in is the one on the hook,
-     so it hangs as the one you are in: brighter, and saying so. Pressed again
-     it turns over to the other ways of starting one. */
-  const standing = !yard.session;
-  lamp.style.cssText += `;left:${spare}px;top:${cord}px;filter:brightness(${standing ? 1 : 0.7})`;
+  /* Standing in a session nothing has been said in yet, the hook offers the
+     other ways of starting one instead of another plain one. */
+  const standing = Boolean(yard.session && !yard.session.notes.length && !yard.session.live);
+  lamp.style.cssText += `;left:${spare}px;top:${cord}px;filter:brightness(.7)`;
   beam.appendChild(lamp);
 
   const hook = box({ left: spare, top: cord, width: bare ? 44 : Math.max(step, 150), height: 58 });
@@ -2399,7 +2399,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     const under = box({ left: 34, top: 20 });
     under.appendChild(
       standing
-        ? exact('you are in it · press for other ways', 11, '#dcc8a0')
+        ? exact('press again for other ways', 11, '#a89272')
         : exact('the hook is empty', 11, '#a89272')
     );
     hook.appendChild(under);
@@ -2409,10 +2409,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   hook.addEventListener('mousedown', (event) => event.preventDefault());
   hook.addEventListener('click', () => does.press('new'));
   hook.addEventListener('pointerenter', () => (lamp.style.filter = 'brightness(1.1)'));
-  hook.addEventListener(
-    'pointerleave',
-    () => (lamp.style.filter = `brightness(${standing ? 1 : 0.7})`)
-  );
+  hook.addEventListener('pointerleave', () => (lamp.style.filter = 'brightness(.7)'));
   beam.appendChild(hook);
   root.appendChild(beam);
 }

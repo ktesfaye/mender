@@ -80,10 +80,11 @@ cuts worktrees. A new session works right in the project's checkout, on
 whatever branch it is on, beside every other session there, the way several
 Claude Code terminals opened in one folder do; the agents are left to stay
 out of each other's way. A new session is just a session: the empty hook,
-or a project nobody has worked in yet, stands you in a blank one, the same
-yard as any other with nothing in it, and the first thing written on its line
-starts it. Pressing the hook again from a blank one turns over the board of
-other ways to start one. A copy of its
+or walking into a project nobody has worked in yet, starts a real one on the
+spot, called claude until the agent names it after what it is about, and
+stands you in it with the agent waking and its columns up. Pressing the hook
+again while nothing has been said in it turns over the board of other ways to
+start one, and whichever is taken replaces that untouched one. A copy of its
 own, a worktree on a fresh branch, is one line on that board,
 "in its own copy, on its own branch," taken on purpose; starting from an
 existing branch implies it. Taking a shared session down leaves every file
