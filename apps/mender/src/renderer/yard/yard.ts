@@ -1731,6 +1731,9 @@ const revealedThoughts = new Map<string, number>();
 const REVEAL_INITIAL = 60;
 const REVEAL_CHUNK = 80;
 
+/** The same, for the "what it did" column's own steps. */
+const revealedSteps = new Map<string, number>();
+
 /**
  * The fire banked — a limit, an overload, a lost connection — with what there
  * is to do about it.
@@ -2031,6 +2034,19 @@ function made(
    * thinner form. */
   if (!yard.asking && !plan.length && !steps_.length && !hands.length) return;
 
+  /* The world behind this column is busier than behind the answer, so it gets
+     a little more dark under it than the rest of the yard does. Feathered in
+     from the rule rather than cut, so it reads as shade and not a panel. */
+  root.appendChild(
+    stays(
+      box(
+        { left: at.x - GUTTER, right: 0, top: HEAD.rule + 12, height: floor - HEAD.rule - 12 },
+        'background:linear-gradient(90deg,rgba(18,13,7,0),rgba(18,13,7,.5) 32px);pointer-events:none'
+      ),
+      'wash:did'
+    )
+  );
+
   root.appendChild(
     stays(
       rule({
@@ -2112,26 +2128,55 @@ function made(
     'pointer-events:auto',
     'scrollbar-width:none',
   ].join(';');
-  const earlier = session?.olderSteps;
-  if (earlier?.many) {
-    const count = exact(
-      `\u25b8 ${earlier.many} earlier steps \u00b7 ${earlier.over}`,
-      11,
-      '#8a7452'
-    );
-    count.style.cssText += ';position:relative;flex:none;padding-top:6px';
-    steps.appendChild(count);
+  /* A long session is hundreds of tool calls, and laying every one of them on
+     the wood at once is this column's whole cost paid on every redraw, the
+     same problem "what it said" already solved. So only the most recent
+     stretch is actually drawn; the rest stays a number above it, and
+     pressing it draws the next stretch back. */
+  const id = session?.id ?? '';
+  const wholeSteps = steps_.length;
+  let shownSteps = Math.min(wholeSteps, revealedSteps.get(id) ?? REVEAL_INITIAL);
+  const fromServer = session?.olderSteps?.many ?? 0;
+
+  const older = document.createElement('div');
+  steps.appendChild(older);
+
+  function laidOlderSteps(): void {
+    const hidden = hiddenCount(wholeSteps, shownSteps, fromServer);
+    older.replaceChildren();
+    if (!hidden) return;
+    const line = exact(`\u25b8 ${hidden} earlier steps`, 11, '#8a7452');
+    line.style.cssText += ';position:relative;flex:none;padding-top:6px';
+    if (windowStart(wholeSteps, shownSteps) > 0) {
+      line.style.cursor = 'pointer';
+      line.style.pointerEvents = 'auto';
+      line.addEventListener('mousedown', (event) => event.preventDefault());
+      line.addEventListener('click', () => {
+        shownSteps = revealMore(wholeSteps, shownSteps, REVEAL_CHUNK);
+        revealedSteps.set(id, shownSteps);
+        laidOlderSteps();
+        laidStepItems();
+      });
+    }
+    older.appendChild(line);
   }
-  for (const one of steps_) {
-    const it = keyed(did(one, does), `step:${one.id}`);
-    it.style.flex = 'none';
-    steps.appendChild(it);
+
+  function laidStepItems(): void {
+    for (const child of [...steps.children]) if (child !== older) child.remove();
+    const start = windowStart(wholeSteps, shownSteps);
+    for (const one of steps_.slice(start)) {
+      const it = keyed(did(one, does), `step:${one.id}`);
+      it.style.flex = 'none';
+      steps.appendChild(it);
+    }
   }
+
+  laidOlderSteps();
+  laidStepItems();
   above.appendChild(steps);
 
   /* It follows the live end while you are at it, and stays where you left it
      once you have scrolled up to read something, the same as the answer. */
-  const id = session?.id ?? '';
   const kept = stepsFollowed.get(id);
   const baseTop = top;
   const baseTall = Math.max(0, above.offsetHeight - top);
@@ -2291,7 +2336,7 @@ function deedLine(one: Step): HTMLElement {
   text.style.cssText =
     'white-space:normal;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden';
   text.style.color =
-    one.tone === 'broken' ? 'var(--yard-wrong)' : one.running ? '#ffc98a' : '#cbb491';
+    one.tone === 'broken' ? 'var(--yard-wrong)' : one.running ? '#fff8ec' : '#cbb491';
   text.textContent = one.did;
   if (one.note) text.append(' · ', ...noted(one.note));
   line.appendChild(text);

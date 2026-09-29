@@ -62,13 +62,19 @@ deliberately cut, and **none left blank**. Every row that was ever
 genuinely open has now been built, found to already work under a name that
 didn't say so, or cut on purpose with the reason written down next to it.
 
-What is still genuinely missing, past what's marked `part` above (an actual
+What is still genuinely missing, past what's marked `part` above: an actual
 Finder drag driving the file-import code that's otherwise proven; a bare
-subdivided plot, past eleven founded projects, actually pressed): agents
-driving other Mac apps; mermaid you can pan and zoom, and a CSV table; the
-thinner transcript cards (thinking, the plan, how a turn ended) and a
-transcript that scrolls a long session cheaply; linking an existing pull
-request and starting from a chosen branch.
+subdivided plot, past eleven founded projects, actually pressed; a real
+session with hundreds of turns actually driving the transcript's own
+windowing rather than a synthetic one; and agents driving other Mac apps.
+Several things this file used to list here turned out, on a closer look on
+2026-09-29, to already be built and just never checked off: mermaid you can
+pan and zoom, a CSV file reading as a table, linking an existing pull
+request, and starting a session from a branch you already have are all live
+in the app today. The thinner transcript cards — thinking, the plan, how a
+turn ended — are built and wired to real data too; what's missing for them
+is not code, it's a real Claude turn that actually sends one, so they stay
+`part` on that alone.
 
 ## What "not started" actually means
 
@@ -291,9 +297,20 @@ scroll held steady across it. What was already true stays true — a session's
 own record is capped at 400 thoughts before this column ever sees it — this
 adds the same shrink on top of that, on the DOM rather than the data, so a
 long session's cost is whatever is actually drawn. Verified with the window
-math itself (`window.test.ts`) and smoke-tested in the running app; not
-driven with a synthetic session of hundreds of real turns, so AG-23 stays
-`part` until it has been.
+math itself (`window.test.ts`) and smoke-tested in the running app.
+
+The column of what it did carried a stub for the same idea — an "N earlier
+steps" line — that nothing ever actually fed, so every step a session ever
+took was drawn into the DOM on every redraw regardless (2026-09-29, found
+while closing out the ledger). It now uses the same reveal-a-chunk-at-a-time
+windowing the thoughts column already had, sharing the arithmetic in
+`window.ts`. Driven in the yard's own design-preview harness against ninety
+synthetic steps: only the most recent stretch drew, the "N earlier steps"
+line read the right count, and pressing it revealed the next stretch with
+the right count remaining and the props still drawing cleanly. Not yet
+driven against a real session with hundreds of real turns in the installed
+app, on either column, so AG-23 stays `part` until one has actually run
+that long.
 
 Nothing else is left in W2 that this machine can reach. A thought and a plan are
 built and have never rendered, because Claude has never sent either one over the
