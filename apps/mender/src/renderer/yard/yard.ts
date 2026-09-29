@@ -1528,7 +1528,7 @@ function thinking(
             width: at.wide + GUTTER * 2,
             height: floor - HEAD.rule,
           },
-          'background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(18,13,7,.34),rgba(18,13,7,.26) 70%,rgba(18,13,7,0));pointer-events:none'
+          'background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(18,13,7,.58),rgba(18,13,7,.46) 70%,rgba(18,13,7,0));pointer-events:none'
         ),
         'wash:said'
       )
