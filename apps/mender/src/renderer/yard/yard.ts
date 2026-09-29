@@ -1650,7 +1650,8 @@ function thinking(
         const size = one.said.length > 700 ? 19 : 21;
         body.style.cssText = one.quiet
           ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
-          : `font-size:${size}px;line-height:1.35;color:${trouble?.ink ?? '#fdfaf3'};text-shadow:0 2px 10px rgba(0,0,0,.9)`;
+          : `font-size:${size}px;line-height:1.6;letter-spacing:.01em;max-width:68ch;color:${trouble?.ink ?? '#ebe3d3'}`;
+        if (!one.quiet) body.classList.add('clear');
         if (trouble) body.classList.add('prose-trouble');
         prose(body, one.id, one.said, !walkedIn, keepCode(does), openLink(does));
         it.appendChild(body);
@@ -2010,7 +2011,8 @@ function thought(
   const label = name ? (one.when ? `${name} · ${one.when}` : name) : one.when;
   if (label) it.appendChild(said(label, tone));
   const body = document.createElement('div');
-  body.style.cssText = `font-size:${size}px;line-height:1.4;color:${ink}`;
+  body.style.cssText = `font-size:${size}px;line-height:1.6;letter-spacing:.01em;max-width:68ch;color:${ink}`;
+  body.classList.add('clear');
   if (tone) body.classList.add('prose-trouble');
   prose(body, one.id, one.said, false, keep, link);
   it.appendChild(body);

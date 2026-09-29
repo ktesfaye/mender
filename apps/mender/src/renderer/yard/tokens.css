@@ -106,6 +106,12 @@
 .yard .paper * {
   text-shadow: none;
 }
+/* And the answer, which is read rather than glanced at: any shadow at all
+   under a letter is an edge the eye tries to focus and cannot. */
+.yard .clear,
+.yard .clear * {
+  text-shadow: none;
+}
 
 /* The layer is glass. Whatever is under it is the village, and the one thing
    this app must never do is put a panel between you and it. The night colour
@@ -967,7 +973,7 @@
 .yard .prose {
   display: flex;
   flex-direction: column;
-  gap: 0.45em;
+  gap: 0.8em;
 }
 /* The whole answer is pressed onto the clipboard exactly the way one of its
    own code blocks already is, everywhere in it that isn't a link or a code
