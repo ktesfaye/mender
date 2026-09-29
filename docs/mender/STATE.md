@@ -2576,6 +2576,12 @@ its see-through margin cut away, and the tail carries on in the colour round
 its own edge. Checked on all eight logos on his island and on the tag beside
 one.
 
+The logo is drawn at its own resolution now, smoothed, rather than squeezed
+through the flag's pixel grid and blown up into blocks, and the flag keeps
+growing with the map however far in the camera goes instead of stopping and
+shrinking against the houses; only the name tag stops growing. Driven out at
+the whole island and all the way in on one flag.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

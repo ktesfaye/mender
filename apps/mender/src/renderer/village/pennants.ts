@@ -1,5 +1,5 @@
 import type { Viewport } from 'pixi-viewport';
-import { Sprite, Texture, type Container } from 'pixi.js';
+import { Container, Sprite, Texture } from 'pixi.js';
 import { SHADOW_TINT, type Foot } from './scene';
 
 /**
@@ -25,7 +25,12 @@ import { SHADOW_TINT, type Foot } from './scene';
  * holds its size as the camera pulls back and covers more of the map instead,
  * which is why `tools/place-pennants.py` measures its room at the size it
  * reaches at the whole-island view. Closer in than one to one it grows with
- * the map, up to three.
+ * the map like everything else on it, all the way in.
+ *
+ * The logo is the one part that is not pixel art. It is somebody's picture at
+ * whatever resolution they made it, and pushed through the flag's own pixel
+ * grid it came out as a blocky smudge, so it is its own sprite at full
+ * resolution, smoothed, laid on the cloth.
  *
  * The name is written in the page, the same height as the cloth and a whole
  * number of screen pixels per pixel of its own, pinned to the flag's tail.
@@ -47,8 +52,6 @@ const WIDEST = 28;
 /** The tag sits this far past the tail, and is as tall as the cloth. */
 const GAP = 4;
 const TAG = FLAG.h;
-/** The most screen pixels any pixel of it is ever drawn at. */
-const LARGEST = 3;
 
 const OUTLINE = '#482510';
 const TIMBER = '#573723';
@@ -90,8 +93,8 @@ export async function loadFeet(): Promise<Map<string, Foot>> {
 interface Post {
   foot: Foot;
   stand: Container;
-  sprite: Sprite | null;
-  under: Sprite | null;
+  /** The shade, the flag and the logo, standing at the foot, scaled as one. */
+  group: Container | null;
   /** Where its tail ends, in its own pixels: a logo's cloth is the logo's shape. */
   reach: number;
   /** What it was last painted with, so an unchanged project is not repainted. */
@@ -116,8 +119,7 @@ export class Pennants {
         this.posts.set(district, {
           foot,
           stand,
-          sprite: null,
-          under: null,
+          group: null,
           reach: FLAG.x + FLAG.w + TAIL,
           painted: '',
         });
@@ -141,28 +143,35 @@ export class Pennants {
       const key = one ? `${one.name}\u0000${one.icon ?? ''}` : '';
       if (key === post.painted) continue;
       post.painted = key;
-      post.sprite?.destroy({ texture: true, textureSource: true });
-      post.under?.destroy({ texture: true, textureSource: true });
-      post.sprite = null;
-      post.under = null;
+      post.group?.destroy({ children: true, texture: true, textureSource: true });
+      post.group = null;
       if (!one) continue;
-      void paint(COLOURS[district] ?? COLOURS.A, one).then(({ texture, reach }) => {
+      void paint(COLOURS[district] ?? COLOURS.A, one).then(({ texture, reach, logo }) => {
         if (post.painted !== key) {
           texture.destroy(true);
           return;
         }
-        const sprite = new Sprite(texture);
+        const group = new Container();
         const under = new Sprite(shade());
         under.blendMode = 'multiply';
         under.tint = SHADOW_TINT;
-        for (const one of [under, sprite]) {
-          one.anchor.set(-LEFT / WIDE, -TOP / TALL);
-          one.scale.set(this.across());
-          one.position.set(post.foot.x, post.foot.y);
-          post.stand.addChild(one);
+        const flag = new Sprite(texture);
+        for (const one of [under, flag]) one.position.set(LEFT, TOP);
+        group.addChild(under, flag);
+        if (logo) {
+          const picture = Texture.from(logo.image);
+          picture.source.scaleMode = 'linear';
+          picture.source.autoGenerateMipmaps = true;
+          picture.source.updateMipmaps();
+          const face = new Sprite(picture);
+          face.position.set(logo.x, logo.y);
+          face.setSize(logo.w, logo.h);
+          group.addChild(face);
         }
-        post.sprite = sprite;
-        post.under = under;
+        group.position.set(post.foot.x, post.foot.y);
+        group.scale.set(this.across());
+        post.stand.addChild(group);
+        post.group = group;
         post.reach = reach;
         if (this.shown === district) this.follow();
       });
@@ -199,7 +208,7 @@ export class Pennants {
 
   /** How many screen pixels a pixel of the flag is at this zoom. */
   private onScreen(): number {
-    return Math.min(LARGEST, Math.max(1, this.camera.scale.x));
+    return Math.max(1, this.camera.scale.x);
   }
 
   /** And so how many world pixels, which is what the sprite is scaled by. */
@@ -226,10 +235,7 @@ export class Pennants {
 
   private resize(): void {
     const scale = this.across();
-    for (const post of this.posts.values()) {
-      post.sprite?.scale.set(scale);
-      post.under?.scale.set(scale);
-    }
+    for (const post of this.posts.values()) post.group?.scale.set(scale);
     this.follow();
   }
 
@@ -238,7 +244,9 @@ export class Pennants {
   private readonly follow = (): void => {
     const post = this.shown ? this.posts.get(this.shown) : undefined;
     if (!post) return;
-    const scale = Math.round(this.onScreen());
+    // Up to three: past that the flag keeps growing with the map, but a name
+    // written the size of a house is not easier to read than a normal one.
+    const scale = Math.min(3, Math.round(this.onScreen()));
     const across = this.across();
     /* Asked of the post itself rather than of the camera: the island sits
        inside the camera at an offset of its own, and the camera's answer is
@@ -280,7 +288,14 @@ function shade(): Texture {
  * because a notch cut into a square icon took half its symbol with it. A
  * project without one flies its district's colour with its first letter on it.
  */
-async function paint(colour: string, one: Flown): Promise<{ texture: Texture; reach: number }> {
+async function paint(
+  colour: string,
+  one: Flown
+): Promise<{
+  texture: Texture;
+  reach: number;
+  logo: { image: HTMLCanvasElement; x: number; y: number; w: number; h: number } | null;
+}> {
   const [canvas, pen] = sheet();
   const at = pencil(pen);
   const face = one.icon ? await picture(one.icon) : null;
@@ -313,17 +328,7 @@ async function paint(colour: string, one: Flown): Promise<{ texture: Texture; re
   pen.globalAlpha = 1;
   cloth(at, wide, 0, 0, OUTLINE, logo ? logo.edge : colour);
 
-  if (logo) {
-    pen.imageSmoothingEnabled = true;
-    pen.imageSmoothingQuality = 'high';
-    pen.drawImage(
-      logo.image,
-      FLAG.x + 2 - LEFT,
-      FLAG.y + 2 + Math.floor((inner - high) / 2) - TOP,
-      across,
-      high
-    );
-  } else {
+  if (!logo) {
     /* Silkscreen at three times its own 8px, so every stroke is three whole
        pixels and the letter fills the cloth the way a face would: at the
        design's 9px it landed between pixels and read as a smudge. */
@@ -346,7 +351,20 @@ async function paint(colour: string, one: Flown): Promise<{ texture: Texture; re
 
   const texture = Texture.from(canvas);
   texture.source.scaleMode = 'nearest';
-  return { texture, reach: FLAG.x + wide + TAIL };
+  return {
+    texture,
+    reach: FLAG.x + wide + TAIL,
+    // Laid on by the caller at full resolution; the cloth is its background.
+    logo: logo
+      ? {
+          image: logo.image,
+          x: FLAG.x + 2,
+          y: FLAG.y + 2 + Math.floor((inner - high) / 2),
+          w: across,
+          h: high,
+        }
+      : null,
+  };
 }
 
 /**
@@ -360,8 +378,8 @@ async function paint(colour: string, one: Flown): Promise<{ texture: Texture; re
  */
 function trimmed(
   image: HTMLImageElement
-): { image: CanvasImageSource; aspect: number; edge: string } | null {
-  const scale = Math.min(1, 256 / Math.max(image.naturalWidth, image.naturalHeight, 1));
+): { image: HTMLCanvasElement; aspect: number; edge: string } | null {
+  const scale = Math.min(1, 512 / Math.max(image.naturalWidth, image.naturalHeight, 1));
   const w = Math.max(1, Math.round(image.naturalWidth * scale));
   const h = Math.max(1, Math.round(image.naturalHeight * scale));
   const canvas = document.createElement('canvas');
@@ -374,7 +392,7 @@ function trimmed(
   try {
     data = pen.getImageData(0, 0, w, h).data;
   } catch {
-    return { image, aspect: w / h, edge: OUTLINE };
+    return { image: canvas, aspect: w / h, edge: OUTLINE };
   }
   const solid = (x: number, y: number): boolean => (data[(y * w + x) * 4 + 3] ?? 0) > 24;
   let left = w;
