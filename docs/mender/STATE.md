@@ -714,6 +714,11 @@ the way down. Out on the water there is nowhere to come back from, so it folds
 away to nothing. Driven: into a project off the rack, the fire slid in, hover
 said the island, one press and the camera was out over the whole map with the
 slot gone again.
+Folding the rack away keeps both: the project you are standing in and the
+fire out of it stay up beside the handle while every other slot closes up
+into them. Driven: folded inside a project, only those two stood beside the
+count; the fire still flew out, and folded on the water it was the handle
+alone, unfolding to the whole rack again.
 
 **The rack is in whatever order he drags it into.** Holding a slot and
 dragging it along the rack lifts it out, the slots between step aside to open

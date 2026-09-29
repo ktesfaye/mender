@@ -23,6 +23,10 @@
  * out to the whole island. Escape walks there too, a step at a time; this is
  * the one press that goes straight there from anywhere.
  *
+ * Folding it away folds away the others, never where you are: the slot you
+ * are standing in and the fire out of it stay up beside the handle, the
+ * others closing up into them, so the way home is never a fold away.
+ *
  * A slot held and dragged along the rack lifts out of it and the others
  * step aside to make room; let go and it hangs there from then on. A press
  * that never really moved is still just a press.
@@ -82,7 +86,7 @@ export function makeShelf(
   const fire = slot({ tool: KIT_NAMES.fire }, false);
   fire.dataset.shelf = 'island';
   fire.title = 'the island';
-  fire.style.transition += `,opacity 220ms ease,width 220ms ${EASE},margin 220ms ${EASE}`;
+  fire.style.transition += `,${SHUT}`;
   fire.addEventListener('pointerenter', () => crossfade(() => paintLabel('the island', '#f4e3c0')));
   fire.addEventListener('pointerleave', () => crossfade(settle));
   fire.addEventListener('click', () => out());
@@ -95,8 +99,16 @@ export function makeShelf(
   let last: OnShelf[] = [];
   let labelGen = 0;
 
-  const width = (count: number): number =>
-    (count === 0 ? 0 : count * SLOT + (count - 1) * PAD) + (inside ? SLOT + PAD : 0);
+  /* A slot folds to nothing rather than being taken out: its width eases
+     away and a margin swallows the gap it stood in, so its neighbours close
+     up over it instead of jumping. */
+  const up = (node: HTMLDivElement, on: boolean): void => {
+    node.style.opacity = on ? '1' : '0';
+    node.style.width = on ? `${SLOT}px` : '0px';
+    node.style.marginLeft = on ? '0px' : `-${PAD}px`;
+    node.style.borderWidth = on ? '2px' : '0px';
+    node.style.pointerEvents = on ? 'auto' : 'none';
+  };
 
   const worstWant = (projects: OnShelf[]): 'asking' | 'hurt' | undefined =>
     projects.some((project) => project.wants === 'hurt')
@@ -111,7 +123,7 @@ export function makeShelf(
     label.style.textShadow = glow ? `0 0 10px ${glow}` : 'none';
   };
 
-  /* Folded shut, the rack is only this label, so it carries the same
+  /* Folded shut, every other project is only this label, so it carries the same
      question the open slots would answer: does anywhere else want him.
      Worst first, the same way a house's own light would read it. */
   const settle = (): void => {
@@ -149,17 +161,10 @@ export function makeShelf(
     /* Only while there is somewhere to come back out of. It folds to nothing
        rather than being taken out, so arriving in a yard slides it in. */
     inside = projects.some((project) => project.here);
-    fire.style.opacity = inside ? '1' : '0';
-    fire.style.width = inside ? `${SLOT}px` : '0px';
-    fire.style.marginLeft = inside ? '0px' : `-${PAD}px`;
-    fire.style.borderWidth = inside ? '2px' : '0px';
-    fire.style.pointerEvents = inside ? 'auto' : 'none';
+    up(fire, inside);
 
     if (fading) crossfade(settle);
     else settle();
-    strip.style.width = `${away ? 0 : width(projects.length)}px`;
-    strip.style.opacity = away ? '0' : '1';
-    strip.style.pointerEvents = away ? 'none' : 'auto';
 
     const wanted = new Set(projects.map((project) => project.id));
     for (const [id, node] of nodes) {
@@ -171,18 +176,17 @@ export function makeShelf(
       held.delete(id);
     }
 
-    if (away) return;
-
     for (const project of projects) {
       const face = {
         tool: toolFor(project.at),
         ...(project.icon ? { icon: project.icon } : {}),
         ...(project.wants ? { wants: project.wants } : {}),
       };
+      const on = !away || project.here;
       let node = nodes.get(project.id);
       if (!node) {
         node = slot(face, project.here);
-        node.style.transition += `,opacity 220ms ease,transform 220ms ${EASE}`;
+        node.style.transition += `,transform 220ms ${EASE},${SHUT}`;
         node.style.opacity = '0';
         node.style.transform = 'scale(.6)';
         node.dataset.project = project.id;
@@ -201,9 +205,10 @@ export function makeShelf(
         node.addEventListener('pointerdown', (event) => hold(project.id, event));
         nodes.set(project.id, node);
         strip.appendChild(node);
+        if (!on) up(node, false);
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            if (!node) return;
+            if (!node || !(!away || held.get(project.id)?.here)) return;
             node.style.opacity = '1';
             node.style.transform = 'scale(1)';
           });
@@ -211,6 +216,7 @@ export function makeShelf(
       } else {
         updateSlot(node, face, project.here);
         strip.appendChild(node); // re-append moves it into place without touching it
+        up(node, on);
       }
       node.title = project.name;
     }
@@ -349,5 +355,6 @@ const STRIP = [
   'align-items:center',
   `gap:${PAD}px`,
   'overflow:hidden',
-  `transition:width 340ms ${EASE},opacity 260ms ease`,
 ].join(';');
+
+const SHUT = `opacity 220ms ease,width 340ms ${EASE},margin 340ms ${EASE},border-width 340ms ${EASE}`;
