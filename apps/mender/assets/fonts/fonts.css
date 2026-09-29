@@ -1,5 +1,19 @@
 /* Locally vendored Google Fonts. See LICENSES.md. */
 
+/* The face of what it says: the middle column, the agent's own words.
+   This block is the whole switch. To change it, drop another woff2 in this
+   folder and point src at it; nudge size-adjust until it sits the size the
+   old one did. Add a second block with a font-weight for a bold if the new
+   face has one. Nothing else names this font. */
+@font-face {
+  font-family: 'Mender Said';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  size-adjust: 100%;
+  src: url('bebas-neue-400-normal.woff2') format('woff2');
+}
+
 @font-face {
   font-family: 'Josefin Sans';
   font-style: normal;

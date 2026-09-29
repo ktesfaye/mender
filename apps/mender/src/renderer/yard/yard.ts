@@ -1507,7 +1507,7 @@ function thinking(
   const room = Math.max(60, floor - top);
   const stream = stack({ left: at.x, top, width: at.wide, height: room }, 20);
   stream.style.cssText +=
-    ";font-family:'Cormorant Garamond',serif;overflow-y:auto;pointer-events:auto";
+    ";font-family:var(--yard-face-said);overflow-y:auto;pointer-events:auto";
 
   /* A long conversation is hundreds of turns, and laying every one of them on
      the wood at once is the whole column's cost paid on every single token

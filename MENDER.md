@@ -797,7 +797,10 @@ where a stray press could drop him out of whatever board was open, no raw
 developer tools, no File or View or Help standing over nothing.
 
 The board's timber is the dock, widened by `tools/make-board.py` out of the
-artist's own planks, and the writing is Departure Mono under the SIL OFL.
+artist's own planks, and the writing is a handful of faces under the SIL OFL,
+all vendored in `apps/mender/assets/fonts/`. What the agent says is Bebas Neue,
+and it is the one face meant to be swapped: its single `Mender Said` block in
+`fonts.css` is the whole switch.
 There is still no parchment, no frame, no icon.
 
 **The windmill is the app's own settings, and it is real now, if small.**

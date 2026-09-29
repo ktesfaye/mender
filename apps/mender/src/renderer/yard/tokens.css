@@ -78,6 +78,7 @@
   --yard-face-label: 'Josefin Sans', sans-serif; /* labels and UI */
   --yard-face-hand: 'Caveat', cursive; /* what you asked */
   --yard-face-thought: 'Cormorant Garamond', serif; /* what it is thinking */
+  --yard-face-said: 'Mender Said', 'Cormorant Garamond', serif; /* what it says; the font itself is picked in fonts.css */
   --yard-face-mono: 'Courier Prime', monospace; /* names, status, code */
 
   /* ── motion: sprites step and never ease; writing eases (see motion.ts) ── */
