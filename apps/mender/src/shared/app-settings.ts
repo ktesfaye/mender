@@ -76,6 +76,15 @@ export const terminalSettingsSchema = z.object({
 
 export type TerminalSettings = z.infer<typeof terminalSettingsSchema>;
 
+/** Whether a villager who wants him reaches him with a real macOS
+    notification while the window is out of sight. On until he says
+    otherwise. */
+export const notificationSettingsSchema = z.object({
+  enabled: z.boolean(),
+});
+
+export type NotificationSettings = z.infer<typeof notificationSettingsSchema>;
+
 /** A chord rebound away from the table's own default, keyed by the doing's
     own `pick`. Absent for anything nobody has touched. */
 export const keybindingsSchema = z.record(z.string(), z.string());
@@ -121,6 +130,11 @@ export const appSettingsContract = defineContract({
   setDefaultShell: procedure({
     input: z.object({ shell: z.string() }),
     output: terminalSettingsSchema,
+  }),
+  notificationSettings: procedure({ input: z.object({}), output: notificationSettingsSchema }),
+  setNotificationsEnabled: procedure({
+    input: z.object({ on: z.boolean() }),
+    output: notificationSettingsSchema,
   }),
   keybindings: procedure({ input: z.object({}), output: keybindingsSchema }),
   /** Rebind one doing's chord. Conflicts are the windmill's own to say

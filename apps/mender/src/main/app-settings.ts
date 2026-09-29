@@ -76,6 +76,14 @@ export interface TerminalSettings {
 
 const NO_TERMINAL_SETTINGS: TerminalSettings = { fontSize: 0, defaultShell: '' };
 
+/** Whether a villager who wants him while the window is out of sight gets a
+    real macOS notification. On until he says otherwise. */
+export interface NotificationSettings {
+  enabled: boolean;
+}
+
+const NO_NOTIFICATION_SETTINGS: NotificationSettings = { enabled: true };
+
 export interface AppSettings {
   /** Whoever a fresh session starts with. Falls back to Claude Code. */
   defaultHand(): Promise<string>;
@@ -107,6 +115,10 @@ export interface AppSettings {
   terminalSettings(): Promise<TerminalSettings>;
   setTerminalFontSize(fontSize: number): Promise<TerminalSettings>;
   setDefaultShell(shell: string): Promise<TerminalSettings>;
+  /** Whether a villager who wants him reaches him with a real notification
+      while the window is out of sight. */
+  notificationSettings(): Promise<NotificationSettings>;
+  setNotificationsEnabled(on: boolean): Promise<NotificationSettings>;
   /** Every chord rebound away from the table's own default, keyed by the
       doing's own `pick`. */
   keybindings(): Promise<Record<string, string>>;
@@ -131,6 +143,9 @@ interface Stored {
   terminal?: {
     fontSize?: number;
     defaultShell?: string;
+  };
+  notifications?: {
+    enabled?: boolean;
   };
   keybindings?: Record<string, string>;
 }
@@ -197,6 +212,12 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
       fontSize: held.fontSize ?? 0,
       defaultShell: held.defaultShell ?? '',
     };
+  };
+
+  const notificationSettingsOf = async (): Promise<NotificationSettings> => {
+    const held = (await stored()).notifications;
+    if (!held) return NO_NOTIFICATION_SETTINGS;
+    return { enabled: held.enabled ?? true };
   };
 
   return {
@@ -287,6 +308,13 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
     async setDefaultShell(shell) {
       await mutate((now) => ({ ...now, terminal: { ...now.terminal, defaultShell: shell.trim() } }));
       return terminalSettingsOf();
+    },
+
+    notificationSettings: notificationSettingsOf,
+
+    async setNotificationsEnabled(on) {
+      await mutate((now) => ({ ...now, notifications: { ...now.notifications, enabled: on } }));
+      return notificationSettingsOf();
     },
 
     async keybindings() {

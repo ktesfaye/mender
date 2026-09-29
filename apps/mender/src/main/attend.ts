@@ -4,6 +4,7 @@ import { BrowserWindow, Notification } from 'electron';
 import { MENDER_ATTEND_CHANNEL } from '@shared/channels';
 import type { Mood } from '@shared/agents';
 import type { Agents } from './agents';
+import type { AppSettings } from './app-settings';
 import type { Tasks } from './tasks';
 
 /**
@@ -47,6 +48,7 @@ export interface AttendOptions {
   scope: Scope;
   agents: Agents;
   tasks: Tasks;
+  appSettings: AppSettings;
   /** A session running as its own terminal has no transcript to read a
       notification's body off; this is where that line comes from instead. */
   tuiDoing?: (task: string) => string;
@@ -86,6 +88,7 @@ async function ring(task: string, mood: Mood, options: AttendOptions): Promise<v
   // straight at.
   if (window && !window.isDestroyed() && window.isFocused()) return;
   if (!Notification.isSupported()) return;
+  if (!(await options.appSettings.notificationSettings()).enabled) return;
 
   const record = (await options.tasks.list()).find((candidate) => candidate.id === task);
   if (!record) return;

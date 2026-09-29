@@ -17,6 +17,7 @@ import type {
   CheckoutSettings,
   Hand,
   Keybindings,
+  NotificationSettings,
   ProviderConfig,
   SessionUsage,
   TerminalSettings,
@@ -74,6 +75,9 @@ export interface WindmillState {
   /** How a shell looks and what it starts as. Null while the first answer
       hasn't arrived yet. */
   terminal: TerminalSettings | null;
+  /** Whether a villager who wants him reaches him with a real macOS
+      notification. Null while the first answer hasn't arrived yet. */
+  notifications: NotificationSettings | null;
   /** Every chord rebound away from the table's own default. Null while the
       first answer hasn't arrived yet. */
   keybindings: Keybindings | null;
@@ -95,6 +99,7 @@ export interface WindmillDoings {
   setWorktreeDir(dir: string): Promise<void>;
   setTerminalFontSize(fontSize: number): Promise<void>;
   setDefaultShell(shell: string): Promise<void>;
+  setNotificationsEnabled(on: boolean): Promise<void>;
   /** Rebind one doing's chord. The caller has already checked it against
       nothing else this doing could conflict with. */
   rebind(pick: string, chord: string): Promise<void>;
@@ -141,6 +146,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   const general = section('General');
   const checkouts = section('Checkouts');
   const terminal = section('Terminal');
+  const notifications = section('Notifications');
   const keys = section('Keys');
   const agentsSection = section('Agents');
   const worktrees = section('What is on disk');
@@ -149,6 +155,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     general.root,
     checkouts.root,
     terminal.root,
+    notifications.root,
     keys.root,
     agentsSection.root,
     worktrees.root,
@@ -351,6 +358,33 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     rows.push(shellLine);
 
     terminal.fill(rows);
+  }
+
+  function drawNotifications(): void {
+    if (!now.notifications) {
+      notifications.fill([hintLine('Reading it…')]);
+      return;
+    }
+    const held = now.notifications;
+    const row = el('div', 'windmill-hand');
+    row.tabIndex = 0;
+    row.setAttribute('role', 'button');
+    row.setAttribute('aria-pressed', String(held.enabled));
+    if (held.enabled) row.classList.add('picked');
+    row.textContent = held.enabled
+      ? 'a villager who wants you, while you are looking elsewhere — on'
+      : 'a villager who wants you, while you are looking elsewhere — off';
+    const toggle = (): void => {
+      void does.setNotificationsEnabled(!held.enabled).then(() => draw());
+    };
+    row.addEventListener('click', toggle);
+    row.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggle();
+      }
+    });
+    notifications.fill([row]);
   }
 
   /** The doing armed for a key press, if any, and what came of the last one
@@ -638,6 +672,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     drawGeneral();
     drawCheckouts();
     drawTerminal();
+    drawNotifications();
     drawKeys();
     drawAgents();
     drawWorktrees();
@@ -646,6 +681,10 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
 
   draw();
   shut.focus({ preventScroll: true });
+  /* Always opens on General, at the top of the scroll, never wherever a
+     stray reflow happens to land it — landing mid-page here once looked
+     enough like an empty window that it read as no settings at all. */
+  body.scrollTop = 0;
 
   let open = true;
   function close(): void {

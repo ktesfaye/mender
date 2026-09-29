@@ -17,11 +17,13 @@
  * inventory rack out of a game, not a piece of the board. Everything else on
  * the wood follows the rule.
  *
- * Standing in a project, the rack ends with one more slot that is not a
- * project, pinned to its right end whatever order the projects are in: the
- * campfire the island grows from, and pressing it flies back
- * out to the whole island. Escape walks there too, a step at a time; this is
- * the one press that goes straight there from anywhere.
+ * The rack ends with two slots that are never a project, pinned to its right
+ * end whatever order the projects are in and never folded away: a wheel,
+ * which opens the windmill, since it has no island of its own to stand on
+ * yet; and, standing in a project, the campfire the island grows from,
+ * pressing it flies back out to the whole island. Escape walks there too, a
+ * step at a time; this is the one press that goes straight there from
+ * anywhere.
  *
  * Folding it away folds away the others, never where you are: the slot you
  * are standing in and the fire out of it stay up beside the handle, the
@@ -62,7 +64,8 @@ export function makeShelf(
   at: HTMLElement,
   open: (id: string) => void,
   out: () => void,
-  reorder: (ids: string[]) => void
+  reorder: (ids: string[]) => void,
+  settings: () => void
 ): Shelf {
   const root = box({ right: 0, top: 0 }, RACK);
   at.appendChild(root);
@@ -82,6 +85,17 @@ export function makeShelf(
   const strip = document.createElement('div');
   strip.style.cssText = STRIP;
   root.appendChild(strip);
+
+  /* The windmill has no island of its own to stand on yet, so the rack
+     carries its own way in: a wheel, always here, on the island or standing
+     deep in a project alike, right beside the fire that takes you home. */
+  const wheel = slot({ tool: KIT_NAMES.wheel }, false);
+  wheel.dataset.shelf = 'windmill';
+  wheel.title = 'settings';
+  wheel.addEventListener('pointerenter', () => crossfade(() => paintLabel('settings', '#f4e3c0')));
+  wheel.addEventListener('pointerleave', () => crossfade(settle));
+  wheel.addEventListener('click', () => settings());
+  strip.appendChild(wheel);
 
   const fire = slot({ tool: KIT_NAMES.fire }, false);
   fire.dataset.shelf = 'island';
@@ -220,6 +234,7 @@ export function makeShelf(
       }
       node.title = project.name;
     }
+    strip.appendChild(wheel);
     strip.appendChild(fire);
   }
 
@@ -296,6 +311,7 @@ export function makeShelf(
           const each = nodes.get(other);
           if (each) strip.appendChild(each);
         }
+        strip.appendChild(wheel);
         strip.appendChild(fire);
         node.style.zIndex = '';
         node.style.cursor = '';

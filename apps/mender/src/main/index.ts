@@ -69,7 +69,13 @@ export async function main(): Promise<void> {
   tasks.onGone((task) => void agents.evict(task));
   const tuiSessions = createTuiSessions(runtimes, appSettings, tasks, projects);
   const moods = mergedMoods(scope, agents.moods(), tuiSessions.moods());
-  watchForAttention({ scope, agents, tasks, tuiDoing: (task) => tuiSessions.doing(task) });
+  watchForAttention({
+    scope,
+    agents,
+    tasks,
+    appSettings,
+    tuiDoing: (task) => tuiSessions.doing(task),
+  });
   watchDockBadge({ scope, agents, moods });
   watchStayingAwake({ scope, agents, moods });
   const changes = createChanges(runtimes);

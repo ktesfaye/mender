@@ -108,9 +108,12 @@ worse. Struck-through ones are fixed.
 
 - ~~**Renaming a session cannot be reached.**~~ Fixed in W1: it is a doing with
   its own key rather than a condition that could never be true.
-- **Nothing abandons anything.** Abandoning a project and abandoning a session
-  are both implemented end to end, worktree deletion included, and neither is
-  called from anywhere in the front end. (W7.)
+- ~~**Nothing abandons anything.**~~ Fixed, quietly, sometime in W7 without
+  this line coming back to say so: driven 2026-09-29 against a scratch
+  project — "Remove from Mender" on the project's own settings arms, confirms,
+  and removes it in one press-arm-press-confirm cycle; a session's own card
+  takes it down the same way, "taken down." lands on the write line and the
+  worktree is gone.
 - ~~**Arrow keys do two things at once.**~~ Fixed in W1: there is now exactly
   one key listener in the app and everything reads keys through it, in an order.
 - ~~**Escape throws away what you are writing.**~~ Fixed in W1: it clears a
@@ -847,9 +850,22 @@ shows as a state on the district instead of silence.
 
 ### W8 — the settings island · started, and not where it will live
 
-There is no settings island and this wave still needs one. What has landed is
-one of its capabilities on a board that already exists, because it belongs to a
-session as much as to the app: who could work in a building.
+This section went stale: the windmill itself was built in the wave after this
+was last written, and nothing here was ever come back to update it. It is real
+now, reached by ⌘, or "settings" in the finder — General (who a fresh session
+starts with), Checkouts (branch prefix, random tail, where new projects and
+worktrees land), Terminal (font size, default shell), Keys (every chord,
+rebindable), Agents (extra args and env per agent, which install runs), what is
+on disk, and this machine's live cpu/memory/disk — one page, scrolling, not yet
+an island of its own on the water. Driven 2026-09-29: opens on General at the
+top every time (it could land mid-scroll on the disk section before, which
+read as no settings page at all — fixed the same day it was caught).
+
+What follows below was written before the windmill existed and describes an
+earlier, narrower state — treat it as history of how this wave got here, not
+as the current truth. What has landed is one of its capabilities on a board
+that already exists, because it belongs to a session as much as to the app:
+who could work in a building.
 
 The card used to say "21 more speak the protocol but are not installed here",
 which is a fact you can only read. Pressing that line now opens all of them,
@@ -1432,7 +1448,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-06 | `localProject` settings (default projects dir, default worktree dir) | done |  |
 | ST-07 | `defaultAgent` setting | done | W8 |
 | ST-08 | `keyboard` overrides | done | W1 |
-| ST-09 | `notifications` settings (enabled, sound, custom sound path, OS notifications, sound-focus-mode) |  | W11 |
+| ST-09 | `notifications` settings (enabled, sound, custom sound path, OS notifications, sound-focus-mode) | part | W11 |
 | ST-10 | `theme` setting | cut |  |
 | ST-11 | `openIn` settings (default + hidden apps) |  | W8 |
 | ST-12 | `interface` settings (task-hover action, auto-right-sidebar, 3× show-left-sidebar-metadata switches, hide-context-bar) | cut |  |
@@ -1818,8 +1834,9 @@ you say lifts off the line as parchment and pins itself to the post while the
 notes under it slide down. The answer inks in a piece at a time as it arrives.
 The last reply turns to history the moment you say the next thing, and the live
 edge of the middle column is a small fire throwing sparks with what it is doing
-in the present tense (waking up, thinking, running a command, reading a file,
-writing back) and a count of how long it has been at it. Anything laid over the
+in the present tense (waking up, thinking, running something, reading,
+writing back) and a count of how long it has been at it. Only the verb: which
+command or which file is already the live line in what it did, right beside it. Anything laid over the
 yard comes up rather than cutting in, and the world behind dims smoothly.
 
 Words move smoothly and sprites still step, which is a deliberate break from the
@@ -2701,3 +2718,39 @@ over the yard and anything half-written still goes first, and once nobody is
 working Escape leaves as it always has. Driven in the dev window: a long story
 asked for in a fresh Aurio session stopped mid-word on Escape, the fire went
 out and the yard stayed open.
+
+### The rack carries its own way to the windmill (2026-09-29) — done
+
+The windmill had no door of its own on the island, only ⌘, and the finder, so
+a wheel — drawn ours, front-on, in the kit's own outline and wood, since the
+kit's own wheel is drawn the angle it sits on a cart rather than the angle
+that reads as a wheel — stands on the rack now, pinned beside the campfire,
+on the island or standing deep in a project alike, and pressing it opens the
+windmill on General. Driven against the packaged app: pressed from the bare
+island with no project founded, opened cleanly on General every time,
+including the one relaunch where it had landed mid-scroll on the disk page
+before this and read as no settings page at all — fixed the same day.
+
+### Notifications can be turned off (2026-09-29) — part, closes half of ST-09
+
+A real switch on the windmill now: "a villager who wants you, while you are
+looking elsewhere — on/off." Off, the macOS notification a session asking or
+finishing or breaking would have sent while the window is out of sight never
+fires; the on-window banner and the dock mark are untouched, since neither is
+the noisy one. Driven against a scratch data folder over the debug port:
+toggled off, the setting round-tripped through the wire and landed in
+`app-settings.json` as `false`. Sound, a custom sound path and a
+focus-mode window are still unbuilt — not needed for one person on one
+machine, and left off on purpose rather than half-built.
+
+### Two things on the "built, and broken" list were already fixed
+
+Abandoning a project and abandoning a session — struck through above — and
+the windmill actually existing, corrected in W8 above: both were fixed at
+some point in the last few days of W7/W8/W9 work and this file was never
+brought back to say so, which is exactly the drift this file exists to
+prevent. Caught by driving the real app after being told, correctly, that it
+looked broken. What's left unconfirmed: whether a bare, subdivided plot
+still glows and does nothing when clicked — that state only exists once all
+eleven whole districts are taken, too expensive to force just to check
+tonight.

@@ -51,10 +51,12 @@ export async function loadCuts(): Promise<number> {
   const index = (await (await fetch(KIT + 'kit.json')).json()) as { sheets: string[] };
   for (const name of index.sheets) await take(KIT + name, (file) => file);
   await take(FOLK + 'folk.json', (file) => 'folk/' + file);
+  await take(WHEEL + 'wheel.json', (file) => 'wheel/' + file);
   return cuts.size;
 }
 
 const FOLK = './folk/';
+const WHEEL = './wheel/';
 
 async function take(where: string, name: (file: string) => string): Promise<void> {
   const sheet = (await (await fetch(where)).json()) as Sheet;
@@ -119,6 +121,11 @@ export const KIT_NAMES = {
   sack: 'props/TX Village Props - Sack 01.png',
   bucket: 'props/TX Village Props - Bucket 01 Water.png',
   table: 'props/TX Village Props - Table 01 H A.png',
+  /* The windmill has no sprite of its own yet. The kit's own wheel is drawn
+     side-on, the angle a wheel sits on a cart, not the angle that reads as a
+     wheel in a slot, so this one is ours: front-on, the kit's own outline
+     and wood, made by tools/make-wheel.py. */
+  wheel: 'wheel/wheel',
   /* A command set running is something on the boil, and the kit's cauldron is
      too tall to sit in a line of writing, so it is the washtub over the fire.
      Nothing in the margin is taller than the crate the designs already use. */

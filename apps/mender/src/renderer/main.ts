@@ -22,6 +22,7 @@ import type { Mood } from '@shared/agents';
 import type {
   CheckoutSettings,
   Hand,
+  NotificationSettings,
   ProviderConfig,
   SessionUsage,
   TerminalSettings,
@@ -159,7 +160,8 @@ async function boot(): Promise<void> {
           projects = now;
           paintRail();
         });
-      }
+      },
+      () => openTheWindmill()
     );
 
     /* What was half-written on a session's line, kept against that session so
@@ -1200,6 +1202,7 @@ async function boot(): Promise<void> {
         installs: {} as Record<string, HostDependencyView>,
         checkout: null as CheckoutSettings | null,
         terminal: null as TerminalSettings | null,
+        notifications: null as NotificationSettings | null,
         keybindings: null as Keybindings | null,
       };
       let records: ReplicaState<Record<string, WorkspaceRecord>> | null = null;
@@ -1273,6 +1276,12 @@ async function boot(): Promise<void> {
           state.terminal = await client.appSettings.setDefaultShell({ shell }, { timeoutMs: 0 });
           terminalSettings = state.terminal;
         },
+        setNotificationsEnabled: async (on) => {
+          state.notifications = await client.appSettings.setNotificationsEnabled(
+            { on },
+            { timeoutMs: 0 }
+          );
+        },
         rebind: async (pick, chord) => {
           state.keybindings = await client.appSettings.setKeybinding(
             { pick, chord },
@@ -1314,11 +1323,12 @@ async function boot(): Promise<void> {
       sample();
       const sampling = setInterval(sample, 5000);
       void (async () => {
-        const [hand, hands, checkout, terminal, bound] = await Promise.all([
+        const [hand, hands, checkout, terminal, notifications, bound] = await Promise.all([
           client.appSettings.defaultHand({}, { timeoutMs: 0 }),
           client.appSettings.hands({}, { timeoutMs: 0 }),
           client.appSettings.checkoutSettings({}, { timeoutMs: 0 }),
           client.appSettings.terminalSettings({}, { timeoutMs: 0 }),
+          client.appSettings.notificationSettings({}, { timeoutMs: 0 }),
           client.appSettings.keybindings({}, { timeoutMs: 0 }),
         ]);
         state.hand = hand;
@@ -1326,6 +1336,7 @@ async function boot(): Promise<void> {
         state.checkout = checkout;
         state.terminal = terminal;
         terminalSettings = terminal;
+        state.notifications = notifications;
         state.keybindings = bound;
         keybindings = bound;
         ui.update(state);

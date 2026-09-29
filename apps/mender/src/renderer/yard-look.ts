@@ -103,7 +103,8 @@ async function boot(): Promise<void> {
     layer.root,
     (id) => console.log('go to', id),
     () => console.log('out to the island'),
-    (ids) => console.log('rack order', ids)
+    (ids) => console.log('rack order', ids),
+    () => console.log('open the windmill')
   ).show([
     { id: 'a', name: 'mender', at: 0, here: true },
     { id: 'b', name: 'aurio', at: 1, here: false },

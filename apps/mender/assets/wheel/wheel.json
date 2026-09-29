@@ -1,0 +1,33 @@
+{
+  "frames": {
+    "wheel": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 28
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false
+    }
+  },
+  "meta": {
+    "image": "wheel.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 28,
+      "h": 28
+    },
+    "scale": "1"
+  }
+}
