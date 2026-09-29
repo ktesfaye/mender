@@ -2684,12 +2684,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
 
   /* THE END OF THE RAIL IS HOW A SESSION STARTS.
    *
-   * It was three words of small type floating under a bare cord, and the one
-   * thing somebody opening a project for the first time needs to find. So it
-   * is hung the way the lanterns beside it are hung: an unlit lamp on the
-   * hook, its name in gold where their names are, and what it does underneath
-   * where their doing is. The whole of it takes the press, so the target is a
-   * lantern rather than a line of twelve-point monospace. */
+   * It is a lantern and nothing else: an unlit lamp on the last hook with a
+   * gold plus in its glass. Words beside it said what the plus already says
+   * and made the one empty hook the loudest thing on the beam. The gold is
+   * what says it is pressable, the way gold says it everywhere else. */
   const spare = GLOW_ROOM + spans.reduce((a, b) => a + b, 0);
   const cord = 3 + LANTERN.cord;
   beam.appendChild(box({ left: spare + 10, top: 3, width: 3, height: LANTERN.cord }, HOOK));
@@ -2701,37 +2699,26 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   lamp.style.cssText += `;left:${spare}px;top:${cord}px;filter:brightness(.7)`;
   beam.appendChild(lamp);
 
-  const hook = box({ left: spare, top: cord, width: bare ? 44 : 150, height: 58 });
+  const hook = box({ left: spare, top: cord, width: 22, height: 38 });
   hook.style.pointerEvents = 'auto';
   hook.style.cursor = 'default';
-  if (!bare) {
-    const name = box({ left: 34, top: 2 });
-    const start = astop(
-      pressing('a new session', () => does.press('new')),
-      'rail:new'
-    );
-    start.style.cssText +=
-      "font-family:'Courier Prime',monospace;font-size:12px;display:inline-block;vertical-align:top";
-    /* The words already pressed; the hook round them must not press again. */
-    start.addEventListener('click', (event) => event.stopPropagation());
-    name.appendChild(start);
-    hook.appendChild(name);
-    const under = box({ left: 34, top: 20 });
-    const doing = exact(
-      standing ? 'press again for other ways' : 'the hook is empty',
-      11,
-      '#a89272'
-    );
-    doing.style.cssText += ';display:inline-block;vertical-align:top';
-    under.appendChild(doing);
-    hook.appendChild(under);
-  } else {
-    astop(lamp, 'rail:new');
-  }
+  hook.title = standing ? 'other ways to start one' : 'a new session';
+  const plus = [
+    box({ left: 10, top: 14, width: 2, height: 10 }, PLUS),
+    box({ left: 6, top: 18, width: 10, height: 2 }, PLUS),
+  ];
+  for (const bar of plus) hook.appendChild(bar);
+  astop(hook, 'rail:new');
   hook.addEventListener('mousedown', (event) => event.preventDefault());
   hook.addEventListener('click', () => does.press('new'));
-  hook.addEventListener('pointerenter', () => (lamp.style.filter = 'brightness(1.1)'));
-  hook.addEventListener('pointerleave', () => (lamp.style.filter = 'brightness(.7)'));
+  hook.addEventListener('pointerenter', () => {
+    lamp.style.filter = 'brightness(1.1)';
+    for (const bar of plus) bar.style.filter = 'brightness(1.25)';
+  });
+  hook.addEventListener('pointerleave', () => {
+    lamp.style.filter = 'brightness(.7)';
+    for (const bar of plus) bar.style.filter = '';
+  });
   beam.appendChild(hook);
   root.appendChild(beam);
   stays(beam, 'rail');
@@ -2740,6 +2727,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
 }
 
 const HOOK = 'background:#3a2712';
+const PLUS = 'background:var(--yard-gold)';
 /* Where the beam was scrolled to, so hanging a lantern doesn't throw it back to the start. */
 let railScrolled = 0;
 
