@@ -2563,6 +2563,13 @@ districts are. Driven over the debug port at the opening view, zoomed right in
 on the crop farm, and on a flag carrying a real logo; the name unfurls on the
 land, rides the tail at every zoom and goes on the water.
 
+The flag then read as a speck beside a name tag twice its size, because it
+shrank with the map and the tag did not. It holds its size on screen now as
+the camera pulls back, one of its pixels to one of the screen's, with a
+shorter pole and a bigger cloth so the logo is most of it, and the tag is the
+cloth's own height at every zoom. The spots were measured again at the size
+that makes it at the whole-island view. Driven the same way, out and close in.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

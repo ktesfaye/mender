@@ -564,6 +564,7 @@ async function boot(): Promise<void> {
       drawn.ground.tick(ticker);
       drawn.folk.tick(ticker);
       drawn.water.tick(ticker);
+      drawn.pennants.tick();
     });
 
     /** The place the board is standing in front of, while it is in. */

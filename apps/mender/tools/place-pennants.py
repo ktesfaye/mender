@@ -31,19 +31,30 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 VILLAGE = os.path.join(HERE, "..", "assets", "village")
 CELL = 32
 
-# The pennant as the app draws it, in world pixels from the foot of the pole,
-# screen y down. Twice the design's own sizes: at the whole-island view a
-# flag at the kit's scale is a few screen pixels across. Keep in step with
-# `src/renderer/village/pennants.ts`.
-SIZE = 2
-POLE_H = 40 * SIZE
-FLAG_W = (24 + 8) * SIZE
-# The pole and the cloth are checked apart: the ground under the flag is open
-# air, and a bush standing under a flag is exactly what a flag looks like.
-POLE = (-4 * SIZE, -POLE_H - 2 * SIZE, 4 * SIZE, 3 * SIZE)
-CLOTH = (0, -POLE_H - 2 * SIZE, 4 * SIZE + FLAG_W, -POLE_H + 22 * SIZE)
-# What the foot itself needs clear, grass tufts allowed.
-FOOT = (-5 * SIZE, -6 * SIZE, 5 * SIZE, 3 * SIZE)
+# The pennant in its own pixels from the foot of the pole, screen y down. Keep
+# in step with `src/renderer/village/pennants.ts`.
+POLE_H = 30
+CLOTH_W = 26 + 7
+CLOTH_H = 22
+
+# The app draws the flag a fixed size on screen, so the further out the camera
+# is the more of the map it covers. Measured at the largest it gets at the
+# whole-island view first, and only if a district has nowhere that clear, at
+# the next size down.
+SIZES = (3, 2)
+
+
+def shapes(size: int):
+    """The pole, the cloth and the foot, as boxes, at `size` world pixels a pixel.
+
+    The pole and the cloth are checked apart: the ground under the flag is
+    open air, and a bush standing under a flag is exactly what a flag looks
+    like. The foot needs clear of everything but grass tufts."""
+    pole = (-4 * size, -(POLE_H + 2) * size, 4 * size, 3 * size)
+    cloth = (0, -(POLE_H + 2) * size, (4 + CLOTH_W) * size, (-POLE_H + CLOTH_H + 4) * size)
+    foot = (-5 * size, -6 * size, 5 * size, 3 * size)
+    return pole, cloth, foot
+
 STEP = 4
 ROOM = 8
 
@@ -138,31 +149,37 @@ def main() -> None:
         door = ((houses[0][0] + houses[0][2]) / 2, houses[0][3]) if houses else (cx, cy)
 
         best = None
-        for (gx, gy) in cells:
-            if (gx, gy) in rim or (gx, gy) not in (grass | dirt):
-                continue
-            on_path = (gx, gy) in path
-            near = [(gx + dx, gy + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)]
-            if any(owner.get(n) != d["id"] or n in rim or n not in (grass | dirt) for n in near):
-                continue
-            if not on_path and not any(n in path for n in near if n != (gx, gy)):
-                continue
-            for ix in range(STEP, CELL, STEP * 2):
-                for iy in range(STEP, CELL, STEP * 2):
-                    fx = gx * CELL + ix
-                    fy = -(gy + 1) * CELL + iy
-                    if not clear(solid, fx, fy, POLE) or not clear(solid, fx, fy, CLOTH) or not clear(low, fx, fy, FOOT):
-                        continue
-                    cramped = not clear(roomy, fx, fy, POLE) or not clear(roomy, fx, fy, CLOTH)
-                    score = (CELL if on_path else 0) + (2 * CELL if cramped else 0) + math.hypot(fx - door[0], fy - door[1]) + 0.35 * math.hypot(
-                        fx - cx, fy - cy
-                    )
-                    if best is None or score < best[0]:
-                        best = (score, fx, fy)
+        for size in SIZES:
+            POLE, CLOTH, FOOT = shapes(size)
+            if best is not None:
+                break
+            for (gx, gy) in cells:
+                if (gx, gy) in rim or (gx, gy) not in (grass | dirt):
+                    continue
+                on_path = (gx, gy) in path
+                near = [(gx + dx, gy + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)]
+                if any(owner.get(n) != d["id"] or n in rim or n not in (grass | dirt) for n in near):
+                    continue
+                if not on_path and not any(n in path for n in near if n != (gx, gy)):
+                    continue
+                for ix in range(STEP, CELL, STEP * 2):
+                    for iy in range(STEP, CELL, STEP * 2):
+                        fx = gx * CELL + ix
+                        fy = -(gy + 1) * CELL + iy
+                        if not clear(solid, fx, fy, POLE) or not clear(solid, fx, fy, CLOTH) or not clear(
+                            low, fx, fy, FOOT
+                        ):
+                            continue
+                        cramped = not clear(roomy, fx, fy, POLE) or not clear(roomy, fx, fy, CLOTH)
+                        score = (CELL if on_path else 0) + (2 * CELL if cramped else 0) + math.hypot(fx - door[0], fy - door[1]) + 0.35 * math.hypot(
+                            fx - cx, fy - cy
+                        )
+                        if best is None or score < best[0]:
+                            best = (score, fx, fy, size)
         if best is None:
             raise SystemExit(f"{d['id']}: nowhere clear to stand a pennant")
         out[d["id"]] = [best[1], best[2]]
-        print(f"{d['id']:>2} {d['name']:<18} {best[1]:>6} {best[2]:>6}")
+        print(f"{d['id']:>2} {d['name']:<18} {best[1]:>6} {best[2]:>6}  clear at {best[3]}x")
 
     json.dump(
         {

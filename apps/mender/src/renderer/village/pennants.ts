@@ -15,32 +15,39 @@ import { SHADOW_TINT, type Foot } from './scene';
  * `tools/place-pennants.py` measured a post would go — grass beside a path,
  * out in front of the district's main house, clear of everything the artist
  * drew — and it takes its place in the draw order like any barrel, so a tree
- * south of it still stands in front of it. It is drawn a pixel at a time at the
- * design's own size and then doubled, the same nearest-neighbour pixels as the
- * kit, because a vector flag on this map would be the one soft thing on it.
+ * south of it still stands in front of it. It is drawn a pixel at a time, the
+ * same nearest-neighbour pixels as the kit, because a vector flag on this map
+ * would be the one soft thing on it.
  *
- * The name is not part of the picture. At the whole-island view the flag is a
- * few screen pixels tall and any writing at its scale is a smudge, so the tag
- * is written in the page, at a whole number of screen pixels per pixel of its
- * own, pinned to the flag's tail.
+ * It never gets smaller on screen than its own pixels, one to one. Shrunk with
+ * the map to the whole-island view the logo was a few screen pixels across and
+ * the name tag beside it towered over the flag it belonged to; now the flag
+ * holds its size as the camera pulls back and covers more of the map instead,
+ * which is why `tools/place-pennants.py` measures its room at the size it
+ * reaches at the whole-island view. Closer in than one to one it grows with
+ * the map, up to three.
+ *
+ * The name is written in the page, the same height as the cloth and a whole
+ * number of screen pixels per pixel of its own, pinned to the flag's tail.
  */
 
-/** Keep in step with `tools/place-pennants.py`, which measured the room. */
-const SIZE = 2;
-
-/* The pennant in the design's own pixels, from the foot of the pole, y down.
-   `Pennant Handoff`: pole 4×40, flag 24×18 two pixels in, a swallowtail 8
-   deep, a 2px keyline everywhere but the flag's own right edge, a 2px drop
-   under the cloth, and a 20×8 shadow at the foot. */
+/* The pennant in its own pixels, from the foot of the pole, y down. The
+   handoff's pennant, re-cut shorter and broader so the cloth is most of it: a
+   pole 4×30, a 26×22 cloth two pixels in with an 18px face, a swallowtail 7
+   deep, a 2px keyline everywhere but the cloth's own right edge and a 2px drop
+   under it. Keep in step with `tools/place-pennants.py`. */
 const LEFT = -10;
-const TOP = -40;
-const WIDE = 46;
-const TALL = 42;
-const FLAG = { x: 2, y: -40, w: 24, h: 18 };
-const TAIL = 8;
-/** The tag sits this far past the tail, and is this tall, before scaling. */
+const TOP = -30;
+const WIDE = 47;
+const TALL = 32;
+const FLAG = { x: 2, y: -30, w: 26, h: 22 };
+const TAIL = 7;
+const FACE = 18;
+/** The tag sits this far past the tail, and is as tall as the cloth. */
 const GAP = 4;
-const TAG = 18;
+const TAG = FLAG.h;
+/** The most screen pixels any pixel of it is ever drawn at. */
+const LARGEST = 3;
 
 const OUTLINE = '#482510';
 const TIMBER = '#573723';
@@ -110,7 +117,6 @@ export class Pennants {
     this.tag.append(this.words);
     document.body.append(this.tag);
     this.camera.on('moved', this.follow);
-    this.camera.on('zoomed', this.follow);
     // Leaving the window is leaving the district; nothing else will say so.
     document.documentElement.addEventListener('mouseleave', this.away);
   }
@@ -140,7 +146,7 @@ export class Pennants {
         under.tint = SHADOW_TINT;
         for (const one of [under, sprite]) {
           one.anchor.set(-LEFT / WIDE, -TOP / TALL);
-          one.scale.set(SIZE);
+          one.scale.set(this.across());
           one.position.set(post.foot.x, post.foot.y);
           post.stand.addChild(one);
         }
@@ -172,27 +178,61 @@ export class Pennants {
 
   destroy(): void {
     this.camera.off('moved', this.follow);
-    this.camera.off('zoomed', this.follow);
     document.documentElement.removeEventListener('mouseleave', this.away);
     this.tag.remove();
   }
 
   private readonly away = (): void => this.show(null);
 
-  /* The tag rides the flag's tail, a whole number of its own pixels to every
-     screen pixel: as close to the flag's size on screen as that allows, and
-     never smaller than the design's own, or the name would not read. */
+  /** How many screen pixels a pixel of the flag is at this zoom. */
+  private onScreen(): number {
+    return Math.min(LARGEST, Math.max(1, this.camera.scale.x));
+  }
+
+  /** And so how many world pixels, which is what the sprite is scaled by. */
+  private across(): number {
+    return this.onScreen() / this.camera.scale.x;
+  }
+
+  /**
+   * Keep the flags their size on screen, every frame.
+   *
+   * Every frame rather than on the camera's zoom event, because the camera
+   * also settles onto a whole pixel after a zoom, by an animation of its own
+   * that never says it changed the scale, and a flag that stopped listening
+   * before that finished is the wrong size until the next wheel.
+   */
+  tick(): void {
+    const zoom = this.camera.scale.x;
+    if (zoom === this.zoom) return;
+    this.zoom = zoom;
+    this.resize();
+  }
+
+  private zoom = 0;
+
+  private resize(): void {
+    const scale = this.across();
+    for (const post of this.posts.values()) {
+      post.sprite?.scale.set(scale);
+      post.under?.scale.set(scale);
+    }
+    this.follow();
+  }
+
+  /* The tag rides the flag's tail at the flag's own size on screen, rounded
+     to a whole number so its pixels stay whole. */
   private readonly follow = (): void => {
     const post = this.shown ? this.posts.get(this.shown) : undefined;
     if (!post) return;
-    const zoom = this.camera.scale.x;
-    const scale = Math.min(3, Math.max(1, Math.round(SIZE * zoom)));
+    const scale = Math.round(this.onScreen());
+    const across = this.across();
     /* Asked of the post itself rather than of the camera: the island sits
        inside the camera at an offset of its own, and the camera's answer is
        off by exactly that, times the zoom. */
     const tail = post.stand.toGlobal({
-      x: post.foot.x + (FLAG.x + FLAG.w + TAIL + GAP) * SIZE,
-      y: post.foot.y + (FLAG.y + FLAG.h / 2) * SIZE,
+      x: post.foot.x + (FLAG.x + FLAG.w + TAIL + GAP) * across,
+      y: post.foot.y + (FLAG.y + FLAG.h / 2) * across,
     });
     this.tag.style.transform = `translate(${Math.round(tail.x)}px, ${Math.round(
       tail.y - (TAG * scale) / 2
@@ -210,8 +250,8 @@ export class Pennants {
 function shade(): Texture {
   const [canvas, pen] = sheet();
   const at = pencil(pen);
-  const rows = [12, 18, 20, 20, 18, 12];
-  rows.forEach((wide, row) => at(-wide / 2, -4 + row, wide, 1, '#fff'));
+  const rows = [10, 14, 16, 14, 10];
+  rows.forEach((wide, row) => at(-wide / 2, -3 + row, wide, 1, '#fff'));
   const texture = Texture.from(canvas);
   texture.source.scaleMode = 'nearest';
   return texture;
@@ -222,9 +262,9 @@ async function paint(colour: string, one: Flown): Promise<Texture> {
   const [canvas, pen] = sheet();
   const at = pencil(pen);
 
-  at(-2, -40, 4, 40, TIMBER);
-  at(-2, -40, 1, 40, OUTLINE);
-  at(1, -40, 1, 40, OUTLINE);
+  at(-2, TOP, 4, -TOP, TIMBER);
+  at(-2, TOP, 1, -TOP, OUTLINE);
+  at(1, TOP, 1, -TOP, OUTLINE);
 
   /* The cloth's drop, cut solid on its own sheet and laid down at half, so the
      keyline and the fill under it do not stack into two shades of shadow. */
@@ -240,19 +280,22 @@ async function paint(colour: string, one: Flown): Promise<Texture> {
   if (face) {
     pen.imageSmoothingEnabled = true;
     pen.imageSmoothingQuality = 'high';
-    pen.drawImage(face, FLAG.x + 5 - LEFT, FLAG.y + 2 - TOP, 14, 14);
+    // Inside the keyline, which is on the top, bottom and left only.
+    const x = FLAG.x + 2 + (FLAG.w - 2 - FACE) / 2;
+    const y = FLAG.y + (FLAG.h - FACE) / 2;
+    pen.drawImage(face, x - LEFT, y - TOP, FACE, FACE);
   } else {
-    /* Silkscreen at twice its own 8px, so every stroke is two whole pixels
-       and the letter fills the cloth: at the design's 9px it lands between
-       pixels and reads as a smudge the moment the island is small. */
-    await document.fonts.load("16px 'Silkscreen'").catch(() => undefined);
+    /* Silkscreen at three times its own 8px, so every stroke is three whole
+       pixels and the letter fills the cloth the way a face would: at the
+       design's 9px it landed between pixels and read as a smudge. */
+    await document.fonts.load("24px 'Silkscreen'").catch(() => undefined);
     const [letter, letterPen] = sheet();
     const initial = (one.name.trim()[0] ?? '?').toUpperCase();
-    letterPen.font = "16px 'Silkscreen'";
+    letterPen.font = "24px 'Silkscreen'";
     letterPen.textBaseline = 'alphabetic';
     letterPen.fillStyle = OUTLINE;
-    // Its advance carries two pixels of spacing after the glyph, not before.
-    const wide = letterPen.measureText(initial).width - 2;
+    // Its advance carries three pixels of spacing after the glyph, not before.
+    const wide = letterPen.measureText(initial).width - 3;
     letterPen.fillText(
       initial,
       Math.round(FLAG.x + 2 + (FLAG.w - 2 - wide) / 2) - LEFT,
