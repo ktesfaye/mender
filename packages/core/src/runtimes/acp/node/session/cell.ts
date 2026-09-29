@@ -553,7 +553,8 @@ export class SessionCell {
 
   private async sendPromptInternal(
     prompt: QueuedPrompt,
-    acceptance?: PromptAcceptance
+    acceptance?: PromptAcceptance,
+    steerable = true
   ): Promise<Result<SessionPromptResult, AcpSendPromptError>> {
     const decision = this.dispatchFor<AcpSendPromptError>({ type: 'Prompt', prompt }, [
       'invalid_state',
@@ -570,6 +571,7 @@ export class SessionCell {
         phase: this.machine.phase.kind,
       });
       acceptance?.onAccepted({ queued: true });
+      if (steerable && this.deps.supportsSteering) void this.steer(prompt, acceptance);
       return ok({ queued: true });
     }
     /* A fresh attempt is the village's own "retry": the failure it's a retry
@@ -642,9 +644,7 @@ export class SessionCell {
          carrier for one that settled this turn — Claude's adapter still
          reports a normal `end_turn` stop reason alongside it, so without this
          the turn would otherwise read as an ordinary, silent finish. */
-      const failure = decodeAirSessionFailure(
-        (response as { _meta?: unknown })._meta
-      );
+      const failure = decodeAirSessionFailure((response as { _meta?: unknown })._meta);
       if (failure) this.applySessionFailure(failure);
       else if (this.currentFailure?.severity === 'warning') this.clearSessionFailure();
       this.settleTurn(outcomeFromStopReason(response.stopReason));
@@ -663,6 +663,87 @@ export class SessionCell {
       });
       this.settleTurn({ kind: 'error', reason: 'prompt_failed' });
       return err;
+    }
+  }
+
+  /**
+   * Hand a queued prompt to the turn that is running, the way Claude Code's own
+   * terminal does, rather than holding it until that turn has finished.
+   *
+   * The agent answers `promptRequired` when there is no turn left to steer; the
+   * prompt then stays queued and goes out as its own turn as before. It only
+   * leaves the queue once the agent says it was injected, and if it has already
+   * left (taken back, or dequeued at a turn's end) nothing is sent at all.
+   */
+  private async steer(prompt: QueuedPrompt, acceptance?: PromptAcceptance): Promise<void> {
+    const extMethod = this.deps.agent.extMethod;
+    if (!extMethod) return;
+    const still = () => this.machine.queuedPrompts.some((queued) => queued.id === prompt.id);
+    try {
+      const attachments =
+        acceptance?.resolvedAttachments ??
+        (await Promise.all(
+          (prompt.attachments ?? []).map((attachment) =>
+            this.deps.resolveAttachment(this.deps.conversationId, attachment)
+          )
+        ));
+      if (!still()) return;
+      const content = [
+        ...attachments.map((attachment) => ({
+          type: 'image' as const,
+          data: attachment.data,
+          mimeType: attachment.mimeType,
+        })),
+        ...(prompt.text ? [{ type: 'text' as const, text: prompt.text }] : []),
+        ...(prompt.hiddenContext ? [{ type: 'text' as const, text: prompt.hiddenContext }] : []),
+      ];
+      if (!content.length) return;
+      /* Taken off the queue before the request goes, in the same synchronous
+         section as the check, so the end of the turn can't also send it. */
+      this.applyEvent({ type: 'QueuedPromptRemoved', id: prompt.id });
+      const response = await extMethod.call(this.deps.agent, '_session/steering', {
+        sessionId: this.acpSessionId,
+        prompt: content,
+        _meta: { steering: { idleBehavior: 'promptRequired' } },
+      });
+      if (response.outcome !== 'injected') {
+        this.deps.logger.info('SessionCell: steer fell back to a turn', {
+          conversationId: this.conversationId,
+          promptId: prompt.id,
+          outcome: response.outcome,
+        });
+        void this.sendPromptInternal(prompt, undefined, false);
+        return;
+      }
+      this.deps.logger.info('SessionCell: prompt steered', {
+        conversationId: this.conversationId,
+        promptId: prompt.id,
+        chars: prompt.text?.length ?? 0,
+      });
+      this.transcript.pushEvent({
+        kind: 'message',
+        role: 'user',
+        messageId: `${this.conversationId}-steer-${prompt.id}`,
+        promptId: prompt.id,
+        text: prompt.text,
+        ...(prompt.attachments?.length
+          ? {
+              attachments: prompt.attachments.map((attachment, index) => ({
+                id: attachment.id,
+                name: attachment.name ?? `image-${index + 1}`,
+                mimeType: attachment.mimeType,
+              })),
+            }
+          : {}),
+      });
+      this.emitTranscriptChanged();
+    } catch (e) {
+      this.deps.logger.warn('SessionCell: steer failed, sending as its own turn', {
+        conversationId: this.conversationId,
+        promptId: prompt.id,
+        error: e,
+      });
+      if (!still()) void this.sendPromptInternal(prompt, undefined, false);
     }
   }
 

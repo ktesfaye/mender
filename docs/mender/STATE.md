@@ -177,8 +177,13 @@ next is written under the transcript and above the line you write on, marked for
 behind them, under their hands, and still ahead. How much room it has left to
 think in is a bar under that, because nothing warns an agent when it is running
 out and the conversation just quietly starts losing its own beginning. Anything
-said while somebody is busy waits in the open where you can see it and take it
-back before it is heard. And a reply broken into pieces by the protocol is drawn
+said while somebody is busy goes straight into the turn they are in, the way
+Claude Code's own terminal slips it in between tool calls, rather than waiting
+until the whole turn is over and reading as ignored; for an agent that can't take
+it mid-turn it waits in the open where you can see it and take it back before it
+is heard. The line you write on grows a row at a time as it wraps and pushes the
+board up above it, and a paste landing on nothing in a session goes onto the
+line, so dictation needs no press on it first. And a reply broken into pieces by the protocol is drawn
 as one thing said, rather than with a hole in the middle of the sentence.
 
 The permission question fires. It had never been seen because this machine's

@@ -151,7 +151,20 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     }
     const range = where.getRangeAt(0).cloneRange();
     range.collapse(false);
-    const rect = range.getClientRects()[0] ?? said.getBoundingClientRect();
+    /* A caret sitting between nodes rather than inside text has no box of its
+       own, so it is read off the end of the text just before it; the line's
+       own box would put it at the far right of the first row. */
+    let rect = range.getClientRects()[0];
+    if (!rect) {
+      const text = lastText(range.endContainer, range.endOffset);
+      if (text) {
+        const end = document.createRange();
+        end.setStart(text, text.length);
+        end.setEnd(text, text.length);
+        rect = end.getClientRects()[0];
+      }
+    }
+    rect ??= said.getBoundingClientRect();
     const from = root.getBoundingClientRect();
     cursor.style.position = 'absolute';
     cursor.style.left = `${Math.round(rect.right - from.left)}px`;
@@ -242,6 +255,26 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     insert(text.replace(/\s*\n\s*/g, ' '));
   });
 
+  /* A paste that lands on nothing is meant for the line, the same as a stray
+     letter is. Dictation pastes into whatever has the keyboard, and standing
+     in a session with nothing else taking writing, that is here: having to
+     press the line first before speaking into it is a step nobody meant. A
+     picture is left alone, since the window carries those itself. */
+  function strayPaste(event: ClipboardEvent): void {
+    if (event.defaultPrevented || !root.getClientRects().length) return;
+    if (event.clipboardData?.files.length) return;
+    const at = document.activeElement;
+    if (at === said) return;
+    if (at instanceof HTMLInputElement || at instanceof HTMLTextAreaElement) return;
+    if (at instanceof HTMLElement && at !== document.body && at.isContentEditable) return;
+    const text = event.clipboardData?.getData('text/plain');
+    if (!text) return;
+    event.preventDefault();
+    take();
+    insert(text.replace(/\s*\n\s*/g, ' '));
+  }
+  document.addEventListener('paste', strayPaste);
+
   function insert(text: string): void {
     const where = window.getSelection();
     if (!where || where.rangeCount === 0) {
@@ -252,6 +285,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       range.insertNode(document.createTextNode(text));
       range.collapse(false);
     }
+    said.scrollTop = said.scrollHeight;
     showing();
     typed(said.textContent ?? '');
   }
@@ -315,9 +349,22 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     onType: (run) => (typed = run),
     close: () => {
       document.removeEventListener('selectionchange', place);
+      document.removeEventListener('paste', strayPaste);
       root.remove();
     },
   };
+}
+
+/** The text node that ends just before `offset` inside `node`, if any. */
+function lastText(node: Node, offset: number): Text | null {
+  if (node instanceof Text) return node;
+  for (let i = Math.min(offset, node.childNodes.length) - 1; i >= 0; i--) {
+    const child = node.childNodes[i]!;
+    if (child instanceof Text && child.length) return child;
+    const inner = child.childNodes.length ? lastText(child, child.childNodes.length) : null;
+    if (inner) return inner;
+  }
+  return null;
 }
 
 const HAND = "font-family:'Caveat',cursive;font-size:22px;line-height:1.2";
@@ -331,6 +378,11 @@ const WRITING = [
   'min-width:1px',
   'white-space:pre-wrap',
   'word-break:break-word',
+  /* It grows a row at a time as you write, up to a third of the window, and
+     past that it scrolls inside itself rather than climbing over the board. */
+  'max-height:32vh',
+  'overflow-y:auto',
+  'scrollbar-width:none',
   /* The browser's own caret is turned off and ours is drawn instead, because
      this village blinks in steps and the machine's caret does not. */
   'caret-color:transparent',

@@ -264,6 +264,7 @@ export class SessionMaterializer {
       providerId: input.providerId,
       acpSessionId,
       agent: connection.agent,
+      supportsSteering: connection.supportsSteering,
       resolveAttachment: this.deps.resolveAttachment,
       logger: this.deps.logger,
       callbacks,

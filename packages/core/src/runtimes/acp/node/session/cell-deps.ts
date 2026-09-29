@@ -25,6 +25,8 @@ export interface SessionCellDeps {
   providerId: string;
   acpSessionId: string;
   agent: AcpAgentApi;
+  /** Said while a turn runs goes into that turn rather than waiting behind it. */
+  supportsSteering?: boolean;
   resolveAttachment: ResolvePromptAttachment;
   logger: Logger;
   callbacks?: SessionCellCallbacks;

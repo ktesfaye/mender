@@ -93,6 +93,10 @@ const HEAD = {
    of it when the lanterns are hanging bare, since there are no words under
    them to leave room for. */
 const RAIL_TALL = 118;
+/** The write line's own height at one row of writing. */
+const ONE_ROW = 27;
+/** Where what is still to say stands, over a line one row tall. */
+const STILL_AT = 196;
 const RAIL_BARE = 76;
 /* How much of a lantern is the lantern itself. */
 const LANTERN = { wide: 22, tall: 38, cord: 16 };
@@ -247,9 +251,22 @@ export function makeYard(layer: Layer, does: Doings): Standing {
      line rather than with the yard, so it is still there while you are reading
      something else. It is a thing you might want back, and a thing you might
      want back does not go behind a wash. */
-  const stillAt = box({ left: 0, right: 0, bottom: 196 }, 'padding:8px 0');
+  const stillAt = box({ left: 0, right: 0, bottom: STILL_AT }, 'padding:8px 0');
   stage.appendChild(stillAt);
   const line = makeLine(writing);
+  /* How far the line has grown past its one row. Everything above it, the
+     rule, what is still to say and the bottoms of the columns, stands that
+     much higher, so a long thing being written pushes the board up instead of
+     being written over it. */
+  let grown = 0;
+  new ResizeObserver(() => {
+    const tall = Math.round(writing.getBoundingClientRect().height);
+    const now = tall > ONE_ROW + 6 ? tall - ONE_ROW : 0;
+    if (now === grown) return;
+    grown = now;
+    stillAt.style.bottom = `${STILL_AT + grown}px`;
+    if (last && stage.style.display !== 'none') redraw();
+  }).observe(writing);
   /* And what a slash or an @ has opened stands on the line itself, its left
      edge on the slash you typed, the way a completion list stands on a caret.
      It is its own small solid slab rather than more writing on the wash,
@@ -347,7 +364,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
      yard under it: from the gatepost's own column to the right edge. */
   function lay(): void {
     const columns = layer.columns();
-    const floor = window.innerHeight - MARGIN - RAIL_TALL - 60;
+    const floor = window.innerHeight - MARGIN - RAIL_TALL - 60 - grown;
     scrim.place(
       columns.thinking.x - GUTTER / 2,
       MARGIN - 8,
@@ -458,7 +475,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const columns = layer.columns();
     /* Everything from under the header rule to above the line you write on.
        The columns live in here and the bands top and bottom do not. */
-    const floor = window.innerHeight - MARGIN - (layer.cramped() ? RAIL_BARE : RAIL_TALL) - 60;
+    const floor =
+      window.innerHeight - MARGIN - (layer.cramped() ? RAIL_BARE : RAIL_TALL) - 60 - grown;
 
     regions = [];
     scrims(root);
@@ -487,6 +505,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       );
       wakingUp(covered, columns.thinking, floor, wakingSinceOf(yard.session.id));
       stillAt.replaceChildren();
+      stillAt.style.display = 'none';
     } else if (yard.session) {
       asked(root, columns.asked, yard, floor, layer.cramped(), pickNote);
       thinking(
@@ -519,8 +538,9 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       );
       made(covered, columns.made, blank, floor, does);
       stillAt.replaceChildren();
+      stillAt.style.display = 'none';
     }
-    said_line(root, layer.edge());
+    said_line(root, layer.edge(), grown);
     rail(root, yard, layer.cramped(), layer.edge(), does);
     if (yard.session) grips(columns, floor);
     /* What the line asks for follows what the yard is: somebody at the gate
@@ -2515,8 +2535,13 @@ function carried(hands: HTMLElement, yard: Yard, does: Doings): void {
 function still(at: HTMLElement, yard: Yard, does: Doings): void {
   at.replaceChildren();
   const waiting = yard.session?.waiting ?? [];
+  /* Its wash goes with the last thing in it. Left on, an empty strip of it
+     stayed hanging over every yard afterwards, new sessions included. */
+  at.style.display = waiting.length ? 'flex' : 'none';
+  at.style.background = waiting.length ? 'rgba(72,37,16,.72)' : '';
   if (!waiting.length) return;
-  at.style.cssText += ';display:flex;flex-direction:column;gap:4px;background:rgba(72,37,16,.72)';
+  at.style.flexDirection = 'column';
+  at.style.gap = '4px';
   at.appendChild(label('still to say, press to take one back', {}));
   for (const one of waiting) {
     const press = keyed(
@@ -2531,8 +2556,10 @@ function still(at: HTMLElement, yard: Yard, does: Doings): void {
   }
 }
 
-function said_line(root: HTMLElement, edge: number): void {
-  root.appendChild(stays(rule({ left: edge, right: edge, bottom: 186 }, true), 'rule:line'));
+function said_line(root: HTMLElement, edge: number, grown: number): void {
+  root.appendChild(
+    stays(rule({ left: edge, right: edge, bottom: 186 + grown }, true), 'rule:line')
+  );
 }
 
 /* ── the rail ──────────────────────────────────────────────────────────────
