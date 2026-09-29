@@ -17,8 +17,9 @@
  * inventory rack out of a game, not a piece of the board. Everything else on
  * the wood follows the rule.
  *
- * Standing in a project, the rack leads with one more slot that is not a
- * project: the campfire the island grows from, and pressing it flies back
+ * Standing in a project, the rack ends with one more slot that is not a
+ * project, pinned to its right end whatever order the projects are in: the
+ * campfire the island grows from, and pressing it flies back
  * out to the whole island. Escape walks there too, a step at a time; this is
  * the one press that goes straight there from anywhere.
  *
@@ -150,7 +151,7 @@ export function makeShelf(
     inside = projects.some((project) => project.here);
     fire.style.opacity = inside ? '1' : '0';
     fire.style.width = inside ? `${SLOT}px` : '0px';
-    fire.style.marginRight = inside ? '0px' : `-${PAD}px`;
+    fire.style.marginLeft = inside ? '0px' : `-${PAD}px`;
     fire.style.borderWidth = inside ? '2px' : '0px';
     fire.style.pointerEvents = inside ? 'auto' : 'none';
 
@@ -213,6 +214,7 @@ export function makeShelf(
       }
       node.title = project.name;
     }
+    strip.appendChild(fire);
   }
 
   /* Dragging a slot along the rack. It follows the pointer sideways only,
@@ -288,6 +290,7 @@ export function makeShelf(
           const each = nodes.get(other);
           if (each) strip.appendChild(each);
         }
+        strip.appendChild(fire);
         node.style.zIndex = '';
         node.style.cursor = '';
         node.style.filter = '';

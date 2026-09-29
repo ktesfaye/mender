@@ -705,8 +705,9 @@ projects in a data folder of its own: the district went back to sea and its
 slot came off the rack there and then. It used to stay drawn on both until the
 app was restarted.
 
-**The rack leads with the campfire while you are in a yard.** Standing in any
-project, the first slot on the rack is the camp's own fire, "the island" when
+**The rack ends with the campfire while you are in a yard.** Standing in any
+project, the last slot on the rack is the camp's own fire, pinned to the right
+end however the projects are dragged around, "the island" when
 hovered, and pressing it flies straight back out to the whole island from
 wherever you are, boards and all, in one press rather than walking Escape all
 the way down. Out on the water there is nowhere to come back from, so it folds
