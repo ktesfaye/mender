@@ -2667,3 +2667,13 @@ rather than every lantern getting the same slot and a long name ending in an
 ellipsis. Past the window the beam scrolls sideways and keeps where it was
 scrolled across redraws. Driven in the dev window: a session named "Where did
 we leave things off" reads whole with the hook sliding along after it.
+
+### Escape stops whoever is working (2026-09-29) — done
+
+Standing in a session's yard while its agent is thinking or writing, Escape
+calls it off, the same as Claude Code's own "esc to interrupt" and the same as
+an empty line already did, rather than walking you out past it. Anything laid
+over the yard and anything half-written still goes first, and once nobody is
+working Escape leaves as it always has. Driven in the dev window: a long story
+asked for in a fresh Aurio session stopped mid-word on Escape, the fire went
+out and the yard stayed open.

@@ -4746,6 +4746,14 @@ async function boot(): Promise<void> {
           home();
           return;
         }
+        /* Standing in a yard where somebody is working, Escape calls them off
+           rather than walking out on them: Claude Code's own "esc to
+           interrupt", and the same thing an empty line already does. Stopped,
+           the next Escape leaves as it always did. */
+        if (inside && watching?.working()) {
+          void client.agents.hush({ task: inside.id });
+          return;
+        }
         /* And then out.
          *
          * The ladder used to have a rung between the session and the island:

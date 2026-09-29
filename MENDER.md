@@ -112,7 +112,8 @@ sore tones everything else on the board already is, and opens in a window you
 can pan with a drag and zoom with the wheel rather than one that shrinks it to
 fit. The last line of the board is where you write back; there is no
 text field anywhere in this app. An empty line while somebody is working calls
-them off.
+them off, and so does Escape, the way it does in Claude Code; only once nobody
+is working does Escape walk you out.
 
 **The bottom of the board is what is coming.** Under everything that has
 happened, and above the line you write on, is how much room it has left to think in, and what it has cost so
