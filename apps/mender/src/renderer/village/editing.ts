@@ -48,7 +48,14 @@ export interface EditingHost {
    could walk into already does; the sore one is the red a hurt house gets. */
 const WARM = 0xffdf9e;
 const SORE = 0xf2665a;
-const SAND = 0xf4e3c0;
+/** How many cells in from its edge an empty place's light takes to come up. */
+const DEPTH = 5;
+const SIDES = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+] as const;
 
 /**
  * Rearranging the island.
@@ -58,7 +65,8 @@ const SAND = 0xf4e3c0;
  * lifts the land itself off the island, houses and trees and all, and it goes
  * where the pointer goes; wherever it is let go is where that project lives
  * now. Onto somebody else's place and the two of them swap. Onto an empty
- * one, drawn as pale ground on the water while this is on, and it moves in.
+ * one and it moves in; the empty places it could go glow softly while it is
+ * held, and nothing marks them the rest of the time.
  * Out onto the open sea and the line at the top offers to forget it, which is
  * two presses because its sessions go with it.
  *
@@ -70,8 +78,8 @@ const SAND = 0xf4e3c0;
 export class Editing {
   private on = false;
   private readonly overlay = new Container();
-  /** Every empty place anybody could move to, as pale land on the water. */
-  private readonly empty = new Graphics();
+  /** The empty places the district in the hand could move to, while it is held. */
+  private readonly empty = new Graphics({ blendMode: 'add' });
   /** Where the lifted district came from, dimmed while it is away. */
   private readonly hole = new Graphics();
   /** Where it would land if let go now. */
@@ -160,8 +168,6 @@ export class Editing {
   refresh(): void {
     this.camera.addChild(this.overlay);
     this.empty.clear();
-    if (!this.on) return;
-    for (const place of this.vacant()) this.pale(this.empty, place.cells);
   }
 
   /* ── where things are ─────────────────────────────────────────────── */
@@ -270,6 +276,9 @@ export class Editing {
     void this.host.moves(who.id).then((fits) => {
       if (this.carrying !== carried) return;
       carried.fits = fits;
+      for (const place of this.vacant()) {
+        if (fits.places[place.id] === null) this.pale(this.empty, place.cells);
+      }
       this.aimAt(carried.over);
     });
     this.pixi.canvas.style.cursor = 'grabbing';
@@ -367,6 +376,7 @@ export class Editing {
     this.carrying = null;
     this.hole.clear();
     this.aim.clear();
+    this.empty.clear();
     if (carried) {
       carried.lifted.destroy({ children: true });
       carried.texture.destroy(true);
@@ -434,25 +444,47 @@ export class Editing {
     this.say(`${who.name} is forgotten. the folder is still where it was.`);
   }
 
-  /** Pale ground on the water, thickest at its own edge. */
+  /**
+   * A soft light over an empty place: brightest in its middle and thinning to
+   * almost nothing at its edge, the way a hovered district is lit, so it reads
+   * as somewhere to go rather than a box drawn round some cells.
+   */
   private pale(into: Graphics, cells: readonly CellRun[]): void {
-    for (const [x, y0, y1] of cells) {
-      into.rect(x * CELL, -(y1 + 1) * CELL, CELL, (y1 - y0 + 1) * CELL);
-    }
-    into.fill({ color: SAND, alpha: 0.14 });
     const land = new Set<string>();
     for (const [x, y0, y1] of cells) for (let y = y0; y <= y1; y++) land.add(`${x},${y}`);
+    const depth = new Map<string, number>();
+    let rim: string[] = [];
     for (const key of land) {
       const [x, y] = key.split(',').map(Number) as [number, number];
-      const edge = [
-        [1, 0],
-        [-1, 0],
-        [0, 1],
-        [0, -1],
-      ].some(([dx, dy]) => !land.has(`${x + (dx ?? 0)},${y + (dy ?? 0)}`));
-      if (edge) into.rect(x * CELL, -(y + 1) * CELL, CELL, CELL);
+      if (SIDES.some(([dx, dy]) => !land.has(`${x + dx},${y + dy}`))) {
+        depth.set(key, 1);
+        rim.push(key);
+      }
     }
-    into.fill({ color: SAND, alpha: 0.16 });
+    for (let level = 2; rim.length && level <= DEPTH; level++) {
+      const next: string[] = [];
+      for (const key of rim) {
+        const [x, y] = key.split(',').map(Number) as [number, number];
+        for (const [dx, dy] of SIDES) {
+          const near = `${x + dx},${y + dy}`;
+          if (!land.has(near) || depth.has(near)) continue;
+          depth.set(near, level);
+          next.push(near);
+        }
+      }
+      rim = next;
+    }
+    const full = Math.max(1, ...depth.values());
+    for (let level = 1; level <= DEPTH; level++) {
+      let any = false;
+      for (const key of land) {
+        if (Math.min(depth.get(key) ?? DEPTH, full) !== level) continue;
+        const [x, y] = key.split(',').map(Number) as [number, number];
+        into.rect(x * CELL, -(y + 1) * CELL, CELL, CELL);
+        any = true;
+      }
+      if (any) into.fill({ color: WARM, alpha: 0.16 * (level / Math.min(full, DEPTH)) });
+    }
   }
 }
 
