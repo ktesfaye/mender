@@ -1,0 +1,176 @@
+# Every other string
+
+Every string in the app's source that could reach the screen and is not quoted in any section above, verbatim, with the file and line it lives on. Log lines and developer assertions are filtered out as far as a filter can; a few may remain.
+
+## main
+
+- "${added} line${added === 1 ? '' : 's'}" · `main/agents.ts:1078`
+- "${node.matchCount} match${node.matchCount === 1 ? '' : 'es'}" · `main/agents.ts:1087`
+- "read ${inside(where(node.locations) ?? node.title, root)}" · `main/agents.ts:1263`
+- "wrote ${inside(node.path, root)}" · `main/agents.ts:1265`
+- "read ${node.pageTitle ?? node.url}" · `main/agents.ts:1273`
+- "sent ${who} off" · `main/agents.ts:1316`
+- "… ${skipped} lines" · `main/changes.ts:222`
+- "run `gh auth login` in a terminal." · `main/github.ts:32`
+- "that checkout has moved." · `main/tasks.ts:154`
+
+## renderer
+
+- "there is nothing open to forget" · `renderer/main.ts:1545`
+- "kept as “${one.title}”. a slash brings it back." · `renderer/main.ts:1996`
+- "“${meant.title}” is forgotten." · `renderer/main.ts:2002`
+- "${scene.missing.length} sprites are not in the kit" · `renderer/main.ts:2765`
+
+## renderer/board
+
+- "there ${losing.length === 1 ? 'is' : 'are'} ${losing.join(' and ')}." · `renderer/board/card.ts:299`
+- "one ${thing}" · `renderer/board/card.ts:325`
+- "${change.taken} out" · `renderer/board/changed.ts:118`
+- "new, ${counted.join(' and ')}" · `renderer/board/changed.ts:122`
+- "and ${entries.length - CHANGES} more." · `renderer/board/district.ts:222`
+- "send ${counted(tracking.ahead, 'commit')} up" · `renderer/board/district.ts:294`
+- "bring ${counted(tracking.behind, 'commit')} down" · `renderer/board/district.ts:305`
+- "all ${many} ${thing}s" · `renderer/board/district.ts:313`
+- "${tracking.ahead} ahead" · `renderer/board/district.ts:325`
+- "and ${found.length - SHOWN} more." · `renderer/board/finder.ts:180`
+- "and ${over} more." · `renderer/board/inside.ts:146`
+- "${files.length} files" · `renderer/board/made.ts:142`
+- "${taken} out" · `renderer/board/made.ts:143`
+- "keep “${clip(what, 48)}”" · `renderer/board/palette.ts:149`
+- "for later, under the slash" · `renderer/board/palette.ts:150`
+- "write what to keep after it" · `renderer/board/palette.ts:150`
+- "${lines} lines" · `renderer/board/reading.ts:196`
+- "${bytes} bytes" · `renderer/board/reading.ts:216`
+- "]/.test(text[cut] ??" · `renderer/board/screen.ts:201`
+- "APPROVED" · `renderer/board/sent.ts:160`
+- "CHANGES_REQUESTED" · `renderer/board/sent.ts:162`
+- "somebody has looked at it and wants something changed." · `renderer/board/sent.ts:163`
+- "REVIEW_REQUIRED" · `renderer/board/sent.ts:164`
+- "${pull.headRefName} into ${pull.baseRefName}" · `renderer/board/sent.ts:78`
+- "it could not reach github." · `renderer/board/trouble.ts:101`
+- "nothing on this machine is signed in to github. run `gh auth login`." · `renderer/board/trouble.ts:103`
+- "that account is not allowed to do this here." · `renderer/board/trouble.ts:105`
+- "github says there is no such thing." · `renderer/board/trouble.ts:107`
+- "it and the other end have both moved since they agreed." · `renderer/board/trouble.ts:111`
+- "github will not put it in yet." · `renderer/board/trouble.ts:113`
+- "github will not put it in: ${said}" · `renderer/board/trouble.ts:113`
+- "github would not say what went wrong." · `renderer/board/trouble.ts:115`
+- "there is nothing in it to commit." · `renderer/board/trouble.ts:16`
+- "a hook stopped it." · `renderer/board/trouble.ts:20`
+- "a hook stopped it: ${lowered(said)}" · `renderer/board/trouble.ts:20`
+- "this branch is not following anything yet." · `renderer/board/trouble.ts:24`
+- "the remote it was pointed at is not there." · `renderer/board/trouble.ts:26`
+- "it wants to know who you are, and nothing here can tell it." · `renderer/board/trouble.ts:28`
+- "it would not take who you say you are." · `renderer/board/trouble.ts:30`
+- "it could not reach the other end." · `renderer/board/trouble.ts:32`
+- "the other end refused it." · `renderer/board/trouble.ts:34`
+- "the other end refused it: ${lowered(said)}" · `renderer/board/trouble.ts:34`
+- "a hook on the other end refused it: ${lowered(said)}" · `renderer/board/trouble.ts:36`
+- "a hook refused it." · `renderer/board/trouble.ts:36`
+- "this branch and the other end have both moved since they agreed." · `renderer/board/trouble.ts:38`
+- "that checkout is not where it was." · `renderer/board/trouble.ts:42`
+- "git would not say what went wrong." · `renderer/board/trouble.ts:44`
+- "it would not say what went wrong." · `renderer/board/trouble.ts:46`
+- "that file is not there any more." · `renderer/board/trouble.ts:68`
+- "this machine will not let anybody write it." · `renderer/board/trouble.ts:70`
+- "that is a folder, not a file." · `renderer/board/trouble.ts:72`
+- "something on the way there is a file, not a folder." · `renderer/board/trouble.ts:74`
+- "there is already something there." · `renderer/board/trouble.ts:76`
+- "that is not a path this checkout can hold." · `renderer/board/trouble.ts:78`
+- "it could not be written." · `renderer/board/trouble.ts:80`
+- "that remote is not a github repository this can talk to." · `renderer/board/trouble.ts:95`
+- "the branch is not up there yet. send it up first." · `renderer/board/trouble.ts:97`
+- "the two ends are on different githubs." · `renderer/board/trouble.ts:99`
+
+## renderer/yard
+
+- "border:2px solid #482510" · `renderer/yard/face.ts:91`
+- "filter 520ms cubic-bezier(.2,.8,.2,1)" · `renderer/yard/frame.ts:180`
+- "${Math.floor(minutes)}m ago" · `renderer/yard/from.ts:449`
+- "${Math.floor(hours)}h ago" · `renderer/yard/from.ts:451`
+- "${Math.floor(days)}d ago" · `renderer/yard/from.ts:453`
+- "${folder} · adrift at ${head.shortHash}" · `renderer/yard/live.ts:224`
+- "${folder}/${branch} · nothing committed yet" · `renderer/yard/live.ts:226`
+- "menu-row sore" · `renderer/yard/menu.ts:101`
+- "top left" · `renderer/yard/motion.ts:145`
+- "translate(0,0) scale(1,1)" · `renderer/yard/motion.ts:151`
+- "yard-ink ${INK_MS}ms ease-out both" · `renderer/yard/motion.ts:250`
+- "press to keep it" · `renderer/yard/prose.ts:218`
+- "font-family:'Josefin Sans',sans-serif" · `renderer/yard/rows.ts:157`
+- "text-shadow:2px 2px 0 #120d07" · `renderer/yard/rows.ts:168`
+- "padding:12px 0 4px" · `renderer/yard/rows.ts:178`
+- "three need booking · no photos yet" · `renderer/yard/sample.ts:100`
+- "Sat · Molly's Rise and Shine, Turkey and the Wolf, Zasu" · `renderer/yard/sample.ts:102`
+- "Sun · Toups' Meatery, Parkway, Saint-Germain" · `renderer/yard/sample.ts:103`
+- "Mon · Ayu Bakehouse, Herbsaint" · `renderer/yard/sample.ts:104`
+- "and check the Sunday ones are open for lunch" · `renderer/yard/sample.ts:108`
+- "you are here · 20m 45s" · `renderer/yard/sample.ts:121`
+- "wants you · 4m" · `renderer/yard/sample.ts:131`
+- "working · 17m" · `renderer/yard/sample.ts:141`
+- "worktree being cut" · `renderer/yard/sample.ts:151`
+- "New Orleans" · `renderer/yard/sample.ts:16`
+- "merged · 2h" · `renderer/yard/sample.ts:161`
+- "git refused" · `renderer/yard/sample.ts:171`
+- "sonnet 4.5" · `renderer/yard/sample.ts:29`
+- "bypass permissions on" · `renderer/yard/sample.ts:31`
+- "first 62 hours" · `renderer/yard/sample.ts:35`
+- "4m ago" · `renderer/yard/sample.ts:39`
+- "Wait — you need to show me pictures. The foods they're best known for." · `renderer/yard/sample.ts:41`
+- "2h ago" · `renderer/yard/sample.ts:45`
+- "Cut anything where the wait is over an hour. We're not standing in line." · `renderer/yard/sample.ts:47`
+- "Oct 3–5, three of us, food-focused. Not a big fan of seafood. Money's not a problem. Don't book anything — I'll do that myself." · `renderer/yard/sample.ts:54`
+- "pull twenty-odd candidates out of the local press" · `renderer/yard/sample.ts:58`
+- "verify Sat/Sun/Mon service on each one" · `renderer/yard/sample.ts:59`
+- "cut anything seafood-forward" · `renderer/yard/sample.ts:60`
+- "cluster what survives by neighbourhood" · `renderer/yard/sample.ts:61`
+- "hand you one page per day" · `renderer/yard/sample.ts:62`
+- "yesterday, 6pm" · `renderer/yard/sample.ts:67`
+- "Three of the twenty-one have closed for good — the food press is a year behind. Every place goes in the file only after I've read it off the restaurant's own site." · `renderer/yard/sample.ts:68`
+- "6h ago" · `renderer/yard/sample.ts:72`
+- "You said no seafood, and this city's whole canon is seafood. So I'm keeping the kitchens good enough that the one thing on the menu without a shell is still the reason to go." · `renderer/yard/sample.ts:73`
+- "22m ago" · `renderer/yard/sample.ts:77`
+- "Saturday, Sunday and Monday are the worst three nights for closures — half this job turned out to be knowing what is actually open." · `renderer/yard/sample.ts:78`
+- "“Boudin boy” means nothing if you’ve never seen one. Pulling each dish photo off the restaurant’s own site rather than stock, which is slower but at least it’s the food they actually serve." · `renderer/yard/sample.ts:85`
+- "3 questions" · `renderer/yard/sample.ts:89`
+- "read the homework skill" · `renderer/yard/sample.ts:89`
+- "searched 21 places, kept 15" · `renderer/yard/sample.ts:90`
+- "15 entries" · `renderer/yard/sample.ts:91`
+- "wrote candidates.json" · `renderer/yard/sample.ts:91`
+- "changed nola.md twice" · `renderer/yard/sample.ts:92`
+- "running curl -sI on 6 pages" · `renderer/yard/sample.ts:93`
+- "published 11m ago" · `renderer/yard/sample.ts:99`
+- "Show ${now.more} more" · `renderer/yard/settings.ts:225`
+- "settings-button settings-remove" · `renderer/yard/settings.ts:275`
+- "text-shadow:1px 1px 0 #120d07" · `renderer/yard/shelf.ts:120`
+- "background-size:${cut.sheetWide * times}px ${cut.sheetTall * times}px" · `renderer/yard/sprite.ts:100`
+- "props/TX Village Props - Campfire 01 Lit.png" · `renderer/yard/sprite.ts:108`
+- "props/TX Village Props - Campfire 01.png" · `renderer/yard/sprite.ts:109`
+- "props/TX Village Props - Lantern 01 On.png" · `renderer/yard/sprite.ts:110`
+- "props/TX Village Props - Lantern 01 Off.png" · `renderer/yard/sprite.ts:111`
+- "props/TX Village Props - Billboard 01.png" · `renderer/yard/sprite.ts:112`
+- "props/TX Village Props - Cart 01 E.png" · `renderer/yard/sprite.ts:113`
+- "props/TX Village Props - Crate 01 A.png" · `renderer/yard/sprite.ts:114`
+- "props/TX Village Props - Sign 01.png" · `renderer/yard/sprite.ts:115`
+- "props/TX Village Props - Road Sign 01.png" · `renderer/yard/sprite.ts:116`
+- "props/TX Village Props - Anvil 01.png" · `renderer/yard/sprite.ts:117`
+- "props/TX Village Props - Barrel 01.png" · `renderer/yard/sprite.ts:118`
+- "props/TX Village Props - Sack 01.png" · `renderer/yard/sprite.ts:119`
+- "props/TX Village Props - Bucket 01 Water.png" · `renderer/yard/sprite.ts:120`
+- "props/TX Village Props - Table 01 H A.png" · `renderer/yard/sprite.ts:121`
+- "props/TX Village Props - Washtub 01.png" · `renderer/yard/sprite.ts:125`
+- "props/TX Village Props - Weapon Rack 01.png" · `renderer/yard/sprite.ts:126`
+- "background-position:${-cut.x * times}px ${-cut.y * times}px" · `renderer/yard/sprite.ts:99`
+- "circle at 50% 50%" · `renderer/yard/write.ts:135`
+- "ellipse at 50% 50%" · `renderer/yard/write.ts:135`
+- "font-family:'Courier Prime',monospace" · `renderer/yard/write.ts:83`
+- "animation:yard-breathe 2.4s ease-in-out infinite" · `renderer/yard/yard.ts:1030`
+- "font-family:'Cormorant Garamond',serif" · `renderer/yard/yard.ts:1085`
+- "padding:1px 6px" · `renderer/yard/yard.ts:1097`
+- "${hand.errand} · out ${hand.gone ?? ''}" · `renderer/yard/yard.ts:1429`
+- "press me" · `renderer/yard/yard.ts:1542`
+- "padding:8px 0" · `renderer/yard/yard.ts:182`
+- "padding:12px 14px" · `renderer/yard/yard.ts:386`
+- "transform-origin:top left" · `renderer/yard/yard.ts:390`
+- "translate(${dx * 0.25 - 14}px,${dy * 0.5}px) rotate(-2deg)" · `renderer/yard/yard.ts:408`
+- "translate(${dx}px,${dy}px) rotate(-.7deg)" · `renderer/yard/yard.ts:413`
+- "'Josefin Sans',sans-serif" · `renderer/yard/yard.ts:841`

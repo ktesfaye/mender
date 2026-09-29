@@ -114,3 +114,4 @@ apps/mender/release/
 apps/mender/build/icon.icns
 apps/mender/build/icon.png
 apps/mender/build/icon.iconset/
+.superpowers/
