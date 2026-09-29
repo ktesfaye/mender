@@ -367,7 +367,7 @@ function lastText(node: Node, offset: number): Text | null {
   return null;
 }
 
-const HAND = "font-family:'Caveat',cursive;font-size:22px;line-height:1.2";
+const HAND = "font-family:'Mender Hand',cursive;font-size:22px;line-height:1.2";
 
 const PROMPT = `${HAND};color:#ab9470;pointer-events:none`;
 

@@ -29,6 +29,28 @@
   font-variation-settings: 'SOFT' 100, 'WONK' 0;
 }
 
+/* The face of what you write: the line you write on, what you asked on the
+   gatepost, what is still waiting to be heard. Pretty Neat, Jaclyn Tan's own
+   neatest hand, because Caveat was pretty but a chore to read. Same switch as
+   the one above: swap the woff2, nudge size-adjust. Nothing else names it. */
+@font-face {
+  font-family: 'Mender Hand';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  size-adjust: 92%;
+  src: url('pretty-neat-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Mender Hand';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  size-adjust: 92%;
+  src: url('pretty-neat-700-normal.woff2') format('woff2');
+}
+
 @font-face {
   font-family: 'Josefin Sans';
   font-style: normal;
@@ -43,22 +65,6 @@
   font-weight: 600;
   font-display: block;
   src: url('josefin-sans-600-normal.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Caveat';
-  font-style: normal;
-  font-weight: 500;
-  font-display: block;
-  src: url('caveat-500-normal.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Caveat';
-  font-style: normal;
-  font-weight: 700;
-  font-display: block;
-  src: url('caveat-700-normal.woff2') format('woff2');
 }
 
 @font-face {

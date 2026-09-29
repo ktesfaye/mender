@@ -702,7 +702,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       `left:${leaving.rect.left}px`,
       `top:${leaving.rect.top}px`,
       `max-width:${columns.asked.wide - 60}px`,
-      "font-family:'Caveat',cursive",
+      "font-family:'Mender Hand',cursive",
       'font-size:19px',
       'line-height:1.25',
       'padding:12px 14px',
@@ -1354,7 +1354,7 @@ const CARD = [
   'padding:12px 14px',
   'box-shadow:5px 5px 0 rgba(0,0,0,.5)',
   'transform:rotate(-.7deg)',
-  "font-family:'Caveat',cursive",
+  "font-family:'Mender Hand',cursive",
   'font-size:19px',
   'line-height:1.25',
   /* However long a line runs without a space, it wraps on the card. */
@@ -1370,7 +1370,7 @@ function weathered(note: Note): HTMLElement {
   );
   const body = document.createElement('span');
   body.style.cssText =
-    "font-family:'Caveat',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
+    "font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
   body.textContent = note.said;
   it.appendChild(body);
   return it;
@@ -2551,7 +2551,7 @@ function still(at: HTMLElement, yard: Yard, does: Doings): void {
       ),
       `waiting:${one.id}`
     );
-    press.style.cssText += "font-family:'Caveat',cursive;font-size:18px";
+    press.style.cssText += "font-family:'Mender Hand',cursive;font-size:18px";
     at.appendChild(press);
   }
 }

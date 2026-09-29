@@ -76,7 +76,7 @@
 
   /* ── the faces ─────────────────────────────────────────────────────────── */
   --yard-face-label: 'Josefin Sans', sans-serif; /* labels and UI */
-  --yard-face-hand: 'Caveat', cursive; /* what you asked */
+  --yard-face-hand: 'Mender Hand', cursive; /* what you asked */
   --yard-face-thought: 'Cormorant Garamond', serif; /* what it is thinking */
   --yard-face-mono: 'Courier Prime', monospace; /* names, status, code */
 
