@@ -2570,6 +2570,12 @@ shorter pole and a bigger cloth so the logo is most of it, and the tag is the
 cloth's own height at every zoom. The spots were measured again at the size
 that makes it at the whole-island view. Driven the same way, out and close in.
 
+A project with a logo now flies the logo itself rather than a coloured cloth
+with a small picture on it: the cloth is the logo's own shape, edge to edge,
+its see-through margin cut away, and the tail carries on in the colour round
+its own edge. Checked on all eight logos on his island and on the tag beside
+one.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

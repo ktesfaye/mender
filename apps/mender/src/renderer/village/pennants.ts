@@ -38,11 +38,12 @@ import { SHADOW_TINT, type Foot } from './scene';
    under it. Keep in step with `tools/place-pennants.py`. */
 const LEFT = -10;
 const TOP = -30;
-const WIDE = 47;
+const WIDE = 49;
 const TALL = 32;
 const FLAG = { x: 2, y: -30, w: 26, h: 22 };
 const TAIL = 7;
-const FACE = 18;
+/** The widest a logo's cloth gets before the tail, which is what was measured. */
+const WIDEST = 28;
 /** The tag sits this far past the tail, and is as tall as the cloth. */
 const GAP = 4;
 const TAG = FLAG.h;
@@ -91,6 +92,8 @@ interface Post {
   stand: Container;
   sprite: Sprite | null;
   under: Sprite | null;
+  /** Where its tail ends, in its own pixels: a logo's cloth is the logo's shape. */
+  reach: number;
   /** What it was last painted with, so an unchanged project is not repainted. */
   painted: string;
 }
@@ -109,7 +112,15 @@ export class Pennants {
   ) {
     [...feet.entries()].forEach(([district, foot], at) => {
       const stand = stands[at];
-      if (stand) this.posts.set(district, { foot, stand, sprite: null, under: null, painted: '' });
+      if (stand)
+        this.posts.set(district, {
+          foot,
+          stand,
+          sprite: null,
+          under: null,
+          reach: FLAG.x + FLAG.w + TAIL,
+          painted: '',
+        });
     });
     this.tag = document.createElement('div');
     this.tag.className = 'pennant-tag';
@@ -135,7 +146,7 @@ export class Pennants {
       post.sprite = null;
       post.under = null;
       if (!one) continue;
-      void paint(COLOURS[district] ?? COLOURS.A, one).then((texture) => {
+      void paint(COLOURS[district] ?? COLOURS.A, one).then(({ texture, reach }) => {
         if (post.painted !== key) {
           texture.destroy(true);
           return;
@@ -152,6 +163,8 @@ export class Pennants {
         }
         post.sprite = sprite;
         post.under = under;
+        post.reach = reach;
+        if (this.shown === district) this.follow();
       });
     }
     if (this.shown && !this.flying.has(this.shown)) this.show(null);
@@ -231,7 +244,7 @@ export class Pennants {
        inside the camera at an offset of its own, and the camera's answer is
        off by exactly that, times the zoom. */
     const tail = post.stand.toGlobal({
-      x: post.foot.x + (FLAG.x + FLAG.w + TAIL + GAP) * across,
+      x: post.foot.x + (post.reach + GAP) * across,
       y: post.foot.y + (FLAG.y + FLAG.h / 2) * across,
     });
     this.tag.style.transform = `translate(${Math.round(tail.x)}px, ${Math.round(
@@ -257,10 +270,35 @@ function shade(): Texture {
   return texture;
 }
 
-/** The flag, a pixel at a time, at the design's own size. */
-async function paint(colour: string, one: Flown): Promise<Texture> {
+/**
+ * The flag, a pixel at a time.
+ *
+ * A project with a logo flies the logo: the cloth is the logo's own shape at
+ * the cloth's height, edge to edge, and the swallowtail carries on in the
+ * colour round the logo's own edge, as does anything see-through in it, so the
+ * flag is the logo and nothing else. The logo stops where the tail starts
+ * because a notch cut into a square icon took half its symbol with it. A
+ * project without one flies its district's colour with its first letter on it.
+ */
+async function paint(colour: string, one: Flown): Promise<{ texture: Texture; reach: number }> {
   const [canvas, pen] = sheet();
   const at = pencil(pen);
+  const face = one.icon ? await picture(one.icon) : null;
+  const logo = face ? trimmed(face) : null;
+
+  const inner = FLAG.h - 4;
+  let wide = FLAG.w;
+  let across = 0;
+  let high = inner;
+  if (logo) {
+    across = Math.round(inner * logo.aspect);
+    wide = across + 2;
+    if (wide > WIDEST) {
+      wide = WIDEST;
+      across = WIDEST - 2;
+      high = Math.max(1, Math.round(across / logo.aspect));
+    }
+  }
 
   at(-2, TOP, 4, -TOP, TIMBER);
   at(-2, TOP, 1, -TOP, OUTLINE);
@@ -269,21 +307,22 @@ async function paint(colour: string, one: Flown): Promise<Texture> {
   /* The cloth's drop, cut solid on its own sheet and laid down at half, so the
      keyline and the fill under it do not stack into two shades of shadow. */
   const [drop, dropPen] = sheet();
-  cloth(pencil(dropPen), 2, 2, OUTLINE, OUTLINE);
+  cloth(pencil(dropPen), wide, 2, 2, OUTLINE, OUTLINE);
   pen.globalAlpha = 0.5;
   pen.drawImage(drop, 0, 0);
   pen.globalAlpha = 1;
-  cloth(at, 0, 0, OUTLINE, colour);
+  cloth(at, wide, 0, 0, OUTLINE, logo ? logo.edge : colour);
 
-  // The face: its own picture, or the first letter of its name.
-  const face = one.icon ? await picture(one.icon) : null;
-  if (face) {
+  if (logo) {
     pen.imageSmoothingEnabled = true;
     pen.imageSmoothingQuality = 'high';
-    // Inside the keyline, which is on the top, bottom and left only.
-    const x = FLAG.x + 2 + (FLAG.w - 2 - FACE) / 2;
-    const y = FLAG.y + (FLAG.h - FACE) / 2;
-    pen.drawImage(face, x - LEFT, y - TOP, FACE, FACE);
+    pen.drawImage(
+      logo.image,
+      FLAG.x + 2 - LEFT,
+      FLAG.y + 2 + Math.floor((inner - high) / 2) - TOP,
+      across,
+      high
+    );
   } else {
     /* Silkscreen at three times its own 8px, so every stroke is three whole
        pixels and the letter fills the cloth the way a face would: at the
@@ -295,10 +334,10 @@ async function paint(colour: string, one: Flown): Promise<Texture> {
     letterPen.textBaseline = 'alphabetic';
     letterPen.fillStyle = OUTLINE;
     // Its advance carries three pixels of spacing after the glyph, not before.
-    const wide = letterPen.measureText(initial).width - 3;
+    const glyph = letterPen.measureText(initial).width - 3;
     letterPen.fillText(
       initial,
-      Math.round(FLAG.x + 2 + (FLAG.w - 2 - wide) / 2) - LEFT,
+      Math.round(FLAG.x + 2 + (FLAG.w - 2 - glyph) / 2) - LEFT,
       FLAG.y + FLAG.h - 4 - TOP
     );
     crisp(letterPen);
@@ -307,7 +346,82 @@ async function paint(colour: string, one: Flown): Promise<Texture> {
 
   const texture = Texture.from(canvas);
   texture.source.scaleMode = 'nearest';
-  return texture;
+  return { texture, reach: FLAG.x + wide + TAIL };
+}
+
+/**
+ * A logo with its see-through margin cut away, its shape, and the colour
+ * round its edge.
+ *
+ * Icons carry padding, an app icon most of all, and padding on a flag this
+ * small is most of the flag. The edge colour is the average of the solid
+ * pixels on the outermost ring of what is left, which on a round icon is its
+ * own rim and on a square one is its own background.
+ */
+function trimmed(
+  image: HTMLImageElement
+): { image: CanvasImageSource; aspect: number; edge: string } | null {
+  const scale = Math.min(1, 256 / Math.max(image.naturalWidth, image.naturalHeight, 1));
+  const w = Math.max(1, Math.round(image.naturalWidth * scale));
+  const h = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const pen = canvas.getContext('2d', { willReadFrequently: true });
+  if (!pen) return null;
+  pen.drawImage(image, 0, 0, w, h);
+  let data: Uint8ClampedArray;
+  try {
+    data = pen.getImageData(0, 0, w, h).data;
+  } catch {
+    return { image, aspect: w / h, edge: OUTLINE };
+  }
+  const solid = (x: number, y: number): boolean => (data[(y * w + x) * 4 + 3] ?? 0) > 24;
+  let left = w;
+  let right = -1;
+  let top = h;
+  let bottom = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!solid(x, y)) continue;
+      left = Math.min(left, x);
+      right = Math.max(right, x);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+    }
+  }
+  if (right < 0) return null;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let n = 0;
+  const ring = (x: number, y: number): void => {
+    if (!solid(x, y)) return;
+    const i = (y * w + x) * 4;
+    r += data[i] ?? 0;
+    g += data[i + 1] ?? 0;
+    b += data[i + 2] ?? 0;
+    n += 1;
+  };
+  // A few pixels in, so a round icon's anti-aliased rim counts for its colour.
+  for (let inset = 0; inset < 3; inset++) {
+    for (let x = left; x <= right; x++) {
+      ring(x, Math.min(bottom, top + inset));
+      ring(x, Math.max(top, bottom - inset));
+    }
+    for (let y = top; y <= bottom; y++) {
+      ring(Math.min(right, left + inset), y);
+      ring(Math.max(left, right - inset), y);
+    }
+  }
+  const out = document.createElement('canvas');
+  out.width = right - left + 1;
+  out.height = bottom - top + 1;
+  out
+    .getContext('2d')
+    ?.drawImage(canvas, left, top, out.width, out.height, 0, 0, out.width, out.height);
+  const edge = n ? `rgb(${Math.round(r / n)},${Math.round(g / n)},${Math.round(b / n)})` : OUTLINE;
+  return { image: out, aspect: out.width / out.height, edge };
 }
 
 function sheet(): [HTMLCanvasElement, CanvasRenderingContext2D] {
@@ -330,8 +444,8 @@ function pencil(pen: CanvasRenderingContext2D): Pencil {
 /* The flag body with its keyline on three sides and the swallowtail after it.
    The notch's two teeth are stepped a row at a time: a pixel flag with a
    smooth diagonal is the one thing that gives away it was not in the kit. */
-function cloth(at: Pencil, dx: number, dy: number, line: string, fill: string): void {
-  const { x, y, w, h } = FLAG;
+function cloth(at: Pencil, w: number, dx: number, dy: number, line: string, fill: string): void {
+  const { x, y, h } = FLAG;
   at(x + dx, y + dy, w, h, line);
   at(x + 2 + dx, y + 2 + dy, w - 2, h - 4, fill);
   const half = h / 2;
