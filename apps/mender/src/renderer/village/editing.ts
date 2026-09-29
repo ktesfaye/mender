@@ -41,6 +41,17 @@ export interface EditingHost {
   forget(id: string): Promise<void>;
   /** A point on screen that something written already covers. */
   covered(x: number, y: number): boolean;
+  /** The flags, which can be picked up and stood somewhere else on their own land. */
+  flags(): Flags;
+  /** Stand a district's flag here from now on. */
+  plant(district: string, foot: { x: number; y: number }): Promise<void>;
+}
+
+export interface Flags {
+  at(x: number, y: number): string | null;
+  lift(district: string, x: number, y: number): boolean;
+  carry(x: number, y: number, fits: boolean): { x: number; y: number } | null;
+  putBack(): void;
 }
 
 /* The light a place is lit with while it is being rearranged. The warm one
@@ -66,6 +77,10 @@ const SAND = 0xf4e3c0;
  * what changes is who lives in which. What cannot be, a district that would no
  * longer reach the fire, lights red and says why, and letting go there puts
  * it back.
+ *
+ * A flag is picked up the same way, by its pole or its cloth, and let go
+ * anywhere on its own district it stands there from then on. Off its own land
+ * it goes red, and letting go puts it back.
  */
 export class Editing {
   private on = false;
@@ -85,6 +100,13 @@ export class Editing {
     grabbed: { x: number; y: number };
     fits: { places: Record<string, string | null>; off: string | null } | null;
     over: Place | null;
+  } | null = null;
+  /** A flag in the hand: whose, and whether where it is now would do. */
+  private flag: {
+    who: Resident;
+    district: string;
+    foot: { x: number; y: number } | null;
+    fits: boolean;
   } | null = null;
   /** A forget waiting on its second press. */
   private forgetting: Resident | null = null;
@@ -119,7 +141,7 @@ export class Editing {
 
   /** Whether a district is in the hand right now. */
   get holding(): boolean {
-    return this.carrying !== null;
+    return this.carrying !== null || this.flag !== null;
   }
 
   start(): void {
@@ -217,6 +239,7 @@ export class Editing {
   private down(event: FederatedPointerEvent): void {
     if (!this.on || this.busy || event.button !== 0) return;
     if (this.host.covered(event.global.x, event.global.y)) return;
+    if (this.liftFlag(event)) return;
     const point = this.camera.toWorld(event.global);
     const place = this.grabbable(this.placeAt(point.x, point.y));
     const who = place ? this.residentOn(place.id) : undefined;
@@ -280,15 +303,19 @@ export class Editing {
   private moving(event: FederatedPointerEvent): void {
     if (!this.on) return;
     const point = this.camera.toWorld(event.global);
+    if (this.flag) {
+      this.carryFlag(event);
+      return;
+    }
     const carried = this.carrying;
     if (!carried) {
       /* The camera is still dragged by the water, so a district has to be
          taken out of its reach before the press lands on it rather than
          after: by then it has already started panning. */
-      const over = this.host.covered(event.global.x, event.global.y)
-        ? null
-        : this.grabbable(this.placeAt(point.x, point.y));
-      const holds = over && this.residentOn(over.id);
+      const covered = this.host.covered(event.global.x, event.global.y);
+      const over = covered ? null : this.grabbable(this.placeAt(point.x, point.y));
+      const flag = covered ? null : this.host.flags().at(event.global.x, event.global.y);
+      const holds = (flag && this.residentOn(flag)) || (over && this.residentOn(over.id));
       if (holds) this.camera.plugins.pause('drag');
       else this.camera.plugins.resume('drag');
       this.pixi.canvas.style.cursor = holds ? 'grab' : 'default';
@@ -316,7 +343,67 @@ export class Editing {
     this.say();
   }
 
+  /* ── a flag ───────────────────────────────────────────────────────── */
+
+  private liftFlag(event: FederatedPointerEvent): boolean {
+    const district = this.host.flags().at(event.global.x, event.global.y);
+    const who = district ? this.residentOn(district) : undefined;
+    if (!district || !who) return false;
+    if (!this.host.flags().lift(district, event.global.x, event.global.y)) return false;
+    this.forgetting = null;
+    this.camera.plugins.pause('drag');
+    this.camera.plugins.pause('decelerate');
+    this.flag = { who, district, foot: null, fits: true };
+    this.pixi.canvas.style.cursor = 'grabbing';
+    this.say();
+    stir();
+    return true;
+  }
+
+  private carryFlag(event: FederatedPointerEvent): void {
+    const flag = this.flag;
+    if (!flag) return;
+    const flags = this.host.flags();
+    // Judged at the foot of the pole, which is what stands on the land.
+    const foot = flags.carry(event.global.x, event.global.y, flag.fits);
+    const fits = foot ? this.grabbable(this.placeAt(foot.x, foot.y))?.id === flag.district : false;
+    if (fits !== flag.fits) flags.carry(event.global.x, event.global.y, fits);
+    flag.foot = foot;
+    this.pixi.canvas.style.cursor = 'grabbing';
+    if (fits !== flag.fits) {
+      flag.fits = fits;
+      this.say();
+    }
+    stir();
+  }
+
+  private async plantFlag(): Promise<void> {
+    const flag = this.flag;
+    this.flag = null;
+    this.camera.plugins.resume('decelerate');
+    if (!flag) return;
+    if (!flag.foot) {
+      this.host.flags().putBack();
+      this.say();
+      return;
+    }
+    if (!flag.fits) {
+      this.host.flags().putBack();
+      this.say(`${flag.who.name}'s flag only stands on its own district, so it stays.`);
+      return;
+    }
+    this.busy = true;
+    await this.host.plant(flag.district, flag.foot);
+    this.busy = false;
+    this.refresh();
+    this.say(`${flag.who.name}'s flag stands there now.`);
+  }
+
   private async up(event: FederatedPointerEvent): Promise<void> {
+    if (this.on && this.flag) {
+      await this.plantFlag();
+      return;
+    }
     const carried = this.carrying;
     if (!this.on || !carried) return;
     const point = this.camera.toWorld(event.global);
@@ -363,6 +450,10 @@ export class Editing {
 
   /** Put whatever is held back down, wherever it came from. */
   private drop(): void {
+    if (this.flag) {
+      this.flag = null;
+      this.host.flags().putBack();
+    }
     const carried = this.carrying;
     this.carrying = null;
     this.hole.clear();
@@ -396,6 +487,12 @@ export class Editing {
           this.say();
         })
       );
+    } else if (this.flag) {
+      parts.push(
+        this.flag.fits
+          ? `standing ${this.flag.who.name}'s flag`
+          : `${this.flag.who.name}'s flag can only stand on its own district`
+      );
     } else if (carried) {
       const over = carried.over;
       const why = over && carried.fits?.places[over.id];
@@ -415,7 +512,8 @@ export class Editing {
       );
     } else {
       parts.push(
-        result ?? 'pick a district up and put it somewhere else, or out on the water to forget it',
+        result ??
+          'pick a district up and put it somewhere else, or out on the water to forget it. a flag moves on its own land',
         '   ',
         pressing('done', () => this.stop())
       );

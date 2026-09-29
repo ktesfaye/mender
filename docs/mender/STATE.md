@@ -2634,6 +2634,17 @@ houses swapped with the hay farm's east half and both flags traded places, the
 crop farm refused off the map because everything hangs off it, and the crop
 farm's barn forgotten off the water.
 
+### A flag is moved by hand (2026-09-28) — done
+
+While editing districts a flag is picked up by its pole or its cloth, before
+the district under it, and carried over everything; let go anywhere on its own
+district it stands there, in the right place in the draw order, and keeps
+standing there across restarts, kept on this machine. Carried off its own land
+it turns red, the line says why, and letting go puts it back. Driven in the dev
+window over the debug port: mender's flag dragged off its lane onto the grass
+by the barn, red while its foot was over the neighbouring place, and still
+where it was left after a reload.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

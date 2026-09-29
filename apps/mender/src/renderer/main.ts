@@ -69,7 +69,7 @@ import { Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
 import './yard/tokens.css';
 import { say } from './village/notice';
-import { loadFeet, Pennants } from './village/pennants';
+import { loadFeet, Pennants, plantFlag } from './village/pennants';
 import { buildScene } from './village/scene';
 import { Water } from './village/water';
 import { wire, type MenderClient } from './wire';
@@ -4955,6 +4955,12 @@ async function boot(): Promise<void> {
           await forget(id);
         },
         covered: (x, y) => yard.covers(x, y),
+        flags: () => drawn.pennants,
+        plant: async (district, foot) => {
+          plantFlag(district, foot);
+          drawn = await draw(world, client, pixi.renderer, camera, drawn);
+          people();
+        },
       },
       layer.root
     );

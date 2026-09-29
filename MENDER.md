@@ -716,7 +716,10 @@ moves in; out on the water and the line at the bottom offers to forget it,
 in the two presses anything that takes sessions down takes. His districts
 never move, only who stands in them, and nothing may be let go anywhere that
 would leave a project out of reach of the fire: that place lights red, says
-who would be stranded, and the district goes back where it was.
+who would be stranded, and the district goes back where it was. A
+flag is picked up the same way, by its pole or its cloth, and stands wherever
+on its own district it is let go, from then on; carried off its own land it
+goes red and goes back.
 
 **The order they come on in is measured, not chosen.** Every state has to be one
 piece of land walkable from the fire, and from there the district that comes next

@@ -88,16 +88,50 @@ export interface Flown {
   icon?: string;
 }
 
-/** Where every district's post stands, measured once and shipped. */
+/** Where a post was moved to by hand, by district, kept on this machine. */
+const MOVED = 'mender.village.flags';
+
+function moved(): Record<string, [number, number]> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(MOVED) ?? '{}') as unknown;
+    return raw && typeof raw === 'object' ? (raw as Record<string, [number, number]>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Stand a district's post somewhere else from now on. */
+export function plantFlag(district: string, foot: Foot): void {
+  try {
+    localStorage.setItem(
+      MOVED,
+      JSON.stringify({ ...moved(), [district]: [Math.round(foot.x), Math.round(foot.y)] })
+    );
+  } catch {
+    // Only a convenience; the measured spot is still a good one.
+  }
+}
+
+/**
+ * Where every district's post stands: measured once and shipped, unless it
+ * has been picked up and put somewhere else by hand, which wins.
+ */
 export async function loadFeet(): Promise<Map<string, Foot>> {
+  let feet: Record<string, [number, number]> = {};
   try {
     const read = (await (await fetch('./village/pennants.json')).json()) as {
       feet: Record<string, [number, number]>;
     };
-    return new Map(Object.entries(read.feet).map(([id, [x, y]]) => [id, { x, y }]));
+    feet = read.feet;
   } catch {
-    return new Map();
+    // No measured spots; only moved ones stand.
   }
+  const all = { ...feet, ...moved() };
+  return new Map(
+    Object.entries(all)
+      .filter(([, at]) => Array.isArray(at) && at.every((n) => Number.isFinite(n)))
+      .map(([id, [x, y]]) => [id, { x, y }])
+  );
 }
 
 interface Post {
@@ -188,6 +222,72 @@ export class Pennants {
     }
     if (this.shown && !this.flying.has(this.shown)) this.show(null);
   }
+
+  /** Whose flag is under a point on screen, if anybody's. */
+  at(x: number, y: number): string | null {
+    const across = this.across();
+    for (const [district, post] of this.posts) {
+      if (!post.group) continue;
+      /* Asked of the post rather than of its bounds, for the same reason the
+         tag is: the island's own offset in the camera throws the bounds off. */
+      const from = post.stand.toGlobal({
+        x: post.foot.x + LEFT * across,
+        y: post.foot.y + TOP * across,
+      });
+      const to = post.stand.toGlobal({
+        x: post.foot.x + post.reach * across,
+        y: post.foot.y + 2 * across,
+      });
+      if (x >= from.x && x <= to.x && y >= from.y && y <= to.y) return district;
+    }
+    return null;
+  }
+
+  /**
+   * Pick a flag up to stand it somewhere else. It comes off its own place in
+   * the draw order and goes over everything while it is in the hand, since
+   * where it lands decides what stands in front of it.
+   */
+  lift(district: string, x: number, y: number): boolean {
+    const post = this.posts.get(district);
+    const group = post?.group;
+    const root = post?.stand.parent;
+    if (!post || !group || !root) return false;
+    const at = root.toLocal({ x, y });
+    this.held = { district, grabbed: { x: at.x - post.foot.x, y: at.y - post.foot.y } };
+    root.addChild(group);
+    this.show(null);
+    return true;
+  }
+
+  /** Where the held flag's foot is now, following the pointer. */
+  carry(x: number, y: number, fits: boolean): Foot | null {
+    const held = this.held;
+    const post = held && this.posts.get(held.district);
+    const group = post?.group;
+    const root = post?.stand.parent;
+    if (!held || !group || !root) return null;
+    const at = root.toLocal({ x, y });
+    const foot = {
+      x: Math.round(at.x - held.grabbed.x),
+      y: Math.round(at.y - held.grabbed.y),
+    };
+    group.position.set(foot.x, foot.y);
+    group.tint = fits ? 0xffffff : 0xf2665a;
+    return foot;
+  }
+
+  /** Put the held flag back where it stood, if it was not planted. */
+  putBack(): void {
+    const post = this.held && this.posts.get(this.held.district);
+    this.held = null;
+    if (!post?.group) return;
+    post.group.tint = 0xffffff;
+    post.group.position.set(post.foot.x, post.foot.y);
+    post.stand.addChild(post.group);
+  }
+
+  private held: { district: string; grabbed: Foot } | null = null;
 
   /** Unfurl the name on whichever district is under the pointer, or none. */
   show(district: string | null): void {
