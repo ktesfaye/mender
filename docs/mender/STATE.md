@@ -2604,6 +2604,12 @@ folder: eleven projects, a twelfth folder dropped on the water landed on the
 hay farm's east half, then every piece filled and the island looked at whole,
 a piece pointed at and walked into.
 
+The first cuts were ruler lines through the middle of yards and fields, nothing
+like his own. Each piece is now grown out from its own house and yard, and so
+is the part the district keeps, with fences and cliffs slow to cross, so the
+lines settle along the lanes and fence runs and every field goes whole to one
+side. Looked at over the art for all five and pointed at in the running app.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour
