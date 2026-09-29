@@ -10,6 +10,7 @@ import { MENDER_GRIP_CHANNEL, type Grip } from '../shared/channels';
  */
 export function installGrip(): void {
   let from: { cursor: Electron.Point; window: number[] } | null = null;
+  let zoomedFrom: Electron.Rectangle | null = null;
 
   ipcMain.on(MENDER_GRIP_CHANNEL, (event: IpcMainEvent, grip: Grip) => {
     const held = BrowserWindow.fromWebContents(event.sender);
@@ -35,7 +36,34 @@ export function installGrip(): void {
       held.minimize();
       return;
     }
-    if (held.isMaximized()) held.unmaximize();
-    else held.maximize();
+    /* Zoom is a toggle back to wherever it was, remembered here rather than
+       asked of `isMaximized`, which on macOS says no to a window it has just
+       filled whenever the frame lands a pixel off the display's work area. */
+    const bounds = held.getBounds();
+    const area = screen.getDisplayMatching(bounds).workArea;
+    const filled =
+      held.isMaximized() ||
+      (Math.abs(bounds.width - area.width) <= 2 && Math.abs(bounds.height - area.height) <= 2);
+    if (filled && zoomedFrom) {
+      held.setBounds(zoomedFrom, true);
+      zoomedFrom = null;
+    } else if (filled) {
+      // Filled before this launch, so there is nowhere remembered to go back
+      // to: the size it first opens at, in the middle of the display.
+      const width = Math.min(1480, area.width - 80);
+      const height = Math.min(1020, area.height - 60);
+      held.setBounds(
+        {
+          x: Math.round(area.x + (area.width - width) / 2),
+          y: Math.round(area.y + (area.height - height) / 2),
+          width,
+          height,
+        },
+        true
+      );
+    } else {
+      zoomedFrom = bounds;
+      held.maximize();
+    }
   });
 }
