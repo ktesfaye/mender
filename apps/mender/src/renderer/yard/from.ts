@@ -175,6 +175,27 @@ export function yardOf(from: Standing): Yard {
   };
 }
 
+/**
+ * What it is thinking with and how hard, the way a person would say it:
+ * "Opus 4.7 · high". Claude's own first choice is called "Default
+ * (recommended)", which says nothing, so it is named by what it actually
+ * resolves to, which the agent puts in that choice's description.
+ */
+function modelOf(kit: Kit): string | undefined {
+  const model = kit.models.find((one) => one.id === kit.model);
+  if (!model) return undefined;
+  let name = model.name;
+  if (model.id === 'default' || /\bdefault\b/i.test(name)) {
+    const about = model.about ?? '';
+    const current = /currently\s+([^)·,]+)/i.exec(about)?.[1];
+    const said = (current ?? about.split(' · ')[0] ?? '').trim();
+    if (said) name = said;
+  }
+  name = name.replace(/\s*\(recommended\)\s*/i, '').trim();
+  const effort = kit.efforts.find((one) => one.id === kit.effort);
+  return effort && effort.id !== 'default' ? `${name} · ${effort.name.toLowerCase()}` : name;
+}
+
 function sessionOf(
   task: Task,
   told: Told | undefined,
@@ -189,7 +210,7 @@ function sessionOf(
     name: task.title,
     branch: task.branch,
     agent: kit?.hands.find((one) => one.id === kit.hand)?.name ?? task.agent ?? 'nobody',
-    ...(kit?.model ? { model: kit.models.find((one) => one.id === kit.model)?.name } : {}),
+    ...(kit && modelOf(kit) ? { model: modelOf(kit) } : {}),
     ...(kit?.mode
       ? { permissions: kit.modes.find((one) => one.id === kit.mode)?.name?.toLowerCase() }
       : {}),
