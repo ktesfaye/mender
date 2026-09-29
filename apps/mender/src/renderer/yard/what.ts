@@ -253,12 +253,13 @@ export interface Step {
 /** Something it produced, which is what the cart is carrying. */
 export interface Made {
   id: string;
+  /** A page it published, a file it wrote to be read, or a thing it built. */
+  kind: 'page' | 'file' | 'build';
   what: string;
+  /** How it came to be and how long ago, in one breath. */
   when: string;
-  /** The lines under it, which are the contents rather than a description. */
-  lines: string[];
-  /** Anything wrong with it, which is the only warm thing in that column. */
-  warning?: string;
+  /** What pressing it does, as a pick on the board. */
+  pick: string;
 }
 
 /** Somebody it sent out, standing in the yard where their state puts them. */

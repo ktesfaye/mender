@@ -471,22 +471,32 @@ function stepOf(deed: {
 /**
  * What the cart is carrying.
  *
- * For a coding agent, what it made is the files it wrote. The newest goes on
- * the board and the rest are the lines under it, which is the same shape the
- * designs use for a published page and its contents.
+ * Only what was made to be looked at: a page it published, a document or a
+ * picture it wrote, a thing it built. The source it changed on the way is what
+ * it did, not what it made. Newest first, and pressing one goes to it the way
+ * it is best looked at: the board reads what the board reads well, a page
+ * opens where the web is read, and a build is shown where it landed.
  */
 function madeOf(told: Told | undefined): Session['made'] {
-  const wrote = told?.wrote ?? [];
-  const [newest, ...rest] = wrote;
-  if (!newest) return [];
-  return [
-    {
-      id: newest.path,
-      what: shortOf(newest.path),
-      when: newest.at ? `written ${agoOf(Date.now() - newest.at)}` : 'written before this',
-      lines: rest.slice(0, 6).map((one) => `${shortOf(one.path)} · +${one.added} −${one.gone}`),
-    },
-  ];
+  return (told?.made ?? []).map((one) => ({
+    id: one.id,
+    kind: one.kind,
+    what: one.name,
+    when: `${MADE_VERB[one.kind]} ${one.at ? agoOf(Date.now() - one.at) : 'before this'}`,
+    pick: madePick(one),
+  }));
+}
+
+const MADE_VERB = { page: 'published', file: 'written', build: 'built' } as const;
+
+/** What the board reads better than anything else on the machine would. */
+const READ_HERE = /\.(md|markdown|csv|png|jpe?g|gif|webp|svg)$/i;
+
+function madePick(one: NonNullable<Told['made']>[number]): string {
+  if (one.url) return `link:${one.url}`;
+  if (one.kind === 'build') return `showit:${one.path}`;
+  if (one.inside && READ_HERE.test(one.inside)) return `open:${one.inside}`;
+  return `openit:${one.path}`;
 }
 
 /**

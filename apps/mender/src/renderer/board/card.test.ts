@@ -23,6 +23,7 @@ const told: Told = {
   deeds: [],
   errands: [],
   wrote: [],
+  made: [],
   turns: 2,
   began: 1,
 } as Told;

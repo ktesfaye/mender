@@ -2022,6 +2022,7 @@ function made(
   /* A question is never put away with the plan: it is the one thing on the
      board that stops the work until it is answered. */
   const plan = hidden('now') ? [] : (session?.plan ?? []);
+  const output = hidden('made') ? [] : (session?.made ?? []);
   const steps_ = hidden('did') ? [] : (session?.steps ?? []);
   const hands = hidden('did') ? [] : (session?.agents ?? []);
 
@@ -2034,7 +2035,7 @@ function made(
    * yard until it has sent somebody out. The column's own rule goes with them,
    * because a line down an empty third of the screen is the same lie in
    * thinner form. */
-  if (!yard.asking && !plan.length && !steps_.length && !hands.length) return;
+  if (!yard.asking && !output.length && !plan.length && !steps_.length && !hands.length) return;
 
   root.appendChild(
     stays(
@@ -2061,17 +2062,47 @@ function made(
   });
   root.appendChild(above);
 
-  let y = 0;
+  /* What it made goes first, above whatever it is in the middle of, because
+     it is the thing you came back to find. Past a third of the column it
+     scrolls inside itself rather than pushing the rest off the wood. */
+  let lead = 0;
+  if (output.length) {
+    const cart = carted(at.wide, output, does);
+    above.appendChild(cart);
+    const most = Math.round(above.offsetHeight * 0.34);
+    if (cart.offsetHeight > most) {
+      const list = cart.querySelector<HTMLElement>('[data-rest]');
+      if (list) {
+        list.style.maxHeight = `${Math.max(0, list.offsetHeight - (cart.offsetHeight - most))}px`;
+        list.style.overflowY = 'auto';
+        list.style.pointerEvents = 'auto';
+        list.style.scrollbarWidth = 'none';
+      }
+    }
+    region('made', at, HEAD.label, HEAD.label + cart.offsetHeight + 18);
+    lead = cart.offsetHeight + 18;
+    if (yard.asking || plan.length || steps_.length) {
+      above.appendChild(rule({ left: 0, top: lead - 2, width: at.wide }));
+      lead += 18;
+    }
+    /* Whatever flows in under it starts where the rule says it does. */
+    const gap = document.createElement('div');
+    gap.style.cssText = `position:relative;height:${lead - cart.offsetHeight}px`;
+    above.appendChild(gap);
+  }
+
+  let y = lead;
   const now = yard.asking ? gate(at.wide, yard.asking, does) : plan.length ? planned(plan) : null;
   if (now) {
     above.appendChild(now);
     /* A plan longer than half the column scrolls inside itself, because the
        steps under it are the other half of what this column is for. */
     const dragged = arrangement().now;
+    const tall = above.offsetHeight - lead;
     const most =
       dragged === undefined
-        ? Math.round(above.offsetHeight * (yard.asking ? 0.62 : 0.42))
-        : clamp(dragged, 60, Math.max(60, above.offsetHeight - 120));
+        ? Math.round(tall * (yard.asking ? 0.62 : 0.42))
+        : clamp(dragged, 60, Math.max(60, tall - 120));
     if (dragged !== undefined) now.style.height = `${most}px`;
     if (now.offsetHeight > most || dragged !== undefined) {
       now.style.height = `${most}px`;
@@ -2081,8 +2112,8 @@ function made(
       const doing = now.querySelector<HTMLElement>('[data-doing]');
       if (doing) now.scrollTop = Math.max(0, doing.offsetTop - now.clientHeight / 3);
     }
-    y = now.offsetHeight + 18;
-    region('now', at, HEAD.label, HEAD.label + y);
+    y = lead + now.offsetHeight + 18;
+    region('now', at, HEAD.label + lead, HEAD.label + y);
   }
   if (steps_.length || hands.length) region('did', at, HEAD.label + y, floor);
 
@@ -2096,7 +2127,7 @@ function made(
     line.dataset.value = String(now.offsetHeight);
     above.appendChild(line);
   }
-  const labelAt = now ? y + 20 : 0;
+  const labelAt = now ? y + 20 : y;
   above.appendChild(label('what it did', { left: 0, top: labelAt }));
 
   const top = labelAt + (HEAD.top - HEAD.label);
@@ -2209,6 +2240,56 @@ function made(
 
 /** Where the steps were left scrolled to, for a session somebody scrolled up in. */
 const stepsFollowed = new Map<string, number>();
+
+/**
+ * What it made, on the board it is nailed to.
+ *
+ * The newest is on the billboard in the hand, since it is the one you came
+ * back for; everything before it is a line under the board, newest first.
+ * Every one of them is pressed to go and look at it.
+ */
+function carted(wide: number, made: Session['made'], does: Doings): HTMLElement {
+  const it = document.createElement('div');
+  it.style.cssText = "position:relative;font-family:'Josefin Sans',sans-serif";
+  it.appendChild(label('what it made', {}));
+
+  const [newest, ...rest] = made;
+  const top = document.createElement('div');
+  top.style.cssText = 'position:relative;height:88px;margin-top:12px';
+  const board = sprite(KIT_NAMES.billboard, 2);
+  board.style.cssText += ';left:0;top:0;transform:scale(.75);transform-origin:0 0';
+  top.appendChild(board);
+  const beside = document.createElement('div');
+  beside.style.cssText = `position:absolute;left:112px;top:6px;width:${Math.max(0, wide - 112)}px;display:flex;flex-direction:column;gap:4px`;
+  if (newest) {
+    const name = pressing(newest.what, () => does.press(newest.pick));
+    name.style.cssText +=
+      ";font-family:'Caveat',cursive;font-size:22px;line-height:1.1;overflow-wrap:anywhere";
+    beside.appendChild(name);
+    const when = said(newest.when, '#a8c469');
+    when.style.cssText += ';font-size:12px;letter-spacing:.14em';
+    beside.appendChild(when);
+  }
+  top.appendChild(beside);
+  it.appendChild(top);
+
+  if (rest.length) {
+    const list = document.createElement('div');
+    list.dataset.rest = '';
+    list.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:10px';
+    for (const one of rest) {
+      const line = document.createElement('div');
+      line.style.cssText = 'font-size:13px;line-height:1.35;color:#8a7452';
+      const name = pressing(one.what, () => does.press(one.pick));
+      name.style.overflowWrap = 'anywhere';
+      line.appendChild(name);
+      line.appendChild(document.createTextNode(` \u00b7 ${one.when}`));
+      list.appendChild(line);
+    }
+    it.appendChild(list);
+  }
+  return it;
+}
 
 /** The plan it posted, done steps inked out and the one it is on lit. */
 function planned(plan: Session['plan']): HTMLElement {

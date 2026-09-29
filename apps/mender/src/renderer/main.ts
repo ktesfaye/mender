@@ -4308,6 +4308,16 @@ async function boot(): Promise<void> {
         window.mender.openLink(pick.slice(5));
         return;
       }
+      /* Something a session made, opened in whatever this machine opens it
+         with, or shown where it landed when it is a thing that was built. */
+      if (pick.startsWith('openit:')) {
+        window.mender.openIt(pick.slice(7));
+        return;
+      }
+      if (pick.startsWith('showit:')) {
+        window.mender.showIt(pick.slice(7));
+        return;
+      }
       if (pick.startsWith('putdown:')) {
         watching?.putDown(pick.slice(8));
         return;

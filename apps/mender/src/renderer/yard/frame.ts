@@ -133,7 +133,7 @@ export function makeLayer(): Layer {
     const shrink = Math.min(1, wide / drawn);
     const gutter = Math.round(GUTTER * shrink);
     const left = !(hidden('asked') && hidden('changelog'));
-    const right = !(hidden('now') && hidden('did'));
+    const right = !(hidden('made') && hidden('now') && hidden('did'));
     const set = arrangement();
     let asked = left ? Math.round(set.asked ?? COLUMN.asked * shrink) : 0;
     /* The right column starts as narrow as it goes: it is a glance down the

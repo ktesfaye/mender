@@ -9,12 +9,13 @@
  */
 
 /** The parts that can be put away. The middle is never one of them. */
-export type Part = 'asked' | 'changelog' | 'now' | 'did';
+export type Part = 'asked' | 'changelog' | 'made' | 'now' | 'did';
 
 /** What each part is called when it is offered back. */
 export const PART_NAME: Record<Part, string> = {
   asked: 'what you asked',
   changelog: 'the changelog',
+  made: 'what it made',
   now: 'the plan',
   did: 'what it did',
 };

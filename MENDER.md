@@ -137,7 +137,16 @@ on the way there folded out of sight; pressing "now" over the answer, or the
 column's own heading, opens the trail upward out of it and pressing either
 again folds it, and it stays however you left it. They look no different for
 being pressable, the one place the gold rule gives way, because a gold word
-over every answer was one more thing to read. The right column is whatever the session is
+over every answer was one more thing to read. At the top of the right column
+is what it made, nailed to a billboard: not the source it changed on the way,
+but what you'd go and look at afterwards — a page it published, a document or
+a picture it wrote, an app or a package it built. The newest is on the board
+and everything before it is a line underneath, each pressed to go to it: the
+board reads what the board reads well, a page opens where the web is read,
+and a build is shown where it landed. The village keeps that list itself,
+per session, so closing and resuming a session never loses it, even when
+the conversation it comes back with has forgotten some of its own history;
+only a file that's actually gone from disk drops off. Under that is whatever the session is
 in the middle of: a question it is standing at the gate with, its answers
 pressable and numbered, or the plan it is working through, done steps inked
 out and the one it is on lit, and nothing when it is neither. Under that is
@@ -157,7 +166,7 @@ sent out standing in the firelight with an answer or off in the dark still
 working.
 
 **Everything but the middle can be put away, and every rule can be moved.**
-Right-clicking what you asked, the changelog, the plan or what it did offers
+Right-clicking what you asked, the changelog, what it made, the plan or what it did offers
 to put it away; right-clicking anywhere in the yard offers back whatever has
 been, and puts the rules back where they started. A column with nothing left
 in it goes entirely and the answer has its width. Every rule between two

@@ -251,6 +251,29 @@ export const wroteSchema = z.object({
 });
 export type Wrote = z.infer<typeof wroteSchema>;
 
+/**
+ * Something a session made for you to look at, as opposed to a file it
+ * changed on the way: a page it published, a document or picture it wrote, a
+ * thing it built. Kept by the village itself, so a session that is closed and
+ * resumed still has everything it ever handed over.
+ */
+export const madeSchema = z.object({
+  /** The path or the address, which is also what makes two of them the same. */
+  id: z.string(),
+  kind: z.enum(['page', 'file', 'build']),
+  /** What it is called, said the way anybody would say it. */
+  name: z.string(),
+  /** Where it is on this machine, for a file or a build. */
+  path: z.string().optional(),
+  /** Where it is inside the session's checkout, when it is in there. */
+  inside: z.string().optional(),
+  /** Where it is on the web, for a published page. */
+  url: z.string().optional(),
+  /** When it was first seen made, or 0 when that was before anybody looked. */
+  at: z.number(),
+});
+export type Made = z.infer<typeof madeSchema>;
+
 export const toldSchema = z.object({
   /** Newest first. */
   notes: z.array(notedSchema),
@@ -261,6 +284,8 @@ export const toldSchema = z.object({
   errands: z.array(errandSchema),
   /** Newest first. */
   wrote: z.array(wroteSchema),
+  /** Newest first, everything it has ever made, even from before a resume. */
+  made: z.array(madeSchema),
   /** How many turns have been taken in here. */
   turns: z.number().int(),
   /** When the first thing was said, so the board can say how long this has run. */

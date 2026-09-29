@@ -2857,3 +2857,18 @@ in emdash's original shape. All three moved to `done`. Everything else left
 on the original 24-row list was looked at and either already covered by
 something built under a different name, or cut outright with the reason
 recorded above it — nothing was left blank because it ran out of time.
+
+### What it made is back, and it outlives a resume (2026-09-29) — done
+
+The top of the right column is a billboard again with what the session made
+on it: pages it published, documents and pictures it wrote, apps and
+packages it built — never the source it only changed on the way, which is
+still what it did. Each is pressed to go to it. The list is kept by the
+village per session and only ever grows, so a resumed conversation that
+forgot part of its history still shows everything; a file deleted from disk
+drops off. It can be put away and brought back like every other column.
+Driven in a dev instance on a scratch project: a real Claude session wrote a
+markdown file and an html page and linked a page, all three appeared, the
+app was restarted and the session walked back into with all three still
+there, the markdown file opened on the board as writing, and the column
+was put away and brought back.

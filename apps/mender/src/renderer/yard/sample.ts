@@ -95,15 +95,12 @@ export const SAMPLE: Yard = {
     made: [
       {
         id: 'm1',
-        what: 'nola.html',
+        kind: 'page',
+        what: 'nola',
         when: 'published 11m ago',
-        warning: 'three need booking · no photos yet',
-        lines: [
-          "Sat · Molly's Rise and Shine, Turkey and the Wolf, Zasu",
-          "Sun · Toups' Meatery, Parkway, Saint-Germain",
-          'Mon · Ayu Bakehouse, Herbsaint',
-        ],
+        pick: 'link:https://claude.ai/artifact/nola',
       },
+      { id: 'm2', kind: 'file', what: 'candidates.md', when: 'written 14m ago', pick: 'open:candidates.md' },
     ],
     waiting: [{ id: 'w1', said: 'and check the Sunday ones are open for lunch' }],
     carrying: [],

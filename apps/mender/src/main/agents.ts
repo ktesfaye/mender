@@ -27,6 +27,7 @@ import type {
   Failure,
   Kit,
   Line,
+  Made,
   Mood,
   Mused,
   Noted,
@@ -39,6 +40,7 @@ import type {
   WorkingState,
   Wrote,
 } from '@shared/agents';
+import { kept, madeIn, stillThere } from './made';
 
 /**
  * Why an install left them not here, in its own words.
@@ -197,6 +199,7 @@ const EMPTY_TOLD: ToldState = {
   deeds: [],
   errands: [],
   wrote: [],
+  made: [],
   turns: 0,
   began: null,
 };
@@ -217,6 +220,7 @@ const EMPTY: WorkingState = {
 
 const KEY = 'agents';
 const DRAFTS_KEY = 'drafts';
+const MADE_KEY = 'made';
 
 export function createAgents(
   runtimes: MenderRuntimes,
@@ -230,6 +234,10 @@ export function createAgents(
   /** What was half-written on a session's line, keyed by task, so it is
       still there after the app itself restarts. */
   let drafts: Record<string, string> = {};
+  /** Everything each session has made, keyed by task, because a resumed
+      conversation does not always bring its own history back whole. */
+  let madeBy: Record<string, Made[]> = {};
+  let madeLoaded = false;
   const loaded = (async () => {
     const held = await store.get(KEY);
     if (held.success && held.data && typeof held.data === 'object') {
@@ -239,6 +247,11 @@ export function createAgents(
     if (heldDrafts.success && heldDrafts.data && typeof heldDrafts.data === 'object') {
       drafts = heldDrafts.data as unknown as Record<string, string>;
     }
+    const heldMade = await store.get(MADE_KEY);
+    if (heldMade.success && heldMade.data && typeof heldMade.data === 'object') {
+      madeBy = heldMade.data as unknown as Record<string, Made[]>;
+    }
+    madeLoaded = true;
   })();
 
   const houses = new Map<string, House>();
@@ -340,6 +353,20 @@ export function createAgents(
      publish to nobody. Waking the session moves it straight back in. */
   const asleep = new Map<string, House>();
 
+  /* Whatever a session is seen to have made goes into the ledger the first
+     time it is seen and never comes out of it, so the list is the union of
+     every sighting rather than whatever the transcript happens to hold now. */
+  const keepMade = (task: string, found: readonly Made[]): Made[] => {
+    const before = madeBy[task] ?? [];
+    const next = kept(before, found);
+    if (!madeLoaded) return next;
+    if (JSON.stringify(next) !== JSON.stringify(before)) {
+      madeBy = { ...madeBy, [task]: next };
+      void store.set(MADE_KEY, madeBy as unknown as never);
+    }
+    return next;
+  };
+
   const houseOf = (task: string): House => {
     let house = houses.get(task);
     const sleeping = house ? undefined : asleep.get(task);
@@ -363,7 +390,8 @@ export function createAgents(
           const here = houses.get(task);
           if (here) retitleFromWork(task, here);
         },
-        () => wheres.get(task)
+        () => wheres.get(task),
+        (found) => keepMade(task, found)
       );
       houses.set(task, house);
       void loaded.then(async () => {
@@ -1131,7 +1159,9 @@ class House {
     private readonly runtimes: MenderRuntimes,
     private readonly moved: () => void,
     /** Where this session's checkout is, when anybody has said. */
-    private readonly where: () => string | undefined
+    private readonly where: () => string | undefined,
+    /** Everything it has ever made, with whatever was just found folded in. */
+    private readonly keep: (found: readonly Made[]) => Made[]
   ) {
     this.state = cell<WorkingState>(EMPTY, { name: `agent:${task}` });
   }
@@ -1421,7 +1451,13 @@ class House {
       mood,
       doing: this.trouble ?? (failure ? failureDoing(failure) : doingOf(mood, this.live)),
       lines,
-      told: toldOf(turns, this.where(), (id, over) => this.time(id, over)),
+      told: {
+        ...toldOf(turns, this.where(), (id, over) => this.time(id, over)),
+        made: madeOf(
+          this.keep(madeIn(turns, (id, over) => this.time(id, over))),
+          this.where()
+        ),
+      },
       asking,
       plan: stepsOf(this.plan),
       queued: waitingOf(this.lifecycle),
@@ -1843,6 +1879,7 @@ function toldOf(
     deeds: deeds.slice(-KEPT),
     errands,
     wrote: newestByPath(written),
+    made: [],
     turns: turns.length,
     began,
   };
@@ -2059,6 +2096,14 @@ function toldFrom(
 
 function lower(said: string): string {
   return said.charAt(0).toLowerCase() + said.slice(1);
+}
+
+/** What it made that is still there, with where each is inside the checkout. */
+function madeOf(made: readonly Made[], root: string | undefined): Made[] {
+  return stillThere(made).map((one) => {
+    const at = one.path ? inCheckout(one.path, root) : undefined;
+    return at ? { ...one, inside: at } : one;
+  });
 }
 
 /** Every file written, newest first, one entry per path. */
