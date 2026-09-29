@@ -103,7 +103,7 @@ import { createTitler } from './titler';
 /** How much of what happened the board keeps behind it. */
 const KEPT = 400;
 /** How many turns to ask the session for when we first look in. */
-const BACKWARD = 12;
+const BACKWARD = 50;
 /** How long a resting session sits untouched before the village sends it
     home on its own, the process gone but the worktree and transcript kept. */
 const IDLE_MS = 30 * 60 * 1000;
@@ -664,6 +664,7 @@ export function createAgents(
         house.broke(whatItSaid(started.error));
         return refused(whatItSaid(started.error));
       }
+      await house.readBack();
       nameFromHistory(task);
       return { success: true, data: undefined };
     } finally {
@@ -704,6 +705,7 @@ export function createAgents(
       /* The launch is back once the history has been read in, but the
          session's own word that it is ready can trail it by a beat. */
       if (sleeping) await house.pastStarting(1500);
+      if (sleeping) await house.readBack();
       /* A title cut short with an ellipsis is somebody's first line, never
          a name: the namer's are short enough to need no cutting. One picked
          up before anything named it is named now, off what it holds. */
@@ -1195,21 +1197,38 @@ class House {
     this.usage = usage.current() ?? null;
     this.seedSeen();
     this.publish();
+    await this.readBack();
+  }
 
-    /* Everything said in here before the village was looking. A suspended
-       session has none to give — its history lives with the running process —
-       so this is best effort and the board says so rather than pretending the
-       building was always empty. */
+  /**
+   * Everything said in here before the village was looking, read whole.
+   *
+   * A suspended session has none to give — its history lives with the running
+   * process — so this is best effort, and a wake calls it again once the agent
+   * has read its past back in. It has to: that replay goes by in a burst, and
+   * the active turn is only ever glimpsed on the way past, usually the moment
+   * your line opened it and before any of the answer arrived. The committed
+   * turn is the whole of it, so it replaces whatever glimpse was kept.
+   */
+  async readBack(): Promise<void> {
+    const conversation = this.conversation;
+    if (!conversation) return;
     const back = await this.runtimes.acp.loadHistory({
       conversationId: conversation,
       limit: BACKWARD,
     });
-    if (back.success && back.data && !back.data.unavailable && back.data.turns.length) {
-      const known = new Set(this.before.map((had) => had.id));
-      this.before = [...back.data.turns.filter((had) => !known.has(had.id)), ...this.before];
-      this.seedSeen();
-      this.publish();
-    }
+    if (this.conversation !== conversation) return;
+    if (!back.success || !back.data || back.data.unavailable || !back.data.turns.length) return;
+    const whole = new Map(back.data.turns.map((turn) => [turn.id, turn]));
+    const live = this.live?.id;
+    this.before = [
+      ...back.data.turns.filter((turn) => turn.id !== live),
+      ...this.before.filter((had) => !whole.has(had.id)),
+    ]
+      .sort((a, b) => a.seq - b.seq)
+      .slice(-BACKWARD);
+    this.seedSeen();
+    this.publish();
   }
 
   /**
