@@ -2041,7 +2041,7 @@ function made(
     stays(
       box(
         { left: at.x - GUTTER, right: 0, top: HEAD.rule + 12, height: floor - HEAD.rule - 12 },
-        'background:linear-gradient(90deg,rgba(18,13,7,0),rgba(18,13,7,.5) 32px);pointer-events:none'
+        'background:linear-gradient(90deg,rgba(18,13,7,0),rgba(18,13,7,.62) 32px);pointer-events:none'
       ),
       'wash:did'
     )
