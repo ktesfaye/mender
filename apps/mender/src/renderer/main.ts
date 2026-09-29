@@ -1546,7 +1546,17 @@ async function boot(): Promise<void> {
        written on it. Neither waits for the other. */
     const openDistrict = async (aim: Aim): Promise<void> => {
       const project = projectOn(aim.district);
-      if (!project) return;
+      /* A piece of an already-drawn district nobody has founded yet still
+         glows under the pointer like any other place a press does something
+         — the ground itself cannot tell a claimed cell from a bare one, only
+         the project registry can. Doing nothing here used to be the whole
+         answer; now a press on bare land is the same door the campfire
+         already opens; founding never targets a particular spot, so it opens
+         onto the same three ways in as anywhere else. */
+      if (!project) {
+        await settle();
+        return;
+      }
       flyToYard(camera, aim.district);
       if (project.available === false) {
         showMissingFolder(aim, project);

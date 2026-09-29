@@ -617,6 +617,22 @@
   color: var(--yard-gold-hover);
   background: var(--yard-timber-light);
 }
+.windmill-worktree-clear-all {
+  align-self: flex-start;
+  margin-bottom: 8px;
+  padding: 5px 10px 4px;
+  font:
+    13px/1.2 'Josefin Sans',
+    sans-serif;
+  color: var(--yard-gold);
+  background: var(--yard-timber);
+  border: 2px solid var(--yard-outline);
+  cursor: default;
+}
+.windmill-worktree-clear-all:hover {
+  color: var(--yard-gold-hover);
+  background: var(--yard-timber-light);
+}
 .windmill-session-usage {
   padding: 6px 0 6px 10px;
   border-left: 2px solid var(--yard-rule-soft);

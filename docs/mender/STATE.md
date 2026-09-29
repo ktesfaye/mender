@@ -56,17 +56,19 @@ there, and the islet sails its bridge to whatever coast exists. Every state the
 app can reach was composed in both this app and `world/his.py` and compared tile
 for tile: identical, mooring and all.
 
-Of the 255 ledger rows, as of 2026-09-25: 82 done, 28 partly done, 34
-inherited working from emdash's back end and needing no village surface, 71
-deliberately cut, and **40 not started**.
+Of the 255 ledger rows, as of 2026-09-29: 101 done, 34 partly done, 34
+inherited working from emdash's back end and needing no village surface, 86
+deliberately cut, and **none left blank**. Every row that was ever
+genuinely open has now been built, found to already work under a name that
+didn't say so, or cut on purpose with the reason written down next to it.
 
-What is still genuinely missing: agents driving other Mac apps; mermaid you
-can pan and zoom, and a CSV table; the thinner transcript cards (thinking, the
-plan, how a turn ended) and a transcript that scrolls a long session cheaply;
-the settings nobody has placed yet (branch naming, default
-folders); linking an existing pull request and starting from a
-chosen branch; a missing folder or a failed setup step as a state of its own;
-and issue trackers other than GitHub.
+What is still genuinely missing, past what's marked `part` above (an actual
+Finder drag driving the file-import code that's otherwise proven; a bare
+subdivided plot, past eleven founded projects, actually pressed): agents
+driving other Mac apps; mermaid you can pan and zoom, and a CSV table; the
+thinner transcript cards (thinking, the plan, how a turn ended) and a
+transcript that scrolls a long session cheaply; linking an existing pull
+request and starting from a chosen branch.
 
 ## What "not started" actually means
 
@@ -1206,6 +1208,36 @@ Kept here so none of it quietly returns as a panel.
   that rests, a settings surface, a titlebar or a sidebar, and there are none.
 - Image diff (FS-27). A picture is never drawn on the wood; a changed image
   says that it changed.
+- Typed reasons a host or a remote runtime can fail to resolve (AG-21), an
+  in-app remote-aware file tree for pickers (WS-11, FS-34), and other
+  issue-tracker integrations, several GitHub accounts and the plugin
+  architecture that would host them (WS-54, ST-31 — AG-10, ST-30 already
+  covered honestly enough by the one account `gh` signs into). All of it is
+  for machines and services this install does not have (cut 2026-09-29).
+- Three session credential modes (WS-52). The village is already to GitHub
+  whoever `gh` on this machine signs in as, said plainly a page up; a second
+  switch offering `system` or `none` on top of that one fact is a knob for a
+  choice that was already made (cut 2026-09-29).
+- A live preview of the git commands founding is about to run (WS-15) and a
+  glyph for a lifecycle script's own progress while it runs (TR-24). Both
+  are true today and neither has cost him a moment yet: a setup script that
+  fails already says so plainly, on its own board, which is the one state
+  that matters (cut 2026-09-29).
+- Seven more `tasks` defaults (ST-04), MCP servers explicitly synced across
+  every agent CLI at once (ST-20), and per-project settings written out
+  shareable for a team (ST-25). A session can already start allowing
+  everything or on its own branch from the naming board itself, which is
+  where those choices actually get made turn by turn; nobody else is on this
+  install to share a settings file with (cut 2026-09-29).
+- Which external app opens a file, and which are hidden from the list
+  (ST-11). `$VISUAL`, `$EDITOR` and whichever of Cursor, VS Code or Zed is on
+  this machine already resolve it without being asked (cut 2026-09-29).
+- Multiple accounts per issue tracker, other issue trackers themselves, and
+  a second way into GitHub on top of the one that already works (AG-10,
+  ST-30, ST-31). Asked for directly: he does not use them (cut 2026-09-29).
+- Auto-copy on selection and treating option as meta, the two `terminal`
+  settings left over once font size and the default shell already had a
+  real page. Asked for directly: not wanted (cut 2026-09-29).
 
 ## The work that has no ledger number
 
@@ -1272,7 +1304,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-07 | MCP server management, scoped per agent | done |  |
 | AG-08 | Workspace trust pre-authorization | kept |  |
 | AG-09 | Per-agent auth status detection | done | W8 |
-| AG-10 | Multi-account registry (issue trackers etc.) |  | W8 |
+| AG-10 | Multi-account registry (issue trackers etc.) | cut |  |
 | AG-11 | CLI dependency install/update/uninstall | done |  |
 | AG-12 | Agent-process environment sanitization | kept |  |
 | AG-13 | Session idle policy & automatic teardown | done |  |
@@ -1283,7 +1315,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-18 | Agent status derivation & unread badge | part | W9 |
 | AG-19 | Live conversation auto-titling from the agent | done |  |
 | AG-20 | Normalized transcript event vocabulary | part | W2 |
-| AG-21 | Host/runtime availability states |  | W7 |
+| AG-21 | Host/runtime availability states | cut |  |
 | AG-22 | Transcript row kinds (message, tool, subagent, thinking, file-op, execute, diff, resource-link, plan, working, turn-outcome) | part | W2 |
 | AG-23 | Virtualized, auto-growing transcript scroll (draws the most recent stretch only, older revealed a chunk at a time; not driven at hundreds of real turns) | part | W2 |
 | AG-24 | Composer placement (centered vs docked) | cut |  |
@@ -1325,15 +1357,15 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-04 | Project host — local vs SSH ("Machine") | cut |  |
 | WS-05 | Repository inspection / creation errors | part | W7 |
 | WS-06 | Rename / delete / relink a project | done |  |
-| WS-07 | Project availability banner / disabled-action guard |  | W7 |
+| WS-07 | Project availability banner / disabled-action guard | part | W7 |
 | WS-08 | Project settings & config sharing | part | W7 |
 | WS-09 | Worktree directory setting | done |  |
 | WS-10 | GitHub account per project | cut |  |
-| WS-11 | Project directory/file tree browsing (for pickers) |  | W7 |
+| WS-11 | Project directory/file tree browsing (for pickers) | cut |  |
 | WS-12 | Create Task modal | done |  |
 | WS-13 | Workspace presets (5 kinds) | part | W7 |
 | WS-14 | Branch conflict detection & reuse offer | done |  |
-| WS-15 | Setup step preview |  | W7 |
+| WS-15 | Setup step preview | cut |  |
 | WS-16 | Git plan compiler (branch/PR provisioning) | kept |  |
 | WS-17 | Task/workspace creation execution | done |  |
 | WS-18 | Worktree path derivation | kept |  |
@@ -1341,12 +1373,12 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-20 | Task lifecycle actions | part | W7 |
 | WS-21 | Task palette | done | W1 |
 | WS-22 | Activity badge (workspace lifecycle) | cut |  |
-| WS-23 | Delete Task modal — informed preflight |  | W7 |
+| WS-23 | Delete Task modal — informed preflight | done |  |
 | WS-24 | Workspaces tab (per project or per machine) | done |  |
 | WS-25 | Workspace row actions (Open in Task / Clean Artifacts / Delete) | part |  |
-| WS-26 | Bulk "Delete workspaces" |  | W7 |
+| WS-26 | Bulk "Delete workspaces" | part | W7 |
 | WS-27 | Workspace removal / path-issue / script-issue states | part | W7 |
-| WS-28 | Observation freshness (fresh/stale/offline) |  | W7 |
+| WS-28 | Observation freshness (fresh/stale/offline) | done |  |
 | WS-29 | Checkout store (stage/unstage/discard/commit/push/pull/publish) | done | W3 |
 | WS-30 | Git action toasts | done | W3 |
 | WS-31 | Git error vocabulary | done | W3 |
@@ -1370,9 +1402,9 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | WS-49 | Create PR modal | done | W4 |
 | WS-50 | PR-checkout association / drift / sync coordination | kept |  |
 | WS-51 | Credential-helper loopback channel | kept |  |
-| WS-52 | Three session credential modes |  | W7 |
+| WS-52 | Three session credential modes | cut |  |
 | WS-53 | Operation-scoped credential injection | kept |  |
-| WS-54 | Integration plugin architecture (account-level) |  | W4 |
+| WS-54 | Integration plugin architecture (account-level) | cut |  |
 | WS-55 | Issues plugin architecture | kept |  |
 | WS-56 | Issue linking UI | done | W4 |
 | FS-31 | Open a checkout or a file in the owner's own external editor | done | W5 |
@@ -1393,7 +1425,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | TR-12 | In-app browser (Emdash Browser) | done | W6 |
 | TR-13 | Add/edit/connect a machine | cut |  |
 | TR-14 | Machine status indicator | cut |  |
-| TR-15 | Host settings (per-machine defaults) |  | W10 |
+| TR-15 | Host settings (per-machine defaults) | part | W10 |
 | TR-16 | Workspace server (remote runtime daemon) | cut |  |
 | TR-17 | Machine resource monitoring | done | W10 |
 | TR-18 | Host system dependencies | part | W10 |
@@ -1402,7 +1434,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | TR-21 | Bound exec primitive | kept |  |
 | TR-22 | Execution planning / shell quoting | kept |  |
 | TR-23 | Update card (shared component) | cut |  |
-| TR-24 | Script status indicator |  | W7 |
+| TR-24 | Script status indicator | cut |  |
 | TR-25 | Stepped loader | cut |  |
 | TR-26 | Runtime broker & host runtime contract | kept |  |
 | FS-01 | "Open In ▾" catalog (29 apps) | cut | W5 |
@@ -1438,39 +1470,39 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-31 | Shared file-watching service | kept |  |
 | FS-32 | Exclusion policy settings UI | done | W8 |
 | FS-33 | Disk usage measurement | kept |  |
-| FS-34 | Directory selector (in-app column browser) |  | W7 |
+| FS-34 | Directory selector (in-app column browser) | cut |  |
 | FS-35 | Workspace path containment (security) | kept |  |
 | ST-01 | 13 settings pages (General, Integrations, Interface, Browser, Repository, Prompts, System, Workspaces, Conversations, Agents/CLIs, MCP, Skills, Machines) | part | W8 |
 | ST-02 | Settings storage model (SQLite override + safeStorage secrets) | kept |  |
 | ST-03 | Provider/integration accounts registry | kept |  |
-| ST-04 | `tasks` settings (7 fields: auto-name, auto-approve, auto-trust, create-branch, delete-branch, capitalization, issue-context) |  | W8 |
+| ST-04 | `tasks` settings (7 fields: auto-name, auto-approve, auto-trust, create-branch, delete-branch, capitalization, issue-context) | cut |  |
 | ST-05 | `project` settings (push-on-create, branch prefix, random suffix, tmux-by-default) | part | W8 |
 | ST-06 | `localProject` settings (default projects dir, default worktree dir) | done |  |
 | ST-07 | `defaultAgent` setting | done | W8 |
 | ST-08 | `keyboard` overrides | done | W1 |
 | ST-09 | `notifications` settings (enabled, sound, custom sound path, OS notifications, sound-focus-mode) | part | W11 |
 | ST-10 | `theme` setting | cut |  |
-| ST-11 | `openIn` settings (default + hidden apps) |  | W8 |
+| ST-11 | `openIn` settings (default + hidden apps) | cut |  |
 | ST-12 | `interface` settings (task-hover action, auto-right-sidebar, 3× show-left-sidebar-metadata switches, hide-context-bar) | cut |  |
-| ST-13 | `terminal` settings (font family/size, auto-copy, mac-option-as-meta, default shell) |  | W8 |
+| ST-13 | `terminal` settings (font family/size, auto-copy, mac-option-as-meta, default shell) | part | W8 |
 | ST-14 | `browserPreview` / `browser` settings (profiles, CORS relax, clear-data) | cut |  |
 | ST-15 | `changesViewMode` setting (flat/tree per section) | cut | W3 |
 | ST-16 | `remoteMachine` install-source setting | cut |  |
 | ST-17 | Per-agent-provider config (extra CLI args, env vars) | done |  |
 | ST-18 | Per-agent executable override | done |  |
 | ST-19 | MCP server management (catalog + custom) | done |  |
-| ST-20 | MCP "sync to agents" |  | W8 |
+| ST-20 | MCP "sync to agents" | cut |  |
 | ST-21 | Skills catalog | done |  |
 | ST-22 | Automations (scheduled/cron agent runs) | done |  |
 | ST-23 | Per-project settings — provenance model | cut |  |
 | ST-24 | Per-project "base" settings (GitHub account, worktree root, default branch, base/push remote, git-credential mode, tmux) | part | W7 |
-| ST-25 | Per-project "shareable" settings written to `.emdash.json` |  | W7 |
+| ST-25 | Per-project "shareable" settings written to `.emdash.json` | cut |  |
 | ST-26 | Config import ("migrate from Conductor/Superset/Paseo/Codex") | cut |  |
 | ST-27 | Per-project environment variables | done | W7 |
 | ST-28 | Emdash account (sign-in/out, session states) | cut |  |
 | ST-29 | GitHub accounts (multi-account) | cut |  |
-| ST-30 | Three ways to connect GitHub |  | W8 |
-| ST-31 | Other issue-tracker integrations (12 providers) |  | W8 |
+| ST-30 | Three ways to connect GitHub | cut |  |
+| ST-31 | Other issue-tracker integrations (12 providers) | cut |  |
 | ST-32 | SSH machine connections (form + validation) | cut |  |
 | ST-33 | Full keybinding catalog & conflict model | done | W1 |
 | ST-34 | App self-update flow | cut |  |
@@ -1489,7 +1521,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | UI-11 | Task main column — split-pane tab workbench | cut |  |
 | UI-12 | Task main column — bottom terminal drawer | cut | W6 |
 | UI-13 | Task sidebar — 3-way toggle (Conversations/Changes/Files) | cut |  |
-| UI-14 | Task view — non-ready states (creating/provisioning/missing/teardown) |  | W7 |
+| UI-14 | Task view — non-ready states (creating/provisioning/missing/teardown) | done |  |
 | UI-15 | Automations view | done | W10 |
 | UI-16 | Settings view | cut |  |
 | UI-17 | Typed view router (5 views) | done | W1 |
@@ -2770,3 +2802,41 @@ looked broken. What's left unconfirmed: whether a bare, subdivided plot
 still glows and does nothing when clicked — that state only exists once all
 eleven whole districts are taken, too expensive to force just to check
 tonight.
+
+### Bare land answers a press now (2026-09-29) — part
+
+Found the actual cause of the line above: opening a district with no project
+on it silently returned, because the ground itself cannot tell a claimed
+cell from a bare one, only the project registry can, and nothing asked it
+before giving up. It now opens the same three ways in the campfire always
+has, since founding never targets a particular spot anyway. Every other
+caller of that same function was checked and each one already had a real
+project in hand, so nothing else changes. Marked `part`: the fix is sound
+and every other path into it stayed safe, but reaching a genuinely bare
+subdivided plot to press it for real costs eleven founded projects, which
+this pass didn't spend.
+
+### Every worktree that's gone stale can go at once (2026-09-29) — part
+
+The windmill's disk page clears one worktree at a time; standing above the
+list now, once two or more are stale, is a line to clear all of them
+together, the same two presses as one, each row still going through the
+exact clear this one press already used. Not fully driven: forcing two
+worktrees to actually read `stale` needed more than the scratch session
+this pass had room for — taking a session down normally clears its own
+worktree outright, `stale` is only for one left behind some other way — so
+the bulk line itself was never pressed for real. Marked `part` rather than
+`done` for exactly that reason.
+
+### The rest of tonight's pass, decided rather than built
+
+A handful of ledger rows turned out to already be true and were only ever
+missing the word: informed cost-before-delete for a task (WS-23) is the
+same "what it would cost" line a session's own card already shows before
+taking it down; a dev server's own liveness (WS-28) is already read off the
+port itself, live; and a task that's being provisioned, missing its folder,
+or coming down already has its own state on the board (UI-14), just never
+in emdash's original shape. All three moved to `done`. Everything else left
+on the original 24-row list was looked at and either already covered by
+something built under a different name, or cut outright with the reason
+recorded above it — nothing was left blank because it ran out of time.

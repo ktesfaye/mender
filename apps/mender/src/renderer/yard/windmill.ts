@@ -165,6 +165,8 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
 
   /** The worktree armed for a second press to clear it, if any. */
   let clearing: string | null = null;
+  /** Clearing every stale worktree at once, armed for a second press. */
+  let clearingAll = false;
 
   document.body.appendChild(back);
   back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
@@ -586,6 +588,25 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       return;
     }
     const rows: HTMLElement[] = [];
+    const stale = now.worktrees.filter((one) => one.stale);
+    if (stale.length >= 2) {
+      const said = clearingAll
+        ? `click again and all ${stale.length} are gone`
+        : `clear every stale one (${stale.length})`;
+      const bulk = button(said, 'windmill-worktree-clear-all', () => {
+        if (!clearingAll) {
+          clearingAll = true;
+          drawWorktrees();
+          return;
+        }
+        clearingAll = false;
+        void (async () => {
+          for (const one of stale) await does.clear(one);
+          drawWorktrees();
+        })();
+      });
+      rows.push(bulk);
+    }
     for (const one of now.worktrees) {
       const row = el('div', 'windmill-worktree');
       const head = el('div', 'windmill-worktree-head');
