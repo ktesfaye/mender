@@ -1770,7 +1770,12 @@ function toldOf(
       /* The last thing said in a turn that broke is the agent saying why, and
          a limit is said in so many words whether or not the turn noticed. */
       const last = flat[i + 1]?.turn !== item.turn;
-      const trouble = limited(item.text) || (last && item.broke) ? 'wrong' : undefined;
+      const trouble =
+        limited(item.text) || (last && item.broke)
+          ? 'wrong'
+          : aside(item.text.trim())
+            ? 'aside'
+            : undefined;
       thoughts.push({
         id: item.id,
         said: item.text,
@@ -1883,6 +1888,23 @@ const LIMITS = [
 
 function limited(text: string): boolean {
   return text.length < 400 && LIMITS.some((one) => text.startsWith(one));
+}
+
+/**
+ * What Claude's adapter says in its own voice rather than the agent's: a mode
+ * or a model it could not give you, a task somebody stopped. It arrives as an
+ * ordinary message with a stressed lead, so this is the only way it reads as a
+ * warning rather than as the answer.
+ */
+const ASIDES = [
+  '**Auto mode unavailable:**',
+  '**Model fallback:**',
+  '**Fast mode turned off:**',
+  '**Task stopped by user:**',
+];
+
+function aside(text: string): boolean {
+  return text.length < 600 && ASIDES.some((one) => text.startsWith(one));
 }
 
 /** A turn's ending, when it is one worth saying on the board. */

@@ -113,6 +113,7 @@ const TONE: Record<Posture, string> = {
 const TROUBLE = {
   wrong: { head: 'it stopped', ink: 'var(--yard-wrong)' },
   warn: { head: 'it stopped short', ink: 'var(--yard-warn)' },
+  aside: { head: 'it warns', ink: 'var(--yard-wrong)' },
 } as const;
 
 export interface Doings {
@@ -1592,6 +1593,7 @@ function thinking(
         body.style.cssText = one.quiet
           ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
           : `font-size:${size}px;line-height:1.35;color:${trouble?.ink ?? '#ffdca4'};text-shadow:0 2px 10px rgba(0,0,0,.9)`;
+        if (trouble) body.classList.add('prose-trouble');
         prose(body, one.id, one.said, !walkedIn, keepCode(does), openLink(does));
         it.appendChild(body);
         items.appendChild(it);
@@ -1951,6 +1953,7 @@ function thought(
   if (label) it.appendChild(said(label, tone));
   const body = document.createElement('div');
   body.style.cssText = `font-size:${size}px;line-height:1.4;color:${ink}`;
+  if (tone) body.classList.add('prose-trouble');
   prose(body, one.id, one.said, false, keep, link);
   it.appendChild(body);
   return it;

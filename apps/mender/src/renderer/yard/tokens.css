@@ -1004,6 +1004,10 @@
   font-weight: 600;
   color: var(--yard-stress);
 }
+/* Trouble is said in one colour, the stressed words included. */
+.yard .prose-trouble .prose-heavy {
+  color: inherit;
+}
 .yard .prose-lean {
   font-style: italic;
 }
