@@ -2587,6 +2587,13 @@ mostly a plain tile with a small mark in it is cut down to the mark, the tile
 carrying on as the cloth, so the mark fills the flag the way a letter does.
 Checked side by side on all eleven.
 
+A logo flies edge to edge now, over the whole cloth and on into the
+swallowtail, the notch cutting into it rather than a strip of flag colour
+showing round it. The tile under the mark is read from a little way in, past
+an icon's thin bright rim and its rounded corners, so an app icon with a
+coloured border no longer puts a band of that colour round its own logo.
+Looked at close in on the play icon, the >< one, the dice and the rest.
+
 ### A twelfth project takes a piece of a big district (2026-09-28) — done
 
 With all eleven of his districts taken, founding another project used to say

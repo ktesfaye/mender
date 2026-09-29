@@ -291,12 +291,10 @@ function shade(): Texture {
 /**
  * The flag, a pixel at a time.
  *
- * A project with a logo flies the logo: the cloth is the logo's own shape at
- * the cloth's height, edge to edge, and the swallowtail carries on in the
- * colour round the logo's own edge, as does anything see-through in it, so the
- * flag is the logo and nothing else. The logo stops where the tail starts
- * because a notch cut into a square icon took half its symbol with it. A
- * project without one flies its district's colour with its first letter on it.
+ * A project with a logo flies the logo: it covers the whole cloth, tail and
+ * all, and the notch cuts into its right edge rather than the cloth showing
+ * round it, so the flag is the logo and nothing else. A project without one
+ * flies its district's colour with its first letter on it.
  */
 async function paint(
   colour: string,
@@ -314,17 +312,7 @@ async function paint(
   const inner = FLAG.h - 4;
   // Square, like most logos, so a letter flag and a logo flag are one size.
   let wide = inner + 2;
-  let across = 0;
-  let high = inner;
-  if (logo) {
-    across = Math.round(inner * logo.aspect);
-    wide = across + 2;
-    if (wide > WIDEST) {
-      wide = WIDEST;
-      across = WIDEST - 2;
-      high = Math.max(1, Math.round(across / logo.aspect));
-    }
-  }
+  if (logo) wide = Math.min(WIDEST, Math.max(wide, Math.round(inner * logo.aspect) + 2));
 
   at(-2, TOP, 4, -TOP, TIMBER);
   at(-2, TOP, 1, -TOP, OUTLINE);
@@ -367,26 +355,17 @@ async function paint(
     texture,
     reach: FLAG.x + wide + TAIL,
     // Laid on by the caller at full resolution; the cloth is its background.
-    logo: logo
-      ? {
-          image: logo.image,
-          x: FLAG.x + 2,
-          y: FLAG.y + 2 + Math.floor((inner - high) / 2),
-          w: across,
-          h: high,
-        }
-      : null,
+    logo: logo ? { ...fitted(logo.image, wide), x: FLAG.x + 2, y: FLAG.y + 2 } : null,
   };
 }
 
 /**
- * A logo with its see-through margin cut away, its shape, and the colour
- * round its edge.
+ * A logo with its see-through margin cut away, its shape, and its tile's colour.
  *
  * Icons carry padding, an app icon most of all, and padding on a flag this
- * small is most of the flag. The edge colour is the average of the solid
- * pixels on the outermost ring of what is left, which on a round icon is its
- * own rim and on a square one is its own background.
+ * small is most of the flag. The tile colour is the commonest solid colour a
+ * little way in from the edge, past a rim and a rounded corner's soft edge, so
+ * an icon with a thin bright border still reads as the dark tile it mostly is.
  */
 function trimmed(
   image: HTMLImageElement
@@ -421,71 +400,80 @@ function trimmed(
     }
   }
   if (right < 0) return null;
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  let n = 0;
-  const ring = (x: number, y: number): void => {
+
+  const extent = Math.max(right - left, bottom - top) + 1;
+  const inset = Math.max(1, Math.round(extent * 0.06));
+  const band = Math.max(1, Math.round(extent * 0.06));
+  const buckets = new Map<number, [number, number, number, number]>();
+  const count = (x: number, y: number): void => {
     if (!solid(x, y)) return;
     const i = (y * w + x) * 4;
-    r += data[i] ?? 0;
-    g += data[i + 1] ?? 0;
-    b += data[i + 2] ?? 0;
-    n += 1;
+    const r = data[i] ?? 0;
+    const g = data[i + 1] ?? 0;
+    const b = data[i + 2] ?? 0;
+    const key = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+    const sum = buckets.get(key) ?? [0, 0, 0, 0];
+    sum[0] += r;
+    sum[1] += g;
+    sum[2] += b;
+    sum[3] += 1;
+    buckets.set(key, sum);
   };
-  // A few pixels in, so a round icon's anti-aliased rim counts for its colour.
-  for (let inset = 0; inset < 3; inset++) {
-    for (let x = left; x <= right; x++) {
-      ring(x, Math.min(bottom, top + inset));
-      ring(x, Math.max(top, bottom - inset));
+  for (let d = inset; d < inset + band; d++) {
+    for (let x = left + d; x <= right - d; x++) {
+      count(x, top + d);
+      count(x, bottom - d);
     }
-    for (let y = top; y <= bottom; y++) {
-      ring(Math.min(right, left + inset), y);
-      ring(Math.max(left, right - inset), y);
+    for (let y = top + d; y <= bottom - d; y++) {
+      count(left + d, y);
+      count(right - d, y);
     }
   }
-  const tone = n ? [r / n, g / n, b / n] : [0, 0, 0];
-  const edge = n ? `rgb(${tone.map(Math.round).join(',')})` : OUTLINE;
+  let best: [number, number, number, number] | null = null;
+  for (const sum of buckets.values()) if (!best || sum[3] > best[3]) best = sum;
+  const tone = best ? [best[0] / best[3], best[1] / best[3], best[2] / best[3]] : [0, 0, 0];
+  const edge = best ? `rgb(${tone.map(Math.round).join(',')})` : OUTLINE;
 
-  /* And its own plain background, the same way. An app icon is mostly a
-     tile of one colour with the mark small in the middle, and on a flag the
-     tile is the flag already: the mark is what should fill it. A line is
-     background while every pixel on it is see-through or close to the edge's
-     own colour; a gradient tile is not, and is left whole. */
-  if (n) {
-    const plain = (x: number, y: number): boolean => {
-      if (!solid(x, y)) return true;
-      const i = (y * w + x) * 4;
-      const d =
-        Math.abs((data[i] ?? 0) - (tone[0] ?? 0)) +
-        Math.abs((data[i + 1] ?? 0) - (tone[1] ?? 0)) +
-        Math.abs((data[i + 2] ?? 0) - (tone[2] ?? 0));
-      return d < 60;
-    };
-    const row = (y: number): boolean => {
-      for (let x = left; x <= right; x++) if (!plain(x, y)) return false;
-      return true;
-    };
-    const column = (x: number): boolean => {
-      for (let y = top; y <= bottom; y++) if (!plain(x, y)) return false;
-      return true;
-    };
-    let t = top;
-    let b2 = bottom;
-    let l = left;
-    let r2 = right;
-    while (t < b2 && row(t)) t++;
-    while (b2 > t && row(b2)) b2--;
-    while (l < r2 && column(l)) l++;
-    while (r2 > l && column(r2)) r2--;
+  /* And the mark on it. An app icon is mostly a tile of one colour with the
+     mark small in the middle, and on a flag the tile is the flag already: the
+     mark is what should fill it. The mark is whatever inside the rim is not
+     the tile's colour; a gradient tile is all mark, and is left whole. */
+  // Where the tile's own rim and rounded corners end, once cut to its mark.
+  let inside = { left, right, top, bottom };
+  if (best) {
+    let l = right;
+    let r2 = left;
+    let t = bottom;
+    let b2 = top;
+    for (let y = top + inset; y <= bottom - inset; y++) {
+      for (let x = left + inset; x <= right - inset; x++) {
+        if (!solid(x, y)) continue;
+        const i = (y * w + x) * 4;
+        const d =
+          Math.abs((data[i] ?? 0) - (tone[0] ?? 0)) +
+          Math.abs((data[i + 1] ?? 0) - (tone[1] ?? 0)) +
+          Math.abs((data[i + 2] ?? 0) - (tone[2] ?? 0));
+        if (d < 60) continue;
+        l = Math.min(l, x);
+        r2 = Math.max(r2, x);
+        t = Math.min(t, y);
+        b2 = Math.max(b2, y);
+      }
+    }
     // Some breathing room round the mark, as a square, so it is not cropped
     // tight into a letterbox.
     const side = Math.max(r2 - l, b2 - t) + 1;
     const pad = Math.round(side * 0.14);
-    const cx = (l + r2) / 2;
-    const cy = (t + b2) / 2;
     const half = side / 2 + pad;
-    if (side > 4 && half * 2 < Math.max(right - left, bottom - top)) {
+    if (r2 >= l && side > 4 && half * 2 < extent - 2 * inset) {
+      inside = {
+        left: left + inset,
+        right: right - inset,
+        top: top + inset,
+        bottom: bottom - inset,
+      };
+      const cx = (l + r2) / 2;
+      const cy = (t + b2) / 2;
       left = Math.round(cx - half);
       right = Math.round(cx + half);
       top = Math.round(cy - half);
@@ -498,12 +486,64 @@ function trimmed(
   out.height = bottom - top + 1;
   const outPen = out.getContext('2d');
   if (outPen) {
-    // The square may reach past the icon's own edge; that part is its tile.
+    // Anything see-through in it, a rounded corner or past the icon's own
+    // edge, is its tile, so no flag colour shows through round the logo.
     outPen.fillStyle = edge;
     outPen.fillRect(0, 0, out.width, out.height);
-    outPen.drawImage(canvas, left, top, out.width, out.height, 0, 0, out.width, out.height);
+    // The mark's square can reach the icon's rim; only what is inside it comes.
+    const x0 = Math.max(left, inside.left);
+    const y0 = Math.max(top, inside.top);
+    const x1 = Math.min(right, inside.right);
+    const y1 = Math.min(bottom, inside.bottom);
+    const [cw, ch] = [x1 - x0 + 1, y1 - y0 + 1];
+    outPen.drawImage(canvas, x0, y0, cw, ch, x0 - left, y0 - top, cw, ch);
   }
   return { image: out, aspect: out.width / out.height, edge };
+}
+
+/**
+ * The logo cut to the cloth, tail and all.
+ *
+ * It covers everything inside the keyline, the swallowtail's two teeth
+ * included, so there is no strip of flag colour round it anywhere: scaled up
+ * until nothing is left uncovered, whatever overhangs cut away, and the notch
+ * cut out of it the same stepped way the cloth's is.
+ */
+function fitted(
+  logo: HTMLCanvasElement,
+  wide: number
+): { image: HTMLCanvasElement; w: number; h: number } {
+  const { h } = FLAG;
+  const half = h / 2;
+  const rows: number[] = [];
+  for (let row = 2; row < h - 2; row++) {
+    const out = row < half ? row : h - 1 - row;
+    const reach = Math.round(TAIL * (1 - out / half));
+    rows.push(wide - 2 + Math.max(0, reach - 2));
+  }
+  const w = Math.max(...rows);
+  const high = rows.length;
+  const SCALE = 16;
+  const image = document.createElement('canvas');
+  image.width = w * SCALE;
+  image.height = high * SCALE;
+  const pen = image.getContext('2d');
+  if (!pen) return { image, w, h: high };
+  const cover = Math.max(image.width / logo.width, image.height / logo.height);
+  const dw = logo.width * cover;
+  const dh = logo.height * cover;
+  pen.imageSmoothingQuality = 'high';
+  // Centred on the square before the tail, so the notch eats its right edge
+  // rather than pushing the mark off-centre on the cloth.
+  const centre = ((wide - 2) * SCALE) / 2;
+  const x = Math.min(0, Math.max(image.width - dw, centre - dw / 2));
+  pen.drawImage(logo, x, (image.height - dh) / 2, dw, dh);
+  pen.globalCompositeOperation = 'destination-in';
+  pen.fillStyle = '#000';
+  pen.beginPath();
+  rows.forEach((across, row) => pen.rect(0, row * SCALE, across * SCALE, SCALE));
+  pen.fill();
+  return { image, w, h: high };
 }
 
 function sheet(): [HTMLCanvasElement, CanvasRenderingContext2D] {
