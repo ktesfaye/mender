@@ -119,6 +119,8 @@ export interface Projects {
   abandon(id: string): Promise<Project[]>;
   /** Called something else on the island. The folder keeps its name. */
   rename(id: string, name: string): Promise<Project[]>;
+  /** Stand them on the rack in this order; anybody left out keeps to the end. */
+  reorder(ids: string[]): Promise<Project[]>;
   /** The pictures in its checkout, likeliest to be its own logo first. */
   pictures(id: string, many: number): Promise<{ pictures: Picture[]; more: number }>;
   /** Give it a face, or take it back to the rack's own. */
@@ -391,6 +393,15 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
       };
       await save([...projects, project]);
       return { success: true, data: project };
+    },
+
+    async reorder(ids) {
+      const projects = await stored();
+      const place = (id: string): number => {
+        const at = ids.indexOf(id);
+        return at === -1 ? ids.length : at;
+      };
+      return save([...projects].sort((a, b) => place(a.id) - place(b.id)));
     },
 
     async rename(id, name) {

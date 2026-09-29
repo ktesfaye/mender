@@ -21,6 +21,10 @@
  * project: the campfire the island grows from, and pressing it flies back
  * out to the whole island. Escape walks there too, a step at a time; this is
  * the one press that goes straight there from anywhere.
+ *
+ * A slot held and dragged along the rack lifts out of it and the others
+ * step aside to make room; let go and it hangs there from then on. A press
+ * that never really moved is still just a press.
  */
 
 import { SLOT, slot, toolFor, updateSlot } from './face';
@@ -49,7 +53,12 @@ export interface Shelf {
   close(): void;
 }
 
-export function makeShelf(at: HTMLElement, open: (id: string) => void, out: () => void): Shelf {
+export function makeShelf(
+  at: HTMLElement,
+  open: (id: string) => void,
+  out: () => void,
+  reorder: (ids: string[]) => void
+): Shelf {
   const root = box({ right: 0, top: 0 }, RACK);
   at.appendChild(root);
 
@@ -181,7 +190,14 @@ export function makeShelf(at: HTMLElement, open: (id: string) => void, out: () =
           if (now) crossfade(() => paintLabel(now.name, '#f4e3c0'));
         });
         node.addEventListener('pointerleave', () => crossfade(settle));
-        node.addEventListener('click', () => open(project.id));
+        node.addEventListener('click', (event) => {
+          if (justDragged) {
+            event.stopImmediatePropagation();
+            return;
+          }
+          open(project.id);
+        });
+        node.addEventListener('pointerdown', (event) => hold(project.id, event));
         nodes.set(project.id, node);
         strip.appendChild(node);
         requestAnimationFrame(() => {
@@ -197,6 +213,91 @@ export function makeShelf(at: HTMLElement, open: (id: string) => void, out: () =
       }
       node.title = project.name;
     }
+  }
+
+  /* Dragging a slot along the rack. It follows the pointer sideways only,
+     held inside the rack's own ends, and everything between where it was and
+     where it would land slides one slot over to open the gap. Nothing is
+     committed until it is let go. */
+  const STEP = SLOT + PAD;
+  let justDragged = false;
+
+  function hold(id: string, down: PointerEvent): void {
+    if (down.button !== 0 || away) return;
+    const node = nodes.get(id);
+    if (!node) return;
+    const order = last.map((project) => project.id);
+    const from = order.indexOf(id);
+    if (from === -1) return;
+    const startX = down.clientX;
+    let lifted = false;
+    let to = from;
+    const kept = node.style.transition;
+
+    const place = (dx: number): void => {
+      const clamped = Math.max(-from * STEP, Math.min((order.length - 1 - from) * STEP, dx));
+      to = Math.max(0, Math.min(order.length - 1, Math.round(from + clamped / STEP)));
+      node.style.transform = `translateX(${clamped}px)`;
+      order.forEach((other, at) => {
+        if (at === from) return;
+        const shift = from < at && at <= to ? -STEP : to <= at && at < from ? STEP : 0;
+        const each = nodes.get(other);
+        if (each) each.style.transform = shift ? `translateX(${shift}px)` : 'scale(1)';
+      });
+    };
+
+    const move = (event: PointerEvent): void => {
+      const dx = event.clientX - startX;
+      if (!lifted) {
+        if (Math.abs(dx) < 4) return;
+        lifted = true;
+        node.setPointerCapture(event.pointerId);
+        node.style.transition = `${kept},transform 0s`;
+        node.style.position = 'relative';
+        node.style.zIndex = '2';
+        node.style.cursor = 'grabbing';
+        node.style.filter = 'brightness(1.15)';
+      }
+      place(dx);
+    };
+
+    const up = (): void => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      if (!lifted) return;
+      justDragged = true;
+      window.setTimeout(() => (justDragged = false), 0);
+      /* It eases the rest of the way into its gap, and then the rack is
+         rebuilt in the new order with every slot already where it is drawn,
+         so nothing jumps when the transforms come off. */
+      node.style.transition = `${kept},transform 160ms ${EASE}`;
+      node.style.transform = `translateX(${(to - from) * STEP}px)`;
+      window.setTimeout(() => {
+        const next = [...order];
+        next.splice(from, 1);
+        next.splice(to, 0, id);
+        for (const each of nodes.values()) {
+          const settled = each === node ? kept : each.style.transition;
+          each.style.transition = 'none';
+          each.style.transform = 'scale(1)';
+          void each.offsetWidth;
+          each.style.transition = settled;
+        }
+        for (const other of next) {
+          const each = nodes.get(other);
+          if (each) strip.appendChild(each);
+        }
+        node.style.zIndex = '';
+        node.style.cursor = '';
+        node.style.filter = '';
+        if (to !== from) reorder(next);
+      }, 160);
+    };
+
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
   }
 
   function fold(shut = true): void {

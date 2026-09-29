@@ -9,6 +9,7 @@ export function createProjectsController(projects: Projects): Controller {
     found: ({ from }) => projects.found(from),
     abandon: ({ id }) => projects.abandon(id),
     rename: ({ id, name }) => projects.rename(id, name),
+    reorder: ({ ids }) => projects.reorder(ids),
     pictures: ({ id, many }) => projects.pictures(id, many),
     picture: ({ id, from }) => projects.picture(id, from),
     carrying: ({ id }) => projects.carrying(id),

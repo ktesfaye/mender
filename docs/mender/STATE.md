@@ -714,6 +714,15 @@ away to nothing. Driven: into a project off the rack, the fire slid in, hover
 said the island, one press and the camera was out over the whole map with the
 slot gone again.
 
+**The rack is in whatever order he drags it into.** Holding a slot and
+dragging it along the rack lifts it out, the slots between step aside to open
+its gap, and letting go hangs it there for good; a press that never really
+moved still just opens the project. Each keeps its own stand-in prop wherever
+it hangs, and the number keys out on the island follow the new order. Driven:
+dragged left and right across the rack in the running app, landing where it
+was let go, still there after the list was read back off disk, and a plain
+click still walked into the project.
+
 **A project has settings, in a window of their own.** Pressing its name, top
 left of its yard, pops a window up over everything: settings are about the
 place and not the work, so this is the one thing not laid over the yard, and

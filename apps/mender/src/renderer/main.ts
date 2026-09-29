@@ -149,7 +149,17 @@ async function boot(): Promise<void> {
     const shelf = makeShelf(
       layer.root,
       (id) => void go(`project:${id}`),
-      () => void picked(null)
+      () => void picked(null),
+      (ids) => {
+        projects = ids
+          .map((id) => projects.find((project) => project.id === id))
+          .filter((project): project is Project => !!project);
+        paintRail();
+        void client.projects.reorder({ ids }).then((now) => {
+          projects = now;
+          paintRail();
+        });
+      }
     );
 
     /* What was half-written on a session's line, kept against that session so
@@ -805,6 +815,12 @@ async function boot(): Promise<void> {
       return null;
     };
 
+    /* Which stand-in prop a project wears goes by when it came in, not where
+       it hangs on the rack, so dragging it along the rack never swaps its
+       face for somebody else's. */
+    const foundedRank = (project: Project): number =>
+      projects.filter((one) => one.foundedAt < project.foundedAt).length;
+
     /* The rail carries one peg per project and nothing else. Where the work
        is happening is the project's own board to say; this is only how you
        walk from one village to the next. */
@@ -818,10 +834,10 @@ async function boot(): Promise<void> {
         }))
       );
       shelf.show(
-        projects.map((project, at) => ({
+        projects.map((project) => ({
           id: project.id,
           name: project.name,
-          at,
+          at: foundedRank(project),
           here: project.id === here?.id,
           ...(project.icon ? { icon: project.icon } : {}),
           ...(wantsOf(project.id) ? { wants: wantsOf(project.id) } : {}),
@@ -1660,10 +1676,7 @@ async function boot(): Promise<void> {
       settings?.ui.close();
       const state: SettingsState = {
         project,
-        at: Math.max(
-          0,
-          projects.findIndex((one) => one.id === project.id)
-        ),
+        at: foundedRank(project),
         pictures: null,
         more: 0,
         carrying: null,

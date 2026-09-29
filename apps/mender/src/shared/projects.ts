@@ -166,6 +166,11 @@ export const projectsContract = defineContract({
     data: projectSchema,
     error: relinkErrorSchema,
   }),
+  /** The rack's own order, left to right, as he dragged it. */
+  reorder: procedure({
+    input: z.object({ ids: z.array(z.string()) }),
+    output: z.array(projectSchema),
+  }),
   /** Every place a project could stand instead: null where it can, what is
       wrong where it can't. `off` is the same for taking it off the map. */
   moves: procedure({
