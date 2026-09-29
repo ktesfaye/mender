@@ -7,12 +7,14 @@ import { clipboard, contextBridge, ipcRenderer, shell, webUtils } from 'electron
 import {
   MENDER_ATTEND_CHANNEL,
   MENDER_CONFIRM_QUIT_CHANNEL,
+  MENDER_GRIP_CHANNEL,
   MENDER_MENU_CHANNEL,
   MENDER_MISSED_CHANNEL,
   MENDER_QUIT_COST_CHANNEL,
   MENDER_START_DRAG_CHANNEL,
   MENDER_WATCH_CHANNEL,
   MENDER_WIRE_CHANNEL,
+  type Grip,
   type MenuCommand,
   type Watching,
 } from '../shared/channels';
@@ -177,6 +179,8 @@ contextBridge.exposeInMainWorld('mender', {
   /* Carrying a file out of the board and onto the Mac. Only the main process
      can start an OS-level drag, so this just names the path. */
   startDrag: (path: string) => ipcRenderer.send(MENDER_START_DRAG_CHANNEL, path),
+  /* Holding the window by its top, since the title bar it would have had is hidden. */
+  grip: (grip: Grip) => ipcRenderer.send(MENDER_GRIP_CHANNEL, grip),
   /* A link an agent wrote, out to whatever the machine reads the web with. */
   openLink: (url: string) => void shell.openExternal(url),
   /* The one file this app writes unasked, always outside any checkout so it

@@ -57,3 +57,12 @@ export const MENDER_MISSED_CHANNEL = 'mender:missed';
  * OS-level drag, so the renderer just names the path.
  */
 export const MENDER_START_DRAG_CHANNEL = 'mender:start-drag';
+
+/**
+ * Channel the renderer uses to move the window by its top edge. The title bar
+ * is hidden and the top of the window is canvas, so there is no native strip
+ * to hold; the page says when a grab starts and moves, and when the top
+ * is double-clicked, and the main process does what macOS would.
+ */
+export const MENDER_GRIP_CHANNEL = 'mender:grip';
+export type Grip = 'start' | 'move' | 'double';

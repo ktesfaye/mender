@@ -61,6 +61,7 @@ import { refused, trouble, unwritten } from './board/trouble';
 import { tuiSession } from './board/tui-session';
 import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
 import { answerFor, SEND_ALL } from './board/work';
+import { watchGrip } from './grip';
 import { ran } from './job';
 import { setPace } from './pace';
 import { createCamera, flyOut, flyToYard, frame, type Extent } from './village/camera';
@@ -5039,6 +5040,7 @@ async function boot(): Promise<void> {
       hand.escaped();
     };
     watchPointer((x, y) => yard.covers(x, y), pixi, camera, hand);
+    watchGrip(pixi.canvas);
 
     editing = new Editing(
       pixi,

@@ -16,6 +16,7 @@ import { createBoardController } from './board-controller';
 import { createChanges } from './changes';
 import { createChangesController } from './changes-controller';
 import { installDragOut } from './drag';
+import { installGrip } from './grip';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
 import { createGitHubStatus } from './github';
@@ -122,6 +123,7 @@ export async function main(): Promise<void> {
   });
 
   installDragOut(app);
+  installGrip();
 }
 
 async function openVillageWindow(): Promise<BrowserWindow> {

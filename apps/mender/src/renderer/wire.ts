@@ -6,7 +6,7 @@ import {
   type ContractClient,
   type DomPortLike,
 } from '@emdash/wire/rpc';
-import { MENDER_WIRE_CHANNEL, type MenuCommand, type Watching } from '@shared/channels';
+import { MENDER_WIRE_CHANNEL, type Grip, type MenuCommand, type Watching } from '@shared/channels';
 import { menderWireContract, type menderDomainContracts } from '@shared/contract';
 
 declare global {
@@ -37,6 +37,8 @@ declare global {
       openInEditor: (path: string) => void;
       /** Carry a file off the board and onto the Mac. */
       startDrag: (path: string) => void;
+      /** Hold the window by its top: grab, follow the pointer, or double-click. */
+      grip: (grip: Grip) => void;
       /** A link an agent wrote, out to whatever the machine reads the web with. */
       openLink: (url: string) => void;
       /** The one file this app writes unasked, outside any checkout. Returns

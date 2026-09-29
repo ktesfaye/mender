@@ -68,6 +68,8 @@ export function makeShelf(
   settings: () => void
 ): Shelf {
   const root = box({ right: 0, top: 0 }, RACK);
+  // Its bare wood holds the window, like the empty part of any Mac toolbar.
+  root.dataset.grip = '';
   at.appendChild(root);
 
   /* The label is also the handle. Pressing it folds the rack away, which is
@@ -84,6 +86,7 @@ export function makeShelf(
 
   const strip = document.createElement('div');
   strip.style.cssText = STRIP;
+  strip.dataset.grip = '';
   root.appendChild(strip);
 
   /* The windmill has no island of its own to stand on yet, so the rack

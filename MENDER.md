@@ -804,6 +804,11 @@ exactly as he left it — and if that spot no longer lands on any display that
 still exists, it falls back to how it always opened rather than showing up
 somewhere unreachable.
 
+**And it is held by its top, like any other window.** There is no title bar
+to hold, so the top edge is one: pressing anywhere along it that isn't
+pressable and dragging moves the window, and a double-click there does
+whatever this Mac does to a title bar.
+
 **The menu bar is Mender's own, not the shell it was built on top of.** Just
 what macOS actually needs and nothing it doesn't: About Mender, Settings on
 ⌘, — the one door in from outside the wood — Hide and Quit, plain Edit roles

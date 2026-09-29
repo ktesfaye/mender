@@ -1088,6 +1088,16 @@ installed (a bad role name would throw before the window ever opens) and
 drove the ⌘, chord itself over the debug port to confirm it raises the
 windmill — the same code path the menu item's click handler hands off to.
 
+And the top of the window holds like a title bar again. The frame hides its
+own, so a drag up there used to pan the island and a double-click did
+nothing. `apps/mender/src/renderer/grip.ts` takes a press in the top strip
+that lands on nothing pressable (the canvas, or the rack's bare wood marked
+`data-grip`) and the main process (`src/main/grip.ts`) moves the window after
+the real cursor; a double-click does whatever the Mac's own title-bar setting
+says. Driven over the debug port: the top strip reads as holdable on the island
+and in a yard, the rack's slots do not, and a double-click there zoomed the
+window to fill and back.
+
 And what happened while he was away is said once when he comes back, rather
 than left for him to piece together lantern by lantern. `attend.ts`'s own
 rule for who just started wanting him — asked, broke, or a turn finished — is
