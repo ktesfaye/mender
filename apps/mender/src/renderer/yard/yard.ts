@@ -1462,8 +1462,8 @@ function changelog(
 const logScrolled = new Map<string, number>();
 
 /* ── what it said ──────────────────────────────────────────────────────────
-   The answer, set large at the bottom, and everything it thought and said on
-   the way there folded into one quiet line right above it. Opened, the trail
+   The answer, set large at the bottom, the answers before it dimmed above it,
+   and everything it thought and said on the way to each folded out of sight. Opened, the trail
    comes back as it always was: each one a little brighter and a little larger
    than the one above it, down to the answer. */
 function thinking(
@@ -1506,8 +1506,9 @@ function thinking(
 
   const room = Math.max(60, floor - top);
   const stream = stack({ left: at.x, top, width: at.wide, height: room }, 20);
-  stream.style.cssText +=
-    ";font-family:var(--yard-face-said);overflow-y:auto;pointer-events:auto";
+  /* The face is picked in fonts.css, the one place it is named. */
+  stream.classList.add('said-face');
+  stream.style.cssText += ';overflow-y:auto;pointer-events:auto';
 
   /* A long conversation is hundreds of turns, and laying every one of them on
      the wood at once is the whole column's cost paid on every single token

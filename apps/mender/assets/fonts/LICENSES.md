@@ -16,10 +16,10 @@ SIL Open Font License, Version 1.1.
   Source: https://github.com/google/fonts/tree/main/ofl/silkscreen. The name
   tag on a district's pennant. Fetched from `@fontsource/silkscreen` on
   jsDelivr, latin subset.
-- **Bebas Neue** (weight 400) — SIL OFL 1.1 — `OFL-Bebas-Neue.txt`
-  Source: https://github.com/google/fonts/tree/main/ofl/bebasneue. What the
+- **Fraunces** (variable, regular and italic) — SIL OFL 1.1 — `OFL-Fraunces.txt`
+  Source: https://github.com/google/fonts/tree/main/ofl/fraunces. What the
   agent says, under the name `Mender Said` in `fonts.css`. Fetched from
-  `@fontsource/bebas-neue` on jsDelivr, latin subset.
+  `@fontsource-variable/fraunces` on jsDelivr, latin subset, all axes.
 
 The woff2 files themselves were fetched from Google Fonts' CSS2 API
 (`fonts.googleapis.com/css2`) with a Chrome user-agent, one weight/style at a
