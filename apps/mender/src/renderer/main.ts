@@ -16,6 +16,7 @@ import {
 import type { WorkspaceRecord } from '@emdash/core/runtimes/workspace-registry/api';
 import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
+import type { Viewport } from 'pixi-viewport';
 import { Application, Container, type FederatedPointerEvent, type Renderer } from 'pixi.js';
 import type { Mood } from '@shared/agents';
 import type {
@@ -65,8 +66,9 @@ import { createCamera, flyOut, flyToYard, frame, type Extent } from './village/c
 import { Folk, loadFolk, type Standing } from './village/folk';
 import { Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
-import './yard/tokens.css';
 import { say } from './village/notice';
+import './yard/tokens.css';
+import { loadFeet, Pennants } from './village/pennants';
 import { buildScene } from './village/scene';
 import { Water } from './village/water';
 import { wire, type MenderClient } from './wire';
@@ -537,7 +539,7 @@ async function boot(): Promise<void> {
     /** What the line asks for while a particular thing is open. */
     const prompting = (): 'file' | 'changes' | undefined =>
       reading ? 'changes' : opened ? 'file' : undefined;
-    let drawn = await draw(world, client, pixi.renderer);
+    let drawn = await draw(world, client, pixi.renderer, camera, null);
     let projects = await client.projects.list({});
     let tasks: Task[] = [];
     /* A session that has been asked for but whose worktree is still being cut
@@ -801,6 +803,13 @@ async function boot(): Promise<void> {
        walk from one village to the next. */
     const paintRail = (): void => {
       const here = open ? projectOn(open.district) : undefined;
+      drawn.pennants.set(
+        projects.map((project) => ({
+          district: project.district,
+          name: project.name,
+          ...(project.icon ? { icon: project.icon } : {}),
+        }))
+      );
       shelf.show(
         projects.map((project, at) => ({
           id: project.id,
@@ -1117,7 +1126,7 @@ async function boot(): Promise<void> {
         client,
         async () => {
           await shut();
-          drawn = await draw(world, client, pixi.renderer);
+          drawn = await draw(world, client, pixi.renderer, camera, drawn);
           projects = await client.projects.list({});
           people();
           frame(camera, drawn.island);
@@ -2959,7 +2968,7 @@ async function boot(): Promise<void> {
          same way founding one draws it: the island is composed again from
          what is standing now, rather than left showing a place nobody has. */
       await shut();
-      drawn = await draw(world, client, pixi.renderer);
+      drawn = await draw(world, client, pixi.renderer, camera, drawn);
       projects = await client.projects.list({});
       tasks = tasks.filter((task) => task.project !== project.id);
       people();
@@ -3730,6 +3739,7 @@ async function boot(): Promise<void> {
     };
 
     const picked = async (aim: Aim | null): Promise<void> => {
+      drawn.pennants.show(null);
       if (!aim) {
         await shut();
         flyOut(camera, drawn.island);
@@ -4426,7 +4436,7 @@ async function boot(): Promise<void> {
       const moved = await found(
         client,
         async () => {
-          drawn = await draw(world, client, pixi.renderer);
+          drawn = await draw(world, client, pixi.renderer, camera, drawn);
           projects = await client.projects.list({});
           people();
           frame(camera, drawn.island);
@@ -4477,7 +4487,10 @@ async function boot(): Promise<void> {
         if (!up.holds(event) && event.key !== 'Tab') event.preventDefault();
         return true;
       },
-      hover: (aim) => drawn.ground.hover(aim),
+      hover: (aim) => {
+        drawn.ground.hover(aim);
+        drawn.pennants.show(aim && !open ? aim.district.id : null);
+      },
       picked: (aim) => void picked(aim),
       /* Escape lets go of one thing at a time: what you are writing first,
          then the board. Every half-written thing counts, not just a message to
@@ -5260,16 +5273,28 @@ interface Drawn {
   ground: Ground;
   water: Water;
   folk: Folk;
+  /** A flag on every district somebody lives in, and its name on hover. */
+  pennants: Pennants;
   /** The districts by plot, which is how a project finds its own land. */
   districts: Map<string, District>;
   island: Extent;
 }
 
 /** Compose the island for the state the app is in, and put it on screen. */
-async function draw(world: Container, client: MenderClient, renderer: Renderer): Promise<Drawn> {
+async function draw(
+  world: Container,
+  client: MenderClient,
+  renderer: Renderer,
+  camera: Viewport,
+  was: Drawn | null
+): Promise<Drawn> {
   say('drawing the island…');
   const map = await client.village.map({});
-  const scene = buildScene(new Document(map.layout).items(), map.layout);
+  /* A post only for a district that is standing: one on open water would be
+     a flagpole in the sea. */
+  const standing = new Set<string>(map.districts.map((district) => district.id));
+  const feet = new Map([...(await loadFeet())].filter(([id]) => standing.has(id)));
+  const scene = buildScene(new Document(map.layout).items(), map.layout, [...feet.values()]);
   if (scene.missing.length) {
     console.warn(`${scene.missing.length} sprites are not in the kit`, scene.missing.slice(0, 8));
   }
@@ -5280,12 +5305,14 @@ async function draw(world: Container, client: MenderClient, renderer: Renderer):
   scene.root.addChildAt(ground.overlay, scene.groundTop);
 
   for (const old of world.removeChildren()) old.destroy({ children: true });
+  was?.pennants.destroy();
   world.addChild(water.mesh, scene.root);
   say(null);
   return {
     ground,
     water,
     folk: new Folk(ground.windows),
+    pennants: new Pennants(feet, scene.posts, camera),
     districts: new Map(map.districts.map((district) => [district.id, district])),
     island,
   };

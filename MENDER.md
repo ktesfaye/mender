@@ -714,6 +714,14 @@ it, so everything on it gets smaller. The camp and the islet are common ground
 and are never off; the islet is moored rather than anchored and sails its bridge
 to whatever coast there is.
 
+**Every district flies its project's flag.** A small pixel pennant in the
+district's own colour, the project's face on the cloth, or its first letter
+until it has one, so the island says whose place is whose from out on the
+water. It stands where somebody would have put one: on the grass beside a
+path, out in front of the district's main house, never on a roof or in a
+field. Pointing at the district unfurls the name off the flag's tail; moving
+off it rolls it back up.
+
 **It is an app you install.** `pnpm run package` makes a Mender.app and a dmg;
 what comes out of the Applications folder is the whole village with everything
 running behind it. The icon is a square cut out of the island as the app itself

@@ -32,6 +32,48 @@
         pointer-events: none;
         transition: opacity 400ms ease;
       }
+      /* A district's name, unfurled off its pennant's tail while the pointer
+         is on its land. `village/pennants.ts` pins it there and scales it a
+         whole number of times; it is a tag on a flag, not a tooltip. */
+      .pennant-tag {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform-origin: 0 0;
+        pointer-events: none;
+        visibility: hidden;
+        clip-path: inset(0 100% 0 0);
+        filter: drop-shadow(2px 2px 0 rgba(72, 37, 16, 0.5));
+      }
+      .pennant-tag > span {
+        display: flex;
+        align-items: center;
+        box-sizing: border-box;
+        height: 18px;
+        padding: 0 8px;
+        background: #c4b186;
+        border: 2px solid #482510;
+        font:
+          11px/1 'Silkscreen',
+          monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #482510;
+        white-space: nowrap;
+      }
+      .pennant-tag.open {
+        visibility: visible;
+        clip-path: inset(0 -4px -4px 0);
+        animation: unfurl 120ms steps(2, end);
+      }
+      @keyframes unfurl {
+        from {
+          clip-path: inset(0 100% 0 0);
+        }
+        to {
+          clip-path: inset(0 -4px -4px 0);
+        }
+      }
     </style>
   </head>
   <body>

@@ -1,0 +1,49 @@
+{
+ "$comment": "Where each district's pennant stands: the foot of the pole, world pixels, y down. Written by tools/place-pennants.py. Do not hand-edit.",
+ "feet": {
+  "A": [
+   -948,
+   -436
+  ],
+  "B": [
+   -836,
+   -1004
+  ],
+  "C": [
+   -2764,
+   -964
+  ],
+  "D": [
+   -436,
+   476
+  ],
+  "E": [
+   124,
+   52
+  ],
+  "F": [
+   324,
+   -612
+  ],
+  "G": [
+   1060,
+   -492
+  ],
+  "H": [
+   1404,
+   4
+  ],
+  "I": [
+   740,
+   -116
+  ],
+  "J": [
+   1684,
+   764
+  ],
+  "K": [
+   500,
+   556
+  ]
+ }
+}

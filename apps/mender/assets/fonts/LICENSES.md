@@ -1,6 +1,6 @@
 # Font licenses
 
-All four families are vendored locally as woff2 files (latin subset only) so
+All five families are vendored locally as woff2 files (latin subset only) so
 the app never fetches fonts from Google at runtime. Each is licensed under the
 SIL Open Font License, Version 1.1.
 
@@ -12,6 +12,10 @@ SIL Open Font License, Version 1.1.
   Source: https://github.com/google/fonts/tree/main/ofl/cormorantgaramond
 - **Courier Prime** (weight 400, regular and italic) — SIL OFL 1.1 — `OFL-Courier-Prime.txt`
   Source: https://github.com/google/fonts/tree/main/ofl/courierprime
+- **Silkscreen** (weight 400) — SIL OFL 1.1 — `OFL-Silkscreen.txt`
+  Source: https://github.com/google/fonts/tree/main/ofl/silkscreen. The name
+  tag on a district's pennant. Fetched from `@fontsource/silkscreen` on
+  jsDelivr, latin subset.
 
 The woff2 files themselves were fetched from Google Fonts' CSS2 API
 (`fonts.googleapis.com/css2`) with a Chrome user-agent, one weight/style at a

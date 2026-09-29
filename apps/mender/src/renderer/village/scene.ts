@@ -87,6 +87,15 @@ export interface BuiltScene {
    * as the sun coming out on that field.
    */
   groundTop: number;
+  /** One empty container per post asked for, at the place in the draw order
+      its foot belongs, in the order they were asked for. */
+  posts: Container[];
+}
+
+/** Where something standing on its own foot goes, in world pixels, y down. */
+export interface Foot {
+  x: number;
+  y: number;
 }
 
 /**
@@ -96,7 +105,11 @@ export interface BuiltScene {
  * anyway: the real key is (sorting_order, y+z descending, placement), and y+z
  * descending runs the opposite way to zIndex.
  */
-export function buildScene(items: readonly Linked[], layout: Layout): BuiltScene {
+export function buildScene(
+  items: readonly Linked[],
+  layout: Layout,
+  feetOf: readonly Foot[] = []
+): BuiltScene {
   const root = new Container();
   const missing: string[] = [];
   const boxes = new Map<number, Box>();
@@ -124,7 +137,8 @@ export function buildScene(items: readonly Linked[], layout: Layout): BuiltScene
       if (object?.group === 'Building') grow(boxes, object.district ?? '', item, sprite);
     }
   }
-  return { root, buildings: buildingsOf(root, boxes, feet, groundTop), drawn, missing, groundTop };
+  const { buildings, posts } = standsOf(root, boxes, feetOf, feet, groundTop);
+  return { root, buildings, drawn, missing, groundTop, posts };
 }
 
 interface Box {
@@ -179,27 +193,36 @@ function placeFor(feet: readonly number[], from: number, at: number): number {
 /* Sorted north to south, then west to east: the order the map reads in, and
    the same order every time, because it is what decides which building a task
    ends up standing in. */
-function buildingsOf(
+function standsOf(
   root: Container,
   boxes: Map<number, Box>,
+  posted: readonly Foot[],
   feet: readonly number[],
   groundTop: number
-): Building[] {
+): { buildings: Building[]; posts: Container[] } {
   const found = [...boxes.values()];
   /* Each building gets an empty container at the place in the draw order its
      doorstep belongs: after everything standing further north, including the
      barrels and planters the artist put against its own front wall, and before
-     everything further south. Inserted back to front so an index still to be
-     used never moves. */
-  const places = new Map<Box, number>();
-  for (const box of found) places.set(box, placeFor(feet, groundTop, box.bottom + DOORSTEP));
+     everything further south. A post gets the same at its own foot. Inserted
+     back to front, all of them together, so an index still to be used never
+     moves. */
+  const wanted: { at: number; stand: Container }[] = [];
   const stands = new Map<Box, Container>();
-  for (const box of [...found].sort((a, b) => (places.get(b) ?? 0) - (places.get(a) ?? 0))) {
+  for (const box of found) {
     const stand = new Container();
-    root.addChildAt(stand, Math.min(places.get(box) ?? root.children.length, root.children.length));
     stands.set(box, stand);
+    wanted.push({ at: placeFor(feet, groundTop, box.bottom + DOORSTEP), stand });
   }
-  return found
+  const posts = posted.map((foot) => {
+    const stand = new Container();
+    wanted.push({ at: placeFor(feet, groundTop, foot.y), stand });
+    return stand;
+  });
+  for (const { at, stand } of wanted.sort((a, b) => b.at - a.at)) {
+    root.addChildAt(stand, Math.min(at, root.children.length));
+  }
+  const buildings = found
     .sort((a, b) => a.top - b.top || a.left - b.left)
     .map((box) => ({
       district: box.district,
@@ -210,6 +233,7 @@ function buildingsOf(
       doorX: box.frontX,
       stand: stands.get(box) as Container,
     }));
+  return { buildings, posts };
 }
 
 function makeSprite(item: Linked): Sprite | null {

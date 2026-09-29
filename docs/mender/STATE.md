@@ -2548,6 +2548,21 @@ than stopping a little way out; and the slow shadows of clouds passing over.
 Driven over the debug port at the opening view and close in, and filmed
 across a few seconds to see the waves rise and sink.
 
+### Every district flies its project's flag (2026-09-28) — done
+
+From out on the water the island said who was working but never whose place
+was whose; you had to hover the rack to find out. Now every district with a
+project on it flies a small pixel pennant in its own colour with the project's
+face on the cloth, or its first letter until it has one, and pointing at the
+district unfurls the name off the flag's tail in two steps. The post stands
+where `tools/place-pennants.py` measured one would go: on grass beside a path,
+in front of the district's main house, clear of everything the artist drew,
+and it sits in the draw order like any barrel so a tree in front of it still
+covers it. The spots are in `assets/village/pennants.json`, fixed, because his
+districts are. Driven over the debug port at the opening view, zoomed right in
+on the crop farm, and on a flag carrying a real logo; the name unfurls on the
+land, rides the tail at every zoom and goes on the water.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

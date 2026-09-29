@@ -71,3 +71,11 @@
   font-display: block;
   src: url('courier-prime-400-italic.woff2') format('woff2');
 }
+
+@font-face {
+  font-family: 'Silkscreen';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('silkscreen-400-normal.woff2') format('woff2');
+}
