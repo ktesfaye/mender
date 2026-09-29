@@ -699,7 +699,10 @@ foams against is measured off the ground the island actually draws.
 **A district is the artist's, or it is sea. Nothing grows.** The map is his
 `base-layout.json`, untouched, and his own partition of it into thirteen
 places. A project takes one whole and it appears exactly as he drew it, tile
-for tile; a district with nobody on it is open water, and the coastline that
+for tile — until all eleven are taken, when the hay farm, the crop farm, the
+south houses, the port and the centre houses give up a piece each, in that
+order, along lines cut against his art, each piece a place of its own with its
+own flag, and only for as long as a project stands on it; a district with nobody on it is open water, and the coastline that
 exposes between the two is dressed by the editor's own brush. There is no stage,
 no half-built district and no growth model anywhere in this app: the five-stage
 pipeline that used to draw them is gone, and what replaced it is measured

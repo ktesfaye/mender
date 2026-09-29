@@ -16,6 +16,9 @@ export {
   districtsOf,
   extentOf,
   groundCells,
+  landOf,
+  retagSplit,
+  splitOf,
   type District,
 } from './districts';
 export {
@@ -30,6 +33,7 @@ export {
   type DistrictId,
   type DistrictSpec,
   type Plan,
+  type SubdistrictSpec,
   type Village,
   type VillageWorld,
 } from './his';

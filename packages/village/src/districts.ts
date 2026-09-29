@@ -7,12 +7,12 @@
    the renderer rather than asking over the wire per pointer move. */
 
 import type { Layout } from './doc/document';
-import { COMMON, type CellRun, type DistrictId, type VillageWorld } from './his';
+import { COMMON, type CellRun, type SubdistrictSpec, type VillageWorld } from './his';
 import { CELL } from './scene/resolve';
 
 export interface District {
-  /** One of his thirteen. */
-  readonly id: DistrictId;
+  /** One of his thirteen, or a piece cut out of one: `B2`. */
+  readonly id: string;
   /** What it is called out loud: "Crop farm", "Camp". */
   readonly name: string;
   /** The middle of its own land, which is where the camera looks. */
@@ -57,6 +57,92 @@ export function districtsOf(
     });
   }
   return out;
+}
+
+/**
+ * Which of his districts a place stands on: itself, or the one it was cut
+ * out of. What is composed is always his, so a piece switches its district on.
+ */
+export function landOf(id: string, subdistricts: readonly SubdistrictSpec[]): string {
+  return subdistricts.find((one) => one.id === id)?.of ?? id;
+}
+
+/**
+ * The districts with every piece somebody stands on cut out of them.
+ *
+ * A piece nobody has taken is still its district's land, so a district only
+ * gives one up the moment a project moves onto it, and gets it back the
+ * moment that project goes. What is left keeps the district's own id and name.
+ */
+export function splitOf(
+  districts: readonly District[],
+  subdistricts: readonly SubdistrictSpec[],
+  on: Iterable<string>
+): District[] {
+  const present = new Set(on);
+  const out: District[] = [];
+  for (const district of districts) {
+    const taken = subdistricts.filter((one) => one.of === district.id && present.has(one.id));
+    if (!taken.length) {
+      out.push(district);
+      continue;
+    }
+    const given = new Set<string>();
+    for (const one of taken) {
+      for (const [x, y0, y1] of one.cells) for (let y = y0; y <= y1; y++) given.add(`${x},${y}`);
+    }
+    const kept: CellRun[] = [];
+    for (const [x, y0, y1] of district.cells) {
+      let start: number | null = null;
+      for (let y = y0; y <= y1 + 1; y++) {
+        const mine = y <= y1 && !given.has(`${x},${y}`);
+        if (mine && start === null) start = y;
+        if (!mine && start !== null) {
+          kept.push([x, start, y - 1]);
+          start = null;
+        }
+      }
+    }
+    out.push({ ...district, cells: kept, core: middleOf(kept) });
+    for (const one of taken) {
+      out.push({
+        id: one.id,
+        name: one.name,
+        core: middleOf(one.cells),
+        cells: one.cells,
+        kind: 'project',
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Every object of his on a piece carries the piece's id rather than its
+ * district's, so the renderer's houses, windows and villagers belong to the
+ * piece they stand in. An object belongs where its foot is.
+ */
+export function retagSplit(
+  layout: Layout,
+  districts: readonly District[],
+  subdistricts: readonly SubdistrictSpec[]
+): void {
+  const owner = new Map<string, string>();
+  const split = new Set<string>();
+  for (const district of districts) {
+    const of = subdistricts.find((one) => one.id === district.id)?.of;
+    if (!of) continue;
+    split.add(of);
+    for (const [x, y0, y1] of district.cells) {
+      for (let y = y0; y <= y1; y++) owner.set(`${x},${y}`, district.id);
+    }
+  }
+  if (!split.size) return;
+  for (const object of layout.objects) {
+    if (!object.district || !split.has(object.district)) continue;
+    const at = owner.get(`${Math.floor(object.pos[0])},${Math.floor(object.pos[1])}`);
+    if (at) object.district = at;
+  }
 }
 
 /**

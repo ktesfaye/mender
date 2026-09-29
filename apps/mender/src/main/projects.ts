@@ -8,11 +8,12 @@ import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { LiveJobFailedError, createLiveJobReplicaCache } from '@emdash/wire/live';
-import { COMMON, createPlan, type DistrictSpec } from '@mender/village';
+import { COMMON, createPlan, landOf, type DistrictSpec } from '@mender/village';
 import { app, dialog } from 'electron';
 import type { AppSettings } from './app-settings';
 import { keep, picturesIn, shown, type Picture } from './pictures';
 import type { MenderRuntimes } from './runtimes';
+import { loadSubdistricts } from './village';
 
 const ran = promisify(execFile);
 
@@ -273,8 +274,9 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
          is measured off his own partition, so the island fills out round the
          middle rather than growing an arm. */
       const taken = new Set(projects.map((project) => project.district));
-      const here = new Set(standingIn(projects));
-      const free = plan()
+      const subdistricts = loadSubdistricts();
+      const here = new Set(standingIn(projects).map((id) => landOf(id, subdistricts)));
+      const free: string[] = plan()
         .order()
         .filter(
           (district) =>
@@ -282,8 +284,13 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
             !taken.has(district) &&
             plan().reachable(here).includes(district)
         );
-      // Eleven districts, and every one of them taken. Checked before a clone or
-      // a fresh repository spends any time, since neither would have anywhere
+      /* Only once all eleven of his are taken does a big district give up a
+         piece, and in the order the pieces are listed. */
+      if (!free.length) {
+        free.push(...subdistricts.map((one) => one.id).filter((id) => !taken.has(id)));
+      }
+      // Every district and every piece taken. Checked before a clone or a
+      // fresh repository spends any time, since neither would have anywhere
       // to stand.
       if (!free.length) return { success: false, error: { kind: 'island-full' } };
 

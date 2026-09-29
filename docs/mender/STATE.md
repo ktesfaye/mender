@@ -2587,6 +2587,23 @@ mostly a plain tile with a small mark in it is cut down to the mark, the tile
 carrying on as the cloth, so the mark fills the flag the way a letter does.
 Checked side by side on all eleven.
 
+### A twelfth project takes a piece of a big district (2026-09-28) — done
+
+With all eleven of his districts taken, founding another project used to say
+the island was full. Now the big ones give up a piece, in the order Kirubel
+chose: the east half of the hay farm, the crop farm's barn, the south houses'
+long house and then its tall house, the port's dock, and the centre houses'
+east house and then their west shed. A piece is only its own place once a
+project stands on it; until then it is still its district's land, and it goes
+back to it when that project is forgotten. The district keeps the part its own
+flag stands on and its own name. Each piece has its own flag, measured the
+same way a district's is and kept clear of the flags beside it, its own glow
+when pointed at, and its own houses and windows. The lines are in
+`tools/split-districts.py`, cut against the art. Driven in a scratch data
+folder: eleven projects, a twelfth folder dropped on the water landed on the
+hay farm's east half, then every piece filled and the island looked at whole,
+a piece pointed at and walked into.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

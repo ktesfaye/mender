@@ -63,7 +63,7 @@ async function island(world: Container): Promise<void> {
   scene.root.addChildAt(ground.overlay, scene.groundTop);
   world.addChild(scene.root);
 
-  const standing = districts.find((one) => composed.on.includes(one.id)) ?? districts[0];
+  const standing = districts.find((one) => composed.on.some((id) => id === one.id)) ?? districts[0];
   if (!standing) return;
   /* Where the camera comes to rest on a district, near enough that the ground
      under the writing is a place rather than a map. */

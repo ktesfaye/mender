@@ -56,7 +56,10 @@ const TAG = FLAG.h;
 const OUTLINE = '#482510';
 const TIMBER = '#573723';
 
-/** The eleven, in his order: a district keeps its colour for as long as it stands. */
+/**
+ * The eleven in his order, then the pieces the big ones give up: a place keeps
+ * its colour for as long as it stands.
+ */
 const COLOURS: Record<string, string> = {
   A: '#efc64b',
   B: '#d18b2c',
@@ -69,6 +72,13 @@ const COLOURS: Record<string, string> = {
   I: '#e3cf9a',
   J: '#e39b6a',
   K: '#a9b6d0',
+  B2: '#c7a24e',
+  A2: '#d9a94a',
+  D2: '#9d5f86',
+  D3: '#c98fae',
+  J2: '#c9845a',
+  E2: '#7a6bb0',
+  E3: '#a797d4',
 };
 
 export interface Flown {

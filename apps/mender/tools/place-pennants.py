@@ -57,6 +57,8 @@ def shapes(size: int):
 
 STEP = 4
 ROOM = 8
+# Air kept between two flags, so neither reads as the other's second cloth.
+FLAG_ROOM = 64
 
 OPAQUE_GRASS = {
     12, 13, 14, 15, 17, 20, 28, 29, 30, 31, 44, 45, 46, 47, 60, 61, 62, 63, 92, 93, 94, 95,
@@ -72,6 +74,12 @@ def number(file: str) -> int:
 def main() -> None:
     layout = json.load(open(os.path.join(VILLAGE, "base-layout.json")))
     districts = json.load(open(os.path.join(VILLAGE, "districts.json")))["districts"]
+
+    # A piece a big district gives up once all eleven are taken stands its
+    # own pennant, measured the same way, as if it were a district of its own.
+    pieces = json.load(open(os.path.join(VILLAGE, "subdistricts.json")))["pieces"]
+    for piece in pieces:
+        piece["land"] = {(x, y) for x, y0, y1 in piece["cells"] for y in range(y0, y1 + 1)}
 
     owner: dict[tuple[int, int], str] = {}
     for d in districts:
@@ -133,26 +141,47 @@ def main() -> None:
         if o["group"] == "Building" and box and oi in object_district:
             area = (box[2] - box[0]) * (box[3] - box[1])
             buildings.setdefault(object_district[oi], []).append((*box, area))
+            foot = (math.floor(ox), math.floor(oy))
+            for piece in pieces:
+                if foot in piece["land"]:
+                    buildings.setdefault(piece["id"], []).append((*box, area))
 
     def clear(boxes, fx, fy, reach) -> bool:
         l, t, r, b = fx + reach[0], fy + reach[1], fx + reach[2], fy + reach[3]
         return not any(l < B[2] and r > B[0] and t < B[3] and b > B[1] for B in boxes)
 
     out: dict[str, list[int]] = {}
-    for d in districts:
+    flags: list[tuple[float, float, float, float]] = []
+    places = [(d, owner) for d in districts]
+    for piece in pieces:
+        places.append((piece, {**owner, **{c: piece["id"] for c in piece["land"]}}))
+    for d, owner in places:
         if d["id"] in ("CAMP", "ISLAND"):
             continue
         cells = [c for c, who in owner.items() if who == d["id"]]
         cx = sum(c[0] for c in cells) / len(cells) * CELL + CELL / 2
         cy = -sum(c[1] for c in cells) / len(cells) * CELL - CELL / 2
+        # A piece's own houses were counted under its district too.
         houses = sorted(buildings.get(d["id"], []), key=lambda b: -b[4])
         door = ((houses[0][0] + houses[0][2]) / 2, houses[0][3]) if houses else (cx, cy)
 
         best = None
-        for size in SIZES:
+        # Beside a path with the cloth in clear air if anywhere is. The centre
+        # houses' east house has nowhere like that at all, so as a last resort
+        # a place may stand back from the path and fly its cloth over a tree.
+        # A district takes the largest clear size it has anywhere. A piece is
+        # small enough that that sends its flag off to the far end of it, so it
+        # weighs both sizes together and stays by its own house.
+        piece = "of" in d
+        tries = [(0 if piece else size, size, True, True) for size in SIZES] + [
+            (-1, SIZES[-1], False, False)
+        ]
+        tier = None
+        for rank, size, pathed, airy in tries:
             POLE, CLOTH, FOOT = shapes(size)
-            if best is not None:
+            if best is not None and rank != tier:
                 break
+            tier = rank
             for (gx, gy) in cells:
                 if (gx, gy) in rim or (gx, gy) not in (grass | dirt):
                     continue
@@ -160,15 +189,19 @@ def main() -> None:
                 near = [(gx + dx, gy + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)]
                 if any(owner.get(n) != d["id"] or n in rim or n not in (grass | dirt) for n in near):
                     continue
-                if not on_path and not any(n in path for n in near if n != (gx, gy)):
+                if pathed and not on_path and not any(n in path for n in near if n != (gx, gy)):
                     continue
                 for ix in range(STEP, CELL, STEP * 2):
                     for iy in range(STEP, CELL, STEP * 2):
                         fx = gx * CELL + ix
                         fy = -(gy + 1) * CELL + iy
-                        if not clear(solid, fx, fy, POLE) or not clear(solid, fx, fy, CLOTH) or not clear(
-                            low, fx, fy, FOOT
+                        if (
+                            not clear(solid, fx, fy, POLE)
+                            or (airy and not clear(solid, fx, fy, CLOTH))
+                            or not clear(low, fx, fy, FOOT)
                         ):
+                            continue
+                        if not clear(flags, fx, fy, POLE) or not clear(flags, fx, fy, CLOTH):
                             continue
                         cramped = not clear(roomy, fx, fy, POLE) or not clear(roomy, fx, fy, CLOTH)
                         score = (CELL if on_path else 0) + (2 * CELL if cramped else 0) + math.hypot(fx - door[0], fy - door[1]) + 0.35 * math.hypot(
@@ -179,6 +212,18 @@ def main() -> None:
         if best is None:
             raise SystemExit(f"{d['id']}: nowhere clear to stand a pennant")
         out[d["id"]] = [best[1], best[2]]
+        # Every flag already standing is in the way of the next one, at the
+        # largest the app draws it: two pieces side by side fly two flags.
+        pole, cloth, _ = shapes(max(SIZES))
+        for reach in (pole, cloth):
+            flags.append(
+                (
+                    best[1] + reach[0] - FLAG_ROOM,
+                    best[2] + reach[1] - FLAG_ROOM,
+                    best[1] + reach[2] + FLAG_ROOM,
+                    best[2] + reach[3] + FLAG_ROOM,
+                )
+            )
         print(f"{d['id']:>2} {d['name']:<18} {best[1]:>6} {best[2]:>6}  clear at {best[3]}x")
 
     json.dump(

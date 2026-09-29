@@ -69,6 +69,19 @@ export interface DistrictSpec {
   readonly objects: readonly number[];
 }
 
+/**
+ * A piece of one of his districts, as `subdistricts.json` carries it: land a
+ * district gives up to a project once all eleven are taken. In the order they
+ * are handed out.
+ */
+export interface SubdistrictSpec {
+  readonly id: string;
+  /** The district it is cut out of. */
+  readonly of: DistrictId;
+  readonly name: string;
+  readonly cells: readonly CellRun[];
+}
+
 /** Everything a village needs to draw any state of itself. Loaded once. */
 export interface VillageWorld {
   /** `base-layout.json`: his scene, exactly as he drew it. */

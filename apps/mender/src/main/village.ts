@@ -4,12 +4,16 @@ import { createController, type Controller } from '@emdash/wire/rpc';
 import {
   createVillage,
   districtsOf,
+  landOf,
   parseLayout,
+  retagSplit,
+  splitOf,
   type Atlas,
   type Composed,
   type District,
   type DistrictSpec,
   type Layout,
+  type SubdistrictSpec,
   type Village,
   type VillageWorld,
 } from '@mender/village';
@@ -32,20 +36,32 @@ export interface VillageOptions {
  */
 export function createVillageController(options: VillageOptions): Controller {
   let village: Village | undefined;
+  let subdistricts: SubdistrictSpec[] | undefined;
   const maps = new Map<string, { composed: Composed; districts: District[] }>();
 
   return createController(villageContract, {
     async map({ on }) {
       village ??= createVillage(loadWorld());
+      subdistricts ??= loadSubdistricts();
       const wanted = on ?? (await options.state());
-      const key = village.stateKey(village.connected(wanted));
+      /* What is composed is always his: a piece switches its district on, and
+         is cut out of it afterwards. */
+      const land = [...new Set(wanted.map((id) => landOf(id, subdistricts!)))];
+      const cut = subdistricts
+        .filter((one) => wanted.includes(one.id))
+        .map((one) => one.id)
+        .join('-');
+      const key = `${village.stateKey(village.connected(land))}|${cut}`;
       let map = maps.get(key);
       if (!map) {
-        const composed = village.compose(wanted);
-        map = {
-          composed,
-          districts: districtsOf(village.world, composed.on, composed.moored),
-        };
+        const composed = village.compose(land);
+        const districts = splitOf(
+          districtsOf(village.world, composed.on, composed.moored),
+          subdistricts,
+          wanted
+        );
+        retagSplit(composed.layout, districts, subdistricts);
+        map = { composed, districts };
         maps.set(key, map);
       }
       return {
@@ -68,4 +84,10 @@ function loadWorld(): VillageWorld {
     districts: (JSON.parse(read('districts.json')) as { districts: DistrictSpec[] }).districts,
     atlas: JSON.parse(read('atlas.json')) as Atlas,
   };
+}
+
+/** The pieces the big districts give up once all eleven are taken. */
+export function loadSubdistricts(): SubdistrictSpec[] {
+  const path = join(app.getAppPath(), 'assets', 'village', 'subdistricts.json');
+  return (JSON.parse(readFileSync(path, 'utf8')) as { pieces: SubdistrictSpec[] }).pieces;
 }
