@@ -1516,23 +1516,6 @@ function thinking(
   /* A session has its columns from the moment it exists, said to or not, so a
      new one reads as the same place every other one is. */
   if (yard.session) {
-    /* The answer is the one thing here that is read rather than glanced at,
-       so the night behind it is a shade deeper. Shade, not a panel: it has no
-       edge anywhere, it just gets darker towards the middle. */
-    root.appendChild(
-      stays(
-        box(
-          {
-            left: at.x - GUTTER,
-            top: HEAD.rule,
-            width: at.wide + GUTTER * 2,
-            height: floor - HEAD.rule,
-          },
-          'background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(18,13,7,.58),rgba(18,13,7,.46) 70%,rgba(18,13,7,0));pointer-events:none'
-        ),
-        'wash:said'
-      )
-    );
     /* No rule down the left of it once the left column has been put away:
        there is nothing on the other side of it to divide it from. */
     if (ruled) {
