@@ -4499,7 +4499,10 @@ async function boot(): Promise<void> {
         return true;
       },
       hover: (aim) => {
-        if (editing?.active) aim = null;
+        /* While a district is being carried, the place it would land on is
+           lit by the carrying itself; the hover's own light would be a
+           second, different answer to the same question. */
+        if (editing?.holding) aim = null;
         drawn.ground.hover(aim);
         drawn.pennants.show(aim && !open ? aim.district.id : null);
       },

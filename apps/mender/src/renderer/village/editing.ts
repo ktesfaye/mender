@@ -117,6 +117,11 @@ export class Editing {
     return this.on;
   }
 
+  /** Whether a district is in the hand right now. */
+  get holding(): boolean {
+    return this.carrying !== null;
+  }
+
   start(): void {
     if (this.on) return;
     this.on = true;
