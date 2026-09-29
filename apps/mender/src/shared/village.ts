@@ -36,6 +36,20 @@ export const villageContract = defineContract({
       districts: districtsSchema,
     }),
   }),
+  /** Every place a project could stand, standing or not: his eleven and the
+      pieces the big ones give up. What rearranging the island is drawn on. */
+  places: procedure({
+    input: z.object({}),
+    output: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        /** The district a piece is cut out of. */
+        of: z.string().nullable(),
+        cells: z.custom<readonly (readonly [number, number, number])[]>(() => true),
+      })
+    ),
+  }),
 });
 
 export type VillageContract = typeof villageContract;

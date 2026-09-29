@@ -63,11 +63,12 @@ import { answerFor, SEND_ALL } from './board/work';
 import { ran } from './job';
 import { setPace } from './pace';
 import { createCamera, flyOut, flyToYard, frame, type Extent } from './village/camera';
+import { Editing } from './village/editing';
 import { Folk, loadFolk, type Standing } from './village/folk';
 import { Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
-import { say } from './village/notice';
 import './yard/tokens.css';
+import { say } from './village/notice';
 import { loadFeet, Pennants } from './village/pennants';
 import { buildScene } from './village/scene';
 import { Water } from './village/water';
@@ -76,6 +77,7 @@ import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
 import { openYard, type Watching } from './yard/live';
 import { showMissed } from './yard/missed';
+import { pressing } from './yard/press';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf } from './yard/shelf';
@@ -4470,12 +4472,20 @@ async function boot(): Promise<void> {
       void carry(files);
     });
 
+    /** Rearranging the island, while it is on. Built once the pointer is. */
+    let editing: Editing | null = null;
+
     const hand: Pointing = {
       at: (x, y) => drawn.ground.at(x, y),
       aside: () => {
         if (yard.open) dismiss();
       },
       held: (event) => {
+        if (editing?.active && event.key === 'Escape') {
+          event.preventDefault();
+          editing.escaped();
+          return true;
+        }
         const up = founding ?? windmill ?? (settings ? settings.ui : null);
         if (!up) return false;
         if (event.key === 'Escape') {
@@ -4489,10 +4499,13 @@ async function boot(): Promise<void> {
         return true;
       },
       hover: (aim) => {
+        if (editing?.active) aim = null;
         drawn.ground.hover(aim);
         drawn.pennants.show(aim && !open ? aim.district.id : null);
       },
-      picked: (aim) => void picked(aim),
+      picked: (aim) => {
+        if (!editing?.active) void picked(aim);
+      },
       /* Escape lets go of one thing at a time: what you are writing first,
          then the board. Every half-written thing counts, not just a message to
          an agent — a name you were giving a session is work too, and throwing
@@ -4919,6 +4932,65 @@ async function boot(): Promise<void> {
     };
     watchPointer((x, y) => yard.covers(x, y), pixi, camera, hand);
 
+    editing = new Editing(
+      pixi,
+      camera,
+      await client.village.places({}),
+      {
+        residents: () => projects,
+        scene: () => drawn.root,
+        moves: (id) => client.projects.moves({ id }),
+        move: async (id, to) => {
+          const done = await client.projects.move({ id, to });
+          if (!done.success) return done.error;
+          drawn = await draw(world, client, pixi.renderer, camera, drawn);
+          projects = await client.projects.list({});
+          people();
+          return null;
+        },
+        forget: async (id) => {
+          await forget(id);
+        },
+        covered: (x, y) => yard.covers(x, y),
+      },
+      layer.root
+    );
+
+    /* Out on the island with nothing open, a right-click is the one way into
+       rearranging it. Anywhere a board is up, the right-click is the board's. */
+    let rearrangeSlab: HTMLElement | null = null;
+    const unslabIsland = (): void => {
+      rearrangeSlab?.remove();
+      rearrangeSlab = null;
+    };
+    window.addEventListener('contextmenu', (event) => {
+      unslabIsland();
+      if (open || yard.showing || yard.open || founding || windmill || settings) return;
+      if (editing?.active) return;
+      event.preventDefault();
+      const slab = document.createElement('div');
+      slab.className = 'menu slab';
+      const offer = pressing('edit districts', () => {
+        unslabIsland();
+        drawn.ground.hover(null);
+        drawn.pennants.show(null);
+        editing?.start();
+      });
+      offer.className += ' slab-line';
+      slab.appendChild(offer);
+      layer.root.appendChild(slab);
+      slab.style.left = `${Math.min(event.clientX, window.innerWidth - slab.offsetWidth - 12)}px`;
+      slab.style.top = `${Math.min(event.clientY, window.innerHeight - slab.offsetHeight - 12)}px`;
+      rearrangeSlab = slab;
+    });
+    window.addEventListener(
+      'pointerdown',
+      (event) => {
+        if (rearrangeSlab && !rearrangeSlab.contains(event.target as Node)) unslabIsland();
+      },
+      true
+    );
+
     /* A clicked notification names a session the same way pressing it on the
        rail or in the finder does: one path in, `go` decides the rest. */
     window.mender?.attend?.((task) => go(`task:${task}`));
@@ -5271,6 +5343,8 @@ function whyNot(error: { kind: string; because?: string; name?: string }): strin
 }
 
 interface Drawn {
+  /** The island as one picture, which a district is lifted out of. */
+  root: Container;
   ground: Ground;
   water: Water;
   folk: Folk;
@@ -5310,6 +5384,7 @@ async function draw(
   world.addChild(water.mesh, scene.root);
   say(null);
   return {
+    root: scene.root,
     ground,
     water,
     folk: new Folk(ground.windows),

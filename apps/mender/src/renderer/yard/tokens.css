@@ -1144,3 +1144,27 @@ body.gripping-row * {
   font-size: 13px;
   white-space: nowrap;
 }
+
+/* Rearranging the island: one line over the top of it, what the hand is
+   doing and the way out. Not a box, the same as the line that says what you
+   missed. */
+.yard .editing-line {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  white-space: pre-wrap;
+  text-align: center;
+  font-family: var(--yard-face-label);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  color: var(--yard-working);
+  text-shadow: 2px 2px 0 #120d07;
+  opacity: 0;
+  transition: opacity 240ms ease;
+  pointer-events: none;
+}
+.yard .editing-line.sore {
+  color: var(--yard-wrong);
+}

@@ -2610,6 +2610,23 @@ is the part the district keeps, with fences and cliffs slow to cross, so the
 lines settle along the lanes and fence runs and every field goes whole to one
 side. Looked at over the art for all five and pointed at in the running app.
 
+### Districts are rearranged by hand (2026-09-28) — done
+
+A right-click out on the island offers "edit districts". While it is on, a
+district is picked up rather than walked into: pressing one lifts its land off
+the island, houses and all, and it goes where the pointer goes. Let go on
+somebody else's place and the two projects swap; on an empty place, pale
+ground on the water or a free piece of a lived-in district, and it moves in.
+Let go out on the water and the line at the bottom offers to forget it, two
+presses, naming that its sessions come down and the folder stays. Anything
+that would leave a project unable to reach the fire, or a piece with nobody on
+the rest of its district, lights red, says who would be stranded, and goes
+back. The land never moves; who lives in which place does. Escape or "done"
+ends it. Driven in a scratch data folder over the debug port: the centre
+houses swapped with the hay farm's east half and both flags traded places, the
+crop farm refused off the map because everything hangs off it, and the crop
+farm's barn forgotten off the water.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour

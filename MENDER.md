@@ -708,6 +708,16 @@ no half-built district and no growth model anywhere in this app: the five-stage
 pipeline that used to draw them is gone, and what replaced it is measured
 against `world/his.py` in the village repo, tile for tile, at every state.
 
+**But who lives where is his to rearrange.** A right-click on the island
+offers "edit districts", and while it is on a district is something you pick
+up: its land lifts off, houses and trees and all, and follows the pointer.
+Let go on somebody else's place and the two swap; on an empty place and it
+moves in; out on the water and the line at the bottom offers to forget it,
+in the two presses anything that takes sessions down takes. His districts
+never move, only who stands in them, and nothing may be let go anywhere that
+would leave a project out of reach of the fire: that place lights red, says
+who would be stranded, and the district goes back where it was.
+
 **The order they come on in is measured, not chosen.** Every state has to be one
 piece of land walkable from the fire, and from there the district that comes next
 is the one leaving the island roundest, over every walk the geography allows.

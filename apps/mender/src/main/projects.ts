@@ -8,7 +8,15 @@ import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { LiveJobFailedError, createLiveJobReplicaCache } from '@emdash/wire/live';
-import { COMMON, createPlan, landOf, type DistrictSpec } from '@mender/village';
+import {
+  COMMON,
+  createPlan,
+  faultIn,
+  landOf,
+  moved,
+  type DistrictSpec,
+  type Move,
+} from '@mender/village';
 import { app, dialog } from 'electron';
 import type { AppSettings } from './app-settings';
 import { keep, picturesIn, shown, type Picture } from './pictures';
@@ -142,6 +150,14 @@ export interface Projects {
   sweeps(sweep: (project: string) => Promise<void>): void;
   /** The state these projects make: the districts that are standing. */
   standing(): Promise<string[]>;
+  /** Every place this project could go instead, and what is wrong with the
+      ones it can't: null is a place it can. `off` is taking it off the map. */
+  moves(id: string): Promise<{ places: Record<string, string | null>; off: string | null }>;
+  /** Stand it somewhere else. Onto somebody's place swaps the two of them. */
+  move(
+    id: string,
+    to: string
+  ): Promise<{ success: true; data: Project[] } | { success: false; error: string }>;
 }
 
 const KEY = 'projects';
@@ -263,9 +279,53 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
     ...projects.map((project) => project.district),
   ];
 
+  /* Where everybody stands, and what one move would do to it. */
+  const arranged = (projects: readonly Project[]): Map<string, string> =>
+    new Map(projects.map((project) => [project.id, project.district]));
+  const faultAfter = (projects: readonly Project[], id: string, move: Move): string | null =>
+    faultIn(
+      plan(),
+      loadSubdistricts(),
+      moved(arranged(projects), id, move),
+      (who) => projects.find((project) => project.id === who)?.name ?? 'somebody'
+    );
+
   return {
     list,
     standing: async () => standingIn(await list()),
+
+    async moves(id) {
+      const projects = await stored();
+      const places: Record<string, string | null> = {};
+      for (const place of [
+        ...plan()
+          .order()
+          .filter((one) => !COMMON.includes(one)),
+        ...loadSubdistricts().map((one) => one.id),
+      ]) {
+        places[place] = faultAfter(projects, id, { kind: 'to', place });
+      }
+      return { places, off: faultAfter(projects, id, { kind: 'off' }) };
+    },
+
+    async move(id, to) {
+      const projects = await stored();
+      const project = projects.find((one) => one.id === id);
+      if (!project) return { success: false, error: 'that project is gone' };
+      const whole = plan().order() as readonly string[];
+      const known = whole.includes(to) || loadSubdistricts().some((one) => one.id === to);
+      if (!known || (COMMON as readonly string[]).includes(to))
+        return { success: false, error: 'nobody can live there' };
+      const fault = faultAfter(projects, id, { kind: 'to', place: to });
+      if (fault) return { success: false, error: fault };
+      const after = moved(arranged(projects), id, { kind: 'to', place: to });
+      return {
+        success: true,
+        data: await save(
+          projects.map((one) => ({ ...one, district: after.get(one.id) ?? one.district }))
+        ),
+      };
+    },
 
     async found(from = { kind: 'folder' }) {
       const projects = await stored();
@@ -344,9 +404,7 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
 
     async pictures(id, many) {
       const project = await find(id);
-      return project
-        ? picturesIn(project.path, many, runtimes.env)
-        : { pictures: [], more: 0 };
+      return project ? picturesIn(project.path, many, runtimes.env) : { pictures: [], more: 0 };
     },
 
     async picture(id, from) {

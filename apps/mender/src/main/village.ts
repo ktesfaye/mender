@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createController, type Controller } from '@emdash/wire/rpc';
 import {
+  COMMON,
   createVillage,
   districtsOf,
   landOf,
@@ -70,6 +71,21 @@ export function createVillageController(options: VillageOptions): Controller {
         shore: map.composed.shore,
         districts: map.districts,
       };
+    },
+    async places() {
+      village ??= createVillage(loadWorld());
+      subdistricts ??= loadSubdistricts();
+      return [
+        ...village.world.districts
+          .filter((spec) => !COMMON.includes(spec.id))
+          .map((spec) => ({ id: spec.id, name: spec.name, of: null, cells: spec.cells })),
+        ...subdistricts.map((one) => ({
+          id: one.id,
+          name: one.name,
+          of: one.of,
+          cells: one.cells,
+        })),
+      ];
     },
   });
 }

@@ -19,5 +19,7 @@ export function createProjectsController(projects: Projects): Controller {
     scripts: ({ id }) => projects.scripts(id),
     script: ({ id, which, value }) => projects.script(id, which, value),
     relink: ({ id }) => projects.relink(id),
+    moves: ({ id }) => projects.moves(id),
+    move: ({ id, to }) => projects.move(id, to),
   });
 }

@@ -166,6 +166,21 @@ export const projectsContract = defineContract({
     data: projectSchema,
     error: relinkErrorSchema,
   }),
+  /** Every place a project could stand instead: null where it can, what is
+      wrong where it can't. `off` is the same for taking it off the map. */
+  moves: procedure({
+    input: z.object({ id: z.string() }),
+    output: z.object({
+      places: z.record(z.string(), z.string().nullable()),
+      off: z.string().nullable(),
+    }),
+  }),
+  /** Stand it somewhere else; onto somebody's place swaps the two. */
+  move: fallible({
+    input: z.object({ id: z.string(), to: z.string() }),
+    data: z.array(projectSchema),
+    error: z.string(),
+  }),
 });
 
 export type ProjectsContract = typeof projectsContract;
