@@ -1462,10 +1462,10 @@ function changelog(
 const logScrolled = new Map<string, number>();
 
 /* ── what it said ──────────────────────────────────────────────────────────
-   The answer, set large at the bottom, the answers before it dimmed above it,
-   and everything it thought and said on the way to each folded out of sight. Opened, the trail
-   comes back as it always was: each one a little brighter and a little larger
-   than the one above it, down to the answer. */
+   The answer, set large at the top, the answers before it dimmed below it,
+   and everything it thought and said on the way to each folded out of sight.
+   Opened, the trail comes back in between them: each one a little dimmer and
+   a little smaller than the one above it, down into the past. */
 function thinking(
   root: HTMLElement,
   at: { x: number; wide: number },
@@ -1521,36 +1521,39 @@ function thinking(
   let shown = Math.min(wholeSize, revealedThoughts.get(sessionId) ?? REVEAL_INITIAL);
   const server = yard.session?.olderThoughts ?? 0;
 
-  const older = document.createElement('div');
-  stream.appendChild(older);
+  /* Newest at the top, the way the gatepost reads, so what it is doing now
+     and what it just said are where the eye lands and history runs down. */
+  if (live) stream.appendChild(ember(live, since));
+  if (failure) stream.appendChild(failureEmber(failure, does));
 
   const items = document.createElement('div');
   items.style.cssText = 'display:flex;flex-direction:column;gap:20px';
   stream.appendChild(items);
 
+  const older = document.createElement('div');
+  stream.appendChild(older);
+
   function laidOlder(): void {
     const hidden = hiddenCount(wholeSize, shown, server);
     older.replaceChildren();
     if (!hidden || !thinkingOpen()) return;
-    const line = exact(`\u25b8 ${hidden} more before these`, 12, '#8a7452');
+    const line = exact(`\u25be ${hidden} more before these`, 12, '#8a7452');
     if (windowStart(wholeSize, shown) > 0) {
       line.style.cursor = 'pointer';
       line.style.pointerEvents = 'auto';
       line.addEventListener('mousedown', (event) => event.preventDefault());
       line.addEventListener('click', () => {
-        const before = stream.scrollHeight;
         shown = revealMore(wholeSize, shown, REVEAL_CHUNK);
         revealedThoughts.set(sessionId, shown);
         laidOlder();
         laidItems();
-        stream.scrollTop += stream.scrollHeight - before;
       });
     }
     older.appendChild(line);
   }
 
-  /* Oldest first and dimmest first, so the column brightens as it comes down
-     to what is happening now. The last one is set large and is the only thing
+  /* Newest first and brightest first, so the column dims as it goes down
+     into what was said before. The first one is set large and is the only thing
      on this screen that is, unless it was said before the newest note, in
      which case it is history like the rest and the live edge is what the agent
      is doing about what you said since. */
@@ -1599,14 +1602,14 @@ function thinking(
         if (trouble) body.classList.add('prose-trouble');
         prose(body, one.id, one.said, !walkedIn, keepCode(does), openLink(does));
         it.appendChild(body);
-        items.appendChild(it);
+        items.prepend(it);
         return;
       }
       /* Trouble keeps its colour as it goes into the history, dimmed with the
        rest, so scrolling back you can still see where it went wrong. */
       const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
       const fade = far > 2 ? 0.46 : 0.62;
-      items.appendChild(
+      items.prepend(
         keyed(
           thought(
             one,
@@ -1631,7 +1634,7 @@ function thinking(
     setThinkingOpen(!thinkingOpen());
     laidOlder();
     laidItems();
-    stream.scrollTop = stream.scrollHeight;
+    stream.scrollTop = 0;
   }
   /** Something that opens and folds the trail when pressed, and looks no different. */
   function folding(el: HTMLElement): void {
@@ -1646,17 +1649,14 @@ function thinking(
   laidOlder();
   laidItems();
 
-  if (live) stream.appendChild(ember(live, since));
-  if (failure) stream.appendChild(failureEmber(failure, does));
-
   root.appendChild(stream);
   /* It follows the live edge while you are at it, and stays put while you have
      scrolled up to read something, because being yanked back down in the
      middle of a sentence is worse than missing the next one. */
   const kept = followed.get(yard.session?.id ?? '');
-  stream.scrollTop = kept === undefined || walkedIn ? stream.scrollHeight : kept;
+  stream.scrollTop = kept === undefined || walkedIn ? 0 : kept;
   stream.addEventListener('scroll', () => {
-    const atEdge = stream.scrollTop + stream.clientHeight >= stream.scrollHeight - 24;
+    const atEdge = stream.scrollTop <= 24;
     if (atEdge) followed.delete(yard.session?.id ?? '');
     else followed.set(yard.session?.id ?? '', stream.scrollTop);
   });
