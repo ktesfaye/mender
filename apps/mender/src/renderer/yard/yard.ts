@@ -1516,6 +1516,23 @@ function thinking(
   /* A session has its columns from the moment it exists, said to or not, so a
      new one reads as the same place every other one is. */
   if (yard.session) {
+    /* The answer is the one thing here that is read rather than glanced at,
+       so the night behind it is a shade deeper. Shade, not a panel: it has no
+       edge anywhere, it just gets darker towards the middle. */
+    root.appendChild(
+      stays(
+        box(
+          {
+            left: at.x - GUTTER,
+            top: HEAD.rule,
+            width: at.wide + GUTTER * 2,
+            height: floor - HEAD.rule,
+          },
+          'background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(18,13,7,.34),rgba(18,13,7,.26) 70%,rgba(18,13,7,0));pointer-events:none'
+        ),
+        'wash:said'
+      )
+    );
     /* No rule down the left of it once the left column has been put away:
        there is nothing on the other side of it to divide it from. */
     if (ruled) {
@@ -1633,7 +1650,7 @@ function thinking(
         const size = one.said.length > 700 ? 19 : 21;
         body.style.cssText = one.quiet
           ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
-          : `font-size:${size}px;line-height:1.35;color:${trouble?.ink ?? '#ffdca4'};text-shadow:0 2px 10px rgba(0,0,0,.9)`;
+          : `font-size:${size}px;line-height:1.35;color:${trouble?.ink ?? '#fdfaf3'};text-shadow:0 2px 10px rgba(0,0,0,.9)`;
         if (trouble) body.classList.add('prose-trouble');
         prose(body, one.id, one.said, !walkedIn, keepCode(does), openLink(does));
         it.appendChild(body);
@@ -2034,19 +2051,6 @@ function made(
    * thinner form. */
   if (!yard.asking && !plan.length && !steps_.length && !hands.length) return;
 
-  /* The world behind this column is busier than behind the answer, so it gets
-     a little more dark under it than the rest of the yard does. Feathered in
-     from the rule rather than cut, so it reads as shade and not a panel. */
-  root.appendChild(
-    stays(
-      box(
-        { left: at.x - GUTTER, right: 0, top: HEAD.rule + 12, height: floor - HEAD.rule - 12 },
-        'background:linear-gradient(90deg,rgba(18,13,7,0),rgba(18,13,7,.62) 32px);pointer-events:none'
-      ),
-      'wash:did'
-    )
-  );
-
   root.appendChild(
     stays(
       rule({
@@ -2336,7 +2340,7 @@ function deedLine(one: Step): HTMLElement {
   text.style.cssText =
     'white-space:normal;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden';
   text.style.color =
-    one.tone === 'broken' ? 'var(--yard-wrong)' : one.running ? '#fff8ec' : '#cbb491';
+    one.tone === 'broken' ? 'var(--yard-wrong)' : one.running ? '#ffc98a' : '#cbb491';
   text.textContent = one.did;
   if (one.note) text.append(' · ', ...noted(one.note));
   line.appendChild(text);
