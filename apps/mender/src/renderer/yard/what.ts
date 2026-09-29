@@ -201,6 +201,8 @@ export interface Note {
   /** How long ago, in the words the board uses. */
   when: string;
   answered: boolean;
+  /** How many pictures went with it. The post says so; it never draws them. */
+  pictures?: number;
   /** The oldest note is the standing one, and it reads differently. */
   standing?: boolean;
 }

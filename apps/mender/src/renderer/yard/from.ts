@@ -249,7 +249,7 @@ function sessionOf(
 }
 
 function noteOf(
-  note: { id: string; said: string; at: number; answered: boolean },
+  note: { id: string; said: string; at: number; answered: boolean; pictures?: number },
   at: number
 ): Note {
   return {
@@ -257,6 +257,7 @@ function noteOf(
     said: note.said,
     when: note.at ? agoOf(Date.now() - note.at) : 'before this',
     answered: note.answered,
+    ...(note.pictures ? { pictures: note.pictures } : {}),
     /* The oldest note on the post is the standing one: the thing that was true
        at the start and has not been taken down since. */
     ...(at > 1 ? { standing: true } : {}),

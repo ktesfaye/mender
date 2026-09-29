@@ -171,6 +171,8 @@ export const notedSchema = z.object({
   answered: z.boolean(),
   /** Which turn of the conversation it opened. */
   turn: z.number().int().optional(),
+  /** How many pictures went with it, which the post says rather than shows. */
+  pictures: z.number().int().optional(),
 });
 export type Noted = z.infer<typeof notedSchema>;
 

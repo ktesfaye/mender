@@ -1782,7 +1782,14 @@ function toldOf(
     if (item.kind === 'note') {
       const at = stamp(item.id, item.hasOutcome);
       earliest(at);
-      notes.push({ id: item.id, said: item.text, at, answered: answered[i], turn: item.turn });
+      notes.push({
+        id: item.id,
+        said: item.text,
+        at,
+        answered: answered[i],
+        turn: item.turn,
+        ...(item.pictures ? { pictures: item.pictures } : {}),
+      });
     } else if (item.kind === 'said') {
       const at = stamp(item.id, item.hasOutcome);
       earliest(at);
@@ -1843,7 +1850,7 @@ function toldOf(
 
 /** One chronological item, flattened out of the turn/message/tool tree. */
 type Flat = (
-  | { kind: 'note'; id: string; text: string; hasOutcome: boolean }
+  | { kind: 'note'; id: string; text: string; hasOutcome: boolean; pictures: number }
   | { kind: 'said'; id: string; text: string; hasOutcome: boolean; broke: boolean }
   | { kind: 'thinking'; item: TranscriptThinking }
   | { kind: 'tool'; node: ToolNode; hasOutcome: boolean }
@@ -1860,10 +1867,11 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
     for (const item of turn.items) {
       if (item.kind === 'message') {
         const text = item.text.trim();
-        if (!text) continue;
+        const pictures = item.role === 'user' ? (item.attachments?.length ?? 0) : 0;
+        if (!text && !pictures) continue;
         flat.push(
           item.role === 'user'
-            ? { kind: 'note', id: item.id, text, hasOutcome, turn: at }
+            ? { kind: 'note', id: item.id, text, hasOutcome, pictures, turn: at }
             : { kind: 'said', id: item.id, text, hasOutcome, broke, turn: at }
         );
         saidLast = item.role !== 'user';

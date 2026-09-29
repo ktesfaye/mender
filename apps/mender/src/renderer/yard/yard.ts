@@ -1343,6 +1343,7 @@ function pinned(note: Note, where: { left: number; top: number; width: number })
   body.dataset.note = 'said';
   body.textContent = note.said;
   card.appendChild(body);
+  handed(card, note, '#b3651f');
   return card;
 }
 
@@ -1361,6 +1362,18 @@ const CARD = [
   'overflow-wrap:anywhere',
 ].join(';');
 
+/** The pictures that went with a note, said under it since the post never draws them. */
+function handed(on: HTMLElement, note: Note, tone?: string): void {
+  if (!note.pictures) return;
+  const line = said(
+    note.pictures === 1 ? 'and a picture' : `and ${note.pictures} pictures`,
+    ...(tone ? [tone] : [])
+  );
+  line.style.display = 'block';
+  line.style.marginTop = '5px';
+  on.appendChild(line);
+}
+
 /** A note that has been on the post a while. */
 function weathered(note: Note): HTMLElement {
   const it = document.createElement('div');
@@ -1373,6 +1386,7 @@ function weathered(note: Note): HTMLElement {
     "font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
   body.textContent = note.said;
   it.appendChild(body);
+  handed(it, note);
   return it;
 }
 
@@ -2703,9 +2717,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   const hook = box({ left: spare, top: cord, width: 22, height: 38 });
   hook.style.pointerEvents = 'auto';
   hook.style.cursor = 'default';
-  hook.title = standing
-    ? 'other ways to start one'
-    : 'a new session · right-click for other ways';
+  hook.title = standing ? 'other ways to start one' : 'a new session · right-click for other ways';
   const plus = [
     box({ left: 10, top: 16, width: 2, height: 6 }, PLUS),
     box({ left: 8, top: 18, width: 6, height: 2 }, PLUS),

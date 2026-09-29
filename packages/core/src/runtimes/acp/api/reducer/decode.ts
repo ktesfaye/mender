@@ -113,6 +113,8 @@ function extractInputSummary(update: SessionUpdate): string | undefined {
   return undefined;
 }
 
+const PICTURE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const;
+
 /**
  * Decode a raw ACP SessionUpdate into a NormalizedEvent.
  * Stateless — does not depend on turn or session context.
@@ -120,6 +122,20 @@ function extractInputSummary(update: SessionUpdate): string | undefined {
 export function decodeSessionUpdate(update: SessionUpdate): NormalizedEvent {
   switch (update.sessionUpdate) {
     case 'user_message_chunk': {
+      /* A picture read back out of a resumed conversation. Its bytes stay with
+         the agent; what the transcript keeps is that one was handed over. */
+      if (update.content.type === 'image') {
+        const { data, mimeType: type } = update.content;
+        const mimeType = PICTURE_TYPES.find((known) => known === type);
+        if (!mimeType) return { kind: 'ignored' };
+        return {
+          kind: 'message',
+          role: 'user',
+          messageId: update.messageId ?? null,
+          text: '',
+          attachments: [{ id: `image-${data.length}-${data.slice(-16)}`, name: 'image', mimeType }],
+        };
+      }
       if (update.content.type !== 'text' || !update.content.text) return { kind: 'ignored' };
       return {
         kind: 'message',

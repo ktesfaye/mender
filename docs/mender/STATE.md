@@ -240,7 +240,9 @@ on the board, so what the board says is that you have it: it waits by the line
 you are writing on, it goes with whatever you say next, and pressing it puts it
 down. Handing one over with no words at all counts as something said, which is
 the one place the empty-line rule bends. Afterwards the transcript says you
-handed it over, because otherwise a picture leaves no trace of having gone.
+handed it over, because otherwise a picture leaves no trace of having gone, and
+so does its note on the gatepost, under what you said with it, including one
+handed over mid-turn and one read back out of a session reopened later.
 Anything that is not a picture is refused out loud rather than silently, and
 dropping one on the island says so too, since nothing out there has hands.
 
