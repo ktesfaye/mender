@@ -302,7 +302,8 @@ async function paint(
   const logo = face ? trimmed(face) : null;
 
   const inner = FLAG.h - 4;
-  let wide = FLAG.w;
+  // Square, like most logos, so a letter flag and a logo flag are one size.
+  let wide = inner + 2;
   let across = 0;
   let high = inner;
   if (logo) {
@@ -329,21 +330,22 @@ async function paint(
   cloth(at, wide, 0, 0, OUTLINE, logo ? logo.edge : colour);
 
   if (!logo) {
-    /* Silkscreen at three times its own 8px, so every stroke is three whole
-       pixels and the letter fills the cloth the way a face would: at the
-       design's 9px it landed between pixels and read as a smudge. */
-    await document.fonts.load("24px 'Silkscreen'").catch(() => undefined);
+    /* Silkscreen at twice its own 8px, so every stroke is two whole pixels
+       and the letter sits in the cloth about as big as a logo's own mark
+       does: at the design's 9px it landed between pixels and read as a
+       smudge, and at three times it was fatter than the flag. */
+    await document.fonts.load("16px 'Silkscreen'").catch(() => undefined);
     const [letter, letterPen] = sheet();
     const initial = (one.name.trim()[0] ?? '?').toUpperCase();
-    letterPen.font = "24px 'Silkscreen'";
+    letterPen.font = "16px 'Silkscreen'";
     letterPen.textBaseline = 'alphabetic';
     letterPen.fillStyle = OUTLINE;
-    // Its advance carries three pixels of spacing after the glyph, not before.
-    const glyph = letterPen.measureText(initial).width - 3;
+    // Its advance carries two pixels of spacing after the glyph, not before.
+    const glyph = letterPen.measureText(initial).width - 2;
     letterPen.fillText(
       initial,
-      Math.round(FLAG.x + 2 + (FLAG.w - 2 - glyph) / 2) - LEFT,
-      FLAG.y + FLAG.h - 4 - TOP
+      Math.round(FLAG.x + 2 + (wide - 2 - glyph) / 2) - LEFT,
+      FLAG.y + FLAG.h - 6 - TOP
     );
     crisp(letterPen);
     pen.drawImage(letter, 0, 0);
@@ -432,13 +434,65 @@ function trimmed(
       ring(Math.max(left, right - inset), y);
     }
   }
+  const tone = n ? [r / n, g / n, b / n] : [0, 0, 0];
+  const edge = n ? `rgb(${tone.map(Math.round).join(',')})` : OUTLINE;
+
+  /* And its own plain background, the same way. An app icon is mostly a
+     tile of one colour with the mark small in the middle, and on a flag the
+     tile is the flag already: the mark is what should fill it. A line is
+     background while every pixel on it is see-through or close to the edge's
+     own colour; a gradient tile is not, and is left whole. */
+  if (n) {
+    const plain = (x: number, y: number): boolean => {
+      if (!solid(x, y)) return true;
+      const i = (y * w + x) * 4;
+      const d =
+        Math.abs((data[i] ?? 0) - (tone[0] ?? 0)) +
+        Math.abs((data[i + 1] ?? 0) - (tone[1] ?? 0)) +
+        Math.abs((data[i + 2] ?? 0) - (tone[2] ?? 0));
+      return d < 60;
+    };
+    const row = (y: number): boolean => {
+      for (let x = left; x <= right; x++) if (!plain(x, y)) return false;
+      return true;
+    };
+    const column = (x: number): boolean => {
+      for (let y = top; y <= bottom; y++) if (!plain(x, y)) return false;
+      return true;
+    };
+    let t = top;
+    let b2 = bottom;
+    let l = left;
+    let r2 = right;
+    while (t < b2 && row(t)) t++;
+    while (b2 > t && row(b2)) b2--;
+    while (l < r2 && column(l)) l++;
+    while (r2 > l && column(r2)) r2--;
+    // Some breathing room round the mark, as a square, so it is not cropped
+    // tight into a letterbox.
+    const side = Math.max(r2 - l, b2 - t) + 1;
+    const pad = Math.round(side * 0.14);
+    const cx = (l + r2) / 2;
+    const cy = (t + b2) / 2;
+    const half = side / 2 + pad;
+    if (side > 4 && half * 2 < Math.max(right - left, bottom - top)) {
+      left = Math.round(cx - half);
+      right = Math.round(cx + half);
+      top = Math.round(cy - half);
+      bottom = Math.round(cy + half);
+    }
+  }
+
   const out = document.createElement('canvas');
   out.width = right - left + 1;
   out.height = bottom - top + 1;
-  out
-    .getContext('2d')
-    ?.drawImage(canvas, left, top, out.width, out.height, 0, 0, out.width, out.height);
-  const edge = n ? `rgb(${Math.round(r / n)},${Math.round(g / n)},${Math.round(b / n)})` : OUTLINE;
+  const outPen = out.getContext('2d');
+  if (outPen) {
+    // The square may reach past the icon's own edge; that part is its tile.
+    outPen.fillStyle = edge;
+    outPen.fillRect(0, 0, out.width, out.height);
+    outPen.drawImage(canvas, left, top, out.width, out.height, 0, 0, out.width, out.height);
+  }
   return { image: out, aspect: out.width / out.height, edge };
 }
 

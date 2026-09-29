@@ -2582,6 +2582,11 @@ growing with the map however far in the camera goes instead of stopping and
 shrinking against the houses; only the name tag stops growing. Driven out at
 the whole island and all the way in on one flag.
 
+Every flag is one size now, a letter's and a logo's alike, and a logo that is
+mostly a plain tile with a small mark in it is cut down to the mark, the tile
+carrying on as the cloth, so the mark fills the flag the way a letter does.
+Checked side by side on all eleven.
+
 ### Next
 
 The long tail of the 162 states that do have a source, and the behaviour
