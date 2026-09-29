@@ -928,7 +928,9 @@ either on a live session, and a fresh session with that same agent starts on
 whichever was last picked rather than on nothing. And the line is no longer
 silent about what you were in the middle of saying — a half-written line is
 kept against its session as you type and put back the moment you return to
-it, restart included, and cleared the moment it is actually said. "Allow
+it, restart included, and cleared the moment it is actually said. It stays
+with its own session: stepping to another along the rail or the rack leaves
+it behind rather than carrying it onto someone else's line. "Allow
 everything chosen at the start" — a switch on starting a fresh session itself
 — is not done: modes are only known once an agent is awake, so setting one
 before it has even spoken needs a real design pass, not a guess.

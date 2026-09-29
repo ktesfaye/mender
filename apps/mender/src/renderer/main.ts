@@ -166,10 +166,13 @@ async function boot(): Promise<void> {
 
     /* What was half-written on a session's line, kept against that session so
        it is still there after the app itself restarts. Written a moment
-       after the keys stop, not on every one of them. */
+       after the keys stop, not on every one of them, so what was written
+       last is also held here at once, for stepping straight back in. */
     const draftTimers = new Map<string, ReturnType<typeof setTimeout>>();
     const saveDraft = (task: string, text: string): void => {
+    const drafts = new Map<string, string>();
       const already = draftTimers.get(task);
+      drafts.set(task, text);
       if (already) clearTimeout(already);
       draftTimers.set(
         task,
@@ -1467,6 +1470,9 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       inside = here ?? null;
+      /* The line belongs to the session it was written in. Stepping to
+         another leaves that one's half-written line with it, not on this. */
+      if (inside?.id !== here?.id) yard.line.write('');
       await was?.close();
       const shown = card;
       card = null;
@@ -1522,7 +1528,10 @@ async function boot(): Promise<void> {
       if (here && here.kind !== 'terminal') {
         opened.woke(client.agents.wake({ task: here.id }, { timeoutMs: 0 }));
         /* Whatever was half-written last time is still on the line. */
-        void client.agents.draft({ task: here.id }).then((text) => {
+        const held = drafts.get(here.id);
+        void (
+          held !== undefined ? Promise.resolve(held) : client.agents.draft({ task: here.id })
+        ).then((text) => {
           if (open === aim && text && !yard.line.written()) said(text);
         });
       }
@@ -3871,6 +3880,7 @@ async function boot(): Promise<void> {
       if (pending) clearTimeout(pending);
       draftTimers.delete(task.id);
       void client.agents.setDraft({ task: task.id, text: '' });
+      drafts.delete(task.id);
       const heard = await client.agents.tell(
         { task: task.id, text, ...(carrying.length ? { carrying } : {}) },
         { timeoutMs: 0 }
