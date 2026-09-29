@@ -4462,7 +4462,7 @@ async function boot(): Promise<void> {
        dropped as more than one item, it falls through to the ordinary
        carry — a folder is not a picture or a path an agent wants either. */
     const foundDropped = async (files: readonly File[]): Promise<boolean> => {
-      if (watching || founding || windmill || settings) return false;
+      if (watching || founding || windmill || settings || walking) return false;
       if (files.length !== 1) return false;
       const file = files[0] as File;
       // A folder carries no browser-guessed type; a picture or any other
@@ -4491,13 +4491,45 @@ async function boot(): Promise<void> {
       return true;
     };
 
+    /* A file dropped while the folder you are standing in is open: it lands
+       here rather than being carried to whoever is working, or written on
+       any line, because there is nowhere else on this board a real file with
+       a real path would go. Copied in beside whatever is already there —
+       the disk it landed on is the truth, not a listing this board is
+       keeping of its own. */
+    const importDropped = async (files: readonly File[]): Promise<boolean> => {
+      const tree = walking;
+      if (!tree || founding || windmill || settings) return false;
+      const named = files.filter((file) => window.mender.pathOf(file));
+      if (!named.length) return true;
+      for (const file of named) {
+        const source = window.mender.pathOf(file);
+        const from = parseNativeAbsolute(source);
+        const name = source.split('/').pop() || file.name;
+        const where = tree.at() ? `${tree.at()}/${name}` : name;
+        const to = onDisk(where);
+        if (!from.success || !to) continue;
+        const done = await client.files.fs.copy({ from: from.data, to });
+        if (!done.success) {
+          say(unwritten(done.error), 6000);
+          continue;
+        }
+      }
+      if (walking) wood(walking.rows());
+      say(named.length === 1 ? 'brought in.' : `${named.length} brought in.`, 3000);
+      return true;
+    };
+
     // Without this the window navigates to the file and the village vanishes.
     window.addEventListener('dragover', (event) => event.preventDefault());
     window.addEventListener('drop', (event) => {
       event.preventDefault();
       const files = [...(event.dataTransfer?.files ?? [])];
       void foundDropped(files).then((handled) => {
-        if (!handled) void carry(files);
+        if (handled) return;
+        void importDropped(files).then((taken) => {
+          if (!taken) void carry(files);
+        });
       });
     });
     window.addEventListener('paste', (event) => {

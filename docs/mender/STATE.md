@@ -1414,7 +1414,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | FS-07 | Create/rename inline draft rows | done | W5 |
 | FS-08 | File tree context menu | cut | W5 |
 | FS-09 | Internal drag & drop (move) | cut | W5 |
-| FS-10 | External drag-in (import) |  | W5 |
+| FS-10 | External drag-in (import) | part | W5 |
 | FS-11 | Drag-out to compose/elsewhere | done | W5 |
 | FS-12 | Flat-mode listing | cut | W5 |
 | FS-13 | Row decoration (git-status badges, tone) | done | W5 |
@@ -1462,7 +1462,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-20 | MCP "sync to agents" |  | W8 |
 | ST-21 | Skills catalog | done |  |
 | ST-22 | Automations (scheduled/cron agent runs) | done |  |
-| ST-23 | Per-project settings — provenance model |  | W7 |
+| ST-23 | Per-project settings — provenance model | cut |  |
 | ST-24 | Per-project "base" settings (GitHub account, worktree root, default branch, base/push remote, git-credential mode, tmux) | part | W7 |
 | ST-25 | Per-project "shareable" settings written to `.emdash.json` |  | W7 |
 | ST-26 | Config import ("migrate from Conductor/Superset/Paseo/Codex") | cut |  |
@@ -2742,6 +2742,22 @@ toggled off, the setting round-tripped through the wire and landed in
 `app-settings.json` as `false`. Sound, a custom sound path and a
 focus-mode window are still unbuilt — not needed for one person on one
 machine, and left off on purpose rather than half-built.
+
+### A file dragged in from the Finder is copied in (2026-09-29) — part
+
+Standing in a folder you've walked into, dropping a real file off the Finder
+onto the window copies it in beside whatever is already there, reusing the
+same copy the disk-cleanup page already trusted and the same board refresh
+"make a file" already used. Honestly verified, not fully driven: the copy
+itself is proven, both by its own existing test suite and by confirming the
+board redraws to show a new name the moment one lands; a synthetic drop with
+no real file behind it was thrown at the live board and correctly did
+nothing rather than throwing. What was not done, and cannot be from here: an
+actual Finder drag, since the real path a dropped file carries only exists
+once Electron has seen a genuine OS drag happen, and nothing scriptable can
+manufacture that. Marked `part` rather than `done` for exactly that reason —
+this is the one piece of tonight's work that wants a real hand on a real
+trackpad before it earns the other word.
 
 ### Two things on the "built, and broken" list were already fixed
 
