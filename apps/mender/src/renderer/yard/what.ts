@@ -218,6 +218,9 @@ export interface Thought {
   at?: string;
   /** Said in answer to something before the newest note, so it is history. */
   earlier?: boolean;
+  /** The last thing it said back to one of your notes, which stays out when
+      the trail between them is folded away. */
+  answer?: boolean;
   /** Reasoning rather than an answer. */
   quiet?: boolean;
   /** The turn going wrong rather than an answer: `wrong` stopped it, `warn` cut it short. */

@@ -287,9 +287,15 @@ function thoughtsOf(told: Told | undefined): Thought[] {
      to this one. */
   const earlier = (turn: number | undefined): boolean =>
     now !== undefined && turn !== undefined && turn < now;
+  /* The last word of each exchange is what it said back to you, and the one
+     thing of each worth keeping out when the way there is folded. */
+  const answers = new Map<number | undefined, string>();
+  for (const one of all) if (!one.quiet && one.trouble !== 'aside') answers.set(one.turn, one.id);
+  const answered = new Set(answers.values());
   return all.map((one, at) => ({
     id: one.id,
     said: one.said,
+    ...(answered.has(one.id) ? { answer: true } : {}),
     /* A time only where there is one. The protocol carries no clock on a
        message, and an agent picking up where it left off sends its whole
        transcript back the moment you walk in, so the only time the village

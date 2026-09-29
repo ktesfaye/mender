@@ -1562,9 +1562,11 @@ function thinking(
   function laidOne(): void {
     const start = windowStart(wholeSize, shown);
     const open = thinkingOpen();
-    /* Everything on the way to the answer is folded away, and only the
-       answer itself stays out: most of the time what it said back is all
-       anybody came for. Pressing "now", or the column's own heading, opens
+    /* Everything on the way to an answer is folded away, and only the
+       answers themselves stay out, the older ones dimmed above the newest:
+       most of the time what it said back is all anybody came for, and saying
+       the next thing must not throw away what it said to the last.
+       Pressing "now", or the column's own heading, opens
        the trail upward out of it and folds it again, so the answer never
        moves and there is no extra line on the board to do it with. */
     let answer = -1;
@@ -1574,7 +1576,7 @@ function thinking(
     thoughts.slice(start).forEach((one, si) => {
       const i = start + si;
       const far = thoughts.length - 1 - i;
-      if (!open && i !== answer) return;
+      if (!open && i !== answer && !one.answer) return;
       if (one.live) {
         keep.add(one.id);
         const it = keyed(document.createElement('div'), `thought:${one.id}`);
