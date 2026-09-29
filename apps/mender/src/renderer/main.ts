@@ -146,7 +146,11 @@ async function boot(): Promise<void> {
        rack in the corner and the old plank is not drawn at all. */
     await loadCuts();
     const layer = makeLayer();
-    const shelf = makeShelf(layer.root, (id) => void go(`project:${id}`));
+    const shelf = makeShelf(
+      layer.root,
+      (id) => void go(`project:${id}`),
+      () => void picked(null)
+    );
 
     /* What was half-written on a session's line, kept against that session so
        it is still there after the app itself restarts. Written a moment

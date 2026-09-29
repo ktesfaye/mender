@@ -99,7 +99,11 @@ async function boot(): Promise<void> {
 
   dim(pixi.canvas, 'yard');
   const layer = makeLayer();
-  makeShelf(layer.root, (id) => console.log('go to', id)).show([
+  makeShelf(
+    layer.root,
+    (id) => console.log('go to', id),
+    () => console.log('out to the island')
+  ).show([
     { id: 'a', name: 'mender', at: 0, here: true },
     { id: 'b', name: 'aurio', at: 1, here: false },
     { id: 'c', name: 'stuff-sports', at: 2, here: false },

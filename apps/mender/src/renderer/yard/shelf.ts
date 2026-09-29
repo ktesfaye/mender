@@ -16,9 +16,15 @@
  * rather than a line of gold writing, and that is deliberate: it is an
  * inventory rack out of a game, not a piece of the board. Everything else on
  * the wood follows the rule.
+ *
+ * Standing in a project, the rack leads with one more slot that is not a
+ * project: the campfire the island grows from, and pressing it flies back
+ * out to the whole island. Escape walks there too, a step at a time; this is
+ * the one press that goes straight there from anywhere.
  */
 
 import { SLOT, slot, toolFor, updateSlot } from './face';
+import { KIT_NAMES } from './sprite';
 import { box } from './write';
 
 const PAD = 6;
@@ -43,7 +49,7 @@ export interface Shelf {
   close(): void;
 }
 
-export function makeShelf(at: HTMLElement, open: (id: string) => void): Shelf {
+export function makeShelf(at: HTMLElement, open: (id: string) => void, out: () => void): Shelf {
   const root = box({ right: 0, top: 0 }, RACK);
   at.appendChild(root);
 
@@ -63,13 +69,24 @@ export function makeShelf(at: HTMLElement, open: (id: string) => void): Shelf {
   strip.style.cssText = STRIP;
   root.appendChild(strip);
 
+  const fire = slot({ tool: KIT_NAMES.fire }, false);
+  fire.dataset.shelf = 'island';
+  fire.title = 'the island';
+  fire.style.transition += `,opacity 220ms ease,width 220ms ${EASE},margin 220ms ${EASE}`;
+  fire.addEventListener('pointerenter', () => crossfade(() => paintLabel('the island', '#f4e3c0')));
+  fire.addEventListener('pointerleave', () => crossfade(settle));
+  fire.addEventListener('click', () => out());
+  strip.appendChild(fire);
+  let inside = false;
+
   const nodes = new Map<string, HTMLDivElement>();
   const held = new Map<string, OnShelf>();
   let away = false;
   let last: OnShelf[] = [];
   let labelGen = 0;
 
-  const width = (count: number): number => (count === 0 ? 0 : count * SLOT + (count - 1) * PAD);
+  const width = (count: number): number =>
+    (count === 0 ? 0 : count * SLOT + (count - 1) * PAD) + (inside ? SLOT + PAD : 0);
 
   const worstWant = (projects: OnShelf[]): 'asking' | 'hurt' | undefined =>
     projects.some((project) => project.wants === 'hurt')
@@ -119,6 +136,14 @@ export function makeShelf(at: HTMLElement, open: (id: string) => void): Shelf {
   function show(projects: OnShelf[], fading = false): void {
     last = projects;
     for (const project of projects) held.set(project.id, project);
+    /* Only while there is somewhere to come back out of. It folds to nothing
+       rather than being taken out, so arriving in a yard slides it in. */
+    inside = projects.some((project) => project.here);
+    fire.style.opacity = inside ? '1' : '0';
+    fire.style.width = inside ? `${SLOT}px` : '0px';
+    fire.style.marginRight = inside ? '0px' : `-${PAD}px`;
+    fire.style.borderWidth = inside ? '2px' : '0px';
+    fire.style.pointerEvents = inside ? 'auto' : 'none';
 
     if (fading) crossfade(settle);
     else settle();
