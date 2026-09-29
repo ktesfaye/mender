@@ -100,6 +100,12 @@
 .yard * {
   text-shadow: 1px 1px 0 var(--yard-shadow);
 }
+/* Except ink on parchment, where a dark shadow under dark ink only doubles
+   every stroke and reads as bold. */
+.yard .paper,
+.yard .paper * {
+  text-shadow: none;
+}
 
 /* The layer is glass. Whatever is under it is the village, and the one thing
    this app must never do is put a panel between you and it. The night colour

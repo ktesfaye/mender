@@ -23,10 +23,13 @@
   src: url('fraunces-variable-italic.woff2') format('woff2');
 }
 
-/* Fraunces' rounded corners, and none of its wonky letters. */
+/* Fraunces' rounded corners, and none of its wonky letters. Its regular is
+   drawn heavy at reading sizes, so the body sits a little under it; only what
+   the agent itself stressed is set heavier. */
 .said-face {
   font-family: 'Mender Said', 'Cormorant Garamond', serif;
   font-variation-settings: 'SOFT' 100, 'WONK' 0;
+  font-weight: 330;
 }
 
 /* The face of what you write: the line you write on, what you asked on the

@@ -1327,6 +1327,7 @@ const NOTE_LINE = 19 * 1.25;
 /** The newest note: on parchment, pinned, and not quite straight. */
 function pinned(note: Note, where: { left: number; top: number; width: number }): HTMLElement {
   const card = box(where, CARD);
+  card.classList.add('paper');
   const tack = box(
     { left: 14, top: -6, width: 10, height: 10 },
     'background:#d8863a;box-shadow:1px 1px 0 #120d07'
