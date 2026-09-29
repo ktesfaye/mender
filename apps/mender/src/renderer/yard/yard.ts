@@ -2685,9 +2685,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   /* THE END OF THE RAIL IS HOW A SESSION STARTS.
    *
    * It is a lantern and nothing else: an unlit lamp on the last hook with a
-   * gold plus in its glass. Words beside it said what the plus already says
-   * and made the one empty hook the loudest thing on the beam. The gold is
-   * what says it is pressable, the way gold says it everywhere else. */
+   * small plus in its glass. Words beside it said what the plus already says
+   * and made the one empty hook the loudest thing on the beam. The plus is
+   * banked gold, glowing faintly in the glass, and comes up to full gold under
+   * the pointer. */
   const spare = GLOW_ROOM + spans.reduce((a, b) => a + b, 0);
   const cord = 3 + LANTERN.cord;
   beam.appendChild(box({ left: spare + 10, top: 3, width: 3, height: LANTERN.cord }, HOOK));
@@ -2702,22 +2703,31 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   const hook = box({ left: spare, top: cord, width: 22, height: 38 });
   hook.style.pointerEvents = 'auto';
   hook.style.cursor = 'default';
-  hook.title = standing ? 'other ways to start one' : 'a new session';
+  hook.title = standing
+    ? 'other ways to start one'
+    : 'a new session · right-click for other ways';
   const plus = [
-    box({ left: 10, top: 14, width: 2, height: 10 }, PLUS),
-    box({ left: 6, top: 18, width: 10, height: 2 }, PLUS),
+    box({ left: 10, top: 16, width: 2, height: 6 }, PLUS),
+    box({ left: 8, top: 18, width: 6, height: 2 }, PLUS),
   ];
   for (const bar of plus) hook.appendChild(bar);
   astop(hook, 'rail:new');
   hook.addEventListener('mousedown', (event) => event.preventDefault());
   hook.addEventListener('click', () => does.press('new'));
+  /* Right-clicking it skips the plain one and goes straight to the other ways
+     of starting one: its own copy, its own terminal, an issue, a branch. */
+  hook.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    does.press('new:ways');
+  });
   hook.addEventListener('pointerenter', () => {
     lamp.style.filter = 'brightness(1.1)';
-    for (const bar of plus) bar.style.filter = 'brightness(1.25)';
+    for (const bar of plus) bar.style.background = 'var(--yard-gold)';
   });
   hook.addEventListener('pointerleave', () => {
     lamp.style.filter = 'brightness(.7)';
-    for (const bar of plus) bar.style.filter = '';
+    for (const bar of plus) bar.style.background = PLUS_BANKED;
   });
   beam.appendChild(hook);
   root.appendChild(beam);
@@ -2727,7 +2737,8 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
 }
 
 const HOOK = 'background:#3a2712';
-const PLUS = 'background:var(--yard-gold)';
+const PLUS_BANKED = '#b08648';
+const PLUS = `background:${PLUS_BANKED}`;
 /* Where the beam was scrolled to, so hanging a lantern doesn't throw it back to the start. */
 let railScrolled = 0;
 

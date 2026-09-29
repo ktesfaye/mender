@@ -948,6 +948,13 @@ async function boot(): Promise<void> {
         } else void startNow(aim);
         return;
       }
+      if (id === 'new:ways') {
+        const district = open?.district;
+        if (!district || !projectOn(district) || naming) return;
+        replacing = inside && untouched() ? inside.id : null;
+        askName({ kind: 'district', district }, freeSlot(district));
+        return;
+      }
       if (id === FIND) {
         look();
         return;
@@ -4295,7 +4302,7 @@ async function boot(): Promise<void> {
         else yard.narrowing(...narrowing());
         return;
       }
-      if (pick === 'card' || pick === 'new' || pick.startsWith('do:')) {
+      if (pick === 'card' || pick === 'new' || pick === 'new:ways' || pick.startsWith('do:')) {
         go(pick);
         return;
       }

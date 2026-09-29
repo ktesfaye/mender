@@ -192,7 +192,8 @@ of room stays sore, because there is nothing to wait out.
 along the bottom hangs one lantern per session in the project you are in: lit
 means somebody is awake in there, the one you are standing in burns
 brightest, all of them on the same cord, and the one that wants you flickers. At the end of the beam is one
-empty hook, which is how a new session is started — and, for the rest of that
+empty hook, an unlit lantern with a small plus in its glass, which is how a
+new session is started, and right-clicking it opens the other ways to start one — and, for the rest of that
 sitting, remembers the last one taken down here: it offers to put it straight
 back up, on the very same branch, before it ever offers to start something
 new. The projects moved to a rack

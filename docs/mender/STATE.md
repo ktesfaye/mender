@@ -1743,8 +1743,10 @@ sessions.
 
 **There was no obvious way to start one.** The end of the rail was three words
 of small monospace floating under a bare cord. It is hung the way the lanterns
-beside it are hung now: an unlit lamp on the hook, its name in gold where their
-names are, and what it is underneath.
+beside it are hung now: an unlit lamp on the hook with a small banked-gold plus
+in its glass that comes up to full gold under the pointer, and no words beside
+it. Pressing it starts a session; right-clicking it opens the board of other
+ways to start one.
 
 **Nothing behind a slash worked.** Two listeners both claimed Return, the
 line's own and the one listener that presses things, so one press completed the
