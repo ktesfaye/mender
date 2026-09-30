@@ -34,19 +34,20 @@ export interface District {
 export function districtsOf(
   world: VillageWorld,
   on: Iterable<string>,
-  moored: readonly [number, number] = [0, 0]
+  moored: readonly [number, number] = [0, 0],
+  camped: readonly [number, number] = [0, 0]
 ): District[] {
   const present = new Set(on);
   const out: District[] = [];
   for (const spec of world.districts) {
     if (!present.has(spec.id)) continue;
     const common = COMMON.includes(spec.id);
-    /* Only the islet sails; everything else of his stands where he put it. */
+    /* Only the islet and the camp sail; everything else of his stands where
+       he put it. */
+    const by = spec.id === 'ISLAND' ? moored : spec.id === 'CAMP' ? camped : null;
     const shifted =
-      spec.id === 'ISLAND' && (moored[0] || moored[1])
-        ? spec.cells.map(
-            ([x, y0, y1]) => [x + moored[0], y0 + moored[1], y1 + moored[1]] as CellRun
-          )
+      by && (by[0] || by[1])
+        ? spec.cells.map(([x, y0, y1]) => [x + by[0], y0 + by[1], y1 + by[1]] as CellRun)
         : spec.cells;
     out.push({
       id: spec.id,

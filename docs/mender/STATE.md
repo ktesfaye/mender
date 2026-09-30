@@ -3235,3 +3235,15 @@ same list `/mode` offers, the way it does in Claude Code. Whatever is half
 written stays on the line, and the new mode is said at the foot and stands in
 the corner over the board. Driven in a dev instance: auto went to bypass
 permissions and then manual, with "half a thought" still on the line.
+
+### A lone project can live anywhere, and the camp goes with it (2026-09-30) — done
+
+The fire only touches the crop farm, so one project could only ever stand
+there. Now, with none of the camp's own neighbours standing, the camp sails
+to the biggest piece of land there is, the way the islet already did, and a
+project on its own may be carried to any of his districts in edit districts.
+When a move reshapes the island, the view flies out to hold it. Driven in a
+dev instance: one project on the hay farm moved to the centre houses and then
+the chapel, each time with the camp berthed on its shore and the island
+framed; the port, fishing hamlet, forge and south houses each drawn alone
+with the camp beside them.

@@ -842,7 +842,11 @@ Shape is the whole of what the island says from out on the water: a village that
 grows along one arm reads as a sandbar, and the camera has to pull back to hold
 it, so everything on it gets smaller. The camp and the islet are never off; the
 islet is moored rather than anchored and sails its bridge to whatever coast
-there is. The camp is nobody's, but the islet is a district like any other once
+there is. So is the camp, once nothing he drew beside it is standing: a lone
+project carried off to the chapel or the port takes the fire with it, the camp
+berthing on the biggest piece of land there is with the side he drew running
+on into a district put ashore, so one project can live in any of his places
+and the view follows the island wherever it goes. The camp is nobody's, but the islet is a district like any other once
 somebody lives on it: it is the last of his to be handed out, after the eleven
 and before any of them gives up a piece, and a project can be carried onto it
 in "edit districts" at any time. Its flag sails with it. Empty, it is scenery

@@ -5380,9 +5380,20 @@ async function boot(): Promise<void> {
         move: async (id, to) => {
           const done = await client.projects.move({ id, to });
           if (!done.success) return done.error;
+          const was = drawn.island;
           drawn = await draw(world, client, pixi.renderer, camera, drawn);
           projects = await client.projects.list({});
           people();
+          /* A swap leaves the coast where it was; a lone project carrying the
+             camp off to the far side of the map takes the whole island with
+             it, and the view goes after it rather than leaving empty sea. */
+          const now = drawn.island;
+          const same =
+            was.x === now.x &&
+            was.y === now.y &&
+            was.width === now.width &&
+            was.height === now.height;
+          if (!same) flyOut(camera, now);
           return null;
         },
         forget: async (id) => {

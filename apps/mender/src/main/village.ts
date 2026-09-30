@@ -59,7 +59,7 @@ export function createVillageController(options: VillageOptions): Controller {
     if (!map) {
       const composed = village.compose(land);
       const districts = splitOf(
-        districtsOf(village.world, composed.on, composed.moored),
+        districtsOf(village.world, composed.on, composed.moored, composed.camped),
         subdistricts,
         wanted
       ).map(

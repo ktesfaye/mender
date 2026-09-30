@@ -27,6 +27,10 @@ describe('moving a project', () => {
     expect(fault(after)).toBeNull();
   });
 
+  it('lets a lone project stand anywhere, the camp sailing to it', () => {
+    expect(fault(new Map([['pJ', 'J']]))).toBeNull();
+  });
+
   it('refuses to strand anybody from the fire', () => {
     expect(fault(moved(full, 'pA', { kind: 'off' }))).toMatch(/would be left out at sea/);
   });

@@ -129,6 +129,8 @@ export interface Plan {
   readonly neighbours: Readonly<Record<string, readonly DistrictId[]>>;
   /** The districts that may be switched on next: off, and touching something on. */
   reachable(present: Iterable<string>): DistrictId[];
+  /** Whether the camp stands where he drew it, or has had to sail to the land. */
+  campHome(present: Iterable<string>): boolean;
   /** The districts that actually hang off the common ground. */
   connected(present: Iterable<string>): Set<DistrictId>;
   /** The districts grouped into the islands they make. */
@@ -155,6 +157,8 @@ export interface Composed {
   readonly on: DistrictId[];
   /** How far the islet had to sail from where he moored it. */
   readonly moored: Cell;
+  /** How far the camp had to sail to reach land nobody drew it beside. */
+  readonly camped: Cell;
   /** The shore pass's own counts, for when the coast comes out wrong. */
   readonly shore: Record<string, number>;
   /** Every cell that was asked for as land, after the bridge and the wobble. */
@@ -264,8 +268,47 @@ export function createPlan(specs: readonly DistrictSpec[]): Plan {
     for (const id of DISTRICTS) neighbours[id] = [...(near.get(id) ?? [])].sort();
   }
 
+  /* THE CAMP GOES WHERE THE VILLAGE IS. He drew it beside the crop farm, and
+     while anything of his that touches it is standing it stays exactly there.
+     But one project on the port with the crop farm empty is a village too, and
+     the fire is only where every walk begins, not a place anybody chose: so
+     with none of its own neighbours on, the camp sails to the biggest piece of
+     land there is, the way the islet sails to whatever coast there is. */
+  const campHome = (present: Iterable<string>): boolean => {
+    const on = new Set(present);
+    const others = [...on].filter((d) => d !== CAMP && d !== ISLET);
+    return !others.length || neighbours[CAMP].some((n) => on.has(n));
+  };
+
+  /** The piece of land the camp sails to when it is not at home. */
+  const landing = (on: Set<string>): Set<DistrictId> => {
+    const left = new Set([...on].filter((d) => d !== CAMP && d !== ISLET) as DistrictId[]);
+    let best: DistrictId[] = [];
+    let most = -1;
+    for (const seed of DISTRICTS.filter((d) => left.has(d))) {
+      if (!left.has(seed)) continue;
+      const blob: DistrictId[] = [seed];
+      left.delete(seed);
+      for (let i = 0; i < blob.length; i++) {
+        for (const n of neighbours[blob[i]]) {
+          if (left.has(n)) {
+            left.delete(n);
+            blob.push(n);
+          }
+        }
+      }
+      const size = blob.reduce((sum, d) => sum + cellsOf(d).size, 0);
+      if (size > most) {
+        most = size;
+        best = blob;
+      }
+    }
+    return new Set(best);
+  };
+
   const reachable = (present: Iterable<string>): DistrictId[] => {
     const on = new Set(present);
+    if (on.has(CAMP) && !campHome(on)) on.delete(CAMP);
     on.delete(ISLET);
     /* The islet does not count as something to build from — it is moored
        wherever the coast happens to be, so it cannot hold up a district that
@@ -286,6 +329,7 @@ export function createPlan(specs: readonly DistrictSpec[]): Plan {
   const connected = (present: Iterable<string>): Set<DistrictId> => {
     const on = new Set([...present, ...COMMON]);
     on.delete(ISLET);
+    if (!campHome(on)) return new Set<DistrictId>([CAMP, ...landing(on), ISLET]);
     const keep = new Set<DistrictId>([CAMP]);
     const edge: DistrictId[] = [CAMP];
     while (edge.length) {
@@ -405,7 +449,17 @@ export function createPlan(specs: readonly DistrictSpec[]): Plan {
     return DISTRICTS.filter((d) => on.has(d)).join('-') || 'none';
   };
 
-  return { spec, neighbours, reachable, connected, pieces, order, stateKey, cellsOf };
+  return {
+    spec,
+    neighbours,
+    reachable,
+    campHome,
+    connected,
+    pieces,
+    order,
+    stateKey,
+    cellsOf,
+  };
 }
 
 function byHisOrder(a: DistrictId, b: DistrictId): number {
@@ -756,6 +810,90 @@ function moor(
 }
 
 /**
+ * Where the camp sits when none of the land he drew it beside is standing.
+ *
+ * Its joint is every side of a camp cell that met his land rather than the
+ * sea: that is the side drawn to run on into a district, and it is the side
+ * that has to come ashore. Every other side of it is his coast and should
+ * stay facing water, so a berth is scored on how much of the joint lands,
+ * less how much of the camp's own shore it presses against something, and
+ * then on how little it travelled. It never lands on land, and never on or
+ * beside the islet where he drew it, which it would otherwise carry off when
+ * that sails.
+ */
+function pitch(index: Index, main: Set<string>, hisOwn: Set<string>): Cell {
+  const camp = [...index.cellsOf(CAMP)].map(unkey);
+  const own = index.cellsOf(CAMP);
+  const sides: [number, number][] = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ];
+  const joint: [Cell, [number, number]][] = [];
+  const jointCells = new Set<string>();
+  for (const [x, y] of camp) {
+    for (const d of sides) {
+      const k = key(x + d[0], y + d[1]);
+      if (!own.has(k) && hisOwn.has(k)) {
+        joint.push([[x, y], d]);
+        jointCells.add(key(x, y));
+      }
+    }
+  }
+  const offs = new Set<string>();
+  for (const m of main) {
+    const [mx, my] = unkey(m);
+    for (const [[x, y], [dx, dy]] of joint) offs.add(key(mx - x - dx, my - y - dy));
+  }
+  let best: Cell = [0, 0];
+  let bestRank: [number, number] | null = null;
+  for (const o of offs) {
+    const [ox, oy] = unkey(o);
+    let bad = false;
+    let stray = 0;
+    for (const [x, y] of camp) {
+      const cx = x + ox;
+      const cy = y + oy;
+      if (main.has(key(cx, cy))) {
+        bad = true;
+        break;
+      }
+      for (let ex = -1; ex <= 1 && !bad; ex++) {
+        for (let ey = -1; ey <= 1; ey++) {
+          if (index.unit.has(key(cx + ex, cy + ey))) {
+            bad = true;
+            break;
+          }
+        }
+      }
+      if (bad) break;
+      if (jointCells.has(key(x, y))) continue;
+      let near = false;
+      for (let ex = -1; ex <= 1 && !near; ex++) {
+        for (let ey = -1; ey <= 1 && !near; ey++) {
+          if (main.has(key(cx + ex, cy + ey))) near = true;
+        }
+      }
+      if (near) stray++;
+    }
+    if (bad) continue;
+    let ashore = 0;
+    for (const [[x, y], [dx, dy]] of joint) if (main.has(key(x + ox + dx, y + oy + dy))) ashore++;
+    const rank: [number, number] = [ashore - 3 * stray, -(ox * ox + oy * oy)];
+    if (
+      !bestRank ||
+      rank[0] > bestRank[0] ||
+      (rank[0] === bestRank[0] && rank[1] > bestRank[1])
+    ) {
+      bestRank = rank;
+      best = [ox, oy];
+    }
+  }
+  return best;
+}
+
+/**
  * The bank his bridge's west end needs and the shore has not got.
  *
  * Look at how he lands it: the bridge comes out of a WIDE piece of ground, with
@@ -832,8 +970,9 @@ function compose(world: VillageWorld, index: Index, present: Iterable<string>): 
 
   const layout = structuredClone(world.base) as Layout;
 
+  const home = index.campHome(on);
   const main = new Set<string>();
-  for (const d of on) for (const k of cellsOf(d)) main.add(k);
+  for (const d of on) if (home || d !== CAMP) for (const k of cellsOf(d)) main.add(k);
   for (const k of unit) main.delete(k);
 
   /* Only what is standing, before anything moves: the object filter runs on
@@ -862,6 +1001,37 @@ function compose(world: VillageWorld, index: Index, present: Iterable<string>): 
      cut. */
   const hisOwn = new Set<string>();
   for (const d of DISTRICTS) for (const k of cellsOf(d)) hisOwn.add(k);
+
+  /* The camp sails first, when it has to, since the islet moors to whatever
+     coast there is and the camp is part of that coast once it has landed. */
+  const camp = cellsOf(CAMP);
+  const camped: Cell = home ? [0, 0] : pitch(index, main, hisOwn);
+  const campNow = new Set<string>();
+  for (const k of camp) {
+    const [x, y] = unkey(k);
+    campNow.add(key(x + camped[0], y + camped[1]));
+  }
+  if (!home) {
+    const gone = new Set([...campNow].filter((k) => !camp.has(k)));
+    layout.tiles = layout.tiles.filter((t: VTile) => !gone.has(key(t.cell[0], t.cell[1])));
+    layout.objects = layout.objects.filter((o: VObject) => {
+      if (o.district === CAMP) return true;
+      const [x, y] = cellOf(o);
+      return !gone.has(key(x, y));
+    });
+    const [dx, dy] = camped;
+    for (const tile of layout.tiles) {
+      if (!camp.has(key(tile.cell[0], tile.cell[1]))) continue;
+      tile.cell = [tile.cell[0] + dx, tile.cell[1] + dy];
+      tile.pos = [tile.pos[0] + dx, tile.pos[1] + dy, tile.pos[2]];
+    }
+    for (const object of layout.objects) {
+      if (object.district !== CAMP) continue;
+      object.pos = [object.pos[0] + dx, object.pos[1] + dy, object.pos[2]];
+      if (object.pos_px) object.pos_px = [object.pos[0] * 32, object.pos[1] * 32];
+    }
+    for (const k of campNow) main.add(k);
+  }
 
   /* The islet sails to the shore that is actually there, and whatever of his
      was lying in the water it is sailing to is cleared out of the way first —
@@ -895,7 +1065,8 @@ function compose(world: VillageWorld, index: Index, present: Iterable<string>): 
      between a district that is on and one that is off is the wobble's. The
      islet's own coast travels with it, so it counts as his wherever it is. */
   const hisLand = new Set<string>();
-  for (const k of hisOwn) if (!unit.has(k)) hisLand.add(k);
+  for (const k of hisOwn) if (!unit.has(k) && (home || !camp.has(k))) hisLand.add(k);
+  if (!home) for (const k of campNow) hisLand.add(k);
   for (const k of unit) {
     const [x, y] = unkey(k);
     hisLand.add(key(x + off[0], y + off[1]));
@@ -1009,6 +1180,7 @@ function compose(world: VillageWorld, index: Index, present: Iterable<string>): 
     layout,
     on: [...on].sort(byHisOrder),
     moored: off,
+    camped,
     shore: { ...shore, wobbled: wobbled.moved, his_kept: back.size },
     asked: [...wobbled.land].map(unkey),
   };
