@@ -182,7 +182,7 @@ export function createToolCallItem(params: {
     return { kind: 'search-tool-call', ...base, query: searchQueryFromTitle(title) };
   }
   if (isMcpToolKind(toolKind)) {
-    return { kind: 'mcp-tool-call', ...base, tool: title };
+    return { kind: 'mcp-tool-call', ...base, tool: title, ...otherOutput(params.outputText) };
   }
   if (isWebFetchKind(toolKind)) {
     return { kind: 'web-fetch-tool-call', ...base, url: title };
@@ -199,7 +199,24 @@ export function createToolCallItem(params: {
       ...(params.terminalId !== undefined ? { terminalId: params.terminalId } : {}),
     };
   }
-  return { kind: 'unknown-tool-call', ...base, toolKind, name: title };
+  return {
+    kind: 'unknown-tool-call',
+    ...base,
+    toolKind,
+    name: title,
+    ...otherOutput(params.outputText),
+  };
+}
+
+/**
+ * How much of a non-shell tool's reply is kept. Enough for a short result
+ * such as a publish confirmation naming what went where; a tool that dumps a
+ * whole page back is not something the transcript should carry in full.
+ */
+const OTHER_OUTPUT_CAP = 4000;
+
+function otherOutput(text: string | undefined): { outputText?: string } {
+  return text === undefined ? {} : { outputText: text.slice(0, OTHER_OUTPUT_CAP) };
 }
 
 function updateToolCallItem(
@@ -276,6 +293,7 @@ function updateToolCallItem(
       return {
         ...common,
         ...(patch.title !== undefined && patch.title !== null ? { tool: nextTitle } : {}),
+        ...otherOutput(patch.outputText),
       };
     case 'web-fetch-tool-call':
       return {
@@ -294,6 +312,7 @@ function updateToolCallItem(
         ...common,
         ...(patch.toolKind !== undefined ? { toolKind: patch.toolKind } : {}),
         ...(patch.title !== undefined && patch.title !== null ? { name: nextTitle } : {}),
+        ...otherOutput(patch.outputText),
       };
   }
 }

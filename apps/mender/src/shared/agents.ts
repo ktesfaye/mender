@@ -296,6 +296,8 @@ export const madeSchema = z.object({
   kind: z.enum(['page', 'file', 'build']),
   /** What it is called, said the way anybody would say it. */
   name: z.string(),
+  /** The name is the page's own, read off what was published, not guessed from prose. */
+  sure: z.boolean().optional(),
   /** Where it is on this machine, for a file or a build. */
   path: z.string().optional(),
   /** Where it is inside the session's checkout, when it is in there. */

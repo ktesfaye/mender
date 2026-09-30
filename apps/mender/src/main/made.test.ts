@@ -11,10 +11,34 @@ describe('madeIn', () => {
     const made = madeIn(
       [
         turn([
-          { kind: 'create-file-tool-call', id: 'a', path: '/r/docs/plan.md', content: '', status: 'done' },
-          { kind: 'create-file-tool-call', id: 'b', path: '/r/src/x.ts', content: '', status: 'done' },
-          { kind: 'create-file-tool-call', id: 'c', path: '/r/CLAUDE.md', content: '', status: 'done' },
-          { kind: 'create-file-tool-call', id: 'd', path: '/tmp/x/page.html', content: '', status: 'done' },
+          {
+            kind: 'create-file-tool-call',
+            id: 'a',
+            path: '/r/docs/plan.md',
+            content: '',
+            status: 'done',
+          },
+          {
+            kind: 'create-file-tool-call',
+            id: 'b',
+            path: '/r/src/x.ts',
+            content: '',
+            status: 'done',
+          },
+          {
+            kind: 'create-file-tool-call',
+            id: 'c',
+            path: '/r/CLAUDE.md',
+            content: '',
+            status: 'done',
+          },
+          {
+            kind: 'create-file-tool-call',
+            id: 'd',
+            path: '/tmp/x/page.html',
+            content: '',
+            status: 'done',
+          },
         ]),
       ],
       clock
@@ -39,6 +63,44 @@ describe('madeIn', () => {
     expect(made.map((one) => [one.kind, one.name])).toEqual([
       ['page', 'Trip plan'],
       ['build', 'Mender.app'],
+    ]);
+  });
+
+  it('names a published page after its own title, or the words just before a bare address', () => {
+    const made = madeIn(
+      [
+        turn([
+          {
+            kind: 'create-file-tool-call',
+            id: 'w',
+            path: '/s/acts.tpl.html',
+            content: '<title>Second Lines</title>',
+            status: 'done',
+          },
+          {
+            kind: 'unknown-tool-call',
+            id: 'p',
+            name: 'Artifact',
+            status: 'done',
+            outputText: 'Published /s/acts.html at https://claude.ai/artifact/X1 (Version 1)',
+          },
+          {
+            kind: 'message',
+            role: 'assistant',
+            id: 'm',
+            text: 'Still there. Food is at https://claude.ai/artifact/F2 and activities at https://claude.ai/artifact/X1.',
+          },
+        ]),
+      ],
+      clock
+    );
+    expect(
+      kept([], made)
+        .filter((one) => one.kind === 'page')
+        .map((one) => [one.id, one.name])
+    ).toEqual([
+      ['https://claude.ai/artifact/X1', 'Second Lines'],
+      ['https://claude.ai/artifact/F2', 'Food'],
     ]);
   });
 });

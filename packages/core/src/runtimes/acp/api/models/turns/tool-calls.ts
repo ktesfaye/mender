@@ -60,6 +60,8 @@ export interface McpToolCall extends BaseToolCallItem {
   kind: 'mcp-tool-call';
   server?: string;
   tool: string;
+  /** Text the tool reported back, capped; see `OTHER_OUTPUT_CAP`. */
+  outputText?: string;
 }
 
 export interface WebFetchToolCall extends BaseToolCallItem {
@@ -84,6 +86,8 @@ export interface UnknownToolCall extends BaseToolCallItem {
   kind: 'unknown-tool-call';
   toolKind: string | null;
   name: string;
+  /** Text the tool reported back, capped; see `OTHER_OUTPUT_CAP`. */
+  outputText?: string;
 }
 
 export interface ToolGroup {
@@ -181,6 +185,7 @@ export const mcpToolCallSchema = baseToolCallItemSchema.extend({
   /** MCP server name/id when the provider exposes it separately from the tool name. */
   server: z.string().optional(),
   tool: z.string(),
+  outputText: z.string().optional(),
 });
 
 export const webFetchToolCallSchema = baseToolCallItemSchema.extend({
@@ -208,6 +213,7 @@ export const unknownToolCallSchema = baseToolCallItemSchema.extend({
   kind: z.literal('unknown-tool-call'),
   toolKind: z.string().nullable(),
   name: z.string(),
+  outputText: z.string().optional(),
 });
 
 export const toolCallItemSchema = z.discriminatedUnion('kind', [

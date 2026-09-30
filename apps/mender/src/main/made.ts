@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename } from 'node:path';
 import type { ToolNode, TranscriptTurn } from '@emdash/core/runtimes/acp/api';
@@ -39,11 +39,59 @@ const LOOKED_AT = new Set([
 ]);
 
 /** What a build leaves behind that you would open or install. */
-const BUILT = /(?:^|[\s'"`(=:])((?:~|\/)[^\s'"`()<>]*?\.(?:apk|aab|dmg|app|pkg|pdf))(?=$|[\s'"`),.;:])/g;
+const BUILT =
+  /(?:^|[\s'"`(=:])((?:~|\/)[^\s'"`()<>]*?\.(?:apk|aab|dmg|app|pkg|pdf))(?=$|[\s'"`),.;:])/g;
 
 /** A page published to claude.ai, with the words it was linked under when it was. */
 const PAGE =
   /(?:\[([^\]\n]{1,80})\]\()?((?:https?:\/\/)?claude\.ai\/(?:code\/)?artifacts?\/[A-Za-z0-9-]+)/g;
+
+/** What a publish says back: the file it sent and where it went. */
+const PUBLISHED =
+  /Published (\/\S+) at ((?:https?:\/\/)?claude\.ai\/(?:code\/)?artifacts?\/[A-Za-z0-9-]+)/g;
+
+/** What any page is called by whoever wrote it. */
+const TITLE = /<title[^>]*>([^<]{1,120})<\/title>/i;
+
+const UNNAMED = 'a published page';
+
+/** Titles already read off disk, since the list is worked out on every token. */
+const titles = new Map<string, string>();
+
+function titleOnDisk(path: string): string | undefined {
+  const had = titles.get(path);
+  if (had) return had;
+  try {
+    const found = TITLE.exec(readFileSync(path, 'utf8'))?.[1]?.trim();
+    if (found) titles.set(path, found);
+    return found || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The page's own title, from disk or from however it was written this session. */
+function titleOf(path: string, written: ReadonlyMap<string, string>): string | undefined {
+  const stem = (one: string): string => one.replace(/\.tpl(?=\.[^.]+$)/, '');
+  const writ = written.get(path) ?? [...written].find(([one]) => stem(one) === stem(path))?.[1];
+  return titleOnDisk(path) ?? (writ ? TITLE.exec(writ)?.[1]?.trim() : undefined);
+}
+
+/**
+ * What a bare address in prose was called: the few words of its own clause
+ * just before it, as in "food is at" or "and activities at". Anything longer
+ * is a sentence about the page rather than its name, and is left alone.
+ */
+function calledIn(text: string, index: number): string | undefined {
+  const before = text.slice(Math.max(0, index - 120), index);
+  const clause = before.split(/[.!?;,:(\n]|\s(?:and|or)\s/).pop() ?? '';
+  const name = clause
+    .replace(/\s+(?:is|are|lives?|sits?|went up|goes|now)?\s*(?:at|here|on)?\s*$/i, '')
+    .trim();
+  const words = name.split(/\s+/).filter(Boolean);
+  if (!words.length || words.length > 4 || /claude\.ai|https?:/i.test(name)) return undefined;
+  return name;
+}
 
 /** Places a file is only ever passing through, or is the agent's own bookkeeping. */
 function incidental(path: string): boolean {
@@ -82,13 +130,34 @@ export function madeIn(
       found.push({ id: path, kind: 'build', name: basename(path), path, at });
     }
   };
+  const written = new Map<string, string>();
   const pages = (text: string, at: number): void => {
     for (const match of text.matchAll(PAGE)) {
       const address = match[2]!;
       const url = address.startsWith('http') ? address : `https://${address}`;
       const words = match[1]?.trim();
-      const name = words && !/claude\.ai/.test(words) ? words : 'a published page';
+      const name =
+        (words && !/claude\.ai/.test(words) ? words : calledIn(text, match.index)) ?? UNNAMED;
       found.push({ id: url, kind: 'page', name, url, at });
+    }
+  };
+  /* A publish names the file it sent, and a page names itself, so a page
+     whose publish was seen is called what it says at the top. */
+  const published = (text: string | undefined, summary: string | undefined, at: number): void => {
+    for (const match of (text ?? '').matchAll(PUBLISHED)) {
+      const address = match[2]!;
+      const url = address.startsWith('http') ? address : `https://${address}`;
+      const described = summary?.split(/[,.;:\u2014(]/)[0]?.trim();
+      const titled = titleOf(match[1]!, written);
+      const name = titled ?? (described && described.length <= 60 ? described : undefined);
+      found.push({
+        id: url,
+        kind: 'page',
+        name: name ?? UNNAMED,
+        url,
+        at,
+        ...(name ? { sure: true } : {}),
+      });
     }
   };
   const walk = (node: ToolNode, over: boolean): void => {
@@ -97,8 +166,15 @@ export function madeIn(
       return;
     }
     const at = stamp(node.id, over);
-    if (node.kind === 'create-file-tool-call' && node.status === 'done') file(node.path, at);
-    else if (node.kind === 'execute-tool-call' && node.status === 'done') {
+    if (node.kind === 'create-file-tool-call' && node.status === 'done') {
+      written.set(node.path, node.content);
+      file(node.path, at);
+    } else if (
+      (node.kind === 'unknown-tool-call' || node.kind === 'mcp-tool-call') &&
+      node.status === 'done'
+    ) {
+      published(node.outputText, node.inputSummary, at);
+    } else if (node.kind === 'execute-tool-call' && node.status === 'done') {
       builds(node.outputText, at);
     }
     for (const child of node.children ?? []) walk(child, over);
@@ -125,8 +201,8 @@ export function madeIn(
  *
  * The first time something was seen is when it was made, so a later sighting
  * of the same thing never moves it, and a resumed transcript that forgot
- * something never takes it off the list. A name that says something beats
- * one that does not.
+ * something never takes it off the list. A name the page gave itself beats
+ * one read out of prose, and either beats none.
  */
 export function kept(before: readonly Made[], found: readonly Made[]): Made[] {
   const by = new Map<string, Made>();
@@ -137,8 +213,10 @@ export function kept(before: readonly Made[], found: readonly Made[]): Made[] {
       continue;
     }
     const at = had.at && one.at ? Math.min(had.at, one.at) : had.at || one.at;
-    const name = had.name === 'a published page' ? one.name : had.name;
-    by.set(one.id, { ...had, at, name });
+    const better = (one.sure && !had.sure) || (had.name === UNNAMED && !had.sure);
+    const name = better && one.name !== UNNAMED ? one.name : had.name;
+    const sure = had.sure || (better && one.sure);
+    by.set(one.id, { ...had, at, name, ...(sure ? { sure: true } : {}) });
   }
   return [...by.values()].sort((a, b) => b.at - a.at);
 }
