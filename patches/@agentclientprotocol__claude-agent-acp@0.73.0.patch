@@ -1,8 +1,52 @@
 diff --git a/dist/acp-agent.js b/dist/acp-agent.js
-index 0214a509eb5e7b777a69e4e34637941c275d27b1..8e3373516219554d5153ea374f034117cb2dd1fd 100644
+index 0214a509eb5e7b777a69e4e34637941c275d27b1..5ba0000f604bd10c47bf09b6f0097f9bde5cc430 100644
 --- a/dist/acp-agent.js
 +++ b/dist/acp-agent.js
-@@ -1272,6 +1272,29 @@ export class ClaudeAcpAgent {
+@@ -32,6 +32,43 @@ import { parseToolResultMeta } from "./tool-result-meta.js";
+ export { DEFAULT_AGENT_ID, EFFORT_CONFIG_ID } from "./session-config-ids.js";
+ import { MODE_CONFIG_ID, SessionModeManager } from "./session-mode.js";
+ export const CLAUDE_CONFIG_DIR = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), ".claude");
++// Mender: a session's transcript read whole, each compaction boundary tied
++// back to what came before it so the chain runs from the very start.
++const wholeTranscript = {
++    async load({ projectKey, sessionId }) {
++        const root = path.join(CLAUDE_CONFIG_DIR, "projects");
++        const name = `${sessionId}.jsonl`;
++        let file = path.join(root, projectKey, name);
++        if (!existsSync(file)) {
++            const dirs = await fs.readdir(root).catch(() => []);
++            const found = dirs.map((dir) => path.join(root, dir, name)).find((one) => existsSync(one));
++            if (!found)
++                return null;
++            file = found;
++        }
++        const entries = [];
++        for (const line of (await fs.readFile(file, "utf8")).split("\n")) {
++            if (!line.trim())
++                continue;
++            try {
++                const entry = JSON.parse(line);
++                // What a compaction kept is already there before it, in the
++                // order it happened, so it is not moved up after the summary.
++                if (entry?.type === "system" && entry.subtype === "compact_boundary" && !entry.parentUuid && entry.logicalParentUuid) {
++                    entry.parentUuid = entry.logicalParentUuid;
++                    if (entry.compactMetadata) {
++                        const { preservedMessages, preservedSegment, ...rest } = entry.compactMetadata;
++                        entry.compactMetadata = rest;
++                    }
++                }
++                entries.push(entry);
++            }
++            catch { }
++        }
++        return entries;
++    },
++    async append() { },
++};
+ const execFileAsync = promisify(execFile);
+ const MAX_INLINE_FAILURE_TITLE_LENGTH = 256;
+ /** Claude CLI emits this synthetic result when an interrupted cycle ends on
+@@ -1272,6 +1309,29 @@ export class ClaudeAcpAgent {
      }
      async stopAsyncTask(params) {
          const session = this.sessions[params.sessionId];
@@ -32,3 +76,17 @@ index 0214a509eb5e7b777a69e4e34637941c275d27b1..8e3373516219554d5153ea374f034117
          const asyncTasks = session?.asyncTaskRuntime;
          if (!session || !asyncTasks?.claimStop(params.asyncTaskId))
              return { stopped: false };
+@@ -4206,7 +4266,12 @@ export class ClaudeAcpAgent {
+     }
+     async replaySessionHistory(sessionId) {
+         const toolUseCache = {};
+-        const messages = await getSessionMessages(sessionId);
++        // Mender: the whole conversation, not only what came after the last
++        // time it was packed down. Claude's own reader stops at a compaction,
++        // which is right for what the model is shown and wrong for what a
++        // person reads back.
++        const whole = await getSessionMessages(sessionId, { sessionStore: wholeTranscript }).catch(() => []);
++        const messages = whole.length ? whole : await getSessionMessages(sessionId);
+         const session = this.sessions[sessionId];
+         const forwardSubagentText = session?.forwardSubagentText ?? supportsSubagentTranscript(this.clientCapabilities);
+         const supportsTypedFailures = supportsAirSessionFailures(this.clientCapabilities);
