@@ -193,21 +193,23 @@ export class Editing {
   }
 
   /**
-   * The empty places worth showing: a whole district nobody is on. A piece of
-   * a district is only its own place while somebody stands on it; empty, it is
-   * just more of whoever has the rest.
+   * The empty places worth showing: a whole district nobody is on, and a piece
+   * nobody is on of a district somebody is, which is where a project can move
+   * in beside them. A piece of an empty district is just that district.
    */
   private vacant(): Place[] {
     const taken = new Set(this.host.residents().map((one) => one.district));
-    return this.places.filter((place) => place.of === null && !taken.has(place.id));
+    return this.places.filter(
+      (place) => !taken.has(place.id) && (place.of === null || taken.has(place.of))
+    );
   }
 
   /**
    * The place under a point in the world.
    *
    * A piece shares its cells with the district it is cut out of, so it
-   * answers for them only while somebody lives on it. Empty, the island draws
-   * it as part of whoever has the rest, so letting go there means them.
+   * answers for them only while it is its own place: somebody lives on it, or
+   * somebody lives on the rest and it is pale ground to move onto.
    */
   private placeAt(worldX: number, worldY: number): Place | null {
     const cell = `${Math.floor(worldX / CELL)},${Math.floor(-worldY / CELL)}`;
@@ -219,7 +221,7 @@ export class Editing {
         whole = place;
         continue;
       }
-      if (taken.has(place.id)) return place;
+      if (taken.has(place.id) || taken.has(place.of)) return place;
     }
     return whole;
   }
