@@ -1706,7 +1706,7 @@ function thinking(
             width: at.wide + GUTTER,
             height: floor - HEAD.below,
           },
-          'background:rgba(18,13,7,.72);pointer-events:none'
+          'background:rgba(18,13,7,.42);pointer-events:none'
         ),
         'shade:said'
       )
