@@ -3303,3 +3303,12 @@ command ends, and the cut-off record names the commands still out so a reopen
 restarts exactly those. Driven in a dev instance: a backgrounded `sleep 45`
 stayed running after the answer, settled on its own when it finished, and a
 second one sat in the cut-off record by its command.
+
+### A question stands at the foot of what it said (2026-09-30) — done
+
+A question, a permission or a form, used to take the top of the right column,
+where it got lost beside the answer everybody was actually reading. It now
+stands at the foot of the middle column, right over the line it is answered
+on, and the column scrolls down to it when it arrives. Driven in a dev
+instance: a two-question form showed at the foot of the answer, was answered
+by keys through both questions, and Claude read the picks back.

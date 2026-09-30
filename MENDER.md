@@ -200,9 +200,8 @@ and a build is shown where it landed. The village keeps that list itself,
 per session, so closing and resuming a session never loses it, even when
 the conversation it comes back with has forgotten some of its own history;
 only a file that's actually gone from disk drops off. Under that is whatever the session is
-in the middle of: a question it is standing at the gate with, its answers
-pressable and numbered, or the plan it is working through, done steps inked
-out and the one it is on lit, and nothing when it is neither. Under that is
+in the middle of: the plan it is working through, done steps inked out and
+the one it is on lit, and nothing when there is none. Under that is
 everything it did, scrolling and following the live end, said in plain words
 worked out from the command itself rather than the command: what changed
 something gets its own line, built, installed, tested and whether it passed,
@@ -265,8 +264,7 @@ which way it goes. Where the rules sit is one arrangement for the whole
 village, kept on this machine; what is put away is put away in that session
 only, for this sitting, and a new one shows everything again. Nothing shows
 before it is in use: a column heading only goes up once there is something
-under it, and a side with nothing on it gives the answer its width. A question is never put away with the plan, since it is the one
-thing that stops the work until it is answered.
+under it, and a side with nothing on it gives the answer its width.
 
 The fire is the session. Lit is somebody working, banked is somebody who has
 stopped and is standing at the gate, embers is finished, out is nobody home,
@@ -773,7 +771,8 @@ them, together.
 
 **And when it wants to ask you something, it asks.** Claude's own way of
 putting a choice to you, the one a terminal draws as a list with an "Other"
-box, lands at the gate the same way a permission does: the question in the
+box, stands at the foot of what it said, right over the line it is answered
+on, the same place a permission question does: the question in the
 large hand, whatever it calls it and which of how many over it, each answer
 numbered with what it would mean written quietly under it. A number picks it
 and goes on to the next question; on one that takes several, numbers mark and

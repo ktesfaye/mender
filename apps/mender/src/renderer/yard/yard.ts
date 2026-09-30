@@ -1886,7 +1886,8 @@ function thinking(
 
   const live = yard.session?.live;
   const failure = yard.session?.failure;
-  if (!thoughts.length && !live && !failure) return;
+  const asking = yard.asking;
+  if (!thoughts.length && !live && !failure && !asking) return;
 
   const room = Math.max(60, floor - top);
   const stream = stack({ left: at.x, top, width: at.wide, height: room }, 20);
@@ -1922,9 +1923,13 @@ function thinking(
   col.appendChild(items);
 
   const recap = yard.session?.recap;
-  if (recap && !live && !failure) col.appendChild(recapped(recap));
+  if (recap && !live && !failure && !asking) col.appendChild(recapped(recap));
   if (failure) col.appendChild(failureEmber(failure, does));
   if (live) col.appendChild(ember(live, since));
+  /* A question stands at the foot of the answer, right over the line it is
+     answered on: it is what the work is stopped on, so it is read where the
+     reading already is, not off in a side column. */
+  if (asking) col.appendChild(keyed(gate(at.wide, asking, does), 'gate'));
 
   function laidOlder(): void {
     const hidden = hiddenCount(wholeSize, shown, server);
@@ -2065,7 +2070,8 @@ function thinking(
      middle of a sentence is worse than missing the next one. The answer inks
      in and a diagram draws late, so the foot is found again whenever the
      column grows, for as long as it is being followed. */
-  if (walkedIn) followed.delete(sessionId);
+  /* A question is what the work is stopped on, so it is never left scrolled out of sight. */
+  if (walkedIn || asking) followed.delete(sessionId);
   const kept = followed.get(sessionId);
   const foot = (): void => {
     if (!stream.isConnected) return growing.disconnect();
@@ -2462,7 +2468,6 @@ function leftEmpty(yard: Yard | undefined): boolean {
 function rightEmpty(yard: Yard | undefined): boolean {
   if (!yard) return false;
   const session = yard.session;
-  if (yard.asking) return false;
   if (!session || session.waking) return true;
   return (
     (hidden('now') || !session.plan?.length) &&
@@ -2480,8 +2485,6 @@ function made(
 ): void {
   if (!at.wide) return;
   const session = yard.session;
-  /* A question is never put away with the plan: it is the one thing on the
-     board that stops the work until it is answered. */
   const plan = hidden('now') ? [] : (session?.plan ?? []);
   const output = hidden('made') ? [] : (session?.made ?? []);
   const steps_ = hidden('did') ? [] : (session?.steps ?? []);
@@ -2496,7 +2499,7 @@ function made(
    * yard until it has sent somebody out. The column's own rule goes with them,
    * because a line down an empty third of the screen is the same lie in
    * thinner form. */
-  if (!yard.asking && !output.length && !plan.length && !steps_.length && !hands.length) return;
+  if (!output.length && !plan.length && !steps_.length && !hands.length) return;
 
   root.appendChild(
     stays(
@@ -2542,7 +2545,7 @@ function made(
     }
     region('made', at, HEAD.label, HEAD.label + cart.offsetHeight + 18);
     lead = cart.offsetHeight + 18;
-    if (yard.asking || plan.length || steps_.length) {
+    if (plan.length || steps_.length) {
       above.appendChild(rule({ left: 0, top: lead - 2, width: at.wide }));
       lead += 18;
     }
@@ -2553,7 +2556,7 @@ function made(
   }
 
   let y = lead;
-  const now = yard.asking ? gate(at.wide, yard.asking, does) : plan.length ? planned(plan) : null;
+  const now = plan.length ? planned(plan) : null;
   if (now) {
     above.appendChild(now);
     /* A plan longer than half the column scrolls inside itself, because the
@@ -2562,7 +2565,7 @@ function made(
     const tall = above.offsetHeight - lead;
     const most =
       dragged === undefined
-        ? Math.round(tall * (yard.asking ? 0.62 : 0.42))
+        ? Math.round(tall * 0.42)
         : clamp(dragged, 60, Math.max(60, tall - 120));
     if (dragged !== undefined) now.style.height = `${most}px`;
     if (now.offsetHeight > most || dragged !== undefined) {
