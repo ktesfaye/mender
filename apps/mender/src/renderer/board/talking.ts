@@ -23,6 +23,9 @@ export interface LiveShell {
   key: TerminalKey;
   readonly el: HTMLElement;
   focus(): void;
+  /** Once the shell has printed something and then gone quiet: its prompt
+      is up and anything typed now lands on it rather than ahead of it. */
+  settled(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -50,10 +53,13 @@ export async function openShell(
   env: Record<string, string> = {},
   /** The windmill's own terminal font size, in pixels. 0 falls back to the
       grid's own default. */
-  fontSize = 0
+  fontSize = 0,
+  /** Terminal.app's own look rather than the board's. */
+  plain = false
 ): Promise<LiveShell | null> {
   const parsed = parseNativeAbsolute(checkout);
   if (!parsed.success) return null;
+  let replaying = true;
 
   const key: TerminalKey = {
     workspace: { host: LOCAL_HOST_REF, path: parsed.data },
@@ -62,11 +68,18 @@ export async function openShell(
 
   const term: LiveTerminal = makeTerminal(
     {
-      onData: (data) => void client.terminals.sendInput({ key, data }),
+      /* Replaying what the shell already printed makes the grid answer the
+         questions in it (what kind of terminal is this) all over again, and
+         those answers would land on the prompt as junk. Nothing typed
+         happens while the history is still being drawn. */
+      onData: (data) => {
+        if (!replaying) void client.terminals.sendInput({ key, data });
+      },
       onResize: ({ cols, rows }) => void client.terminals.resize({ key, cols, rows }),
       onStepOut: steppedOut,
     },
-    fontSize || undefined
+    fontSize || (plain ? 12 : undefined),
+    plain
   );
 
   const started = await client.terminals.start({
@@ -91,6 +104,7 @@ export async function openShell(
   let written = 0;
   let asking = false;
   let again = false;
+  let lastPrinted = 0;
 
   /* Only what is newly printed is scanned, and only once — reading the whole
      scrollback fresh every catch-up would say a server had just started every
@@ -130,7 +144,9 @@ export async function openShell(
           term.write(added);
           notice(added);
         }
-        written = snap.baseOffset + snap.text.length;
+        const now = snap.baseOffset + snap.text.length;
+        if (now !== written) lastPrinted = Date.now();
+        written = now;
       } while (again);
     } finally {
       asking = false;
@@ -138,12 +154,21 @@ export async function openShell(
   };
 
   await catchUp();
+  await new Promise<void>((done) => term.write('', done));
+  replaying = false;
   const off = await handle.attach(() => void catchUp());
 
   return {
     key,
     el: term.el,
     focus: () => term.focus(),
+    settled: async () => {
+      const began = Date.now();
+      while (Date.now() - began < 4000) {
+        if (lastPrinted && Date.now() - lastPrinted > 350) return;
+        await new Promise((done) => setTimeout(done, 100));
+      }
+    },
     close: async () => {
       await off();
       term.dispose();

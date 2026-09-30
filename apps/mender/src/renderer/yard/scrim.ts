@@ -122,7 +122,7 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
     show: (reading) => {
       const was = showing;
       showing = Boolean(reading);
-      root.style.display = reading ? '' : 'none';
+      root.style.display = reading ? 'flex' : 'none';
       if (!reading) return;
       /* It steps in from the top the first time it comes up, and after that a
          change of what is on it is a cut: only the trail moves, because you
@@ -145,11 +145,15 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
       sheet.write(reading.rows);
       inTerminal = Boolean(reading.terminal);
       root.style.height = inTerminal ? room : '';
+      /* A grid fills whatever is left under the title; writing hugs itself. */
+      under.style.flex = inTerminal ? '1 1 auto' : '';
       if (reading.terminal) {
         termHost.style.display = '';
         /* Mounted once and left alone after that — replacing it would tear
            down a live grid every time this board's title rewrites. */
         if (termHost.firstElementChild !== reading.terminal) {
+          reading.terminal.style.position = 'absolute';
+          reading.terminal.style.inset = '0';
           termHost.replaceChildren(reading.terminal);
         }
       } else {

@@ -24,9 +24,10 @@ export const taskSchema = z.object({
   /**
    * `terminal` means this session's board is the agent's own CLI, running
    * raw in a real terminal, rather than the yard's parsed transcript. Unset
-   * (or `chat`) is every session there has ever been until now.
+   * (or `chat`) is every session there has ever been until now. `shell` is
+   * a plain login shell in the checkout, nobody's CLI in it at all.
    */
-  kind: z.enum(['chat', 'terminal']).optional(),
+  kind: z.enum(['chat', 'terminal', 'shell']).optional(),
   /** A pull request picked by hand rather than found by matching this
       session's branch — set when its own branch isn't what went up, or the
       match never found it. */
@@ -142,8 +143,9 @@ export const tasksContract = defineContract({
       /** Which building to stand it in. Null when the district has no room. */
       slot: z.number().int().nonnegative().nullable(),
       /** `terminal` for a session that is the agent's own CLI in a real
-          terminal rather than the yard's chat board. Omitted means `chat`. */
-      kind: z.enum(['chat', 'terminal']).optional(),
+          terminal rather than the yard's chat board, `shell` for a plain
+          login shell. Omitted means `chat`. */
+      kind: z.enum(['chat', 'terminal', 'shell']).optional(),
       /** An existing branch to stand the session on, in place of cutting a
           fresh one from the name. */
       branch: z.string().optional(),

@@ -3005,3 +3005,21 @@ clear air, unfurled its name on hover and walked into its yard on a click; an
 empty islet did nothing on hover; dragging the fishing hamlet's project onto
 it in edit districts moved it there, flag and all. Founding onto it through
 the folder picker was not driven.
+
+### A new session is asked for on a signboard (2026-09-29) — done
+
+The right-click board of other ways to start a session is now design 1b: a
+timber signboard hung over the village with a box to write in and three tiles,
+its own isolated workspace, from a past session, and in a terminal. Issues,
+existing branches and allow-everything are cut from it. "In a terminal" is a
+new kind of session, a plain login shell in the checkout in Terminal.app's
+own look, in its own tmux, running what was written first or `claude
+--resume` for a picked past session; taking the session down kills it.
+Along the way every board terminal now fills the board (the wash had lost its
+flex layout), tmux's status line is hidden, and reopening a shell no longer
+types the grid's answers to old escape queries onto the prompt. Driven in a
+dev instance on a scratch repo: the sign opened on right-click and toggled
+its tiles; a terminal session ran its first command in the project folder;
+walking back into the project reopened it; isolated plus past plus terminal
+cut a worktree and resumed the real Claude session in it. A plain
+conversation started from the sign was not driven.

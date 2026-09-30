@@ -567,44 +567,21 @@ presses: the armed line names what it would actually lose, asked of the
 machine fresh rather than guessed, so ending one that is only sitting at its
 own prompt says so plainly instead of pretending there is something to weigh.
 
-**A session can be its own terminal instead of a conversation.** Naming a new
-one on the empty hook offers a second line beside its name: in its own
-terminal. Taken, the worktree is cut exactly as always and the agent's own
-CLI is run raw in it, over the runtime that already knows how to keep a
-provider's own process and resume it, rather than spoken to over the
-protocol — so that CLI's own screen, its own trust prompt, its own usage-limit
-banner and its own permission prompts are what is actually on the board, not
-a village re-telling of them. It is still a villager like any other: the same
-fire, the same gatepost, the same cart-frame stand it up, and only the middle,
-where the transcript would draw, is its terminal instead — the rail still
-hangs its lantern, the rack, `Cmd+U` and a system notification still all read
-its mood, because a mood is a mood whichever runtime is behind it. `ctrl+]`
-steps back out to the yard behind it, the same as the plain shell.
-
-**Naming a session can start from a ticket instead of a blank line.** Beside
-"say what you want doing" is "start from an open issue," and pressing it turns
-the naming board over to the project's own open issues, read out of `gh`
-read-only. Picking one writes `#<number> <title>` on the line, the same as if
-you had typed it: it becomes the session's name and the first thing said to
-whoever moves in.
-
-**Or it can start on a branch that is already there**, beside the issue line:
-"start from an existing branch" turns the same board over to the project's
-own branches, and picking one stands the session on it instead of cutting a
-fresh one — a worktree `git worktree add` reuses, not a new `refs/heads/`
-entry. The board says which one it is standing on, right where "allow
-everything" sits.
-
-**A session can start already allowing everything.** A third line on that
-same naming board, offered for a conversation rather than a terminal: allow
-everything, from the start. Taken, the worktree is cut and the first thing
-you said is sent exactly as always, and the moment the agent is awake enough
-to say what its own modes are called, the village sets it to whichever one
-that agent itself calls bypassing permission or accepting all of them —
-never a village-side approximation, always the live name that agent just
-advertised. Nothing is asked twice: the modes list on the card still shows
-the same choice, live, for a session started the plain way to reach for
-later.
+**A new session is asked for on a signboard.** Right-clicking the empty hook
+hangs a timber board over the village on two cords, the one place in the app
+with a box you write in rather than the line: what it is for, and under it
+three tiles that are each on or off and go together in any mix. In its own
+isolated workspace cuts a worktree on its own branch instead of the project's
+folder. Start from a past session lists the Claude Code conversations already
+had in that folder and picks the chosen one back up. Open in a terminal makes
+the session nothing but a real login shell in the checkout, drawn the way
+Terminal.app draws it, SF Mono on its Basic dark ink, with whatever was
+written run as its first command, or `claude --resume` when a past session was
+picked. It lives in its own tmux, so it is still there after the app closes,
+and taking the session down ends it. Return starts it and Escape or a click
+off the board puts it away. Issues, existing branches and allowing everything
+from the start are gone from here on purpose. A session made the older way,
+the agent's own CLI raw in its own terminal, still opens as it always did.
 
 **Something the shell starts listening on is noticed, not hunted for.**
 Whatever a checkout's own shell prints an address in — `npm run dev`, a test

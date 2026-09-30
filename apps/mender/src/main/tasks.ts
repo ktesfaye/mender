@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
+import { LOCAL_HOST_REF } from '@emdash/core/primitives/host/api';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import type { ActiveRootStatus } from '@emdash/core/runtimes/file-search/api';
@@ -58,8 +59,9 @@ export interface Task {
   readonly path: string;
   readonly startedAt: string;
   /** `terminal` for a session whose board is the agent's own CLI in a real
-      terminal. Unset means the ordinary chat yard. */
-  readonly kind?: 'chat' | 'terminal';
+      terminal, `shell` for a plain login shell. Unset means the ordinary
+      chat yard. */
+  readonly kind?: 'chat' | 'terminal' | 'shell';
   /** A pull request picked by hand, in place of matching this session's
       branch. */
   readonly pull?: string;
@@ -126,7 +128,7 @@ export interface Tasks {
     project: string,
     name: string,
     slot: number | null,
-    kind?: 'chat' | 'terminal',
+    kind?: 'chat' | 'terminal' | 'shell',
     /** An existing branch to stand the session on, instead of cutting a
         fresh one out of the name. `createWorktree` reuses it rather than
         cutting from a base ref when it finds one already there. */
@@ -652,7 +654,7 @@ export function createTasks(
         name: written,
         title: written,
         slot,
-        ...(kind === 'terminal' ? { kind: 'terminal' as const } : {}),
+        ...(kind === 'terminal' || kind === 'shell' ? { kind } : {}),
       };
 
       if (workspace) {
@@ -798,6 +800,16 @@ export function createTasks(
             { workspaceId: id, deleteBranch: false },
             { timeoutMs: 0 }
           );
+        }
+        // A session that is only a terminal takes its shell down with it:
+        // it lives in its own tmux, which would otherwise outlive the app.
+        const at = parseNativeAbsolute(going.path);
+        if (going.kind === 'shell' && at.success) {
+          await runtimes.terminals
+            .kill({
+              key: { workspace: { host: LOCAL_HOST_REF, path: at.data }, id: `session-${id}` },
+            })
+            .catch(() => undefined);
         }
         // The empty hook remembers this one, in case letting go of it was a
         // slip on the second press.

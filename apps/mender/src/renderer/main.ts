@@ -31,7 +31,7 @@ import type { At, Change } from '@shared/changes';
 import { parseEnvLines } from '@shared/env-lines';
 import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
-import type { ClaudeCliSession, Task, Workspace } from '@shared/tasks';
+import type { Task, Workspace } from '@shared/tasks';
 import { branchMade, branchUnmade, unbranchMade } from './board/branch';
 import { browsing, openPage, safe as safeAddress } from './board/browsing';
 import { counted, openCard, transcriptMarkdown, turnsOf, type LiveCard } from './board/card';
@@ -69,8 +69,8 @@ import { Editing } from './village/editing';
 import { Folk, loadFolk, type Look, type Standing } from './village/folk';
 import { Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
-import './yard/tokens.css';
 import { say } from './village/notice';
+import './yard/tokens.css';
 import { loadFeet, Pennants, plantFlag } from './village/pennants';
 import { buildScene } from './village/scene';
 import { Water } from './village/water';
@@ -79,6 +79,7 @@ import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
 import { openYard, type Watching } from './yard/live';
 import { showMissed } from './yard/missed';
+import { openNewSession, type NewSessionSign } from './yard/new-session';
 import { pressing } from './yard/press';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
@@ -653,6 +654,11 @@ async function boot(): Promise<void> {
     void client.appSettings.terminalSettings({}, { timeoutMs: 0 }).then((read) => {
       terminalSettings = read;
     });
+    /** Who a fresh conversation starts with, for the new-session sign to say. */
+    let defaultHand = 'claude';
+    void client.appSettings.defaultHand({}, { timeoutMs: 0 }).then((read) => {
+      defaultHand = read;
+    });
     /** Every chord this session has rebound away from the table's own
         default, read once at the start the same way the terminal settings
         are — a rebind made on the windmill updates this in place, so a
@@ -757,36 +763,13 @@ async function boot(): Promise<void> {
       written: string;
       /** The one just taken down here, if putting it back up is still on offer. */
       revivable: { title: string } | null;
-      /** In its own terminal — the agent's own CLI, raw — rather than the
-          ordinary chat yard. */
+      /** A plain login shell in the checkout rather than a conversation. */
       terminal: boolean;
-      /** The project's open issues, offered as a way to name and start the
-          session; `null` means never asked, an empty array means asked and
-          none came back or `gh` had nothing to say. */
-      issues?: { number: number; title: string }[] | null;
-      /** Whether the issue list is what is on the board right now, rather
-          than the ordinary typed name. */
-      pickingIssue?: boolean;
-      /** The project's own branches, offered as a place to stand the session
-          instead of cutting a fresh one; `null` means never asked. */
-      branches?: string[] | null;
-      /** Whether the branch list is what is on the board right now. */
-      pickingBranch?: boolean;
-      /** The existing branch picked to stand this session on, if any —
-          `begin` cuts nothing fresh when this is set. */
-      branch?: string | null;
-      /** The project's own Claude Code CLI session history, offered as a
-          thing to pick up instead of starting blank; `null` means never
-          asked. */
-      resumeSessions?: ClaudeCliSession[] | null;
-      /** Whether that history is what is on the board right now. */
-      pickingResume?: boolean;
-      /** The session picked to resume, if any — `begin` sends nothing of
-          its own when this is set: resuming *is* the first thing said. */
+      /** The past session picked to pick up, if any — `begin` sends nothing
+          of its own when this is set: resuming *is* the first thing said. */
       resume?: { id: string; title: string } | null;
-      /** Start it already allowing everything, the agent's own most
-          permissive mode, applied the moment it is awake to hear it. */
-      allowAll: boolean;
+      /** What was written on the sign, said to it (or run in it) first. */
+      said?: string;
       /** Its own worktree on its own branch, rather than the project's own
           folder beside everybody else. */
       isolated: boolean;
@@ -1015,10 +998,7 @@ async function boot(): Promise<void> {
       if (!district || !project) return;
       const aim: Aim = { kind: 'district', district };
       say('making its own copy of the project…');
-      const made = await client.tasks.cutWorkspace(
-        { project: project.id, name },
-        { timeoutMs: 0 }
-      );
+      const made = await client.tasks.cutWorkspace({ project: project.id, name }, { timeoutMs: 0 });
       if (!made.success) {
         say(whyNot(made.error), 6000);
         return;
@@ -1052,7 +1032,8 @@ async function boot(): Promise<void> {
     const dropCost = async (id: string): Promise<string> => {
       const cost = await client.tasks.dropCost({ id }, { timeoutMs: 0 });
       const busy = tasks.filter(
-        (task) => task.workspace === id && (seen[task.id] === 'working' || seen[task.id] === 'asking')
+        (task) =>
+          task.workspace === id && (seen[task.id] === 'working' || seen[task.id] === 'asking')
       ).length;
       const going = [
         busy ? `${counted(busy, 'agent')} in there still working, stopped mid-way` : null,
@@ -1383,6 +1364,7 @@ async function boot(): Promise<void> {
       const ui = openWindmill(state, {
         choose: async (id) => {
           state.hand = await client.appSettings.setDefaultHand({ id }, { timeoutMs: 0 });
+          defaultHand = state.hand;
           ui.update(state);
         },
         clear: async (row) => {
@@ -1670,7 +1652,7 @@ async function boot(): Promise<void> {
           ...(here ? { here } : {}),
           servers: servingCheckouts(),
           ...(cutting.size ? { cutting: new Set(cutting.keys()) } : {}),
-          waking: Boolean(here && here.kind !== 'terminal'),
+          waking: Boolean(here && !here.kind?.match(/terminal|shell/)),
         },
         (now) => {
           if (open === aim && !reading && !looked && !walking && !talking && !sending && !card) {
@@ -1697,7 +1679,7 @@ async function boot(): Promise<void> {
       // A terminal-kind session wakes over the TUI runtime instead — see
       // `openTuiTask`, which calls `showYard` for the rail and gatepost and
       // then takes the board itself over.
-      if (here && here.kind !== 'terminal') {
+      if (here && here.kind !== 'terminal' && here.kind !== 'shell') {
         opened.woke(client.agents.wake({ task: here.id }, { timeoutMs: 0 }));
         /* Whatever was half-written last time is still on the line. */
         const held = drafts.get(here.id);
@@ -1757,12 +1739,20 @@ async function boot(): Promise<void> {
         arrived();
         return;
       }
+      /* A session that is a terminal is only ever its terminal. */
+      if (here.kind === 'terminal' || here.kind === 'shell') {
+        await openTask(aim, here);
+        return;
+      }
       await showYard(aim, project, here);
       arrived();
     };
 
     /** Nothing said yet in the session you are standing in, and nobody at work. */
     const untouched = (): boolean => {
+      /* A terminal says nothing the yard can read, so it is never a
+         placeholder to be swapped out. */
+      if (inside?.kind === 'terminal' || inside?.kind === 'shell') return false;
       const session = watching?.yard().session;
       return Boolean(session && !session.notes.length && !session.live);
     };
@@ -3465,6 +3455,10 @@ async function boot(): Promise<void> {
         await openTuiTask(aim, task);
         return;
       }
+      if (task.kind === 'shell') {
+        await openShellTask(aim, task);
+        return;
+      }
       flyToYard(camera, aim.district);
       lastIn.set(project.id, task.id);
       await showYard(aim, project, task);
@@ -3522,6 +3516,63 @@ async function boot(): Promise<void> {
       arrived();
     };
 
+    /** What a plain-terminal session runs the first time it opens: what was
+        written on the sign, or picking a past session back up. */
+    const firstRun = new Map<string, string>();
+
+    /**
+     * A session that is only a terminal: a login shell in its checkout, the
+     * same one Terminal.app would give you there, nobody's CLI in it and
+     * nothing of the village drawn over it. It lives in its own tmux, keyed to
+     * the session, so it is still running when you come back.
+     */
+    const openShellTask = async (aim: Aim, task: Task): Promise<void> => {
+      const project = projects.find((one) => one.id === task.project);
+      if (!project) return;
+      flyToYard(camera, aim.district);
+      lastIn.set(project.id, task.id);
+      await showYard(aim, project, task);
+      if (open !== aim) return;
+      stopTalking();
+      const name = task.title;
+      talking = { shell: null, name, shellId: `session-${task.id}`, ending: null };
+      const mine = talking;
+      wood(shell({ name, running: false }));
+      const running = await openShell(
+        client,
+        task.path,
+        () => {
+          if (talking === mine && open === aim) {
+            stopTalking();
+            home();
+          }
+        },
+        (url) => noteServer(task.path, url),
+        `session-${task.id}`,
+        shellEnvOf(project),
+        terminalSettings?.fontSize ?? 0,
+        true
+      );
+      if (talking !== mine || open !== aim) {
+        await running?.close();
+        return;
+      }
+      if (!running) {
+        wood(shell({ name, running: true, stopped: 'no shell would start here.' }));
+        return;
+      }
+      mine.shell = running;
+      wood(shell({ name, running: true }), running.el);
+      running.focus();
+      const first = firstRun.get(task.id);
+      if (first) {
+        firstRun.delete(task.id);
+        await running.settled();
+        void client.terminals.sendInput({ key: running.key, data: `${first}\r` });
+      }
+      arrived();
+    };
+
     /** A new session as plain as they come: in the project's own folder,
         on a conversation, started from nothing. */
     const blankNaming = (
@@ -3536,153 +3587,68 @@ async function boot(): Promise<void> {
       written,
       revivable: null,
       terminal: false,
-      issues: null,
-      pickingIssue: false,
-      branches: null,
-      pickingBranch: false,
-      branch: null,
-      resumeSessions: null,
-      pickingResume: false,
       resume: null,
-      allowAll: false,
       isolated: false,
       among: workspaces.find((each) => each.id === workspaceOf(project.id))?.name,
     });
 
-    /** A new session is a question: what is going to happen in there. */
-    const askName = (aim: Aim, slot: number | null, written = ''): void => {
+    /** The sign a new session is asked for on, while it is up. */
+    let sign: NewSessionSign | null = null;
+
+    /** A new session is a question: what is going to happen in there. It is
+        asked on a signboard hung over the village, not on the wood: where it
+        works, whether it picks up a past session, and whether it is a plain
+        terminal rather than somebody to talk to. */
+    const askName = (aim: Aim, slot: number | null, written = '', past = false): void => {
       const project = projectOn(aim.district);
       if (!project) return;
-      reading = null;
-      writing = null;
-      looked = null;
-      branchLooked = null;
-      stopWalking();
-      stopTalking();
-      sending = null;
+      sign?.close();
       open = aim;
       titling = null;
       naming = blankNaming(aim.district, project, slot, written);
-      paintRail();
-      /* Asking what is going to happen in a new session is laid over the yard
-         you are standing in, like everything else you open, rather than
-         replacing it: the sessions already running are still on the rail while
-         you decide what the next one is for. */
+      const asked = naming;
       if (!yard.showing) flyToYard(camera, aim.district);
-      yard.asks('start');
-      yard.line.write('');
-      wood(asking(naming));
-      yard.line.take();
-      // Whether the last one taken down in this project is still on offer —
-      // asked after the board is already up, since it never blocks a fresh
-      // name from being typed straight away.
-      void client.tasks.revivable({ project: project.id }, { timeoutMs: 5000 }).then((held) => {
-        if (
-          naming?.district !== aim.district ||
-          naming.written ||
-          naming.pickingIssue ||
-          naming.pickingBranch ||
-          naming.pickingResume
-        )
-          return;
-        naming = { ...naming, revivable: held };
-        rewrite(asking(naming));
+      sign = openNewSession({
+        where: `on the ${aim.district.name.toLowerCase()}`,
+        hand: defaultHand,
+        ...(asked.among ? { among: asked.among } : {}),
+        past,
+        history: () =>
+          client.tasks
+            .claudeHistory({ project: project.id }, { timeoutMs: 5000 })
+            .then((found) => found),
+        submit: (ask) => {
+          sign = null;
+          if (!naming) return;
+          const hand = ask.past && !ask.terminal ? 'claude' : defaultHand;
+          naming = {
+            ...naming,
+            written: ask.text || ask.past?.title || (ask.terminal ? 'terminal' : hand),
+            terminal: ask.terminal,
+            isolated: ask.isolated,
+            resume: ask.past ? { id: ask.past.id, title: ask.past.title } : null,
+            said: ask.text,
+          };
+          void begin();
+        },
+        cancel: () => {
+          sign = null;
+          naming = null;
+          replacing = null;
+        },
+        revive: () => {
+          sign = null;
+          if (naming) void reviveSession();
+        },
       });
-    };
-
-    /**
-     * Turning the naming board over to the project's own open issues,
-     * read-only against GitHub — asked fresh every time, never cached, since
-     * an issue closed a minute ago has no business still being offered.
-     */
-    const openIssuePicker = async (): Promise<void> => {
-      if (!naming) return;
-      naming = { ...naming, pickingIssue: true, issues: naming.issues ?? null };
-      yard.line.blur();
-      rewrite(asking(naming));
-      const mine = naming;
-      const found = await client.github.issues({ repository: mine.project.path });
-      if (naming !== mine) return;
-      naming = { ...naming, issues: found.success ? found.data.issues : [] };
-      rewrite(asking(naming));
-    };
-
-    /** Naming the session for the issue just picked, and saying what it is
-        for — the same as typing its title straight onto the line. */
-    const pickIssue = (number: number): void => {
-      if (!naming) return;
-      const found = naming.issues?.find((issue) => issue.number === number);
-      const written = found ? `#${found.number} ${found.title}` : `#${number}`;
-      naming = { ...naming, pickingIssue: false, written };
-      yard.line.write(written);
-      yard.line.take();
-      rewrite(asking(naming));
-    };
-
-    /**
-     * Turning the naming board over to the project's own branches, so a
-     * session can stand on one already there instead of cutting a fresh one.
-     */
-    const openBranchPicker = async (): Promise<void> => {
-      if (!naming) return;
-      naming = { ...naming, pickingBranch: true, branches: naming.branches ?? null };
-      yard.line.blur();
-      rewrite(asking(naming));
-      const mine = naming;
-      const found = await client.tasks.branches({ project: mine.project.id }, { timeoutMs: 5000 });
-      if (naming !== mine) return;
-      naming = { ...naming, branches: found };
-      rewrite(asking(naming));
-    };
-
-    /** Naming the session after the branch just picked, and standing it
-        there instead of cutting a fresh one. */
-    const pickBranch = (name: string): void => {
-      if (!naming) return;
-      naming = { ...naming, pickingBranch: false, branch: name, written: name };
-      yard.line.write(name);
-      yard.line.take();
-      rewrite(asking(naming));
-    };
-
-    /**
-     * Turning the naming board over to the Claude Code CLI's own session
-     * history for this project — asked fresh every time, never cached, off
-     * the real filesystem rather than anything Mender stores itself.
-     */
-    const openResumePicker = async (): Promise<void> => {
-      if (!naming) return;
-      naming = { ...naming, pickingResume: true, resumeSessions: naming.resumeSessions ?? null };
-      yard.line.blur();
-      rewrite(asking(naming));
-      const mine = naming;
-      const found = await client.tasks.claudeHistory(
-        { project: mine.project.id },
-        { timeoutMs: 5000 }
-      );
-      if (naming !== mine) return;
-      naming = { ...naming, resumeSessions: found };
-      rewrite(asking(naming));
-    };
-
-    /** Picking a past session is the whole ask: it is named after that
-        session, a fresh worktree is cut the ordinary way, and its
-        conversation opens on that session's own history. Nothing of the
-        name goes out as a first prompt; resuming is the first thing said. */
-    const pickResume = (id: string): void => {
-      if (!naming) return;
-      const found = naming.resumeSessions?.find((session) => session.id === id);
-      const written = found?.title ?? id;
-      naming = {
-        ...naming,
-        pickingResume: false,
-        pickingIssue: false,
-        pickingBranch: false,
-        terminal: false,
-        resume: { id, title: written },
-        written,
-      };
-      void begin();
+      // Whether the last one taken down in this project is still on offer —
+      // asked after the sign is already up, since it never blocks a fresh
+      // one from being written straight away.
+      void client.tasks.revivable({ project: project.id }, { timeoutMs: 5000 }).then((held) => {
+        if (!naming || naming.project !== asked.project || !held) return;
+        naming = { ...naming, revivable: held };
+        sign?.revivable(held.title);
+      });
     };
 
     /** Putting the last session taken down here back up, worktree and all. */
@@ -3808,17 +3774,7 @@ async function boot(): Promise<void> {
         return;
       }
       if (!naming) return;
-      if (
-        !naming.pickingIssue &&
-        !naming.pickingBranch &&
-        !naming.pickingResume &&
-        written === '/resume'
-      ) {
-        void openResumePicker();
-        return;
-      }
       naming = { ...naming, written };
-      rewrite(asking(naming));
     };
 
     /** Whatever is watching the project a worktree is being cut in hears about
@@ -3836,48 +3792,10 @@ async function boot(): Promise<void> {
       });
     };
 
-    /** Which name on a freshly awake kit's own modes is its most permissive —
-        whatever that agent's protocol calls bypassing or allowing everything,
-        never assumed to be the same word twice. */
-    const ALLOW_ALL_HINTS = ['bypass', 'yolo', 'danger', 'accepts all', 'full access'];
-    const mostPermissiveMode = (
-      modes: { id: string; name: string; about?: string }[]
-    ): string | undefined =>
-      modes.find((mode) =>
-        ALLOW_ALL_HINTS.some(
-          (hint) =>
-            mode.name.toLowerCase().includes(hint) ||
-            (mode.about ?? '').toLowerCase().includes(hint)
-        )
-      )?.id;
-
-    /** Set once, the moment a fresh session is awake enough to hear it: its
-        own most permissive mode, applied without being asked twice. */
-    const applyAllowAll = (task: string): void => {
-      const replica = new ReplicaState(client.agents.kit.state({ task }, 'state'), {
-        onChange: (value) => {
-          if (!value.awake) return;
-          const id = mostPermissiveMode(value.modes);
-          if (id && value.mode !== id) {
-            void client.agents.choose({ task, what: 'mode', id }, { timeoutMs: 0 });
-          }
-          void replica.dispose();
-        },
-      });
-      void replica.ready.then(() => {
-        const now = replica.current();
-        if (!now.awake) return;
-        const id = mostPermissiveMode(now.modes);
-        if (id && now.mode !== id)
-          void client.agents.choose({ task, what: 'mode', id }, { timeoutMs: 0 });
-        void replica.dispose();
-      });
-    };
-
     const begin = async (): Promise<void> => {
       if (!naming) return;
-      const { project, slot, written, terminal, allowAll, branch, resume } = naming;
-      const isolated = naming.isolated || !!branch;
+      const { project, slot, written, terminal, resume, isolated } = naming;
+      const said = naming.said ?? written;
       const aim = open;
       naming = null;
       rewrite([
@@ -3910,8 +3828,7 @@ async function boot(): Promise<void> {
             project: project.id,
             name: written,
             slot,
-            kind: terminal ? 'terminal' : undefined,
-            ...(branch ? { branch } : {}),
+            kind: terminal ? 'shell' : undefined,
             ...(isolated ? { isolated: true } : {}),
             ...(!isolated && workspaceOf(project.id) ? { workspace: workspaceOf(project.id) } : {}),
           },
@@ -3929,25 +3846,29 @@ async function boot(): Promise<void> {
       }
       // The first thing written in a new session is the first thing said in
       // it. There is no separate step where you name it and then start it —
-      // except in its own terminal, where what you wrote was only ever this
-      // session's name: the agent's own CLI has no ACP prompt to hand it.
-      if (!terminal) {
+      // and in a plain terminal it is the first thing run, or picking a past
+      // session back up there is.
+      if (terminal) {
+        const first = resume ? `claude --resume ${resume.id}` : said;
+        if (first) firstRun.set(made.data.id, first);
+      } else {
         if (resume) {
           // A resumed conversation must actually run on Claude: the picked
           // session id is a Claude Code CLI session id, and only that
           // provider's own adapter knows what to do with it. A no-op if the
           // project's remembered hand was already Claude.
           await client.agents.choose({ task: made.data.id, what: 'hand', id: 'claude' });
-          // Resuming *is* the first thing said — nothing of the typed name
-          // goes out as a prompt.
-          void client.agents.resume(
-            { task: made.data.id, providerSessionId: resume.id },
-            { timeoutMs: 0 }
-          );
-        } else {
-          void client.agents.tell({ task: made.data.id, text: written }, { timeoutMs: 0 });
+          // Resuming *is* the first thing said, and whatever was written on
+          // the sign goes after it, once it is back.
+          const task = made.data.id;
+          void client.agents
+            .resume({ task, providerSessionId: resume.id }, { timeoutMs: 0 })
+            .then(() => {
+              if (said) void client.agents.tell({ task, text: said }, { timeoutMs: 0 });
+            });
+        } else if (said) {
+          void client.agents.tell({ task: made.data.id, text: said }, { timeoutMs: 0 });
         }
-        if (allowAll) applyAllowAll(made.data.id);
       }
       /* The untouched session this board was opened over was only ever a
          placeholder for this one. */
@@ -4183,10 +4104,8 @@ async function boot(): Promise<void> {
       }
       if (meant.does === 'resume') {
         said('');
-        if (aim) {
-          askName({ kind: 'district', district: aim.district }, freeSlot(aim.district));
-          void openResumePicker();
-        }
+        if (aim)
+          askName({ kind: 'district', district: aim.district }, freeSlot(aim.district), '', true);
         return;
       }
       if (meant.does !== 'set') return;
@@ -4325,48 +4244,6 @@ async function boot(): Promise<void> {
       if (pick === 'setup-skip') {
         setupFailure = null;
         if (live && plainCheckout()) rewrite(live.rows());
-        return;
-      }
-      if (pick === 'allow-all-toggle') {
-        if (!naming) return;
-        naming = { ...naming, allowAll: !naming.allowAll };
-        rewrite(asking(naming));
-        return;
-      }
-      if (pick === 'isolated-toggle') {
-        if (!naming) return;
-        naming = { ...naming, isolated: !(naming.isolated || naming.branch), branch: null };
-        rewrite(asking(naming));
-        return;
-      }
-      if (pick === 'terminal-toggle') {
-        if (!naming) return;
-        naming = { ...naming, terminal: !naming.terminal };
-        rewrite(asking(naming));
-        return;
-      }
-      if (pick === 'issue-toggle') {
-        void openIssuePicker();
-        return;
-      }
-      if (pick.startsWith('issue:')) {
-        pickIssue(Number(pick.slice(6)));
-        return;
-      }
-      if (pick === 'branch-toggle') {
-        void openBranchPicker();
-        return;
-      }
-      if (pick.startsWith('branch:')) {
-        pickBranch(pick.slice(7));
-        return;
-      }
-      if (pick === 'resume-toggle') {
-        void openResumePicker();
-        return;
-      }
-      if (pick.startsWith('resume:')) {
-        pickResume(pick.slice(7));
         return;
       }
       if (pick === 'rest') {
@@ -5514,175 +5391,6 @@ function setupFailureLines(failure: { script: string; message: string } | null):
 
 function sameAim(a: Aim, b: Aim): boolean {
   return a.district === b.district;
-}
-
-/** An empty board with a cursor on it, which is all a new session is. */
-function asking(naming: {
-  district: District;
-  written: string;
-  revivable: { title: string } | null;
-  terminal: boolean;
-  issues?: { number: number; title: string }[] | null;
-  pickingIssue?: boolean;
-  branches?: string[] | null;
-  pickingBranch?: boolean;
-  branch?: string | null;
-  resumeSessions?: ClaudeCliSession[] | null;
-  pickingResume?: boolean;
-  resume?: { id: string; title: string } | null;
-  allowAll: boolean;
-  isolated: boolean;
-  /** The workspace it would go into, when you are standing in one. */
-  among?: string;
-}): Row[] {
-  if (naming.pickingIssue) return pickingIssue(naming.issues ?? null);
-  if (naming.pickingBranch) return pickingBranch(naming.branches ?? null);
-  if (naming.pickingResume) return pickingResume(naming.resumeSessions ?? null);
-
-  const offer: Row[] =
-    naming.revivable && !naming.written
-      ? [
-          { kind: 'line', text: `put ${naming.revivable.title} back up?`, pick: 'revive' },
-          { kind: 'gap' },
-        ]
-      : [];
-  return [
-    { kind: 'title', text: 'a new session' },
-    { kind: 'line', text: `on the ${naming.district.name.toLowerCase()}`, tone: 'faded' },
-    { kind: 'gap' },
-    ...offer,
-    {
-      kind: 'prose',
-      text: `${naming.terminal ? 'say what to call it.' : 'say what you want doing.'} ${
-        naming.branch
-          ? `it works in its own copy of the project, on ${naming.branch}.`
-          : naming.isolated
-            ? 'it works in its own copy of the project, on a branch of its own, so nothing it does touches your folder.'
-            : naming.among
-              ? `it works in ${naming.among}, alongside anyone else in there.`
-              : 'it works right in the project’s own folder, alongside anyone else in there.'
-      }`,
-      tone: 'faded',
-    },
-    { kind: 'gap' },
-    { kind: 'typed', text: naming.written },
-    { kind: 'gap' },
-    {
-      kind: 'line',
-      text:
-        naming.isolated || naming.branch
-          ? 'in its own copy, on its own branch — on'
-          : 'in its own copy, on its own branch',
-      pick: 'isolated-toggle',
-    },
-    {
-      kind: 'line',
-      text: naming.terminal ? 'in its own terminal — on' : 'in its own terminal',
-      pick: 'terminal-toggle',
-    },
-    { kind: 'line', text: 'start from an open issue', tone: 'faded', pick: 'issue-toggle' },
-    {
-      kind: 'line',
-      text: naming.branch ? `on the branch ${naming.branch}` : 'start from an existing branch',
-      tone: 'faded',
-      pick: 'branch-toggle',
-    },
-    ...(naming.terminal
-      ? []
-      : [
-          {
-            kind: 'line' as const,
-            text: naming.resume ? `resuming ${naming.resume.title}` : 'pick up a past session',
-            tone: 'faded' as const,
-            pick: 'resume-toggle',
-          },
-          {
-            kind: 'line' as const,
-            text: naming.allowAll ? 'allowing everything — on' : 'allow everything, from the start',
-            pick: 'allow-all-toggle',
-          },
-        ]),
-  ];
-}
-
-/** The naming board turned over to the project's own open issues. */
-function pickingIssue(issues: { number: number; title: string }[] | null): Row[] {
-  const rows: Row[] = [
-    { kind: 'title', text: 'an open issue' },
-    { kind: 'line', text: 'picking one names the session and says what it is for.', tone: 'faded' },
-    { kind: 'gap' },
-  ];
-  if (issues === null) {
-    rows.push({ kind: 'line', text: 'asking github…', tone: 'faded' });
-    return rows;
-  }
-  if (!issues.length) {
-    rows.push({ kind: 'line', text: 'nothing open, or nothing to ask.', tone: 'faded' });
-    return rows;
-  }
-  for (const issue of issues) {
-    rows.push({
-      kind: 'entry',
-      mark: '→',
-      text: `#${issue.number} ${issue.title}`,
-      keep: 'tail',
-      pick: `issue:${issue.number}`,
-    });
-  }
-  return rows;
-}
-
-/** The naming board turned over to the project's own branches. */
-function pickingBranch(branches: string[] | null): Row[] {
-  const rows: Row[] = [
-    { kind: 'title', text: 'an existing branch' },
-    {
-      kind: 'line',
-      text: 'picking one stands the session there instead of a fresh branch.',
-      tone: 'faded',
-    },
-    { kind: 'gap' },
-  ];
-  if (branches === null) {
-    rows.push({ kind: 'line', text: 'reading the checkout…', tone: 'faded' });
-    return rows;
-  }
-  if (!branches.length) {
-    rows.push({ kind: 'line', text: 'nothing there yet.', tone: 'faded' });
-    return rows;
-  }
-  for (const name of branches) {
-    rows.push({ kind: 'entry', mark: '→', text: name, keep: 'tail', pick: `branch:${name}` });
-  }
-  return rows;
-}
-
-/** The naming board turned over to the Claude Code CLI's own session
-    history for this project. */
-function pickingResume(sessions: ClaudeCliSession[] | null): Row[] {
-  const rows: Row[] = [
-    { kind: 'title', text: 'a past session' },
-    { kind: 'line', text: 'picking one resumes it — nothing typed here is sent.', tone: 'faded' },
-    { kind: 'gap' },
-  ];
-  if (sessions === null) {
-    rows.push({ kind: 'line', text: 'reading the CLI’s own history…', tone: 'faded' });
-    return rows;
-  }
-  if (!sessions.length) {
-    rows.push({ kind: 'line', text: 'nothing there yet.', tone: 'faded' });
-    return rows;
-  }
-  for (const session of sessions) {
-    rows.push({
-      kind: 'entry',
-      mark: '→',
-      text: session.gitBranch ? `${session.title} · ${session.gitBranch}` : session.title,
-      keep: 'tail',
-      pick: `resume:${session.id}`,
-    });
-  }
-  return rows;
 }
 
 /** The board, asking what to call this instead. */

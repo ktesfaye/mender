@@ -33,7 +33,7 @@ export interface LiveTerminal {
   readonly cols: number;
   readonly rows: number;
   /** Bytes the program wrote, straight onto the grid. */
-  write(data: string): void;
+  write(data: string, done?: () => void): void;
   /** The offset this terminal and the runtime's own log agreed on has gone
       stale — start the grid over rather than paint half a redraw onto it. */
   reset(): void;
@@ -50,24 +50,33 @@ export interface TerminalHooks {
   onStepOut(): void;
 }
 
-export function makeTerminal(hooks: TerminalHooks, fontSize = 14): LiveTerminal {
+export function makeTerminal(
+  hooks: TerminalHooks,
+  fontSize = 14,
+  /** Terminal.app's own look — SF Mono and the Basic profile's ink —
+      rather than the board's, for a session that is nothing but a shell. */
+  plain = false
+): LiveTerminal {
   const container = document.createElement('div');
   container.style.cssText = 'width:100%;height:100%';
+  if (plain) container.style.background = MAC.background;
 
   const term = new Xterm({
     cols: COLS,
     rows: ROWS,
     scrollback: 5000,
-    fontFamily: "'Courier Prime', ui-monospace, monospace",
+    fontFamily: plain
+      ? "ui-monospace, 'SF Mono', Menlo, monospace"
+      : "'Courier Prime', ui-monospace, monospace",
     fontSize,
-    lineHeight: 1.3,
-    cursorBlink: true,
+    lineHeight: plain ? 1.0 : 1.3,
+    cursorBlink: !plain,
     allowProposedApi: true,
     // The runtime owns line discipline; rewriting a bare \n corrupts anything
     // running in raw mode (tmux, an agent's own TUI) that uses it to mean
     // "down one row, same column" rather than "down and back to the left".
     convertEol: false,
-    theme: theme(),
+    theme: plain ? MAC : theme(),
   });
 
   term.open(container);
@@ -166,7 +175,7 @@ export function makeTerminal(hooks: TerminalHooks, fontSize = 14): LiveTerminal 
     get rows() {
       return term.rows;
     },
-    write: (data) => term.write(data),
+    write: (data, done) => term.write(data, done),
     reset: () => term.reset(),
     focus: () => term.focus(),
     dispose: () => {
@@ -189,6 +198,31 @@ function cellSize(term: Xterm): { width: number; height: number } | null {
   if (!cell?.width || !cell?.height) return null;
   return { width: cell.width, height: cell.height };
 }
+
+/** Terminal.app's Basic profile in dark mode, and its standard ANSI colours. */
+const MAC = {
+  background: '#1e1e1e',
+  foreground: '#dddddd',
+  cursor: '#a5a5a5',
+  cursorAccent: '#1e1e1e',
+  selectionBackground: 'rgba(95,134,190,.55)',
+  black: '#000000',
+  red: '#990000',
+  green: '#00a600',
+  yellow: '#999900',
+  blue: '#0000b2',
+  magenta: '#b200b2',
+  cyan: '#00a6b2',
+  white: '#bfbfbf',
+  brightBlack: '#666666',
+  brightRed: '#e50000',
+  brightGreen: '#00d900',
+  brightYellow: '#e5e500',
+  brightBlue: '#0000ff',
+  brightMagenta: '#e500e5',
+  brightCyan: '#00e5e5',
+  brightWhite: '#e5e5e5',
+};
 
 /** The board's own ink, lifted onto the grid. */
 function theme() {

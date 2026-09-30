@@ -26,8 +26,11 @@ export function buildTmuxShellLine(
     : null;
   const enableMouse = `tmux set-option -t ${exactOptionTarget} mouse on 2>/dev/null || true`;
   const setHistoryLimit = `tmux set-option -t ${exactOptionTarget} history-limit ${TMUX_HISTORY_LIMIT} 2>/dev/null || true`;
+  // The session is only ever seen through the app's own grid, never tmux's
+  // chrome: no status line under whatever is running.
+  const hideStatus = `tmux set-option -t ${exactOptionTarget} status off 2>/dev/null || true`;
   const ensureSession = `(${checkExists} || ${newSession})`;
-  const configure = [setIdentity, enableMouse, setHistoryLimit]
+  const configure = [setIdentity, enableMouse, setHistoryLimit, hideStatus]
     .filter((command): command is string => command !== null)
     .map((command) => `(${command})`)
     .join(' && ');
