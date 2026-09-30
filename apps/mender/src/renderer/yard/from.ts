@@ -612,7 +612,9 @@ function lanternOf(
     ...base,
     posture,
     saying: at.serving ? `${said} · serving` : said,
-    lit,
+    /* The one you are standing in is lit whatever it is doing: you are in
+       there with the lights on. */
+    lit: lit || at.here,
     unread: posture === 'done',
     ground: 'ready',
   };
