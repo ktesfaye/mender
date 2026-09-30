@@ -135,17 +135,19 @@ is working does Escape walk you out.
 
 **The bottom of the board is what is coming.** Under everything that has
 happened, and above the line you write on, is how much of its room to think in it has used up, and what it has cost so
-far when the agent says, in plain words rather than a currency badge, then
-anything you said
-while it was busy and it has not heard yet, which you can take back by pressing
-it. Nothing warns an agent that it is running out of room; it simply starts
+far when the agent says, in plain words rather than a currency badge. Nothing warns an agent that it is running out of room; it simply starts
 losing the beginning of the conversation, so the village says it instead.
 
 **Opening a project is walking into the work.** Not a list you press into: you
 land in the session you were last in, standing in its yard at night. What you
 asked for is nailed to a gatepost on the left, newest on parchment and the ones
 under it weathered into the post, any of them written back on the line by
-pressing it, and up on an empty line walks back through them, and at the foot of that column is the
+pressing it, and up on an empty line walks back through them. The parchment
+is what it is working on, and says so in the fire's orange; whatever you say
+while it works goes up above the parchment in the post's own weathered ink,
+"not read yet", and only takes the parchment once the agent has actually
+picked it up, so the note it is answering is never pushed down by one it has
+not seen. And at the foot of that column is the
 project's changelog, in the same small squares and cream lines the glance at
 the other sessions used to be written in: each version on its own line and
 what went into it bulleted and indented under it, newest first and scrolling, read straight off whichever commits moved

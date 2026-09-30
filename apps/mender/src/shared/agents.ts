@@ -197,6 +197,11 @@ export const notedSchema = z.object({
   turn: z.number().int().optional(),
   /** How many pictures went with it, which the post says rather than shows. */
   pictures: z.number().int().optional(),
+  /**
+   * Handed into a turn already running and not read yet: nothing has come
+   * back since it went in, so it is still what is coming, not what was asked.
+   */
+  unread: z.boolean().optional(),
 });
 export type Noted = z.infer<typeof notedSchema>;
 

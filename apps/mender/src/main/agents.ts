@@ -1955,11 +1955,19 @@ function toldOf(
      one. That can only be known by looking ahead, so this walks backward
      first and remembers whether anything answered has been seen yet. */
   const answered = new Array<boolean>(flat.length).fill(false);
+  /* Something said while it worked is handed into the running turn, and the
+     agent only reads it at its next pause. Until anything at all comes after
+     it, it has not been heard, whatever the transcript says. */
+  const unread = new Array<boolean>(flat.length).fill(false);
   let saidSince = false;
+  let anythingSince = false;
   for (let i = flat.length - 1; i >= 0; i -= 1) {
     const item = flat[i];
     if (item.kind === 'said' || item.kind === 'ended') saidSince = true;
-    if (item.kind === 'note') answered[i] = item.hasOutcome || saidSince;
+    if (item.kind === 'note') {
+      answered[i] = item.hasOutcome || saidSince;
+      unread[i] = !anythingSince && STEERED.test(item.id);
+    } else anythingSince = true;
   }
 
   const notes: Noted[] = [];
@@ -1990,6 +1998,7 @@ function toldOf(
         answered: answered[i],
         turn: item.turn,
         ...(item.pictures ? { pictures: item.pictures } : {}),
+        ...(unread[i] ? { unread: true } : {}),
       });
     } else if (item.kind === 'said') {
       const known = dated('it', item.text);
@@ -2082,6 +2091,9 @@ const INTERRUPTED = /^\[Request interrupted by user[^\]]*\]$/;
 
 /** A note the village rides alongside what you said, marked so it can come back off. */
 const ASIDE_TO_AGENT = /\s*\[mender, for the agent only:[\s\S]*?\]\s*$/;
+
+/** How the runtime names a message it handed into a turn already running. */
+const STEERED = /-steer-/;
 
 function flatten(turns: readonly TranscriptTurn[]): Flat[] {
   const flat: Flat[] = [];

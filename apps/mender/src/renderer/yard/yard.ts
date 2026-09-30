@@ -557,7 +557,9 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       stillAt.replaceChildren();
       stillAt.style.display = 'none';
     } else if (yard.session) {
-      asked(root, columns.asked, yard, floor, layer.cramped(), pickNote);
+      asked(root, columns.asked, yard, floor, layer.cramped(), pickNote, (id) =>
+        does.press(`unsay:${id}`)
+      );
       thinking(
         covered,
         columns.thinking,
@@ -569,7 +571,9 @@ export function makeYard(layer: Layer, does: Doings): Standing {
         columns.asked.wide > 0
       );
       made(covered, columns.made, yard, floor, does);
-      still(stillAt, yard, does);
+      /* What you said while it worked is on the post, above the parchment. */
+      stillAt.replaceChildren();
+      stillAt.style.display = 'none';
     } else {
       /* Nobody has started this one yet, and it is still a session: the same
          three columns, nothing in them, and the line under them is how it
@@ -637,8 +641,16 @@ export function makeYard(layer: Layer, does: Doings): Standing {
        carries on from wherever the words had got to. */
     const from = new Map<string, DOMRect>();
     const newest = yard.session?.notes[0];
+    /* Said while it worked, it lands above the parchment in plain ink instead. */
+    const coming = yard.session?.waiting.find(
+      (one) => flight && same(one.said, flight.said) && !was.has(`waiting:${one.id}`)
+    );
     if (flight && newest && same(newest.said, flight.said) && !was.has(`note:${newest.id}`)) {
       from.set(`note:${newest.id}`, flight.rect());
+      flight.el.remove();
+      flight = null;
+    } else if (flight && coming) {
+      from.set(`waiting:${coming.id}`, flight.rect());
       flight.el.remove();
       flight = null;
     }
@@ -747,6 +759,9 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const columns = layer.columns(rightEmpty(last), hidden('asked'));
     if (!leaving || !same(leaving.text, text) || !last?.session) return;
     flight?.el.remove();
+    /* Said while it works, it is not read yet, so it lands in the post's own
+       weathered ink above the parchment rather than taking the card. */
+    const busy = last.session.fire === 'lit';
     const el = document.createElement('div');
     el.style.cssText = [
       'position:fixed',
@@ -754,9 +769,9 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       `top:${leaving.rect.top}px`,
       `max-width:${columns.asked.wide - 60}px`,
       "font-family:'Mender Hand',cursive",
-      'font-size:19px',
+      `font-size:${busy ? 17 : 19}px`,
       'line-height:1.25',
-      'padding:12px 14px',
+      `padding:${busy ? '0' : '12px 14px'}`,
       'color:#f4e3c0',
       'pointer-events:none',
       'z-index:5',
@@ -770,25 +785,30 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const dx = columns.asked.x + 22 - leaving.rect.left;
     const dy = HEAD.top - leaving.rect.top;
     el.animate(
-      [
-        {
-          transform: 'translate(-14px,-12px)',
-          background: 'rgba(255,244,212,0)',
-          color: '#f4e3c0',
-        },
-        {
-          offset: 0.35,
-          transform: `translate(${dx * 0.25 - 14}px,${dy * 0.5}px) rotate(-2deg)`,
-          background: 'rgba(255,244,212,.85)',
-          color: '#2c2013',
-        },
-        {
-          transform: `translate(${dx}px,${dy}px) rotate(-.7deg)`,
-          background: '#fff4d4',
-          color: '#2c2013',
-          boxShadow: '5px 5px 0 rgba(0,0,0,.5)',
-        },
-      ],
+      busy
+        ? [
+            { transform: 'translate(0,0)', color: '#f4e3c0' },
+            { transform: `translate(${dx}px,${dy + 20}px)`, color: '#cbb491' },
+          ]
+        : [
+            {
+              transform: 'translate(-14px,-12px)',
+              background: 'rgba(255,244,212,0)',
+              color: '#f4e3c0',
+            },
+            {
+              offset: 0.35,
+              transform: `translate(${dx * 0.25 - 14}px,${dy * 0.5}px) rotate(-2deg)`,
+              background: 'rgba(255,244,212,.85)',
+              color: '#2c2013',
+            },
+            {
+              transform: `translate(${dx}px,${dy}px) rotate(-.7deg)`,
+              background: '#fff4d4',
+              color: '#2c2013',
+              boxShadow: '5px 5px 0 rgba(0,0,0,.5)',
+            },
+          ],
       { duration: 620, easing: 'cubic-bezier(.3,.7,.2,1)', fill: 'forwards' }
     );
     const mine = { said: text, el, rect: () => el.getBoundingClientRect() };
@@ -1402,23 +1422,22 @@ function asked(
   yard: Yard,
   floor: number,
   cramped: boolean,
-  pick: (said: string) => void
+  pick: (said: string) => void,
+  takeBack?: (id: string) => void
 ): void {
   if (!at.wide) return;
+  /* What you said while it worked goes on the post too, above the parchment
+     and in the post's own weathered ink, because it has not been read yet.
+     It only takes the parchment once the agent has picked it up. */
+  const coming = yard.session?.waiting ?? [];
+  const bare = !yard.session?.notes.length && !coming.length;
   /* The changelog sits at the foot of the column, so the post and the notes
      on it get everything above that and no more. Either can be put away, and
      then the other has the column. */
   const under = hidden('changelog')
     ? floor
-    : changelog(
-        root,
-        at,
-        yard,
-        floor,
-        hidden('asked') || !yard.session?.notes.length,
-        hidden('asked') || !yard.session?.notes.length
-      );
-  if (hidden('asked') || !yard.session?.notes.length) return;
+    : changelog(root, at, yard, floor, hidden('asked') || bare, hidden('asked') || bare);
+  if (hidden('asked') || bare) return;
   region('asked', at, HEAD.label, under - 20);
   /* Clear air between the last of the post and the changelog's rule, rather
      than the notes running into it. */
@@ -1436,13 +1455,30 @@ function asked(
   const notes = yard.session?.notes ?? [];
   const [newest, ...older] = notes;
   root.appendChild(stays(label('what you asked', { left: at.x, top: HEAD.label }), 'label:asked'));
+  let top = HEAD.top;
+  if (coming.length) {
+    const list = stack({ left: at.x + 22, top, width: at.wide - 60 }, 14);
+    for (const one of coming) {
+      const note = unheard(one);
+      if (one.handed || !takeBack) list.appendChild(keyed(note, `waiting:${one.id}`));
+      else {
+        note.style.pointerEvents = 'auto';
+        note.style.cursor = 'pointer';
+        note.addEventListener('mousedown', (event) => event.preventDefault());
+        note.addEventListener('click', () => takeBack(one.id));
+        list.appendChild(keyed(note, `waiting:${one.id}`));
+      }
+    }
+    root.appendChild(list);
+    top += list.offsetHeight + 22;
+  }
   if (!newest) {
-    post.remove();
+    post.style.height = `${Math.min(room, top - HEAD.top + 20)}px`;
     return;
   }
 
   const card = keyed(
-    pinned(newest, { left: at.x + 22, top: HEAD.top, width: at.wide - 60 }),
+    pinned(newest, { left: at.x + 22, top, width: at.wide - 60 }),
     `note:${newest.id}`
   );
   root.appendChild(pickable(card, newest.said, pick));
@@ -1464,14 +1500,14 @@ function asked(
       body.style.pointerEvents = 'auto';
     }
   }
-  post.style.height = `${Math.min(room, card.offsetHeight + 60)}px`;
+  post.style.height = `${Math.min(room, top - HEAD.top + card.offsetHeight + 60)}px`;
 
   if (!older.length || cramped) return;
   /* The card is as tall as whatever was written on it, which nothing knows
      until it is in, so the rest of the post is placed off its real height.
      Everything said before it is on the post, every note, and the post
      scrolls when there are more than it is tall. */
-  const below = HEAD.top + card.offsetHeight + 22;
+  const below = top + card.offsetHeight + 22;
   const list = stack(
     { left: at.x + 22, top: below, width: at.wide - 60, height: Math.max(0, under - 44 - below) },
     14
@@ -1516,7 +1552,7 @@ function pinned(note: Note, where: { left: number; top: number; width: number })
   );
   card.appendChild(tack);
   const meta = said(
-    `newest · ${note.when} · ${note.answered ? 'answered' : 'unanswered'}`,
+    `newest · ${note.when} · ${note.on ? 'working on it' : note.answered ? 'answered' : 'unanswered'}`,
     '#b3651f'
   );
   meta.style.display = 'block';
@@ -1581,6 +1617,21 @@ function weathered(note: Note): HTMLElement {
   body.textContent = named(note.said);
   it.appendChild(body);
   handed(it, note);
+  return it;
+}
+
+/** Something said while it worked, on the post but not yet read. */
+function unheard(one: { said: string; handed?: boolean }): HTMLElement {
+  const it = document.createElement('div');
+  it.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0';
+  it.appendChild(
+    said(one.handed ? 'just now · not read yet' : 'waiting its turn · press to take back')
+  );
+  const body = document.createElement('span');
+  body.style.cssText =
+    "font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
+  body.textContent = one.said;
+  it.appendChild(body);
   return it;
 }
 
@@ -2925,37 +2976,6 @@ function carried(hands: HTMLElement, yard: Yard, does: Doings): void {
 /* ── the one place you write ───────────────────────────────────────────────
    One line, no box, no hint, and a cursor that is the only thing on this
    screen saying the app is awake. */
-/**
- * What you said while somebody was busy and they have not heard yet.
- *
- * It waits in the open above the line rather than disappearing into a queue,
- * because a thing you said that has not happened yet is a thing you might want
- * back, and pressing one takes it back.
- */
-function still(at: HTMLElement, yard: Yard, does: Doings): void {
-  at.replaceChildren();
-  const waiting = yard.session?.waiting ?? [];
-  /* Its wash goes with the last thing in it. Left on, an empty strip of it
-     stayed hanging over every yard afterwards, new sessions included. */
-  at.style.display = waiting.length ? 'flex' : 'none';
-  at.style.background = waiting.length ? 'rgba(72,37,16,.72)' : '';
-  if (!waiting.length) return;
-  at.style.flexDirection = 'column';
-  at.style.gap = '4px';
-  at.appendChild(label('still to say, press to take one back', {}));
-  for (const one of waiting) {
-    const press = keyed(
-      astop(
-        pressing(one.said, () => does.press(`unsay:${one.id}`)),
-        `unsay:${one.id}`
-      ),
-      `waiting:${one.id}`
-    );
-    press.style.cssText += "font-family:'Mender Hand',cursive;font-size:18px";
-    at.appendChild(press);
-  }
-}
-
 function said_line(root: HTMLElement, edge: number, grown: number): void {
   root.appendChild(
     stays(rule({ left: edge, right: edge, bottom: 186 + grown }, true), 'rule:line')

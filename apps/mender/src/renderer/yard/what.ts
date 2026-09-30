@@ -189,6 +189,8 @@ export interface Live {
 export interface Waiting {
   id: string;
   said: string;
+  /** Already handed into the running turn, so it can no longer be taken back. */
+  handed?: boolean;
 }
 
 /** A picture picked up off the wood and not yet handed over. */
@@ -219,6 +221,8 @@ export interface Note {
   pictures?: number;
   /** The oldest note is the standing one, and it reads differently. */
   standing?: boolean;
+  /** The one it is working on right now. */
+  on?: boolean;
 }
 
 /** Something it thought, which gets brighter and larger the newer it is. */

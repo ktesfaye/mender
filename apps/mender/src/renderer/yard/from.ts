@@ -210,7 +210,16 @@ function sessionOf(
   kit: Kit | undefined,
   from: Standing
 ): Session {
+  /* What was handed into a turn already running is not on the post until the
+     agent has read it: until then the note it is working on stays the newest,
+     and what it has not read yet waits above the line with everything else
+     still to come. Once it has stopped, there is no next pause to wait for,
+     so anything it never read is simply unanswered on the post. */
+  const going = from.mood === 'working' || from.mood === 'arriving';
+  const unread = going ? (told?.notes ?? []).filter((one) => one.unread) : [];
+  if (told && unread.length) told = { ...told, notes: told.notes.filter((one) => !one.unread) };
   const notes = (told?.notes ?? []).map(noteOf);
+  if (going && !from.asking && notes[0]) notes[0].on = true;
   const thoughts = thoughtsOf(told, from.mood);
   const live = liveOf(from, told);
   return {
@@ -234,7 +243,10 @@ function sessionOf(
     steps: stepsOf(told?.deeds ?? []),
     made: madeOf(told),
     agents: (told?.errands ?? []).map(handOf),
-    waiting: (from.waiting ?? []).map((one) => ({ id: one.id, said: one.text })),
+    waiting: [
+      ...[...unread].reverse().map((one) => ({ id: one.id, said: one.said, handed: true })),
+      ...(from.waiting ?? []).map((one) => ({ id: one.id, said: one.text })),
+    ],
     carrying: (from.carrying ?? []).map((one) => ({ id: one.id, name: one.name })),
     pinnedNotes: (from.pinnedNotes ?? []).map((one) => ({
       id: one.id,
