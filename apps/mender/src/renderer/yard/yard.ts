@@ -2879,17 +2879,18 @@ function ground(
   );
   patch.style.position = 'absolute';
 
-  /* However many went out, they stand in one line, the ones still working
-     out to the left of the fire and the ones back out to the right. When the
-     line is longer than the column, the ground is a strip that scrolls
-     sideways under the heading, and the wheel walks along it. */
-  const step = 34;
-  const reach = 58;
-  const centre = Math.max(
-    Math.round(at.wide / 2),
-    reach + Math.max(0, working.length - 1) * step + 24
+  /* They stand wherever they happen to, all round the fire, each always in
+     the same spot for as long as they are out, since where one stands is
+     worked out from who they are. The ones still working get first pick, so
+     they are the ones by the fire. However many went out, the ground widens
+     to hold them, and once it is wider than the column it scrolls sideways
+     under the heading and the wheel walks along it. */
+  const scattered = scatter(
+    ordered.map((one) => one.id),
+    Math.round(at.wide / 2) - 16
   );
-  const sceneWide = Math.max(at.wide, centre + reach + Math.max(0, back.length - 1) * step + 24);
+  const sceneWide = Math.max(at.wide, scattered.half * 2 + 32);
+  const centre = Math.round(sceneWide / 2);
   const strip = box(
     { left: 0, top: 0, width: at.wide, height: GROUND.patch },
     'overflow-x:auto;overflow-y:hidden;scrollbar-width:none'
@@ -2908,7 +2909,8 @@ function ground(
     { passive: false }
   );
   const where = yard.session?.id ?? '';
-  strip.addEventListener('scroll', () => groundScrolled.set(where, strip.scrollLeft));
+  const kept = `${where}:${working.length}`;
+  strip.addEventListener('scroll', () => groundScrolled.set(kept, strip.scrollLeft));
 
   const fireX = centre - 23;
   const fireY = 104;
@@ -2947,15 +2949,12 @@ function ground(
     }
   };
 
-  ordered.forEach((hand, k) => {
-    const out = k < working.length;
-    const x = out
-      ? centre - reach - (working.length - 1 - k) * step - 14
-      : centre + reach + (k - working.length) * step - 14;
-    const one = standing(hand, k + 1, { left: x, top: 100 - (k % 2) * 14 }, does, lit);
+  for (const hand of hands) {
+    const spot = scattered.spots.get(hand.id) ?? { dx: 0, top: 40 };
+    const one = standing(hand, { left: centre + spot.dx - 14, top: spot.top }, does, lit);
     figures.set(hand.id, one);
     scene.appendChild(one);
-  });
+  }
   patch.appendChild(strip);
 
   const heading = box({ left: 14, top: 12 }, 'white-space:nowrap;pointer-events:none');
@@ -2964,8 +2963,8 @@ function ground(
   );
   patch.appendChild(heading);
   root.appendChild(patch);
-  /* First sight is the fire with whoever is still working beside it. */
-  strip.scrollLeft = groundScrolled.get(where) ?? Math.max(0, centre + 90 - at.wide);
+  /* First sight is the fire in the middle of them. */
+  strip.scrollLeft = groundScrolled.get(kept) ?? centre - at.wide / 2;
 
   /* The table: a heading row, one row each, and a foot with the total and
      the way to send the ones who are back home. */
@@ -2975,12 +2974,12 @@ function ground(
     'display:flex;flex-direction:column'
   );
   table.style.pointerEvents = 'auto';
-  table.appendChild(handRow(null, 0, 0, at.wide, does, lit));
+  table.appendChild(handRow(null, 0, at.wide, does, lit));
   const list = document.createElement('div');
   list.style.cssText = `display:flex;flex-direction:column;max-height:${GROUND.row * GROUND.rows}px;overflow-y:auto;scrollbar-width:none`;
   const most = Math.max(1, ...hands.map((one) => one.tokenCount ?? 0));
-  ordered.forEach((hand, k) => {
-    const one = handRow(hand, k + 1, most, at.wide, does, lit);
+  ordered.forEach((hand) => {
+    const one = handRow(hand, most, at.wide, does, lit);
     rows.set(hand.id, one);
     list.appendChild(one);
   });
@@ -3034,6 +3033,50 @@ const GROUND = { pad: 12, patch: 184, row: 32, rows: 5, gap: 18, foot: 36 };
 /** How much light each way of burning throws. */
 const FIRELIGHT: Record<Fire, number> = { lit: 0.34, banked: 0.2, embers: 0.12, out: 0.04 };
 
+/**
+ * Where everybody stands, round a fire in the middle, as an offset from it.
+ *
+ * Each one's spot comes from a generator seeded with who they are, so the
+ * same helper stands in the same place on every redraw, and the ones already
+ * standing never move when somebody new arrives. A newcomer tries spots
+ * clear of the fire, the heading and everybody else, and when there is no
+ * room left the ground widens for them.
+ */
+function scatter(
+  ids: readonly string[],
+  start: number
+): { half: number; spots: Map<string, { dx: number; top: number }> } {
+  const spots = new Map<string, { dx: number; top: number }>();
+  let half = Math.max(80, start);
+  const low = 44;
+  const high = GROUND.patch - 58;
+  for (const id of ids) {
+    let seed = 0;
+    for (const c of id) seed = (Math.imul(seed, 31) + c.charCodeAt(0)) | 0;
+    const random = (): number => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    let placed: { dx: number; top: number } | undefined;
+    while (!placed) {
+      for (let tries = 0; tries < 60 && !placed; tries += 1) {
+        const dx = Math.round((random() * 2 - 1) * (half - 14));
+        const top = Math.round(low + random() * (high - low));
+        const onFire = Math.abs(dx) < 42 && top > 50 && top < 150;
+        const crowded = [...spots.values()].some(
+          (one) => Math.abs(one.dx - dx) < 30 && Math.abs(one.top - top) < 64
+        );
+        if (!onFire && !crowded) placed = { dx, top };
+      }
+      if (!placed) half += 40;
+    }
+    spots.set(id, placed);
+  }
+  return { half, spots };
+}
+
 /** Where each session's strip of ground was left scrolled to. */
 const groundScrolled = new Map<string, number>();
 
@@ -3043,7 +3086,6 @@ const groundScrolled = new Map<string, number>();
  */
 function standing(
   hand: Hand,
-  n: number,
   spot: { left: number; top: number },
   does: Doings,
   lit: (id: string, on: boolean) => void
@@ -3061,14 +3103,16 @@ function standing(
   const figure = folk('front', { left: 0, top: 0 });
   figure.style.filter = out ? 'brightness(.95)' : 'brightness(.55) saturate(.2)';
   figure.style.mixBlendMode = 'normal';
+  /* Working is somebody moving with an ember over their head; stopped is
+     somebody standing still in the dark with none. */
+  if (out) figure.style.animation = 'yard-step 800ms steps(2,end) infinite';
   it.appendChild(figure);
+  if (out || hand.wrong) {
+    const spark = handEmber(hand);
+    spark.style.cssText += ';position:absolute;left:11px;top:-12px';
+    it.appendChild(spark);
+  }
 
-  const number = box(
-    { left: 0, top: -18, width: 28 },
-    `text-align:center;font-family:'Silkscreen',monospace;font-size:10px;text-shadow:1px 1px 0 #120d07;color:${out ? '#f4e3c0' : '#a89272'}`
-  );
-  number.textContent = String(n);
-  it.appendChild(number);
   return it;
 }
 
@@ -3081,7 +3125,6 @@ function standing(
  */
 function handRow(
   hand: Hand | null,
-  n: number,
   most: number,
   wide: number,
   does: Doings,
@@ -3091,12 +3134,13 @@ function handRow(
   line.className = hand ? 'yard-hand-row' : '';
   line.style.cssText = `position:relative;display:flex;align-items:center;flex:none;height:${GROUND.row}px;border-bottom:1px solid rgba(244,227,192,.1)`;
   const narrow = wide < 340;
-  const W = narrow ? { n: 18, run: 62, tok: 98, x: 18 } : { n: 22, run: 80, tok: 124, x: 20 };
+  const W = narrow ? { run: 62, tok: 98, x: 18 } : { run: 80, tok: 124, x: 20 };
   const size = narrow ? 12 : 13;
-  const nameWide = Math.max(60, wide - W.n - W.run - W.tok - W.x);
-  const cell = (width: number, child: HTMLElement): HTMLElement => {
+  const lead = 18;
+  const nameWide = Math.max(60, wide - lead - W.run - W.tok - W.x);
+  const cell = (width: number, child: HTMLElement, pad = 0): HTMLElement => {
     const it = document.createElement('div');
-    it.style.cssText = `flex:none;width:${width}px;overflow:hidden;display:flex;align-items:center;gap:6px`;
+    it.style.cssText = `flex:none;width:${width}px;box-sizing:border-box;padding-right:${pad}px;overflow:hidden;display:flex;align-items:center;gap:6px`;
     it.appendChild(child);
     return it;
   };
@@ -3107,9 +3151,9 @@ function handRow(
       it.style.letterSpacing = '.12em';
       return it;
     };
-    line.appendChild(cell(W.n, document.createElement('span')));
-    line.appendChild(cell(nameWide, head('HAND')));
-    line.appendChild(cell(W.run, head('RUNNING')));
+    line.appendChild(cell(lead, document.createElement('span')));
+    line.appendChild(cell(nameWide, head('HAND'), 12));
+    line.appendChild(cell(W.run, head('RUNNING'), 8));
     line.appendChild(cell(W.tok, head('TOKENS')));
     return line;
   }
@@ -3122,12 +3166,11 @@ function handRow(
   line.addEventListener('mouseenter', () => lit(hand.id, true, 'row'));
   line.addEventListener('mouseleave', () => lit(hand.id, false));
 
-  line.appendChild(cell(W.n, exact(String(n), size, out ? '#f4e3c0' : '#8a7452')));
-  const state = out ? '' : hand.wrong ? ' · stopped' : ' · done';
-  const name = exact(`${hand.errand}${state}`, size, ink);
+  line.appendChild(cell(lead, handEmber(hand)));
+  const name = exact(hand.errand, size, ink);
   name.style.cssText += ';overflow:hidden;text-overflow:ellipsis;min-width:0';
   name.title = hand.said;
-  line.appendChild(cell(nameWide, name));
+  line.appendChild(cell(nameWide, name, 12));
 
   const costs = document.createElement('div');
   costs.style.cssText = 'display:flex;align-items:center';
@@ -3137,7 +3180,7 @@ function handRow(
     ink
   );
   if (out && hand.since) clock.dataset.since = String(hand.since);
-  costs.appendChild(cell(W.run, clock));
+  costs.appendChild(cell(W.run, clock, 8));
   const bar = document.createElement('div');
   bar.style.cssText = `display:flex;gap:${narrow ? 1 : 2}px;flex:none`;
   const filled = hand.tokenCount ? Math.max(1, Math.round((hand.tokenCount / most) * 10)) : 0;
@@ -3195,6 +3238,22 @@ function handRow(
   cross.addEventListener('click', (event) => event.stopPropagation());
   line.appendChild(cross);
   return line;
+}
+
+/**
+ * Whether somebody is working, as one pixel ember: lit and pulsing while
+ * they are, an empty square once they have stopped, red if they came back
+ * hurt or were called back. The same mark over the figure and on its line.
+ */
+function handEmber(hand: Hand): HTMLElement {
+  const it = document.createElement('span');
+  it.style.cssText = 'display:block;width:7px;height:7px;flex:none;box-sizing:border-box';
+  if (hand.where === 'out') {
+    it.style.background = '#ff9a4a';
+    it.style.animation = 'yard-ember 1100ms ease-in-out infinite';
+  } else if (hand.wrong) it.style.background = '#f2665a';
+  else it.style.border = '1px solid #6a5a44';
+  return it;
 }
 
 /** A count of tokens said short for a table: `850`, `48.2k`, `1.3m`. */

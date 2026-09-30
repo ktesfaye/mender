@@ -1422,3 +1422,14 @@ body.gripping-row * {
 .yard .yard-hand[data-lit] > :first-child {
   filter: brightness(1.15) drop-shadow(0 0 3px rgba(255, 201, 138, 0.55)) !important;
 }
+@keyframes yard-ember {
+  0%,
+  100% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 rgba(255, 154, 74, 0);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 6px 2px rgba(255, 154, 74, 0.6);
+  }
+}

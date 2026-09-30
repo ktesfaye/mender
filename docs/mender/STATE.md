@@ -352,6 +352,9 @@ table of each one's errand, clock and tokens as a bar, a total, and a button to
 send the finished home. Pointing at a line or a figure lights both and puts a
 cross at the line's end, two presses. How long a finished helper was out is read
 off Claude's own record of them. Driven in the running app with twelve out.
+Then scattered rather than lined up, unnumbered, the working ones by the fire
+with a pulsing ember over their heads and on their lines, the stopped ones grey
+with an empty square. Driven in the running app with fourteen out, three working.
 
 Two things are cut on purpose. A resource link never arrives: neither CLI ever
 sends one back, both of them turn a file reference into ordinary writing on the
