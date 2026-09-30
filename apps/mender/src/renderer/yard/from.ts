@@ -10,7 +10,7 @@
  * said and returns a value.
  */
 
-import type { Ask, Failure, Kit, Mood, Told } from '@shared/agents';
+import type { Ask, Failure, Glance, Kit, Mood, Told } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { answersFor } from '../board/work';
@@ -98,6 +98,10 @@ export interface Standing {
   servers?: ReadonlySet<string>;
   /** Sessions asked for whose worktree has no row yet, by that draft id. */
   cutting?: ReadonlySet<string>;
+  /** What each lantern says beyond its mood, by session. */
+  glances?: Readonly<Record<string, Glance>>;
+  /** Sessions that finished something you have not been in to see, and when. */
+  unread?: ReadonlyMap<string, number>;
   /** What it has said it means to do, if it has said. */
   plan?: readonly { text: string; state: 'done' | 'doing' | 'ahead' }[];
   /** How much room it has left to think in, when it says. */
@@ -164,13 +168,13 @@ export function yardOf(from: Standing): Yard {
       ? { versions: from.versions.map((one) => ({ version: one.version, lines: [...one.lines] })) }
       : {}),
     rail: tasks.map((task) =>
-      lanternOf(
-        task,
-        moods[task.id],
-        task.id === here?.id,
-        from.servers?.has(task.path) ?? false,
-        from.cutting?.has(task.id) ?? false
-      )
+      lanternOf(task, moods[task.id], {
+        here: task.id === here?.id,
+        serving: from.servers?.has(task.path) ?? false,
+        cutting: from.cutting?.has(task.id) ?? false,
+        glance: from.glances?.[task.id],
+        finished: from.unread?.get(task.id),
+      })
     ),
   };
 }
@@ -566,72 +570,156 @@ function hashOf(text: string): number {
   return at;
 }
 
+/**
+ * What a lantern says, which is one of a handful of things and never two.
+ *
+ * Working, wanting you, and done with something you have not been in to see
+ * are the lit ones: each is a reason to look. Idle, waiting out a limit,
+ * broken and still being set up are dark, and the words under the name say
+ * which. Done lasts until you have stood in it; after that it is idle.
+ */
 function lanternOf(
   task: Task,
   mood: Mood | undefined,
-  here: boolean,
-  serving: boolean,
-  cutting: boolean
+  at: {
+    here: boolean;
+    serving: boolean;
+    cutting: boolean;
+    glance?: Glance;
+    finished?: number;
+  }
 ): Lantern {
-  /* Asked for, but nothing to stand in yet: no branch of its own, nothing to
-     open, nothing running. It hangs dark and says what it is waiting on
-     rather than reading as resting or, worse, as nothing asked for at all. */
-  if (cutting) {
+  const base = { id: task.id, name: task.title, here: at.here, unread: false };
+  if (at.cutting) {
     return {
-      id: task.id,
-      name: task.title,
-      posture: 'resting',
-      saying: 'worktree being cut',
-      lit: false,
+      ...base,
       here: false,
-      unread: false,
+      posture: 'resting',
+      saying: 'setting up',
+      lit: false,
       ground: 'cutting',
     };
   }
-  const posture = postureOf(mood);
-  /* Lit means somebody is awake in there. Nobody has moved in, they have gone
-     home, or it broke, and the lantern is out. A dark, otherwise-resting
-     lantern is not the same as a lit one waiting on you to speak — the
-     process itself is gone, not just idle — so it says so rather than
-     reusing the same "resting" a session still running says. */
-  const lit = mood !== undefined && mood !== 'empty' && mood !== 'hurt';
-  const said = here
-    ? 'you are here'
-    : !lit && posture === 'resting'
-      ? 'asleep'
-      : sayingOf(posture, task);
+  const { posture, saying, lit } = stateOf(task, mood, at.glance, at.finished);
+  const said = at.here ? 'you are here' : saying;
   /* Something in this checkout is answering on a port right now. Said in the
-     same words the rest of the lantern speaks in, not a mark beside it — a
-     badge is what the design law forbids, and a lantern only has words. */
-  const saying = serving && lit ? `${said} · serving` : said;
+     same words the rest of the lantern speaks in, not a mark beside it. */
   return {
-    id: task.id,
-    name: task.title,
+    ...base,
     posture,
-    saying,
+    saying: at.serving ? `${said} · serving` : said,
     lit,
-    here,
-    unread: false,
+    unread: posture === 'done',
     ground: 'ready',
   };
 }
 
-function sayingOf(posture: Posture, task: Task): string {
-  switch (posture) {
-    case 'wants-you':
-      return 'wants you';
-    case 'working':
-      return 'working';
-    case 'broken':
-      return 'it broke';
-    default: {
-      /* The `mender/` in front of every branch the village cuts says nothing
-         a lantern needs to say, and a branch that is only the name again says
-         nothing at all. */
-      const branch = shortOf(task.branch);
-      return branch === slugOf(task.title) ? 'resting' : branch;
+function stateOf(
+  task: Task,
+  mood: Mood | undefined,
+  glance: Glance | undefined,
+  finished: number | undefined
+): { posture: Posture; saying: string; lit: boolean } {
+  const now = Date.now();
+  switch (mood) {
+    case 'arriving':
+      return { posture: 'working', saying: 'waking up', lit: true };
+    case 'working': {
+      const doing = railDoing(glance?.tool);
+      const since = glance?.since;
+      return {
+        posture: 'working',
+        saying: since ? `${doing} · ${shortFor(now - since)}` : doing,
+        lit: true,
+      };
     }
+    case 'asking':
+      return { posture: 'wants-you', saying: 'wants you', lit: true };
+    case 'hurt':
+      return {
+        posture: 'broken',
+        saying: glance?.signIn ? 'needs signing in' : 'it broke',
+        lit: false,
+      };
+    case 'resting': {
+      if (glance?.waiting) {
+        const { kind, resetAt } = glance.waiting;
+        const what =
+          kind === 'limit'
+            ? 'usage limit'
+            : kind === 'service'
+              ? 'trouble at the other end'
+              : 'lost the connection';
+        const back = resetAt && resetAt > now ? ` · back at ${clockOf(resetAt)}` : '';
+        return { posture: 'waiting', saying: what + back, lit: false };
+      }
+      if (finished !== undefined) {
+        return { posture: 'done', saying: `done · ${agoFor(now - finished)}`, lit: true };
+      }
+      return idleOf(task);
+    }
+    default:
+      return idleOf(task);
   }
+}
+
+/* A session in the project's own folder is on whatever branch that folder
+   is on, which every other shared session is on too, so naming it says
+   nothing. One in a copy of its own names its branch, because that is the
+   one thing telling it apart. */
+function idleOf(task: Task): { posture: Posture; saying: string; lit: boolean } {
+  const branch = task.shared ? '' : shortOf(task.branch);
+  const worth = branch && branch !== slugOf(task.title);
+  return { posture: 'resting', saying: worth ? `idle · ${branch}` : 'idle', lit: false };
+}
+
+/** The kind of work, in a word or two, which is all a lantern has room for. */
+function railDoing(tool: string | undefined): string {
+  switch (tool) {
+    case 'execute-tool-call':
+      return 'running something';
+    case 'read-tool-call':
+    case 'web-fetch-tool-call':
+      return 'reading';
+    case 'search-tool-call':
+      return 'looking around';
+    case 'create-file-tool-call':
+      return 'writing';
+    case 'modify-file-tool-call':
+    case 'delete-file-tool-call':
+      return 'changing things';
+    case 'spawn-subagent-tool-call':
+      return 'sending somebody out';
+    case 'create-plan-tool-call':
+      return 'making a plan';
+    case undefined:
+      return 'thinking';
+    default:
+      return 'working';
+  }
+}
+
+/** How long, in the one unit that matters at a glance. */
+function shortFor(ms: number): string {
+  const minutes = Math.floor(Math.max(0, ms) / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 48 ? `${hours}h` : `${Math.floor(hours / 24)}d`;
+}
+
+function agoFor(ms: number): string {
+  const said = shortFor(ms);
+  return said === 'just now' ? said : `${said} ago`;
+}
+
+/** A clock time in this machine's own zone, lower case, no space before am/pm. */
+function clockOf(at: number): string {
+  return new Date(at)
+    .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(':00', '');
 }
 
 /** A name the way a branch is cut from it. */

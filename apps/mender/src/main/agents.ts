@@ -25,6 +25,7 @@ import type {
   Deed,
   Errand,
   Failure,
+  Glance,
   Kit,
   Line,
   Made,
@@ -147,6 +148,8 @@ export interface Agents {
   remove(hand: string): Promise<Changed>;
   /** Every building with somebody in it, for the island. */
   moods(): Cell<Record<string, Mood>>;
+  /** What each lantern says beyond its mood: which work, since when, what wait. */
+  glances(): Cell<Record<string, Glance>>;
   /** Start whoever lives in there, so they can say what they work with. */
   wake(task: string): Promise<Told>;
   tell(task: string, text: string, carrying?: readonly Carried[]): Promise<Told>;
@@ -270,6 +273,18 @@ export function createAgents(
   };
   void learn();
   const island = cell<Record<string, Mood>>({}, { name: 'agents:island' });
+  /* Set on every publish, which is every streamed word, so only when it
+     actually says something different: otherwise every rail on the island
+     is redrawn for each word one agent says. */
+  const glances = cell<Record<string, Glance>>({}, { name: 'agents:glances' });
+  let glanced = '{}';
+  const reglance = (): void => {
+    const next = glancesOf(houses);
+    const said = JSON.stringify(next);
+    if (said === glanced) return;
+    glanced = said;
+    glances.set(next);
+  };
   /* Changing who works in a building empties it: a different agent is a
      different villager, not the same one with a new hat. */
   const kits = createKits(runtimes, tasks, (task) => evict(task), settings);
@@ -391,7 +406,8 @@ export function createAgents(
           if (here) retitleFromWork(task, here);
         },
         () => wheres.get(task),
-        (found) => keepMade(task, found)
+        (found) => keepMade(task, found),
+        reglance
       );
       houses.set(task, house);
       void loaded.then(async () => {
@@ -485,6 +501,7 @@ export function createAgents(
     const conversation = lodgers[task];
     await putToBed(task);
     island.set(moodsOf(houses));
+    reglance();
     if (!conversation) return;
     await runtimes.acp.terminate({ conversationId: conversation });
     await runtimes.conversations.delete({ conversationId: conversation });
@@ -510,6 +527,7 @@ export function createAgents(
     await kits.forget(task);
     lastActive.delete(task);
     island.set(moodsOf(houses));
+    reglance();
     if (conversation) await runtimes.acp.terminate({ conversationId: conversation });
     return { success: true, data: undefined };
   };
@@ -748,6 +766,7 @@ export function createAgents(
     working: (task) => houseOf(task).state,
     kit: (task) => kits.kit(task),
     moods: () => island,
+    glances: () => glances,
 
     async choose(task, what, id) {
       /* A session that went home still lists what it thinks with, so picking
@@ -1161,7 +1180,9 @@ class House {
     /** Where this session's checkout is, when anybody has said. */
     private readonly where: () => string | undefined,
     /** Everything it has ever made, with whatever was just found folded in. */
-    private readonly keep: (found: readonly Made[]) => Made[]
+    private readonly keep: (found: readonly Made[]) => Made[],
+    /** Anything at all moved, which is when its lantern might say otherwise. */
+    private readonly touched: () => void = () => {}
   ) {
     this.state = cell<WorkingState>(EMPTY, { name: `agent:${task}` });
   }
@@ -1415,6 +1436,34 @@ class House {
       });
       this.moved();
     }
+    this.touched();
+  }
+
+  /** What its lantern says beyond its mood. */
+  glance(): Glance {
+    const state = peek(this.state);
+    const glance: Glance = {};
+    if (state.mood === 'working') {
+      const began = state.told.notes[0]?.at;
+      if (began) glance.since = began;
+      const deeds = state.told.deeds;
+      for (let i = deeds.length - 1; i >= 0; i--) {
+        const deed = deeds[i]!;
+        if (deed.running) {
+          glance.tool = deed.tool;
+          break;
+        }
+      }
+    }
+    const failure = this.lifecycle?.failure;
+    if (failure && state.mood === 'resting' && bankable(failure.category)) {
+      glance.waiting = {
+        kind: failure.category as 'limit' | 'service' | 'connection',
+        ...(failure.resetAt !== undefined ? { resetAt: failure.resetAt } : {}),
+      };
+    }
+    if (failure && state.mood === 'hurt' && failure.category === 'access') glance.signIn = true;
+    return glance;
   }
 
   /** Mark, or unmark, a pick on a multi-select question. */
@@ -1481,6 +1530,15 @@ function moodsOf(houses: Map<string, House>): Record<string, Mood> {
     if (mood !== 'empty') moods[task] = mood;
   }
   return moods;
+}
+
+function glancesOf(houses: Map<string, House>): Record<string, Glance> {
+  const glances: Record<string, Glance> = {};
+  for (const [task, house] of houses) {
+    const glance = house.glance();
+    if (Object.keys(glance).length) glances[task] = glance;
+  }
+  return glances;
 }
 
 function moodOf(

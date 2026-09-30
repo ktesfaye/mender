@@ -177,6 +177,25 @@
   }
 }
 
+/* A lantern with somebody working in it: its light rising and falling slowly. */
+@keyframes yard-breathe {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* A lantern whose somebody wants you, which has to read from across the room. */
+@keyframes yard-wants {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
 @keyframes yard-flicker {
   0%,
   100% {

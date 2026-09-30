@@ -198,9 +198,16 @@ naming that the conversation is what it costs. A refusal or a turn that ran out
 of room stays sore, because there is nothing to wait out.
 
 **The rail is the sessions, and the projects are a rack on the wall.** A plank
-along the bottom hangs one lantern per session in the project you are in: lit
-means somebody is awake in there, the one you are standing in burns
-brightest, all of them on the same cord, and the one that wants you flickers. At the end of the beam is one
+along the bottom hangs one lantern per session in the project you are in, all
+of them on the same cord, and a lantern is lit only when there is a reason to
+look: somebody working, whose light breathes and whose line says what kind of
+work and for how long; somebody asking, who flickers orange; or something
+finished while you were elsewhere, which glows green and says how long ago
+until you have stood in it. Everything else is dark and says which: idle,
+waiting out a limit with a faint red glow and when it lifts, broken, or still
+being set up. A shared session's branch is never named, since every one of
+them is on it; one in its own copy names its branch after "idle". The one you
+are standing in burns brightest. At the end of the beam is one
 empty hook, an unlit lantern with a small plus in its glass, which is how a
 new session is started, and right-clicking it opens the other ways to start one — and, for the rest of that
 sitting, remembers the last one taken down here: it offers to put it straight
@@ -904,10 +911,9 @@ the branch and everything said all stay exactly where they were. Opening that
 session again, or just saying something to it, wakes the very same one back
 up, the same as any session does after the app itself restarts. Left standing
 at the gate with nothing more to say long enough, a villager goes home on
-their own the same way — the rail still says a branch's name for a dark
-lantern, but a truly empty one now says `asleep` instead of `resting`, because
-`resting` is a fire still lit with nobody feeding it and `asleep` is a fire
-that has actually gone out.
+their own the same way — from across the room it reads the
+same as any other idle lantern, since whether the process is still hanging
+about is not something anybody looks at a rail to learn.
 
 ## House rules
 

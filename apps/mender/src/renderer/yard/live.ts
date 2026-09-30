@@ -17,7 +17,7 @@
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { shortName, type CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
-import type { Ask, Carried, Kit, Mood, WorkingState } from '@shared/agents';
+import type { Ask, Carried, Glance, Kit, Mood, WorkingState } from '@shared/agents';
 import type { BoardVersion } from '@shared/board';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
@@ -35,6 +35,10 @@ export interface Watching {
     moods: Record<string, Mood>;
     /** Sessions asked for whose worktree has no row yet, by that draft id. */
     cutting?: ReadonlySet<string>;
+    /** What each lantern says beyond its mood. */
+    glances?: Readonly<Record<string, Glance>>;
+    /** Sessions done with something you have not been in to see, and when. */
+    unread?: ReadonlyMap<string, number>;
   }): void;
   /** Which checkouts (by path) now have something noticed listening. */
   noticed(servers: ReadonlySet<string>): void;
@@ -95,6 +99,8 @@ export interface Opening {
   servers?: ReadonlySet<string>;
   /** Sessions asked for whose worktree has no row yet, by that draft id. */
   cutting?: ReadonlySet<string>;
+  glances?: Readonly<Record<string, Glance>>;
+  unread?: ReadonlyMap<string, number>;
   /** Whether walking in is about to wake whoever lives there. */
   waking?: boolean;
 }
@@ -165,6 +171,8 @@ export async function openYard(
       ...(from.here ? { here: from.here } : {}),
       ...(from.servers ? { servers: from.servers } : {}),
       ...(from.cutting ? { cutting: from.cutting } : {}),
+      ...(from.glances ? { glances: from.glances } : {}),
+      ...(from.unread ? { unread: from.unread } : {}),
       ...(working ? { mood: working.mood } : {}),
       ...(working?.told ? { told: working.told } : {}),
       ...(kit ? { kit } : {}),

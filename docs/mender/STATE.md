@@ -2914,3 +2914,23 @@ landed in the real, shared `~/.claude.json` rather than anything scoped to
 the test, since Claude Code's own config isn't touched by Mender's own data
 isolation — it was found and removed immediately after, and nothing further
 was left behind.
+
+### The lanterns say one clear thing each (2026-09-29) — done
+
+A lantern is lit only when there is a reason to look. Working breathes and
+says what kind of work and for how long ("changing things · 4m"); asking
+flickers orange; something finished while you were in another session glows
+green, "done · 2m ago", until you have stood in it, and then it is idle.
+Dark is idle, waiting out a limit (faint red glow, "usage limit · back at
+5pm"), broken ("it broke", or "needs signing in"), or setting up. The
+branch is gone off shared sessions, which were all saying "main"; one in its
+own copy still says "idle · its-branch". The back end now publishes a small
+per-session glance beside the mood (the tool it is in the middle of, when
+the turn began, what kind of wait), only when it changes; done-not-seen is
+kept by the window, so a restart forgets it and shows idle.
+
+Driven in a dev instance on a scratch project: a session left mid-turn read
+"thinking · just now" with its glow, finished while another was stood in and
+went green "done · just now", was walked into and out of and went idle.
+Waiting, broken and asking were not provoked live; they are the same switch
+on moods that already arrive.

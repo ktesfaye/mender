@@ -161,6 +161,30 @@ export const failureSchema = z.object({
 });
 export type Failure = z.infer<typeof failureSchema>;
 
+/**
+ * A session as its lantern on the rail reads it, from across the room.
+ *
+ * The mood says which of a handful of states it is in; this says the one
+ * thing more the line under its name needs: which kind of work it is at and
+ * since when, or what kind of wait it is standing in and when that lifts.
+ */
+export const glanceSchema = z.object({
+  /** When the turn it is working on began, when this process saw it begin. */
+  since: z.number().optional(),
+  /** The tool's own word for the step it is in the middle of, if any. */
+  tool: z.string().optional(),
+  /** A wait with a next move: a limit, a rough patch, a dropped line. */
+  waiting: z
+    .object({
+      kind: z.enum(['limit', 'service', 'connection']),
+      resetAt: z.number().optional(),
+    })
+    .optional(),
+  /** It cannot go on until somebody signs it in. */
+  signIn: z.boolean().optional(),
+});
+export type Glance = z.infer<typeof glanceSchema>;
+
 /** Something you said, which is what is nailed to the gatepost. */
 export const notedSchema = z.object({
   id: z.string(),
@@ -688,6 +712,7 @@ export const agentsContract = defineContract({
     key: z.void().optional(),
     states: {
       moods: liveState({ data: z.record(z.string(), moodSchema) }),
+      glances: liveState({ data: z.record(z.string(), glanceSchema) }),
     },
   }),
 });

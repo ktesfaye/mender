@@ -18,7 +18,7 @@ import { ReplicaState } from '@emdash/wire/live';
 import { CAMP, Document, extentOf, type District } from '@mender/village';
 import type { Viewport } from 'pixi-viewport';
 import { Application, Container, type FederatedPointerEvent, type Renderer } from 'pixi.js';
-import type { Mood } from '@shared/agents';
+import type { Glance, Mood } from '@shared/agents';
 import type {
   CheckoutSettings,
   Hand,
@@ -768,6 +768,11 @@ async function boot(): Promise<void> {
     let looking: { written: string; from: Spot } | null = null;
     /** What everybody is doing, as the main process sees it. */
     let seen: Record<string, Mood> = {};
+    /* What each lantern says beyond its mood, and which sessions finished
+       something while you were somewhere else. Done is a reason to look, so it
+       stays lit until you have stood in that session; after that it is idle. */
+    let glances: Record<string, Glance> = {};
+    const unseen = new Map<string, number>();
 
     /* Where you have been, so you can go back. One list, one finger on it:
        arriving somewhere new cuts off whatever you had gone back from, which
@@ -1471,6 +1476,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       inside = here ?? null;
+      if (here) unseen.delete(here.id);
       /* The line belongs to the session it was written in. Stepping to
          another leaves that one's half-written line with it, not on this. */
       if (inside?.id !== here?.id) yard.line.write('');
@@ -1496,6 +1502,8 @@ async function boot(): Promise<void> {
           project,
           tasks: tasksFor(project.id),
           moods: seen,
+          glances,
+          unread: new Map(unseen),
           ...(here ? { here } : {}),
           servers: servingCheckouts(),
           ...(cutting.size ? { cutting: new Set(cutting.keys()) } : {}),
@@ -1689,6 +1697,7 @@ async function boot(): Promise<void> {
 
       open = aim;
       inside = task;
+      unseen.delete(task.id);
       const opened = await openCard(client, task, (rows) => {
         if (open === aim && card) rewrite(rows);
       });
@@ -5144,6 +5153,8 @@ async function boot(): Promise<void> {
           project: inside,
           tasks: tasksFor(inside.id),
           moods: seen,
+          glances,
+          unread: new Map(unseen),
         });
       }
       // The roster is a live thing: a session that starts working changes its
@@ -5175,6 +5186,16 @@ async function boot(): Promise<void> {
       client.agents.island.state(undefined, 'moods'),
       {
         onChange: (value) => {
+          /* A turn that settles anywhere but the session you are standing in
+             is something finished you have not seen. Going back to work, or
+             going home, takes the mark off again. */
+          for (const [task, was] of Object.entries(seen)) {
+            const now = value[task];
+            const settled = (was === 'working' || was === 'asking') && now === 'resting';
+            if (settled && inside?.id !== task) unseen.set(task, Date.now());
+            else if (now !== 'resting') unseen.delete(task);
+          }
+          for (const task of unseen.keys()) if (!(task in value)) unseen.delete(task);
           seen = value;
           people();
         },
@@ -5182,7 +5203,25 @@ async function boot(): Promise<void> {
     );
     await moods.ready;
     seen = moods.current() ?? {};
+    const glancing = new ReplicaState<Record<string, Glance>>(
+      client.agents.island.state(undefined, 'glances'),
+      {
+        onChange: (value) => {
+          glances = value;
+          people();
+        },
+      }
+    );
+    await glancing.ready;
+    glances = glancing.current() ?? {};
     people();
+    /* How long somebody has been at it, and how long ago something finished,
+       are counted in minutes, so the rail is read again once a minute while
+       either is on it. */
+    window.setInterval(() => {
+      const counting = Object.values(seen).some((mood) => mood === 'working');
+      if (counting || unseen.size) people();
+    }, 60_000);
 
     /* And open on whatever you were looking at. Closing the app is not the
        same as being done with the session that was on the board, and coming

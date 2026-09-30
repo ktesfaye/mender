@@ -106,11 +106,31 @@ const YARD_BOX = { wide: 380, tall: 214 };
 
 /** What the five postures look like when they are a name on a lantern. */
 const TONE: Record<Posture, string> = {
-  working: '#e8d3a6',
+  working: '#f4e3c0',
   'wants-you': '#ff9a6a',
   done: 'var(--yard-well)',
+  waiting: 'var(--yard-warn)',
   broken: 'var(--yard-wrong)',
-  resting: '#bfa476',
+  resting: '#a89272',
+};
+
+/** And the line under the name, a step quieter than the name in the same hue. */
+const SAYS: Record<Posture, string> = {
+  working: '#a89272',
+  'wants-you': '#e0a07a',
+  done: '#9aae70',
+  waiting: '#c08a62',
+  broken: '#b86a60',
+  resting: '#7d6a50',
+};
+
+/** The light a lantern throws round itself, by what it is saying: the colour
+    and how strong. Idle, broken and still being set up throw none. */
+const HALO: Partial<Record<Posture, [string, number]>> = {
+  working: ['255,168,60', 0.14],
+  'wants-you': ['255,120,60', 0.28],
+  done: ['168,196,105', 0.26],
+  waiting: ['242,102,90', 0.2],
 };
 
 /** What a thought that went wrong is headed with, and written in. */
@@ -2718,10 +2738,12 @@ function said_line(root: HTMLElement, edge: number, grown: number): void {
 }
 
 /* ── the rail ──────────────────────────────────────────────────────────────
-   One lantern per session, hung off a beam. Lit means somebody is awake in
-   there; dark is resting, still being cut, or broken. The one you are standing
-   in burns brightest, every one on the same cord so the rail sits level, and
-   the one that wants you flickers. */
+   One lantern per session, hung off a beam. Lit is a reason to look: somebody
+   working, whose light breathes; somebody asking, who flickers; or something
+   finished you have not been in to see, which glows green until you have.
+   Dark is idle, waiting out a limit (a faint red glow), broken, or still
+   being set up. The one you are standing in burns brightest, and every one
+   hangs on the same cord so the rail sits level. */
 function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, does: Doings): void {
   /* The beam scrolls, so it clips; it reaches past the rule on both sides by
      enough that a lantern's glow is not cut straight down the middle. */
@@ -2762,15 +2784,26 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     const top = 3 + cord;
     beam.appendChild(box({ left: x + 10, top: 3, width: 3, height: cord }, 'background:#3a2712'));
 
-    if (one.lit) {
-      const strength = one.here ? 0.3 : one.posture === 'wants-you' ? 0.16 : 0;
-      if (strength) {
-        const glow = firelight({ left: x - 34, top: top - 24, width: 90, height: 90 }, strength);
-        /* The light you are standing in belongs to its lantern: taking another
-           one lets this one's light go and swells the new one's up in place. */
-        if (one.here) glow.dataset.glow = 'here';
-        beam.appendChild(glow);
+    const cutting = one.ground === 'cutting';
+    const halo = HALO[one.posture];
+    if (one.here && one.lit) {
+      const glow = firelight({ left: x - 34, top: top - 24, width: 90, height: 90 }, 0.3);
+      /* The light you are standing in belongs to its lantern: taking another
+         one lets this one's light go and swells the new one's up in place. */
+      glow.dataset.glow = 'here';
+      beam.appendChild(glow);
+    } else if (halo && !cutting) {
+      const [tint, strength] = halo;
+      const glow = box(
+        { left: x - 34, top: top - 24, width: 90, height: 90 },
+        `background:radial-gradient(circle at 50% 50%,rgba(${tint},${strength}),rgba(0,0,0,0) 62%);pointer-events:none`
+      );
+      if (one.posture === 'working') {
+        glow.style.animation = 'yard-breathe 2.4s steps(6,end) infinite alternate';
+      } else if (one.posture === 'wants-you') {
+        glow.style.animation = 'yard-wants 480ms steps(2,end) infinite alternate';
       }
+      beam.appendChild(glow);
     }
 
     const lamp = keyed(
@@ -2782,10 +2815,11 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       onTheBeam.add(one.id);
       lamp.style.animation = 'yard-hang 240ms steps(3,end)';
     }
-    const dimmed = one.here ? '' : 'brightness(.75)';
+    const dimmed = one.here ? '' : one.posture === 'done' ? 'brightness(.9)' : 'brightness(.75)';
     lamp.style.filter = dimmed;
+    if (cutting) lamp.style.opacity = '.45';
     if (one.posture === 'wants-you') {
-      lamp.style.animation = 'yard-flicker 480ms steps(2,end) infinite alternate';
+      lamp.style.animation = 'yard-wants 480ms steps(2,end) infinite alternate';
     }
     beam.appendChild(lamp);
 
@@ -2801,7 +2835,6 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     );
     /* A lantern still being cut has nowhere to walk into yet: it hangs there
        to say so, not to be pressed. */
-    const cutting = one.ground === 'cutting';
     hung.style.pointerEvents = one.here || cutting ? 'none' : 'auto';
     hung.style.cursor = 'default';
 
@@ -2821,7 +2854,11 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       name.appendChild(written);
       hung.appendChild(name);
       const under = box({ left: 34, top: 20, width: wide }, CLIPPED);
-      const saying = exact(one.saying, 11, one.here ? '#dcc8a0' : '#a89272');
+      const saying = exact(one.saying, 11, one.here ? '#dcc8a0' : SAYS[one.posture]);
+      if (cutting) {
+        written.style.opacity = '.6';
+        saying.style.opacity = '.6';
+      }
       clipped(saying, one.saying);
       under.appendChild(saying);
       hung.appendChild(under);

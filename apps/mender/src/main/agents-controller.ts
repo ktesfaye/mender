@@ -20,7 +20,7 @@ export function createAgentsController(
   return createController(agentsContract, {
     work: expose(agentsContract.work, { state: (key) => agents.working(key.task) }),
     kit: expose(agentsContract.kit, { state: (key) => agents.kit(key.task) }),
-    island: expose(agentsContract.island, { moods: () => moods }),
+    island: expose(agentsContract.island, { moods: () => moods, glances: () => agents.glances() }),
     wake: ({ task }) => agents.wake(task),
     wakeTerminal: async ({ task }) => {
       const started = await tuiSessions.open(task);

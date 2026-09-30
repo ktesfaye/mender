@@ -15,7 +15,7 @@
  */
 
 /** What somebody is doing, which is one of five things and is always said. */
-export type Posture = 'working' | 'wants-you' | 'done' | 'broken' | 'resting';
+export type Posture = 'working' | 'wants-you' | 'done' | 'waiting' | 'broken' | 'resting';
 
 /** How the project itself is, which is mostly whether it is reachable. */
 export type Health = 'ok' | 'host-unreachable' | 'path-moved' | 'not-git' | 'abandoned';
@@ -80,7 +80,8 @@ export interface Lantern {
   posture: Posture;
   /** What the lantern says under the name: what it is doing, or how long ago. */
   saying: string;
-  /** Lit means awake. Dark is resting, still being cut, or broken. */
+  /** Lit is somebody at it, asking, or done with something you have not seen.
+      Dark is idle, waiting out a limit, broken, or still being set up. */
   lit: boolean;
   /** The one you are standing in hangs lowest and says so. */
   here: boolean;
