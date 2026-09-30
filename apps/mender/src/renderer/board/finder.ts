@@ -78,8 +78,8 @@ export const DOINGS: Doing[] = [
   },
   {
     pick: 'do:workspace',
-    name: 'open a new workspace',
-    about: 'its own copy of the project, on its own branch',
+    name: 'start a new session',
+    about: 'in its own workspace, from a past session, or in a terminal',
     chord: 'n',
     where: ['district', 'session', 'card'],
   },

@@ -33,6 +33,8 @@ export interface NewSessionHooks {
   among?: string;
   /** Open straight onto the board a past session is picked from. */
   past?: boolean;
+  /** Start with its own isolated workspace already on, the box naming it. */
+  isolated?: boolean;
   history(): Promise<PastSession[]>;
   told(session: PastSession): Promise<PastTold>;
   submit(ask: NewSessionAsk): void;
@@ -50,7 +52,7 @@ const ON = { bg: '#e0b56a', fg: '#482510', bd: '#482510', sh: '3px 3px 0 rgba(0,
 const OFF = { bg: '#3a2712', fg: '#d9c49a', bd: '#3a2712', sh: 'none' };
 
 export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
-  let isolated = false;
+  let isolated = Boolean(hooks.isolated);
   let terminal = false;
   let revivable: string | null = null;
   let closed = false;
@@ -266,16 +268,22 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
     const folder = hooks.among ?? "the project's own folder";
     const home = isolated ? 'its own isolated workspace' : folder;
     box.placeholder = terminal
-        ? `a plain terminal in ${home}. type a command, or leave it empty.`
-        : isolated
-          ? "say what you want doing. it works in its own isolated workspace, out of everyone's way."
-          : `say what you want doing. it works right in ${folder}, alongside anyone else in there.`;
+      ? isolated
+        ? 'a plain terminal in its own isolated workspace. say what to call the workspace.'
+        : `a plain terminal in ${home}. type a command, or leave it empty.`
+      : isolated
+        ? "say what you want doing. it works in its own isolated workspace, out of everyone's way."
+        : `say what you want doing. it works right in ${folder}, alongside anyone else in there.`;
     if (revivable && !terminal && !isolated) {
       label.textContent = `put ${revivable} back up?`;
       label.style.color = '#e0b56a';
       label.style.cursor = 'pointer';
     } else {
-      label.textContent = terminal ? 'what to run first?' : 'what is it for?';
+      label.textContent = terminal
+        ? isolated
+          ? 'what to call it?'
+          : 'what to run first?'
+        : 'what is it for?';
       label.style.color = '#d9c49a';
       label.style.cursor = 'default';
     }

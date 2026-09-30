@@ -3038,3 +3038,15 @@ board opened from the tile, every row filled in with what it did, arrows and
 search moved the preview, back returned to the sign, and resume picked a
 conversation back up with its history on the board.
 
+
+### Command-N and the beam's dashed board open the new-session sign (2026-09-29) — done
+
+Naming a new workspace used to happen on the one write line. Command-N in a
+project and the dashed board at the end of the beam now hang the same sign
+the empty hook does, with its own isolated workspace already on; what is
+written names the workspace and the session. In a terminal in its own
+workspace the box is only the name and nothing is run. Driven in a dev
+instance: Command-N and the dashed board both opened the sign with the tile
+on, and a name typed there came out as that workspace on the beam with a
+terminal session in it. A conversation named this way was not driven, and
+Command-N out on the island, which still founds a project, was not changed.
