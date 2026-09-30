@@ -79,7 +79,18 @@ const COLOURS: Record<string, string> = {
   J2: '#c9845a',
   E2: '#7a6bb0',
   E3: '#a797d4',
+  ISLAND: '#e07a8a',
 };
+
+/** The islet sails to whatever coast there is, and its post goes with it. Its
+    spot is kept where he drew it and moved to wherever it is moored. */
+const ISLET = 'ISLAND';
+const CELL_PX = 32;
+type Moored = readonly [number, number];
+const sailed = (district: string, foot: Foot, moored: Moored, way: 1 | -1): Foot =>
+  district === ISLET
+    ? { x: foot.x + way * moored[0] * CELL_PX, y: foot.y - way * moored[1] * CELL_PX }
+    : foot;
 
 export interface Flown {
   /** The district it stands on. */
@@ -101,7 +112,8 @@ function moved(): Record<string, [number, number]> {
 }
 
 /** Stand a district's post somewhere else from now on. */
-export function plantFlag(district: string, foot: Foot): void {
+export function plantFlag(district: string, at: Foot, moored: Moored = [0, 0]): void {
+  const foot = sailed(district, at, moored, -1);
   try {
     localStorage.setItem(
       MOVED,
@@ -116,7 +128,7 @@ export function plantFlag(district: string, foot: Foot): void {
  * Where every district's post stands: measured once and shipped, unless it
  * has been picked up and put somewhere else by hand, which wins.
  */
-export async function loadFeet(): Promise<Map<string, Foot>> {
+export async function loadFeet(moored: Moored = [0, 0]): Promise<Map<string, Foot>> {
   let feet: Record<string, [number, number]> = {};
   try {
     const read = (await (await fetch('./village/pennants.json')).json()) as {
@@ -130,7 +142,7 @@ export async function loadFeet(): Promise<Map<string, Foot>> {
   return new Map(
     Object.entries(all)
       .filter(([, at]) => Array.isArray(at) && at.every((n) => Number.isFinite(n)))
-      .map(([id, [x, y]]) => [id, { x, y }])
+      .map(([id, [x, y]]) => [id, sailed(id, { x, y }, moored, 1)])
   );
 }
 

@@ -27,6 +27,7 @@ export {
   createPlan,
   createVillage,
   DISTRICTS,
+  ISLET,
   type Cell,
   type CellRun,
   type Composed,

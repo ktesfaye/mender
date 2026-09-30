@@ -739,7 +739,7 @@ foams against is measured off the ground the island actually draws.
 **A district is the artist's, or it is sea. Nothing grows.** The map is his
 `base-layout.json`, untouched, and his own partition of it into thirteen
 places. A project takes one whole and it appears exactly as he drew it, tile
-for tile — until all eleven are taken, when the hay farm, the crop farm, the
+for tile — until all eleven and the islet are taken, when the hay farm, the crop farm, the
 south houses, the port and the centre houses give up a piece each, in that
 order, along lines cut against his art, each piece a place of its own with its
 own flag, and only for as long as a project stands on it; a district with nobody on it is open water, and the coastline that
@@ -766,9 +766,13 @@ piece of land walkable from the fire, and from there the district that comes nex
 is the one leaving the island roundest, over every walk the geography allows.
 Shape is the whole of what the island says from out on the water: a village that
 grows along one arm reads as a sandbar, and the camera has to pull back to hold
-it, so everything on it gets smaller. The camp and the islet are common ground
-and are never off; the islet is moored rather than anchored and sails its bridge
-to whatever coast there is.
+it, so everything on it gets smaller. The camp and the islet are never off; the
+islet is moored rather than anchored and sails its bridge to whatever coast
+there is. The camp is nobody's, but the islet is a district like any other once
+somebody lives on it: it is the last of his to be handed out, after the eleven
+and before any of them gives up a piece, and a project can be carried onto it
+in "edit districts" at any time. Its flag sails with it. Empty, it is scenery
+and answers nothing.
 
 **Every district flies its project's flag.** A small pixel pennant in the
 district's own colour, the project's face on the cloth, or its first letter

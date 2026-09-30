@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createController, type Controller } from '@emdash/wire/rpc';
 import {
-  COMMON,
+  CAMP,
   createVillage,
   districtsOf,
   landOf,
@@ -13,6 +13,7 @@ import {
   type Composed,
   type District,
   type DistrictSpec,
+  ISLET,
   type Layout,
   type SubdistrictSpec,
   type Village,
@@ -40,45 +41,62 @@ export function createVillageController(options: VillageOptions): Controller {
   let subdistricts: SubdistrictSpec[] | undefined;
   const maps = new Map<string, { composed: Composed; districts: District[] }>();
 
+  /* The map for whoever is standing where. What is composed is always his: a
+     piece switches its district on, and is cut out of it afterwards. The islet
+     is always drawn, but it is only a place you point at while somebody lives
+     on it; empty, it is common ground like the camp. */
+  const mapFor = (wanted: readonly string[]): { composed: Composed; districts: District[] } => {
+    village ??= createVillage(loadWorld());
+    subdistricts ??= loadSubdistricts();
+    const land = [...new Set(wanted.map((id) => landOf(id, subdistricts!)))];
+    const cut = subdistricts
+      .filter((one) => wanted.includes(one.id))
+      .map((one) => one.id)
+      .join('-');
+    const lived = wanted.includes(ISLET);
+    const key = `${village.stateKey(village.connected(land))}|${cut}|${lived}`;
+    let map = maps.get(key);
+    if (!map) {
+      const composed = village.compose(land);
+      const districts = splitOf(
+        districtsOf(village.world, composed.on, composed.moored),
+        subdistricts,
+        wanted
+      ).map(
+        (one): District => (one.id === ISLET ? { ...one, kind: lived ? 'project' : 'common' } : one)
+      );
+      retagSplit(composed.layout, districts, subdistricts);
+      map = { composed, districts };
+      maps.set(key, map);
+    }
+    return map;
+  };
+
   return createController(villageContract, {
     async map({ on }) {
-      village ??= createVillage(loadWorld());
-      subdistricts ??= loadSubdistricts();
-      const wanted = on ?? (await options.state());
-      /* What is composed is always his: a piece switches its district on, and
-         is cut out of it afterwards. */
-      const land = [...new Set(wanted.map((id) => landOf(id, subdistricts!)))];
-      const cut = subdistricts
-        .filter((one) => wanted.includes(one.id))
-        .map((one) => one.id)
-        .join('-');
-      const key = `${village.stateKey(village.connected(land))}|${cut}`;
-      let map = maps.get(key);
-      if (!map) {
-        const composed = village.compose(land);
-        const districts = splitOf(
-          districtsOf(village.world, composed.on, composed.moored),
-          subdistricts,
-          wanted
-        );
-        retagSplit(composed.layout, districts, subdistricts);
-        map = { composed, districts };
-        maps.set(key, map);
-      }
+      const map = mapFor(on ?? (await options.state()));
       return {
         layout: map.composed.layout,
         on: map.composed.on,
         shore: map.composed.shore,
         districts: map.districts,
+        moored: [map.composed.moored[0], map.composed.moored[1]] as [number, number],
       };
     },
     async places() {
       village ??= createVillage(loadWorld());
       subdistricts ??= loadSubdistricts();
+      /* The islet stands wherever it is moored today, not where he drew it. */
+      const islet = mapFor(await options.state()).districts.find((one) => one.id === ISLET);
       return [
         ...village.world.districts
-          .filter((spec) => !COMMON.includes(spec.id))
-          .map((spec) => ({ id: spec.id, name: spec.name, of: null, cells: spec.cells })),
+          .filter((spec) => spec.id !== CAMP)
+          .map((spec) => ({
+            id: spec.id,
+            name: spec.name,
+            of: null,
+            cells: spec.id === ISLET && islet ? islet.cells : spec.cells,
+          })),
         ...subdistricts.map((one) => ({
           id: one.id,
           name: one.name,

@@ -2990,3 +2990,18 @@ once. Driven in a packaged build on a scratch project: a session left working
 lit its barn warm with the villager turned away, finished while another was
 stood in and went green, and went dark after being walked into and out of.
 Limit, broken and asking were not provoked live.
+
+### The islet is somewhere a project can live (2026-09-29) — done
+
+The islet was always on the map and answered nothing. It is now the twelfth
+place a project can stand: the next one founded once his eleven are taken
+lands there before any big district gives up a piece, and "edit districts"
+carries a project onto it at any time. Empty, it is still scenery that ignores
+the pointer. Its pennant is measured like every other and sails with the islet
+to wherever it is moored; measuring it also taught the pennant tool never to
+fly a cloth over a roof, which moved one unused piece's spot off one. Driven
+in a dev instance on scratch projects: a project on the islet flew its flag in
+clear air, unfurled its name on hover and walked into its yard on a click; an
+empty islet did nothing on hover; dragging the fishing hamlet's project onto
+it in edit districts moved it there, flag and all. Founding onto it through
+the folder picker was not driven.

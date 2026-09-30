@@ -51,8 +51,10 @@ export const COMMON: DistrictId[] = ['CAMP', 'ISLAND'];
 /** The fire, which is where the village starts and where every walk out of it
     begins. Nothing is ever on the map without a way back to here. */
 export const CAMP: DistrictId = 'CAMP';
-/** The islet, which moors itself rather than standing where it is put. */
-const ISLET: DistrictId = 'ISLAND';
+/** The islet, which moors itself rather than standing where it is put. It is
+    always on the map, but unlike the camp somebody may live on it: a project
+    that does stands on whatever coast the islet is moored to. */
+export const ISLET: DistrictId = 'ISLAND';
 
 /** A run of cells in one column: `[x, y0, y1]`, both ends inclusive. */
 export type CellRun = readonly [number, number, number];

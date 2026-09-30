@@ -9,8 +9,9 @@ import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { gitContract } from '@emdash/core/runtimes/git/api';
 import { LiveJobFailedError, createLiveJobReplicaCache } from '@emdash/wire/live';
 import {
-  COMMON,
+  CAMP,
   createPlan,
+  ISLET,
   faultIn,
   landOf,
   moved,
@@ -167,9 +168,10 @@ const KEY = 'projects';
 /**
  * Which districts a checkout can stand on.
  *
- * Not the camp and not the islet: those are common ground and are on the map
- * from the first moment, with or without a project. Everything else is one of
- * his eleven, and a project takes one whole.
+ * Anywhere but the camp, which is where the village starts and nobody's own.
+ * The islet is on the map from the first moment with or without anybody on it,
+ * but a project may live there too; everything else is one of his eleven, and
+ * a project takes one whole.
  */
 function plan(): ReturnType<typeof createPlan> {
   cached ??= createPlan(
@@ -277,7 +279,7 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
   };
 
   const standingIn = (projects: readonly Project[]): string[] => [
-    ...COMMON,
+    CAMP,
     ...projects.map((project) => project.district),
   ];
 
@@ -302,7 +304,7 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
       for (const place of [
         ...plan()
           .order()
-          .filter((one) => !COMMON.includes(one)),
+          .filter((one) => one !== CAMP),
         ...loadSubdistricts().map((one) => one.id),
       ]) {
         places[place] = faultAfter(projects, id, { kind: 'to', place });
@@ -316,7 +318,7 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
       if (!project) return { success: false, error: 'that project is gone' };
       const whole = plan().order() as readonly string[];
       const known = whole.includes(to) || loadSubdistricts().some((one) => one.id === to);
-      if (!known || (COMMON as readonly string[]).includes(to))
+      if (!known || to === CAMP)
         return { success: false, error: 'nobody can live there' };
       const fault = faultAfter(projects, id, { kind: 'to', place: to });
       if (fault) return { success: false, error: fault };
@@ -342,11 +344,14 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
         .order()
         .filter(
           (district) =>
-            !COMMON.includes(district) &&
+            district !== CAMP &&
             !taken.has(district) &&
             plan().reachable(here).includes(district)
         );
-      /* Only once all eleven of his are taken does a big district give up a
+      /* The islet is moored to whatever coast there is, so it is never out of
+         reach; it is simply the last of his to be lived on. */
+      if (!free.length && !taken.has(ISLET)) free.push(ISLET);
+      /* Only once all twelve of his are taken does a big district give up a
          piece, and in the order the pieces are listed. */
       if (!free.length) {
         free.push(...subdistricts.map((one) => one.id).filter((id) => !taken.has(id)));

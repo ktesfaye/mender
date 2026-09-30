@@ -5281,7 +5281,7 @@ async function boot(): Promise<void> {
         covered: (x, y) => yard.covers(x, y),
         flags: () => drawn.pennants,
         plant: async (district, foot) => {
-          plantFlag(district, foot);
+          plantFlag(district, foot, drawn.moored);
           drawn = await draw(world, client, pixi.renderer, camera, drawn);
           people();
         },
@@ -5775,6 +5775,8 @@ interface Drawn {
   /** The districts by plot, which is how a project finds its own land. */
   districts: Map<string, District>;
   island: Extent;
+  /** How far the islet sailed, which its flag sails with. */
+  moored: readonly [number, number];
 }
 
 /** Compose the island for the state the app is in, and put it on screen. */
@@ -5790,7 +5792,7 @@ async function draw(
   /* A post only for a district that is standing: one on open water would be
      a flagpole in the sea. */
   const standing = new Set<string>(map.districts.map((district) => district.id));
-  const feet = new Map([...(await loadFeet())].filter(([id]) => standing.has(id)));
+  const feet = new Map([...(await loadFeet(map.moored))].filter(([id]) => standing.has(id)));
   const scene = buildScene(new Document(map.layout).items(), map.layout, [...feet.values()]);
   if (scene.missing.length) {
     console.warn(`${scene.missing.length} sprites are not in the kit`, scene.missing.slice(0, 8));
@@ -5813,6 +5815,7 @@ async function draw(
     pennants: new Pennants(feet, scene.posts, camera),
     districts: new Map(map.districts.map((district) => [district.id, district])),
     island,
+    moored: map.moored,
   };
 }
 

@@ -107,6 +107,8 @@ def main() -> None:
     solid: list[tuple[float, float, float, float]] = []
     low: list[tuple[float, float, float, float]] = []
     roomy: list[tuple[float, float, float, float]] = []
+    # A cloth may fly over a tree as a last resort, never over a roof.
+    roofs: list[tuple[float, float, float, float]] = []
     buildings: dict[str, list[tuple[float, float, float, float, float]]] = {}
     index = {i: o for i, o in enumerate(layout["objects"])}
     object_district: dict[int, str] = {}
@@ -135,6 +137,8 @@ def main() -> None:
             if o["group"] != "Grass":
                 roomy.append((b[0] - ROOM, b[1] - ROOM, b[2] + ROOM, b[3] + ROOM))
             (low if o["group"] == "Grass" else solid).append(b)
+            if o["group"] == "Building":
+                roofs.append(b)
             box = b if box is None else (
                 min(box[0], b[0]), min(box[1], b[1]), max(box[2], b[2]), max(box[3], b[3])
             )
@@ -156,7 +160,7 @@ def main() -> None:
     for piece in pieces:
         places.append((piece, {**owner, **{c: piece["id"] for c in piece["land"]}}))
     for d, owner in places:
-        if d["id"] in ("CAMP", "ISLAND"):
+        if d["id"] == "CAMP":
             continue
         cells = [c for c, who in owner.items() if who == d["id"]]
         cx = sum(c[0] for c in cells) / len(cells) * CELL + CELL / 2
@@ -173,11 +177,14 @@ def main() -> None:
         # small enough that that sends its flag off to the far end of it, so it
         # weighs both sizes together and stays by its own house.
         piece = "of" in d
-        tries = [(0 if piece else size, size, True, True) for size in SIZES] + [
-            (-1, SIZES[-1], False, False)
+        tries = [(0 if piece else size, size, True, True, True) for size in SIZES] + [
+            (-1, SIZES[-1], False, False, True),
+            # The islet is too small to keep a whole cell of its own ground
+            # round every post; there it only has to stand on its own ground.
+            (-2, SIZES[-1], False, False, False),
         ]
         tier = None
-        for rank, size, pathed, airy in tries:
+        for rank, size, pathed, airy, ringed in tries:
             POLE, CLOTH, FOOT = shapes(size)
             if best is not None and rank != tier:
                 break
@@ -187,7 +194,9 @@ def main() -> None:
                     continue
                 on_path = (gx, gy) in path
                 near = [(gx + dx, gy + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)]
-                if any(owner.get(n) != d["id"] or n in rim or n not in (grass | dirt) for n in near):
+                if ringed and any(
+                    owner.get(n) != d["id"] or n in rim or n not in (grass | dirt) for n in near
+                ):
                     continue
                 if pathed and not on_path and not any(n in path for n in near if n != (gx, gy)):
                     continue
@@ -198,6 +207,7 @@ def main() -> None:
                         if (
                             not clear(solid, fx, fy, POLE)
                             or (airy and not clear(solid, fx, fy, CLOTH))
+                            or not clear(roofs, fx, fy, CLOTH)
                             or not clear(low, fx, fy, FOOT)
                         ):
                             continue

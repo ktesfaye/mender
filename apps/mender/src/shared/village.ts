@@ -8,7 +8,7 @@ import { z } from 'zod';
  * There is nothing else to say about one. A district is on the map exactly as
  * the artist drew it, or it is open sea where it stood; there is no half-built,
  * no stage and no growth. The camp and the islet are always in here whatever
- * the caller asks for.
+ * the caller asks for, and a project may live on the islet.
  */
 export const stateSchema = z.array(z.string());
 
@@ -34,10 +34,13 @@ export const villageContract = defineContract({
       shore: z.record(z.string(), z.number()),
       /** What is standing on the island, and which cells each one owns. */
       districts: districtsSchema,
+      /** How many cells the islet sailed from where he drew it, `[x, y]`, y up. */
+      moored: z.tuple([z.number(), z.number()]),
     }),
   }),
   /** Every place a project could stand, standing or not: his eleven and the
-      pieces the big ones give up. What rearranging the island is drawn on. */
+      pieces the big ones give up, and the islet where it is moored today. What
+      rearranging the island is drawn on. */
   places: procedure({
     input: z.object({}),
     output: z.array(
