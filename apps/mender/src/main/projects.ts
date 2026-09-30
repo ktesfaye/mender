@@ -14,6 +14,7 @@ import {
   ISLET,
   faultIn,
   landOf,
+  leaving,
   moved,
   type DistrictSpec,
   type Move,
@@ -154,7 +155,7 @@ export interface Projects {
   /** The state these projects make: the districts that are standing. */
   standing(): Promise<string[]>;
   /** Every place this project could go instead, and what is wrong with the
-      ones it can't: null is a place it can. `off` is taking it off the map. */
+      ones it can't: null is a place it can. `off` is who else moves if it comes off. */
   moves(id: string): Promise<{ places: Record<string, string | null>; off: string | null }>;
   /** Stand it somewhere else. Onto somebody's place swaps the two of them. */
   move(
@@ -309,7 +310,19 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
       ]) {
         places[place] = faultAfter(projects, id, { kind: 'to', place });
       }
-      return { places, off: faultAfter(projects, id, { kind: 'off' }) };
+      /* Taking it off never refuses: whoever it was the way to the fire for
+         moves in closer, and what is said is who that is. */
+      const before = arranged(projects);
+      const after = leaving(plan(), loadSubdistricts(), before, id);
+      const shifted = projects
+        .filter((one) => one.id !== id && after.get(one.id) !== before.get(one.id))
+        .map((one) => one.name);
+      return {
+        places,
+        off: shifted.length
+          ? `${shifted.join(' and ')} ${shifted.length === 1 ? 'moves' : 'move'} in closer so ${shifted.length === 1 ? 'it can' : 'they can'} still reach the fire.`
+          : null,
+      };
     },
 
     async move(id, to) {
@@ -571,8 +584,9 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
          the village can reach any more, which is the worst of both. */
       await sweeping?.(id);
       await rm(iconPath(id), { force: true });
-      // Whoever was sharing its district on a piece takes the whole of it.
-      const after = moved(arranged(projects), id, { kind: 'off' }, loadSubdistricts());
+      /* Whoever was sharing its district on a piece takes the whole of it, and
+         whoever it was the only way to the fire for moves in closer. */
+      const after = leaving(plan(), loadSubdistricts(), arranged(projects), id);
       return await save(
         projects
           .filter((project) => project.id !== id)

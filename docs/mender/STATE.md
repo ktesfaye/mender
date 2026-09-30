@@ -3213,3 +3213,17 @@ exactly as it was said, without writing it on the line first. Pressing the
 rest of the parchment still writes it back on the line to change. Driven in a
 dev instance: pressing the loop after "pong" sent it again, the agent answered
 a second time and the line stayed empty.
+
+### A project is let go on the water, flag or land, and asked about (2026-09-30) — done
+
+In edit districts, a district or just its flag let go out on the open sea
+brings up a window over the island, "Remove alpha?", saying its sessions come
+down, the folder stays, and who else moves; "remove alpha" does it, and
+"keep it", Escape or a click off it leave everything as it was. Removal no
+longer refuses when the project was somebody else's only way to the fire:
+whoever it stranded moves into the gap it left, or the nearest place in his
+order, so removing from settings can no longer leave a project undrawn out at
+sea either. Driven in a dev instance: alpha's flag dropped on the water asked,
+Escape kept it; alpha's land dropped on the water asked, naming that beta
+moves in closer, and removing it left beta standing on alpha's district with
+the fire in reach.

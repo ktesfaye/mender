@@ -824,14 +824,16 @@ against `world/his.py` in the village repo, tile for tile, at every state.
 offers "edit districts", and while it is on a district is something you pick
 up: its land lifts off, houses and trees and all, and follows the pointer.
 Let go on somebody else's place and the two swap; on an empty place and it
-moves in; out on the water and the line at the bottom offers to forget it,
-in the two presses anything that takes sessions down takes. His districts
+moves in; out on the water, the land or only its flag, and a window comes up
+over the island asking whether to take it out of the village, saying what
+that costs, and whoever it was the only way to the fire for moves in closer
+rather than being left out at sea. His districts
 never move, only who stands in them, and nothing may be let go anywhere that
 would leave a project out of reach of the fire: that place lights red, says
 who would be stranded, and the district goes back where it was. A
 flag is picked up the same way, by its pole or its cloth, and stands wherever
 on its own district it is let go, from then on; carried off its own land it
-goes red and goes back.
+goes red and goes back, unless it is let go on the open water.
 
 **The order they come on in is measured, not chosen.** Every state has to be one
 piece of land walkable from the fire, and from there the district that comes next

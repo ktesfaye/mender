@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import {
   createPlan,
   faultIn,
+  leaving,
   moved,
   type DistrictSpec,
   type SubdistrictSpec,
@@ -33,6 +34,13 @@ describe('moving a project', () => {
   it('gives a piece its whole district when the rest is left empty', () => {
     const after = moved(full, 'pB', { kind: 'to', place: 'D2' }, pieces);
     expect([after.get('pB'), after.get('pB2')]).toEqual(['D2', 'B']);
+    expect(fault(after)).toBeNull();
+  });
+
+  it('moves whoever a leaver stranded back within reach of the fire', () => {
+    const after = leaving(plan, pieces, full, 'pA');
+    expect(after.has('pA')).toBe(false);
+    expect([...after.values()]).toContain('A');
     expect(fault(after)).toBeNull();
   });
 });

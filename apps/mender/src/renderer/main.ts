@@ -5372,6 +5372,7 @@ async function boot(): Promise<void> {
         forget: async (id) => {
           await forget(id);
         },
+        sessions: (id) => tasks.filter((task) => task.project === id).length,
         covered: (x, y) => yard.covers(x, y),
         flags: () => drawn.pennants,
         plant: async (district, foot) => {

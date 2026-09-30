@@ -38,7 +38,7 @@ export {
   type Village,
   type VillageWorld,
 } from './his';
-export { faultIn, moved, type Arrangement, type Move } from './moving';
+export { faultIn, leaving, moved, stranded, type Arrangement, type Move } from './moving';
 export { CELL } from './scene/resolve';
 export { shorePass, type ShorePassOptions } from './shore';
 export {

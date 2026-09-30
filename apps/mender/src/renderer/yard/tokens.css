@@ -832,6 +832,19 @@
   margin: 10px 0 16px;
   font-size: 15px;
 }
+.forgetting {
+  width: min(460px, 100%);
+}
+.forgetting-cost {
+  margin: 16px 0 18px;
+  color: var(--yard-ink-body);
+}
+.founding .press.forgetting-go {
+  color: var(--yard-broken);
+}
+.founding .press.forgetting-go:hover {
+  color: #ff8a7a;
+}
 .settings-remove {
   color: var(--yard-broken);
 }

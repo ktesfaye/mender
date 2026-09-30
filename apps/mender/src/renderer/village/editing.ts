@@ -33,12 +33,14 @@ export interface EditingHost {
   residents(): readonly Resident[];
   /** The picture the island is drawn as, to lift a district out of. */
   scene(): Container;
-  /** Where it could go, and what is wrong with where it can't. */
+  /** Where it could go, what is wrong with where it can't, and who else moves if it goes. */
   moves(id: string): Promise<{ places: Record<string, string | null>; off: string | null }>;
   /** Stand it somewhere else. The error is said as it is. */
   move(id: string, to: string): Promise<string | null>;
   /** Take it off the map. */
   forget(id: string): Promise<void>;
+  /** How many sessions it has, which is what forgetting it costs. */
+  sessions(id: string): number;
   /** A point on screen that something written already covers. */
   covered(x: number, y: number): boolean;
   /** The flags, which can be picked up and stood somewhere else on their own land. */
@@ -70,8 +72,9 @@ const SAND = 0xf4e3c0;
  * where the pointer goes; wherever it is let go is where that project lives
  * now. Onto somebody else's place and the two of them swap. Onto an empty
  * one, drawn as pale ground on the water while this is on, and it moves in.
- * Out onto the open sea and the line at the top offers to forget it, which is
- * two presses because its sessions go with it.
+ * Out onto the open sea, the district or only its flag, and a window comes up
+ * over the island asking whether to take the project out of the village,
+ * saying what that costs, because its sessions go with it.
  *
  * Nothing about the land moves: his districts stand where he drew them, and
  * what changes is who lives in which. What cannot be, a district that would no
@@ -107,9 +110,12 @@ export class Editing {
     district: string;
     foot: { x: number; y: number } | null;
     fits: boolean;
+    /** Out on the open sea, where letting go asks to forget it. */
+    sea: boolean;
   } | null = null;
-  /** A forget waiting on its second press. */
+  /** A forget waiting on its second press, and the window asking it. */
   private forgetting: Resident | null = null;
+  private asking: HTMLElement | null = null;
   private busy = false;
 
   constructor(
@@ -148,7 +154,7 @@ export class Editing {
     if (this.on) return;
     this.on = true;
     this.overlay.visible = true;
-    this.forgetting = null;
+    this.unask();
     this.refresh();
     this.say();
     this.line.style.opacity = '1';
@@ -160,7 +166,7 @@ export class Editing {
     this.drop();
     this.on = false;
     this.overlay.visible = false;
-    this.forgetting = null;
+    this.unask();
     this.line.style.opacity = '0';
     this.line.replaceChildren();
     this.camera.plugins.resume('drag');
@@ -171,7 +177,7 @@ export class Editing {
   /** Escape: a forget waiting on its second press first, then the whole mode. */
   escaped(): void {
     if (this.forgetting) {
-      this.forgetting = null;
+      this.unask();
       this.say();
       return;
     }
@@ -273,7 +279,7 @@ export class Editing {
     const place = this.grabbable(this.placeAt(point.x, point.y));
     const who = place ? this.residentOn(place.id) : undefined;
     if (!place || !who) return;
-    this.forgetting = null;
+    this.unask();
     this.camera.plugins.pause('drag');
     this.camera.plugins.pause('decelerate');
 
@@ -380,10 +386,10 @@ export class Editing {
     const who = district ? this.residentOn(district) : undefined;
     if (!district || !who) return false;
     if (!this.host.flags().lift(district, event.global.x, event.global.y)) return false;
-    this.forgetting = null;
+    this.unask();
     this.camera.plugins.pause('drag');
     this.camera.plugins.pause('decelerate');
-    this.flag = { who, district, foot: null, fits: true };
+    this.flag = { who, district, foot: null, fits: true, sea: false };
     this.pixi.canvas.style.cursor = 'grabbing';
     this.say();
     stir();
@@ -400,8 +406,10 @@ export class Editing {
     if (fits !== flag.fits) flags.carry(event.global.x, event.global.y, fits);
     flag.foot = foot;
     this.pixi.canvas.style.cursor = 'grabbing';
-    if (fits !== flag.fits) {
+    const sea = foot !== null && this.placeAt(foot.x, foot.y) === null;
+    if (fits !== flag.fits || sea !== flag.sea) {
       flag.fits = fits;
+      flag.sea = sea;
       this.say();
     }
     stir();
@@ -415,6 +423,12 @@ export class Editing {
     if (!flag.foot) {
       this.host.flags().putBack();
       this.say();
+      return;
+    }
+    if (flag.sea) {
+      this.host.flags().putBack();
+      const fits = await this.host.moves(flag.who.id);
+      this.ask(flag.who, fits.off);
       return;
     }
     if (!flag.fits) {
@@ -440,11 +454,9 @@ export class Editing {
     const over = this.placeAt(point.x, point.y);
     const fits = carried.fits ?? (await this.host.moves(carried.who.id));
     if (!over) {
-      /* Let go over open water. Only a forget that strands nobody is
-         offered; anything else just goes back. */
+      // Let go over open water: it asks, and whoever it stranded moves closer.
       this.drop();
-      if (!fits.off) this.forgetting = carried.who;
-      this.say(fits.off ? `${fits.off}, so it stays.` : undefined);
+      this.ask(carried.who, fits.off);
       return;
     }
     if (over.id === carried.from.id) {
@@ -507,21 +519,14 @@ export class Editing {
     const carried = this.carrying;
     const parts: (string | HTMLElement)[] = [];
     if (this.forgetting) {
-      const who = this.forgetting;
-      parts.push(
-        `take ${who.name} off the map? its sessions come down with it, the folder stays. `,
-        pressing(`forget ${who.name}`, () => void this.forget(who)),
-        '   ',
-        pressing('keep it', () => {
-          this.forgetting = null;
-          this.say();
-        })
-      );
+      parts.push(`take ${this.forgetting.name} out of the village?`);
     } else if (this.flag) {
       parts.push(
-        this.flag.fits
-          ? `standing ${this.flag.who.name}'s flag`
-          : `${this.flag.who.name}'s flag can only stand on its own district`
+        this.flag.sea
+          ? `let go on the water to take ${this.flag.who.name} out of the village`
+          : this.flag.fits
+            ? `standing ${this.flag.who.name}'s flag`
+            : `${this.flag.who.name}'s flag can only stand on its own district`
       );
     } else if (carried) {
       const over = carried.over;
@@ -529,9 +534,7 @@ export class Editing {
       const there = over ? this.residentOn(over.id) : undefined;
       parts.push(
         !over
-          ? carried.fits?.off
-            ? `${carried.fits.off}, so it can't come off the map`
-            : `let go on the water to take ${carried.who.name} off the map`
+          ? `let go on the water to take ${carried.who.name} out of the village`
           : over.id === carried.from.id
             ? `carrying ${carried.who.name}`
             : why
@@ -543,7 +546,7 @@ export class Editing {
     } else {
       parts.push(
         result ??
-          'pick a district up and put it somewhere else, or out on the water to forget it. a flag moves on its own land',
+          'pick up a district or its flag to move it. let go of either on the water to take it out of the village',
         '   ',
         pressing('done', () => this.stop())
       );
@@ -552,8 +555,88 @@ export class Editing {
     this.line.classList.toggle('sore', Boolean(result?.endsWith('so it stays.')));
   }
 
-  private async forget(who: Resident): Promise<void> {
+  /**
+   * The window over the island asking whether it really goes. It is the one
+   * thing in edit districts that is not on the line, because what it takes
+   * with it is every session there, and that deserves being stopped for.
+   * Escape, a click off it or "keep it" all leave everything as it was.
+   */
+  private ask(who: Resident, shifts: string | null): void {
+    this.unask();
+    this.forgetting = who;
+    const back = document.createElement('div');
+    back.className = 'settings-back';
+    const panel = document.createElement('div');
+    panel.className = 'settings founding forgetting';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    back.appendChild(panel);
+    let downOutside = false;
+    back.addEventListener('pointerdown', (event) => {
+      downOutside = event.target === back;
+    });
+    back.addEventListener('click', (event) => {
+      if (downOutside && event.target === back) this.escaped();
+      downOutside = false;
+    });
+
+    const head = document.createElement('div');
+    head.className = 'settings-head';
+    const heading = document.createElement('div');
+    heading.className = 'settings-name founding-heading';
+    heading.textContent = `Remove ${who.name}?`;
+    const title = document.createElement('div');
+    title.className = 'settings-who';
+    title.appendChild(heading);
+    head.appendChild(title);
+
+    const body = document.createElement('div');
+    body.className = 'settings-body founding-body';
+    const n = this.host.sessions(who.id);
+    const hint = document.createElement('p');
+    hint.className = 'settings-hint forgetting-cost';
+    hint.textContent =
+      (n === 0
+        ? `It comes out of the village and its district goes back to sea.`
+        : n === 1
+          ? `It comes out of the village, and its one session is taken down with it.`
+          : `It comes out of the village, and all ${n} of its sessions are taken down with it.`) +
+      ' The folder stays exactly where it is on disk.' +
+      (shifts ? ` ${shifts}` : '');
+    const list = document.createElement('div');
+    list.className = 'founding-list';
+    const remove = pressing(`remove ${who.name}`, () => void this.forget(who));
+    remove.classList.add('forgetting-go');
+    const keep = pressing('keep it', () => this.escaped());
+    for (const one of [remove, keep]) {
+      const row = document.createElement('div');
+      row.className = 'founding-row';
+      row.appendChild(one);
+      list.appendChild(row);
+    }
+    body.append(hint, list);
+    panel.append(head, body);
+    document.body.appendChild(back);
+    back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
+    panel.animate(
+      [
+        { opacity: 0, transform: 'translateY(8px)' },
+        { opacity: 1, transform: 'translateY(0)' },
+      ],
+      { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' }
+    );
+    this.asking = back;
+    this.say();
+  }
+
+  private unask(): void {
     this.forgetting = null;
+    this.asking?.remove();
+    this.asking = null;
+  }
+
+  private async forget(who: Resident): Promise<void> {
+    this.unask();
     this.busy = true;
     this.say(`forgetting ${who.name}…`);
     await this.host.forget(who.id);

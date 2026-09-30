@@ -7,7 +7,7 @@
    that cannot is simply not drawn. */
 
 import { landOf } from './districts';
-import { COMMON, type Plan, type SubdistrictSpec } from './his';
+import { CAMP, COMMON, ISLET, type Plan, type SubdistrictSpec } from './his';
 
 /** Where each project stands: project id to place id. */
 export type Arrangement = ReadonlyMap<string, string>;
@@ -75,4 +75,63 @@ export function faultIn(
     return `${nameOf(who)} would be left out at sea`;
   }
   return null;
+}
+
+/** Who in an arrangement cannot walk to the fire. */
+export function stranded(
+  plan: Plan,
+  subdistricts: readonly SubdistrictSpec[],
+  arrangement: Arrangement
+): string[] {
+  const land = new Set<string>([
+    ...COMMON,
+    ...[...arrangement.values()].map((id) => landOf(id, subdistricts)),
+  ]);
+  const reached = plan.connected(land) as ReadonlySet<string>;
+  return [...arrangement]
+    .filter(([, place]) => !reached.has(landOf(place, subdistricts)))
+    .map(([who]) => who);
+}
+
+/**
+ * The arrangement after a project leaves, with nobody left out at sea.
+ *
+ * Taking a project off the map can cut whoever stood beyond it off from the
+ * fire, and a place that cannot reach the fire is not drawn, so they would
+ * vanish. Instead each of them moves in to the nearest place that brings
+ * somebody back: the gap the leaver left first, then his order, the islet last.
+ */
+export function leaving(
+  plan: Plan,
+  subdistricts: readonly SubdistrictSpec[],
+  arrangement: Arrangement,
+  who: string
+): Map<string, string> {
+  let out = moved(arrangement, who, { kind: 'off' }, subdistricts);
+  const gap = arrangement.get(who);
+  const places = [
+    ...(gap ? [landOf(gap, subdistricts)] : []),
+    ...plan.order().filter((one) => one !== CAMP && one !== ISLET),
+    ISLET,
+  ];
+  let lost = stranded(plan, subdistricts, out);
+  while (lost.length) {
+    let better: Map<string, string> | null = null;
+    for (const one of lost) {
+      const taken = new Set(out.values());
+      for (const place of places) {
+        if (taken.has(place)) continue;
+        const tried = moved(out, one, { kind: 'to', place }, subdistricts);
+        if (stranded(plan, subdistricts, tried).length < lost.length) {
+          better = tried;
+          break;
+        }
+      }
+      if (better) break;
+    }
+    if (!better) break;
+    out = better;
+    lost = stranded(plan, subdistricts, out);
+  }
+  return out;
 }
