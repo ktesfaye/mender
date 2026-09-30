@@ -250,6 +250,15 @@ failing that a photo out of the page itself, and a second pass for what the
 first found nothing for. Driven: "what do the AirPods Max look like" and "find
 best restaurants near me" both came back with real photos.
 
+That wording was then too prescriptive the other way: told exactly where to
+put them, it saved every picture for one row at the end, away from what each
+one showed. The instruction is now just to be visual where seeing a thing
+helps, with real pictures only, and the board does the placing: a picture in
+a paragraph or list entry, or on its own line right under one, stands beside
+that writing, and pictures can be files on this machine too. Driven: "the top
+5 brunch spots near me and their top foods" came back with each place's dish
+beside its own entry.
+
 A fenced ` ```mermaid ` block is now drawn — colored to the wood rather than
 left in whatever the diagram's own default is, via `beautiful-mermaid` (already
 in the lockfile, no DOM dependency of its own) — and panned and zoomed rather

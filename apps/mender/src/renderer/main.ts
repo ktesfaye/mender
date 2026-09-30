@@ -82,6 +82,7 @@ import { stepsFromTrail } from './yard/from';
 import { openYard, type Watching } from './yard/live';
 import { showMissed } from './yard/missed';
 import { openNewSession, type NewSessionSign } from './yard/new-session';
+import { seedLocalPictures } from './yard/pictures';
 import { pressing } from './yard/press';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
@@ -146,6 +147,9 @@ async function boot(): Promise<void> {
   try {
     say('waking the village…');
     const [client] = await Promise.all([wire(), loadKit(), loadFolk()]);
+    seedLocalPictures(
+      async (path, width) => (await client.board.picture({ path, width })).picture?.src ?? null
+    );
     /* The plank along the bottom used to carry the projects. It carries the
        sessions of whatever project you are in now, so the projects moved to a
        rack in the corner and the old plank is not drawn at all. */

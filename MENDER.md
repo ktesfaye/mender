@@ -428,14 +428,18 @@ anywhere in a name or in what it says about itself, the way Emdash's does, and a
 slash later in a sentence opens the agent's and yours but never a setting.
 Arrows walk it, return or tab picks, escape closes it and keeps what you wrote.
 
-**A picture the agent puts in what it says is drawn.** Markdown writes one
-as a caption and an address, and an answer about where to eat says far more
-with a look at each place than with a list of names, so the board hangs it
-under the line it was written in, several side by side with their captions
-under them, one on its own shown whole, and one that will not load is simply
-not there. Every session is told, the moment it starts, that pictures show
-here and that only one it has actually seen on a page counts, never a guessed
-address, so asking for somewhere to go brings the places with it.
+**A picture the agent puts in what it says is drawn, where it put it.**
+Markdown writes one as a caption and an address, on the web or a path on
+this machine, and an answer about where to eat, a pair of headphones or a
+bird says far more with a look at the thing than with a description of it.
+A picture written into a paragraph or a list entry, or on a line of its own
+right under one, stands beside that writing, the way a listing puts the
+photo next to what it is a photo of; more than two together, or anywhere
+else, stand where they were written, several in a row, each with its
+caption under it, and one that will not load is simply not there. Every
+session is told only that pictures show here, to be visual wherever seeing
+a thing would help, and that a picture has to be one it actually found:
+where and how is left to it.
 
 **A picture dropped on the wood is carried.** Drop or paste one on a session's
 board and it waits by the line you are writing on until you say something, then

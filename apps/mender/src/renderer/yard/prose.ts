@@ -17,7 +17,7 @@
 import { mermaidSVG } from '../diagram';
 import { makeDiagramView } from '../diagram-view';
 import { inkRuns, type InkRun } from './motion';
-import { hangPictures, pictured } from './pictures';
+import { beside, hangPictures, pictured } from './pictures';
 
 const FENCE = /^\s*(```|~~~)(\s*\S*)?/;
 const HEADING = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
@@ -219,8 +219,11 @@ export function prose(
     switch (block.kind) {
       case 'para': {
         const { text: words, pictures } = pictured(block.text);
-        if (words) into.appendChild(written('p', part, words, fresh));
-        hangPictures(into, pictures);
+        if (!words) hangPictures(into, pictures);
+        else {
+          const para = written('p', part, words, fresh);
+          into.appendChild(pictures.length ? beside(para, pictures) : para);
+        }
         return;
       }
       case 'heading':
@@ -237,9 +240,13 @@ export function prose(
         mark.className = 'prose-mark';
         mark.textContent = block.mark;
         const { text: words, pictures } = pictured(block.text);
-        item.append(mark, written('span', part, words, fresh));
-        if (words) into.appendChild(item);
-        hangPictures(into, pictures);
+        if (!words) {
+          hangPictures(into, pictures);
+          return;
+        }
+        const said = written('span', part, words, fresh);
+        item.append(mark, pictures.length ? beside(said, pictures) : said);
+        into.appendChild(item);
         return;
       }
       case 'rule': {
