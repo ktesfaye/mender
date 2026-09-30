@@ -22,9 +22,9 @@ export const PART_NAME: Record<Part, string> = {
 
 export interface Arrangement {
   hidden: Part[];
-  /** How wide the left column is, when it has been dragged. */
+  /** The share of the page the left column takes, when it has been dragged. */
   asked?: number;
-  /** How wide the right column is, when it has been dragged. */
+  /** The share of the page the right column takes, when it has been dragged. */
   made?: number;
   /** How tall the changelog is, when its rule has been dragged. */
   changelog?: number;
@@ -41,14 +41,19 @@ function load(): Arrangement {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Arrangement>;
     return {
       hidden: Array.isArray(raw.hidden) ? raw.hidden.filter((one) => one in PART_NAME) : [],
-      ...(typeof raw.asked === 'number' ? { asked: raw.asked } : {}),
-      ...(typeof raw.made === 'number' ? { made: raw.made } : {}),
+      ...(typeof raw.asked === 'number' ? { asked: share(raw.asked) } : {}),
+      ...(typeof raw.made === 'number' ? { made: share(raw.made) } : {}),
       ...(typeof raw.changelog === 'number' ? { changelog: raw.changelog } : {}),
       ...(typeof raw.now === 'number' ? { now: raw.now } : {}),
     };
   } catch {
     return { hidden: [] };
   }
+}
+
+/** A column's width as it used to be kept, in pixels, as a share of the page it was drawn on. */
+function share(kept: number): number {
+  return kept > 1 ? kept / 1360 : kept;
 }
 
 export function arrangement(): Arrangement {

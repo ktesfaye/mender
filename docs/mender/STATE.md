@@ -1616,8 +1616,9 @@ than the doors it would be standing at.
 13a is drawn, over the real island composed out of the real world files and
 dimmed to exactly what the handoff specifies. It was looked at at four window
 sizes and fixed at each: the columns keep their proportions rather than their
-widths, the page stops growing and centres once it is wider than a line worth
-reading, every column gives up its beginning rather than running over the one
+widths, every one of them growing with the window and the writing in each
+rewrapping to fill it, the middle taking whatever a put-away side gives up,
+every column gives up its beginning rather than running over the one
 below it and says how much it gave up, and a short window drops the older notes
 off the gatepost and the words off the rail.
 

@@ -817,7 +817,10 @@ export function makeYard(layer: Layer, does: Doings): Standing {
         /* The left column and the post grow toward the pointer; the right
            column and the changelog grow away from it. */
         const size = what === 'asked' || what === 'now' ? from + by : from - by;
-        arrange({ [what]: Math.round(size) }, false);
+        /* A column is kept as its share of the page, so it holds its
+           proportion when the window changes; a row is kept in pixels. */
+        const kept = way === 'col' ? size / Math.max(1, layer.size().wide) : Math.round(size);
+        arrange({ [what]: kept }, false);
         redraw();
       };
       const up = (): void => {
@@ -1633,7 +1636,7 @@ function thinking(
         const size = one.said.length > 700 ? 19 : 21;
         body.style.cssText = one.quiet
           ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
-          : `font-size:${size}px;line-height:1.6;letter-spacing:.01em;max-width:68ch;color:${trouble?.ink ?? '#ebe3d3'}`;
+          : `font-size:${size}px;line-height:1.6;letter-spacing:.01em;color:${trouble?.ink ?? '#ebe3d3'}`;
         if (!one.quiet) body.classList.add('clear');
         if (trouble) body.classList.add('prose-trouble');
         prose(body, one.id, one.said, !walkedIn, keepCode(does), openLink(does));
@@ -1994,7 +1997,7 @@ function thought(
   const label = name ? (one.when ? `${name} · ${one.when}` : name) : one.when;
   if (label) it.appendChild(said(label, tone));
   const body = document.createElement('div');
-  body.style.cssText = `font-size:${size}px;line-height:1.6;letter-spacing:.01em;max-width:68ch;color:${ink}`;
+  body.style.cssText = `font-size:${size}px;line-height:1.6;letter-spacing:.01em;color:${ink}`;
   body.classList.add('clear');
   if (tone) body.classList.add('prose-trouble');
   prose(body, one.id, one.said, false, keep, link);
@@ -2516,9 +2519,14 @@ function ground(
   /* A count of nobody is not information. An empty yard says so by being
      empty and by the fire being out in the middle of it. */
   if (yard.session) {
-    head.appendChild(
-      exact(`${hands.length} hands · ${back} back · ${hands.length - back} out`, 11, '#bfa476')
+    const count = exact(
+      `${hands.length} hands · ${back} back · ${hands.length - back} out`,
+      11,
+      '#bfa476'
     );
+    /* A narrow column gives the count up before it runs into its heading. */
+    count.style.cssText += ';min-width:0;overflow:hidden;text-overflow:ellipsis';
+    head.appendChild(count);
   }
   root.appendChild(head);
 
@@ -2575,7 +2583,7 @@ function ground(
 }
 
 const HEAD_ROW =
-  'display:flex;align-items:baseline;justify-content:space-between;white-space:nowrap';
+  'display:flex;align-items:baseline;justify-content:space-between;gap:12px;white-space:nowrap';
 
 /** How much light each way of burning throws. */
 const FIRELIGHT: Record<Fire, number> = { lit: 0.34, banked: 0.2, embers: 0.12, out: 0.04 };

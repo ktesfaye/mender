@@ -30,16 +30,6 @@ export const DRAWN_TALL = 1104;
 export const MARGIN = 40;
 
 /**
- * The widest the writing ever gets, however wide the window is.
- *
- * Past this the columns stop growing and the page centres instead, because a
- * line of a serif nine hundred pixels long is not reading, it is scanning, and
- * the point of the middle column is that you read it. What the surplus buys is
- * more village either side, which is not a consolation prize in this app.
- */
-export const WIDEST = 1560;
-
-/**
  * How wide the three columns are when the window is exactly as wide as the
  * designs are. Every other width is worked out from these.
  */
@@ -48,9 +38,11 @@ export const COLUMN = { asked: 360, thinking: 500, made: 380 } as const;
 /** The gap between two columns, which is also where the rule between them goes. */
 export const GUTTER = (DRAWN_WIDE - MARGIN * 2 - COLUMN.asked - COLUMN.thinking - COLUMN.made) / 2;
 
-/** How narrow and how wide a side column can be dragged. */
+/** How narrow a side column can be dragged, and the most of the page it can take. */
 const SIDE_LEAST = 220;
-const SIDE_MOST = 640;
+const SIDE_MOST = 0.42;
+/** The right column's share of the page before anybody drags it: a glance down the side. */
+const MADE_SHARE = 0.2;
 /** And the least the middle is ever left with. */
 const MIDDLE_LEAST = 380;
 
@@ -61,7 +53,7 @@ function clamp(value: number, least: number, most: number): number {
 export interface Layer {
   /** Where everything is written. Absolutely positioned children, in pixels. */
   readonly root: HTMLDivElement;
-  /** How much room there actually is, after the margins and the widest measure. */
+  /** How much room there actually is, after the margins. */
   size(): { wide: number; tall: number };
   /** Where the writing starts and stops across the window. */
   edge(): number;
@@ -108,39 +100,39 @@ export function makeLayer(): Layer {
 
   function size(): { wide: number; tall: number } {
     return {
-      wide: Math.max(0, Math.min(window.innerWidth - MARGIN * 2, WIDEST)),
+      wide: Math.max(0, window.innerWidth - MARGIN * 2),
       tall: Math.max(0, window.innerHeight - MARGIN * 2),
     };
   }
 
-  /** The left edge of the writing, which is the margin until the page centres. */
+  /** The left edge of the writing. */
   function edge(): number {
-    return Math.max(MARGIN, Math.round((window.innerWidth - WIDEST) / 2));
+    return MARGIN;
   }
 
   function columns(): { asked: Span; thinking: Span; made: Span } {
     const { wide } = size();
-    /* The three columns keep their proportions rather than their widths. A
-       window wider than the designs gives the surplus to the middle, because
-       the middle is the one you are reading and the other two are a glance
-       each; a narrower one squeezes all three together, which gets tight but
-       never pushes a column off the edge, and the type never changes size.
+    /* Every column is a share of the window, not a width, so the whole board
+       breathes with it: a window pulled wider widens all three and the
+       writing in each of them rewraps to fill it; a narrower one squeezes
+       them together, and the type never changes size.
 
-       Unless the reader has had their say: a side column dragged wider or
-       narrower keeps the width it was left at, and one with everything in it
-       put away is gone, its gutter with it, and the middle has the room. */
+       The reader has their say too: a side column dragged is kept as the
+       share of the page it was left at, so it keeps its proportion when the
+       window changes rather than a width it was dragged to in some other
+       window; and one with everything in it put away is gone, its gutter
+       with it, and the middle has the room. */
     const drawn = DRAWN_WIDE - MARGIN * 2;
     const shrink = Math.min(1, wide / drawn);
     const gutter = Math.round(GUTTER * shrink);
     const left = !(hidden('asked') && hidden('changelog'));
     const right = !(hidden('made') && hidden('now') && hidden('did'));
     const set = arrangement();
-    let asked = left ? Math.round(set.asked ?? COLUMN.asked * shrink) : 0;
-    /* The right column starts as narrow as it goes: it is a glance down the
-       side, and the answer in the middle is what has the room. */
-    let made = right ? Math.round(set.made ?? SIDE_LEAST) : 0;
-    asked = left ? clamp(asked, SIDE_LEAST, SIDE_MOST) : 0;
-    made = right ? clamp(made, SIDE_LEAST, SIDE_MOST) : 0;
+    const most = Math.max(SIDE_LEAST, Math.round(wide * SIDE_MOST));
+    let asked = left ? Math.round(wide * (set.asked ?? COLUMN.asked / drawn)) : 0;
+    let made = right ? Math.round(wide * (set.made ?? MADE_SHARE)) : 0;
+    asked = left ? clamp(asked, SIDE_LEAST, most) : 0;
+    made = right ? clamp(made, SIDE_LEAST, most) : 0;
     const gutters = (left ? gutter : 0) + (right ? gutter : 0);
     /* The middle never goes under what a paragraph needs; the sides give
        way first, the wider of them the most. */

@@ -17,6 +17,8 @@ export default {
     alias: {
       '@renderer': resolve(import.meta.dirname, '../src/renderer'),
       '@shared': resolve(import.meta.dirname, '../src/shared'),
+      '@upstream': resolve(import.meta.dirname, '../../emdash-desktop/src/core'),
+      '@core': resolve(import.meta.dirname, '../../emdash-desktop/src/core'),
     },
   },
   optimizeDeps: { entries: ['yard.html'] },
