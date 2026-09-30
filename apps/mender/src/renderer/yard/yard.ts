@@ -1752,9 +1752,9 @@ const logScrolled = new Map<string, number>();
    at the foot of the column, right over the fire and the line you write on,
    the answers before it dimmed above it, and everything it thought and said
    on the way to each folded out of sight. Opened, the trail comes back in
-   between them, each one a little dimmer the further up into the past. Under
-   a finished answer is the recap, where the whole thing stands, for whoever
-   is coming back to it. */
+   between them, each one a little dimmer the further up into the past. At the
+   foot of the column, once an answer is finished, is the recap, where the
+   whole thing stands, for whoever is coming back to it. */
 function thinking(
   root: HTMLElement,
   at: { x: number; wide: number },
@@ -1829,9 +1829,11 @@ function thinking(
 
   /* Oldest at the top and the newest under it, the way a conversation reads.
      A short one starts under the heading like any other column; only once it
-     runs past the foot does the column scroll to keep the newest in view. */
+     runs past the foot does the column scroll to keep the newest in view. The
+     column is at least as tall as the room, so the recap can sit at its foot
+     however little was said above it. */
   const col = document.createElement('div');
-  col.style.cssText = 'display:flex;flex-direction:column;gap:20px;flex:none';
+  col.style.cssText = 'display:flex;flex-direction:column;gap:20px;flex:none;min-height:100%';
   stream.appendChild(col);
 
   const older = document.createElement('div');
@@ -2003,13 +2005,15 @@ function thinking(
 }
 
 /**
- * Where the whole thing stands, under an answer once it is finished: what it
- * was for, what got done, and the one thing next. Quieter than the answer it
- * sits under, since it is for coming back to, not for reading twice.
+ * Where the whole thing stands, once an answer is finished: what it was for,
+ * what got done, and the one thing next. Always at the foot of the column,
+ * right over the line you write on, however short the answer above it, since
+ * it is the last thing read before saying the next. Quieter than the answer,
+ * since it is for coming back to, not for reading twice.
  */
 function recapped(text: string): HTMLElement {
   const it = keyed(document.createElement('div'), 'recap');
-  it.style.cssText = 'display:flex;flex-direction:column;gap:5px;flex:none';
+  it.style.cssText = 'display:flex;flex-direction:column;gap:5px;flex:none;margin-top:auto';
   it.appendChild(said('recap', '#b39a74'));
   const body = document.createElement('div');
   body.style.cssText =

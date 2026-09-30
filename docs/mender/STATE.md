@@ -3150,6 +3150,13 @@ something newer is said. Driven in a dev instance: three turns stacked
 oldest to newest down to the write line, a short question got no recap, and a
 turn that wrote and tested code got one under its answer.
 
+### The recap sits at the foot of the column (2026-09-29) — done
+
+A short answer left the recap floating straight under it, halfway up the
+column. It now always stands at the foot, right over the write line, and a
+long conversation still scrolls it up with everything else. Driven in a dev
+instance: a one-word answer at the top, its recap at the bottom.
+
 ### Making room is drawn, not stammered (2026-09-29) — done
 
 Claude's adapter announced a compaction by writing "Compacting..." into the
