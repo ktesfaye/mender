@@ -222,6 +222,8 @@ type TellError =
 
 type Told = { success: true; data: void } | { success: false; error: TellError };
 
+type MovedIn = { success: true; data: string } | { success: false; error: TellError };
+
 const EMPTY_TOLD: ToldState = {
   notes: [],
   thoughts: [],
@@ -534,10 +536,24 @@ export function createAgents(
    * attachments all hang off, so anything that hands something to a building
    * needs one to exist first, not only saying something.
    */
-  const moveIn = async (
+  /* Opening a board wakes a session at the same moment the first line or a
+     resume can reach for it, and each finding nobody lodged would make its own
+     conversation. So there is only ever one moving in per task. */
+  const movingIn = new Map<string, Promise<MovedIn>>();
+  const moveIn = (
     task: string,
     record: { agent?: string; path: string; title: string }
-  ): Promise<{ success: true; data: string } | { success: false; error: TellError }> => {
+  ): Promise<MovedIn> => {
+    const going = movingIn.get(task);
+    if (going) return going;
+    const it = moveInOnce(task, record).finally(() => movingIn.delete(task));
+    movingIn.set(task, it);
+    return it;
+  };
+  const moveInOnce = async (
+    task: string,
+    record: { agent?: string; path: string; title: string }
+  ): Promise<MovedIn> => {
     const already = lodgers[task];
     if (already) {
       /* Going home throws the house and the card away but keeps the
@@ -807,12 +823,16 @@ export function createAgents(
 
   const wake = async (task: string): Promise<Told> => {
     await loaded;
-    const conversation = lodgers[task];
-    if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
     const record = (await tasks.list()).find((candidate) => candidate.id === task);
     if (!record) return { success: false, error: { kind: 'no-such-task' } };
+    /* A session nobody has spoken to yet has no conversation, and the card
+       and the head are only true once an agent is up to say what it offers,
+       so opening one moves somebody in rather than waiting for the first line. */
+    const fresh = !lodgers[task];
+    const moved = await moveIn(task, record);
+    if (!moved.success) return moved;
+    const conversation = moved.data;
     const house = houseOf(task);
-    await Promise.all([house.settle(conversation), kits.settle(task, conversation)]);
     /* Waking somebody who is already up has nothing to load, so only a
        sleeping session says it is waking. */
     const sleeping = !house.awake();
@@ -838,7 +858,7 @@ export function createAgents(
       /* The launch is back once the history has been read in, but the
          session's own word that it is ready can trail it by a beat. */
       if (sleeping) await house.pastStarting(1500);
-      if (sleeping) await house.readBack();
+      if (sleeping && !fresh) await house.readBack();
       /* A title cut short with an ellipsis is somebody's first line, never
          a name: the namer's are short enough to need no cutting. One picked
          up before anything named it is named now, off what it holds. */
