@@ -134,7 +134,7 @@ them off, and so does Escape, the way it does in Claude Code; only once nobody
 is working does Escape walk you out.
 
 **The bottom of the board is what is coming.** Under everything that has
-happened, and above the line you write on, is how much room it has left to think in, and what it has cost so
+happened, and above the line you write on, is how much of its room to think in it has used up, and what it has cost so
 far when the agent says, in plain words rather than a currency badge, then
 anything you said
 while it was busy and it has not heard yet, which you can take back by pressing

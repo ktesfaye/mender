@@ -1176,16 +1176,16 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
     root.appendChild(flag);
   }
 
-  /* How much room it has left to think in. Nothing warns an agent when that
+  /* How much of its room it has used up. Nothing warns an agent when that
      runs out; the conversation simply starts losing its own beginning, so the
-     village says it instead: orange once it is getting low, red once it is
-     nearly gone. */
+     village says it instead: orange once it is getting full, red once it is
+     nearly out. */
   const room = yard.session?.room;
   const cost = yard.session?.cost;
   const it = box({ right: edge, top: HEAD.under }, 'display:flex;gap:6px;align-items:baseline');
   if (room !== undefined) {
     const ink = room < TIGHT ? 'var(--yard-wrong)' : room < LOW ? 'var(--yard-warn)' : undefined;
-    it.appendChild(exact(`context ${Math.round(room * 100)}%`, 12, ink));
+    it.appendChild(exact(`context ${Math.round((1 - room) * 100)}% used`, 12, ink));
   }
   if (cost) {
     if (room !== undefined) {
