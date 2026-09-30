@@ -786,3 +786,10 @@ export function longFor(ms: number): string {
   if (hours < 100) return `${Math.floor(hours)}h ${Math.floor(minutes % 60)}m`;
   return `${Math.floor(hours / 24)}d`;
 }
+
+/** A helper's steps read off Claude's own record, worded the way a session's are. */
+export function stepsFromTrail(
+  deeds: readonly { id: string; did: string; why?: string; tool: string; wrong?: boolean }[]
+): Step[] {
+  return stepsOf(deeds.map((deed) => ({ ...deed, running: false })));
+}

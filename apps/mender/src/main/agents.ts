@@ -42,6 +42,7 @@ import type {
   Wrote,
 } from '@shared/agents';
 import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
+import { helperTrail, type HelperTrail } from './helper-trail';
 import { kept, madeIn, stillThere } from './made';
 
 /**
@@ -176,6 +177,11 @@ export interface Agents {
     task: string,
     call: string
   ): Promise<{ success: true; data: { stopped: boolean } } | { success: false; error: TellError }>;
+  /** What a helper did and said, read off Claude's own record of them. */
+  helperTrail(
+    task: string,
+    call: string
+  ): Promise<{ success: true; data: HelperTrail | null } | { success: false; error: TellError }>;
   /** Say the last thing said to this session again. */
   retryFailure(task: string): Promise<Told>;
   /** Schedule the last thing said to go out again on its own, once a typed
@@ -1131,6 +1137,15 @@ export function createAgents(
       return done.success
         ? { success: true, data: done.data }
         : { success: false, error: { kind: 'refused', because: whatItSaid(done.error) } };
+    },
+
+    async helperTrail(task, call) {
+      await loaded;
+      const conversation = lodgers[task];
+      if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
+      const session = sessionFor(task, conversation);
+      if (!session) return { success: true, data: null };
+      return { success: true, data: await helperTrail(session, call, wheres.get(task)) };
     },
 
     evict,

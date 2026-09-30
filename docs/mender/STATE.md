@@ -297,7 +297,10 @@ came back without an answer. Claude's adapter stops a background shell that
 way but refused to stop a subagent, so it is patched to, and to say so at once
 rather than on the session's next turn. A helper stopped from anywhere used to
 stand out in the dark forever, because a stopped or killed one was read as
-still working; it comes home now. Driven in the running app, both kinds.
+still working; it comes home now. Driven in the running app, both kinds. A finished
+helper's board after a restart used to say nothing came back, because the
+protocol never replays what a helper did; it is read off Claude's own record of
+them now, steps and the answer they came back with.
 
 Two things are cut on purpose. A resource link never arrives: neither CLI ever
 sends one back, both of them turn a file reference into ordinary writing on the

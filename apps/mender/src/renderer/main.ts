@@ -78,6 +78,7 @@ import { Water } from './village/water';
 import { wire, type MenderClient } from './wire';
 import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
+import { stepsFromTrail } from './yard/from';
 import { openYard, type Watching } from './yard/live';
 import { showMissed } from './yard/missed';
 import { openNewSession, type NewSessionSign } from './yard/new-session';
@@ -1641,8 +1642,10 @@ async function boot(): Promise<void> {
           if (walkedUp) {
             const again = now.session?.agents.find((one) => one.id === walkedUp?.hand.id);
             if (again && open === aim) {
+              const home = walkedUp.hand.where === 'out' && again.where !== 'out';
               walkedUp = { ...walkedUp, hand: again };
               rewrite(helper(walkedUp));
+              if (home) void readTrail(again.id);
             }
           }
           if (
@@ -4159,12 +4162,34 @@ async function boot(): Promise<void> {
       rewrite(helper(walkedUp));
     };
 
+    /** Claude's own record of a helper, read once they are walked up to and
+        again when they come back, since that is when the answer lands. */
+    const readTrail = async (id: string): Promise<void> => {
+      const task = inside;
+      const call = walkedUp?.hand.call;
+      if (!task || !call) {
+        if (walkedUp?.hand.id === id) walkedUp = { ...walkedUp, trail: null };
+        return;
+      }
+      const got = await client.agents.helperTrail({ task: task.id, call }, { timeoutMs: 10000 });
+      if (walkedUp?.hand.id !== id) return;
+      walkedUp = {
+        ...walkedUp,
+        trail:
+          got.success && got.data
+            ? { ...got.data, steps: stepsFromTrail(got.data.steps) }
+            : null,
+      };
+      rewrite(helper(walkedUp));
+    };
+
     const press = (pick: string): void => {
       if (pick.startsWith('helper:')) {
         const hand = watching?.yard().session?.agents.find((one) => one.id === pick.slice(7));
         if (!hand) return;
         walkedUp = { hand };
         wood(helper(walkedUp));
+        void readTrail(hand.id);
         return;
       }
       if (pick === 'recall' && walkedUp) {

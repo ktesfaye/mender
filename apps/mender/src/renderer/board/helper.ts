@@ -1,5 +1,6 @@
-import type { Hand } from '../yard/what';
+import type { Hand, Step } from '../yard/what';
 import type { Row } from './row';
+import { saying } from './writing';
 
 /**
  * Somebody a session sent out, walked up to.
@@ -16,6 +17,8 @@ export interface Walked {
   recall?: 'armed' | 'going' | 'refused' | 'done';
   /** Why calling them back did not work, when it did not. */
   because?: string;
+  /** Claude's own record of them: every step, and what they came back with. */
+  trail?: { prompt?: string; steps: Step[]; answer?: string } | null;
 }
 
 export function helper(walked: Walked): Row[] {
@@ -27,20 +30,35 @@ export function helper(walked: Walked): Row[] {
   if ((hand.where === 'out' && hand.call) || walked.recall)
     rows.push({ kind: 'gap' }, recalling(walked));
 
+  /* While they are out the live steps are the ones to follow; once they are
+     back, or after a restart has lost them, Claude's own record says it. */
+  const steps =
+    hand.steps.length && (hand.where === 'out' || !walked.trail?.steps.length)
+      ? hand.steps
+      : (walked.trail?.steps ?? []);
+
+  const answer = hand.where === 'out' ? undefined : walked.trail?.answer;
+  if (answer) {
+    rows.push({ kind: 'gap' }, { kind: 'heading', text: 'what they came back with' });
+    rows.push(...saying(answer, undefined, 'ink'));
+  }
+
   rows.push({ kind: 'gap' });
-  if (!hand.steps.length) {
+  if (!steps.length) {
     rows.push({
       kind: 'line',
       text:
         hand.where === 'out'
           ? 'nothing to show from out there yet.'
-          : 'nothing came back from out there.',
+          : walked.trail === undefined
+            ? 'reading what they did…'
+            : 'nothing they did out there was kept.',
       tone: 'faded',
     });
     return rows;
   }
   rows.push({ kind: 'heading', text: 'what they did' });
-  for (const step of hand.steps) {
+  for (const step of steps) {
     rows.push({
       kind: 'entry',
       mark: step.running ? '›' : step.tone === 'broken' ? '✗' : '·',

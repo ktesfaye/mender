@@ -683,6 +683,26 @@ export const agentsContract = defineContract({
     data: z.object({ stopped: z.boolean() }),
     error: agentErrorSchema,
   }),
+  /** Everything a helper did and said, off Claude's own record of them. */
+  helperTrail: fallible({
+    input: z.object({ task: z.string(), call: z.string() }),
+    data: z
+      .object({
+        prompt: z.string().optional(),
+        steps: z.array(
+          z.object({
+            id: z.string(),
+            did: z.string(),
+            why: z.string().optional(),
+            tool: z.string(),
+            wrong: z.boolean().optional(),
+          })
+        ),
+        answer: z.string().optional(),
+      })
+      .nullable(),
+    error: agentErrorSchema,
+  }),
   /** Say the last thing you said again, now that a limit's fire has banked. */
   retryFailure: fallible({
     input: z.object({ task: z.string() }),
