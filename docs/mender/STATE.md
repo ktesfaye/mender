@@ -3196,3 +3196,12 @@ standing green with the sizes before and after. Driven in a dev instance: a
 real `/compact` counted up to 89% at 18s against a usual 16s with the fire
 saying "packing it down", then settled at 35k to 30k, took 22s; after a restart
 the carried summary was gone from the post.
+
+### Shift-Escape goes straight to the island (2026-09-30) — done
+
+Escape walks out one step at a time and, in a yard where somebody is working,
+calls them off first. Shift-Escape skips the whole ladder: whatever board or
+window is open closes and the camera goes out to the island, and whoever was
+working keeps working. It reaches through a shell too. Driven in a dev
+instance: shift-Escape mid-turn landed on the island, and walking back in the
+turn had finished on its own, "done" rather than "you stopped it".

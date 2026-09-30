@@ -243,7 +243,9 @@ function theme() {
 
 /** Command and a number walks the rail, even from inside a terminal. It means
     nothing to the program running there, since command never reaches a pty,
-    and a session that is its own terminal is still a lantern on that rail. */
+    and a session that is its own terminal is still a lantern on that rail.
+    Shift-Escape is the way home to the island from anywhere, this included. */
 function railChord(event: KeyboardEvent): boolean {
+  if (event.key === 'Escape' && event.shiftKey) return true;
   return event.metaKey && !event.ctrlKey && !event.altKey && /^[1-9]$/.test(event.key);
 }

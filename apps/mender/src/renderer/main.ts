@@ -5154,6 +5154,17 @@ async function boot(): Promise<void> {
          * behind stopped taking clicks. */
         void picked(null);
       },
+      /* Every rung of Escape at once, minus the one that calls somebody off:
+         whatever is open closes, whoever is working keeps working, and the
+         camera goes out to the island. */
+      fled: () => {
+        if (editing?.active) editing.stop();
+        founding?.close();
+        windmill?.close();
+        settings?.ui.close();
+        if (browsingAt) closeBrowser();
+        void picked(null);
+      },
       /** A key held with command. One table says what it means. */
       ordered: (event) => {
         const hanging = open ? tasksOn(open.district).length : projects.length;
@@ -5752,6 +5763,8 @@ interface Pointing {
   hover(aim: Aim | null): void;
   picked(aim: Aim | null): void;
   escaped(): void;
+  /** Shift-Escape: straight out to the island, leaving everyone working. */
+  fled(): void;
   /** An arrow or a page key nothing nearer wanted. */
   scrolled(key: string): boolean;
   /** A key held with command. True if it meant something. */
@@ -5853,6 +5866,11 @@ function watchPointer(
      thing with a claim on it takes it. Two listeners on the same key is how an
      arrow ends up both walking a list and scrolling the board under it. */
   window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && event.shiftKey && !event.metaKey && !event.ctrlKey) {
+      event.preventDefault();
+      pointing.fled();
+      return;
+    }
     if (pointing.held(event)) return;
     if (event.key === 'Escape') {
       pointing.escaped();
