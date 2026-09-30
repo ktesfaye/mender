@@ -1,5 +1,5 @@
 import { createReadStream } from 'node:fs';
-import { readdir, stat } from 'node:fs/promises';
+import { open, readdir, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -15,13 +15,19 @@ export interface ClaudeCliSession {
   gitBranch: string | null;
   mtimeMs: number;
   size: number;
-  /** There is no stored title anywhere in the file — the CLI's own
-      `/resume` picker fabricates one live at render time. This is the
-      first real thing typed, truncated, or a plain fallback. */
+  /** What the CLI itself called it: the name Claude Code gives a session
+      as it goes and appends to the transcript, newest wins. Failing that,
+      the first real thing typed, truncated, or a plain fallback. */
   title: string;
+  /** The first real thing typed, whole, up to a paragraph. */
+  said: string | null;
 }
 
 const TITLE_CAP = 80;
+const SAID_CAP = 600;
+/** Claude Code appends its name for a session near the live end of the
+    file, again every so often, so the last stretch is where to look. */
+const TAIL_BYTES = 256 * 1024;
 const NO_TITLE = '(a past session with nothing typed yet)';
 /** How many of a project's sessions this ever offers, newest first — a
     long-lived checkout can have hundreds, and nobody is scrolling that far
@@ -68,10 +74,12 @@ export function parseClaudeSessionLines(lines: readonly string[]): {
   sessionId: string | null;
   gitBranch: string | null;
   title: string | null;
+  said: string | null;
 } {
   let sessionId: string | null = null;
   let gitBranch: string | null = null;
   let title: string | null = null;
+  let said: string | null = null;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -84,18 +92,68 @@ export function parseClaudeSessionLines(lines: readonly string[]): {
     }
     if (!sessionId && typeof obj.sessionId === 'string') sessionId = obj.sessionId;
     if (typeof obj.gitBranch === 'string' && obj.gitBranch) gitBranch = obj.gitBranch;
-    if (!title && obj.type === 'user' && obj.isSidechain !== true && isPlainObject(obj.message)) {
-      const content = (obj.message as Record<string, unknown>).content;
-      if (typeof content === 'string') {
-        const said = content.trim();
-        if (said && !said.startsWith('<')) {
-          title = said.length > TITLE_CAP ? `${said.slice(0, TITLE_CAP).trimEnd()}…` : said;
-        }
+    if (!title) {
+      const typed = typedTurn(obj);
+      if (typed) {
+        title = typed.length > TITLE_CAP ? `${typed.slice(0, TITLE_CAP).trimEnd()}…` : typed;
+        said = typed.length > SAID_CAP ? `${typed.slice(0, SAID_CAP).trimEnd()}…` : typed;
       }
     }
   }
 
-  return { sessionId, gitBranch, title };
+  return { sessionId, gitBranch, title, said };
+}
+
+/** What a person actually typed, when this line is that, and nothing when
+    it is a tool result, a subagent's turn or the CLI's own context. */
+function typedTurn(obj: Record<string, unknown>): string | null {
+  if (obj.type !== 'user' || obj.isSidechain === true || !isPlainObject(obj.message)) return null;
+  const content = obj.message.content;
+  if (typeof content !== 'string') return null;
+  const typed = unpasted(content.trim());
+  return typed && !typed.startsWith('<') && !typed.startsWith('[Request interrupted')
+    ? typed
+    : null;
+}
+
+/** A turn that opens with something pasted is still typed: what was written
+    around the paste is the person's own words, and the paste when that is
+    all there is. */
+function unpasted(typed: string): string {
+  const pasted = /<pasted_content\b[^>]*>([\s\S]*?)<\/pasted_content\b[^>]*>/g;
+  if (!typed.startsWith('<pasted_content')) return typed;
+  const around = typed.replace(pasted, ' ').trim();
+  if (around) return around;
+  return [...typed.matchAll(pasted)].map((one) => one[1]!.trim()).join('\n').trim();
+}
+
+/** The last name Claude Code gave the session among these lines. */
+export function lastAiTitle(lines: readonly string[]): string | null {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]!;
+    if (!line.includes('"ai-title"')) continue;
+    try {
+      const obj = JSON.parse(line) as Record<string, unknown>;
+      if (obj.type === 'ai-title' && typeof obj.aiTitle === 'string' && obj.aiTitle.trim()) {
+        return obj.aiTitle.trim();
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+async function readTail(path: string, size: number): Promise<string[]> {
+  const handle = await open(path, 'r');
+  try {
+    const length = Math.min(size, TAIL_BYTES);
+    const buffer = Buffer.alloc(length);
+    await handle.read(buffer, 0, length, size - length);
+    return buffer.toString('utf8').split('\n');
+  } finally {
+    await handle.close();
+  }
 }
 
 async function readSessionMeta(path: string): Promise<ReturnType<typeof parseClaudeSessionLines>> {
@@ -140,12 +198,16 @@ export async function listClaudeSessions(projectPath: string): Promise<ClaudeCli
           return null;
         }
         const meta = await readSessionMeta(path);
+        const named = await readTail(path, stats.size)
+          .then(lastAiTitle)
+          .catch(() => null);
         return {
           id: meta.sessionId ?? name.slice(0, -'.jsonl'.length),
           gitBranch: meta.gitBranch,
           mtimeMs: stats.mtimeMs,
           size: stats.size,
-          title: meta.title ?? NO_TITLE,
+          title: named ?? meta.title ?? NO_TITLE,
+          said: meta.said,
         };
       })
   );
@@ -154,4 +216,62 @@ export async function listClaudeSessions(projectPath: string): Promise<ClaudeCli
     .filter((session): session is ClaudeCliSession => session !== null)
     .sort((a, b) => b.mtimeMs - a.mtimeMs)
     .slice(0, HISTORY_CAP);
+}
+
+/** Everything in one past session that says what it came to: every typed
+    turn and the last few things the agent said back in words. */
+export interface ClaudeStory {
+  turns: number;
+  asked: string[];
+  answered: string[];
+}
+
+const ANSWERS_KEPT = 4;
+
+/** One pass over a transcript, keeping only what a person would call the
+    conversation. Lines are sifted by what they contain before any is
+    parsed, since the tool traffic in a long session runs to hundreds of
+    megabytes and none of it is wanted here. */
+export async function readClaudeStory(projectPath: string, id: string): Promise<ClaudeStory> {
+  const path = join(
+    homedir(),
+    '.claude',
+    'projects',
+    claudeProjectDirName(projectPath),
+    `${id}.jsonl`
+  );
+  const asked: string[] = [];
+  const answered: string[] = [];
+  const stream = createReadStream(path, { encoding: 'utf8' });
+  const rl = createInterface({ input: stream, crlfDelay: Infinity });
+  for await (const line of rl) {
+    const user = line.includes('"role":"user","content":"');
+    const agent = !user && line.includes('"type":"assistant"') && line.includes('"type":"text"');
+    if (!user && !agent) continue;
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(line) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    if (user) {
+      const typed = typedTurn(obj);
+      if (typed) asked.push(typed);
+      continue;
+    }
+    if (obj.isSidechain === true || !isPlainObject(obj.message)) continue;
+    const content = obj.message.content;
+    if (!Array.isArray(content)) continue;
+    const words = content
+      .filter((part): part is { type: 'text'; text: string } =>
+        isPlainObject(part) && part.type === 'text' && typeof part.text === 'string'
+      )
+      .map((part) => part.text.trim())
+      .filter(Boolean)
+      .join('\n');
+    if (!words) continue;
+    answered.push(words);
+    if (answered.length > ANSWERS_KEPT) answered.shift();
+  }
+  return { turns: asked.length, asked, answered };
 }

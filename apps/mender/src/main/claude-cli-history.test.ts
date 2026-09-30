@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { claudeProjectDirName, parseClaudeSessionLines } from './claude-cli-history';
+import { claudeProjectDirName, parseClaudeSessionLines, lastAiTitle } from './claude-cli-history';
 
 describe('claudeProjectDirName', () => {
   it('folds every path separator to a dash, matching a real checkout on disk', () => {
@@ -38,6 +38,7 @@ describe('parseClaudeSessionLines', () => {
       sessionId: 'abc-123',
       gitBranch: 'main',
       title: 'fix the thing that is broken',
+      said: 'fix the thing that is broken',
     });
   });
 
@@ -105,11 +106,17 @@ describe('parseClaudeSessionLines', () => {
   });
 
   it('returns all-null on an empty or fully-unparseable file', () => {
-    expect(parseClaudeSessionLines([])).toEqual({ sessionId: null, gitBranch: null, title: null });
-    expect(parseClaudeSessionLines(['not json', '{broken'])).toEqual({
-      sessionId: null,
-      gitBranch: null,
-      title: null,
-    });
+    const none = { sessionId: null, gitBranch: null, title: null, said: null };
+    expect(parseClaudeSessionLines([])).toEqual(none);
+    expect(parseClaudeSessionLines(['not json', '{broken'])).toEqual(none);
+  });
+
+  it('takes the last name Claude Code gave the session', () => {
+    const lines = [
+      JSON.stringify({ type: 'ai-title', aiTitle: 'Early guess' }),
+      '{"type":"user","message":{"role":"user","content":"hi"}}',
+      JSON.stringify({ type: 'ai-title', aiTitle: 'Session resume picker' }),
+    ];
+    expect(lastAiTitle(lines)).toBe('Session resume picker');
   });
 });

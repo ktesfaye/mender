@@ -572,8 +572,16 @@ hangs a timber board over the village on two cords, the one place in the app
 with a box you write in rather than the line: what it is for, and under it
 three tiles that are each on or off and go together in any mix. In its own
 isolated workspace cuts a worktree on its own branch instead of the project's
-folder. Start from a past session lists the Claude Code conversations already
-had in that folder and picks the chosen one back up. Open in a terminal makes
+folder. Start from a past session turns the sign over to a wider board
+of the Claude Code conversations already had in that folder: a line to find
+one by, the list down the left, each called what Claude Code itself called
+it with a line under it saying what it did, and the one under the arrow read
+out on the right, what it did, the first thing said in it, its branch, when
+it was last worked in and how many turns it ran. What it did is not in the
+transcript: a small model reads each one once, the first time the board is
+opened on it, and it is kept, so after that it is there straight away.
+Resume picks the chosen one back up with whatever the tiles said, and back
+turns the sign over again. Open in a terminal makes
 the session nothing but a real login shell in the checkout, drawn the way
 Terminal.app draws it, SF Mono on its Basic dark ink, with whatever was
 written run as its first command, or `claude --resume` when a past session was

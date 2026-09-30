@@ -14,6 +14,7 @@ import { cell, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
 import type { AppSettings } from './app-settings';
 import { listClaudeSessions, type ClaudeCliSession } from './claude-cli-history';
+import { createPastSessions, type PastTold } from './past-sessions';
 import type { Project, Projects } from './projects';
 import type { MenderRuntimes } from './runtimes';
 
@@ -165,6 +166,8 @@ export interface Tasks {
       checkout path, for the naming step to offer as a thing to pick up
       instead of starting blank. */
   claudeHistory(project: string): Promise<ClaudeCliSession[]>;
+  /** What one of those came to, in turns and in a sentence or two. */
+  claudeTold(project: string, id: string, mtimeMs: number): Promise<PastTold>;
   /** The script that failed setting this task's worktree up, if any is still
       unresolved — read off the workspace registry's own record, never
       guessed. */
@@ -240,6 +243,7 @@ export function createTasks(
 ): Tasks {
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'tasks.json') });
   const historyStore = createJsonFileKeyValueStore({ path: join(userDataDir(), 'history.json') });
+  const past = createPastSessions(runtimes.env);
 
   const allHistory = async (): Promise<HistoryEntry[]> => {
     const loaded = await historyStore.get(HISTORY_KEY);
@@ -608,7 +612,15 @@ export function createTasks(
     async claudeHistory(project) {
       const found = (await projects.list()).find((candidate) => candidate.id === project);
       if (!found) return [];
-      return await listClaudeSessions(found.path);
+      const sessions = await listClaudeSessions(found.path);
+      past.warm(found.path, sessions);
+      return sessions;
+    },
+
+    async claudeTold(project, id, mtimeMs) {
+      const found = (await projects.list()).find((candidate) => candidate.id === project);
+      if (!found) return { turns: 0, did: null };
+      return await past.told(found.path, id, mtimeMs);
     },
 
     async setupFailure(id) {

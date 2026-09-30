@@ -79,6 +79,7 @@ export const claudeCliSessionSchema = z.object({
   mtimeMs: z.number(),
   size: z.number(),
   title: z.string(),
+  said: z.string().nullable(),
 });
 
 export type ClaudeCliSession = z.infer<typeof claudeCliSessionSchema>;
@@ -168,6 +169,12 @@ export const tasksContract = defineContract({
   claudeHistory: procedure({
     input: z.object({ project: z.string() }),
     output: z.array(claudeCliSessionSchema),
+  }),
+  /** What one of those past sessions came to: how many turns it ran and
+      what it did, in a sentence or two, worked out once and kept. */
+  claudeTold: procedure({
+    input: z.object({ project: z.string(), id: z.string(), mtimeMs: z.number() }),
+    output: z.object({ turns: z.number(), did: z.string().nullable() }),
   }),
   /** The script that failed setting this task's worktree up, if any is
       still unresolved. */

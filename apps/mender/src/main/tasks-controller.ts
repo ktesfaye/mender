@@ -16,6 +16,7 @@ export function createTasksController(tasks: Tasks): Controller {
     dropWorkspace: ({ id }) => tasks.dropWorkspace(id),
     branches: ({ project }) => tasks.branches(project),
     claudeHistory: ({ project }) => tasks.claudeHistory(project),
+    claudeTold: ({ project, id, mtimeMs }) => tasks.claudeTold(project, id, mtimeMs),
     setupFailure: ({ id }) => tasks.setupFailure(id),
     retrySetup: ({ id }) => tasks.retrySetup(id),
     linkPull: ({ id, url }) => tasks.linkPull(id, url),

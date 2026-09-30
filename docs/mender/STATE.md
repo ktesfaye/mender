@@ -3023,3 +3023,18 @@ its tiles; a terminal session ran its first command in the project folder;
 walking back into the project reopened it; isolated plus past plus terminal
 cut a worktree and resumed the real Claude session in it. A plain
 conversation started from the sign was not driven.
+
+### A past session says what it did (2026-09-29) — done
+
+Starting from a past session is now design 3a: its own wider signboard with a
+search line, the sessions down the left and the chosen one read out on the
+right. Each is called by the name Claude Code itself gives it rather than the
+first line typed, and carries a sentence or two on what it did, written once
+per session by a small model over the whole transcript and kept on this
+machine, then worked out again only once the session has moved on. Search
+covers the name, the first thing said, the branch and what it did. Driven in
+a dev instance on a scratch repo with nine real transcripts copied in: the
+board opened from the tile, every row filled in with what it did, arrows and
+search moved the preview, back returned to the sign, and resume picked a
+conversation back up with its history on the board.
+

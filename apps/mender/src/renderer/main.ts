@@ -3617,6 +3617,11 @@ async function boot(): Promise<void> {
           client.tasks
             .claudeHistory({ project: project.id }, { timeoutMs: 5000 })
             .then((found) => found),
+        told: (session) =>
+          client.tasks.claudeTold(
+            { project: project.id, id: session.id, mtimeMs: session.mtimeMs },
+            { timeoutMs: 0 }
+          ),
         submit: (ask) => {
           sign = null;
           if (!naming) return;

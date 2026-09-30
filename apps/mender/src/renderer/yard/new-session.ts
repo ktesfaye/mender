@@ -1,3 +1,4 @@
+import { openPastSession, type PastSession, type PastTold } from './past-session';
 import { cutOf, KIT_NAMES, sprite } from './sprite';
 
 /**
@@ -8,15 +9,13 @@ import { cutOf, KIT_NAMES, sprite } from './sprite';
  * Three things can be said about where it starts and nothing else: in its
  * own isolated workspace rather than the project's folder, from a past
  * session rather than blank, and in a plain terminal rather than to the
- * agent. Each is a tile that is on or off, and any of them go together.
+ * agent. Isolated and terminal are tiles that are on or off and go
+ * together; the past-session tile turns the sign over to the board a past
+ * one is picked from, and resuming there starts it with whatever the other
+ * two say.
  */
 
-export interface PastSession {
-  id: string;
-  title: string;
-  gitBranch: string | null;
-  mtimeMs: number;
-}
+export type { PastSession };
 
 export interface NewSessionAsk {
   text: string;
@@ -32,9 +31,10 @@ export interface NewSessionHooks {
   hand: string;
   /** The folder it works in when it is not isolated. */
   among?: string;
-  /** Start with the past-session tile already on. */
+  /** Open straight onto the board a past session is picked from. */
   past?: boolean;
   history(): Promise<PastSession[]>;
+  told(session: PastSession): Promise<PastTold>;
   submit(ask: NewSessionAsk): void;
   cancel(): void;
   revive(): void;
@@ -52,9 +52,6 @@ const OFF = { bg: '#3a2712', fg: '#d9c49a', bd: '#3a2712', sh: 'none' };
 export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
   let isolated = false;
   let terminal = false;
-  let pastOn = Boolean(hooks.past);
-  let sessions: PastSession[] | null = null;
-  let chosen: PastSession | null = null;
   let revivable: string | null = null;
   let closed = false;
 
@@ -182,20 +179,10 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
     isolated = !isolated;
   });
   const pastTile = tile(KIT_NAMES.lanternOn, 40, 'start from a past session', () => {
-    pastOn = !pastOn;
-    if (pastOn) void readHistory();
+    openPast();
   });
   const termTile = tile(KIT_NAMES.anvil, 32, 'open in a terminal', () => {
     terminal = !terminal;
-  });
-
-  const picker = el('div', {
-    display: 'none',
-    flexDirection: 'column',
-    background: '#1d1811',
-    border: '2px solid #3a2712',
-    maxHeight: '220px',
-    overflowY: 'auto',
   });
 
   const summary = el('span', {
@@ -203,7 +190,7 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
     fontSize: '12px',
     color: '#bfa476',
   });
-  body.append(asked, tiles, picker, summary);
+  body.append(asked, tiles, summary);
 
   const foot = el('div', {
     display: 'flex',
@@ -247,76 +234,27 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
   hang.append(cords, board);
   scrim.append(hang);
 
-  const readHistory = async (): Promise<void> => {
-    if (sessions) return;
-    const found = await hooks.history().catch(() => []);
-    if (closed) return;
-    sessions = found;
-    chosen ??= found[0] ?? null;
-    paint();
-  };
-
-  const paintPicker = (): void => {
-    picker.replaceChildren();
-    picker.style.display = pastOn ? 'flex' : 'none';
-    if (!pastOn) return;
-    const quiet = (words: string) =>
-      picker.append(
-        text('div', words, { padding: '10px 14px', fontSize: '14px', color: '#bfa476' })
-      );
-    if (sessions === null) return quiet('reading its own history…');
-    if (!sessions.length) return quiet('nothing here yet.');
-    for (const session of sessions) {
-      const mine = chosen?.id === session.id;
-      const row = el('div', {
-        display: 'flex',
-        gap: '12px',
-        alignItems: 'baseline',
-        padding: '9px 14px',
-        cursor: 'pointer',
-        background: mine ? '#3a2712' : 'transparent',
-        boxShadow: mine ? 'inset 3px 0 0 #e0b56a' : 'none',
-        borderBottom: '2px solid #2a1d10',
-      });
-      row.append(
-        text('span', session.title, {
-          fontSize: '14px',
-          flex: '1',
-          minWidth: '0',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          color: mine ? '#f4e3c0' : '#dcc8a0',
-        }),
-        text('span', [session.gitBranch, ago(session.mtimeMs)].filter(Boolean).join(' · '), {
-          fontFamily: "'Courier Prime', monospace",
-          fontSize: '11px',
-          color: '#bfa476',
-          whiteSpace: 'nowrap',
-        })
-      );
-      row.addEventListener('pointerenter', () => {
-        if (chosen?.id !== session.id) row.style.background = '#2a1d10';
-      });
-      row.addEventListener('pointerleave', () => {
-        if (chosen?.id !== session.id) row.style.background = 'transparent';
-      });
-      row.addEventListener('click', () => {
-        chosen = session;
-        paint();
-      });
-      row.addEventListener('dblclick', () => {
-        chosen = session;
-        submit();
-      });
-      picker.append(row);
-    }
+  /** The sign turns over to the past-session board and back again. */
+  let pastBoard: { close(): void } | null = null;
+  const openPast = (): void => {
+    scrim.style.display = 'none';
+    pastBoard = openPastSession({
+      history: hooks.history,
+      told: hooks.told,
+      resume: (session) => submit(session),
+      back: () => {
+        pastBoard = null;
+        if (closed) return;
+        scrim.style.display = '';
+        box.focus();
+      },
+    });
   };
 
   const paint = (): void => {
     for (const [face, on] of [
       [isoTile, isolated],
-      [pastTile, pastOn],
+      [pastTile, false],
       [termTile, terminal],
     ] as const) {
       const look = on ? ON : OFF;
@@ -327,16 +265,12 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
     }
     const folder = hooks.among ?? "the project's own folder";
     const home = isolated ? 'its own isolated workspace' : folder;
-    box.placeholder = pastOn
-      ? terminal
-        ? `pick one below and it picks up in a plain terminal, in ${home}.`
-        : `pick one below and it picks up where it left off. anything written here is said once it's back.`
-      : terminal
+    box.placeholder = terminal
         ? `a plain terminal in ${home}. type a command, or leave it empty.`
         : isolated
           ? "say what you want doing. it works in its own isolated workspace, out of everyone's way."
           : `say what you want doing. it works right in ${folder}, alongside anyone else in there.`;
-    if (revivable && !pastOn && !terminal && !isolated) {
+    if (revivable && !terminal && !isolated) {
       label.textContent = `put ${revivable} back up?`;
       label.style.color = '#e0b56a';
       label.style.cursor = 'pointer';
@@ -347,23 +281,19 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
     }
     summary.textContent = [
       isolated ? 'isolated workspace' : (hooks.among ?? 'project folder'),
-      pastOn ? (chosen ? `from ${chosen.title}` : 'from a past session') : 'blank start',
+      'blank start',
       terminal ? 'terminal' : hooks.hand,
     ].join(' · ');
     go.textContent = terminal ? 'open terminal' : `put ${hooks.hand} to work`;
-    const ready = !pastOn || chosen !== null;
-    go.style.opacity = ready ? '1' : '.5';
-    go.style.cursor = ready ? 'pointer' : 'default';
-    paintPicker();
   };
 
-  const submit = (): void => {
-    if (closed || (pastOn && !chosen)) return;
+  const submit = (past: PastSession | null = null): void => {
+    if (closed) return;
     const ask: NewSessionAsk = {
       text: box.value.trim(),
       isolated,
       terminal,
-      past: pastOn ? chosen : null,
+      past,
     };
     close();
     hooks.submit(ask);
@@ -374,7 +304,7 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
     hooks.cancel();
   };
 
-  go.addEventListener('click', submit);
+  go.addEventListener('click', () => submit());
   cancel.addEventListener('click', dismiss);
   label.addEventListener('click', () => {
     if (label.style.cursor !== 'pointer') return;
@@ -404,13 +334,15 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
 
   const close = (): void => {
     closed = true;
+    pastBoard?.close();
+    pastBoard = null;
     scrim.remove();
   };
 
   paint();
-  if (pastOn) void readHistory();
   document.body.append(scrim);
   box.focus();
+  if (hooks.past) openPast();
 
   return {
     revivable(title) {
@@ -431,14 +363,4 @@ function text(tag: string, words: string, style: Partial<CSSStyleDeclaration>): 
   const made = el(tag, style);
   made.textContent = words;
   return made;
-}
-
-function ago(ms: number): string {
-  const minutes = Math.round((Date.now() - ms) / 60000);
-  if (minutes < 60) return minutes <= 1 ? 'just now' : `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  if (days < 14) return `${days}d ago`;
-  return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
