@@ -763,7 +763,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       'transform-origin:top left',
       'white-space:pre-wrap',
     ].join(';');
-    el.textContent = text;
+    el.textContent = named(text);
     stage.appendChild(el);
     /* The line's own padding is none and the card's is twelve, so the words
        start twelve up and fourteen left of where they will read from. */
@@ -1524,7 +1524,7 @@ function pinned(note: Note, where: { left: number; top: number; width: number })
   card.appendChild(meta);
   const body = document.createElement('div');
   body.dataset.note = 'said';
-  body.textContent = note.said;
+  body.textContent = named(note.said);
   card.appendChild(body);
   handed(card, note, '#b3651f');
   return card;
@@ -1544,6 +1544,17 @@ const CARD = [
   /* However long a line runs without a space, it wraps on the card. */
   'overflow-wrap:anywhere',
 ].join(';');
+
+/**
+ * What was said, as the post reads it: a dropped file is called by its name
+ * rather than by the whole way to it. Only the post is shortened; what went
+ * to the agent, and what pressing the note writes back, keep the full path.
+ */
+export function named(said: string): string {
+  return said
+    .replace(/"(?:~|\/)[^"\n]*\/([^"\n/]+)"/g, '"$1"')
+    .replace(/(^|\s)(?:~|\/)\S*\/([^\s/]+)(?=\s|$)/g, '$1$2');
+}
 
 /** The pictures that went with a note, said under it since the post never draws them. */
 function handed(on: HTMLElement, note: Note, tone?: string): void {
@@ -1567,7 +1578,7 @@ function weathered(note: Note): HTMLElement {
   const body = document.createElement('span');
   body.style.cssText =
     "font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
-  body.textContent = note.said;
+  body.textContent = named(note.said);
   it.appendChild(body);
   handed(it, note);
   return it;
