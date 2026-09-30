@@ -5161,6 +5161,11 @@ async function boot(): Promise<void> {
         const hanging = open ? tasksOn(open.district).length : projects.length;
         const meant = chordFor(event.key, standing(), hanging, keybindings);
         if (!meant) return false;
+        /* The chord is "give me a fresh session", and standing in one nobody
+           has said anything to yet already is that. Turning the hook over to
+           the other ways of starting one is the hook's second press, not the
+           key's: those live on command-N and a right-click. */
+        if (meant === 'new' && untouched()) return true;
         go(meant);
         return true;
       },
