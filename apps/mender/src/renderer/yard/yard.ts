@@ -1827,14 +1827,14 @@ function thinking(
       /* Trouble keeps its colour as it goes into the history, dimmed with the
        rest, so scrolling back you can still see where it went wrong. */
       const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
-      const fade = far > 2 ? 0.46 : 0.62;
+      const fade = far > 2 ? 0.8 : 0.9;
       items.prepend(
         keyed(
           thought(
             one,
             far > 2 ? 15 : 16,
             trouble
-              ? `color-mix(in srgb, ${trouble.ink} ${Math.round(fade * 140)}%, transparent)`
+              ? `color-mix(in srgb, ${trouble.ink} ${Math.round(fade * 100)}%, transparent)`
               : `rgba(244,227,192,${fade})`,
             trouble?.head,
             keepCode(does),
