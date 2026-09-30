@@ -10,7 +10,7 @@
  * said and returns a value.
  */
 
-import type { Ask, Failure, Glance, Kit, Mood, Told } from '@shared/agents';
+import type { Ask, Errand, Failure, Glance, Kit, Mood, Told } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { answersFor } from '../board/work';
@@ -523,13 +523,18 @@ function madePick(one: NonNullable<Told['made']>[number]): string {
  * down, so the same errand is the same colour every time you look, which is
  * the whole point of it: tint is identity, never status.
  */
-function handOf(errand: { id: string; errand: string; running: boolean; since?: number }): Hand {
+function handOf(errand: Errand): Hand {
   return {
     id: errand.id,
     errand: shortOf(errand.errand),
+    said: errand.errand,
     where: errand.running ? 'out' : 'in-light',
     ...(errand.since ? { gone: agoOf(Date.now() - errand.since) } : {}),
     tint: TINTS[hashOf(errand.errand) % TINTS.length] ?? TINTS[0]!,
+    ...(errand.call ? { call: errand.call } : {}),
+    ...(errand.background ? { background: true } : {}),
+    ...(errand.wrong ? { wrong: true } : {}),
+    steps: stepsOf(errand.steps ?? []),
   };
 }
 

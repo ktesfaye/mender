@@ -360,6 +360,27 @@ export class SessionCell {
     }
   }
 
+  /**
+   * Stop one subagent without cancelling the turn it belongs to. Claude's
+   * adapter takes `_session/async_task/stop` for its background tasks; the
+   * patched one also takes a subagent, by the tool call that sent it.
+   */
+  async stopSubagent(
+    toolCallId: string
+  ): Promise<Result<{ stopped: boolean }, AcpCancelTurnError>> {
+    const extMethod = this.deps.agent.extMethod;
+    if (!extMethod) return ok({ stopped: false });
+    try {
+      const response = await extMethod.call(this.deps.agent, '_session/async_task/stop', {
+        sessionId: this.acpSessionId,
+        asyncTaskId: toolCallId,
+      });
+      return ok({ stopped: response.stopped === true });
+    } catch (e) {
+      return acpErr.cancelFailed(toSerializedError(e));
+    }
+  }
+
   async closeSession(): Promise<void> {
     if (!this.deps.agent.closeSession) return;
     await this.deps.agent.closeSession({ sessionId: this.acpSessionId });

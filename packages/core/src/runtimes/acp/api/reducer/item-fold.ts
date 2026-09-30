@@ -319,21 +319,31 @@ function upsertSpecialEvent(
 
   let next: ToolCallItem;
   switch (event.kind) {
-    case 'subagent':
+    case 'subagent': {
+      /* A bare status update (a subagent stopped from outside) carries no
+         title or input of its own, so what the launch said is kept. */
+      const prior =
+        event.operation === 'update' && existing?.kind === 'spawn-subagent-tool-call'
+          ? existing
+          : undefined;
+      const inputSummary = event.inputSummary ?? prior?.inputSummary;
+      const background = event.background ?? prior?.background;
+      const agentId = event.agentId ?? prior?.agentId;
       next = {
         kind: 'spawn-subagent-tool-call',
         id,
         seq,
         toolCallId: event.toolCallId,
-        title: event.title,
-        name: event.title,
+        title: prior && event.title === 'Agent' ? prior.title : event.title,
+        name: prior && event.title === 'Agent' ? prior.name : event.title,
         status: mapped,
-        ...(event.inputSummary !== undefined ? { inputSummary: event.inputSummary } : {}),
-        ...(event.background !== undefined ? { background: event.background } : {}),
-        ...(event.agentId !== undefined ? { agentId: event.agentId } : {}),
+        ...(inputSummary !== undefined ? { inputSummary } : {}),
+        ...(background !== undefined ? { background } : {}),
+        ...(agentId !== undefined ? { agentId } : {}),
         ...(parentToolCallId !== undefined ? { parentToolCallId } : {}),
       };
       break;
+    }
     case 'search':
       next = {
         kind: 'search-tool-call',

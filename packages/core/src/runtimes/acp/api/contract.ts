@@ -39,6 +39,7 @@ import {
 import {
   acpStartInputSchema,
   cancelTurnCommandSchema,
+  stopSubagentCommandSchema,
   changeQueuePromptOrderCommandSchema,
   deleteAttachmentCommandSchema,
   deleteQueuedPromptCommandSchema,
@@ -105,6 +106,11 @@ export const acpApiContract = defineContract({
   }),
   cancelTurn: fallible({
     input: cancelTurnCommandSchema,
+    error: acpCancelTurnErrorSchema,
+  }),
+  stopSubagent: fallible({
+    input: stopSubagentCommandSchema,
+    data: z.object({ stopped: z.boolean() }),
     error: acpCancelTurnErrorSchema,
   }),
   setOption: fallible({

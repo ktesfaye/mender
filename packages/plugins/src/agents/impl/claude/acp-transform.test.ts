@@ -327,6 +327,13 @@ describe('enrichClaudeUpdate', () => {
 });
 
 describe('parseTaskNotification', () => {
+  it('reads a killed or stopped subagent as over, not still running', () => {
+    const said = (status: string) =>
+      parseTaskNotification(
+        `<task-notification><task-id>a</task-id><tool-use-id>t</tool-use-id><status>${status}</status></task-notification>`
+      )?.status;
+    expect([said('killed'), said('stopped')]).toEqual(['failed', 'failed']);
+  });
   it('extracts the stable notification fields without parsing the result body', () => {
     expect(
       parseTaskNotification(

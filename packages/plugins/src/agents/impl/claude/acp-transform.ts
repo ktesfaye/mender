@@ -241,6 +241,8 @@ function toNotificationStatus(
     case 'completed':
       return 'completed';
     case 'failed':
+    case 'killed':
+    case 'stopped':
       return 'failed';
     case 'pending':
       return 'pending';

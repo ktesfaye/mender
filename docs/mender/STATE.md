@@ -285,6 +285,20 @@ forty characters every time, pushing the part you wanted off the end of the
 line. One thing about it is not fixed: a restart loses the fold, because the
 replay the agent sends back does not carry what happened inside a subagent.
 
+When the yard took over from the board, somebody sent off went back to being a
+figure standing on the ground with nothing behind it: no way to see what they
+were doing and no way to stop one without stopping everything. Pressing one
+now walks up to them, on a board laid over the yard like anything else: what
+they were sent for, whether they are still out, and every step they have taken
+out there, live. While they are out, "call them back" stops that one alone, in
+two presses, whether it was sent to wait for or sent off on its own; the
+session and anybody else it sent carry on, and the session hears that this one
+came back without an answer. Claude's adapter stops a background shell that
+way but refused to stop a subagent, so it is patched to, and to say so at once
+rather than on the session's next turn. A helper stopped from anywhere used to
+stand out in the dark forever, because a stopped or killed one was read as
+still working; it comes home now. Driven in the running app, both kinds.
+
 Two things are cut on purpose. A resource link never arrives: neither CLI ever
 sends one back, both of them turn a file reference into ordinary writing on the
 way out, and the one place a link does appear is inside a tool call that already

@@ -74,6 +74,12 @@ export function createAcpProcedures(runtime: AcpRuntime) {
     cancelTurn(input: { conversationId: string }): Promise<Result<void, AcpCancelTurnError>> {
       return runtime.cancelTurn(input.conversationId);
     },
+    stopSubagent(input: {
+      conversationId: string;
+      toolCallId: string;
+    }): Promise<Result<{ stopped: boolean }, AcpCancelTurnError>> {
+      return runtime.stopSubagent(input.conversationId, input.toolCallId);
+    },
     async setOption(input: {
       conversationId: string;
       key: 'model' | 'mode' | 'effort' | 'collaborationMode';

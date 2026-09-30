@@ -45,6 +45,11 @@ export const changeQueuePromptOrderCommandSchema = z.object({
   ids: z.array(z.string()),
 });
 export const cancelTurnCommandSchema = z.object({ conversationId: z.string() });
+/** One subagent, by the provider tool call that sent it, stopped without the turn. */
+export const stopSubagentCommandSchema = z.object({
+  conversationId: z.string(),
+  toolCallId: z.string(),
+});
 export const setOptionCommandSchema = z.object({
   conversationId: z.string(),
   key: z.enum(['model', 'mode', 'effort', 'collaborationMode']),

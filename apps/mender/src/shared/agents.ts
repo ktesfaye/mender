@@ -264,6 +264,14 @@ export const errandSchema = z.object({
   running: z.boolean(),
   /** When they went, so the yard knows how far out to stand them. */
   since: z.number().optional(),
+  /** The tool call that sent them, which is what calling them back names. */
+  call: z.string().optional(),
+  /** Sent off to work on their own while the session carried on. */
+  background: z.boolean().optional(),
+  /** Came back hurt, or was called back. */
+  wrong: z.boolean().optional(),
+  /** Everything they have done out there, oldest first, the same as a session's. */
+  steps: z.array(deedSchema).default([]),
 });
 export type Errand = z.infer<typeof errandSchema>;
 
@@ -665,6 +673,12 @@ export const agentsContract = defineContract({
   hush: fallible({
     input: z.object({ task: z.string() }),
     data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** Call one of the helpers it sent out back, without stopping it. */
+  recall: fallible({
+    input: z.object({ task: z.string(), call: z.string() }),
+    data: z.object({ stopped: z.boolean() }),
     error: agentErrorSchema,
   }),
   /** Say the last thing you said again, now that a limit's fire has banked. */

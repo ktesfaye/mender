@@ -930,7 +930,9 @@ export function makeYard(layer: Layer, does: Doings): Standing {
 
   window.addEventListener('contextmenu', (event) => {
     unslab();
-    const sign = (event.target as HTMLElement | null)?.closest?.<HTMLElement>('.sign[data-workspace]');
+    const sign = (event.target as HTMLElement | null)?.closest?.<HTMLElement>(
+      '.sign[data-workspace]'
+    );
     if (sign && showing()) {
       event.preventDefault();
       workspaceSlab(sign, event);
@@ -2335,7 +2337,7 @@ function made(
   if (steps_.length || hands.length) region('did', at, HEAD.label + y, floor);
 
   if (!steps_.length) {
-    if (hands.length) ground(root, at, yard, floor);
+    if (hands.length) ground(root, at, yard, floor, does);
     return;
   }
   if (now) {
@@ -2452,7 +2454,7 @@ function made(
      already said by the light of the whole screen and by the lantern on the
      rail, so a framed patch of dirt with nobody in it is a box for its own
      sake. */
-  if (hands.length) ground(root, at, yard, floor);
+  if (hands.length) ground(root, at, yard, floor, does);
 }
 
 /** Where the steps were left scrolled to, for a session somebody scrolled up in. */
@@ -2719,7 +2721,8 @@ function ground(
   root: HTMLElement,
   at: { x: number; wide: number },
   yard: Yard,
-  floor: number
+  floor: number,
+  does: Doings
 ): void {
   const hands = yard.session?.agents ?? [];
   const top = floor - YARD_BOX.tall;
@@ -2779,7 +2782,7 @@ function ground(
   if (burning === 'embers') fire.style.filter = 'brightness(.45) saturate(.8)';
   patch.appendChild(fire);
 
-  for (const [i, hand] of hands.entries()) patch.appendChild(standing(hand, i, at.wide));
+  for (const [i, hand] of hands.entries()) patch.appendChild(standing(hand, i, at.wide, does));
 
   const here = yard.session;
   if (here) {
@@ -2802,8 +2805,13 @@ const HEAD_ROW =
 /** How much light each way of burning throws. */
 const FIRELIGHT: Record<Fire, number> = { lit: 0.34, banked: 0.2, embers: 0.12, out: 0.04 };
 
-/** One agent, standing where their state puts them. */
-function standing(hand: Hand, i: number, wide: number): HTMLElement {
+/**
+ * One agent, standing where their state puts them.
+ *
+ * Pressing one walks up to them: what they were sent for, everything they
+ * have done out there, and, while they are still out, calling them back.
+ */
+function standing(hand: Hand, i: number, wide: number, does: Doings): HTMLElement {
   const out = hand.where === 'out';
   /* In the light they cluster round the fire; out in the dark they are off to
      the side, and further off the longer they have been gone. */
@@ -2817,6 +2825,10 @@ function standing(hand: Hand, i: number, wide: number): HTMLElement {
     : (near[i % near.length] ?? near[0]!);
 
   const it = box({ left: spot.left, top: spot.top, width: 28, height: 54 });
+  it.style.cursor = 'pointer';
+  it.style.pointerEvents = 'auto';
+  it.addEventListener('mousedown', (event) => event.preventDefault());
+  it.addEventListener('click', () => does.press(`helper:${hand.id}`));
   const figure = folk(out ? 'back' : 'front', { left: 0, top: 0 });
   figure.style.filter = out ? 'brightness(.5) saturate(.6)' : 'brightness(.95)';
   if (out) figure.style.animation = 'yard-step 800ms steps(2,end) infinite';
@@ -2839,8 +2851,18 @@ function standing(hand: Hand, i: number, wide: number): HTMLElement {
         'border-radius:50%;background:#ff8a4a;animation:yard-blink 700ms steps(1,end) infinite'
       )
     );
-    const name = box({ left: -66, top: 52 });
-    name.appendChild(exact(`${hand.errand} · out ${hand.gone ?? ''}`.trim(), 11, hand.tint));
+    /* Named from their right-hand edge, since out in the dark is the right
+       of the patch and a name written rightward runs off it. */
+    const name = box(
+      { right: 0, top: 52, width: Math.min(220, spot.left + 20) },
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right'
+    );
+    const said = pressing(`${hand.errand} · out ${hand.gone ?? ''}`.trim(), () =>
+      does.press(`helper:${hand.id}`)
+    );
+    said.style.cssText += "font-family:'Courier Prime',monospace;font-size:11px";
+    said.addEventListener('click', (event) => event.stopPropagation());
+    name.appendChild(said);
     it.appendChild(name);
   }
   return it;

@@ -289,4 +289,14 @@ export interface Hand {
   gone?: string;
   /** Their colour for the life of the session. Identity, never status. */
   tint: string;
+  /** The tool call that sent them, which calling them back names. */
+  call?: string;
+  /** Working on their own while the session carries on without them. */
+  background?: boolean;
+  /** Came back hurt, or was called back. */
+  wrong?: boolean;
+  /** What they were sent to do, in full. */
+  said: string;
+  /** Everything they have done out there, read the same way a session's is. */
+  steps: Step[];
 }

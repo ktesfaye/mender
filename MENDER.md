@@ -190,6 +190,15 @@ checkout's own board. Under all of that is the ground itself, with whoever it
 sent out standing in the firelight with an answer or off in the dark still
 working.
 
+**Whoever it sent out can be walked up to, and called back.** Pressing one
+on the ground lays their own board over the yard: what they were sent for,
+whether they are still out, and every step they have taken out there,
+following as they take more. While they are out, "call them back" stops that
+one and nobody else, in the same two presses anything irreversible takes: the
+session that sent them keeps going, and so does anybody else it sent, and it
+hears that this one came back without an answer. They come home at once,
+whether they were sent to be waited for or sent off on their own.
+
 **Everything but the middle can be put away, and every rule can be moved.**
 Right-clicking what you asked, the changelog, what it made, the plan or what it did offers
 to put it away; right-clicking anywhere in the yard offers back whatever has

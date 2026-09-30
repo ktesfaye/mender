@@ -106,9 +106,9 @@ export const SAMPLE: Yard = {
     carrying: [],
     pinnedNotes: [],
     agents: [
-      { id: 'a1', errand: 'hours', where: 'in-light', tint: '#c6a740' },
-      { id: 'a2', errand: 'walking', where: 'in-light', tint: '#9ca44f' },
-      { id: 'a3', errand: 'photos', where: 'out', gone: '3m', tint: '#d18b2c' },
+      { id: 'a1', errand: 'hours', said: 'hours', where: 'in-light', tint: '#c6a740', steps: [] },
+      { id: 'a2', errand: 'walking', said: 'walking', where: 'in-light', tint: '#9ca44f', steps: [] },
+      { id: 'a3', errand: 'photos', said: 'photos', where: 'out', gone: '3m', tint: '#d18b2c', steps: [] },
     ],
   },
   rail: [

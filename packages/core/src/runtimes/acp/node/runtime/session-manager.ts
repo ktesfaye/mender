@@ -404,6 +404,14 @@ export class SessionManager {
     return record ? record.cell.cancel() : ok();
   }
 
+  async stopSubagent(
+    conversationId: string,
+    toolCallId: string
+  ): Promise<Result<{ stopped: boolean }, AcpCancelTurnError>> {
+    const record = this.readyRecord(conversationId);
+    return record ? record.cell.stopSubagent(toolCallId) : ok({ stopped: false });
+  }
+
   async stop(conversationId: string, cause = 'user'): Promise<Result<void, never>> {
     await this.evict(conversationId, { cause, intent: 'suspend' });
     const entry = this.retained.get(conversationId);

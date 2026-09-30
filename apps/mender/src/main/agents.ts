@@ -171,6 +171,11 @@ export interface Agents {
   /** Take back something said while it was busy, before it is heard. */
   unsay(task: string, id: string): Promise<Told>;
   hush(task: string): Promise<Told>;
+  /** Stop one helper it sent out, leaving the session and the turn alone. */
+  recall(
+    task: string,
+    call: string
+  ): Promise<{ success: true; data: { stopped: boolean } } | { success: false; error: TellError }>;
   /** Say the last thing said to this session again. */
   retryFailure(task: string): Promise<Told>;
   /** Schedule the last thing said to go out again on its own, once a typed
@@ -1109,6 +1114,25 @@ export function createAgents(
       return done.success ? { success: true, data: undefined } : refused(whatItSaid(done.error));
     },
 
+    async recall(task, call) {
+      await loaded;
+      const conversation = lodgers[task];
+      if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
+      const done = await runtimes.acp.stopSubagent({
+        conversationId: conversation,
+        toolCallId: call,
+      });
+      log.info('agents: recall', {
+        area: 'agents',
+        task,
+        call,
+        stopped: done.success && done.data.stopped,
+      });
+      return done.success
+        ? { success: true, data: done.data }
+        : { success: false, error: { kind: 'refused', because: whatItSaid(done.error) } };
+    },
+
     evict,
     rest,
 
@@ -1561,10 +1585,7 @@ class House {
         ...(this.hushed && this.live?.id === this.hushed && !this.live.outcome
           ? { stopping: true }
           : {}),
-        made: madeOf(
-          this.keep(madeIn(turns, (id, over) => this.time(id, over))),
-          this.where()
-        ),
+        made: madeOf(this.keep(madeIn(turns, (id, over) => this.time(id, over))), this.where()),
       },
       asking,
       plan: stepsOf(this.plan),
@@ -2016,7 +2037,8 @@ function endedOf(
 ): { ended?: 'done' | 'stopped' | 'broke' } {
   /* History read back never says how a turn ended, but a stop it wrote
      down as words still does. */
-  if (!outcome) return last?.kind === 'ended' && last.trouble === 'stopped' ? { ended: 'stopped' } : {};
+  if (!outcome)
+    return last?.kind === 'ended' && last.trouble === 'stopped' ? { ended: 'stopped' } : {};
   if (outcome.kind === 'done') return { ended: 'done' };
   if (outcome.kind === 'cancelled') return { ended: 'stopped' };
   if (outcome.kind === 'interrupted' && outcome.reason === 'replaced') return { ended: 'stopped' };
@@ -2053,11 +2075,14 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
         if (item.role === 'user' && INTERRUPTED.test(text)) {
           const since = flat.length - [...flat].reverse().findIndex((one) => one.kind === 'note');
           const asked = flat[since - 1];
-          const spoke = since <= flat.length && flat.slice(since).some((one) => one.kind === 'said');
+          const spoke =
+            since <= flat.length && flat.slice(since).some((one) => one.kind === 'said');
           flat.push({
             kind: 'ended',
             id: `${item.id}:stopped`,
-            said: spoke ? 'Partway through what it was saying.' : 'Before it had said anything back.',
+            said: spoke
+              ? 'Partway through what it was saying.'
+              : 'Before it had said anything back.',
             trouble: 'stopped',
             turn: asked?.turn ?? at,
           });
@@ -2208,11 +2233,21 @@ function toldFrom(
   earliest(at);
 
   if (node.kind === 'spawn-subagent-tool-call') {
+    /* What they did out there is theirs, not this session's, so it is folded
+       into their own list and nowhere else. The cart is still the session's:
+       a file a helper wrote is a file this session wrote. */
+    const steps: Deed[] = [];
+    for (const child of node.children ?? [])
+      toldFrom(child, over, root, stamp, earliest, steps, errands, written);
     errands.push({
       id: node.id,
       errand: node.inputSummary ?? node.name,
       running: node.status === 'running',
       ...(at ? { since: at } : {}),
+      call: node.toolCallId,
+      ...(node.background ? { background: true } : {}),
+      ...(node.status === 'error' ? { wrong: true } : {}),
+      steps: steps.slice(-KEPT),
     });
     return;
   }

@@ -126,6 +126,13 @@ export class AcpRuntime {
     return this.manager.cancel(conversationId);
   }
 
+  stopSubagent(
+    conversationId: string,
+    toolCallId: string
+  ): Promise<Result<{ stopped: boolean }, AcpCancelTurnError>> {
+    return this.manager.stopSubagent(conversationId, toolCallId);
+  }
+
   resolvePermission(
     conversationId: string,
     requestId: string,

@@ -47,6 +47,7 @@ import {
   type Keybindings,
   type Standing as Where,
 } from './board/finder';
+import { helper, type Walked } from './board/helper';
 import { openTree, type LiveTree } from './board/inside';
 import { hunting, type Hunt } from './board/looking';
 import { amending as amendBoard, made, unmade, unread } from './board/made';
@@ -549,6 +550,7 @@ async function boot(): Promise<void> {
       if (writing) steps.push({ said: 'a commit', go: back });
       if (talking) steps.push({ said: talking.name, go: back });
       if (sending) steps.push({ said: 'what is open', go: back });
+      if (walkedUp) steps.push({ said: walkedUp.hand.errand, go: back });
       if (card) steps.push({ said: 'who works here', go: back });
       if (reading) steps.push({ said: shortly(reading.path), go: back });
       if (opened) steps.push({ said: shortly(opened.path), go: back });
@@ -720,6 +722,8 @@ async function boot(): Promise<void> {
     const servers = new Map<string, string[]>();
     /* What is open against the other end for this checkout's branch. */
     let sending: (Sent & { repository: string; number?: number }) | null = null;
+    /** Somebody the session sent out, walked up to in the yard. */
+    let walkedUp: Walked | null = null;
     let looked: {
       aim: Aim;
       checkout: string;
@@ -1211,6 +1215,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      walkedUp = null;
       wood(finding('', { projects, tasks, moods: seen, where: standing() }, keybindings));
       /* From nowhere, every time. The mark outlives a board on purpose, so
          without this the finder opens standing on whatever row it was left on
@@ -1557,6 +1562,7 @@ async function boot(): Promise<void> {
       letGoOfTree();
       stopTalking();
       sending = null;
+      walkedUp = null;
       const shown = card;
       card = null;
       await shown?.close();
@@ -1591,6 +1597,7 @@ async function boot(): Promise<void> {
       else stopWalking();
       stopTalking();
       sending = null;
+      walkedUp = null;
       inside = here ?? null;
       if (here) {
         workspaceIn.set(project.id, here.workspace ?? '');
@@ -1631,7 +1638,23 @@ async function boot(): Promise<void> {
           waking: Boolean(here && !here.kind?.match(/terminal|shell/)),
         },
         (now) => {
-          if (open === aim && !reading && !looked && !walking && !talking && !sending && !card) {
+          if (walkedUp) {
+            const again = now.session?.agents.find((one) => one.id === walkedUp?.hand.id);
+            if (again && open === aim) {
+              walkedUp = { ...walkedUp, hand: again };
+              rewrite(helper(walkedUp));
+            }
+          }
+          if (
+            open === aim &&
+            !reading &&
+            !looked &&
+            !walking &&
+            !talking &&
+            !sending &&
+            !card &&
+            !walkedUp
+          ) {
             yard.show(now);
             yard.narrowing(...narrowing());
             /* A place nobody has touched for days is darker than one somebody
@@ -1828,6 +1851,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      walkedUp = null;
       await was?.close();
       const shown = card;
       card = null;
@@ -2045,6 +2069,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      walkedUp = null;
       home();
     };
 
@@ -3286,6 +3311,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      walkedUp = null;
       writing = {
         aim,
         checkout: place.path,
@@ -3414,6 +3440,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      walkedUp = null;
       if (!live) return;
       /* Back at the top, which is where the file was pressed: a session's
          board is pinned to now, but you did not come from now. */
@@ -3684,6 +3711,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      walkedUp = null;
       titling = { task, written: task.title };
       yard.asks('name');
       yard.line.write(task.title);
@@ -3702,6 +3730,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      walkedUp = null;
       titling = { task, written: '', mode: 'mcp' };
       yard.asks('server');
       yard.line.write('');
@@ -3719,6 +3748,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      walkedUp = null;
       titling = { task, written: '', mode: 'skill' };
       yard.asks('skill');
       yard.line.write('');
@@ -4100,7 +4130,52 @@ async function boot(): Promise<void> {
     /* Pressing something on the wood, whether by hand or by key. One way in,
        because a line you can press and cannot reach with the keyboard is a
        line that is only half there. */
+    /**
+     * Stop one helper where they stand. The session that sent them, and
+     * anybody else it sent, carry on; what the session hears is that this one
+     * came back without an answer.
+     */
+    const recall = async (walked: Walked): Promise<void> => {
+      const task = inside;
+      const call = walked.hand.call;
+      if (!task || !call) return;
+      const mine = { hand: walked.hand, recall: 'going' as const };
+      walkedUp = mine;
+      rewrite(helper(mine));
+      const done = await client.agents.recall({ task: task.id, call }, { timeoutMs: 15000 });
+      if (walkedUp?.hand.id !== walked.hand.id) return;
+      walkedUp =
+        done.success && done.data.stopped
+          ? { hand: walkedUp.hand, recall: 'done' }
+          : {
+              hand: walkedUp.hand,
+              recall: 'refused',
+              because: done.success
+                ? 'they had already come back'
+                : done.error.kind === 'refused'
+                  ? done.error.because
+                  : 'nobody is in there',
+            };
+      rewrite(helper(walkedUp));
+    };
+
     const press = (pick: string): void => {
+      if (pick.startsWith('helper:')) {
+        const hand = watching?.yard().session?.agents.find((one) => one.id === pick.slice(7));
+        if (!hand) return;
+        walkedUp = { hand };
+        wood(helper(walkedUp));
+        return;
+      }
+      if (pick === 'recall' && walkedUp) {
+        walkedUp = { hand: walkedUp.hand, recall: 'armed' };
+        rewrite(helper(walkedUp));
+        return;
+      }
+      if (pick === 'recall!' && walkedUp) {
+        void recall(walkedUp);
+        return;
+      }
       if (pick.startsWith('failure:')) {
         const task = inside;
         if (task) void failed(task.id, pick.slice(8));
@@ -4730,6 +4805,16 @@ async function boot(): Promise<void> {
           if (task && aim) void openTask(aim, task);
           return;
         }
+        if (walkedUp) {
+          if (walkedUp.recall === 'armed' || walkedUp.recall === 'refused') {
+            walkedUp = { hand: walkedUp.hand };
+            rewrite(helper(walkedUp));
+            return;
+          }
+          walkedUp = null;
+          home();
+          return;
+        }
         if (sending) {
           if (sending.written) {
             sending = { ...sending, written: '' };
@@ -4737,6 +4822,7 @@ async function boot(): Promise<void> {
             return;
           }
           sending = null;
+          walkedUp = null;
           home();
           return;
         }

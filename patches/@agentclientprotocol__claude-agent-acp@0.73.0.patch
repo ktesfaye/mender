@@ -1,0 +1,34 @@
+diff --git a/dist/acp-agent.js b/dist/acp-agent.js
+index 0214a509eb5e7b777a69e4e34637941c275d27b1..8e3373516219554d5153ea374f034117cb2dd1fd 100644
+--- a/dist/acp-agent.js
++++ b/dist/acp-agent.js
+@@ -1272,6 +1272,29 @@ export class ClaudeAcpAgent {
+     }
+     async stopAsyncTask(params) {
+         const session = this.sessions[params.sessionId];
++        // Mender: a subagent, foreground or background, is stopped on its own
++        // by its task id or by the tool call that sent it, without cancelling
++        // the turn it belongs to.
++        if (session) {
++            for (const [taskId, record] of session.liveBackgroundTasks) {
++                if (!record.isSubagent)
++                    continue;
++                if (taskId !== params.asyncTaskId && record.parentToolUseId !== params.asyncTaskId)
++                    continue;
++                await session.query.stopTask(taskId);
++                // Said at once: Claude itself only says so on its next turn.
++                await this.client.sessionUpdate({
++                    sessionId: params.sessionId,
++                    update: {
++                        sessionUpdate: "tool_call_update",
++                        toolCallId: record.parentToolUseId,
++                        status: "failed",
++                        _meta: { claudeCode: { toolName: "Agent" } },
++                    },
++                });
++                return { stopped: true };
++            }
++        }
+         const asyncTasks = session?.asyncTaskRuntime;
+         if (!session || !asyncTasks?.claimStop(params.asyncTaskId))
+             return { stopped: false };
