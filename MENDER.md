@@ -164,9 +164,10 @@ project's changelog, in the same small squares and cream lines the glance at
 the other sessions used to be written in: each version on its own line and
 what went into it bulleted and indented under it, newest first and scrolling, read straight off whichever commits moved
 the version in the project's own manifest rather than kept anywhere. What it
-said is in the middle, read from the bottom up the way a conversation is: the
-answer set large at the foot of the column, sat right on the fire and the line
-you write on, the answers before it dimmed above it, and everything it thought
+said is in the middle, read top to bottom the way a conversation is: the answers
+before dimmed at the top and the newest set large under them, the column
+starting under its heading and only scrolling to keep the newest in view once
+there is more than fits, and everything it thought
 and said on the way there folded out of sight. Under an answer that finished
 something is the recap, a sentence or two in a quieter italic saying what the
 whole session is for, what just got done and what is next, for whoever is

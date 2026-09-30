@@ -394,20 +394,24 @@ export function createAgents(
   const recappedDeeds = new Map<string, string>();
   const recapFromWork = (task: string, house: House): void => {
     const state = peek(house.state);
+    /* What it had already done when this turn began, so only what it does in
+       the turn counts as having done something. */
+    if (state.mood === 'working' && !recappedDeeds.has(task))
+      recappedDeeds.set(task, state.told.deeds.at(-1)?.id ?? '');
     if (state.mood !== 'resting' || state.told.ended !== 'done' || !worked.has(task)) return;
     const answer = state.told.thoughts.filter((one) => !one.quiet).at(-1);
     if (!answer || recaps[task]?.after === answer.id || recapping.has(task)) return;
     /* Whether it did anything since the last one was looked at, which a
        short answer to a question does not. */
     const did = state.told.deeds.at(-1)?.id ?? '';
-    const busy = recappedDeeds.get(task) !== did;
+    const busy = (recappedDeeds.get(task) ?? '') !== did;
     recappedDeeds.set(task, did);
     if (!busy && answer.said.length < 400) return;
     recapping.add(task);
     void titler
       .recap(state.told)
       .then((said) => {
-        if (!said) return;
+        if (!said) return log.warn('agents: recap came back empty', { area: 'agents', task });
         log.info('agents: recap', { area: 'agents', task, chars: said.length });
         recaps = { ...recaps, [task]: { said, after: answer.id } };
         void store.set(RECAPS_KEY, recaps as unknown as never);

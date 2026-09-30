@@ -1827,11 +1827,11 @@ function thinking(
   let shown = Math.min(wholeSize, revealedThoughts.get(sessionId) ?? REVEAL_INITIAL);
   const server = yard.session?.olderThoughts ?? 0;
 
-  /* Oldest at the top and the live end at the foot, sat down on the fire and
-     the line you write on, so what it just said is where you answer it. A
-     short conversation sits at the bottom too, with the dark above it. */
+  /* Oldest at the top and the newest under it, the way a conversation reads.
+     A short one starts under the heading like any other column; only once it
+     runs past the foot does the column scroll to keep the newest in view. */
   const col = document.createElement('div');
-  col.style.cssText = 'display:flex;flex-direction:column;gap:20px;margin-top:auto;flex:none';
+  col.style.cssText = 'display:flex;flex-direction:column;gap:20px;flex:none';
   stream.appendChild(col);
 
   const older = document.createElement('div');
