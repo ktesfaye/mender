@@ -887,6 +887,13 @@ since it isn't pressable — it reads for a few seconds and fades on its own,
 the same way a result on the wood settles back once it has had time to be
 read.
 
+**And whatever it cut off goes back to work.** Anybody still working when
+the village closed, or standing at the gate with a question, is told to carry
+on from where they were the moment it opens again, on the gatepost like
+anything else said to them, with the helpers they had out and the commands
+they had left running named in a note only they read, so those go out again
+too. A continue armed to wait out a limit stays armed across the close.
+
 **Quitting on a lit fire says what it costs.** `Cmd+Q`, or the window's own
 close box, with nobody working closes the village the way it always has. With
 a villager still lit it does not: the window goes dark and one line stands up

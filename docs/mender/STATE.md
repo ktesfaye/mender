@@ -3247,3 +3247,23 @@ dev instance: one project on the hay farm moved to the centre houses and then
 the chapel, each time with the camp berthed on its shore and the island
 framed; the port, fishing hamlet, forge and south houses each drawn alone
 with the camp beside them.
+
+### Closing the village does not lose the work (2026-09-30) — done
+
+Whatever was going when the app closed goes back to work when it opens. The
+village writes down, as it changes, which sessions are mid-turn or waiting on
+a question, which helpers they have out, and anything said to them they had
+not read yet; the shutdown itself is kept out of that record, and a crash
+leaves it just as a quit does. On the next start each of those sessions is
+told, on the gatepost, to carry on from where it was, and in a note only the
+agent reads exactly what was cut off: the helpers to send out again, the
+background commands to start again, the unread messages. A "carry on when it
+lifts" armed against a limit is armed again too. It waits until the app knows
+which of Claude's conversations each session is, or the pick-up would start
+one with none of its history. Along the way: a helper sent off in the
+background never told the village it was home, so its session stayed lit as
+working forever; Claude's adapter is patched to say so. Driven in a dev
+instance: quit twice past the guard with a background helper out and a
+background command running, reopened, and the session came back with its
+history, restarted both, wrote the file, settled to resting, and the record
+cleared.

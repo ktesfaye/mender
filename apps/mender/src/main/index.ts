@@ -119,7 +119,10 @@ export async function main(): Promise<void> {
     window: () => window,
     workingCount: () =>
       Object.values(peek(agents.moods())).filter((mood) => mood === 'working').length,
-    dispose: () => scope.dispose(),
+    dispose: () => {
+      agents.closing();
+      return scope.dispose();
+    },
   });
 
   installDragOut(app);

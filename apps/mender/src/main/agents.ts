@@ -52,6 +52,7 @@ import {
   tokensOf,
   type HelperTrail,
 } from './helper-trail';
+import { goingIn, pickUpNote, PICK_UP_SAID, type CutOff } from './cut-off';
 import { kept, madeIn, stillThere } from './made';
 
 /**
@@ -212,6 +213,10 @@ export interface Agents {
   /** What was half-written on this session's line, so it survives a restart. */
   draft(task: string): Promise<string>;
   setDraft(task: string, text: string): Promise<void>;
+  /** The app is going: what is still going stays written down as it stands
+      now, for the next sitting to pick back up, rather than as the shutdown
+      leaves it. */
+  closing(): void;
   dispose(): Promise<void>;
 }
 
@@ -254,6 +259,8 @@ const DRAFTS_KEY = 'drafts';
 const MADE_KEY = 'made';
 const RECAPS_KEY = 'recaps';
 const AWAY_KEY = 'helpersAway';
+const CUT_OFF_KEY = 'cutOff';
+const CARRY_ON_KEY = 'carryOn';
 
 export function createAgents(
   runtimes: MenderRuntimes,
@@ -273,6 +280,11 @@ export function createAgents(
   let madeLoaded = false;
   /** The last recap each session was given, and the answer it was written under. */
   let recaps: Record<string, { said: string; after: string }> = {};
+  /** What was still going in each session when the last sitting ended. */
+  let leftGoing: Record<string, CutOff> = {};
+  /** Continues armed to send themselves once a limit lifts, so a restart
+      does not quietly disarm them. */
+  let carryOns: Record<string, { text: string; at: number }> = {};
   const loaded = (async () => {
     const held = await store.get(KEY);
     if (held.success && held.data && typeof held.data === 'object') {
@@ -295,6 +307,14 @@ export function createAgents(
     const heldRecaps = await store.get(RECAPS_KEY);
     if (heldRecaps.success && heldRecaps.data && typeof heldRecaps.data === 'object') {
       recaps = heldRecaps.data as unknown as Record<string, { said: string; after: string }>;
+    }
+    const heldCut = await store.get(CUT_OFF_KEY);
+    if (heldCut.success && heldCut.data && typeof heldCut.data === 'object') {
+      leftGoing = heldCut.data as unknown as Record<string, CutOff>;
+    }
+    const heldCarry = await store.get(CARRY_ON_KEY);
+    if (heldCarry.success && heldCarry.data && typeof heldCarry.data === 'object') {
+      carryOns = heldCarry.data as unknown as Record<string, { text: string; at: number }>;
     }
   })();
 
@@ -319,7 +339,29 @@ export function createAgents(
      is redrawn for each word one agent says. */
   const glances = cell<Record<string, Glance>>({}, { name: 'agents:glances' });
   let glanced = '{}';
+  /* What is going right now, written down on every change so that a close,
+     or a crash, leaves it behind. Off until startup has read what the last
+     sitting left, and off again once the app is closing, since the shutdown
+     stopping everybody is exactly what it must not record. */
+  let recording = false;
+  /** Sessions being put back to work, kept written down until they are. */
+  const pickingUp = new Map<string, CutOff>();
+  let noted = '';
+  const noteGoing = (): void => {
+    if (!recording) return;
+    const going: Record<string, CutOff> = Object.fromEntries(pickingUp);
+    for (const [task, house] of houses) {
+      if (!house.awake()) continue;
+      const cut = goingIn(peek(house.state));
+      if (cut) going[task] = cut;
+    }
+    const said = JSON.stringify(going);
+    if (said === noted) return;
+    noted = said;
+    void store.set(CUT_OFF_KEY, going as unknown as never);
+  };
   const reglance = (): void => {
+    noteGoing();
     const next = glancesOf(houses);
     const said = JSON.stringify(next);
     if (said === glanced) return;
@@ -522,6 +564,37 @@ export function createAgents(
       await store.set(KEY, lodgers as unknown as never);
     }
     for (const task of Object.keys(lodgers)) houseOf(task);
+
+    /* Whoever was cut off by the last close goes back to work, and anything
+       armed to carry on once a limit lifts is armed again. */
+    for (const [task, cut] of Object.entries(leftGoing)) {
+      if (alive.has(task) && lodgers[task]) pickingUp.set(task, cut);
+    }
+    recording = true;
+    noteGoing();
+    /* Which of Claude's own conversations each session is, or the pick-up
+       starts a new one with none of what came before. */
+    if (pickingUp.size) {
+      await index.ready;
+      records = index.current();
+    }
+    for (const [task, cut] of pickingUp) {
+      log.info('agents: picking back up', {
+        area: 'agents',
+        task,
+        mood: cut.mood,
+        helpers: cut.helpers.length,
+        unread: cut.unread.length,
+      });
+      void doTell(task, PICK_UP_SAID, undefined, pickUpNote(cut)).finally(() => {
+        pickingUp.delete(task);
+        noteGoing();
+      });
+    }
+    for (const [task, { text, at }] of Object.entries(carryOns)) {
+      if (alive.has(task)) armCarryOn(task, text, at);
+      else forgetCarryOn(task);
+    }
   });
 
   const put = async (task: string, conversation: string): Promise<void> => {
@@ -652,12 +725,38 @@ export function createAgents(
   }, IDLE_SWEEP_MS);
   sweep.unref?.();
 
+  const forgetCarryOn = (task: string): void => {
+    if (!(task in carryOns)) return;
+    const { [task]: _gone, ...rest } = carryOns;
+    carryOns = rest;
+    void store.set(CARRY_ON_KEY, carryOns as unknown as never);
+  };
+
   /** Disarms a scheduled "carry on when it lifts" continue, if one is armed. */
   const stopWaiting = (task: string): void => {
     const timer = carryOnTimers.get(task);
     if (timer) clearTimeout(timer);
     carryOnTimers.delete(task);
     houses.get(task)?.carryOn(null);
+    forgetCarryOn(task);
+  };
+
+  /** Sends `text` again on its own at `at`, and keeps it armed across a restart. */
+  const armCarryOn = (task: string, text: string, at: number): void => {
+    houseOf(task).carryOn(at);
+    carryOns = { ...carryOns, [task]: { text, at } };
+    void store.set(CARRY_ON_KEY, carryOns as unknown as never);
+    carryOnTimers.set(
+      task,
+      setTimeout(
+        () => {
+          carryOnTimers.delete(task);
+          forgetCarryOn(task);
+          void doTell(task, text);
+        },
+        Math.max(0, at - Date.now())
+      )
+    );
   };
 
   /**
@@ -1094,17 +1193,7 @@ export function createAgents(
       const resetAt = house.currentResetAt();
       if (!text || !resetAt) return { success: false, error: { kind: 'nothing' } };
       stopWaiting(task);
-      house.carryOn(resetAt);
-      carryOnTimers.set(
-        task,
-        setTimeout(
-          () => {
-            carryOnTimers.delete(task);
-            void doTell(task, text);
-          },
-          Math.max(0, resetAt - Date.now())
-        )
-      );
+      armCarryOn(task, text, resetAt);
       return { success: true, data: undefined };
     },
 
@@ -1270,7 +1359,12 @@ export function createAgents(
       await store.set(DRAFTS_KEY, drafts as unknown as never);
     },
 
+    closing() {
+      recording = false;
+    },
+
     async dispose() {
+      recording = false;
       clearInterval(sweep);
       await Promise.all([...houses.values()].map((house) => house.dispose()));
       houses.clear();
