@@ -57,6 +57,7 @@ tab strip.
 | `docs/mender/STATE.md` | how far along this actually is: every ledger row's state and the wave it belongs to. The only thing allowed to answer "how much is left" |
 | `docs/mender/BUILD-CATALOG.md` | the feature ledger, the open design questions, the build list, the art list, the risks |
 | `docs/mender/catalog/` | the nine source audits that document was built from |
+| `pnpm --filter @emdash/mender check:bridge` | run after every upgrade of Claude Code or its ACP bridge. It starts a real terminal Claude and a bridged one against a fake local API and fails if a session here gets fewer tools than a terminal would, or if the bridge checks a capability nobody has decided about. That is how AskUserQuestion went missing unnoticed |
 | `AGENTS.md` | upstream's own instructions for working in this codebase. Still true for back-end work |
 | `packages/village/` | the world: what a state of the village is, and the shore pass that cuts a coast round it. Draws nothing, knows nothing about Electron |
 | `apps/mender/` | the app: the Electron shell, the wire to emdash's runtimes, and the Pixi renderer |

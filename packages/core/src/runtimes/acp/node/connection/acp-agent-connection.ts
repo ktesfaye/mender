@@ -6,6 +6,7 @@ import { noopLogger, type Logger } from '@emdash/shared/logger';
 import type { InitializeFailedError, NormalizedEvent, SpawnFailedError } from '#runtimes/acp/api';
 import { acpErr, decodeSessionUpdate } from '#runtimes/acp/api';
 import type { AcpProcessHandle, AcpProcessHost } from '#runtimes/acp/api/transport';
+import { clientCapabilities } from '#runtimes/acp/node/connection/client-capabilities';
 import type {
   AcpAgentApi,
   AgentHostAcpSpawn,
@@ -170,20 +171,7 @@ function initializeAgent(agent: AcpAgentApi, host: AcpAgentProcessHost) {
   return agent.initialize({
     protocolVersion: 1,
     clientInfo: { name: 'emdash', version: '1' },
-    clientCapabilities: {
-      fs: { readTextFile: true, writeTextFile: true },
-      terminal: typeof host.spawnTerminal === 'function',
-      /* Forms only: a question the agent asks with its answers laid out (Claude's
-         AskUserQuestion comes through as one, and is withheld from the model
-         entirely unless this is advertised). URL mode would need somewhere to
-         open a page and come back from, and nothing here does that yet. */
-      elicitation: { form: {} },
-      /* Opts in to Claude's ACP adapter's "AIR" `sessionFailure` extension: a
-         typed usage/rate limit, overload, empty quota, or auth-required report
-         instead of ordinary transcript prose. Unknown `_meta` is ignored by
-         every other provider, so this is safe to advertise unconditionally. */
-      _meta: { jetbrains: { air: { version: 1, capabilities: ['sessionFailure'] } } },
-    },
+    clientCapabilities: clientCapabilities(typeof host.spawnTerminal === 'function'),
   });
 }
 

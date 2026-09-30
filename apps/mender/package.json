@@ -7,6 +7,7 @@
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
+    "check:bridge": "tsx tooling/bridge-parity.mts",
     "dev": "node ../../tooling/scripts/ensure-packages-built.mjs && LOG_LEVEL=debug electron-vite dev",
     "yard": "vite --config tooling/yard.config.mjs",
     "build": "electron-vite build",
