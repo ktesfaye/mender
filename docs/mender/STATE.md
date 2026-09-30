@@ -783,6 +783,11 @@ fire out of it stay up beside the handle while every other slot closes up
 into them. Driven: folded inside a project, only those two stood beside the
 count; the fire still flew out, and folded on the water it was the handle
 alone, unfolding to the whole rack again.
+It folds itself as well: walking into a project shuts it and walking back
+out to the island opens it, however it was left in between, and the whole
+block of wood the handle's word sits on takes the press rather than only the
+letters. Driven: in off the rack it arrived folded, a press on the bare
+corner of the wood opened and shut it, and the fire out left it open.
 
 **The rack is in whatever order he drags it into.** Holding a slot and
 dragging it along the rack lifts it out, the slots between step aside to open

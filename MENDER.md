@@ -249,7 +249,10 @@ back up, on the very same branch, before it ever offers to start something
 new. The projects moved to a rack
 in the top right, over both the island and the yard, one slot each with the
 project's own face in it, its app icon or its logo, and a prop from the kit
-until it has one, and no names until you hover. It folds away. A slot held
+until it has one, and no names until you hover. It folds away, and it
+folds itself: walking into a project shuts it, walking back out to the island
+opens it, and the whole block of wood its handle is written on is the
+handle, not only the word. A slot held
 and dragged along it moves there, the others stepping aside, and stays.
 
 A slot on the rack carries the same warm or red wash a lit house gets, the

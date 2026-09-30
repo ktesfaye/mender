@@ -177,8 +177,12 @@ export function makeShelf(
     for (const project of projects) held.set(project.id, project);
     /* Only while there is somewhere to come back out of. It folds to nothing
        rather than being taken out, so arriving in a yard slides it in. */
+    const was = inside;
     inside = projects.some((project) => project.here);
     up(fire, inside);
+    /* Walking into a yard folds it shut and walking back out to the island
+       opens it; in between it stays however he left it. */
+    if (inside !== was) away = inside;
 
     if (fading) crossfade(settle);
     else settle();
@@ -361,7 +365,13 @@ const LABEL = [
   'color:#c4b186',
   'text-shadow:1px 1px 0 #120d07',
   'white-space:nowrap',
-  `padding-right:${PAD}px`,
+  /* The whole block of wood the word sits on is the handle, not just the
+     letters: it reaches out over the rack's own padding to its edges. */
+  'align-self:stretch',
+  'display:flex',
+  'align-items:center',
+  `margin:-${PAD}px 0 -${PAD}px -${PAD * 2}px`,
+  `padding:${PAD}px ${PAD}px ${PAD}px ${PAD * 2}px`,
   'cursor:default',
   `transition:opacity 130ms ease,color 520ms ${EASE},text-shadow 520ms`,
 ].join(';');
