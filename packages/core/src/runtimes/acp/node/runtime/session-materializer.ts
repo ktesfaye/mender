@@ -45,7 +45,7 @@ export class SessionMaterializer {
   private readonly handshakeTails = new Map<string, Promise<void>>();
 
   constructor(
-    private readonly deps: Pick<AcpRuntimeDeps, 'agentHost' | 'resolveAttachment'> & {
+    private readonly deps: Pick<AcpRuntimeDeps, 'agentHost' | 'resolveAttachment' | 'sessionMeta'> & {
       logger: Logger;
     },
     private readonly connections: AcpConnectionSource,
@@ -114,7 +114,7 @@ export class SessionMaterializer {
           record.cell.beginReplay();
           const response = await abortable(
             connection.agent.loadSession(
-              this.buildLoadSessionRequest(input.cwd, input.sessionId, mcpServers)
+              this.buildLoadSessionRequest(input.providerId, input.cwd, input.sessionId, mcpServers)
             ),
             signal
           );
@@ -154,7 +154,7 @@ export class SessionMaterializer {
         let response;
         try {
           response = await abortable(
-            connection.agent.newSession(this.buildNewSessionRequest(input.cwd, mcpServers)),
+            connection.agent.newSession(this.buildNewSessionRequest(input.providerId, input.cwd, mcpServers)),
             signal
           );
         } catch (error) {
@@ -406,18 +406,22 @@ export class SessionMaterializer {
   }
 
   private buildNewSessionRequest(
+    providerId: string,
     cwd: string,
     mcpServers: NewSessionRequest['mcpServers']
   ): NewSessionRequest {
-    return { cwd, mcpServers };
+    const _meta = this.deps.sessionMeta?.(providerId);
+    return _meta ? { cwd, mcpServers, _meta } : { cwd, mcpServers };
   }
 
   private buildLoadSessionRequest(
+    providerId: string,
     cwd: string,
     sessionId: string,
     mcpServers: LoadSessionRequest['mcpServers']
   ): LoadSessionRequest {
-    return { cwd, sessionId, mcpServers };
+    const _meta = this.deps.sessionMeta?.(providerId);
+    return _meta ? { cwd, sessionId, mcpServers, _meta } : { cwd, sessionId, mcpServers };
   }
 }
 

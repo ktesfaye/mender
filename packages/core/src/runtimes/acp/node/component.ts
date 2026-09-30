@@ -40,6 +40,7 @@ export const acpComponentConfigSchema = z.object({
 export type CreateAcpComponentOptions = {
   pluginRegistry: PluginRegistry<CLIAgentPluginProvider>;
   logger?: Logger;
+  sessionMeta?: AcpRuntimeDeps['sessionMeta'];
 };
 
 export function createAcpComponent(options: CreateAcpComponentOptions) {
@@ -92,6 +93,7 @@ export function createAcpComponent(options: CreateAcpComponentOptions) {
           logger: runtimeLogger,
         }),
         lifecycle: config.lifecycle,
+        sessionMeta: options.sessionMeta,
         logger: runtimeLogger,
       } satisfies AcpRuntimeDeps);
       void acp.reconcile();

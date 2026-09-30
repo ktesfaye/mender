@@ -1123,6 +1123,65 @@
   border-top: 1px solid rgba(244, 227, 192, 0.06);
 }
 
+.yard .prose-pictures {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px;
+  margin: 0.2em 0;
+}
+/* A picture the agent put in what it said: as many across as the column
+   holds, each the same shape so a row reads as a row. */
+.yard .prose-picture {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  min-width: 0;
+}
+.yard .prose-picture[hidden] {
+  display: none;
+}
+/* Only the first time it comes in. The answer is written again every time
+   anything on the board changes, and a picture that faded in each time would
+   never be seen at full strength. */
+.yard .prose-picture-new {
+  animation: prose-picture-in 420ms ease-out both;
+}
+.yard .prose-picture img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  image-rendering: auto;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(244, 227, 192, 0.16);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+/* One picture on its own is shown whole rather than cropped into a card. */
+.yard .prose-pictures:has(> .prose-picture:only-child) {
+  display: block;
+}
+.yard .prose-picture:only-child img {
+  width: auto;
+  max-width: 100%;
+  max-height: 420px;
+  aspect-ratio: auto;
+  object-fit: contain;
+}
+.yard .prose-picture figcaption {
+  font-family: var(--yard-face-label);
+  font-size: 13px;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  color: rgba(244, 227, 192, 0.78);
+}
+@keyframes prose-picture-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
 /** A waking board's fire, coming up only once the wait is long enough to notice. */
 @keyframes yard-waking {
   from {
@@ -1294,4 +1353,27 @@ body.gripping-row * {
 .yard .sign:focus-visible .board {
   outline: 2px solid #482510;
   outline-offset: 2px;
+}
+
+/** What is still to be packed down, waiting for the front to reach it. */
+@keyframes yard-pack-wait {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/** What is left once it has packed down, standing back up. */
+@keyframes yard-pack-rise {
+  from {
+    transform: scaleY(0.15);
+    transform-origin: bottom;
+  }
+  to {
+    transform: scaleY(1);
+    transform-origin: bottom;
+  }
 }

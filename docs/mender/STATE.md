@@ -230,6 +230,18 @@ line break. A table is measured and padded into real columns, because markdown
 tables are written by hand and almost never line up in the source. Emphasis loses
 its marks and keeps its words, which is the right way round.
 
+A picture in an answer is now drawn too. Markdown's `![caption](url)` is
+lifted out of the line it sits in and hung under it, several in a row as
+same-shaped cards with their captions, one on its own shown whole; one that
+will not load is simply not there. Every session is started with a line
+appended to Claude's own system prompt, through ACP's `_meta`, saying that
+pictures show here and that only an image address it actually saw counts, so
+asking for somewhere to eat comes back with a look at each place. Fetching
+pictures off the linked pages ourselves was tried and dropped: most restaurant
+sites name no preview, and the review sites refuse to answer. Driven: asked a
+fresh session for three New Orleans restaurants, and it came back with a
+real photo of each, in a row, captioned.
+
 A fenced ` ```mermaid ` block is now drawn — colored to the wood rather than
 left in whatever the diagram's own default is, via `beautiful-mermaid` (already
 in the lockfile, no DOM dependency of its own) — and panned and zoomed rather
@@ -1418,6 +1430,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-38 | Mermaid diagram, drawn in an answer (colored to the wood, via `beautiful-mermaid`, panned and zoomed with the wheel and a drag) | done | W9 |
 | AG-39 | Copy-to-clipboard affordance — a code block or a whole answer, pressed | done | W2 |
 | AG-39a | Links in an answer, pressable and gold, opening in the system browser | done | W2 |
+| AG-39c | Pictures in an answer: a markdown image is drawn where it was written, several side by side with their captions, and every session is told they show so a place it suggests comes with a look at it | done | W2 |
 | AG-39b | Export the transcript as markdown, from the session card | done | W2 |
 | AG-40 | Agent status glyph (inline indicator) | cut | W9 |
 | AG-41 | Agent selector | done |  |

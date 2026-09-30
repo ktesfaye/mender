@@ -44,6 +44,12 @@ export interface AcpRuntimeDeps {
     connectionIdleTtlMs?: number;
     activationDrainTimeoutMs?: number;
   };
+  /**
+   * Extra `_meta` a host hands every session it starts or loads, per provider:
+   * how an embedding app tells the agent what it is being read on. Agents
+   * ignore `_meta` they do not know.
+   */
+  sessionMeta?: (providerId: string) => Record<string, unknown> | undefined;
   logger: Logger;
 }
 
