@@ -670,9 +670,12 @@ sessions than its district has houses, and which house a session stands in
 means nothing. Nothing on the island is picked but a district, whole: the land,
 the houses on it and the trees between them answer as one place, and picking
 any of it walks into that project. From out on the water it is
-light and posture and nothing else. A building with
-somebody in it is lit, warmer and pulsing when they want you, red when they have
-broken; the villager at its door is turned away while they are working and
+light and posture and nothing else, and a house says what its lantern on the
+rail says: warm lamplight breathing slowly while somebody works in it, orange
+and pulsing quickly when they want you, a steady green when they have finished
+something you have not been in to see, a faint red ember while a limit is
+waited out and a strong red throb when it has broken. A house whose somebody
+has simply stopped is dark, because a light is a reason to go and look; the villager at its door is turned away while they are working and
 turned towards you when they have stopped. There is no badge, no spinner and no
 coloured dot anywhere.
 

@@ -7,7 +7,6 @@ import {
   type Texture,
   type Ticker,
 } from 'pixi.js';
-import type { Mood } from '@shared/agents';
 import type { Building } from './scene';
 import { DOORSTEP, SHADOW_TINT } from './scene';
 
@@ -49,21 +48,33 @@ export async function loadFolk(): Promise<number> {
 const BREATH = 900;
 
 /**
+ * What a house says from out on the water, which is what its lantern on the
+ * rail says: the same handful of states, in the same colours.
+ *
+ * `empty` is nobody moved in; `idle` is somebody who has stopped with nothing
+ * you have not seen, and both are dark, because a light is a reason to go and
+ * look and there is none.
+ */
+export type Look = 'empty' | 'arriving' | 'working' | 'wants' | 'done' | 'idle' | 'waiting' | 'broken';
+
+/**
  * Light in the windows, by what is going on behind them.
  *
  * Per ring, and the rings stack, so what lands on the grass is a good deal
- * more than the number on the page. Lamplight through a window at dusk,
- * not a searchlight: a house nobody is busy in should be something you notice
- * on the second look, and the one that wants you should be the only thing on
- * the island that moves.
+ * more than the number on the page. Working is lamplight breathing slowly;
+ * wanting you is orange and the only quick thing on the island; something
+ * finished you have not seen is a steady green; a limit is a faint red ember
+ * and broken a strong red with a slow throb. `pace` is how slow the beat is.
  */
-const LIGHT: Record<Mood, { color: number; alpha: number; beat: number }> = {
-  empty: { color: 0xffdf9e, alpha: 0, beat: 0 },
-  arriving: { color: 0xffdf9e, alpha: 0.018, beat: 0 },
-  working: { color: 0xffdf9e, alpha: 0.042, beat: 0.008 },
-  asking: { color: 0xffc46a, alpha: 0.055, beat: 0.022 },
-  resting: { color: 0xffdf9e, alpha: 0.03, beat: 0 },
-  hurt: { color: 0xff7a52, alpha: 0.048, beat: 0 },
+const LIGHT: Record<Look, { color: number; alpha: number; beat: number; pace: number }> = {
+  empty: { color: 0xffdf9e, alpha: 0, beat: 0, pace: 420 },
+  idle: { color: 0xffdf9e, alpha: 0, beat: 0, pace: 420 },
+  arriving: { color: 0xffdf9e, alpha: 0.018, beat: 0, pace: 420 },
+  working: { color: 0xffdf9e, alpha: 0.036, beat: 0.012, pace: 1100 },
+  wants: { color: 0xff691e, alpha: 0.06, beat: 0.035, pace: 240 },
+  done: { color: 0x84dc68, alpha: 0.034, beat: 0, pace: 420 },
+  waiting: { color: 0xff6e5a, alpha: 0.022, beat: 0, pace: 420 },
+  broken: { color: 0xff5a46, alpha: 0.05, beat: 0.02, pace: 700 },
 };
 
 /* The same soft-by-stacking rule the ground's own light is built under: a blur
@@ -81,7 +92,7 @@ export interface Standing {
   /** The task, which is what makes two villagers different people. */
   id: string;
   building: Building;
-  mood: Mood;
+  look: Look;
 }
 
 class Person {
@@ -96,7 +107,7 @@ class Person {
 
   constructor(
     building: Building,
-    public mood: Mood
+    public mood: Look
   ) {
     const shadow = folk.get('shadow');
     if (shadow) this.shade.texture = shadow;
@@ -116,7 +127,7 @@ class Person {
 
   /** Says whether this actually changed anything, because the colour of the
       light is the mood and a colour is not something an ease can notice. */
-  set(mood: Mood): boolean {
+  set(mood: Look): boolean {
     if (mood === this.mood) return false;
     this.mood = mood;
     this.turn();
@@ -150,7 +161,7 @@ class Person {
    */
   glow(now: number, by: number): boolean {
     const light = LIGHT[this.mood];
-    const want = light.alpha + light.beat * (0.5 + 0.5 * Math.sin(now / 420));
+    const want = light.alpha + light.beat * (0.5 + 0.5 * Math.sin(now / light.pace));
     this.lit += (want - this.lit) * by;
     return Math.abs(this.lit - this.cut) > STEP;
   }
@@ -188,10 +199,10 @@ export class Folk {
       here.add(one.id);
       const had = this.people.get(one.id);
       if (had) {
-        if (had.set(one.mood)) this.recut = true;
+        if (had.set(one.look)) this.recut = true;
         continue;
       }
-      const person = new Person(one.building, one.mood);
+      const person = new Person(one.building, one.look);
       one.building.stand.addChild(person.view);
       this.people.set(one.id, person);
       this.boxes.set(one.id, one.building);

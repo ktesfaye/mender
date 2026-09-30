@@ -66,7 +66,7 @@ import { ran } from './job';
 import { setPace } from './pace';
 import { createCamera, flyOut, flyToYard, frame, type Extent } from './village/camera';
 import { Editing } from './village/editing';
-import { Folk, loadFolk, type Standing } from './village/folk';
+import { Folk, loadFolk, type Look, type Standing } from './village/folk';
 import { Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
 import './yard/tokens.css';
@@ -170,10 +170,10 @@ async function boot(): Promise<void> {
        after the keys stop, not on every one of them, so what was written
        last is also held here at once, for stepping straight back in. */
     const draftTimers = new Map<string, ReturnType<typeof setTimeout>>();
-    const saveDraft = (task: string, text: string): void => {
     const drafts = new Map<string, string>();
-      const already = draftTimers.get(task);
+    const saveDraft = (task: string, text: string): void => {
       drafts.set(task, text);
+      const already = draftTimers.get(task);
       if (already) clearTimeout(already);
       draftTimers.set(
         task,
@@ -810,6 +810,9 @@ async function boot(): Promise<void> {
        stays lit until you have stood in that session; after that it is idle. */
     let glances: Record<string, Glance> = {};
     const unseen = new Map<string, number>();
+    /* Lights the houses again; set once everything it reads exists, and called
+       the moment you walk into a finished session so its house goes dark too. */
+    let lightHouses = (): void => {};
 
     /* Where you have been, so you can go back. One list, one finger on it:
        arriving somewhere new cuts off whatever you had gone back from, which
@@ -1635,7 +1638,7 @@ async function boot(): Promise<void> {
         workspaceIn.set(project.id, here.workspace ?? '');
         lastInWorkspace.set(`${project.id}|${here.workspace ?? ''}`, here.id);
       }
-      if (here) unseen.delete(here.id);
+      if (here && unseen.delete(here.id)) lightHouses();
       /* The line belongs to the session it was written in. Stepping to
          another leaves that one's half-written line with it, not on this. */
       if (inside?.id !== here?.id) yard.line.write('');
@@ -1866,7 +1869,7 @@ async function boot(): Promise<void> {
 
       open = aim;
       inside = task;
-      unseen.delete(task.id);
+      if (unseen.delete(task.id)) lightHouses();
       const opened = await openCard(client, task, (rows) => {
         if (open === aim && card) rewrite(rows);
       });
@@ -5335,7 +5338,25 @@ async function boot(): Promise<void> {
     /* Who is standing outside which building, kept true by the main process
        rather than by whatever board happens to be open: a villager is still
        working while you are looking at another district. */
-    const people = (): void => {
+    /* What a house says from the water is what its lantern says on the rail. */
+    const lookOf = (task: string, mood: Mood): Look => {
+      switch (mood) {
+        case 'working':
+          return 'working';
+        case 'arriving':
+          return 'arriving';
+        case 'asking':
+          return 'wants';
+        case 'hurt':
+          return 'broken';
+        case 'resting':
+          if (glances[task]?.waiting) return 'waiting';
+          return unseen.has(task) ? 'done' : 'idle';
+        default:
+          return 'empty';
+      }
+    };
+    lightHouses = (): void => {
       const standing: Standing[] = [];
       for (const task of tasks) {
         const mood = seen[task.id];
@@ -5344,9 +5365,12 @@ async function boot(): Promise<void> {
         const district = where ? drawn.districts.get(where) : undefined;
         const building =
           district && task.slot !== null && drawn.ground.buildingAt(district, task.slot);
-        if (building) standing.push({ id: task.id, building, mood });
+        if (building) standing.push({ id: task.id, building, look: lookOf(task.id, mood) });
       }
       drawn.folk.set(standing);
+    };
+    const people = (): void => {
+      lightHouses();
       paintRail();
       /* The yard you are standing in was handed who was awake when it opened,
          and moods move after that: a session that has just been cut is still

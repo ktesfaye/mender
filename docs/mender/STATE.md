@@ -2968,3 +2968,15 @@ Driven in a dev instance on a scratch project: a session left mid-turn read
 went green "done · just now", was walked into and out of and went idle.
 Waiting, broken and asking were not provoked live; they are the same switch
 on moods that already arrive.
+
+### The houses say what their lanterns say (2026-09-29) — done
+
+The light out of a house on the island follows the same states as its lantern:
+working is lamplight breathing slowly, wanting you is orange and the only
+quick pulse, done-but-unseen is a steady green, a limit a faint red ember,
+broken a strong red throb, and idle is dark. An idle house used to glow as if
+something needed you. Walking into a finished session puts its house out at
+once. Driven in a packaged build on a scratch project: a session left working
+lit its barn warm with the villager turned away, finished while another was
+stood in and went green, and went dark after being walked into and out of.
+Limit, broken and asking were not provoked live.
