@@ -324,6 +324,10 @@ still working and take them off the yard for good, kept across a restart. And
 while one is out, how many tokens they are working with is written over their
 head in the yard and on their board, counted the way Claude Code counts a
 helper's and read off Claude's own record of them, so it climbs as they work.
+Sending one away no longer means opening their board first: pointing at a
+figure in the yard puts a gold cross over them, and a gold line in the corner
+of the yard sends everybody who has finished home at once, each in two
+presses.
 
 Two things are cut on purpose. A resource link never arrives: neither CLI ever
 sends one back, both of them turn a file reference into ordinary writing on the

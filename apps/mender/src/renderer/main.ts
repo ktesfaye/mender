@@ -4259,6 +4259,23 @@ async function boot(): Promise<void> {
         void readTrail(hand.id);
         return;
       }
+      if (pick.startsWith('away:')) {
+        const task = inside;
+        const hands = watching?.yard().session?.agents ?? [];
+        const which = pick.slice(5);
+        const going = hands.filter((one) =>
+          which === 'finished' ? one.where !== 'out' : one.id === which
+        );
+        if (!task) return;
+        void Promise.all(
+          going
+            .filter((one) => one.call)
+            .map((one) =>
+              client.agents.sendAway({ task: task.id, call: one.call! }, { timeoutMs: 15000 })
+            )
+        );
+        return;
+      }
       if (pick === 'away' && walkedUp) {
         walkedUp = { ...walkedUp, away: 'armed' };
         rewrite(helper(walkedUp));

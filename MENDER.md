@@ -225,7 +225,9 @@ their board is open the line is theirs: what is written there goes to them,
 carried by the session that sent them, and what they say back is written on
 their board as it comes. Two presses on that board send them away for good,
 stopping them first if they are still out. And over the head of anybody
-still out is how many tokens they have in play, climbing as they work.
+still out is how many tokens they have in play, climbing as they work. None
+of that needs their board open: pointing at one puts a gold cross over them,
+and the corner of the yard offers to send everybody who has finished home.
 
 **Everything but the middle can be put away, and every rule can be moved.**
 Right-clicking what you asked, the changelog, what it made, the plan or what it did offers

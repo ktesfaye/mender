@@ -2916,6 +2916,22 @@ function ground(
 
   for (const [i, hand] of hands.entries()) patch.appendChild(standing(hand, i, at.wide, does));
 
+  /* The ones who are back have nothing left to do here, so the yard itself
+     offers to send them home, where it can be seen, rather than one board at
+     a time. */
+  if (back) {
+    const home = box({ left: 10, top: 8 }, 'white-space:nowrap');
+    home.style.pointerEvents = 'auto';
+    const line = twoPress(
+      back === 1 ? 'send the finished one home' : `send the ${back} finished home`,
+      'press again, they leave the yard for good',
+      () => does.press('away:finished')
+    );
+    line.style.cssText += "font-family:'Courier Prime',monospace;font-size:11px";
+    home.appendChild(line);
+    patch.appendChild(home);
+  }
+
   const here = yard.session;
   if (here) {
     const under = exact(
@@ -2961,6 +2977,23 @@ function standing(hand: Hand, i: number, wide: number, does: Doings): HTMLElemen
   it.style.pointerEvents = 'auto';
   it.addEventListener('mousedown', (event) => event.preventDefault());
   it.addEventListener('click', () => does.press(`helper:${hand.id}`));
+  /* Pointing at one offers to send them away, right there on them. */
+  /* Anchored on its right, so the question the first press asks grows back
+     over the yard rather than off the edge of it. */
+  const gone = box({ right: -6, top: -4 }, 'white-space:nowrap;display:none;text-align:right');
+  gone.style.pointerEvents = 'auto';
+  const cross = twoPress(
+    '✕',
+    out ? 'press again, they stop and leave' : 'press again, they leave',
+    () => does.press(`away:${hand.id}`)
+  );
+  cross.style.cssText += "font-family:'Courier Prime',monospace;font-size:12px";
+  cross.addEventListener('click', (event) => event.stopPropagation());
+  gone.appendChild(cross);
+  it.addEventListener('mouseenter', () => (gone.style.display = 'block'));
+  it.addEventListener('mouseleave', () => {
+    if (cross.textContent === '✕') gone.style.display = 'none';
+  });
   const figure = folk(out ? 'back' : 'front', { left: 0, top: 0 });
   figure.style.filter = out ? 'brightness(.5) saturate(.6)' : 'brightness(.95)';
   if (out) figure.style.animation = 'yard-step 800ms steps(2,end) infinite';
@@ -3010,6 +3043,7 @@ function standing(hand: Hand, i: number, wide: number, does: Doings): HTMLElemen
     );
     it.appendChild(cost);
   }
+  it.appendChild(gone);
   return it;
 }
 
@@ -3269,4 +3303,27 @@ function clipped(it: HTMLElement, whole: string): void {
   it.style.overflow = 'hidden';
   it.style.textOverflow = 'ellipsis';
   it.title = whole;
+}
+
+/**
+ * A line that does something irreversible on its second press, the first
+ * saying what it costs, and giving up on its own if nobody presses again.
+ */
+function twoPress(said: string, cost: string, go: () => void): HTMLSpanElement {
+  let armed: number | undefined;
+  const line = pressing(said, () => {
+    if (armed !== undefined) {
+      window.clearTimeout(armed);
+      armed = undefined;
+      line.textContent = said;
+      go();
+      return;
+    }
+    line.textContent = cost;
+    armed = window.setTimeout(() => {
+      armed = undefined;
+      if (line.isConnected) line.textContent = said;
+    }, 4000);
+  });
+  return line;
 }
