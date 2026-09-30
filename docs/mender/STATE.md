@@ -242,6 +242,14 @@ sites name no preview, and the review sites refuse to answer. Driven: asked a
 fresh session for three New Orleans restaurants, and it came back with a
 real photo of each, in a row, captioned.
 
+The first wording only let it add a picture when it happened to have one, and
+asked for restaurants near him it searched once and had none. It is now told
+to go and get them for anything worth seeing, not only places: a real page
+about each thing from a search, never a guessed domain, its preview picture or
+failing that a photo out of the page itself, and a second pass for what the
+first found nothing for. Driven: "what do the AirPods Max look like" and "find
+best restaurants near me" both came back with real photos.
+
 A fenced ` ```mermaid ` block is now drawn — colored to the wood rather than
 left in whatever the diagram's own default is, via `beautiful-mermaid` (already
 in the lockfile, no DOM dependency of its own) — and panned and zoomed rather

@@ -1161,10 +1161,13 @@
 .yard .prose-pictures:has(> .prose-picture:only-child) {
   display: block;
 }
+.yard .prose-picture:only-child {
+  align-items: flex-start;
+}
 .yard .prose-picture:only-child img {
   width: auto;
   max-width: 100%;
-  max-height: 420px;
+  max-height: 360px;
   aspect-ratio: auto;
   object-fit: contain;
 }

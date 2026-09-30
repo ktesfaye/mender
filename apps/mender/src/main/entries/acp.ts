@@ -13,17 +13,28 @@ const logger = initWorkerProcessLogging('acp-runtime');
 
 /**
  * What the agent is told about the board it is read on: that a picture it
- * puts in its answer is drawn there, so a place it suggests can come with a
- * look at it. Guessed image addresses are dead more often than not, which is
- * why only ones it has actually seen count.
+ * puts in its answer is drawn there, so anything worth seeing comes with a
+ * look at it. A search hands back no picture addresses and a guessed one is
+ * dead more often than not, so it is told where real ones come from.
  */
 const BOARD = [
   'Your replies are shown in Mender, a desktop app that renders markdown, including images:',
-  '![caption](https://...) is drawn inline as a picture, several in a row side by side.',
-  'When you suggest or describe things a person would want to see (restaurants, dishes, places,',
-  'hotels, attractions, products), include a picture of each with a short caption when you have',
-  'a real image URL for it, one you actually saw in a page you fetched or a search result.',
-  'Never guess or construct an image URL; if you have none, leave the picture out.',
+  '![caption](https://...) is drawn as a picture, several in a row side by side, with the caption under it.',
+  'Whenever the answer is about something a person would want to see, show pictures of it: when',
+  'they ask what something looks like, and whenever you suggest, compare or describe real things',
+  '(places, products, food, objects, animals, plants, buildings, artworks, people, vehicles, anything visual).',
+  'Search results carry no image URLs, so before answering get real ones. For each thing, use a real',
+  'page about it from your search results or a search for it (never guess a domain): its official',
+  'site or product page, its Wikipedia page, or an article or review about it. Fetch it with curl,',
+  "e.g. `curl -sL --max-time 8 -A 'Mozilla/5.0' <url> | grep -io '<meta[^>]*og:image[^>]*>'`, and use its og:image.",
+  'If that page has none, grep its HTML for photo URLs (.jpg, .jpeg, .png, .webp) and take one that is',
+  'clearly a photo of the thing, or try another page about it. For Wikipedia,',
+  '`https://en.wikipedia.org/api/rest_v1/page/summary/<Title>` gives originalimage.source.',
+  'WebFetch summaries drop image URLs, so use curl, fetching everything in parallel in one command,',
+  'and make a second pass for the things the first pass found nothing for.',
+  'Put each picture on its own line next to what it shows, captioned with its name.',
+  'Skip a picture you cannot find a real URL for. Never guess or construct an image URL.',
+  'Code, logs and other non-visual answers need no pictures.',
 ].join(' ');
 
 void runWireComponentWorker(
