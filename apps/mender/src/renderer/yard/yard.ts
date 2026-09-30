@@ -1738,7 +1738,7 @@ function thinking(
   const stream = stack({ left: at.x, top, width: at.wide, height: room }, 20);
   /* The face is picked in fonts.css, the one place it is named. */
   stream.classList.add('said-face');
-  stream.style.cssText += ';overflow-y:auto;pointer-events:auto';
+  stream.style.cssText += ';overflow-y:auto;pointer-events:auto;scrollbar-width:none';
 
   /* A long conversation is hundreds of turns, and laying every one of them on
      the wood at once is the whole column's cost paid on every single token
