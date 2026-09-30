@@ -239,6 +239,7 @@ function sessionOf(
     ...(coldFor(told) ? { cold: coldFor(told) } : {}),
     notes,
     thoughts,
+    ...(recapOf(told, going) ? { recap: recapOf(told, going) } : {}),
     plan: (from.plan ?? []).map((one) => ({ said: one.text, state: one.state })),
     steps: stepsOf(told?.deeds ?? []),
     made: madeOf(told),
@@ -339,6 +340,13 @@ function thoughtsOf(told: Told | undefined, mood: Mood | undefined): Thought[] {
     ...(one.quiet ? { quiet: true } : {}),
     ...(one.trouble ? { trouble: one.trouble } : {}),
   }));
+}
+
+/** The recap, while the answer it was written under is still the last word. */
+function recapOf(told: Told | undefined, going: boolean): string | undefined {
+  if (going || !told?.recap) return undefined;
+  const last = told.thoughts.filter((one) => !one.quiet).at(-1);
+  return last?.id === told.recap.after ? told.recap.said : undefined;
 }
 
 /**
@@ -442,7 +450,8 @@ function stepsOf(deeds: readonly DeedIn[]): Step[] {
     const step = stepOf(deed);
     if (deed.tool === 'execute-tool-call') {
       step.did = plain.said ?? (deed.running ? 'looking around' : deed.did);
-      if (plain.said === 'ran the tests' && !deed.running) step.note = deed.wrong ? 'failed' : 'passed';
+      if (plain.said === 'ran the tests' && !deed.running)
+        step.note = deed.wrong ? 'failed' : 'passed';
       else if (deed.wrong) step.note = 'failed';
     }
     out.push(step);

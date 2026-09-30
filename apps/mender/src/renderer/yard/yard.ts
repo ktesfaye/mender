@@ -1741,10 +1741,13 @@ function changelog(
 const logScrolled = new Map<string, number>();
 
 /* ── what it said ──────────────────────────────────────────────────────────
-   The answer, set large at the top, the answers before it dimmed below it,
-   and everything it thought and said on the way to each folded out of sight.
-   Opened, the trail comes back in between them: each one a little dimmer and
-   a little smaller than the one above it, down into the past. */
+   Read from the bottom up, the way a conversation is: the answer set large
+   at the foot of the column, right over the fire and the line you write on,
+   the answers before it dimmed above it, and everything it thought and said
+   on the way to each folded out of sight. Opened, the trail comes back in
+   between them, each one a little dimmer the further up into the past. Under
+   a finished answer is the recap, where the whole thing stands, for whoever
+   is coming back to it. */
 function thinking(
   root: HTMLElement,
   at: { x: number; wide: number },
@@ -1817,42 +1820,53 @@ function thinking(
   let shown = Math.min(wholeSize, revealedThoughts.get(sessionId) ?? REVEAL_INITIAL);
   const server = yard.session?.olderThoughts ?? 0;
 
-  /* Newest at the top, the way the gatepost reads, so what it is doing now
-     and what it just said are where the eye lands and history runs down. */
-  if (live) stream.appendChild(ember(live, since));
-  if (failure) stream.appendChild(failureEmber(failure, does));
+  /* Oldest at the top and the live end at the foot, sat down on the fire and
+     the line you write on, so what it just said is where you answer it. A
+     short conversation sits at the bottom too, with the dark above it. */
+  const col = document.createElement('div');
+  col.style.cssText = 'display:flex;flex-direction:column;gap:20px;margin-top:auto;flex:none';
+  stream.appendChild(col);
+
+  const older = document.createElement('div');
+  col.appendChild(older);
 
   const items = document.createElement('div');
   items.style.cssText = 'display:flex;flex-direction:column;gap:20px';
-  stream.appendChild(items);
+  col.appendChild(items);
 
-  const older = document.createElement('div');
-  stream.appendChild(older);
+  const recap = yard.session?.recap;
+  if (recap && !live && !failure) col.appendChild(recapped(recap));
+  if (failure) col.appendChild(failureEmber(failure, does));
+  if (live) col.appendChild(ember(live, since));
 
   function laidOlder(): void {
     const hidden = hiddenCount(wholeSize, shown, server);
     older.replaceChildren();
     if (!hidden || !thinkingOpen()) return;
-    const line = exact(`\u25be ${hidden} more before these`, 12, '#8a7452');
+    const line = exact(`\u25b4 ${hidden} more before these`, 12, '#8a7452');
     if (windowStart(wholeSize, shown) > 0) {
       line.style.cursor = 'pointer';
       line.style.pointerEvents = 'auto';
       line.addEventListener('mousedown', (event) => event.preventDefault());
       line.addEventListener('click', () => {
+        /* What comes back is drawn above what you were reading, so the
+           column is held by its foot and the words stay where they were. */
+        const fromFoot = stream.scrollHeight - stream.scrollTop;
         shown = revealMore(wholeSize, shown, REVEAL_CHUNK);
         revealedThoughts.set(sessionId, shown);
         laidOlder();
         laidItems();
+        stream.scrollTop = stream.scrollHeight - fromFoot;
       });
     }
     older.appendChild(line);
   }
 
-  /* Newest first and brightest first, so the column dims as it goes down
-     into what was said before. The first one is set large and is the only thing
-     on this screen that is, unless it was said before the newest note, in
-     which case it is history like the rest and the live edge is what the agent
-     is doing about what you said since. */
+  /* Newest last and brightest last, so the column dims as it goes up into
+     what was said before. The last one is set large and is the only thing on
+     this screen that is, unless it was said before the newest note, in which
+     case it is history like the rest and the live edge is what the agent is
+     doing about what you said since. */
   const keep = new Set<string>();
   function laidItems(): void {
     items.replaceChildren();
@@ -1904,14 +1918,14 @@ function thinking(
         if (trouble) body.classList.add('prose-trouble');
         prose(body, one.id, one.said, !walkedIn, keepCode(does), openLink(does));
         it.appendChild(body);
-        items.prepend(it);
+        items.appendChild(it);
         return;
       }
       /* Trouble keeps its colour as it goes into the history, dimmed with the
        rest, so scrolling back you can still see where it went wrong. */
       const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
       const fade = far > 2 ? 0.5 : 0.6;
-      items.prepend(
+      items.appendChild(
         keyed(
           thought(
             one,
@@ -1936,7 +1950,8 @@ function thinking(
     setThinkingOpen(!thinkingOpen());
     laidOlder();
     laidItems();
-    stream.scrollTop = 0;
+    followed.delete(sessionId);
+    stream.scrollTop = stream.scrollHeight;
   }
   /** Something that opens and folds the trail when pressed, and looks no different. */
   function folding(el: HTMLElement): void {
@@ -1954,14 +1969,41 @@ function thinking(
   root.appendChild(stream);
   /* It follows the live edge while you are at it, and stays put while you have
      scrolled up to read something, because being yanked back down in the
-     middle of a sentence is worse than missing the next one. */
-  const kept = followed.get(yard.session?.id ?? '');
-  stream.scrollTop = kept === undefined || walkedIn ? 0 : kept;
+     middle of a sentence is worse than missing the next one. The answer inks
+     in and a diagram draws late, so the foot is found again whenever the
+     column grows, for as long as it is being followed. */
+  if (walkedIn) followed.delete(sessionId);
+  const kept = followed.get(sessionId);
+  const foot = (): void => {
+    if (!stream.isConnected) return growing.disconnect();
+    if (!followed.has(sessionId)) stream.scrollTop = stream.scrollHeight;
+  };
+  const growing = new ResizeObserver(foot);
+  if (kept === undefined) foot();
+  else stream.scrollTop = kept;
+  growing.observe(col);
   stream.addEventListener('scroll', () => {
-    const atEdge = stream.scrollTop <= 24;
-    if (atEdge) followed.delete(yard.session?.id ?? '');
-    else followed.set(yard.session?.id ?? '', stream.scrollTop);
+    const atEdge = stream.scrollTop + stream.clientHeight >= stream.scrollHeight - 24;
+    if (atEdge) followed.delete(sessionId);
+    else followed.set(sessionId, stream.scrollTop);
   });
+}
+
+/**
+ * Where the whole thing stands, under an answer once it is finished: what it
+ * was for, what got done, and the one thing next. Quieter than the answer it
+ * sits under, since it is for coming back to, not for reading twice.
+ */
+function recapped(text: string): HTMLElement {
+  const it = keyed(document.createElement('div'), 'recap');
+  it.style.cssText = 'display:flex;flex-direction:column;gap:5px;flex:none';
+  it.appendChild(said('recap', '#b39a74'));
+  const body = document.createElement('div');
+  body.style.cssText =
+    'font-size:17px;line-height:1.5;font-style:italic;color:rgba(235,222,196,.72)';
+  body.textContent = text;
+  it.appendChild(body);
+  return it;
 }
 
 /** Where the column was left scrolled to, for a session somebody scrolled up in. */

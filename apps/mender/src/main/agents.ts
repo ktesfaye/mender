@@ -236,6 +236,7 @@ const EMPTY: WorkingState = {
 const KEY = 'agents';
 const DRAFTS_KEY = 'drafts';
 const MADE_KEY = 'made';
+const RECAPS_KEY = 'recaps';
 
 export function createAgents(
   runtimes: MenderRuntimes,
@@ -253,6 +254,8 @@ export function createAgents(
       conversation does not always bring its own history back whole. */
   let madeBy: Record<string, Made[]> = {};
   let madeLoaded = false;
+  /** The last recap each session was given, and the answer it was written under. */
+  let recaps: Record<string, { said: string; after: string }> = {};
   const loaded = (async () => {
     const held = await store.get(KEY);
     if (held.success && held.data && typeof held.data === 'object') {
@@ -267,6 +270,10 @@ export function createAgents(
       madeBy = heldMade.data as unknown as Record<string, Made[]>;
     }
     madeLoaded = true;
+    const heldRecaps = await store.get(RECAPS_KEY);
+    if (heldRecaps.success && heldRecaps.data && typeof heldRecaps.data === 'object') {
+      recaps = heldRecaps.data as unknown as Record<string, { said: string; after: string }>;
+    }
   })();
 
   const houses = new Map<string, House>();
@@ -361,6 +368,35 @@ export function createAgents(
         if (again.delete(task) && here) retitleFromWork(task, here);
       });
   };
+  /* Where it stands, for whoever comes back to it, written once each turn
+     has finished. Only for a turn watched finishing this sitting, and only for
+     one that did something: a two-line answer is its own recap. */
+  const recapping = new Set<string>();
+  const recappedDeeds = new Map<string, string>();
+  const recapFromWork = (task: string, house: House): void => {
+    const state = peek(house.state);
+    if (state.mood !== 'resting' || state.told.ended !== 'done' || !worked.has(task)) return;
+    const answer = state.told.thoughts.filter((one) => !one.quiet).at(-1);
+    if (!answer || recaps[task]?.after === answer.id || recapping.has(task)) return;
+    /* Whether it did anything since the last one was looked at, which a
+       short answer to a question does not. */
+    const did = state.told.deeds.at(-1)?.id ?? '';
+    const busy = recappedDeeds.get(task) !== did;
+    recappedDeeds.set(task, did);
+    if (!busy && answer.said.length < 400) return;
+    recapping.add(task);
+    void titler
+      .recap(state.told)
+      .then((said) => {
+        if (!said) return;
+        log.info('agents: recap', { area: 'agents', task, chars: said.length });
+        recaps = { ...recaps, [task]: { said, after: answer.id } };
+        void store.set(RECAPS_KEY, recaps as unknown as never);
+        houses.get(task)?.refresh();
+      })
+      .finally(() => recapping.delete(task));
+  };
+
   /** Named off the history it already has, for a session picked up from a
       conversation started elsewhere: nothing new is going to be said to
       prompt it, and until then it is called by its first line, cut short.
@@ -419,13 +455,20 @@ export function createAgents(
         },
         () => wheres.get(task),
         (found) => keepMade(task, found),
-        reglance,
+        /* How a turn ended is written down a moment after the fire goes out,
+           so the recap is looked for on every change rather than only then. */
+        () => {
+          reglance();
+          const here = houses.get(task);
+          if (here) recapFromWork(task, here);
+        },
         () => {
           const conversation = lodgers[task];
           return conversation && records[conversation]?.provider === 'claude'
             ? sessionFor(task, conversation)
             : null;
-        }
+        },
+        () => recaps[task]
       );
       houses.set(task, house);
       void loaded.then(async () => {
@@ -1246,7 +1289,9 @@ class House {
     /** Anything at all moved, which is when its lantern might say otherwise. */
     private readonly touched: () => void = () => {},
     /** Claude's own id for this conversation, when it is a Claude one. */
-    private readonly claude: () => string | null = () => null
+    private readonly claude: () => string | null = () => null,
+    /** The last recap written for it, and the answer it was written under. */
+    private readonly recapped: () => { said: string; after: string } | undefined = () => undefined
   ) {
     this.state = cell<WorkingState>(EMPTY, { name: `agent:${task}` });
   }
@@ -1514,6 +1559,11 @@ class House {
     this.live = now;
   }
 
+  /** Something kept outside the conversation changed, so say it again. */
+  refresh(): void {
+    if (this.conversation) this.publish();
+  }
+
   private publish(): void {
     const was = peek(this.state);
     const next = this.read();
@@ -1606,6 +1656,7 @@ class House {
           this.keep(madeIn(turns, (id, over) => this.time(id, over), this.live?.id)),
           this.where()
         ),
+        ...(this.recapped() ? { recap: this.recapped() } : {}),
       },
       asking,
       plan: stepsOf(this.plan),

@@ -3127,3 +3127,16 @@ column with nothing in it gives the middle its width like the right already
 did. Driven in a dev instance: the changelog put away in one session, a second
 session started showed it, and the first still had it put away on walking back;
 "what you asked" appeared the moment the first thing was said.
+
+### What it said reads bottom up, with a recap under it (2026-09-29) — done
+
+The middle column ran newest at the top and history down. It now runs like a
+conversation: the newest answer at the foot, sat on the fire and the write
+line, the older ones dimmed above, following the live end as it inks in and
+holding still once you scroll up. Under a finished answer is a recap, the
+sentence Claude Code writes on its own when you come back to a terminal but
+never over the protocol, so the village asks a small model for it with Claude
+Code's own brief once a turn that did something is done, and keeps it until
+something newer is said. Driven in a dev instance: three turns stacked
+oldest to newest down to the write line, a short question got no recap, and a
+turn that wrote and tested code got one under its answer.

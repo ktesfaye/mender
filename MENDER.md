@@ -152,8 +152,16 @@ project's changelog, in the same small squares and cream lines the glance at
 the other sessions used to be written in: each version on its own line and
 what went into it bulleted and indented under it, newest first and scrolling, read straight off whichever commits moved
 the version in the project's own manifest rather than kept anywhere. What it
-said is in the middle, the answer set large, and everything it thought and said
-on the way there folded out of sight. The word over the answer says where
+said is in the middle, read from the bottom up the way a conversation is: the
+answer set large at the foot of the column, sat right on the fire and the line
+you write on, the answers before it dimmed above it, and everything it thought
+and said on the way there folded out of sight. Under an answer that finished
+something is the recap, a sentence or two in a quieter italic saying what the
+whole session is for, what just got done and what is next, for whoever is
+coming back to it. Claude Code writes one of these itself when you return to a
+terminal, but never when it is spoken to the way the village speaks to it, so
+the village asks a small model the same question once the turn is done, keeps
+it across a restart, and lets it go the moment anything newer is said. The word over the answer says where
 it stands: "so far" in the fire's own orange while it is still going, "done"
 in the green of a finished lantern once it has, and "you stopped it" in a
 muted tan when you called it off, over whatever it had got out by then or

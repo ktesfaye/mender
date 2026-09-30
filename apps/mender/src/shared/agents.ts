@@ -338,6 +338,12 @@ export const toldSchema = z.object({
   ended: z.enum(['done', 'stopped', 'broke']).optional(),
   /** Called off and not yet stopped, so the fire can say it heard. */
   stopping: z.boolean().optional(),
+  /**
+   * Where the whole session stands, in a sentence or two, for somebody coming
+   * back to it: worked out by a small model once a turn has finished, and only
+   * still true while `after`, the answer it was written under, is the newest.
+   */
+  recap: z.object({ said: z.string(), after: z.string() }).optional(),
 });
 export type Told = z.infer<typeof toldSchema>;
 

@@ -137,6 +137,8 @@ export interface Session {
   notes: Note[];
   /** Oldest first, the live one last. */
   thoughts: Thought[];
+  /** Where the whole thing stands, under the newest answer, once it has finished. */
+  recap?: string;
   /** What it says it is going to do, when it has actually said. */
   plan: { said: string; state: 'done' | 'doing' | 'ahead' }[];
   /** Oldest first, the running one last. */
