@@ -122,7 +122,11 @@ async function boot(): Promise<void> {
     leave: () => console.log('back out'),
   });
   yard.up(true);
-  yard.show(SAMPLE);
+  /* `?bare` is a session that has made nothing and posted no plan yet. */
+  const bare = new URLSearchParams(location.search).has('bare');
+  yard.show(
+    bare && SAMPLE.session ? { ...SAMPLE, session: { ...SAMPLE.session, plan: [], made: [] } } : SAMPLE
+  );
   yard.line.take();
 
   /* The arrows walk the board and return picks, which is the whole of the

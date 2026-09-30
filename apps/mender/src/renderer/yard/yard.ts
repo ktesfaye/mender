@@ -363,7 +363,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   /* Where the wash comes down, which is the same whether or not there is a
      yard under it: from the gatepost's own column to the right edge. */
   function lay(): void {
-    const columns = layer.columns();
+    const columns = layer.columns(rightEmpty(last));
     const floor = window.innerHeight - MARGIN - RAIL_TALL - 60 - grown;
     scrim.place(
       columns.thinking.x - GUTTER / 2,
@@ -472,7 +472,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     gone = false;
     root.replaceChildren(covered);
     covered.replaceChildren();
-    const columns = layer.columns();
+    const columns = layer.columns(rightEmpty(last));
     /* Everything from under the header rule to above the line you write on.
        The columns live in here and the bands top and bottom do not. */
     const floor =
@@ -693,7 +693,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   function fly(text: string): void {
     const leaving = lastSaid;
     lastSaid = null;
-    const columns = layer.columns();
+    const columns = layer.columns(rightEmpty(last));
     if (!leaving || !same(leaving.text, text) || !last?.session) return;
     flight?.el.remove();
     const el = document.createElement('div');
@@ -2013,6 +2013,23 @@ function thought(
    edit, scrolling, following the live end the way the answer does. At the
    foot of the column the yard itself: the fire, and everybody it sent out,
    placed by what they are doing rather than listed. */
+/**
+ * Whether the right column has nothing in it to draw. Nothing is written over
+ * nothing there, so an empty column gives its room to the middle rather than
+ * standing as a blank strip down the side.
+ */
+function rightEmpty(yard: Yard | undefined): boolean {
+  if (!yard) return false;
+  const session = yard.session;
+  if (yard.asking) return false;
+  if (!session || session.waking) return true;
+  return (
+    (hidden('now') || !session.plan?.length) &&
+    (hidden('made') || !session.made?.length) &&
+    (hidden('did') || (!session.steps?.length && !session.agents?.length))
+  );
+}
+
 function made(
   root: HTMLElement,
   at: { x: number; wide: number },

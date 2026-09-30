@@ -57,8 +57,13 @@ export interface Layer {
   size(): { wide: number; tall: number };
   /** Where the writing starts and stops across the window. */
   edge(): number;
-  /** Where each column starts and how wide it is, at the window's real size. */
-  columns(): { asked: Span; thinking: Span; made: Span };
+  /**
+   * Where each column starts and how wide it is, at the window's real size.
+   * `rightEmpty` is the right column having nothing to show even with parts
+   * of it still out, which gives its room to the middle the same as putting
+   * them away would.
+   */
+  columns(rightEmpty?: boolean): { asked: Span; thinking: Span; made: Span };
   /** Whether the window is short enough that some of it has to give way. */
   cramped(): boolean;
   /** Called whenever the window changed shape, after the sizes are new. */
@@ -110,7 +115,7 @@ export function makeLayer(): Layer {
     return MARGIN;
   }
 
-  function columns(): { asked: Span; thinking: Span; made: Span } {
+  function columns(rightEmpty = false): { asked: Span; thinking: Span; made: Span } {
     const { wide } = size();
     /* Every column is a share of the window, not a width, so the whole board
        breathes with it: a window pulled wider widens all three and the
@@ -126,7 +131,7 @@ export function makeLayer(): Layer {
     const shrink = Math.min(1, wide / drawn);
     const gutter = Math.round(GUTTER * shrink);
     const left = !(hidden('asked') && hidden('changelog'));
-    const right = !(hidden('made') && hidden('now') && hidden('did'));
+    const right = !rightEmpty && !(hidden('made') && hidden('now') && hidden('did'));
     const set = arrangement();
     const most = Math.max(SIDE_LEAST, Math.round(wide * SIDE_MOST));
     let asked = left ? Math.round(wide * (set.asked ?? COLUMN.asked / drawn)) : 0;
