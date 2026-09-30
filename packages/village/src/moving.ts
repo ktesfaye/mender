@@ -19,19 +19,34 @@ export type Move = { kind: 'to'; place: string } | { kind: 'off' };
  * The arrangement after one project moves.
  *
  * Onto somebody else's place is a swap: they take the one being left. Off the
- * map is the project leaving the arrangement entirely.
+ * map is the project leaving the arrangement entirely. And whoever stood on a
+ * piece of a district that is left with nobody on the rest of it takes the
+ * whole district, since the piece was only ever cut out for them to share it.
  */
-export function moved(arrangement: Arrangement, who: string, move: Move): Map<string, string> {
+export function moved(
+  arrangement: Arrangement,
+  who: string,
+  move: Move,
+  subdistricts: readonly SubdistrictSpec[] = []
+): Map<string, string> {
   const out = new Map(arrangement);
   const from = arrangement.get(who);
   if (move.kind === 'off') {
     out.delete(who);
-    return out;
+  } else {
+    for (const [other, place] of arrangement) {
+      if (other !== who && place === move.place && from !== undefined) out.set(other, from);
+    }
+    out.set(who, move.place);
   }
-  for (const [other, place] of arrangement) {
-    if (other !== who && place === move.place && from !== undefined) out.set(other, from);
+  const places = new Set(out.values());
+  for (const [other, place] of out) {
+    const of = subdistricts.find((one) => one.id === place)?.of;
+    if (!of || places.has(of)) continue;
+    out.set(other, of);
+    places.delete(place);
+    places.add(of);
   }
-  out.set(who, move.place);
   return out;
 }
 

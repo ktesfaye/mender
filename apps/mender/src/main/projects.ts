@@ -290,7 +290,7 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
     faultIn(
       plan(),
       loadSubdistricts(),
-      moved(arranged(projects), id, move),
+      moved(arranged(projects), id, move, loadSubdistricts()),
       (who) => projects.find((project) => project.id === who)?.name ?? 'somebody'
     );
 
@@ -322,7 +322,7 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
         return { success: false, error: 'nobody can live there' };
       const fault = faultAfter(projects, id, { kind: 'to', place: to });
       if (fault) return { success: false, error: fault };
-      const after = moved(arranged(projects), id, { kind: 'to', place: to });
+      const after = moved(arranged(projects), id, { kind: 'to', place: to }, loadSubdistricts());
       return {
         success: true,
         data: await save(
@@ -571,7 +571,13 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
          the village can reach any more, which is the worst of both. */
       await sweeping?.(id);
       await rm(iconPath(id), { force: true });
-      return await save(projects.filter((project) => project.id !== id));
+      // Whoever was sharing its district on a piece takes the whole of it.
+      const after = moved(arranged(projects), id, { kind: 'off' }, loadSubdistricts());
+      return await save(
+        projects
+          .filter((project) => project.id !== id)
+          .map((one) => ({ ...one, district: after.get(one.id) ?? one.district }))
+      );
     },
 
     /* Who takes the sessions down. Set after construction because the tasks

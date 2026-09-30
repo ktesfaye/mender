@@ -30,7 +30,9 @@ describe('moving a project', () => {
     expect(fault(moved(full, 'pA', { kind: 'off' }))).toMatch(/would be left out at sea/);
   });
 
-  it('refuses a piece with nobody on the rest of its district', () => {
-    expect(fault(moved(full, 'pB', { kind: 'to', place: 'D2' }))).toMatch(/hay farm/);
+  it('gives a piece its whole district when the rest is left empty', () => {
+    const after = moved(full, 'pB', { kind: 'to', place: 'D2' }, pieces);
+    expect([after.get('pB'), after.get('pB2')]).toEqual(['D2', 'B']);
+    expect(fault(after)).toBeNull();
   });
 });
