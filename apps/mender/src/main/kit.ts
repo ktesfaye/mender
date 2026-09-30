@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { app } from 'electron';
 import type { McpServer } from '@emdash/core/primitives/mcp/api';
 import { generateSkillMd, isValidSkillName } from '@emdash/core/primitives/skills/api';
 import type { SessionConfigState, SessionMcpServer } from '@emdash/core/runtimes/acp/api';
@@ -9,7 +10,7 @@ import { pluginRegistry } from '@emdash/plugins/agents';
 import { ReplicaState } from '@emdash/wire/live';
 import { cell, type Cell } from '@emdash/wire/state';
 import type { Choice, Hand, Kit, Knack, Tool } from '@shared/agents';
-import { serverFromCatalog } from '@shared/mcp-catalog';
+import { SCREEN_CONTROL_PATH_TOKEN, serverFromCatalog } from '@shared/mcp-catalog';
 import type { AppSettings } from './app-settings';
 import type { MenderRuntimes } from './runtimes';
 import { catalogueContent, catalogueSkills, type CatalogueSkill } from './skills-catalog';
@@ -189,6 +190,23 @@ export function createKits(
       const hand = await card.hand();
       const server = serverFromCatalog(key, hand);
       if (!server) return refused(`${key} is not one the catalogue knows.`);
+      if (server.args) {
+        /* Packaged, this file sits in an asar archive Electron reads
+           transparently but a plain `node` — which is what actually runs
+           it, since it is a program this app starts rather than a library
+           it calls — cannot. `asarUnpack` in electron-builder.config.ts
+           leaves a real copy of it on disk beside the archive; this is the
+           one place that knows to look there instead. */
+        const appPath = app.getAppPath();
+        const real = appPath.includes('app.asar')
+          ? appPath.replace('app.asar', 'app.asar.unpacked')
+          : appPath;
+        server.args = server.args.map((one) =>
+          one === SCREEN_CONTROL_PATH_TOKEN
+            ? join(real, 'assets', 'tools', 'screen-control-mcp.mjs')
+            : one
+        );
+      }
       const saved = await runtimes.agentConfig.saveMcpServer({ server });
       if (!saved.success) return refused(said(saved.error));
       await card.redraw();

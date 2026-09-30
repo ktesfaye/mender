@@ -64,17 +64,20 @@ didn't say so, or cut on purpose with the reason written down next to it.
 
 What is still genuinely missing, past what's marked `part` above: an actual
 Finder drag driving the file-import code that's otherwise proven; a bare
-subdivided plot, past eleven founded projects, actually pressed; a real
+subdivided plot, past eleven founded projects, actually pressed; and a real
 session with hundreds of turns actually driving the transcript's own
-windowing rather than a synthetic one; and agents driving other Mac apps.
-Several things this file used to list here turned out, on a closer look on
-2026-09-29, to already be built and just never checked off: mermaid you can
-pan and zoom, a CSV file reading as a table, linking an existing pull
-request, and starting a session from a branch you already have are all live
-in the app today. The thinner transcript cards — thinking, the plan, how a
-turn ended — are built and wired to real data too; what's missing for them
-is not code, it's a real Claude turn that actually sends one, so they stay
-`part` on that alone.
+windowing rather than a synthetic one. Several things this file used to
+list here turned out, on a closer look on 2026-09-29, to already be built
+and just never checked off: mermaid you can pan and zoom, a CSV file
+reading as a table, linking an existing pull request, and starting a
+session from a branch you already have are all live in the app today. The
+thinner transcript cards — thinking, the plan, how a turn ended — are built
+and wired to real data too; what's missing for them is not code, it's a
+real Claude turn that actually sends one, so they stay `part` on that
+alone. And what was still genuinely missing here — an agent actually
+driving another Mac app, not just one whitelisted browser MCP — is built
+now too: see "A session can control the whole Mac, not just a browser"
+below.
 
 ## What "not started" actually means
 
@@ -2884,3 +2887,29 @@ markdown file and an html page and linked a page, all three appeared, the
 app was restarted and the session walked back into with all three still
 there, the markdown file opened on the board as writing, and the column
 was put away and brought back.
+
+### A session can control the whole Mac, not just a browser (2026-09-29) — done
+
+"What it can reach" now offers a server that isn't scoped to one app: a
+screenshot of the whole screen, switching to any app by name, and a real
+click, drag, type, key press or scroll wherever the pointer is — plus raw
+AppleScript as the one genuinely powerful way in, since most native Mac
+apps (System Settings included) answer to it by name rather than by pixel.
+It is a plain MCP server the app spawns for itself
+(`assets/tools/screen-control-mcp.mjs`, no dependency of its own, driving
+`cliclick` and `osascript`), offered in the catalogue like any other server
+rather than switched on for every session unasked. Needs Accessibility and
+Screen Recording granted to Mender in System Settings the one time macOS
+asks a human rather than a script for that; a call that fails for that
+reason says exactly which permission is missing.
+
+Driven for real: the standalone server answered `initialize`, listed its
+tools, read back the actual running apps on this machine, switched Finder
+to the front, and returned a real screenshot. Added to a real session
+through the card's own catalogue in a running dev build, confirmed it
+lands in Claude Code's own MCP config with the packaged script's real path
+resolved (not a placeholder), toggled on. One thing to know: that write
+landed in the real, shared `~/.claude.json` rather than anything scoped to
+the test, since Claude Code's own config isn't touched by Mender's own data
+isolation — it was found and removed immediately after, and nothing further
+was left behind.

@@ -18,14 +18,15 @@ const config: Configuration = {
   publish: null,
   // `assets` as well as `out`: main reads the world's own files from there.
   files: ['out/**/*', 'assets/**/*', 'node_modules/**/*'],
-  /* Two things have to be real files on the disk rather than entries in the
+  /* Three things have to be real files on the disk rather than entries in the
      archive. The compiled binaries, because an operating system will not load
-     one out of an archive. And the two agent adapters, because an agent is a
-     program this app starts rather than a library it calls, and the plain node
-     that starts it cannot read the archive at all. Everything else that is
-     javascript stays in it: Electron reads the archive itself, so a worker
-     spawned from in there loads exactly as it does in development. */
-  asarUnpack: ['out/main/adapters/**', '**/*.node'],
+     one out of an archive. The two agent adapters and the screen controller,
+     because each is a program this app starts rather than a library it calls,
+     and the plain node that starts them cannot read the archive at all.
+     Everything else that is javascript stays in it: Electron reads the
+     archive itself, so a worker spawned from in there loads exactly as it
+     does in development. */
+  asarUnpack: ['out/main/adapters/**', 'assets/tools/**', '**/*.node'],
   mac: {
     category: 'public.app-category.developer-tools',
     hardenedRuntime: true,
