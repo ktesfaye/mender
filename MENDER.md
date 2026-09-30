@@ -88,9 +88,10 @@ first line: a small model reads what was asked, what came back and what was
 touched, names it within seconds of the first thing said, again as the first
 few turns settle and then every third, so a session that has wandered onto
 something else is called what it is now. A name you gave it yourself is
-never touched. Pressing the hook
-again while nothing has been said in it turns over the board of other ways to
-start one, and whichever is taken replaces that untouched one. A copy of its
+never touched. Pressing the hook or command-T always starts another plain one;
+only right-clicking the hook, or command-N, turns over the board of other ways
+to start one, and if nothing has been said in the one you are standing in yet,
+whichever is taken replaces it. A copy of its
 own, a worktree on a fresh branch, is one line on that board,
 "in its own copy, on its own branch," taken on purpose; starting from an
 existing branch implies it. Taking a shared session down leaves every file

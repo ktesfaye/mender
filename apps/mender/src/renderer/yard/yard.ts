@@ -3233,16 +3233,13 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   beam.appendChild(box({ left: spare + 10, top: 3, width: 3, height: LANTERN.cord }, HOOK));
 
   const lamp = sprite(KIT_NAMES.lanternOff, 2);
-  /* Standing in a session nothing has been said in yet, the hook offers the
-     other ways of starting one instead of another plain one. */
-  const standing = Boolean(yard.session && !yard.session.notes.length && !yard.session.live);
   lamp.style.cssText += `;left:${spare}px;top:${cord}px;filter:brightness(.7)`;
   beam.appendChild(lamp);
 
   const hook = box({ left: spare, top: cord, width: 22, height: 38 });
   hook.style.pointerEvents = 'auto';
   hook.style.cursor = 'default';
-  hook.title = standing ? 'other ways to start one' : 'a new session · right-click for other ways';
+  hook.title = 'a new session · right-click for other ways';
   const plus = [
     box({ left: 10, top: 16, width: 2, height: 6 }, PLUS),
     box({ left: 8, top: 18, width: 6, height: 2 }, PLUS),

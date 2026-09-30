@@ -1049,21 +1049,15 @@ async function boot(): Promise<void> {
       if (looking && id !== FIND) looking = null;
       /* A new session is a real one, straight away: the hook cuts it and you
          are standing in it, agent waking, with the line ready. The agent names
-         it once it knows what it is about. Pressed again while nothing has
-         been said in it yet, the hook turns over to the other ways of starting
-         one instead (its own copy, its own terminal, an issue, a branch), and
-         whichever of those is taken replaces the untouched one. */
+         it once it knows what it is about. Every press does that; the other
+         ways of starting one are the hook's right-click and command-N. */
       if (id === 'new') {
         const district = open?.district;
         const project = district ? projectOn(district) : undefined;
         if (!district || !project) return;
         const aim: Aim = { kind: 'district', district };
         if (naming) return;
-        const here = inside;
-        if (here && untouched()) {
-          replacing = here.id;
-          askName(aim, freeSlot(district));
-        } else void startNow(aim);
+        void startNow(aim);
         return;
       }
       if (id === 'new:ways') {
@@ -5161,11 +5155,9 @@ async function boot(): Promise<void> {
         const hanging = open ? tasksOn(open.district).length : projects.length;
         const meant = chordFor(event.key, standing(), hanging, keybindings);
         if (!meant) return false;
-        /* The chord is "give me a fresh session", and standing in one nobody
-           has said anything to yet already is that. Turning the hook over to
-           the other ways of starting one is the hook's second press, not the
-           key's: those live on command-N and a right-click. */
-        if (meant === 'new' && untouched()) return true;
+        /* The chord is always a fresh session, straight away. Turning the
+           hook over to the other ways of starting one is the hook's second
+           press, not the key's: those live on command-N and a right-click. */
         go(meant);
         return true;
       },
