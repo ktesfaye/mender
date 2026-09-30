@@ -208,11 +208,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       if (instead()) return;
       /* And when this line does take it, nothing else gets a look. */
       event.stopPropagation();
-      const text = (said.textContent ?? '').trim();
-      const from = said.getBoundingClientRect();
-      said.textContent = '';
-      showing();
-      say(text, from);
+      send();
       return;
     }
     if (event.key === 'Escape') {
@@ -290,6 +286,14 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     typed(said.textContent ?? '');
   }
 
+  function send(): void {
+    const text = (said.textContent ?? '').trim();
+    const from = said.getBoundingClientRect();
+    said.textContent = '';
+    showing();
+    say(text, from);
+  }
+
   function take(): void {
     said.focus();
     const range = document.createRange();
@@ -317,10 +321,25 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     take,
     blur: () => said.blur(),
     catches: (event) => {
-      if (event.key.length !== 1 || !root.getClientRects().length) return false;
+      if (!root.getClientRects().length) return false;
       const at = document.activeElement;
       if (at === said) return false;
       if (at instanceof HTMLElement && at !== document.body && at.isContentEditable) return false;
+      /* Return sends from anywhere a letter would have landed here from, as
+         long as there is something written to send. An empty line on Return
+         calls off whoever is working, and that is not a thing a stray press
+         somewhere on the board should be able to do. */
+      if (event.key === 'Enter') {
+        if (event.shiftKey || event.isComposing || event.defaultPrevented) return false;
+        if (at instanceof HTMLInputElement || at instanceof HTMLTextAreaElement) return false;
+        if (!(said.textContent ?? '').trim()) return false;
+        event.preventDefault();
+        take();
+        if (instead()) return true;
+        send();
+        return true;
+      }
+      if (event.key.length !== 1) return false;
       take();
       return true;
     },
