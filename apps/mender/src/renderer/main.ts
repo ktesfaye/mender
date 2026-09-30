@@ -31,7 +31,7 @@ import type { At, Change } from '@shared/changes';
 import { parseEnvLines } from '@shared/env-lines';
 import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
-import type { ClaudeCliSession, Task } from '@shared/tasks';
+import type { ClaudeCliSession, Task, Workspace } from '@shared/tasks';
 import { branchMade, branchUnmade, unbranchMade } from './board/branch';
 import { browsing, openPage, safe as safeAddress } from './board/browsing';
 import { counted, openCard, transcriptMarkdown, turnsOf, type LiveCard } from './board/card';
@@ -569,10 +569,34 @@ async function boot(): Promise<void> {
        hangs a lantern, dark and saying so, rather than the rail pretending
        nothing was asked until the cutting finishes. */
     const cutting = new Map<string, Task>();
+    /* Every isolated workspace, and which one of each project's you are
+       standing in: empty is the project's own folder. The rail carries the
+       sessions of that one workspace and nobody else's. */
+    let workspaces: Workspace[] = [];
+    const workspaceIn = new Map<string, string>();
+    const workspaceOf = (projectId: string): string => {
+      const at = workspaceIn.get(projectId) ?? '';
+      return workspaces.some((each) => each.id === at) ? at : '';
+    };
     const tasksFor = (projectId: string): Task[] => [
-      ...tasks.filter((task) => task.project === projectId),
+      ...tasks.filter(
+        (task) => task.project === projectId && (task.workspace ?? '') === workspaceOf(projectId)
+      ),
       ...[...cutting.values()].filter((task) => task.project === projectId),
     ];
+    /** What hangs from the beam: nothing until the project has a workspace
+        besides its own folder, then its own folder first and every one of
+        them after it. */
+    const boardsFor = (project: Project): { id: string; name: string; here: boolean }[] => {
+      const cut = workspaces.filter((each) => each.project === project.id);
+      if (!cut.length) return [];
+      const here = workspaceOf(project.id);
+      const folder = project.path.replace(/\/+$/, '').split('/').at(-1) ?? project.name;
+      return [
+        { id: '', name: folder, here: here === '' },
+        ...cut.map((each) => ({ id: each.id, name: each.name, here: here === each.id })),
+      ];
+    };
     frame(camera, drawn.island);
     /* The window is not its real size when the renderer starts — it is
        restored to whatever it was last time a moment later — so the opening
@@ -759,6 +783,8 @@ async function boot(): Promise<void> {
       /** Its own worktree on its own branch, rather than the project's own
           folder beside everybody else. */
       isolated: boolean;
+      /** The workspace it would go into, when you are standing in one. */
+      among?: string;
     } | null = null;
     /** Set while an existing session is being called something else, or —
         the same one line, the same keys — while a custom server is being
@@ -813,13 +839,18 @@ async function boot(): Promise<void> {
       projects.find((candidate) => candidate.district === district.id);
     const tasksOn = (district: District): Task[] => {
       const project = projectOn(district);
+      return project ? tasksFor(project.id).filter((task) => !cutting.has(task.id)) : [];
+    };
+    /** Every session in the project, whichever workspace it is in. */
+    const allOn = (district: District): Task[] => {
+      const project = projectOn(district);
       return project ? tasks.filter((task) => task.project === project.id) : [];
     };
     /* Which house a session stands in, which is scenery and nothing else:
        it decides where a villager is drawn and never what anything opens. */
     /** The first building on a district nobody is in, if there is one. */
     const freeSlot = (district: District): number | null => {
-      const taken = new Set(tasksOn(district).map((task) => task.slot));
+      const taken = new Set(allOn(district).map((task) => task.slot));
       for (let slot = 0; slot < drawn.ground.room(district); slot += 1) {
         if (!taken.has(slot)) return slot;
       }
@@ -918,7 +949,7 @@ async function boot(): Promise<void> {
     let closing: { task: string; at: number } | null = null;
     /** What in a session's own worktree nobody has committed, said as words,
         or nothing when it is clean. */
-    const uncommittedIn = async (task: Task): Promise<string | null> => {
+    const uncommittedIn = async (task: { path: string }): Promise<string | null> => {
       const parsed = parseNativeAbsolute(task.path);
       if (!parsed.success) return null;
       const status = new ReplicaState<{ kind: string; entries?: Record<string, unknown> }>(
@@ -936,6 +967,99 @@ async function boot(): Promise<void> {
         void status.dispose();
       }
     };
+    /** The one after this along a list, wrapping, never this one itself. */
+    const nextOf = (list: Task[], id: string): Task | undefined => {
+      const from = list.findIndex((one) => one.id === id);
+      return [...list.slice(from + 1), ...list.slice(0, Math.max(from, 0))].find(
+        (one) => one.id !== id
+      );
+    };
+    /** The workspace a first right-click has already said the cost of. */
+    let dropping: { id: string; at: number } | null = null;
+    /* Which session you were last in, per workspace, so walking back onto a
+       signboard puts you where you were in there. */
+    const lastInWorkspace = new Map<string, string>();
+
+    /**
+     * Walk into a workspace: whichever session you were last in there, or
+     * its first, or, with nobody in it yet, a fresh one started on the spot,
+     * the same as walking into a project nobody has worked in.
+     */
+    const enterWorkspace = async (aim: Aim, workspace: string): Promise<void> => {
+      const project = projectOn(aim.district);
+      if (!project) return;
+      workspaceIn.set(project.id, workspace);
+      const here = tasksOn(aim.district);
+      const last = lastInWorkspace.get(`${project.id}|${workspace}`);
+      const task = here.find((one) => one.id === last) ?? here[0];
+      if (task) await openTask(aim, task);
+      else await startNow(aim);
+    };
+
+    /** Cut a new workspace and stand in it, a session already waking. */
+    const newWorkspace = async (): Promise<void> => {
+      const district = open?.district;
+      const project = district ? projectOn(district) : undefined;
+      if (!district || !project) return;
+      const aim: Aim = { kind: 'district', district };
+      say('making its own copy of the project…');
+      const made = await client.tasks.cutWorkspace({ project: project.id }, { timeoutMs: 0 });
+      if (!made.success) {
+        say(whyNot(made.error), 6000);
+        return;
+      }
+      say(null);
+      if (!workspaces.some((each) => each.id === made.data.id)) {
+        workspaces = [...workspaces, made.data];
+      }
+      if (open?.district !== district) return;
+      await enterWorkspace(aim, made.data.id);
+    };
+
+    /** Two right-clicks take a workspace down; the first says what goes. */
+    const dropWorkspace = async (id: string): Promise<void> => {
+      const workspace = workspaces.find((each) => each.id === id);
+      const aim = open;
+      if (!workspace || !aim) return;
+      const armed = dropping?.id === id && Date.now() - dropping.at < 5000;
+      if (!armed) {
+        dropping = { id, at: Date.now() };
+        const here = tasks.filter((task) => task.workspace === id).length;
+        const left = await uncommittedIn(workspace);
+        const going = [
+          here ? counted(here, 'session') : null,
+          left ? `${left} nobody has committed` : null,
+        ].filter(Boolean);
+        say(
+          `take ${workspace.name} down? ${going.length ? `${going.join(' and ')} go with it, ` : ''}` +
+            `its branch stays. right-click it again.`,
+          5000
+        );
+        return;
+      }
+      dropping = null;
+      const project = projectOn(aim.district);
+      const standingIn = project && workspaceOf(project.id) === id;
+      await client.tasks.dropWorkspace({ id }, { timeoutMs: 0 });
+      workspaces = workspaces.filter((each) => each.id !== id);
+      say(`${workspace.name} is down. ${workspace.branch} is still there.`, 4000);
+      if (open !== aim || !project) return;
+      if (standingIn) await enterWorkspace(aim, '');
+      else redrawBoards();
+    };
+
+    /** The signboards moved under the yard you are standing in. */
+    const redrawBoards = (): void => {
+      const here = open ? projectOn(open.district) : undefined;
+      if (!watching || !here) return;
+      watching.moved({
+        project: here,
+        tasks: tasksFor(here.id),
+        moods: seen,
+        workspaces: boardsFor(here),
+      });
+    };
+
     const go = (id: string): void => {
       // The finder is a board like any other, so picking something on it is
       // picking that thing: it steps out of the way first and then answers.
@@ -972,6 +1096,18 @@ async function boot(): Promise<void> {
       }
       if (id === 'do:found') {
         openFound();
+        return;
+      }
+      if (id === 'do:workspace') {
+        void newWorkspace();
+        return;
+      }
+      if (id.startsWith('workspace:')) {
+        if (open) void enterWorkspace({ kind: 'district', district: open.district }, id.slice(10));
+        return;
+      }
+      if (id.startsWith('workspace-drop:')) {
+        void dropWorkspace(id.slice(15));
         return;
       }
       if (id === 'do:windmill') {
@@ -1013,9 +1149,11 @@ async function boot(): Promise<void> {
                 return;
               }
             }
-            const here = tasksOn(aim.district);
-            const from = here.findIndex((one) => one.id === task.id);
-            const next = [...here.slice(from + 1), ...here.slice(0, Math.max(from, 0))][0];
+            /* The next one along in the same workspace, and once that is
+               empty, the next anywhere in the project: the workspace itself
+               stays on its signboard with nobody in it. */
+            const next =
+              nextOf(tasksOn(aim.district), task.id) ?? nextOf(allOn(aim.district), task.id);
             await client.tasks.abandon({ id: task.id }, { timeoutMs: 0 });
             say(null);
             if (open !== aim) return;
@@ -1400,7 +1538,10 @@ async function boot(): Promise<void> {
         client.workspaces.records.state(undefined, 'list'),
         {
           onChange: (all) => {
-            const paths = new Set(tasks.map((task) => task.path));
+            const paths = new Set([
+              ...tasks.map((task) => task.path),
+              ...workspaces.map((each) => each.path),
+            ]);
             const rows: WorktreeRow[] = Object.values(all)
               .filter((each) => each.kind === 'worktree')
               .map((each) => ({
@@ -1476,6 +1617,10 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       inside = here ?? null;
+      if (here) {
+        workspaceIn.set(project.id, here.workspace ?? '');
+        lastInWorkspace.set(`${project.id}|${here.workspace ?? ''}`, here.id);
+      }
       if (here) unseen.delete(here.id);
       /* The line belongs to the session it was written in. Stepping to
          another leaves that one's half-written line with it, not on this. */
@@ -1504,6 +1649,7 @@ async function boot(): Promise<void> {
           moods: seen,
           glances,
           unread: new Map(unseen),
+          workspaces: boardsFor(project),
           ...(here ? { here } : {}),
           servers: servingCheckouts(),
           ...(cutting.size ? { cutting: new Set(cutting.keys()) } : {}),
@@ -1583,9 +1729,10 @@ async function boot(): Promise<void> {
       }
       /* You open a project to get at the work in it, so you land in the work:
          whichever session you were last in, or none if it has never had one. */
-      const standing = tasksOn(aim.district);
+      const standing = allOn(aim.district);
       const last = lastIn.get(project.id);
-      const here = standing.find((task) => task.id === last) ?? standing[0];
+      const here =
+        standing.find((task) => task.id === last) ?? tasksOn(aim.district)[0] ?? standing[0];
       /* Nobody here yet: there is no work to land in, so a session is
          started and you land in that, the same as pressing the hook. */
       if (!here) {
@@ -1614,8 +1761,16 @@ async function boot(): Promise<void> {
     const startNow = async (aim: Aim): Promise<void> => {
       const project = projectOn(aim.district);
       if (!project) return;
+      /* Into whichever workspace you are standing in: a new session there
+         works beside the others in its worktree. */
+      const workspace = workspaceOf(project.id);
       const made = await client.tasks.begin(
-        { project: project.id, name: 'claude', slot: freeSlot(aim.district) },
+        {
+          project: project.id,
+          name: 'claude',
+          slot: freeSlot(aim.district),
+          ...(workspace ? { workspace } : {}),
+        },
         { timeoutMs: 0 }
       );
       if (!made.success) {
@@ -1757,6 +1912,7 @@ async function boot(): Promise<void> {
         if (watching && here?.id === now.id) {
           watching.moved({
             project: now,
+            workspaces: boardsFor(now),
             tasks: tasksFor(now.id),
             moods: seen,
           });
@@ -3373,6 +3529,7 @@ async function boot(): Promise<void> {
       resume: null,
       allowAll: false,
       isolated: false,
+      among: workspaces.find((each) => each.id === workspaceOf(project.id))?.name,
     });
 
     /** A new session is a question: what is going to happen in there. */
@@ -3636,6 +3793,7 @@ async function boot(): Promise<void> {
       if (!watching || !inside || inside.id !== projectId) return;
       watching.moved({
         project: inside,
+        workspaces: boardsFor(inside),
         tasks: tasksFor(projectId),
         moods: seen,
         cutting: new Set(cutting.keys()),
@@ -3719,6 +3877,7 @@ async function boot(): Promise<void> {
             kind: terminal ? 'terminal' : undefined,
             ...(branch ? { branch } : {}),
             ...(isolated ? { isolated: true } : {}),
+            ...(!isolated && workspaceOf(project.id) ? { workspace: workspaceOf(project.id) } : {}),
           },
           { timeoutMs: 0 }
         );
@@ -4353,7 +4512,13 @@ async function boot(): Promise<void> {
         else yard.narrowing(...narrowing());
         return;
       }
-      if (pick === 'card' || pick === 'new' || pick === 'new:ways' || pick.startsWith('do:')) {
+      if (
+        pick === 'card' ||
+        pick === 'new' ||
+        pick === 'new:ways' ||
+        pick.startsWith('do:') ||
+        pick.startsWith('workspace')
+      ) {
         go(pick);
         return;
       }
@@ -5151,6 +5316,7 @@ async function boot(): Promise<void> {
       if (watching && inside) {
         watching.moved({
           project: inside,
+          workspaces: boardsFor(inside),
           tasks: tasksFor(inside.id),
           moods: seen,
           glances,
@@ -5181,6 +5347,18 @@ async function boot(): Promise<void> {
     });
     await running.ready;
     tasks = running.current() ?? [];
+
+    const cutOnes = new ReplicaState<Workspace[]>(
+      client.tasks.workspaces.state(undefined, 'list'),
+      {
+        onChange: (value) => {
+          workspaces = value;
+          redrawBoards();
+        },
+      }
+    );
+    await cutOnes.ready;
+    workspaces = cutOnes.current() ?? [];
 
     const moods = new ReplicaState<Record<string, Mood>>(
       client.agents.island.state(undefined, 'moods'),
@@ -5290,6 +5468,8 @@ function asking(naming: {
   resume?: { id: string; title: string } | null;
   allowAll: boolean;
   isolated: boolean;
+  /** The workspace it would go into, when you are standing in one. */
+  among?: string;
 }): Row[] {
   if (naming.pickingIssue) return pickingIssue(naming.issues ?? null);
   if (naming.pickingBranch) return pickingBranch(naming.branches ?? null);
@@ -5314,7 +5494,9 @@ function asking(naming: {
           ? `it works in its own copy of the project, on ${naming.branch}.`
           : naming.isolated
             ? 'it works in its own copy of the project, on a branch of its own, so nothing it does touches your folder.'
-            : 'it works right in the project’s own folder, alongside anyone else in there.'
+            : naming.among
+              ? `it works in ${naming.among}, alongside anyone else in there.`
+              : 'it works right in the project’s own folder, alongside anyone else in there.'
       }`,
       tone: 'faded',
     },

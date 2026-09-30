@@ -24,6 +24,7 @@ import type {
   Note,
   Posture,
   Session,
+  Signboard,
   Step,
   Thought,
   Yard,
@@ -128,6 +129,8 @@ export interface Standing {
   versions?: readonly { version: string | null; lines: readonly string[] }[];
   /** Whether the session is still being woken and reading its history back. */
   waking?: boolean;
+  /** The project's workspaces, when it has any besides its own folder. */
+  workspaces?: readonly Signboard[];
 }
 
 /** The turn the newest note opened, which is the one being answered now. */
@@ -167,6 +170,7 @@ export function yardOf(from: Standing): Yard {
     ...(from.versions
       ? { versions: from.versions.map((one) => ({ version: one.version, lines: [...one.lines] })) }
       : {}),
+    ...(from.workspaces?.length ? { workspaces: [...from.workspaces] } : {}),
     rail: tasks.map((task) =>
       lanternOf(task, moods[task.id], {
         here: task.id === here?.id,

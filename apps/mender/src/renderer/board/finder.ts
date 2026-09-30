@@ -77,6 +77,13 @@ export const DOINGS: Doing[] = [
     where: ['island', 'district', 'session', 'card'],
   },
   {
+    pick: 'do:workspace',
+    name: 'open a new workspace',
+    about: 'its own copy of the project, on its own branch',
+    chord: 'n',
+    where: ['district', 'session', 'card'],
+  },
+  {
     pick: 'do:found',
     name: 'found a project',
     about: 'put a checkout on the island',
@@ -164,8 +171,13 @@ export function chordFor(
      there are nine of them and only nine digits. */
   const digit = /^[1-9]$/.test(pressed) ? Number(pressed) : 0;
   if (digit) return digit <= hanging ? `rail:${digit - 1}` : null;
-  const doing = rebindableDoings().find((each) => chordOf(each.pick, bound) === pressed);
-  return doing && doing.where.includes(where) ? doing.pick : null;
+  /* Two doings can share a key where they are never both on offer: out on
+     the island command-N founds a project, and inside one it cuts another
+     workspace of it. */
+  const doing = rebindableDoings().find(
+    (each) => chordOf(each.pick, bound) === pressed && each.where.includes(where)
+  );
+  return doing ? doing.pick : null;
 }
 
 interface Village {

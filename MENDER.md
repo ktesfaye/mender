@@ -97,6 +97,20 @@ existing branch implies it. Taking a shared session down leaves every file
 where it is, since the folder was never its to take. Nothing about any of it
 is a stand-in.
 
+**A copy of its own is a workspace, and workspaces hang from a beam.** That
+worktree on its own branch is not one session's but a place several can work
+in, or nobody, and it stands until it is taken down on purpose. Once a project
+has one, the rule under its name becomes a timber beam and each workspace hangs
+from it on two cords as a signboard, the project's own folder first, the one
+you are standing in painted gold. Pressing another walks into it, back into
+whichever session you were last in there or into a fresh one if it is empty,
+and the rail along the bottom carries that workspace's sessions and nobody
+else's. Command-N in a project cuts another and stands you in it, and so does
+the dashed board at the end of the beam; out on the island it still founds a
+project, since there is nothing there to copy. A new session starts in
+whichever workspace you are standing in. Right-clicking a board takes it down
+in two, the first saying what goes with it; the branch stays.
+
 **An agent runs in a task, and it is a villager.** Hanging a lantern on the
 empty hook at the end of the rail moves somebody in: the ACP runtime spawns
 that agent's own CLI in the task's worktree, and from then on the yard is what

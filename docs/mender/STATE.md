@@ -720,6 +720,25 @@ in; what was committed in it is still on the branch afterwards. That was
 driven: a session started, its card read, taken down in two presses, the
 worktree gone from git's list and the branch still there.
 
+**A project's own copies are workspaces, and they hang from the beam.** A
+worktree cut on purpose is no longer one session's: it is a workspace, holding
+as many sessions as are working in it and none at all, and it stays standing
+when its last one comes down. Once a project has one, the rule under its name
+turns into a beam with a signboard hanging on two cords for each, the
+project's own folder first, the one you are standing in painted gold; pressing
+another walks into whichever session you were last in there, or starts a fresh
+one if nobody is, and the rail carries only that workspace's lanterns. Command-N
+inside a project cuts a new one and stands you in it, and so does the dashed
+board at the end; on the island it still founds a project. Command-T, and the
+naming board, start the next session in whichever workspace you are in.
+Right-clicking a board twice takes it down, the first saying what goes with it;
+its branch stays. Every session that used to have a worktree of its own becomes
+a workspace of its own the first time the app opens. Driven in a dev copy on a
+scratch repository: an old isolated session came up as its own board, a press
+switched the rail across, command-N cut a real worktree and woke a session in
+it, a second session joined it, everything came back after a restart, and two
+right-clicks took the worktree down and left the branch.
+
 A project can be forgotten too, from the bottom of its own page, which is
 what pressing its name opens, because forgetting a place is not something you
 should meet on the way to the work in it. Two presses again, and the line in between says

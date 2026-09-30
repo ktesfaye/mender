@@ -34,8 +34,12 @@ export interface Yard {
   asking?: Asking;
   /** The session you are standing in. Absent on a project nobody has worked. */
   session?: Session;
-  /** Every session in the project, this one included, in rail order. */
+  /** Every session in the workspace you are standing in, this one included,
+      in rail order. */
   rail: Lantern[];
+  /** The project's workspaces, its own folder first, once it has more than
+      that one. Absent is the folder alone, and no signboards hang. */
+  workspaces?: Signboard[];
   /** What went into each version of this checkout, newest first. */
   versions?: Version[];
 }
@@ -71,6 +75,15 @@ export interface Project {
   going?: string;
   turns?: number;
   spawned?: number;
+}
+
+/** One workspace hanging under the beam. */
+export interface Signboard {
+  /** Empty for the project's own folder. */
+  id: string;
+  name: string;
+  /** The one you are standing in, painted gold. */
+  here: boolean;
 }
 
 /** One session on the rail, which is all the rail needs to know about it. */

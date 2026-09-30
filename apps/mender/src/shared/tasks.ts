@@ -33,9 +33,30 @@ export const taskSchema = z.object({
   pull: z.string().optional(),
   /** Works in the project's own folder rather than a worktree of its own. */
   shared: z.boolean().optional(),
+  /** The isolated workspace it works in, when it is not the project's own
+      folder. Every session in one shares its worktree and its branch. */
+  workspace: z.string().optional(),
 });
 
 export type Task = z.infer<typeof taskSchema>;
+
+/**
+ * An isolated workspace: a worktree of the project on a branch of its own,
+ * holding however many sessions are working in it, none included. It is the
+ * workspace registry's own worktree, under the registry's own id.
+ */
+export const workspaceSchema = z.object({
+  id: z.string(),
+  project: z.string(),
+  /** What its signboard says. */
+  name: z.string(),
+  branch: z.string(),
+  base: z.string().nullable().optional(),
+  path: z.string(),
+  startedAt: z.string(),
+});
+
+export type Workspace = z.infer<typeof workspaceSchema>;
 
 /** A session taken down, as the ledger of ended sessions remembers it. */
 export const historyEntrySchema = z.object({
@@ -84,6 +105,20 @@ export const tasksContract = defineContract({
     input: z.object({ project: z.string().optional() }),
     output: z.array(taskSchema),
   }),
+  /** Every isolated workspace there is, as it changes. */
+  workspaces: liveModel({
+    key: z.void().optional(),
+    states: { list: liveState({ data: z.array(workspaceSchema) }) },
+  }),
+  /** A new isolated workspace, nobody in it yet: its own worktree on its own
+      branch, cut from wherever the project calls home. */
+  cutWorkspace: fallible({
+    input: z.object({ project: z.string() }),
+    data: workspaceSchema,
+    error: taskErrorSchema,
+  }),
+  /** Takes the worktree down and every session in it. The branch stays. */
+  dropWorkspace: procedure({ input: z.object({ id: z.string() }), output: z.void() }),
   /** Start a session, in the project's own folder or a worktree cut for it. */
   begin: fallible({
     input: z.object({
@@ -100,6 +135,9 @@ export const tasksContract = defineContract({
       /** Its own worktree on its own branch, rather than the project's own
           folder. */
       isolated: z.boolean().optional(),
+      /** An isolated workspace already standing, to work in beside whoever
+          else is in there. */
+      workspace: z.string().optional(),
     }),
     data: taskSchema,
     error: taskErrorSchema,

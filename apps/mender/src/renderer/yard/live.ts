@@ -25,7 +25,7 @@ import { Naming } from '../board/naming';
 import { Palette } from '../board/palette';
 import type { MenderClient } from '../wire';
 import { yardOf } from './from';
-import type { Health, Yard } from './what';
+import type { Health, Signboard, Yard } from './what';
 
 export interface Watching {
   /** Everything else moved: the task list, somebody's mood, the project. */
@@ -39,6 +39,8 @@ export interface Watching {
     glances?: Readonly<Record<string, Glance>>;
     /** Sessions done with something you have not been in to see, and when. */
     unread?: ReadonlyMap<string, number>;
+    /** The project's workspaces; an empty list is its own folder alone. */
+    workspaces?: readonly Signboard[];
   }): void;
   /** Which checkouts (by path) now have something noticed listening. */
   noticed(servers: ReadonlySet<string>): void;
@@ -103,6 +105,8 @@ export interface Opening {
   unread?: ReadonlyMap<string, number>;
   /** Whether walking in is about to wake whoever lives there. */
   waking?: boolean;
+  /** The project's workspaces; an empty list is its own folder alone. */
+  workspaces?: readonly Signboard[];
 }
 
 /**
@@ -173,6 +177,7 @@ export async function openYard(
       ...(from.cutting ? { cutting: from.cutting } : {}),
       ...(from.glances ? { glances: from.glances } : {}),
       ...(from.unread ? { unread: from.unread } : {}),
+      ...(from.workspaces ? { workspaces: from.workspaces } : {}),
       ...(working ? { mood: working.mood } : {}),
       ...(working?.told ? { told: working.told } : {}),
       ...(kit ? { kit } : {}),

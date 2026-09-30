@@ -8,8 +8,11 @@ export function createTasksController(tasks: Tasks): Controller {
   return createController(tasksContract, {
     all: expose(tasksContract.all, { list: () => tasks.watch() }),
     list: ({ project }) => tasks.list(project),
-    begin: ({ project, name, slot, kind, branch, isolated }) =>
-      tasks.begin(project, name, slot, kind, branch, isolated),
+    begin: ({ project, name, slot, kind, branch, isolated, workspace }) =>
+      tasks.begin(project, name, slot, kind, branch, isolated, workspace),
+    workspaces: expose(tasksContract.workspaces, { list: () => tasks.watchWorkspaces() }),
+    cutWorkspace: ({ project }) => tasks.cutWorkspace(project),
+    dropWorkspace: ({ id }) => tasks.dropWorkspace(id),
     branches: ({ project }) => tasks.branches(project),
     claudeHistory: ({ project }) => tasks.claudeHistory(project),
     setupFailure: ({ id }) => tasks.setupFailure(id),

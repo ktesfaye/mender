@@ -86,9 +86,22 @@ const HEAD = {
   aside: 70 + LIFT,
   under: 92 + LIFT,
   rule: 112 + LIFT,
-  label: 132 + LIFT,
-  top: 162 + LIFT,
-} as const;
+  /* Everything under the rule stands lower by however far the workspaces'
+     signboards hang from it, which is nothing while there are none. */
+  get below(): number {
+    return 124 + LIFT + hung;
+  },
+  get label(): number {
+    return 132 + LIFT + hung;
+  },
+  get top(): number {
+    return 162 + LIFT + hung;
+  },
+};
+/* How far under the beam the signboards reach, once a project has a
+   workspace besides its own folder. */
+const SIGNS = 50;
+let hung = 0;
 /* From the beam down to the bottom edge, which is what the rail lives in. Less
    of it when the lanterns are hanging bare, since there are no words under
    them to leave room for. */
@@ -388,7 +401,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     scrim.place(
       columns.thinking.x - GUTTER / 2,
       MARGIN - 8,
-      HEAD.rule,
+      HEAD.below - 12,
       window.innerHeight - floor - 20
     );
     writing.style.left = `${layer.edge()}px`;
@@ -492,6 +505,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     gone = false;
     root.replaceChildren(covered);
     covered.replaceChildren();
+    hung = yard.workspaces?.length ? SIGNS : 0;
     const columns = layer.columns(rightEmpty(last));
     /* Everything from under the header rule to above the line you write on.
        The columns live in here and the bands top and bottom do not. */
@@ -794,7 +808,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
    * on one: the rule itself warms, and the cursor says which way it goes.
    */
   function grips(columns: ReturnType<Layer['columns']>, floor: number): void {
-    const top = HEAD.rule + 12;
+    const top = HEAD.below;
     const tall = floor - top;
     if (columns.asked.wide) {
       const x =
@@ -1137,8 +1151,94 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
     root.appendChild(said);
   }
 
-  root.appendChild(stays(rule({ left: edge, right: edge, top: HEAD.rule }, true), 'rule:head'));
+  if (yard.workspaces?.length) signboards(root, yard.workspaces, edge, does);
+  else
+    root.appendChild(stays(rule({ left: edge, right: edge, top: HEAD.rule }, true), 'rule:head'));
 }
+
+/* ── the workspaces ────────────────────────────────────────────────────────
+   Once a project has a workspace besides its own folder, the rule under the
+   head is a beam, and every workspace hangs from it on two cords as a
+   signboard with its name on: the one you are standing in painted gold, the
+   rest bare timber you press to walk into, and a dashed one at the end that
+   cuts another. Right-clicking one takes it down, in two. */
+function signboards(
+  root: HTMLElement,
+  boards: readonly { id: string; name: string; here: boolean }[],
+  edge: number,
+  does: Doings
+): void {
+  root.appendChild(stays(box({ left: 0, right: 0, top: HEAD.rule - 3, height: 8 }, BEAM), 'beam'));
+  const hanging = box({ left: edge + 16, right: edge, top: HEAD.rule + 7 }, SIGN_ROW);
+  hanging.className = 'signs';
+  for (const board of boards) {
+    const hung_ = document.createElement('div');
+    hung_.className = board.here ? 'sign here' : 'sign';
+    const cords = document.createElement('div');
+    cords.className = 'cords';
+    cords.append(document.createElement('span'), document.createElement('span'));
+    const face = document.createElement('span');
+    face.className = 'board';
+    face.textContent = board.name;
+    hung_.append(cords, face);
+    if (!board.here) {
+      hung_.tabIndex = 0;
+      astop(hung_, `workspace:${board.id}`);
+      hung_.title = board.id ? 'walk in · right-click to take it down' : 'walk in';
+      hung_.addEventListener('mousedown', (event) => event.preventDefault());
+      hung_.addEventListener('click', () => does.press(`workspace:${board.id}`));
+      hung_.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        does.press(`workspace:${board.id}`);
+      });
+    }
+    if (board.id) {
+      hung_.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        does.press(`workspace-drop:${board.id}`);
+      });
+    }
+    hanging.appendChild(hung_);
+  }
+  const more = document.createElement('div');
+  more.className = 'sign more';
+  more.tabIndex = 0;
+  more.title = 'a new workspace';
+  astop(more, 'do:workspace');
+  const cord = document.createElement('span');
+  cord.className = 'cord';
+  const plus = document.createElement('span');
+  plus.className = 'board';
+  plus.textContent = '+';
+  more.append(cord, plus);
+  more.addEventListener('mousedown', (event) => event.preventDefault());
+  more.addEventListener('click', () => does.press('do:workspace'));
+  more.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    does.press('do:workspace');
+  });
+  hanging.appendChild(more);
+  root.appendChild(stays(hanging, 'signs'));
+  /* However many there are, the one you are standing in is on the beam. */
+  requestAnimationFrame(() => {
+    const here = hanging.querySelector<HTMLElement>('.sign.here');
+    if (!here) return;
+    const over = here.offsetLeft + here.offsetWidth - hanging.clientWidth;
+    if (over > 0 || here.offsetLeft < hanging.scrollLeft) {
+      hanging.scrollLeft = Math.max(0, over + 12);
+    }
+  });
+}
+
+const BEAM =
+  'box-sizing:border-box;background:#5a3a1c;border-top:2px solid #3a2712;' +
+  'border-bottom:2px solid #3a2712';
+const SIGN_ROW =
+  'display:flex;align-items:flex-start;gap:18px;overflow-x:auto;overflow-y:hidden;' +
+  'scrollbar-width:none;padding:0 6px 6px 0;pointer-events:none';
 
 /** What each way a project can be wrong reads as, in words rather than a mark. */
 const WRONG: Partial<Record<Yard['project']['health'], string>> = {
@@ -1546,9 +1646,9 @@ function thinking(
         stays(
           rule({
             left: at.x - GUTTER / 2,
-            top: HEAD.rule + 12,
+            top: HEAD.below,
             width: 1,
-            height: floor - HEAD.rule - 12,
+            height: floor - HEAD.below,
           }),
           'rule:said'
         )
@@ -2081,9 +2181,9 @@ function made(
     stays(
       rule({
         left: at.x - GUTTER / 2,
-        top: HEAD.rule + 12,
+        top: HEAD.below,
         width: 1,
-        height: floor - HEAD.rule - 12,
+        height: floor - HEAD.below,
       }),
       'rule:did'
     )

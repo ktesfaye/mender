@@ -425,8 +425,12 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       const letter = event.key.length === 1 ? event.key.toLowerCase() : '';
       if (!/^[a-z[\],]$/.test(letter)) return; // not a chord this table speaks in — keep waiting.
       const bound = now.keybindings ?? {};
+      const mine = rebindableDoings().find((each) => each.pick === pick);
       const conflict = rebindableDoings().find(
-        (each) => each.pick !== pick && chordOf(each.pick, bound) === letter
+        (each) =>
+          each.pick !== pick &&
+          chordOf(each.pick, bound) === letter &&
+          each.where.some((place) => mine?.where.includes(place) ?? true)
       );
       detach();
       if (conflict) {
