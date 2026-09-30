@@ -3065,3 +3065,13 @@ a scratch project with no sessions of its own, found the New Orleans
 itinerary had in slideshow, resumed it, and the whole conversation came back
 on the board.
 
+
+### The village behind a session holds still (2026-09-29) — done
+
+Standing in a yard, a scroll or a drag that slipped into a gap between two
+columns used to pan and zoom the island off under the writing. The camera's
+drag, pinch, wheel and drift are now paused whenever a yard or a board is up
+and come back the moment you walk out; the camera still flies when you switch
+projects. Driven in a dev instance: scrolling and dragging on the land behind
+an open session left it where it was, and after Escape the same moves panned
+and zoomed the island again.

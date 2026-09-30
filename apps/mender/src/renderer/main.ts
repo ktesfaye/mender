@@ -64,7 +64,7 @@ import { answerFor, SEND_ALL } from './board/work';
 import { watchGrip } from './grip';
 import { ran } from './job';
 import { setPace } from './pace';
-import { createCamera, flyOut, flyToYard, frame, type Extent } from './village/camera';
+import { createCamera, flyOut, flyToYard, frame, holdStill, type Extent } from './village/camera';
 import { Editing } from './village/editing';
 import { Folk, loadFolk, type Look, type Standing } from './village/folk';
 import { Ground, type Aim } from './village/ground';
@@ -5112,6 +5112,7 @@ async function boot(): Promise<void> {
       hand.escaped();
     };
     watchPointer((x, y) => yard.covers(x, y), pixi, camera, hand);
+    holdStill(pixi, camera, () => yard.showing);
     watchGrip(pixi.canvas);
 
     editing = new Editing(

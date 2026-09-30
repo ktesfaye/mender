@@ -59,6 +59,36 @@ export function createCamera(pixi: Application): Viewport {
   return viewport;
 }
 
+const HANDS = ['drag', 'pinch', 'wheel', 'decelerate'] as const;
+
+/**
+ * Take the camera out of his hands while `still` says so.
+ *
+ * Standing in a yard, the village behind is scenery: a scroll meant for the
+ * writing that slipped into a gap between two columns used to drag the whole
+ * island off under it. The camera still flies, since a switch between two
+ * projects is the village moving, not him. It is asked at the moment of each
+ * touch rather than kept in step with the yard, so nothing can leave it stale:
+ * the capture phase comes ahead of pixi-viewport's own listeners, pixi's for a
+ * press and the window's for a wheel.
+ */
+export function holdStill(pixi: Application, viewport: Viewport, still: () => boolean): void {
+  let held = false;
+  const sync = (): void => {
+    const hold = still();
+    /* Only on a change, because editing districts pauses the drag itself while
+       the pointer is over something it can pick up. */
+    if (hold === held) return;
+    held = hold;
+    for (const hand of HANDS) {
+      if (hold) viewport.plugins.pause(hand);
+      else viewport.plugins.resume(hand);
+    }
+  };
+  pixi.stage.on('pointerdowncapture', sync);
+  window.addEventListener('wheel', sync, { capture: true, passive: true });
+}
+
 function snapToRung(viewport: Viewport): void {
   const scale = viewport.scale.x;
   const rung = nearestRung(scale);

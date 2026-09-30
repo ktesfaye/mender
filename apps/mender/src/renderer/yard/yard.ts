@@ -1000,7 +1000,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     scrolled: (key) => scrim.scrolled(key),
     /* WHILE YOU ARE IN A YARD, THE YARD HAS THE SCREEN.
      *
-     * The village keeps living behind it and the camera is still yours, but
+     * The village keeps living behind it, though the camera is not yours, and
      * the land is not a list of buttons any more: every gap between two
      * columns of writing was a district you could hover, light up and walk
      * into, so the screen was covered in targets nobody put there and a
