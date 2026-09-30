@@ -147,10 +147,21 @@ const HALO: Partial<Record<Posture, [string, number]>> = {
 };
 
 /** What a thought that went wrong is headed with, and written in. */
+/** Called off: neither wrong nor finished, so neither sore nor green. */
+const STOPPED = '#c9a57a';
+
 const TROUBLE = {
   wrong: { head: 'it stopped', ink: 'var(--yard-wrong)' },
   warn: { head: 'it stopped short', ink: 'var(--yard-warn)' },
   aside: { head: 'it warns', ink: 'var(--yard-wrong)' },
+  stopped: { head: 'you stopped it', ink: STOPPED },
+} as const;
+
+/** How the newest answer's turn stands, said over it: still going, finished, or called off. */
+const ENDED = {
+  going: { head: 'so far', ink: '#ffc98a' },
+  done: { head: 'done', ink: '#a8c469' },
+  stopped: { head: 'you stopped it', ink: STOPPED },
 } as const;
 
 export interface Doings {
@@ -1791,8 +1802,12 @@ function thinking(
         /* The same "how long ago" the gatepost puts over what you said, or
            how long it has been at it while it still is. */
         const clock = one.at ? `${one.at} at this` : one.when;
-        const name = trouble?.head ?? (one.quiet ? 'thinking' : 'now');
-        const head = said(clock ? `${name} · ${clock}` : name, trouble?.ink ?? '#ffc98a');
+        const ended = one.ended ? ENDED[one.ended] : undefined;
+        const name = trouble?.head ?? ended?.head ?? (one.quiet ? 'thinking' : 'now');
+        const head = said(
+          clock ? `${name} · ${clock}` : name,
+          trouble?.ink ?? ended?.ink ?? '#ffc98a'
+        );
         folding(head);
         it.appendChild(head);
         const body = document.createElement('div');

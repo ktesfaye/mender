@@ -211,7 +211,7 @@ function sessionOf(
   from: Standing
 ): Session {
   const notes = (told?.notes ?? []).map(noteOf);
-  const thoughts = thoughtsOf(told);
+  const thoughts = thoughtsOf(told, from.mood);
   const live = liveOf(from, told);
   return {
     id: task.id,
@@ -285,8 +285,19 @@ function noteOf(
  * The plan it posted is a different thing and lives above this: the first thing
  * an agent says is not a plan, however much it reads like one.
  */
-function thoughtsOf(told: Told | undefined): Thought[] {
+function thoughtsOf(told: Told | undefined, mood: Mood | undefined): Thought[] {
   const all = told?.thoughts ?? [];
+  /* Whether the newest answer is the last word or only the latest so far,
+     said over it, because the fire going out is too quiet a way to say
+     that it has finished, and nothing at all said that you had stopped it. */
+  const going = mood === 'working' || mood === 'arriving' || mood === 'asking';
+  const ended: Thought['ended'] = going
+    ? 'going'
+    : told?.ended === 'stopped'
+      ? 'stopped'
+      : told?.ended === 'broke'
+        ? undefined
+        : 'done';
   const now = turnOf(told);
   /* An answer to something you said before the newest note is not what is
      happening now, however recently it was said: once you have said the next
@@ -309,7 +320,9 @@ function thoughtsOf(told: Told | undefined): Thought[] {
        bright it is rather than given a time the village made up. */
     when: one.at ? agoOf(Date.now() - one.at) : '',
     ...(one.since ? { live: true, at: longFor(Date.now() - one.since) } : {}),
-    ...(at === all.length - 1 && !one.since && !earlier(one.turn) ? { live: true } : {}),
+    ...(at === all.length - 1 && !one.since && !earlier(one.turn)
+      ? { live: true, ...(ended && !one.quiet && !one.trouble ? { ended } : {}) }
+      : {}),
     ...(earlier(one.turn) ? { earlier: true } : {}),
     ...(one.quiet ? { quiet: true } : {}),
     ...(one.trouble ? { trouble: one.trouble } : {}),
@@ -336,8 +349,9 @@ function liveOf(from: Standing, told: Told | undefined): Session['live'] {
     last && !last.quiet && (turn === undefined || last.turn === undefined || last.turn >= turn)
   );
   const reasoning = thoughts.some((one) => one.since);
-  const doing =
-    from.mood === 'arriving'
+  const doing = told?.stopping
+    ? 'stopping'
+    : from.mood === 'arriving'
       ? 'waking up'
       : running
         ? doingOf(running)

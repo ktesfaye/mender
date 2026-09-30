@@ -240,7 +240,9 @@ export interface Thought {
   /** Reasoning rather than an answer. */
   quiet?: boolean;
   /** The turn going wrong rather than an answer: `wrong` stopped it, `warn` cut it short. */
-  trouble?: 'wrong' | 'warn' | 'aside';
+  trouble?: 'wrong' | 'warn' | 'aside' | 'stopped';
+  /** Over the newest answer, whether its turn is still going or how it came to rest. */
+  ended?: 'going' | 'done' | 'stopped';
 }
 
 /** Something it did: a tool call, with a prop from the kit standing for it. */

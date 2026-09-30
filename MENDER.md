@@ -151,7 +151,14 @@ the other sessions used to be written in: each version on its own line and
 what went into it bulleted and indented under it, newest first and scrolling, read straight off whichever commits moved
 the version in the project's own manifest rather than kept anywhere. What it
 said is in the middle, the answer set large, and everything it thought and said
-on the way there folded out of sight; pressing "now" over the answer, or the
+on the way there folded out of sight. The word over the answer says where
+it stands: "so far" in the fire's own orange while it is still going, "done"
+in the green of a finished lantern once it has, and "you stopped it" in a
+muted tan when you called it off, over whatever it had got out by then or
+on its own when that was nothing; a stop Claude's own transcript wrote down
+as if you had said it reads back the same way after a restart, and pressing
+Escape turns the fire's line to "stopping" until it has. Pressing that word,
+or the
 column's own heading, opens the trail upward out of it and pressing either
 again folds it, and it stays however you left it. They look no different for
 being pressable, the one place the gold rule gives way, because a gold word

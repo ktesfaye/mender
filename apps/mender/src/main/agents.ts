@@ -1102,7 +1102,10 @@ export function createAgents(
       await loaded;
       const conversation = lodgers[task];
       if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
+      const house = houses.get(task);
+      house?.hushing(true);
       const done = await runtimes.acp.cancelTurn({ conversationId: conversation });
+      if (!done.success) house?.hushing(false);
       return done.success ? { success: true, data: undefined } : refused(whatItSaid(done.error));
     },
 
@@ -1147,6 +1150,8 @@ class House {
   private conversation: string | undefined;
   private lifecycle: SessionState | undefined;
   private plan: PlanState | null = null;
+  /** The turn that was called off, until it says it has stopped. */
+  private hushed: string | undefined;
   private usage: SessionUsage | null = null;
   private live: TranscriptTurn | null = null;
   private before: TranscriptTurn[] = [];
@@ -1427,6 +1432,14 @@ class House {
     return this.lifecycle?.failure?.resetAt;
   }
 
+  /** Called off, and waiting for the turn to say it has stopped. */
+  hushing(on: boolean): void {
+    const turn = on && this.live && !this.live.outcome ? this.live.id : undefined;
+    if (this.hushed === turn) return;
+    this.hushed = turn;
+    this.publish();
+  }
+
   /** Arms or disarms the scheduled continue; the board reads this back as
    *  `WorkingState.carryOn`. */
   carryOn(at: number | null): void {
@@ -1451,6 +1464,11 @@ class House {
     if (this.live && (!now || now.id !== this.live.id)) {
       this.before = [...this.before, this.live].slice(-BACKWARD);
       void this.redate();
+      /* The copy held here is the last one seen in flight, and the turn only
+         learns how it ended as it is committed, so it is read back settled:
+         without this a turn you stopped looked no different from one that
+         finished, and the note it answered never read as answered. */
+      void this.readBack();
     }
     this.live = now;
   }
@@ -1540,6 +1558,9 @@ class House {
       lines,
       told: {
         ...toldOf(turns, this.where(), (id, over) => this.time(id, over), clockOf(this.dated)),
+        ...(this.hushed && this.live?.id === this.hushed && !this.live.outcome
+          ? { stopping: true }
+          : {}),
         made: madeOf(
           this.keep(madeIn(turns, (id, over) => this.time(id, over))),
           this.where()
@@ -1984,7 +2005,22 @@ function toldOf(
     made: [],
     turns: turns.length,
     began,
+    ...endedOf(turns.at(-1)?.outcome, flat.at(-1)),
   };
+}
+
+/** How the newest turn came to rest, in the three ways the board says it. */
+function endedOf(
+  outcome: TranscriptTurn['outcome'],
+  last: Flat | undefined
+): { ended?: 'done' | 'stopped' | 'broke' } {
+  /* History read back never says how a turn ended, but a stop it wrote
+     down as words still does. */
+  if (!outcome) return last?.kind === 'ended' && last.trouble === 'stopped' ? { ended: 'stopped' } : {};
+  if (outcome.kind === 'done') return { ended: 'done' };
+  if (outcome.kind === 'cancelled') return { ended: 'stopped' };
+  if (outcome.kind === 'interrupted' && outcome.reason === 'replaced') return { ended: 'stopped' };
+  return { ended: 'broke' };
 }
 
 /** One chronological item, flattened out of the turn/message/tool tree. */
@@ -1994,8 +2030,11 @@ type Flat = (
   | { kind: 'thinking'; item: TranscriptThinking }
   | { kind: 'tool'; node: ToolNode; hasOutcome: boolean }
   /** A turn that ended badly without the agent saying why, said for it. */
-  | { kind: 'ended'; id: string; said: string; trouble: 'wrong' | 'warn' }
+  | { kind: 'ended'; id: string; said: string; trouble: 'wrong' | 'warn' | 'stopped' }
 ) & { turn: number };
+
+/** How Claude's own transcript writes down a turn you stopped. */
+const INTERRUPTED = /^\[Request interrupted by user[^\]]*\]$/;
 
 function flatten(turns: readonly TranscriptTurn[]): Flat[] {
   const flat: Flat[] = [];
@@ -2008,6 +2047,23 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
         const text = item.text.trim();
         const pictures = item.role === 'user' ? (item.attachments?.length ?? 0) : 0;
         if (!text && !pictures) continue;
+        /* Claude's own transcript writes a stop down as if you had said it,
+           and the next resume answers it; read back, that is you stopped
+           it there, said over what you had asked, and nothing else. */
+        if (item.role === 'user' && INTERRUPTED.test(text)) {
+          const since = flat.length - [...flat].reverse().findIndex((one) => one.kind === 'note');
+          const asked = flat[since - 1];
+          const spoke = since <= flat.length && flat.slice(since).some((one) => one.kind === 'said');
+          flat.push({
+            kind: 'ended',
+            id: `${item.id}:stopped`,
+            said: spoke ? 'Partway through what it was saying.' : 'Before it had said anything back.',
+            trouble: 'stopped',
+            turn: asked?.turn ?? at,
+          });
+          continue;
+        }
+        if (item.role !== 'user' && text === 'No response requested.') continue;
         flat.push(
           item.role === 'user'
             ? { kind: 'note', id: item.id, text, hasOutcome, pictures, turn: at }
@@ -2025,6 +2081,20 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
     const ended = endedBadly(turn.outcome);
     if (ended && !(broke && saidLast)) {
       flat.push({ kind: 'ended', id: `${turn.id}:ended`, ...ended, turn: at });
+    }
+    /* Called off before it said a word back, there is no answer for the
+       heading to say so over, so it is said on its own. */
+    const answered = turn.items.some(
+      (item) => item.kind === 'message' && item.role !== 'user' && item.text.trim()
+    );
+    if (turn.outcome?.kind === 'cancelled' && !answered) {
+      flat.push({
+        kind: 'ended',
+        id: `${turn.id}:stopped`,
+        said: 'Before it had said anything back.',
+        trouble: 'stopped',
+        turn: at,
+      });
     }
   });
   return flat;
