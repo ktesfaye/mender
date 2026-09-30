@@ -75,6 +75,27 @@ function escapeAS(s) {
   return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
+/* Every coordinate this tool takes or returns is in the same pixels the
+   screenshot is, because that is the only ruler whoever is calling this
+   actually has. cliclick, underneath, only understands the screen's own
+   points, which on a Retina display is half that — so every point in and
+   out crosses through here rather than leaving each tool to remember the
+   conversion itself. */
+let cachedScale = null;
+async function scale() {
+  if (cachedScale) return cachedScale;
+  const out = await osascript(
+    'ObjC.import("AppKit"); $.NSScreen.mainScreen.backingScaleFactor',
+    'JavaScript'
+  ).catch(() => '1');
+  cachedScale = Number(out) || 1;
+  return cachedScale;
+}
+async function toPoints(x, y) {
+  const s = await scale();
+  return { x: Math.round(x / s), y: Math.round(y / s) };
+}
+
 const MODIFIERS = new Set(['alt', 'cmd', 'ctrl', 'fn', 'shift']);
 const NAMED_KEYS = new Set([
   'arrow-down', 'arrow-left', 'arrow-right', 'arrow-up', 'delete', 'end', 'enter', 'esc',
@@ -161,7 +182,8 @@ const TOOLS = [
     },
     async run({ x, y, button }) {
       const cmd = button === 'right' ? 'rc' : button === 'double' ? 'dc' : 'c';
-      await cliclick([`${cmd}:${Math.round(x)},${Math.round(y)}`]);
+      const at = await toPoints(x, y);
+      await cliclick([`${cmd}:${at.x},${at.y}`]);
       return { text: `${button ?? 'left'}-clicked at ${x},${y}.` };
     },
   },
@@ -175,7 +197,8 @@ const TOOLS = [
       additionalProperties: false,
     },
     async run({ x, y }) {
-      await cliclick([`m:${Math.round(x)},${Math.round(y)}`]);
+      const at = await toPoints(x, y);
+      await cliclick([`m:${at.x},${at.y}`]);
       return { text: `moved to ${x},${y}.` };
     },
   },
@@ -194,12 +217,14 @@ const TOOLS = [
       additionalProperties: false,
     },
     async run({ fromX, fromY, toX, toY }) {
+      const from = await toPoints(fromX, fromY);
+      const to = await toPoints(toX, toY);
       await cliclick([
-        `dd:${Math.round(fromX)},${Math.round(fromY)}`,
+        `dd:${from.x},${from.y}`,
         `w:120`,
-        `dm:${Math.round(toX)},${Math.round(toY)}`,
+        `dm:${to.x},${to.y}`,
         `w:80`,
-        `du:${Math.round(toX)},${Math.round(toY)}`,
+        `du:${to.x},${to.y}`,
       ]);
       return { text: `dragged from ${fromX},${fromY} to ${toX},${toY}.` };
     },
@@ -260,7 +285,8 @@ const TOOLS = [
       additionalProperties: false,
     },
     async run({ x, y, deltaX, deltaY }) {
-      await cliclick([`m:${Math.round(x)},${Math.round(y)}`]);
+      const at = await toPoints(x, y);
+      await cliclick([`m:${at.x},${at.y}`]);
       const dx = Math.round(deltaX ?? 0);
       const dy = Math.round(deltaY ?? 0);
       const script = `
