@@ -5865,12 +5865,21 @@ function watchPointer(
      Everything that reads a key reads it from here, in an order, and the first
      thing with a claim on it takes it. Two listeners on the same key is how an
      arrow ends up both walking a list and scrolling the board under it. */
-  window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && event.shiftKey && !event.metaKey && !event.ctrlKey) {
+  /* Except Shift-Escape, which is taken before anything else in the window
+     sees it, on the way down rather than on the way back up. The write line,
+     a slash list or a terminal would otherwise read the Escape first and stop
+     whoever is working, which is exactly what this key promises not to do. */
+  window.addEventListener(
+    'keydown',
+    (event) => {
+      if (event.key !== 'Escape' || !event.shiftKey || event.metaKey || event.ctrlKey) return;
       event.preventDefault();
+      event.stopImmediatePropagation();
       pointing.fled();
-      return;
-    }
+    },
+    true,
+  );
+  window.addEventListener('keydown', (event) => {
     if (pointing.held(event)) return;
     if (event.key === 'Escape') {
       pointing.escaped();
