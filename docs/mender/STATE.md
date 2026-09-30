@@ -3267,3 +3267,20 @@ instance: quit twice past the guard with a background helper out and a
 background command running, reopened, and the session came back with its
 history, restarted both, wrote the file, settled to resting, and the record
 cleared.
+
+### It can ask you a question with answers (2026-09-30) — done
+
+Claude's AskUserQuestion works in the village. Claude's adapter withholds that
+tool from the model entirely unless the client says it can draw a form, and
+Mender never said so, so every session answered "I can't". The runtime now
+advertises forms, holds a form the agent sends in the same queue a permission
+waits in (so the lantern, the dock mark and the notification all see it), and
+answers it whole. The board asks one question at a time: header and "1 of 2"
+over it, numbered answers with their descriptions under them, several-answer
+questions marked with a tick until "that's everything", and anything written on
+the line taken as that question's own answer. The app runs a newer ACP SDK than
+core is typed against, where the method lost its `unstable_` prefix, so the
+client answers to both. Driven in a dev instance: a two-question form, one of
+them several-answer, answered by keys (Claude read back SQLite, Auth and
+Billing), and a one-question form answered by writing on the line (read back
+exactly as written).

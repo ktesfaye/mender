@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { attachmentRefSchema } from '#runtimes/acp/api/models/attachments';
-import { permissionDecisionSchema } from '#runtimes/acp/api/models/permissions';
+import {
+  elicitationAnswerSchema,
+  permissionDecisionSchema,
+} from '#runtimes/acp/api/models/permissions';
 import { promptInputSchema, queuedPromptSchema } from '#runtimes/acp/api/models/prompt';
 import { transcriptTurnSchema } from '#runtimes/acp/api/models/turns';
 
@@ -56,6 +59,9 @@ export const setOptionCommandSchema = z.object({
   value: z.string(),
 });
 export const resolvePermissionCommandSchema = permissionDecisionSchema.extend({
+  conversationId: z.string(),
+});
+export const resolveElicitationCommandSchema = elicitationAnswerSchema.extend({
   conversationId: z.string(),
 });
 export const exportAcpTranscriptCommandSchema = z.object({ conversationId: z.string() });

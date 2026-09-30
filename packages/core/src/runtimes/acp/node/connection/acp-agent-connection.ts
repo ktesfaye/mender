@@ -173,6 +173,11 @@ function initializeAgent(agent: AcpAgentApi, host: AcpAgentProcessHost) {
     clientCapabilities: {
       fs: { readTextFile: true, writeTextFile: true },
       terminal: typeof host.spawnTerminal === 'function',
+      /* Forms only: a question the agent asks with its answers laid out (Claude's
+         AskUserQuestion comes through as one, and is withheld from the model
+         entirely unless this is advertised). URL mode would need somewhere to
+         open a page and come back from, and nothing here does that yet. */
+      elicitation: { form: {} },
       /* Opts in to Claude's ACP adapter's "AIR" `sessionFailure` extension: a
          typed usage/rate limit, overload, empty quota, or auth-required report
          instead of ordinary transcript prose. Unknown `_meta` is ignored by

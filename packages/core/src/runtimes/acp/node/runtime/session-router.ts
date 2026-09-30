@@ -1,4 +1,6 @@
 import type {
+  CreateElicitationRequest,
+  CreateElicitationResponse,
   CreateTerminalRequest,
   CreateTerminalResponse,
   RequestPermissionRequest,
@@ -22,6 +24,10 @@ export interface SessionRouteTarget {
     connection: AcpConnectionContext,
     params: RequestPermissionRequest
   ): Promise<RequestPermissionResponse>;
+  onElicitation(
+    conversationId: string,
+    params: CreateElicitationRequest
+  ): Promise<CreateElicitationResponse>;
   onCreateTerminal(
     conversationId: string,
     connection: AcpConnectionContext,
@@ -65,6 +71,23 @@ export class SessionRouter implements InboundRouter {
     );
     if (!conversationId) return Promise.resolve({ outcome: { outcome: 'cancelled' } });
     return this.target.onPermissionRequest(conversationId, connection, params);
+  }
+
+  onElicitation(
+    connection: AcpConnectionContext,
+    params: CreateElicitationRequest
+  ): Promise<CreateElicitationResponse> {
+    /* Only a form tied to a session can be put in front of anybody; a request
+       scoped to nothing has no board to stand on. */
+    const sessionId = 'sessionId' in params ? params.sessionId : undefined;
+    const conversationId = sessionId
+      ? this.resolveConversationForSession(
+          routeOwnerId(connection.key, connection.generation),
+          sessionId
+        )
+      : null;
+    if (!conversationId) return Promise.resolve({ action: 'cancel' });
+    return this.target.onElicitation(conversationId, params);
   }
 
   onCreateTerminal(

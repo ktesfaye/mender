@@ -1,4 +1,6 @@
 import type {
+  CreateElicitationRequest,
+  CreateElicitationResponse,
   RequestPermissionRequest,
   RequestPermissionResponse,
   SessionConfigOption,
@@ -14,6 +16,7 @@ import type {
   AcpRuntimeError,
   AcpSendPromptError,
   AcpSetOptionError,
+  ElicitationAnswer,
   InvalidStateError,
   NormalizedEvent,
   PromptInput,
@@ -403,6 +406,56 @@ export class SessionCell {
     });
     this.permissions.settle(requestId, optionId);
     return ok();
+  }
+
+  resolveElicitation(answer: ElicitationAnswer): Result<void, InvalidStateError> {
+    const pending = this.machine.pendingPermissions.find((p) => p.requestId === answer.requestId);
+    if (!pending?.form) {
+      return acpErr.invalidState(`No form waiting with requestId '${answer.requestId}'`);
+    }
+    const dispatchResult = this.dispatchFor<InvalidStateError>(
+      { type: 'ResolvePermission', requestId: answer.requestId, optionId: answer.action },
+      ['invalid_state']
+    );
+    if (!dispatchResult.success) return dispatchResult;
+    this.rawLog.record({
+      kind: 'permission_resolved',
+      sessionId: this.acpSessionId,
+      requestId: answer.requestId,
+      optionId: answer.action,
+    });
+    this.permissions.settleForm(answer);
+    return ok();
+  }
+
+  /**
+   * A form the agent wants filled in. It stands in the same queue a permission
+   * does, so everything that already knows a session is waiting on somebody
+   * knows this one is too.
+   */
+  requestElicitation(params: CreateElicitationRequest): Promise<CreateElicitationResponse> {
+    if (params.mode !== 'form') return Promise.resolve({ action: 'decline' });
+    const requestId = crypto.randomUUID();
+    const toolCallId = 'toolCallId' in params ? (params.toolCallId ?? undefined) : undefined;
+    const request: AcpPermissionRequest = {
+      requestId,
+      toolCall: this.buildPermissionToolCall(
+        requestId,
+        toolCallId ? { toolCallId, title: params.message } : undefined
+      ),
+      options: [],
+      form: {
+        message: params.message,
+        schema: params.requestedSchema as unknown as Record<string, unknown>,
+      },
+    };
+    this.rawLog.record({
+      kind: 'permission_request',
+      sessionId: this.acpSessionId,
+      request: params,
+    });
+    this.applyEvent({ type: 'PermissionRequested', request });
+    return this.permissions.requestForm(request);
   }
 
   requestPermission(params: RequestPermissionRequest): Promise<RequestPermissionResponse> {

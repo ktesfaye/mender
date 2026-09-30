@@ -74,6 +74,7 @@ function targetSpy() {
     onSessionUpdate: vi.fn<SessionRouteTarget['onSessionUpdate']>(),
     onPermissionRequest: vi.fn<SessionRouteTarget['onPermissionRequest']>(),
     onCreateTerminal: vi.fn<SessionRouteTarget['onCreateTerminal']>(),
+    onElicitation: vi.fn<SessionRouteTarget['onElicitation']>(),
   };
 }
 

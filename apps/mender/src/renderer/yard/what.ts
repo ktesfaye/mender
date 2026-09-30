@@ -53,12 +53,18 @@ export interface Version {
 
 export interface Asking {
   said: string;
+  /** A form's own name for what this question is about. */
+  header?: string;
+  /** Which of a form's questions this is, when there are several. */
+  step?: string;
+  /** What else answers it: writing on the line. */
+  aside?: string;
   /** Several things are asking at once: an answer marks its own pending
    *  question instead of sending, until the last one — "that's everything" —
    *  is pressed. */
   multi?: boolean;
   /** In the order the number keys answer them. */
-  answers: { id: string; said: string; requestId?: string }[];
+  answers: { id: string; said: string; about?: string; requestId?: string }[];
 }
 
 export interface Project {

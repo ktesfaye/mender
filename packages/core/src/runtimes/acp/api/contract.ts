@@ -51,6 +51,7 @@ import {
   loadHistoryResultSchema,
   purgeConversationDataCommandSchema,
   resolvePermissionCommandSchema,
+  resolveElicitationCommandSchema,
   sendPromptCommandSchema,
   sendPromptResponseSchema,
   setOptionCommandSchema,
@@ -119,6 +120,10 @@ export const acpApiContract = defineContract({
   }),
   resolvePermission: fallible({
     input: resolvePermissionCommandSchema,
+    error: acpResolvePermissionErrorSchema,
+  }),
+  resolveElicitation: fallible({
+    input: resolveElicitationCommandSchema,
     error: acpResolvePermissionErrorSchema,
   }),
   exportAcpTranscript: fallible({

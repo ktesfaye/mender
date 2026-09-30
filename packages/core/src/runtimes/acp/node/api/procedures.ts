@@ -11,6 +11,7 @@ import type {
   AcpLoadHistoryError,
   AcpPurgeConversationDataError,
   AcpResolvePermissionError,
+  ElicitationAnswer,
   AcpSendPromptError,
   AcpSetOptionError,
   AcpStartError,
@@ -99,6 +100,12 @@ export function createAcpProcedures(runtime: AcpRuntime) {
       optionId: string;
     }): Result<void, AcpResolvePermissionError> {
       return runtime.resolvePermission(input.conversationId, input.requestId, input.optionId);
+    },
+    resolveElicitation(
+      input: ElicitationAnswer & { conversationId: string }
+    ): Result<void, AcpResolvePermissionError> {
+      const { conversationId, ...answer } = input;
+      return runtime.resolveElicitation(conversationId, answer);
     },
     exportAcpTranscript(input: {
       conversationId: string;

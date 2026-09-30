@@ -25,6 +25,18 @@ export const acpPermissionRequestSchema = z.object({
   /** Display-ready snapshot of the typed tool call that triggered the request. */
   toolCall: toolCallItemSchema,
   options: z.array(acpPermissionOptionSchema),
+  /**
+   * Set when this is a form the agent wants filled in rather than a tool call to
+   * allow (ACP `elicitation/create`, form mode). `options` is empty then; the
+   * answer goes back through `resolveElicitation` as the form's content.
+   */
+  form: z
+    .object({
+      message: z.string(),
+      /** The ACP `requestedSchema`, a flat JSON Schema object of primitive fields. */
+      schema: z.record(z.string(), z.unknown()),
+    })
+    .optional(),
 });
 export type AcpPermissionRequest = z.infer<typeof acpPermissionRequestSchema>;
 
@@ -33,3 +45,12 @@ export const permissionDecisionSchema = z.object({
   optionId: z.string(),
 });
 export type PermissionDecision = z.infer<typeof permissionDecisionSchema>;
+
+export const elicitationAnswerSchema = z.object({
+  requestId: z.string(),
+  action: z.enum(['accept', 'decline', 'cancel']),
+  content: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]))
+    .optional(),
+});
+export type ElicitationAnswer = z.infer<typeof elicitationAnswerSchema>;

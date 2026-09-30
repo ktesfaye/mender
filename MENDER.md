@@ -759,6 +759,16 @@ which answer each one gets instead of sending it, and a last line, "that's
 everything," always there on that kind of question, is what actually sends
 them, together.
 
+**And when it wants to ask you something, it asks.** Claude's own way of
+putting a choice to you, the one a terminal draws as a list with an "Other"
+box, lands at the gate the same way a permission does: the question in the
+large hand, whatever it calls it and which of how many over it, each answer
+numbered with what it would mean written quietly under it. A number picks it
+and goes on to the next question; on one that takes several, numbers mark and
+unmark and "that's everything" moves on. Anything written on the line instead
+is your own answer to that question. Nothing goes back until the last one is
+answered, and then all of them go together.
+
 An agent that needs signing in to work at all says so on its own `/agent`
 card, plainly, for whichever hand is not signed in. The one actually working
 here, when it needs it, offers the way in as a gold line: pressing it opens

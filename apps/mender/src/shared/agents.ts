@@ -79,11 +79,19 @@ export type Line = z.infer<typeof lineSchema>;
 export const askSchema = z.object({
   requestId: z.string(),
   text: z.string(),
+  /** A form's short name for what this question is about, over it. */
+  header: z.string().optional(),
+  /** Which of a form's questions this is, "2 of 3", when there is more than one. */
+  step: z.string().optional(),
+  /** What else answers it besides a number: writing on the line. */
+  aside: z.string().optional(),
   multi: z.boolean().optional(),
   options: z.array(
     z.object({
       optionId: z.string(),
       name: z.string(),
+      /** What picking it would mean, when the agent said. */
+      about: z.string().optional(),
       /** Which pending question this answers. Only set when `multi`. */
       requestId: z.string().optional(),
       /** Marked but not sent yet. Only meaningful when `multi`. */

@@ -1,4 +1,6 @@
 import type {
+  CreateElicitationRequest,
+  CreateElicitationResponse,
   CreateTerminalRequest,
   CreateTerminalResponse,
   RequestPermissionRequest,
@@ -20,6 +22,7 @@ import type {
   AcpExportTranscriptError,
   AcpTerminateError,
   AcpResolvePermissionError,
+  ElicitationAnswer,
   AcpSendPromptError,
   AcpSetOptionError,
   AcpStartError,
@@ -128,6 +131,7 @@ export class SessionManager {
           this.handleSessionUpdate(conversationId, connection, params, event),
         onPermissionRequest: (conversationId, connection, params) =>
           this.handlePermissionRequest(conversationId, connection, params),
+        onElicitation: (conversationId, params) => this.handleElicitation(conversationId, params),
         onCreateTerminal: (conversationId, connection, params) =>
           this.handleCreateTerminal(conversationId, connection, params),
       },
@@ -482,6 +486,18 @@ export class SessionManager {
     return record ? record.cell.resolvePermission(requestId, optionId) : ok();
   }
 
+  resolveElicitation(
+    conversationId: string,
+    answer: ElicitationAnswer
+  ): Result<void, AcpResolvePermissionError> {
+    const retained = this.retained.get(conversationId);
+    if (!retained && !this.suspendedIntents.has(conversationId)) {
+      return acpErr.conversationNotFound(conversationId);
+    }
+    const record = this.readyRecord(conversationId);
+    return record ? record.cell.resolveElicitation(answer) : ok();
+  }
+
   async setMode(
     conversationId: string,
     modeId: string
@@ -620,6 +636,18 @@ export class SessionManager {
     if (!record) return Promise.resolve({ outcome: { outcome: 'cancelled' } });
     this.lifecycle.recordOutput(conversationId);
     const response = record.cell.requestPermission(params);
+    record.conversation.syncRecord(record);
+    return response;
+  }
+
+  private handleElicitation(
+    conversationId: string,
+    params: CreateElicitationRequest
+  ): Promise<CreateElicitationResponse> {
+    const record = this.recordForCallbacks(conversationId);
+    if (!record) return Promise.resolve({ action: 'cancel' });
+    this.lifecycle.recordOutput(conversationId);
+    const response = record.cell.requestElicitation(params);
     record.conversation.syncRecord(record);
     return response;
   }

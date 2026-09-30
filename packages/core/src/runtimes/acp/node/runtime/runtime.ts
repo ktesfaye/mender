@@ -13,6 +13,7 @@ import type {
   AcpLoadHistoryError,
   AcpPurgeConversationDataError,
   AcpResolvePermissionError,
+  ElicitationAnswer,
   AcpSendPromptError,
   AcpSetOptionError,
   AcpStartError,
@@ -139,6 +140,13 @@ export class AcpRuntime {
     optionId: string
   ): Result<void, AcpResolvePermissionError> {
     return this.manager.resolvePermission(conversationId, requestId, optionId);
+  }
+
+  resolveElicitation(
+    conversationId: string,
+    answer: ElicitationAnswer
+  ): Result<void, AcpResolvePermissionError> {
+    return this.manager.resolveElicitation(conversationId, answer);
   }
 
   setOption(

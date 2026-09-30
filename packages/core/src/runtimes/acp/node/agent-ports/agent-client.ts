@@ -1,5 +1,7 @@
 import type {
   Client,
+  CreateElicitationRequest,
+  CreateElicitationResponse,
   CreateTerminalRequest,
   CreateTerminalResponse,
   KillTerminalRequest,
@@ -33,6 +35,10 @@ export interface InboundRouter {
     connection: AcpConnectionContext,
     params: RequestPermissionRequest
   ): Promise<RequestPermissionResponse>;
+  onElicitation(
+    connection: AcpConnectionContext,
+    params: CreateElicitationRequest
+  ): Promise<CreateElicitationResponse>;
   onCreateTerminal(
     connection: AcpConnectionContext,
     params: CreateTerminalRequest
@@ -49,7 +55,10 @@ export function buildAgentClient(
   router: InboundRouter,
   ports: AgentPorts
 ): Client {
-  return {
+  const createElicitation = (
+    params: CreateElicitationRequest
+  ): Promise<CreateElicitationResponse> => router.onElicitation(connection, params);
+  const client = {
     sessionUpdate: async (params: SessionNotification): Promise<void> => {
       router.onSessionUpdate(connection, params, connection.normalize(params.update));
     },
@@ -57,6 +66,11 @@ export function buildAgentClient(
     requestPermission: (params: RequestPermissionRequest): Promise<RequestPermissionResponse> => {
       return router.onPermissionRequest(connection, params);
     },
+
+    /* The SDK the app actually runs (1.4) dropped the `unstable_` prefix; the
+       one this package is typed against still has it. Answer to both. */
+    unstable_createElicitation: createElicitation,
+    createElicitation,
 
     readTextFile: async (params: ReadTextFileRequest): Promise<ReadTextFileResponse> => {
       return ports.fs.readTextFile(params);
@@ -88,4 +102,5 @@ export function buildAgentClient(
       return ports.terminals.releaseTerminal(params);
     },
   };
+  return client satisfies Client;
 }

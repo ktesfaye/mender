@@ -2319,7 +2319,10 @@ const STEP: Record<string, string> = {
 function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'position:relative';
-  const head = label('it is asking you', {});
+  const head = label(
+    ['it is asking you', asking.header?.toLowerCase(), asking.step].filter(Boolean).join(' · '),
+    {}
+  );
   head.style.color = '#ffc98a';
   it.appendChild(head);
   const said = document.createElement('div');
@@ -2341,12 +2344,37 @@ function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
       `answer:${answer.id}`
     );
     press.style.cssText += "font-family:'Josefin Sans',sans-serif;font-size:15px";
-    line.appendChild(press);
+    if (answer.about) {
+      /* What picking it would mean, under the answer and quieter than it, so
+         the answers still read down the left as a list. */
+      const both = document.createElement('div');
+      both.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0';
+      both.appendChild(press);
+      const about = document.createElement('div');
+      about.style.cssText = ABOUT;
+      about.textContent = answer.about;
+      both.appendChild(about);
+      line.style.alignItems = 'baseline';
+      line.appendChild(both);
+    } else line.appendChild(press);
     answers.appendChild(line);
   }
   it.appendChild(answers);
+  if (asking.aside) {
+    const aside = document.createElement('div');
+    aside.style.cssText = `${ABOUT};margin-top:16px;font-style:italic`;
+    aside.textContent = asking.aside;
+    it.appendChild(aside);
+  }
   return it;
 }
+
+const ABOUT = [
+  "font-family:'Josefin Sans',sans-serif",
+  'font-size:13px',
+  'line-height:1.4',
+  'color:#a89272',
+].join(';');
 
 const ASKED = [
   "font-family:'Cormorant Garamond',serif",
@@ -3495,7 +3523,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       name.appendChild(written);
       hung.appendChild(name);
       const under = box({ left: 34, top: 20, width: wide }, CLIPPED);
-      const saying = exact(one.saying, 11, one.here ? '#dcc8a0' : SAYS[one.posture]);
+      const saying = exact(one.saying, 11, one.here ? HERE_SAYS : SAYS[one.posture]);
       if (cutting) {
         written.style.opacity = '.6';
         saying.style.opacity = '.6';

@@ -43,6 +43,8 @@ import type {
 } from '@shared/agents';
 import { carried, packExpect, piecesOf, USUAL_PACK } from '@shared/packing';
 import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
+import { goingIn, pickUpNote, PICK_UP_SAID, type CutOff } from './cut-off';
+import { questionsOf, type FormQuestion, type FormValue } from './form';
 import {
   helperTrail,
   holdAway,
@@ -52,7 +54,6 @@ import {
   tokensOf,
   type HelperTrail,
 } from './helper-trail';
-import { goingIn, pickUpNote, PICK_UP_SAID, type CutOff } from './cut-off';
 import { kept, madeIn, stillThere } from './made';
 
 /**
@@ -669,6 +670,20 @@ export function createAgents(
     error: { kind: 'refused' as const, because },
   });
   const refused = (because: string): Told => refusal(because);
+  const ok = (): Told => ({ success: true, data: undefined });
+  /** A form whose last question is answered goes back to the agent whole. */
+  const sendForm = async (
+    conversationId: string,
+    filled: { requestId: string; content: Record<string, FormValue> }
+  ): Promise<Told> => {
+    const done = await runtimes.acp.resolveElicitation({
+      conversationId,
+      requestId: filled.requestId,
+      action: 'accept',
+      content: filled.content,
+    });
+    return done.success ? ok() : refused(whatItSaid(done.error));
+  };
 
   const evict = async (task: string): Promise<void> => {
     await loaded;
@@ -779,6 +794,13 @@ export function createAgents(
     if (!record) return { success: false, error: { kind: 'no-such-task' } };
 
     const house = houseOf(task);
+    /* A form standing at the gate takes what is written as its answer rather
+       than as something new said: its own "write your own". */
+    const standing = lodgers[task];
+    if (standing && said && !carrying?.length && !hidden) {
+      const filled = house.fill({ written: said });
+      if (filled !== 'no-form') return filled === 'more' ? ok() : sendForm(standing, filled);
+    }
     const moved = await moveIn(task, record);
     if (!moved.success) {
       log.warn('agents: tell could not move in', { area: 'agents', task, error: moved.error });
@@ -1216,6 +1238,8 @@ export function createAgents(
       const conversation = lodgers[task];
       if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
       const house = houseOf(task);
+      const filled = house.fill({ pick: optionId });
+      if (filled !== 'no-form') return filled === 'more' ? ok() : sendForm(conversation, filled);
       /* Several things asking at once only get marked here; they go out
          together when `finishAsking` is pressed. */
       if (peek(house.state).asking?.multi) {
@@ -1235,6 +1259,8 @@ export function createAgents(
       const conversation = lodgers[task];
       if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
       const house = houseOf(task);
+      const filled = house.fill({ enough: true });
+      if (filled !== 'no-form') return filled === 'more' ? ok() : sendForm(conversation, filled);
       const picks = house.picks();
       house.clearPicks();
       for (const { requestId, optionId } of picks) {
@@ -1434,6 +1460,9 @@ class House {
   /** Marks on a multi-select question, one pick per pending request, kept
    *  until `finishAsking` sends them or the question itself moves on. */
   private marked = new Map<string, string>();
+  /** How far through a standing form the answering has got, and what has been said so far. */
+  private filling: { requestId: string; at: number; content: Record<string, FormValue> } | null =
+    null;
 
   constructor(
     private readonly task: string,
@@ -1783,6 +1812,92 @@ class House {
     this.publish();
   }
 
+  /** The form standing at the gate, if what is asking is one, and its questions. */
+  private standingForm(): { request: AcpPermissionRequest; questions: FormQuestion[] } | null {
+    const request = (this.lifecycle?.pendingPermissions ?? []).find((each) => each.form);
+    if (!request?.form) return null;
+    const questions = questionsOf(request.form.message, request.form.schema);
+    return questions.length ? { request, questions } : null;
+  }
+
+  private filled(requestId: string): { at: number; content: Record<string, FormValue> } {
+    if (this.filling?.requestId !== requestId) this.filling = { requestId, at: 0, content: {} };
+    return this.filling;
+  }
+
+  /**
+   * Answers whichever question of a standing form is up: a number picked, a
+   * pick toggled on a question that takes several, "that's everything" on
+   * one of those, or something written on the line instead. Moves on to the
+   * next question, and hands back the whole form once the last one is
+   * answered. `'no-form'` when what is asking is not a form at all.
+   */
+  fill(
+    answer: { pick: string } | { enough: true } | { written: string }
+  ): 'no-form' | 'more' | { requestId: string; content: Record<string, FormValue> } {
+    const standing = this.standingForm();
+    if (!standing) return 'no-form';
+    const { request, questions } = standing;
+    const filled = this.filled(request.requestId);
+    const question = questions[Math.min(filled.at, questions.length - 1)];
+    if ('pick' in answer) {
+      const option = question.options[Number(answer.pick)];
+      if (!option) return 'more';
+      if (question.several) {
+        const had = (filled.content[question.key] as string[] | undefined) ?? [];
+        const label = String(option.value);
+        filled.content[question.key] = had.includes(label)
+          ? had.filter((each) => each !== label)
+          : [...had, label];
+        this.publish();
+        return 'more';
+      }
+      filled.content[question.key] = option.value;
+    } else if ('written' in answer) {
+      if (!question.written) return 'more';
+      filled.content[question.written] = answer.written;
+    }
+    filled.at += 1;
+    if (filled.at < questions.length) {
+      this.publish();
+      return 'more';
+    }
+    this.filling = null;
+    return { requestId: request.requestId, content: filled.content };
+  }
+
+  /** The question up on a standing form, as the board asks it. */
+  private formAsk(): Ask | null {
+    const standing = this.standingForm();
+    if (!standing) return null;
+    const { request, questions } = standing;
+    const filled = this.filled(request.requestId);
+    const question = questions[Math.min(filled.at, questions.length - 1)];
+    const chosen = (filled.content[question.key] as string[] | undefined) ?? [];
+    return {
+      requestId: request.requestId,
+      text: question.text,
+      ...(question.header && question.header !== question.text ? { header: question.header } : {}),
+      ...(questions.length > 1 ? { step: `${filled.at + 1} of ${questions.length}` } : {}),
+      ...(question.several ? { multi: true } : {}),
+      ...(question.written
+        ? {
+            aside: question.options.length
+              ? 'or write your own on the line.'
+              : 'write it on the line.',
+          }
+        : {}),
+      options: question.options.map((option, index) => ({
+        optionId: String(index),
+        name: option.label,
+        ...(option.about ? { about: option.about } : {}),
+        ...(question.several
+          ? { requestId: request.requestId, picked: chosen.includes(String(option.value)) }
+          : {}),
+      })),
+    };
+  }
+
   /** Every mark on the question right now, one per pending request. */
   picks(): { requestId: string; optionId: string }[] {
     return [...this.marked.entries()].map(([requestId, optionId]) => ({ requestId, optionId }));
@@ -1847,7 +1962,13 @@ class House {
       if (!pending.some((request) => request.requestId === requestId))
         this.marked.delete(requestId);
     }
-    const asking = askOf(pending, this.where(), this.marked);
+    const asking =
+      this.formAsk() ??
+      askOf(
+        pending.filter((request) => !request.form),
+        this.where(),
+        this.marked
+      );
     const failure = this.lifecycle?.failure ?? null;
     const mood = moodOf(this.lifecycle, asking, this.trouble, failure);
     const told = helpersIn(

@@ -157,10 +157,14 @@ export function yardOf(from: Standing): Yard {
       ? {
           asking: {
             said: from.asking.text,
+            ...(from.asking.header ? { header: from.asking.header } : {}),
+            ...(from.asking.step ? { step: from.asking.step } : {}),
+            ...(from.asking.aside ? { aside: from.asking.aside } : {}),
             multi: from.asking.multi,
             answers: answersFor(from.asking).map((one) => ({
               id: one.optionId,
               said: one.name,
+              ...(one.about ? { about: one.about } : {}),
               requestId: one.requestId,
             })),
           },
