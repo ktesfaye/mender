@@ -66,31 +66,34 @@ describe('madeIn', () => {
     ]);
   });
 
-  it('names a published page after its own title, or the words just before a bare address', () => {
+  it('names a published page after its own title, or the words before a bare address, even read back', () => {
     const made = madeIn(
       [
-        turn([
-          {
-            kind: 'create-file-tool-call',
-            id: 'w',
-            path: '/s/acts.tpl.html',
-            content: '<title>Second Lines</title>',
-            status: 'done',
-          },
-          {
-            kind: 'unknown-tool-call',
-            id: 'p',
-            name: 'Artifact',
-            status: 'done',
-            outputText: 'Published /s/acts.html at https://claude.ai/artifact/X1 (Version 1)',
-          },
-          {
-            kind: 'message',
-            role: 'assistant',
-            id: 'm',
-            text: 'Still there. Food is at https://claude.ai/artifact/F2 and activities at https://claude.ai/artifact/X1.',
-          },
-        ]),
+        {
+          ...turn([
+            {
+              kind: 'create-file-tool-call',
+              id: 'w',
+              path: '/s/acts.tpl.html',
+              content: '<title>Second Lines</title>',
+              status: 'done',
+            },
+            {
+              kind: 'unknown-tool-call',
+              id: 'p',
+              name: 'Artifact',
+              status: 'done',
+              outputText: 'Published /s/acts.html at https://claude.ai/artifact/X1 (Version 1)',
+            },
+            {
+              kind: 'message',
+              role: 'assistant',
+              id: 'm',
+              text: 'Still there. Food is at https://claude.ai/artifact/F2 and activities at https://claude.ai/artifact/X1.',
+            },
+          ]),
+          outcome: undefined,
+        },
       ],
       clock
     );

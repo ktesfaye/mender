@@ -115,7 +115,8 @@ function expand(path: string): string {
 /** Everything the transcript says was made, oldest first. */
 export function madeIn(
   turns: readonly TranscriptTurn[],
-  stamp: (id: string, over: boolean) => number
+  stamp: (id: string, over: boolean) => number,
+  live?: string
 ): Made[] {
   const found: Made[] = [];
   const file = (path: string, at: number): void => {
@@ -169,10 +170,7 @@ export function madeIn(
     if (node.kind === 'create-file-tool-call' && node.status === 'done') {
       written.set(node.path, node.content);
       file(node.path, at);
-    } else if (
-      (node.kind === 'unknown-tool-call' || node.kind === 'mcp-tool-call') &&
-      node.status === 'done'
-    ) {
+    } else if (node.kind === 'unknown-tool-call' || node.kind === 'mcp-tool-call') {
       published(node.outputText, node.inputSummary, at);
     } else if (node.kind === 'execute-tool-call' && node.status === 'done') {
       builds(node.outputText, at);
@@ -182,11 +180,14 @@ export function madeIn(
 
   for (const turn of turns) {
     const over = turn.outcome !== undefined;
+    /* A turn read back after a restart carries no outcome, but only the one
+       still being answered can stop halfway through an address. */
+    const settled = over || turn.id !== live;
     for (const item of turn.items) {
       if (item.kind === 'message') {
         /* A reply still being written can stop halfway through an address,
            so what it said is only read once the turn is over. */
-        if (item.role === 'user' || !over) continue;
+        if (item.role === 'user' || !settled) continue;
         const at = stamp(item.id, over);
         pages(item.text, at);
         builds(item.text, at);

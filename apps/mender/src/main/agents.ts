@@ -1600,7 +1600,10 @@ class House {
         ...(this.hushed && this.live?.id === this.hushed && !this.live.outcome
           ? { stopping: true }
           : {}),
-        made: madeOf(this.keep(madeIn(turns, (id, over) => this.time(id, over))), this.where()),
+        made: madeOf(
+          this.keep(madeIn(turns, (id, over) => this.time(id, over), this.live?.id)),
+          this.where()
+        ),
       },
       asking,
       plan: stepsOf(this.plan),
