@@ -1788,10 +1788,11 @@ function thinking(
         const it = keyed(document.createElement('div'), `thought:${one.id}`);
         it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
         const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
-        const head = said(
-          trouble?.head ?? (one.quiet ? 'thinking' : 'now'),
-          trouble?.ink ?? '#ffc98a'
-        );
+        /* The same "how long ago" the gatepost puts over what you said, or
+           how long it has been at it while it still is. */
+        const clock = one.at ? `${one.at} at this` : one.when;
+        const name = trouble?.head ?? (one.quiet ? 'thinking' : 'now');
+        const head = said(clock ? `${name} · ${clock}` : name, trouble?.ink ?? '#ffc98a');
         folding(head);
         it.appendChild(head);
         const body = document.createElement('div');

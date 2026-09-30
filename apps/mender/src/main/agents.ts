@@ -41,6 +41,7 @@ import type {
   WorkingState,
   Wrote,
 } from '@shared/agents';
+import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
 import { kept, madeIn, stillThere } from './made';
 
 /**
@@ -407,7 +408,13 @@ export function createAgents(
         },
         () => wheres.get(task),
         (found) => keepMade(task, found),
-        reglance
+        reglance,
+        () => {
+          const conversation = lodgers[task];
+          return conversation && records[conversation]?.provider === 'claude'
+            ? sessionFor(task, conversation)
+            : null;
+        }
       );
       houses.set(task, house);
       void loaded.then(async () => {
@@ -1157,6 +1164,15 @@ class House {
    * we do not have. Cleared with the house.
    */
   private seen = new Map<string, number>();
+  /**
+   * Everything said in here with the time Claude itself wrote it down, read
+   * off Claude's own transcript. It is the only clock anything said before
+   * the village was looking can have, and it survives a restart, which the
+   * village's own `seen` does not.
+   */
+  private dated: Dated[] = [];
+  private datedSize = -1;
+  private dating = false;
   /* Whether the village has watched this conversation move. */
   private watching = false;
   /* Whether a wake is reading this session's history back in right now. */
@@ -1182,7 +1198,9 @@ class House {
     /** Everything it has ever made, with whatever was just found folded in. */
     private readonly keep: (found: readonly Made[]) => Made[],
     /** Anything at all moved, which is when its lantern might say otherwise. */
-    private readonly touched: () => void = () => {}
+    private readonly touched: () => void = () => {},
+    /** Claude's own id for this conversation, when it is a Claude one. */
+    private readonly claude: () => string | null = () => null
   ) {
     this.state = cell<WorkingState>(EMPTY, { name: `agent:${task}` });
   }
@@ -1249,6 +1267,24 @@ class House {
     this.seedSeen();
     this.publish();
     await this.readBack();
+    await this.redate();
+  }
+
+  /** Reads Claude's own record of this conversation again, if it has grown. */
+  private async redate(): Promise<void> {
+    const session = this.claude();
+    if (!session || this.dating) return;
+    this.dating = true;
+    try {
+      if ((await sizeOf(session)) === this.datedSize) return;
+      const read = await readDated(session);
+      if (!read) return;
+      this.dated = read.dated;
+      this.datedSize = read.size;
+      this.publish();
+    } finally {
+      this.dating = false;
+    }
   }
 
   /**
@@ -1280,6 +1316,7 @@ class House {
       .slice(-BACKWARD);
     this.seedSeen();
     this.publish();
+    void this.redate();
   }
 
   /**
@@ -1413,6 +1450,7 @@ class House {
     // active state only ever carries the latest.
     if (this.live && (!now || now.id !== this.live.id)) {
       this.before = [...this.before, this.live].slice(-BACKWARD);
+      void this.redate();
     }
     this.live = now;
   }
@@ -1501,7 +1539,7 @@ class House {
       doing: this.trouble ?? (failure ? failureDoing(failure) : doingOf(mood, this.live)),
       lines,
       told: {
-        ...toldOf(turns, this.where(), (id, over) => this.time(id, over)),
+        ...toldOf(turns, this.where(), (id, over) => this.time(id, over), clockOf(this.dated)),
         made: madeOf(
           this.keep(madeIn(turns, (id, over) => this.time(id, over))),
           this.where()
@@ -1842,7 +1880,9 @@ function linesOf(turns: readonly TranscriptTurn[], root: string | undefined): Li
 function toldOf(
   turns: readonly TranscriptTurn[],
   root: string | undefined,
-  stamp: (id: string, over: boolean) => number
+  stamp: (id: string, over: boolean) => number,
+  /** When Claude's own transcript says something was said, or 0. */
+  dated: (who: 'you' | 'it', text: string) => number = () => 0
 ): ToldState {
   const flat = flatten(turns);
 
@@ -1874,7 +1914,10 @@ function toldOf(
 
   flat.forEach((item, i) => {
     if (item.kind === 'note') {
-      const at = stamp(item.id, item.hasOutcome);
+      /* Asked of the transcript even when the village has its own time, so
+         the walk through it stays in step with the board. */
+      const known = dated('you', item.text);
+      const at = stamp(item.id, item.hasOutcome) || known;
       earliest(at);
       notes.push({
         id: item.id,
@@ -1885,7 +1928,8 @@ function toldOf(
         ...(item.pictures ? { pictures: item.pictures } : {}),
       });
     } else if (item.kind === 'said') {
-      const at = stamp(item.id, item.hasOutcome);
+      const known = dated('it', item.text);
+      const at = stamp(item.id, item.hasOutcome) || known;
       earliest(at);
       /* The last thing said in a turn that broke is the agent saying why, and
          a limit is said in so many words whether or not the turn noticed. */

@@ -277,12 +277,10 @@ function noteOf(
  *
  * **Nothing here says when it was said unless it actually knows.** The protocol
  * carries no clock on a message, and an agent picking up where it left off
- * sends its whole transcript back the moment you walk in, so the only time the
- * village could put on any of it is the time it happened to notice, which for
- * a week-old conversation is a lie. Reasoning carries its own clock and the
- * live one is happening in front of you; everything else is placed by where it
- * is in the column and by how bright it is, which is what recency is made of
- * here anyway.
+ * sends its whole transcript back the moment you walk in, so the time the
+ * village noticed it is a lie for anything old. What it knows is when it saw
+ * something said while you were there, and, for Claude, the time Claude's own
+ * transcript wrote beside it.
  *
  * The plan it posted is a different thing and lives above this: the first thing
  * an agent says is not a plan, however much it reads like one.
@@ -305,14 +303,11 @@ function thoughtsOf(told: Told | undefined): Thought[] {
     id: one.id,
     said: one.said,
     ...(answered.has(one.id) ? { answer: true } : {}),
-    /* A time only where there is one. The protocol carries no clock on a
-       message, and an agent picking up where it left off sends its whole
-       transcript back the moment you walk in, so the only time the village
-       could put on any of it is the time it happened to notice, which for a
-       week-old conversation is a lie. Reasoning carries its own clock. The
-       rest is placed by where it is in the column and how bright it is, which
-       is what recency is made of here anyway. */
-    when: one.quiet && one.at ? agoOf(Date.now() - one.at) : '',
+    /* A time only where there is one: the village saw it said, Claude's own
+       transcript wrote it down, or it is reasoning, which carries its own
+       clock. Anything else is placed by where it is in the column and how
+       bright it is rather than given a time the village made up. */
+    when: one.at ? agoOf(Date.now() - one.at) : '',
     ...(one.since ? { live: true, at: longFor(Date.now() - one.since) } : {}),
     ...(at === all.length - 1 && !one.since && !earlier(one.turn) ? { live: true } : {}),
     ...(earlier(one.turn) ? { earlier: true } : {}),

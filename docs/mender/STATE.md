@@ -1783,6 +1783,16 @@ its own clock and for the one happening now, because it never needed them: that
 column is placed by order and brightness, and that is what recency is made of
 here. A board that gets time wrong is a board you stop reading times off.
 
+Then he held up the design, where every answer has its "22m ago" over it the
+same as every note, and asked for it. The village's own noticing still only
+knows what it watched, and forgets it on restart. But Claude writes every turn
+to its own transcript with a real time on it, so a Claude session now reads
+that file and dates both columns off it, walking it in step with the board so
+the same words said twice each get their own time. Driven in the running app:
+two lines said, both columns dated, the app shut and reopened a minute later,
+and both columns came back at "1m ago" and "2m ago" rather than blank. Other
+agents still only get the times the village saw while it watched.
+
 ### And then he opened it, and it was black
 
 Five things, and the first one is the whole complaint. **The yard was framed on
