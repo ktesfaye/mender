@@ -56,7 +56,8 @@ export function datedOf(lines: readonly string[]): Dated[] {
           : [];
     for (const text of texts) {
       const key = keyOf(text);
-      if (key && !key.startsWith('<')) out.push({ who: one.type === 'user' ? 'you' : 'it', key, at });
+      if (key && !key.startsWith('<'))
+        out.push({ who: one.type === 'user' ? 'you' : 'it', key, at });
     }
   }
   return out;

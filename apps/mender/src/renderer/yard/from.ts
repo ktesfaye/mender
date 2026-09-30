@@ -393,32 +393,32 @@ function liveOf(from: Standing, told: Told | undefined): Session['live'] {
   };
 }
 
-/** A step it is in the middle of, said in the present tense. */
-function doingOf(deed: { did: string; why?: string; tool: string }): string {
-  if (deed.why) return deed.why;
-  const rest = (word: string): string => deed.did.replace(new RegExp(`^${word}\\s+`), '');
+/**
+ * A step it is in the middle of, said in the present tense and no more than
+ * that. Which file or which command is already the live line in what it did,
+ * right beside it, so naming it here as well was saying everything twice.
+ */
+function doingOf(deed: { tool: string }): string {
   switch (deed.tool) {
     case 'execute-tool-call':
-      /* Before the command itself comes through, all a shell call is called
-         is the name of the tool. */
-      return /^terminal$/i.test(deed.did) ? 'running a command' : `running ${deed.did}`;
+      return 'running something';
     case 'read-tool-call':
     case 'web-fetch-tool-call':
-      return `reading ${rest('read')}`;
+      return 'reading';
     case 'create-file-tool-call':
-      return `writing ${rest('wrote')}`;
+      return 'writing';
     case 'modify-file-tool-call':
-      return `changing ${rest('changed')}`;
+      return 'changing things';
     case 'delete-file-tool-call':
-      return `removing ${rest('removed')}`;
+      return 'clearing something away';
     case 'search-tool-call':
-      return `looking for ${rest('looked for')}`;
+      return 'looking around';
     case 'spawn-subagent-tool-call':
       return 'sending somebody out';
     case 'create-plan-tool-call':
       return 'making a plan';
     default:
-      return deed.did;
+      return 'working';
   }
 }
 
