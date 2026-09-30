@@ -336,6 +336,12 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   /* Walk and press it by key, before anything else hears about the key: the
      line is where your hands are and this is what the line has open. */
   line.onKey((event) => {
+    /* Shift-Tab turns the session to its next mode, as it does in Claude
+       Code, whatever is on the line and whether or not a list is open. */
+    if (event.key === 'Tab' && event.shiftKey && !event.metaKey && !event.ctrlKey) {
+      does.press('mode:next');
+      return true;
+    }
     if (menu.root.style.display === 'none') return recall(event);
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       walk.step(event.key === 'ArrowDown' ? 1 : -1);

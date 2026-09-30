@@ -123,6 +123,14 @@ export class Palette {
     this.kit = kit;
   }
 
+  /** The mode after the one it is in, going round, the way Shift-Tab turns Claude Code's. */
+  nextMode(): Choice | null {
+    const modes = this.kit?.modes ?? [];
+    if (modes.length < 2) return null;
+    const at = modes.findIndex((one) => one.id === this.kit?.mode);
+    return modes[(at + 1) % modes.length] ?? null;
+  }
+
   /** Whatever is on the line now. */
   typed(text: string): void {
     if (text !== this.text) this.armed = null;

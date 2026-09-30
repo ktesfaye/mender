@@ -3227,3 +3227,11 @@ sea either. Driven in a dev instance: alpha's flag dropped on the water asked,
 Escape kept it; alpha's land dropped on the water asked, naming that beta
 moves in closer, and removing it left beta standing on alpha's district with
 the fire in reach.
+
+### Shift-Tab turns the mode (2026-09-30) — done
+
+Shift-Tab on the line steps the session to its next mode, going round the
+same list `/mode` offers, the way it does in Claude Code. Whatever is half
+written stays on the line, and the new mode is said at the foot and stands in
+the corner over the board. Driven in a dev instance: auto went to bypass
+permissions and then manual, with "half a thought" still on the line.

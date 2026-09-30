@@ -4611,6 +4611,22 @@ async function boot(): Promise<void> {
         if (line !== null && line !== undefined) said(line);
         return;
       }
+      if (pick === 'mode:next') {
+        const task = inside;
+        const next = watching?.slash.nextMode();
+        if (!task || !next) return;
+        void client.agents
+          .choose({ task: task.id, what: 'mode', id: next.id }, { timeoutMs: 0 })
+          .then((done) => {
+            if (!done.success)
+              say(
+                done.error.kind === 'refused' ? done.error.because : 'that would not take.',
+                6000
+              );
+            else say(`${next.name.toLowerCase()}.`, 2000);
+          });
+        return;
+      }
       if (pick.startsWith('slash:')) {
         const meant = watching?.slash.meant(pick);
         if (meant) void obey(meant);
