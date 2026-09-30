@@ -119,6 +119,17 @@
   src: url('courier-prime-700-normal.woff2') format('woff2');
 }
 
+/* Fraunces by its own name, for the one place that wants it whatever the
+   switch above is set to: a question the agent stands at the gate with, set
+   in its wonky italic so it never reads as one more line of the answer. */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: block;
+  src: url('fraunces-variable-italic.woff2') format('woff2');
+}
+
 @font-face {
   font-family: 'Silkscreen';
   font-style: normal;

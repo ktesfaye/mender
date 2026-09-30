@@ -771,10 +771,14 @@ them, together.
 
 **And when it wants to ask you something, it asks.** Claude's own way of
 putting a choice to you, the one a terminal draws as a list with an "Other"
-box, stands at the foot of what it said, right over the line it is answered
-on, the same place a permission question does: the question in the
-large hand, whatever it calls it and which of how many over it, each answer
-numbered with what it would mean written quietly under it. A number picks it
+box, is pinned to the foot of what it said, right over the line it is
+answered on, the same place a permission question is, ruled off above and
+below so it never reads as more of the answer, which scrolls in the room
+left over it. It is put to you the way a game puts a choice: what it calls
+it and which of how many in pixel capitals, the question in a large warm
+italic, each answer's name in pixel type with a number beside it and what
+it would mean written quietly under it, and the one the agent favours
+marked "recommended" after its name rather than inside it. A number picks it
 and goes on to the next question; on one that takes several, numbers mark and
 unmark and "that's everything" moves on. Anything written on the line instead
 is your own answer to that question. Nothing goes back until the last one is

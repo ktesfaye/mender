@@ -3312,3 +3312,14 @@ stands at the foot of the middle column, right over the line it is answered
 on, and the column scrolls down to it when it arrives. Driven in a dev
 instance: a two-question form showed at the foot of the answer, was answered
 by keys through both questions, and Claude read the picks back.
+
+### A question is pinned and set apart (2026-09-30) — done
+
+The question is pinned to the foot of the middle column rather than flowing
+after the answer, ruled above and below on a darker wash, with the answer
+scrolling in the room over it. It has its own type now: Silkscreen for the
+header and the answers' names, Fraunces italic with its wonky letters for the
+question, Josefin kept for what each answer means. An agent's "(Recommended)"
+comes out of the name into a quiet tag. Driven in a dev instance: a
+two-question form pinned at the foot, answered by keys, and the column took
+its room back once it was answered.

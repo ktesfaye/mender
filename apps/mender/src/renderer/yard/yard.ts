@@ -1890,7 +1890,23 @@ function thinking(
   if (!thoughts.length && !live && !failure && !asking) return;
 
   const room = Math.max(60, floor - top);
-  const stream = stack({ left: at.x, top, width: at.wide, height: room }, 20);
+  /* A question is pinned to the foot of the column, right over the line it
+     is answered on, ruled off above and below, and what it said scrolls in
+     the room left over it: the one thing the work is stopped on is never
+     scrolled away from, and never read as one more paragraph of the answer. */
+  let asked = 0;
+  if (asking) {
+    const pinned = keyed(box({ left: at.x, width: at.wide }, ASKING_BLOCK), 'gate');
+    pinned.appendChild(gate(at.wide, asking, does));
+    root.appendChild(pinned);
+    asked = Math.min(pinned.offsetHeight, Math.round(room * 0.7));
+    pinned.style.top = `${floor - asked}px`;
+    pinned.style.height = `${asked}px`;
+  }
+  const stream = stack(
+    { left: at.x, top, width: at.wide, height: Math.max(40, room - (asked ? asked + 18 : 0)) },
+    20
+  );
   /* The face is picked in fonts.css, the one place it is named. */
   stream.classList.add('said-face');
   stream.style.cssText += ';overflow-y:auto;pointer-events:auto;scrollbar-width:none';
@@ -1926,10 +1942,6 @@ function thinking(
   if (recap && !live && !failure && !asking) col.appendChild(recapped(recap));
   if (failure) col.appendChild(failureEmber(failure, does));
   if (live) col.appendChild(ember(live, since));
-  /* A question stands at the foot of the answer, right over the line it is
-     answered on: it is what the work is stopped on, so it is read where the
-     reading already is, not off in a side column. */
-  if (asking) col.appendChild(keyed(gate(at.wide, asking, does), 'gate'));
 
   function laidOlder(): void {
     const hidden = hiddenCount(wholeSize, shown, server);
@@ -2335,11 +2347,16 @@ function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
     ['it is asking you', asking.header?.toLowerCase(), asking.step].filter(Boolean).join(' · '),
     {}
   );
+  /* Pixel type for the header and the answers' names, the way a game puts a
+     choice to you, so the question never reads as more of the answer. */
+  head.style.cssText += ';font-family:Silkscreen,monospace;letter-spacing:.08em';
   head.style.color = '#ffc98a';
+  head.dataset.q = 'head';
   it.appendChild(head);
   const said = document.createElement('div');
-  said.style.cssText = `${ASKED};margin-top:14px;max-width:${wide}px`;
+  said.style.cssText = `${ASKED};margin-top:12px;max-width:${wide}px`;
   said.textContent = asking.said;
+  said.dataset.q = 'text';
   it.appendChild(said);
 
   const answers = document.createElement('div');
@@ -2350,25 +2367,42 @@ function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
     const key = document.createElement('span');
     key.style.cssText = KEY;
     key.textContent = String(i + 1);
+    key.dataset.q = 'key';
     line.appendChild(key);
+    /* An agent marks its own favourite by writing it into the name; it reads
+       better said quietly after the name than shouted inside it. */
+    const favoured = /\s*\(recommended\)\s*$/i.test(answer.said);
     const press = astop(
-      pressing(answer.said, () => does.answer(answer.id, answer.requestId)),
+      pressing(answer.said.replace(/\s*\(recommended\)\s*$/i, ''), () =>
+        does.answer(answer.id, answer.requestId)
+      ),
       `answer:${answer.id}`
     );
-    press.style.cssText += "font-family:'Josefin Sans',sans-serif;font-size:15px";
+    press.style.cssText += 'font-family:Silkscreen,monospace;font-size:13px;letter-spacing:.03em';
+    press.dataset.q = 'option';
+    const named = document.createElement('span');
+    named.appendChild(press);
+    if (favoured) {
+      const tag = document.createElement('span');
+      tag.style.cssText = `${ABOUT};margin-left:10px;font-style:italic`;
+      tag.textContent = 'recommended';
+      tag.dataset.q = 'about';
+      named.appendChild(tag);
+    }
     if (answer.about) {
       /* What picking it would mean, under the answer and quieter than it, so
          the answers still read down the left as a list. */
       const both = document.createElement('div');
       both.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0';
-      both.appendChild(press);
+      both.appendChild(named);
       const about = document.createElement('div');
       about.style.cssText = ABOUT;
       about.textContent = answer.about;
+      about.dataset.q = 'about';
       both.appendChild(about);
       line.style.alignItems = 'baseline';
       line.appendChild(both);
-    } else line.appendChild(press);
+    } else line.appendChild(named);
     answers.appendChild(line);
   }
   it.appendChild(answers);
@@ -2388,10 +2422,24 @@ const ABOUT = [
   'color:#a89272',
 ].join(';');
 
+const ASKING_BLOCK = [
+  'box-sizing:border-box',
+  'padding:18px 0 20px',
+  'border-top:1px solid rgba(244,227,192,.22)',
+  'border-bottom:1px solid rgba(244,227,192,.22)',
+  'background:linear-gradient(rgba(18,13,7,.55),rgba(18,13,7,.3))',
+  'overflow-y:auto',
+  'scrollbar-width:none',
+  'pointer-events:auto',
+].join(';');
+
 const ASKED = [
-  "font-family:'Cormorant Garamond',serif",
-  'font-size:21px',
-  'line-height:1.35',
+  "font-family:'Fraunces',serif",
+  'font-style:italic',
+  "font-variation-settings:'SOFT' 100,'WONK' 1",
+  'font-weight:420',
+  'font-size:27px',
+  'line-height:1.3',
   'color:#ffdca4',
   'text-shadow:0 2px 10px rgba(0,0,0,.9)',
 ].join(';');
