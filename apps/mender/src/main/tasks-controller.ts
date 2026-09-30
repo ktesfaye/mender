@@ -11,7 +11,8 @@ export function createTasksController(tasks: Tasks): Controller {
     begin: ({ project, name, slot, kind, branch, isolated, workspace }) =>
       tasks.begin(project, name, slot, kind, branch, isolated, workspace),
     workspaces: expose(tasksContract.workspaces, { list: () => tasks.watchWorkspaces() }),
-    cutWorkspace: ({ project }) => tasks.cutWorkspace(project),
+    cutWorkspace: ({ project, name }) => tasks.cutWorkspace(project, name),
+    dropCost: ({ id }) => tasks.dropCost(id),
     dropWorkspace: ({ id }) => tasks.dropWorkspace(id),
     branches: ({ project }) => tasks.branches(project),
     claudeHistory: ({ project }) => tasks.claudeHistory(project),

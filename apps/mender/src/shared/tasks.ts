@@ -113,11 +113,26 @@ export const tasksContract = defineContract({
   /** A new isolated workspace, nobody in it yet: its own worktree on its own
       branch, cut from wherever the project calls home. */
   cutWorkspace: fallible({
-    input: z.object({ project: z.string() }),
+    /** What its signboard says, which is what its branch is made of. Left
+        out, it is numbered on from the project's own folder. */
+    input: z.object({ project: z.string(), name: z.string().optional() }),
     data: workspaceSchema,
     error: taskErrorSchema,
   }),
-  /** Takes the worktree down and every session in it. The branch stays. */
+  /** What deleting a workspace would throw away, counted before it is offered. */
+  dropCost: procedure({
+    input: z.object({ id: z.string() }),
+    output: z.object({
+      sessions: z.number(),
+      /** Files in its worktree nobody has committed. */
+      uncommitted: z.number(),
+      /** Commits on its branch that are on no other branch and nowhere upstream. */
+      unshared: z.number(),
+      branch: z.string(),
+    }),
+  }),
+  /** Deletes a workspace entirely: its worktree, its branch and every
+      session in it. */
   dropWorkspace: procedure({ input: z.object({ id: z.string() }), output: z.void() }),
   /** Start a session, in the project's own folder or a worktree cut for it. */
   begin: fallible({

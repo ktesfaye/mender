@@ -167,6 +167,8 @@ export interface Doings {
   say(said: string): void;
   /** Escape with nothing left on the line to throw away. */
   leave(): void;
+  /** What deleting a workspace would throw away, said before it is done. */
+  dropCost?(id: string): Promise<string>;
 }
 
 export interface Standing {
@@ -876,8 +878,53 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     slab?.remove();
     slab = null;
   }
+  /**
+   * A workspace's own slab: one line that deletes it. The first press only
+   * works out what would go with it and says so, in the sore ink, and nothing
+   * happens until that line is pressed again.
+   */
+  function workspaceSlab(sign: HTMLElement, event: MouseEvent): void {
+    const id = sign.dataset.workspace ?? '';
+    const it = document.createElement('div');
+    it.className = 'menu slab';
+    let armed = false;
+    const line = document.createElement('span');
+    line.className = 'press slab-line';
+    line.textContent = `delete ${sign.dataset.name ?? 'this workspace'}`;
+    line.addEventListener('mousedown', (down) => down.preventDefault());
+    line.addEventListener('click', () => {
+      if (armed) {
+        unslab();
+        does.press(`workspace-drop:${id}`);
+        return;
+      }
+      line.dataset.busy = 'yes';
+      line.textContent = 'looking at what is in there…';
+      void (does.dropCost?.(id) ?? Promise.resolve('')).then((cost) => {
+        if (slab !== it) return;
+        armed = true;
+        delete line.dataset.busy;
+        line.style.color = 'var(--yard-wrong)';
+        line.style.whiteSpace = 'normal';
+        line.style.maxWidth = '420px';
+        line.textContent = `press again to delete it. ${cost}`;
+      });
+    });
+    it.appendChild(line);
+    stage.appendChild(it);
+    it.style.left = `${Math.min(event.clientX, window.innerWidth - it.offsetWidth - 12)}px`;
+    it.style.top = `${Math.min(event.clientY, window.innerHeight - it.offsetHeight - 12)}px`;
+    slab = it;
+  }
+
   window.addEventListener('contextmenu', (event) => {
     unslab();
+    const sign = (event.target as HTMLElement | null)?.closest?.<HTMLElement>('.sign[data-workspace]');
+    if (sign && showing()) {
+      event.preventDefault();
+      workspaceSlab(sign, event);
+      return;
+    }
     if (!showing() || root.style.display === 'none' || scrim.up || !last?.session) return;
     const part = partAt(event.clientX, event.clientY);
     const offers: { said: string; run: () => void }[] = [];
@@ -1184,7 +1231,7 @@ function signboards(
     if (!board.here) {
       hung_.tabIndex = 0;
       astop(hung_, `workspace:${board.id}`);
-      hung_.title = board.id ? 'walk in · right-click to take it down' : 'walk in';
+      hung_.title = board.id ? 'walk in · right-click to delete it' : 'walk in';
       hung_.addEventListener('mousedown', (event) => event.preventDefault());
       hung_.addEventListener('click', () => does.press(`workspace:${board.id}`));
       hung_.addEventListener('keydown', (event) => {
@@ -1194,11 +1241,8 @@ function signboards(
       });
     }
     if (board.id) {
-      hung_.addEventListener('contextmenu', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        does.press(`workspace-drop:${board.id}`);
-      });
+      hung_.dataset.workspace = board.id;
+      hung_.dataset.name = board.name;
     }
     hanging.appendChild(hung_);
   }

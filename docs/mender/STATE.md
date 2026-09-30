@@ -728,16 +728,20 @@ turns into a beam with a signboard hanging on two cords for each, the
 project's own folder first, the one you are standing in painted gold; pressing
 another walks into whichever session you were last in there, or starts a fresh
 one if nobody is, and the rail carries only that workspace's lanterns. Command-N
-inside a project cuts a new one and stands you in it, and so does the dashed
-board at the end; on the island it still founds a project. Command-T, and the
-naming board, start the next session in whichever workspace you are in.
-Right-clicking a board twice takes it down, the first saying what goes with it;
-its branch stays. Every session that used to have a worktree of its own becomes
+inside a project asks its name and then cuts it and stands you in it, and so
+does the dashed board at the end; on the island it still founds a project.
+Command-T, and the naming board, start the next session in whichever workspace
+you are in. Right-clicking a board offers to delete it outright, worktree,
+branch and sessions; the first press looks inside and names what would be
+lost, agents still working, uncommitted files and unpushed commits, and only
+the second deletes. Driven on a scratch repository with a stray file and an
+unpushed commit in the workspace: the warning named both, and the second press
+left no folder, no branch and no board. Every session that used to have a worktree of its own becomes
 a workspace of its own the first time the app opens. Driven in a dev copy on a
 scratch repository: an old isolated session came up as its own board, a press
 switched the rail across, command-N cut a real worktree and woke a session in
 it, a second session joined it, everything came back after a restart, and two
-right-clicks took the worktree down and left the branch.
+right-clicks took the worktree down.
 
 A project can be forgotten too, from the bottom of its own page, which is
 what pressing its name opens, because forgetting a place is not something you

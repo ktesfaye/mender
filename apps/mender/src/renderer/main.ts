@@ -186,6 +186,7 @@ async function boot(): Promise<void> {
 
     const yard = makeYard(layer, {
       open: (id) => void go(`task:${id}`),
+      dropCost: (id) => dropCost(id),
       answer: (id, requestId) => void answered(id, requestId),
       press: (pick) => press(pick),
       typed: (text) => {
@@ -536,7 +537,13 @@ async function boot(): Promise<void> {
       if (titling)
         steps.push({
           said:
-            titling.mode === 'mcp' ? 'a server' : titling.mode === 'skill' ? 'a skill' : 'its name',
+            titling.mode === 'mcp'
+              ? 'a server'
+              : titling.mode === 'skill'
+                ? 'a skill'
+                : titling.mode === 'workspace'
+                  ? 'a new workspace'
+                  : 'its name',
           go: back,
         });
       if (live) steps.push({ said: 'the checkout', go: back });
@@ -789,7 +796,11 @@ async function boot(): Promise<void> {
     /** Set while an existing session is being called something else, or —
         the same one line, the same keys — while a custom server is being
         named for the card. */
-    let titling: { task: Task; written: string; mode?: 'title' | 'mcp' | 'skill' } | null = null;
+    let titling: {
+      task: Task;
+      written: string;
+      mode?: 'title' | 'mcp' | 'skill' | 'workspace';
+    } | null = null;
     /** Set while the board is the finder, and what has been typed into it. */
     let looking: { written: string; from: Spot } | null = null;
     /** What everybody is doing, as the main process sees it. */
@@ -974,8 +985,6 @@ async function boot(): Promise<void> {
         (one) => one.id !== id
       );
     };
-    /** The workspace a first right-click has already said the cost of. */
-    let dropping: { id: string; at: number } | null = null;
     /* Which session you were last in, per workspace, so walking back onto a
        signboard puts you where you were in there. */
     const lastInWorkspace = new Map<string, string>();
@@ -997,13 +1006,16 @@ async function boot(): Promise<void> {
     };
 
     /** Cut a new workspace and stand in it, a session already waking. */
-    const newWorkspace = async (): Promise<void> => {
+    const newWorkspace = async (name: string): Promise<void> => {
       const district = open?.district;
       const project = district ? projectOn(district) : undefined;
       if (!district || !project) return;
       const aim: Aim = { kind: 'district', district };
       say('making its own copy of the project…');
-      const made = await client.tasks.cutWorkspace({ project: project.id }, { timeoutMs: 0 });
+      const made = await client.tasks.cutWorkspace(
+        { project: project.id, name },
+        { timeoutMs: 0 }
+      );
       if (!made.success) {
         say(whyNot(made.error), 6000);
         return;
@@ -1016,36 +1028,38 @@ async function boot(): Promise<void> {
       await enterWorkspace(aim, made.data.id);
     };
 
-    /** Two right-clicks take a workspace down; the first says what goes. */
+    /** Deletes a workspace outright. The slab it is offered from has already
+        said what goes with it and been pressed twice. */
     const dropWorkspace = async (id: string): Promise<void> => {
       const workspace = workspaces.find((each) => each.id === id);
       const aim = open;
       if (!workspace || !aim) return;
-      const armed = dropping?.id === id && Date.now() - dropping.at < 5000;
-      if (!armed) {
-        dropping = { id, at: Date.now() };
-        const here = tasks.filter((task) => task.workspace === id).length;
-        const left = await uncommittedIn(workspace);
-        const going = [
-          here ? counted(here, 'session') : null,
-          left ? `${left} nobody has committed` : null,
-        ].filter(Boolean);
-        say(
-          `take ${workspace.name} down? ${going.length ? `${going.join(' and ')} go with it, ` : ''}` +
-            `its branch stays. right-click it again.`,
-          5000
-        );
-        return;
-      }
-      dropping = null;
       const project = projectOn(aim.district);
       const standingIn = project && workspaceOf(project.id) === id;
+      say(`deleting ${workspace.name}…`);
       await client.tasks.dropWorkspace({ id }, { timeoutMs: 0 });
       workspaces = workspaces.filter((each) => each.id !== id);
-      say(`${workspace.name} is down. ${workspace.branch} is still there.`, 4000);
+      say(`${workspace.name} is gone, and ${workspace.branch} with it.`, 4000);
       if (open !== aim || !project) return;
       if (standingIn) await enterWorkspace(aim, '');
       else redrawBoards();
+    };
+
+    /** What deleting a workspace would throw away, in words. */
+    const dropCost = async (id: string): Promise<string> => {
+      const cost = await client.tasks.dropCost({ id }, { timeoutMs: 0 });
+      const busy = tasks.filter(
+        (task) => task.workspace === id && (seen[task.id] === 'working' || seen[task.id] === 'asking')
+      ).length;
+      const going = [
+        busy ? `${counted(busy, 'agent')} in there still working, stopped mid-way` : null,
+        cost.uncommitted ? `${counted(cost.uncommitted, 'file')} nobody committed` : null,
+        cost.unshared ? `${counted(cost.unshared, 'commit')} never pushed anywhere` : null,
+        cost.sessions ? counted(cost.sessions, 'session') : null,
+      ].filter(Boolean);
+      return going.length
+        ? `this throws away ${going.join(', ')}, and ${cost.branch}.`
+        : `nothing unsaved in it; ${cost.branch || 'its branch'} is pushed or merged.`;
     };
 
     /** The signboards moved under the yard you are standing in. */
@@ -1099,7 +1113,7 @@ async function boot(): Promise<void> {
         return;
       }
       if (id === 'do:workspace') {
-        void newWorkspace();
+        if (inside) askWorkspace(inside);
         return;
       }
       if (id.startsWith('workspace:')) {
@@ -3706,6 +3720,23 @@ async function boot(): Promise<void> {
       yard.line.take();
     };
 
+    /** Naming a new workspace before it is cut, on the one line. */
+    const askWorkspace = (task: Task): void => {
+      naming = null;
+      reading = null;
+      writing = null;
+      looked = null;
+      branchLooked = null;
+      stopWalking();
+      stopTalking();
+      sending = null;
+      titling = { task, written: '', mode: 'workspace' };
+      yard.asks('name');
+      yard.line.write('');
+      wood(namingWorkspace(titling));
+      yard.line.take();
+    };
+
     /** Naming a custom server, the same line and the same keys a session's
         own name is called on: a name, then the command it starts with. */
     const askMcpAdd = (task: Task): void => {
@@ -3767,7 +3798,9 @@ async function boot(): Promise<void> {
             ? addingServer(titling)
             : titling.mode === 'skill'
               ? addingSkill(titling)
-              : retitling(titling)
+              : titling.mode === 'workspace'
+                ? namingWorkspace(titling)
+                : retitling(titling)
         );
         return;
       }
@@ -3927,6 +3960,13 @@ async function boot(): Promise<void> {
       const asked = titling;
       if (!asked) return;
       titling = null;
+      if (asked.mode === 'workspace') {
+        const name = asked.written.trim();
+        const aim = open;
+        if (aim) await openTask(aim, asked.task);
+        if (name) await newWorkspace(name);
+        return;
+      }
       if (asked.mode === 'mcp') {
         const [name, ...rest] = asked.written.trim().split(/\s+/);
         const aim = open;
@@ -5633,6 +5673,27 @@ function retitling(titling: { task: Task; written: string }): Row[] {
     {
       kind: 'line',
       text: 'return to keep it. escape clears it, again to leave it alone.',
+      tone: 'faded',
+    },
+  ];
+}
+
+/** Naming a new workspace, before anything is cut. */
+function namingWorkspace(titling: { written: string }): Row[] {
+  return [
+    { kind: 'title', text: 'a new workspace' },
+    {
+      kind: 'line',
+      text: 'its own copy of the project, on a branch of its own.',
+      tone: 'faded',
+    },
+    { kind: 'gap' },
+    { kind: 'line', text: 'call it what?' },
+    { kind: 'typed', text: titling.written },
+    { kind: 'gap' },
+    {
+      kind: 'line',
+      text: 'return makes it. escape clears it, again to leave it.',
       tone: 'faded',
     },
   ];

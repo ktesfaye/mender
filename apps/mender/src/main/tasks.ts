@@ -143,10 +143,18 @@ export interface Tasks {
   workspaces(project?: string): Promise<Workspace[]>;
   /** A new isolated workspace with nobody in it yet. */
   cutWorkspace(
-    project: string
+    project: string,
+    name?: string
   ): Promise<{ success: true; data: Workspace } | { success: false; error: TaskError }>;
-  /** Takes a workspace's worktree down and every session in it. The branch
-      outlives it, the same as it outlives a session. */
+  /** What deleting a workspace would throw away. */
+  dropCost(id: string): Promise<{
+    sessions: number;
+    uncommitted: number;
+    unshared: number;
+    branch: string;
+  }>;
+  /** Deletes a workspace entirely: its worktree, its branch, and every
+      session in it. */
   dropWorkspace(id: string): Promise<void>;
   /** The branches this project's checkout already knows about, for the
       naming step to offer alongside a fresh one. */
@@ -493,7 +501,7 @@ export function createTasks(
       return project ? list.filter((each) => each.project === project) : list;
     },
 
-    async cutWorkspace(project) {
+    async cutWorkspace(project, name) {
       const found = (await projects.list()).find((candidate) => candidate.id === project);
       if (!found) return fail({ kind: 'no-such-project' });
       const here = (await rawWorkspaces()).filter((each) => each.project === project);
@@ -502,6 +510,14 @@ export function createTasks(
         ...(await branchesOf(project)),
         ...here.map((each) => each.branch),
       ]);
+      const written = name?.trim();
+      if (written) {
+        const branch = branchFor(written, settings);
+        if (here.some((each) => each.name === written) || branches.has(branch)) {
+          return fail({ kind: 'already-here', name: written });
+        }
+        return await cut(found, written, branch);
+      }
       /* Named the way a second copy of a folder is, counting on from the
          project's own folder, which is the first. */
       const folder = basename(found.path);
@@ -513,13 +529,57 @@ export function createTasks(
       }
     },
 
+    async dropCost(id) {
+      const workspace = (await rawWorkspaces()).find((each) => each.id === id);
+      const sessions = (await all()).filter((task) => task.workspace === id).length;
+      if (!workspace) return { sessions, uncommitted: 0, unshared: 0, branch: '' };
+      const env = await runtimes.env.current();
+      const count = async (args: string[], cwd: string): Promise<string> => {
+        try {
+          return (await ran('git', args, { cwd, env })).stdout;
+        } catch {
+          return '';
+        }
+      };
+      const status = await count(['status', '--porcelain'], workspace.path);
+      const unshared = await count(
+        [
+          'rev-list',
+          '--count',
+          workspace.branch,
+          '--not',
+          `--exclude=${workspace.branch}`,
+          '--branches',
+          '--remotes',
+        ],
+        workspace.path
+      );
+      return {
+        sessions,
+        uncommitted: status.split('\n').filter(Boolean).length,
+        unshared: Number(unshared.trim()) || 0,
+        branch: workspace.branch,
+      };
+    },
+
     async dropWorkspace(id) {
       const workspace = (await rawWorkspaces()).find((each) => each.id === id);
       if (!workspace) return;
-      await runtimes.workspaces.deleteWorktree(
-        { workspaceId: id, deleteBranch: false },
-        { timeoutMs: 0 }
-      );
+      const deleted = await runtimes.workspaces
+        .deleteWorktree({ workspaceId: id, deleteBranch: true }, { timeoutMs: 0 })
+        .catch(() => ({ success: false as const }));
+      /* A worktree the registry has lost track of is still git's, so it is
+         taken down the plain way instead. */
+      if (!deleted.success || existsSync(workspace.path)) {
+        const found = (await projects.list()).find((each) => each.id === workspace.project);
+        const env = await runtimes.env.current();
+        const cwd = found?.path ?? workspace.path;
+        await ran('git', ['worktree', 'remove', '--force', workspace.path], { cwd, env }).catch(
+          () => undefined
+        );
+        await ran('git', ['worktree', 'prune'], { cwd, env }).catch(() => undefined);
+        await ran('git', ['branch', '-D', workspace.branch], { cwd, env }).catch(() => undefined);
+      }
       const tasks = await all();
       const going = tasks.filter((task) => task.workspace === id);
       for (const task of going) {

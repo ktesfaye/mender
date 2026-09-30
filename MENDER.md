@@ -105,11 +105,15 @@ from it on two cords as a signboard, the project's own folder first, the one
 you are standing in painted gold. Pressing another walks into it, back into
 whichever session you were last in there or into a fresh one if it is empty,
 and the rail along the bottom carries that workspace's sessions and nobody
-else's. Command-N in a project cuts another and stands you in it, and so does
-the dashed board at the end of the beam; out on the island it still founds a
-project, since there is nothing there to copy. A new session starts in
-whichever workspace you are standing in. Right-clicking a board takes it down
-in two, the first saying what goes with it; the branch stays.
+else's. Command-N in a project asks what to call it, on the one line, then
+cuts it and stands you in it, and so does the dashed board at the end of the
+beam; out on the island it still founds a project, since there is nothing
+there to copy. A new session starts in whichever workspace you are standing
+in. Right-clicking a board offers to delete it, and deleting means all of it:
+its folder, its branch and every session in it. The first press only looks
+inside and says, in the sore ink, what would go, anybody still working in
+there, files nobody committed, commits never pushed anywhere, and only the
+second press does it.
 
 **An agent runs in a task, and it is a villager.** Hanging a lantern on the
 empty hook at the end of the rail moves somebody in: the ACP runtime spawns
