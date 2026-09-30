@@ -41,8 +41,9 @@ export const GUTTER = (DRAWN_WIDE - MARGIN * 2 - COLUMN.asked - COLUMN.thinking 
 /** How narrow a side column can be dragged, and the most of the page it can take. */
 const SIDE_LEAST = 220;
 const SIDE_MOST = 0.42;
-/** The right column's share of the page before anybody drags it: a glance down the side. */
-const MADE_SHARE = 0.2;
+/** The right column's share of the page before anybody drags it: a glance down the side,
+    a little more than the narrowest it goes so what it did still reads. */
+const MADE_SHARE = 0.16;
 /** And the least the middle is ever left with. */
 const MIDDLE_LEAST = 380;
 

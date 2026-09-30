@@ -34,6 +34,8 @@ export interface Arrangement {
 }
 
 const KEY = 'mender.yard.arrangement';
+/** Bumped when a column's width before anybody drags it moves, so the new one is seen. */
+const DRAWN = 2;
 
 let now: Arrangement = load();
 
@@ -48,10 +50,13 @@ export function standIn(session: string | undefined): void {
 
 function load(): Arrangement {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Arrangement>;
+    const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Arrangement> & {
+      drawn?: number;
+    };
+    const current = raw.drawn === DRAWN;
     return {
       ...(typeof raw.asked === 'number' ? { asked: share(raw.asked) } : {}),
-      ...(typeof raw.made === 'number' ? { made: share(raw.made) } : {}),
+      ...(current && typeof raw.made === 'number' ? { made: share(raw.made) } : {}),
       ...(typeof raw.changelog === 'number' ? { changelog: raw.changelog } : {}),
       ...(typeof raw.now === 'number' ? { now: raw.now } : {}),
     };
@@ -77,7 +82,7 @@ export function arrange(patch: Partial<Arrangement>, keep = true): void {
 
 export function save(): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(now));
+    localStorage.setItem(KEY, JSON.stringify({ ...now, drawn: DRAWN }));
   } catch {
     // Only a convenience; the arrangement still holds for this sitting.
   }
