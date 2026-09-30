@@ -153,6 +153,14 @@ export async function openYard(
   const waking = (): boolean =>
     !gaveUp && working?.mood !== 'hurt' && (assumed || Boolean(working?.waking));
   let held: readonly Carried[] = [];
+  /* The picture itself, kept here while it is carried so pointing at it on
+     the line can show it. */
+  const previews = new Map<string, string>();
+  const letGo = (id: string): void => {
+    const url = previews.get(id);
+    if (url) URL.revokeObjectURL(url);
+    previews.delete(id);
+  };
   let pinned: readonly PinnedNote[] = [];
 
   const again = (): void => changed(build());
@@ -186,7 +194,14 @@ export async function openYard(
       ...(working?.room === null || working?.room === undefined ? {} : { room: working.room }),
       ...(working?.cost ? { cost: working.cost } : {}),
       ...(working?.queued.length ? { waiting: working.queued } : {}),
-      ...(held.length ? { carrying: held } : {}),
+      ...(held.length
+        ? {
+            carrying: held.map((one) => {
+              const preview = previews.get(one.id);
+              return preview ? { ...one, preview } : one;
+            }),
+          }
+        : {}),
       ...(pinned.length ? { pinnedNotes: pinned } : {}),
       ...(working?.failure ? { failure: working.failure } : {}),
       ...(working?.carryOn === null || working?.carryOn === undefined
@@ -310,12 +325,14 @@ export async function openYard(
       if (!picked.success) {
         return picked.error.kind === 'refused' ? picked.error.because : 'that would not go.';
       }
+      previews.set(picked.data.id, URL.createObjectURL(file));
       held = [...held, picked.data];
       again();
       return null;
     },
     putDown: (id) => {
       held = held.filter((each) => each.id !== id);
+      letGo(id);
       again();
       if (from.here) void client.agents.putDown({ task: from.here.id, id });
     },
@@ -329,6 +346,7 @@ export async function openYard(
       again();
     },
     handed: () => {
+      for (const one of held) letGo(one.id);
       held = [];
       pinned = [];
       again();

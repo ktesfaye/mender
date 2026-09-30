@@ -112,7 +112,7 @@ export interface Standing {
   /** What was said while it was busy and has not been heard yet. */
   waiting?: readonly { id: string; text: string }[];
   /** What is in your hands. */
-  carrying?: readonly { id: string; name: string }[];
+  carrying?: readonly { id: string; name: string; preview?: string }[];
   /** Notes pinned to a diff line, not yet handed over. */
   pinnedNotes?: readonly {
     id: string;
@@ -252,7 +252,11 @@ function sessionOf(
       ...[...unread].reverse().map((one) => ({ id: one.id, said: one.said, handed: true })),
       ...(from.waiting ?? []).map((one) => ({ id: one.id, said: one.text })),
     ],
-    carrying: (from.carrying ?? []).map((one) => ({ id: one.id, name: one.name })),
+    carrying: (from.carrying ?? []).map((one) => ({
+      id: one.id,
+      name: one.name,
+      ...(one.preview ? { preview: one.preview } : {}),
+    })),
     pinnedNotes: (from.pinnedNotes ?? []).map((one) => ({
       id: one.id,
       path: one.path,

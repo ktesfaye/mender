@@ -279,9 +279,10 @@ builds it, and the root is held open from the first question so the answer to th
 second keystroke arrives before the third.
 
 A picture dropped on the wood or pasted onto it is carried. It cannot be drawn
-on the board, so what the board says is that you have it: it waits by the line
-you are writing on, it goes with whatever you say next, and pressing it puts it
-down. Handing one over with no words at all counts as something said, which is
+on the board, so what the board says is that you have it: it stands on the line
+among the words as `[picture 1]`, the way Claude Code writes `[Image #1]`, holds
+the picture itself up when pointed at, goes with whatever you say next, and
+backspacing over it puts it down. Handing one over with no words at all counts as something said, which is
 the one place the empty-line rule bends. Afterwards the transcript says you
 handed it over, because otherwise a picture leaves no trace of having gone, and
 so does its note on the gatepost, under what you said with it, including one

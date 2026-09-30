@@ -137,6 +137,11 @@ const SAYS: Record<Posture, string> = {
   resting: '#7d6a50',
 };
 
+/* Under the one you are standing in, the same step down from its name the
+   others take from theirs. Nearly as bright as the name, the two lines ran
+   together into one block of cream. */
+const HERE_SAYS = '#9c8662';
+
 /** The light a lantern throws round itself, by what it is saying: the colour
     and how strong. Idle, broken and still being set up throw none. */
 const HALO: Partial<Record<Posture, [string, number]>> = {
@@ -410,6 +415,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   }
   line.onEmpty(() => does.leave());
   line.onType((text) => does.typed(text));
+  line.onPutDown((id) => does.press(`putdown:${id}`));
 
   /* And the wash that comes down over the middle and right of the screen when
      you open something to read. The gatepost keeps its own column and the rail
@@ -547,7 +553,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     regions = [];
     scrims(root);
     lay();
-    carried(hands, yard, does);
+    carried(hands, line, yard, does);
     head(root, waking ? hushed(yard) : yard, layer.edge(), does);
     /* A project nobody has worked in yet has nothing to put in three columns,
        and three headings over three empty columns is scaffolding, not a place.
@@ -3367,23 +3373,22 @@ function tokensShort(n: number): string {
 }
 
 /**
- * What is in your hands, beside the line.
+ * What is in your hands.
  *
  * A picture is the one thing an agent can be shown, and it cannot be drawn on
- * the board, because the board is writing. So what the board says is that you
- * have it: it waits here until you say something and then goes with what you
- * said, and pressing it puts it down again.
+ * the board, because the board is writing. So it stands on the line among the
+ * words as `[picture 1]`, shows itself when pointed at, goes with what you say,
+ * and is put down by backspacing over it. A pinned note waits beside the line.
  */
-function carried(hands: HTMLElement, yard: Yard, does: Doings): void {
+function carried(hands: HTMLElement, line: Line, yard: Yard, does: Doings): void {
   hands.replaceChildren();
-  for (const one of yard.session?.carrying ?? []) {
-    const held = astop(
-      pressing(`▣ ${one.name}`, () => does.press(`putdown:${one.id}`)),
-      `carrying:${one.id}`
-    );
-    held.style.cssText += "font-family:'Courier Prime',monospace;font-size:12px";
-    hands.appendChild(held);
-  }
+  line.carries(
+    (yard.session?.carrying ?? []).map((one, at) => ({
+      id: one.id,
+      label: `[picture ${at + 1}]`,
+      ...(one.preview ? { preview: one.preview } : {}),
+    }))
+  );
   for (const one of yard.session?.pinnedNotes ?? []) {
     const note = astop(
       pressing(`✎ ${one.label}`, () => does.press(`unnote:${one.id}`)),

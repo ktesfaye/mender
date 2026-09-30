@@ -52,6 +52,20 @@ const PROMPTS: Record<Asking, string> = {
   skill: '› its name',
 };
 
+/**
+ * A picture being carried, as it stands on the line.
+ *
+ * It sits among the words where it was pasted, the way Claude Code writes
+ * `[Image #2]` into its prompt, so it is deleted the way a word is: backspace
+ * over it and it is put down. Pointing at it shows the picture.
+ */
+export interface Token {
+  id: string;
+  label: string;
+  /** Where the picture itself can be read from, for pointing at it. */
+  preview?: string;
+}
+
 export interface Line {
   readonly root: HTMLElement;
   /** What is written on it right now. */
@@ -100,6 +114,10 @@ export interface Line {
   onEmpty(run: () => void): void;
   /** Something was typed, for whatever is narrowing underneath. */
   onType(run: (said: string) => void): void;
+  /** What is being carried, kept standing on the line among the words. */
+  carries(tokens: readonly Token[]): void;
+  /** A carried picture was deleted off the line. */
+  onPutDown(run: (id: string) => void): void;
   close(): void;
 }
 
@@ -128,6 +146,54 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   let typed: (said: string) => void = () => {};
   let instead: () => boolean = () => false;
   let first: (event: KeyboardEvent) => boolean = () => false;
+  let putDown: (id: string) => void = () => {};
+  let carried: readonly Token[] = [];
+
+  /** The words on the line, with whatever is carried among them left out. */
+  function words(): string {
+    let text = '';
+    const walk = (node: Node): void => {
+      for (const child of node.childNodes) {
+        if (child instanceof HTMLElement && child.dataset.carried !== undefined) continue;
+        if (child instanceof Text) text += child.data;
+        else if (child instanceof HTMLBRElement) text += '\n';
+        else walk(child);
+      }
+    };
+    walk(said);
+    return text;
+  }
+
+  function onLine(): HTMLElement[] {
+    return [...said.querySelectorAll<HTMLElement>('[data-carried]')];
+  }
+
+  /** Stand every carried picture on the line that is not on it yet. */
+  function stand(): void {
+    const there = new Map(onLine().map((chip) => [chip.dataset.carried ?? '', chip]));
+    for (const [id, chip] of there) {
+      const token = carried.find((one) => one.id === id);
+      if (!token) chip.remove();
+      else if (chip.textContent !== token.label) chip.textContent = token.label;
+    }
+    for (const token of carried) {
+      if (there.has(token.id)) continue;
+      const chip = tokenChip(token);
+      const where = window.getSelection();
+      const range = where?.rangeCount ? where.getRangeAt(0) : null;
+      if (range && said.contains(range.endContainer)) {
+        range.collapse(false);
+        range.insertNode(chip);
+        range.setStartAfter(chip);
+        range.collapse(true);
+        where?.removeAllRanges();
+        where?.addRange(range);
+      } else {
+        said.appendChild(chip);
+      }
+    }
+    showing();
+  }
 
   function showing(): void {
     const has = said.textContent !== '';
@@ -181,8 +247,17 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   });
 
   said.addEventListener('input', () => {
+    /* A picture backspaced off the line is put down, the same as a word
+       backspaced off it is gone. */
+    const still = new Set(onLine().map((chip) => chip.dataset.carried));
+    const gone = carried.filter((one) => !still.has(one.id));
+    if (gone.length) {
+      carried = carried.filter((one) => still.has(one.id));
+      for (const one of gone) putDown(one.id);
+      unpreview();
+    }
     showing();
-    typed(said.textContent ?? '');
+    typed(words());
   });
   document.addEventListener('selectionchange', place);
   said.addEventListener('blur', () => (cursor.style.opacity = '0'));
@@ -218,6 +293,10 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
         event.preventDefault();
         event.stopPropagation();
         said.textContent = '';
+        const gone = carried;
+        carried = [];
+        for (const one of gone) putDown(one.id);
+        unpreview();
         showing();
         typed('');
         return;
@@ -283,11 +362,11 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     }
     said.scrollTop = said.scrollHeight;
     showing();
-    typed(said.textContent ?? '');
+    typed(words());
   }
 
   function send(): void {
-    const text = (said.textContent ?? '').trim();
+    const text = words().trim();
     const from = said.getBoundingClientRect();
     said.textContent = '';
     showing();
@@ -309,10 +388,10 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
 
   return {
     root,
-    written: () => said.textContent ?? '',
+    written: words,
     write: (text) => {
       said.textContent = text;
-      showing();
+      stand();
     },
     asks: (what) => {
       ghost.textContent = PROMPTS[what];
@@ -332,7 +411,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       if (event.key === 'Enter') {
         if (event.shiftKey || event.isComposing || event.defaultPrevented) return false;
         if (at instanceof HTMLInputElement || at instanceof HTMLTextAreaElement) return false;
-        if (!(said.textContent ?? '').trim()) return false;
+        if (!words().trim() && !carried.length) return false;
         event.preventDefault();
         take();
         if (instead()) return true;
@@ -350,7 +429,12 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       /* Walked off the text itself, because a contenteditable is free to split
          what is written into as many nodes as it likes. */
       let left = index;
-      const walker = document.createTreeWalker(said, NodeFilter.SHOW_TEXT);
+      const walker = document.createTreeWalker(said, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) =>
+          node.parentElement?.closest('[data-carried]')
+            ? NodeFilter.FILTER_REJECT
+            : NodeFilter.FILTER_ACCEPT,
+      });
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         const length = node.textContent?.length ?? 0;
         if (left <= length) {
@@ -366,12 +450,61 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     },
     onEmpty: (run) => (empty = run),
     onType: (run) => (typed = run),
+    carries: (tokens) => {
+      carried = tokens;
+      stand();
+    },
+    onPutDown: (run) => (putDown = run),
     close: () => {
+      unpreview();
       document.removeEventListener('selectionchange', place);
       document.removeEventListener('paste', strayPaste);
       root.remove();
     },
   };
+}
+
+/** One carried picture as it stands among the words. */
+function tokenChip(token: Token): HTMLElement {
+  const chip = document.createElement('span');
+  chip.contentEditable = 'false';
+  chip.dataset.carried = token.id;
+  chip.textContent = token.label;
+  chip.style.cssText = CHIP;
+  chip.addEventListener('mouseenter', () => {
+    if (token.preview) preview(chip, token.preview);
+  });
+  chip.addEventListener('mouseleave', unpreview);
+  return chip;
+}
+
+let showingPicture: HTMLElement | null = null;
+
+/** The picture itself, standing over the word that stands for it. */
+function preview(chip: HTMLElement, url: string): void {
+  unpreview();
+  const frame = document.createElement('div');
+  frame.style.cssText = PICTURE;
+  const img = document.createElement('img');
+  img.src = url;
+  img.style.cssText = 'display:block;max-width:320px;max-height:240px';
+  frame.appendChild(img);
+  document.body.appendChild(frame);
+  showingPicture = frame;
+  const place = (): void => {
+    const at = chip.getBoundingClientRect();
+    const size = frame.getBoundingClientRect();
+    const left = Math.max(8, Math.min(at.left, window.innerWidth - size.width - 8));
+    frame.style.left = `${Math.round(left)}px`;
+    frame.style.top = `${Math.round(Math.max(8, at.top - size.height - 10))}px`;
+  };
+  place();
+  img.addEventListener('load', place);
+}
+
+function unpreview(): void {
+  showingPicture?.remove();
+  showingPicture = null;
 }
 
 /** The text node that ends just before `offset` inside `node`, if any. */
@@ -405,6 +538,25 @@ const WRITING = [
   /* The browser's own caret is turned off and ours is drawn instead, because
      this village blinks in steps and the machine's caret does not. */
   'caret-color:transparent',
+].join(';');
+
+const CHIP = [
+  HAND,
+  'color:#ab9470',
+  'white-space:nowrap',
+  'margin:0 3px',
+  'cursor:default',
+  'user-select:all',
+].join(';');
+
+const PICTURE = [
+  'position:fixed',
+  'z-index:1000',
+  'padding:4px',
+  'background:#1b1712',
+  'border:1px solid #6a5a44',
+  'box-shadow:0 6px 18px rgba(0,0,0,0.5)',
+  'pointer-events:none',
 ].join(';');
 
 const CURSOR = [

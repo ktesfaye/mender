@@ -448,10 +448,12 @@ a thing would help, and that a picture has to be one it actually found:
 where and how is left to it.
 
 **A picture dropped on the wood is carried.** Drop or paste one on a session's
-board and it waits by the line you are writing on until you say something, then
-goes with what you say; pressing it puts it down again. It is never drawn on the
-board, because the board is writing, so what the board says is that you have it
-and afterwards that you handed it over.
+board and it stands on the line you are writing on, among the words, as
+`[picture 1]`, the way Claude Code writes `[Image #1]` into its prompt; it goes
+with what you say, and backspacing over it puts it down again, the same as a
+word. Pointing at it holds the picture itself up over the line. It is never
+drawn on the board, because the board is writing, so what the board says is
+that you have it and afterwards that you handed it over.
 
 Anything else dropped on it is written on the line as where it is: a picture is
 the only thing an agent can be shown, but any file has a path, and that is the

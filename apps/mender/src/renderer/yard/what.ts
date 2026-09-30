@@ -206,6 +206,8 @@ export interface Waiting {
 export interface Carried {
   id: string;
   name: string;
+  /** Where the picture can be looked at while it waits. */
+  preview?: string;
 }
 
 /** A note pinned to a diff line, not yet handed over. */
