@@ -48,6 +48,7 @@ import {
   holdAway,
   isAway,
   sendAway,
+  ranOf,
   tokensOf,
   type HelperTrail,
 } from './helper-trail';
@@ -2302,7 +2303,12 @@ function helpersIn<T extends { errands: Errand[] }>(told: T, session: string | n
       .filter((one) => !isAway(one.call))
       .map((one) => {
         const tokens = tokensOf(session, one.call);
-        return tokens === undefined ? one : { ...one, tokens };
+        const ran = one.running ? undefined : ranOf(session, one.call);
+        return {
+          ...one,
+          ...(tokens === undefined ? {} : { tokens }),
+          ...(ran === undefined ? {} : { ran }),
+        };
       }),
   };
 }

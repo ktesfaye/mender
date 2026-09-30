@@ -336,6 +336,13 @@ Sending one away no longer means opening their board first: pointing at a
 figure in the yard puts a gold cross over them, and a gold line in the corner
 of the yard sends everybody who has finished home at once, each in two
 presses.
+The yard's helpers were redrawn after his mockup: numbered figures round the
+fire under "so many hands at the fire", working to the left and back dimmed to
+the right, one line that scrolls sideways however many go out, and under it a
+table of each one's errand, clock and tokens as a bar, a total, and a button to
+send the finished home. Pointing at a line or a figure lights both and puts a
+cross at the line's end, two presses. How long a finished helper was out is read
+off Claude's own record of them. Driven in the running app with twelve out.
 
 Two things are cut on purpose. A resource link never arrives: neither CLI ever
 sends one back, both of them turn a file reference into ordinary writing on the

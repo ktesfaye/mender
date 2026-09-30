@@ -308,6 +308,12 @@ export interface Hand {
   said: string;
   /** How many tokens they are working with, said short: `45k tokens`. */
   tokens?: string;
+  /** The same count, as a number, for the bar that compares them. */
+  tokenCount?: number;
+  /** When they went, which a running clock counts up from. */
+  since?: number;
+  /** How long one that is back was out, in milliseconds. */
+  ran?: number;
   /** Everything they have done out there, read the same way a session's is. */
   steps: Step[];
 }

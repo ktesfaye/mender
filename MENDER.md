@@ -226,10 +226,18 @@ whether they were sent to be waited for or sent off on their own. And while
 their board is open the line is theirs: what is written there goes to them,
 carried by the session that sent them, and what they say back is written on
 their board as it comes. Two presses on that board send them away for good,
-stopping them first if they are still out. And over the head of anybody
-still out is how many tokens they have in play, climbing as they work. None
-of that needs their board open: pointing at one puts a gold cross over them,
-and the corner of the yard offers to send everybody who has finished home.
+stopping them first if they are still out. None of that needs their board
+open either. The yard is "so many hands at the fire", each with a number over
+their head, the ones still working in a line out to the left of it and the
+ones back dimmed off to the right, and however many went out they stand in
+that one line, which scrolls sideways under the wheel once it is longer than
+the column. Under it is the same people as a table: the number, what they
+were sent for, how long they have been at it or were out, and their tokens
+as a bar against the hungriest of them. Pointing at a line, or at the one it
+numbers, lights both and puts a cross at the end of the line; the first
+press says what it would stop and the second sends them away. The foot of
+it is how many tokens they have spent between them, and a button that sends
+everybody who is back home.
 
 **Everything but the middle can be put away, and every rule can be moved.**
 Right-clicking what you asked, the changelog, what it made, the plan or what it did offers

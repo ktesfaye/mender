@@ -196,6 +196,19 @@ export function tokensOf(session: string | null, call: string | undefined): numb
   return tokens;
 }
 
+/** How long a helper that has come back was out, from its own record's first and last write. */
+export function ranOf(session: string | null, call: string | undefined): number | undefined {
+  if (!session || !call) return undefined;
+  const file = fileFor(session, call);
+  if (!file) return undefined;
+  try {
+    const { birthtimeMs, mtimeMs } = statSync(file);
+    return mtimeMs > birthtimeMs ? Math.round(mtimeMs - birthtimeMs) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const counted = new Map<string, { size: number; tokens: number | undefined }>();
 const files = new Map<string, string>();
 const looked = new Map<string, number>();

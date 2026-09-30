@@ -298,6 +298,8 @@ export const errandSchema = z.object({
   steps: z.array(deedSchema).default([]),
   /** How many tokens they are working with, as Claude Code counts a helper's. */
   tokens: z.number().optional(),
+  /** How long one that has come back was out, in milliseconds. */
+  ran: z.number().optional(),
 });
 export type Errand = z.infer<typeof errandSchema>;
 

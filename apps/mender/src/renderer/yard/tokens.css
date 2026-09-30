@@ -1380,3 +1380,21 @@ body.gripping-row * {
     transform-origin: bottom;
   }
 }
+
+/* Whoever is out in the yard, and their line in the table under it. The
+   cross that sends one away is only there while they are pointed at, on the
+   line or on the figure, or while its first press is waiting for a second. */
+.yard .yard-hand-row .yard-hand-cross {
+  visibility: hidden;
+}
+.yard .yard-hand-row[data-lit] .yard-hand-cross,
+.yard .yard-hand-row[data-armed] .yard-hand-cross {
+  visibility: visible;
+}
+.yard .yard-hand-row[data-lit],
+.yard .yard-hand-row[data-armed] {
+  background: rgba(244, 227, 192, 0.05);
+}
+.yard .yard-hand[data-lit] > :first-child {
+  filter: brightness(1.15) drop-shadow(0 0 3px rgba(255, 201, 138, 0.55)) !important;
+}

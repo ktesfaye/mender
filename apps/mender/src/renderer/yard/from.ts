@@ -559,7 +559,9 @@ function handOf(errand: Errand): Hand {
     ...(errand.background ? { background: true } : {}),
     ...(errand.wrong ? { wrong: true } : {}),
     steps: stepsOf(errand.steps ?? []),
-    ...(errand.tokens ? { tokens: tokensSaid(errand.tokens) } : {}),
+    ...(errand.tokens ? { tokens: tokensSaid(errand.tokens), tokenCount: errand.tokens } : {}),
+    ...(errand.since ? { since: errand.since } : {}),
+    ...(errand.ran ? { ran: errand.ran } : {}),
   };
 }
 

@@ -116,9 +116,6 @@ const STILL_AT = 196;
 const RAIL_BARE = 76;
 /* How much of a lantern is the lantern itself. */
 const LANTERN = { wide: 22, tall: 38, cord: 16 };
-/* The ground you can see under the cart, which is bottom-anchored so it stays
-   above the line you write on however short the window is. */
-const YARD_BOX = { wide: 380, tall: 214 };
 
 /** What the five postures look like when they are a name on a lantern. */
 const TONE: Record<Posture, string> = {
@@ -2407,8 +2404,8 @@ function made(
   /* The ground is the foot of this column whatever happened above it, so
      everything else in here gets the room between the header and the yard and
      not one pixel more. */
-  const patch = hands.length ? floor - YARD_BOX.tall : floor;
-  const room = Math.max(0, patch - 44 - HEAD.top);
+  const patch = hands.length ? groundTop(hands.length, floor) : floor;
+  const room = Math.max(0, patch - (hands.length ? 14 : 44) - HEAD.top);
   const above = box({
     left: at.x,
     top: HEAD.label,
@@ -2845,13 +2842,15 @@ const BLANK: Session = {
 };
 
 /**
- * The ground, and everybody on it.
+ * The ground, and everybody on it, and under it who they are.
  *
- * A patch rather than a list. The fire is the session, and where somebody is
- * standing is what they are doing: in the light with their face to you means
- * back with an answer, out in the dark with their back turned means still
- * working, and the further out the longer they have been gone. Only the ones
- * that need you get named; everybody else is a body, and a count says the rest.
+ * The patch is the picture: the fire is the session, whoever is still working
+ * stands in its light on the left, and whoever is back stands dimmed off to
+ * the right, each with a number over their head. Under it is the same people
+ * as a table, because a picture says who is where and a table says what each
+ * has cost: the errand, how long they have been at it, and their tokens as a
+ * bar against the hungriest of them. Pointing at a row, or at the one it
+ * numbers, puts a cross at the end of it that sends them away.
  */
 function ground(
   root: HTMLElement,
@@ -2861,45 +2860,60 @@ function ground(
   does: Doings
 ): void {
   const hands = yard.session?.agents ?? [];
-  const top = floor - YARD_BOX.tall;
-  root.appendChild(rule({ left: at.x, top: top - 36, width: at.wide }));
+  const top = groundTop(hands.length, floor);
+  root.appendChild(rule({ left: at.x, top, width: at.wide }));
 
-  const head = box({ left: at.x, top: top - 22, width: at.wide }, HEAD_ROW);
-  const name = label('the yard', {});
-  name.style.position = 'relative';
-  head.appendChild(name);
-  const back = hands.filter((one) => one.where === 'in-light').length;
-  /* A count of nobody is not information. An empty yard says so by being
-     empty and by the fire being out in the middle of it. */
-  if (yard.session) {
-    const count = exact(
-      `${hands.length} hands · ${back} back · ${hands.length - back} out`,
-      11,
-      '#bfa476'
-    );
-    /* A narrow column gives the count up before it runs into its heading. */
-    count.style.cssText += ';min-width:0;overflow:hidden;text-overflow:ellipsis';
-    head.appendChild(count);
-  }
-  root.appendChild(head);
+  const working = hands.filter((one) => one.where === 'out');
+  const back = hands.filter((one) => one.where !== 'out');
+  /* Working first, so the numbers read left to right the way they stand. */
+  const ordered = [...working, ...back];
 
   /* A window onto the ground, not a picture of one. The village is already
-     drawn behind this whole screen, so the patch is a hole in the writing with
-     a frame round it: what the agents are standing on is the actual land of
-     this district, at the same light as the rest of the yard, warmed by the
-     fire. A filled rectangle here was a brown slab with a campfire on it. */
+     drawn behind this whole screen, so the patch is a hole in the writing:
+     what they are standing on is the actual land of this district, warmed by
+     the fire. */
+  const patchTop = top + GROUND.pad;
   const patch = box(
-    { left: at.x, top, width: at.wide, height: YARD_BOX.tall },
-    'overflow:hidden;background:transparent;border:2px solid #3a2712'
+    { left: at.x, top: patchTop, width: at.wide, height: GROUND.patch },
+    'overflow:hidden;background:transparent'
   );
   patch.style.position = 'absolute';
 
-  /* The fire sits a little below and left of centre, and its light is the only
-     thing telling you where the middle of this place is. */
-  const fireX = Math.round(at.wide / 2) - 23;
-  const fireY = 117;
+  /* However many went out, they stand in one line, the ones still working
+     out to the left of the fire and the ones back out to the right. When the
+     line is longer than the column, the ground is a strip that scrolls
+     sideways under the heading, and the wheel walks along it. */
+  const step = 34;
+  const reach = 58;
+  const centre = Math.max(
+    Math.round(at.wide / 2),
+    reach + Math.max(0, working.length - 1) * step + 24
+  );
+  const sceneWide = Math.max(at.wide, centre + reach + Math.max(0, back.length - 1) * step + 24);
+  const strip = box(
+    { left: 0, top: 0, width: at.wide, height: GROUND.patch },
+    'overflow-x:auto;overflow-y:hidden;scrollbar-width:none'
+  );
+  strip.style.pointerEvents = 'auto';
+  const scene = box({ left: 0, top: 0, width: sceneWide, height: GROUND.patch });
+  strip.appendChild(scene);
+  strip.addEventListener(
+    'wheel',
+    (event) => {
+      if (sceneWide <= at.wide) return;
+      event.preventDefault();
+      strip.scrollLeft +=
+        Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    },
+    { passive: false }
+  );
+  const where = yard.session?.id ?? '';
+  strip.addEventListener('scroll', () => groundScrolled.set(where, strip.scrollLeft));
+
+  const fireX = centre - 23;
+  const fireY = 104;
   const burning = yard.session?.fire ?? 'out';
-  patch.appendChild(
+  scene.appendChild(
     firelight(
       { left: fireX - 147, top: fireY - 104, width: 340, height: 240 },
       FIRELIGHT[burning],
@@ -2916,139 +2930,278 @@ function ground(
   }
   if (burning === 'banked') fire.style.filter = 'brightness(.62)';
   if (burning === 'embers') fire.style.filter = 'brightness(.45) saturate(.8)';
-  patch.appendChild(fire);
+  scene.appendChild(fire);
 
-  for (const [i, hand] of hands.entries()) patch.appendChild(standing(hand, i, at.wide, does));
+  const rows = new Map<string, HTMLElement>();
+  const figures = new Map<string, HTMLElement>();
+  const lit = (id: string, on: boolean, from?: 'row'): void => {
+    rows.get(id)?.toggleAttribute('data-lit', on);
+    const figure = figures.get(id);
+    figure?.toggleAttribute('data-lit', on);
+    /* Pointing at a line whose figure is off along the strip brings it in. */
+    if (on && from === 'row' && figure) {
+      const x = figure.offsetLeft;
+      if (x < strip.scrollLeft + 8 || x + 28 > strip.scrollLeft + at.wide - 8) {
+        strip.scrollTo({ left: x - at.wide / 2 + 14, behavior: 'smooth' });
+      }
+    }
+  };
 
-  /* The ones who are back have nothing left to do here, so the yard itself
-     offers to send them home, where it can be seen, rather than one board at
-     a time. */
-  if (back) {
-    const home = box({ left: 10, top: 8 }, 'white-space:nowrap');
-    home.style.pointerEvents = 'auto';
-    const line = twoPress(
-      back === 1 ? 'send the finished one home' : `send the ${back} finished home`,
-      'press again, they leave the yard for good',
-      () => does.press('away:finished')
-    );
-    line.style.cssText += "font-family:'Courier Prime',monospace;font-size:11px";
-    home.appendChild(line);
-    patch.appendChild(home);
-  }
+  ordered.forEach((hand, k) => {
+    const out = k < working.length;
+    const x = out
+      ? centre - reach - (working.length - 1 - k) * step - 14
+      : centre + reach + (k - working.length) * step - 14;
+    const one = standing(hand, k + 1, { left: x, top: 100 - (k % 2) * 14 }, does, lit);
+    figures.set(hand.id, one);
+    scene.appendChild(one);
+  });
+  patch.appendChild(strip);
 
-  const here = yard.session;
-  if (here) {
-    const under = exact(
-      `${here.agent}${here.thoughts.find((t) => t.live)?.at ? ` · ${here.thoughts.find((t) => t.live)?.at}` : ''}`,
-      11,
-      '#dcc8a0'
-    );
-    const at2 = box({ left: fireX - 20, top: fireY + 37 });
-    at2.appendChild(under);
-    patch.appendChild(at2);
-  }
-
+  const heading = box({ left: 14, top: 12 }, 'white-space:nowrap;pointer-events:none');
+  heading.appendChild(
+    exact(`${hands.length} ${hands.length === 1 ? 'hand' : 'hands'} at the fire`, 14, '#ffc98a')
+  );
+  patch.appendChild(heading);
   root.appendChild(patch);
+  /* First sight is the fire with whoever is still working beside it. */
+  strip.scrollLeft = groundScrolled.get(where) ?? Math.max(0, centre + 90 - at.wide);
+
+  /* The table: a heading row, one row each, and a foot with the total and
+     the way to send the ones who are back home. */
+  const tableTop = patchTop + GROUND.patch + GROUND.pad;
+  const table = box(
+    { left: at.x, top: tableTop, width: at.wide },
+    'display:flex;flex-direction:column'
+  );
+  table.style.pointerEvents = 'auto';
+  table.appendChild(handRow(null, 0, 0, at.wide, does, lit));
+  const list = document.createElement('div');
+  list.style.cssText = `display:flex;flex-direction:column;max-height:${GROUND.row * GROUND.rows}px;overflow-y:auto;scrollbar-width:none`;
+  const most = Math.max(1, ...hands.map((one) => one.tokenCount ?? 0));
+  ordered.forEach((hand, k) => {
+    const one = handRow(hand, k + 1, most, at.wide, does, lit);
+    rows.set(hand.id, one);
+    list.appendChild(one);
+  });
+  table.appendChild(list);
+
+  const foot = document.createElement('div');
+  foot.style.cssText = `display:flex;align-items:center;justify-content:space-between;height:${GROUND.foot}px;margin-top:${GROUND.gap}px`;
+  const total = hands.reduce((sum, one) => sum + (one.tokenCount ?? 0), 0);
+  const roomy = at.wide >= 340;
+  foot.appendChild(exact(total ? `${tokensShort(total)} tok total` : '', 12, '#a89272'));
+  if (back.length) {
+    const said = roomy
+      ? back.length === 1
+        ? 'send the finished one home'
+        : `send the ${back.length} finished home`
+      : `send ${back.length} home`;
+    const home = twoPress(said, roomy ? 'press again, they leave for good' : 'press again', () =>
+      does.press('away:finished')
+    );
+    home.style.cssText += [
+      '',
+      "font-family:'Courier Prime',monospace",
+      `font-size:${roomy ? 13 : 12}px`,
+      'font-weight:700',
+      'color:#2a1d0e',
+      'background:var(--yard-gold)',
+      roomy ? 'padding:7px 16px' : 'padding:5px 10px',
+      'box-shadow:inset 0 0 0 2px #7a5a28, 3px 3px 0 #120d07',
+      'white-space:nowrap',
+    ].join(';');
+    home.addEventListener('mouseenter', () => (home.style.background = 'var(--yard-gold-hover)'));
+    home.addEventListener('mouseleave', () => (home.style.background = 'var(--yard-gold)'));
+    foot.appendChild(home);
+  }
+  table.appendChild(foot);
+  root.appendChild(table);
 }
 
-const HEAD_ROW =
-  'display:flex;align-items:baseline;justify-content:space-between;gap:12px;white-space:nowrap';
+/** How tall the ground is, rows and all, so the column above gives it room. */
+function groundTall(many: number): number {
+  const shown = Math.min(many, GROUND.rows);
+  return GROUND.pad * 2 + GROUND.patch + GROUND.row * (shown + 1) + GROUND.gap + GROUND.foot;
+}
+
+function groundTop(many: number, floor: number): number {
+  return floor - groundTall(many);
+}
+
+const GROUND = { pad: 12, patch: 184, row: 32, rows: 5, gap: 18, foot: 36 };
 
 /** How much light each way of burning throws. */
 const FIRELIGHT: Record<Fire, number> = { lit: 0.34, banked: 0.2, embers: 0.12, out: 0.04 };
 
-/**
- * One agent, standing where their state puts them.
- *
- * Pressing one walks up to them: what they were sent for, everything they
- * have done out there, and, while they are still out, calling them back.
- */
-function standing(hand: Hand, i: number, wide: number, does: Doings): HTMLElement {
-  const out = hand.where === 'out';
-  /* In the light they cluster round the fire; out in the dark they are off to
-     the side, and further off the longer they have been gone. */
-  const near = [
-    { left: Math.round(wide / 2) - 50, top: 70, flip: true },
-    { left: Math.round(wide / 2) + 32, top: 72, flip: false },
-    { left: Math.round(wide / 2) - 10, top: 102, flip: false },
-  ];
-  const spot = out
-    ? { left: wide - 38 - (i % 2) * 16, top: 44 + (i % 3) * 24, flip: false }
-    : (near[i % near.length] ?? near[0]!);
+/** Where each session's strip of ground was left scrolled to. */
+const groundScrolled = new Map<string, number>();
 
+/**
+ * One of them, standing where their state puts them, with their number over
+ * their head. Pressing one walks up to them.
+ */
+function standing(
+  hand: Hand,
+  n: number,
+  spot: { left: number; top: number },
+  does: Doings,
+  lit: (id: string, on: boolean) => void
+): HTMLElement {
+  const out = hand.where === 'out';
   const it = box({ left: spot.left, top: spot.top, width: 28, height: 54 });
+  it.className = 'yard-hand';
   it.style.cursor = 'pointer';
   it.style.pointerEvents = 'auto';
   it.addEventListener('mousedown', (event) => event.preventDefault());
   it.addEventListener('click', () => does.press(`helper:${hand.id}`));
-  /* Pointing at one offers to send them away, right there on them. */
-  /* Anchored on its right, so the question the first press asks grows back
-     over the yard rather than off the edge of it. */
-  const gone = box({ right: -6, top: -4 }, 'white-space:nowrap;display:none;text-align:right');
-  gone.style.pointerEvents = 'auto';
-  const cross = twoPress(
-    '✕',
-    out ? 'press again, they stop and leave' : 'press again, they leave',
-    () => does.press(`away:${hand.id}`)
-  );
-  cross.style.cssText += "font-family:'Courier Prime',monospace;font-size:12px";
-  cross.addEventListener('click', (event) => event.stopPropagation());
-  gone.appendChild(cross);
-  it.addEventListener('mouseenter', () => (gone.style.display = 'block'));
-  it.addEventListener('mouseleave', () => {
-    if (cross.textContent === '✕') gone.style.display = 'none';
-  });
-  const figure = folk(out ? 'back' : 'front', { left: 0, top: 0 });
-  figure.style.filter = out ? 'brightness(.5) saturate(.6)' : 'brightness(.95)';
-  if (out) figure.style.animation = 'yard-step 800ms steps(2,end) infinite';
-  if (spot.flip) figure.style.transform = 'scaleX(-1)';
+  it.addEventListener('mouseenter', () => lit(hand.id, true));
+  it.addEventListener('mouseleave', () => lit(hand.id, false));
+
+  const figure = folk('front', { left: 0, top: 0 });
+  figure.style.filter = out ? 'brightness(.95)' : 'brightness(.55) saturate(.2)';
   figure.style.mixBlendMode = 'normal';
   it.appendChild(figure);
 
-  /* Identity, never status: an agent keeps its own colour for the life of
-     the session, worn at its feet rather than over the sprite itself, so
-     you can follow the same one across the yard without it reading as hurt
-     or well the way a status colour would. */
-  it.appendChild(
-    box({ left: 9, top: 50, width: 8, height: 6 }, `border-radius:2px;background:${hand.tint}`)
+  const number = box(
+    { left: 0, top: -18, width: 28 },
+    `text-align:center;font-family:'Silkscreen',monospace;font-size:10px;text-shadow:1px 1px 0 #120d07;color:${out ? '#f4e3c0' : '#a89272'}`
   );
-
-  if (out) {
-    it.appendChild(
-      box(
-        { left: -6, top: -8, width: 8, height: 8 },
-        'border-radius:50%;background:#ff8a4a;animation:yard-blink 700ms steps(1,end) infinite'
-      )
-    );
-    /* Named from their right-hand edge, since out in the dark is the right
-       of the patch and a name written rightward runs off it, and over their
-       head, since under their feet is where the fire's own name is. */
-    const name = box(
-      { right: 0, top: -36, width: Math.min(220, spot.left + 20) },
-      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right'
-    );
-    const said = pressing(hand.errand, () => does.press(`helper:${hand.id}`));
-    said.style.cssText += "font-family:'Courier Prime',monospace;font-size:11px";
-    said.addEventListener('click', (event) => event.stopPropagation());
-    name.appendChild(said);
-    it.appendChild(name);
-    /* What they are costing sits on a line of its own under the name, so a
-       long errand never pushes it off the end. */
-    const cost = box(
-      { right: 0, top: -21, width: Math.min(220, spot.left + 20) },
-      'white-space:nowrap;text-align:right'
-    );
-    cost.appendChild(
-      exact(
-        [hand.tokens, `out ${hand.gone ?? ''}`.trim()].filter(Boolean).join(' · '),
-        11,
-        '#bfa476'
-      )
-    );
-    it.appendChild(cost);
-  }
-  it.appendChild(gone);
+  number.textContent = String(n);
+  it.appendChild(number);
   return it;
+}
+
+/**
+ * One line of the table, or its heading when there is nobody to put on it.
+ *
+ * Pointing at a line lights it and the one it numbers, and puts a cross at
+ * its right-hand end. The first press on the cross says what sending them
+ * away costs where their clock and tokens were; the second does it.
+ */
+function handRow(
+  hand: Hand | null,
+  n: number,
+  most: number,
+  wide: number,
+  does: Doings,
+  lit: (id: string, on: boolean, from?: 'row') => void
+): HTMLElement {
+  const line = document.createElement('div');
+  line.className = hand ? 'yard-hand-row' : '';
+  line.style.cssText = `position:relative;display:flex;align-items:center;flex:none;height:${GROUND.row}px;border-bottom:1px solid rgba(244,227,192,.1)`;
+  const narrow = wide < 340;
+  const W = narrow ? { n: 18, run: 62, tok: 98, x: 18 } : { n: 22, run: 80, tok: 124, x: 20 };
+  const size = narrow ? 12 : 13;
+  const nameWide = Math.max(60, wide - W.n - W.run - W.tok - W.x);
+  const cell = (width: number, child: HTMLElement): HTMLElement => {
+    const it = document.createElement('div');
+    it.style.cssText = `flex:none;width:${width}px;overflow:hidden;display:flex;align-items:center;gap:6px`;
+    it.appendChild(child);
+    return it;
+  };
+
+  if (!hand) {
+    const head = (text: string): HTMLElement => {
+      const it = exact(text, 11, '#a89272');
+      it.style.letterSpacing = '.12em';
+      return it;
+    };
+    line.appendChild(cell(W.n, document.createElement('span')));
+    line.appendChild(cell(nameWide, head('HAND')));
+    line.appendChild(cell(W.run, head('RUNNING')));
+    line.appendChild(cell(W.tok, head('TOKENS')));
+    return line;
+  }
+
+  const out = hand.where === 'out';
+  const ink = out ? '#f4e3c0' : '#a89272';
+  line.style.cursor = 'pointer';
+  line.addEventListener('mousedown', (event) => event.preventDefault());
+  line.addEventListener('click', () => does.press(`helper:${hand.id}`));
+  line.addEventListener('mouseenter', () => lit(hand.id, true, 'row'));
+  line.addEventListener('mouseleave', () => lit(hand.id, false));
+
+  line.appendChild(cell(W.n, exact(String(n), size, out ? '#f4e3c0' : '#8a7452')));
+  const state = out ? '' : hand.wrong ? ' · stopped' : ' · done';
+  const name = exact(`${hand.errand}${state}`, size, ink);
+  name.style.cssText += ';overflow:hidden;text-overflow:ellipsis;min-width:0';
+  name.title = hand.said;
+  line.appendChild(cell(nameWide, name));
+
+  const costs = document.createElement('div');
+  costs.style.cssText = 'display:flex;align-items:center';
+  const clock = exact(
+    out && hand.since ? longFor(Date.now() - hand.since) : hand.ran ? longFor(hand.ran) : '',
+    13,
+    ink
+  );
+  if (out && hand.since) clock.dataset.since = String(hand.since);
+  costs.appendChild(cell(W.run, clock));
+  const bar = document.createElement('div');
+  bar.style.cssText = `display:flex;gap:${narrow ? 1 : 2}px;flex:none`;
+  const filled = hand.tokenCount ? Math.max(1, Math.round((hand.tokenCount / most) * 10)) : 0;
+  for (let k = 0; k < 10; k += 1) {
+    const one = document.createElement('span');
+    const on = k < filled;
+    one.style.cssText = `width:${narrow ? 4 : 5}px;height:12px;background:${
+      out ? (on ? '#d9a95a' : '#3a2c18') : on ? '#8a7c68' : '#3e3528'
+    }`;
+    bar.appendChild(one);
+  }
+  const tokens = cell(W.tok, bar);
+  tokens.appendChild(exact(hand.tokenCount ? tokensShort(hand.tokenCount) : '', size, ink));
+  costs.appendChild(tokens);
+  line.appendChild(costs);
+
+  /* What the first press on the cross costs, standing where the clock and the
+     tokens were, since they are what is about to stop counting. */
+  const cost = exact(
+    narrow
+      ? out
+        ? 'again to stop them'
+        : 'again to send off'
+      : out
+        ? 'press ✕ again to stop them'
+        : 'press ✕ again to send off',
+    11,
+    '#f2665a'
+  );
+  cost.style.cssText += `;display:none;flex:none;width:${W.run + W.tok}px;justify-content:flex-end`;
+  line.appendChild(cost);
+
+  let armed: number | undefined;
+  const disarm = (): void => {
+    if (armed !== undefined) window.clearTimeout(armed);
+    armed = undefined;
+    cost.style.display = 'none';
+    costs.style.display = 'flex';
+    line.removeAttribute('data-armed');
+  };
+  const cross = pressing('✕', () => {
+    if (armed !== undefined) {
+      disarm();
+      does.press(`away:${hand.id}`);
+      return;
+    }
+    costs.style.display = 'none';
+    cost.style.display = 'flex';
+    line.setAttribute('data-armed', '');
+    armed = window.setTimeout(disarm, 4000);
+  });
+  cross.className += ' yard-hand-cross';
+  cross.style.cssText +=
+    ";font-family:'Courier Prime',monospace;font-size:14px;margin-left:auto;padding:0 4px";
+  cross.addEventListener('click', (event) => event.stopPropagation());
+  line.appendChild(cross);
+  return line;
+}
+
+/** A count of tokens said short for a table: `850`, `48.2k`, `1.3m`. */
+function tokensShort(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 100_000 ? 1 : 0)}k`;
+  return `${(n / 1_000_000).toFixed(1)}m`;
 }
 
 /**
