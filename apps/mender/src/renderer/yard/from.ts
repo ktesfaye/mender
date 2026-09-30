@@ -10,7 +10,7 @@
  * said and returns a value.
  */
 
-import type { Ask, Errand, Failure, Glance, Kit, Mood, Told } from '@shared/agents';
+import type { Ask, Errand, Failure, Glance, Kit, Mood, Pack, Told } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { answersFor } from '../board/work';
@@ -338,6 +338,7 @@ function thoughtsOf(told: Told | undefined, mood: Mood | undefined): Thought[] {
       : {}),
     ...(earlier(one.turn) ? { earlier: true } : {}),
     ...(one.quiet ? { quiet: true } : {}),
+    ...(one.pack ? { pack: one.pack, said: packSaid(one.pack, one.said) } : {}),
     ...(one.trouble ? { trouble: one.trouble } : {}),
   }));
 }
@@ -373,13 +374,15 @@ function liveOf(from: Standing, told: Told | undefined): Session['live'] {
     ? 'stopping'
     : from.mood === 'arriving'
       ? 'waking up'
-      : running
-        ? doingOf(running)
-        : reasoning
-          ? 'thinking'
-          : answering
-            ? 'writing back'
-            : 'thinking';
+      : last?.pack?.state === 'packing'
+        ? 'packing it down'
+        : running
+          ? doingOf(running)
+          : reasoning
+            ? 'thinking'
+            : answering
+              ? 'writing back'
+              : 'thinking';
   return {
     doing,
     /* Counted from when you said it, when the village saw you say it. A note
@@ -807,6 +810,21 @@ export function longFor(ms: number): string {
   const hours = minutes / 60;
   if (hours < 100) return `${Math.floor(hours)}h ${Math.floor(minutes % 60)}m`;
   return `${Math.floor(hours / 24)}d`;
+}
+
+/**
+ * A packing down in one line, for when it has gone up into the history and is
+ * read rather than drawn: how far down it went and how long it took, where the
+ * village saw either.
+ */
+function packSaid(pack: Pack, said: string): string {
+  if (pack.state !== 'packed') return said;
+  const down =
+    pack.from && pack.to !== undefined
+      ? `, from ${tokensSaid(pack.from).replace(' tokens', '')} to ${tokensSaid(pack.to)}`
+      : '';
+  const took = pack.began && pack.ended ? ` in ${longFor(pack.ended - pack.began)}` : '';
+  return `Packed the conversation down${down}${took}.`;
 }
 
 /** A count of tokens, the way Claude Code says one: `850`, `45.2k`, `1.3m`. */

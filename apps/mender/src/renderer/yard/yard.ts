@@ -50,6 +50,7 @@ import {
   sweepingIn,
   swelling,
 } from './motion';
+import { packed } from './pack';
 import { pressing, twice } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
@@ -157,6 +158,12 @@ const TROUBLE = {
   warn: { head: 'it stopped short', ink: 'var(--yard-warn)' },
   aside: { head: 'it warns', ink: 'var(--yard-wrong)' },
   stopped: { head: 'you stopped it', ink: STOPPED },
+} as const;
+
+/** Over the conversation being packed down, while it is and once it has. */
+const PACKING = {
+  packing: { head: 'packing', ink: '#ffc98a' },
+  packed: { head: 'packed', ink: '#a8c469' },
 } as const;
 
 /** How the newest answer's turn stands, said over it: still going, finished, or called off. */
@@ -1900,13 +1907,19 @@ function thinking(
            how long it has been at it while it still is. */
         const clock = one.at ? `${one.at} at this` : one.when;
         const ended = one.ended ? ENDED[one.ended] : undefined;
-        const name = trouble?.head ?? ended?.head ?? (one.quiet ? 'thinking' : 'now');
+        const pack = one.pack && one.pack.state !== 'failed' ? PACKING[one.pack.state] : undefined;
+        const name = pack?.head ?? trouble?.head ?? ended?.head ?? (one.quiet ? 'thinking' : 'now');
         const head = said(
-          clock ? `${name} · ${clock}` : name,
-          trouble?.ink ?? ended?.ink ?? '#ffc98a'
+          clock && one.pack?.state !== 'packing' ? `${name} · ${clock}` : name,
+          pack?.ink ?? trouble?.ink ?? ended?.ink ?? '#ffc98a'
         );
         folding(head);
         it.appendChild(head);
+        if (one.pack && pack) {
+          it.appendChild(packed(one.id, one.pack));
+          items.appendChild(it);
+          return;
+        }
         const body = document.createElement('div');
         /* Set large, unless it is long enough that large is a wall: a whole
          report at the size of one sentence is read a word at a time. */

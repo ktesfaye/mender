@@ -1,3 +1,4 @@
+import type { Pack } from '@shared/agents';
 /**
  * What a yard is, as a value.
  *
@@ -249,6 +250,8 @@ export interface Thought {
   trouble?: 'wrong' | 'warn' | 'aside' | 'stopped';
   /** Over the newest answer, whether its turn is still going or how it came to rest. */
   ended?: 'going' | 'done' | 'stopped';
+  /** The conversation being packed down to make room, drawn rather than said. */
+  pack?: Pack;
 }
 
 /** Something it did: a tool call, with a prop from the kit standing for it. */

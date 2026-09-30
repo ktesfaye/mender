@@ -86,6 +86,27 @@ export function clockOf(dated: readonly Dated[]): (who: 'you' | 'it', text: stri
   };
 }
 
+/**
+ * How long each time this conversation was packed down took, oldest first.
+ *
+ * Claude Code writes the time into its own record of every one, which is the
+ * only way to know how long the next one here is likely to take.
+ */
+export function packsTook(lines: readonly string[]): number[] {
+  const took: number[] = [];
+  for (const line of lines) {
+    if (!line.includes('compact_boundary')) continue;
+    try {
+      const one = JSON.parse(line) as { compactMetadata?: { durationMs?: unknown } };
+      const ms = one.compactMetadata?.durationMs;
+      if (typeof ms === 'number' && ms > 0) took.push(ms);
+    } catch {
+      /* not a whole line */
+    }
+  }
+  return took;
+}
+
 const found = new Map<string, string>();
 
 /** Where Claude keeps this conversation, whichever checkout it was started in. */
@@ -115,12 +136,13 @@ async function fileOf(session: string): Promise<string | null> {
 /** Claude's own record of this conversation, or null when it has none. */
 export async function readDated(
   session: string
-): Promise<{ size: number; dated: Dated[] } | null> {
+): Promise<{ size: number; dated: Dated[]; took: number[] } | null> {
   const path = await fileOf(session);
   if (!path) return null;
   try {
     const { size } = await stat(path);
-    return { size, dated: datedOf((await readFile(path, 'utf8')).split('\n')) };
+    const lines = (await readFile(path, 'utf8')).split('\n');
+    return { size, dated: datedOf(lines), took: packsTook(lines) };
   } catch {
     return null;
   }

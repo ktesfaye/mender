@@ -41,6 +41,7 @@ import type {
   WorkingState,
   Wrote,
 } from '@shared/agents';
+import { carried, packExpect, piecesOf, USUAL_PACK } from '@shared/packing';
 import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
 import {
   helperTrail,
@@ -1293,6 +1294,10 @@ class House {
    * village's own `seen` does not.
    */
   private dated: Dated[] = [];
+  /** How long each packing down of this conversation took, off Claude's own record. */
+  private packTook: number[] = [];
+  /** How full it was before each packing and after, as the village saw it. */
+  private packSizes = new Map<string, { from?: number; to?: number }>();
   private datedSize = -1;
   private dating = false;
   /* Whether the village has watched this conversation move. */
@@ -1405,6 +1410,7 @@ class House {
       if (!read) return;
       this.dated = read.dated;
       this.datedSize = read.size;
+      this.packTook = read.took;
       this.publish();
     } finally {
       this.dating = false;
@@ -1667,6 +1673,50 @@ class House {
     this.marked.clear();
   }
 
+  /**
+   * Every packing down, with how full it was on either side of it.
+   *
+   * The only measure of that is the running usage, so it is caught as it goes
+   * by: whatever it was holding when the packing was first seen, and the first
+   * real figure after it finished that is smaller.
+   */
+  private sized(told: ToldState): ToldState {
+    if (!told.thoughts.some((one) => one.pack)) return told;
+    const usage = this.usage;
+    const took = [...this.packTook].sort((a, b) => a - b);
+    const usual = took.length ? took[Math.floor(took.length / 2)] : USUAL_PACK;
+    const thoughts = told.thoughts.map((one) => {
+      if (!one.pack) return one;
+      let known = this.packSizes.get(one.id);
+      if (!known) {
+        known = {};
+        this.packSizes.set(one.id, known);
+        if (one.pack.began && one.pack.state === 'packing' && usage?.contextUsed)
+          known.from = usage.contextUsed;
+      }
+      if (
+        known.from !== undefined &&
+        one.pack.state === 'packed' &&
+        usage &&
+        usage.contextUsed < known.from &&
+        !known.to
+      )
+        known.to = usage.contextUsed;
+      return {
+        ...one,
+        pack: {
+          ...one.pack,
+          ...known,
+          ...(usage && usage.contextSize > 0 ? { size: usage.contextSize } : {}),
+          /* Its own history already carries its size; only the machine's
+             usual needs scaling to this one. */
+          expect: took.length ? usual : packExpect(usual, known.from),
+        },
+      };
+    });
+    return { ...told, thoughts };
+  }
+
   private read(): WorkingState {
     if (!this.conversation) return EMPTY;
     const turns = this.live ? [...this.before, this.live] : this.before;
@@ -1681,15 +1731,25 @@ class House {
     const asking = askOf(pending, this.where(), this.marked);
     const failure = this.lifecycle?.failure ?? null;
     const mood = moodOf(this.lifecycle, asking, this.trouble, failure);
+    const told = helpersIn(
+      this.sized(
+        toldOf(turns, this.where(), (id, over) => this.time(id, over), clockOf(this.dated))
+      ),
+      this.claude()
+    );
+    const packing = mood === 'working' && told.thoughts.at(-1)?.pack?.state === 'packing';
     return {
       mood,
-      doing: this.trouble ?? (failure ? failureDoing(failure) : doingOf(mood, this.live)),
+      doing:
+        this.trouble ??
+        (failure
+          ? failureDoing(failure)
+          : packing
+            ? 'packing the conversation down.'
+            : doingOf(mood, this.live)),
       lines,
       told: {
-        ...helpersIn(
-          toldOf(turns, this.where(), (id, over) => this.time(id, over), clockOf(this.dated)),
-          this.claude()
-        ),
+        ...told,
         ...(this.hushed && this.live?.id === this.hushed && !this.live.outcome
           ? { stopping: true }
           : {}),
@@ -2077,6 +2137,19 @@ function toldOf(
   };
 
   flat.forEach((item, i) => {
+    /* What Claude carries across a packing is its own summary, handed back in
+       as though you had said it. You did not, so it is where the packing was
+       rather than a note on the post. */
+    if (item.kind === 'note' && carried(item.text)) {
+      thoughts.push({
+        id: item.id,
+        said: 'Packed the conversation down.',
+        at: stamp(item.id, true),
+        turn: item.turn,
+        pack: { state: 'packed', began: 0, expect: USUAL_PACK },
+      });
+      return;
+    }
     if (item.kind === 'note') {
       /* Asked of the transcript even when the village has its own time, so
          the walk through it stays in step with the board. */
@@ -2099,18 +2172,48 @@ function toldOf(
       /* The last thing said in a turn that broke is the agent saying why, and
          a limit is said in so many words whether or not the turn noticed. */
       const last = flat[i + 1]?.turn !== item.turn;
-      const trouble =
-        limited(item.text) || (last && item.broke)
-          ? 'wrong'
-          : aside(item.text.trim())
-            ? 'aside'
-            : undefined;
-      thoughts.push({
-        id: item.id,
-        said: item.text,
-        at,
-        turn: item.turn,
-        ...(trouble ? { trouble } : {}),
+      /* Packing the conversation down is announced in the answer itself, and
+         comes out of it as its own thing, before or after whatever else was
+         said in the same breath. */
+      piecesOf(item.text).forEach((piece, n) => {
+        const id = n === 0 ? item.id : `${item.id}:${n}`;
+        if (piece.kind === 'pack') {
+          const began = stamp(`${id}:began`, false);
+          const ended = piece.state === 'packing' ? undefined : stamp(`${id}:ended`, false);
+          thoughts.push({
+            id,
+            said:
+              piece.state === 'failed'
+                ? `Couldn't pack the conversation down${piece.why ? `: ${piece.why}` : '.'}`
+                : piece.state === 'packed'
+                  ? 'Packed the conversation down.'
+                  : 'Packing the conversation down.',
+            at: at || began,
+            turn: item.turn,
+            pack: {
+              state: piece.state,
+              ...(piece.why ? { why: piece.why } : {}),
+              began,
+              ...(ended !== undefined ? { ended } : {}),
+              expect: USUAL_PACK,
+            },
+            ...(piece.state === 'failed' ? { trouble: 'wrong' as const } : {}),
+          });
+          return;
+        }
+        const trouble =
+          limited(piece.text) || (last && item.broke)
+            ? 'wrong'
+            : aside(piece.text.trim())
+              ? 'aside'
+              : undefined;
+        thoughts.push({
+          id,
+          said: piece.text,
+          at,
+          turn: item.turn,
+          ...(trouble ? { trouble } : {}),
+        });
       });
     } else if (item.kind === 'ended') {
       thoughts.push({

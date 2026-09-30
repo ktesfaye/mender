@@ -138,6 +138,18 @@ happened, and above the line you write on, is how much of its room to think in i
 far when the agent says, in plain words rather than a currency badge. Nothing warns an agent that it is running out of room; it simply starts
 losing the beginning of the conversation, so the village says it instead.
 
+**Making room is drawn, not stammered.** When Claude packs a long conversation
+down to make room, the middle column shows it happening rather than the
+adapter's "Compacting..." said twice over: a strip of cells that is everything
+it was holding, a hot front crossing it and pressing each cell flat behind it
+with sparks going up, how far along as a percentage, and how long it has been
+at it against how long one usually takes, read off Claude Code's own record of
+the last ones. Claude says nothing while it packs, so the percentage is that
+clock and says so. Once it has, what is left stands back up green over what it
+let go of, with how full it was before and after and how long it took. The
+summary Claude carries across is never put on the gatepost as though you had
+said it.
+
 **Opening a project is walking into the work.** Not a list you press into: you
 land in the session you were last in, standing in its yard at night. What you
 asked for is nailed to a gatepost on the left, newest on parchment and the ones

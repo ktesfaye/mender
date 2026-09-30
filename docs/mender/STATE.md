@@ -3145,3 +3145,16 @@ Code's own brief once a turn that did something is done, and keeps it until
 something newer is said. Driven in a dev instance: three turns stacked
 oldest to newest down to the write line, a short question got no recap, and a
 turn that wrote and tested code got one under its answer.
+
+### Making room is drawn, not stammered (2026-09-29) — done
+
+Claude's adapter announced a compaction by writing "Compacting..." into the
+answer, twice for an automatic one, then "Compacting completed.", and after a
+restart the summary it carried across landed on the gatepost as if you had
+said it. Both are lifted out into one packing event: a strip the front crosses
+while it works, with a percentage and the time against how long this session's
+last ones took (or the machine's usual, scaled to size), then what is left
+standing green with the sizes before and after. Driven in a dev instance: a
+real `/compact` counted up to 89% at 18s against a usual 16s with the fire
+saying "packing it down", then settled at 35k to 30k, took 22s; after a restart
+the carried summary was gone from the post.

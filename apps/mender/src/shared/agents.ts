@@ -224,8 +224,27 @@ export const musedSchema = z.object({
   /** Which turn of the conversation it belongs to, so the board can tell an
       answer to what you just said from the one before it. */
   turn: z.number().int().optional(),
+  /** Not something said but the conversation being packed down to make room. */
+  pack: z
+    .object({
+      state: z.enum(['packing', 'packed', 'failed']),
+      /** What the agent said went wrong, when it failed and said. */
+      why: z.string().optional(),
+      /** When the village saw it start and finish, or 0 when it was not looking. */
+      began: z.number(),
+      ended: z.number().optional(),
+      /** How much it was holding in mind before, and after, in tokens. */
+      from: z.number().optional(),
+      to: z.number().optional(),
+      /** How much it can hold at all. */
+      size: z.number().optional(),
+      /** How long one usually takes here, so the board can say how far along it is. */
+      expect: z.number(),
+    })
+    .optional(),
 });
 export type Mused = z.infer<typeof musedSchema>;
+export type Pack = NonNullable<Mused['pack']>;
 
 /** One thing it did, which is a step in the yard's right-hand column. */
 export const deedSchema = z.object({
