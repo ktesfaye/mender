@@ -3205,3 +3205,11 @@ window is open closes and the camera goes out to the island, and whoever was
 working keeps working. It reaches through a shell too. Driven in a dev
 instance: shift-Escape mid-turn landed on the island, and walking back in the
 turn had finished on its own, "done" rather than "you stopped it".
+
+### The newest note says itself again (2026-09-30) — done
+
+A small gold loop in the corner of the parchment sends the newest note again,
+exactly as it was said, without writing it on the line first. Pressing the
+rest of the parchment still writes it back on the line to change. Driven in a
+dev instance: pressing the loop after "pong" sent it again, the agent answered
+a second time and the line stayed empty.

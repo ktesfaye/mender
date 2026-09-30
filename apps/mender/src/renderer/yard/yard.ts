@@ -445,6 +445,12 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     recalled = -1;
     fill(text);
   }
+  /** The newest note's own mark says it again as it stands, without the line. */
+  function rerun(text: string): void {
+    recalled = -1;
+    lastSaid = null;
+    does.say(text);
+  }
 
   let last: Yard | undefined;
   layer.onResize(() => {
@@ -561,8 +567,15 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       stillAt.replaceChildren();
       stillAt.style.display = 'none';
     } else if (yard.session) {
-      asked(root, columns.asked, yard, floor, layer.cramped(), pickNote, (id) =>
-        does.press(`unsay:${id}`)
+      asked(
+        root,
+        columns.asked,
+        yard,
+        floor,
+        layer.cramped(),
+        pickNote,
+        (id) => does.press(`unsay:${id}`),
+        rerun
       );
       thinking(
         covered,
@@ -1427,7 +1440,8 @@ function asked(
   floor: number,
   cramped: boolean,
   pick: (said: string) => void,
-  takeBack?: (id: string) => void
+  takeBack?: (id: string) => void,
+  rerun?: (said: string) => void
 ): void {
   if (!at.wide) return;
   /* What you said while it worked goes on the post too, above the parchment
@@ -1482,7 +1496,7 @@ function asked(
   }
 
   const card = keyed(
-    pinned(newest, { left: at.x + 22, top, width: at.wide - 60 }),
+    pinned(newest, { left: at.x + 22, top, width: at.wide - 60 }, rerun),
     `note:${newest.id}`
   );
   root.appendChild(pickable(card, newest.said, pick));
@@ -1547,7 +1561,11 @@ const NOTE_LINES = 7;
 const NOTE_LINE = 19 * 1.25;
 
 /** The newest note: on parchment, pinned, and not quite straight. */
-function pinned(note: Note, where: { left: number; top: number; width: number }): HTMLElement {
+function pinned(
+  note: Note,
+  where: { left: number; top: number; width: number },
+  rerun?: (said: string) => void
+): HTMLElement {
   const card = box(where, CARD);
   card.classList.add('paper');
   const tack = box(
@@ -1567,7 +1585,58 @@ function pinned(note: Note, where: { left: number; top: number; width: number })
   body.textContent = named(note.said);
   card.appendChild(body);
   handed(card, note, '#b3651f');
+  if (rerun) card.appendChild(again(() => rerun(note.said)));
   return card;
+}
+
+/**
+ * The one mark on the parchment: says the newest note again, as it stands,
+ * without going through the line. Gold, but the paper's own darker gold,
+ * because the board's would all but vanish on cream.
+ */
+function again(press: () => void): HTMLElement {
+  const it = document.createElement('div');
+  it.title = 'say it again';
+  it.style.cssText = [
+    'position:absolute',
+    'top:9px',
+    'right:10px',
+    'width:18px',
+    'height:18px',
+    'pointer-events:auto',
+    'color:#a8741c',
+    'cursor:default',
+  ].join(';');
+  /* A loop with its head, in whole pixels. */
+  const art = [
+    '..####.#.',
+    '.#....##.',
+    '#....###.',
+    '#........',
+    '#.......#',
+    '#.......#',
+    '.#.....#.',
+    '..#####..',
+  ];
+  const cells = art.flatMap((row, y) =>
+    [...row].flatMap((c, x) =>
+      c === '#' ? [`<rect x="${x}" y="${y}" width="1" height="1"/>`] : []
+    )
+  );
+  it.innerHTML = `<svg viewBox="0 0 9 8" width="18" height="16" shape-rendering="crispEdges" fill="currentColor">${cells.join('')}</svg>`;
+  it.addEventListener('mouseenter', () => (it.style.color = '#7c5210'));
+  it.addEventListener('mouseleave', () => (it.style.color = '#a8741c'));
+  it.addEventListener('mousedown', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    it.style.transform = 'translate(1px,1px)';
+  });
+  it.addEventListener('mouseup', () => (it.style.transform = ''));
+  it.addEventListener('click', (event) => {
+    event.stopPropagation();
+    press();
+  });
+  return it;
 }
 
 const CARD = [
