@@ -1694,6 +1694,23 @@ function thinking(
   /* A session has its columns from the moment it exists, said to or not, so a
      new one reads as the same place every other one is. */
   if (yard.session) {
+    /* The answer is read, so the night is laid thicker behind it than
+       anywhere else: the village still shows through, but not through the
+       words. */
+    root.appendChild(
+      stays(
+        box(
+          {
+            left: at.x - GUTTER / 2,
+            top: HEAD.below,
+            width: at.wide + GUTTER,
+            height: floor - HEAD.below,
+          },
+          'background:rgba(18,13,7,.72);pointer-events:none'
+        ),
+        'shade:said'
+      )
+    );
     /* No rule down the left of it once the left column has been put away:
        there is nothing on the other side of it to divide it from. */
     if (ruled) {
