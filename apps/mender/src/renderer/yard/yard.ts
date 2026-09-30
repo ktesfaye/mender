@@ -1844,7 +1844,7 @@ function thinking(
       /* Trouble keeps its colour as it goes into the history, dimmed with the
        rest, so scrolling back you can still see where it went wrong. */
       const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
-      const fade = far > 2 ? 0.8 : 0.9;
+      const fade = far > 2 ? 0.5 : 0.6;
       items.prepend(
         keyed(
           thought(
