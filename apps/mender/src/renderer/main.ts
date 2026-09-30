@@ -1599,15 +1599,15 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       walkedUp = null;
+      /* The line belongs to the session it was written in. Stepping to
+         another leaves that one's half-written line with it, not on this. */
+      if (inside?.id !== here?.id) yard.line.write('');
       inside = here ?? null;
       if (here) {
         workspaceIn.set(project.id, here.workspace ?? '');
         lastInWorkspace.set(`${project.id}|${here.workspace ?? ''}`, here.id);
       }
       if (here && unseen.delete(here.id)) lightHouses();
-      /* The line belongs to the session it was written in. Stepping to
-         another leaves that one's half-written line with it, not on this. */
-      if (inside?.id !== here?.id) yard.line.write('');
       await was?.close();
       const shown = card;
       card = null;
@@ -4023,8 +4023,8 @@ async function boot(): Promise<void> {
       const pending = draftTimers.get(task.id);
       if (pending) clearTimeout(pending);
       draftTimers.delete(task.id);
-      void client.agents.setDraft({ task: task.id, text: '' });
       drafts.delete(task.id);
+      void client.agents.setDraft({ task: task.id, text: '' });
       const heard = await client.agents.tell(
         { task: task.id, text, ...(carrying.length ? { carrying } : {}) },
         { timeoutMs: 0 }
