@@ -226,6 +226,34 @@ export class Editing {
   }
 
   /**
+   * The ground a place actually stands on right now: a district with every
+   * piece somebody else lives on cut out of it, so lifting it never takes
+   * them along.
+   */
+  private groundOf(place: Place): readonly CellRun[] {
+    if (place.of !== null) return place.cells;
+    const given = new Set<string>();
+    for (const piece of this.places) {
+      if (piece.of !== place.id || !this.residentOn(piece.id)) continue;
+      for (const [x, y0, y1] of piece.cells) for (let y = y0; y <= y1; y++) given.add(`${x},${y}`);
+    }
+    if (!given.size) return place.cells;
+    const kept: CellRun[] = [];
+    for (const [x, y0, y1] of place.cells) {
+      let start: number | null = null;
+      for (let y = y0; y <= y1 + 1; y++) {
+        const mine = y <= y1 && !given.has(`${x},${y}`);
+        if (mine && start === null) start = y;
+        if (!mine && start !== null) {
+          kept.push([x, start, y - 1]);
+          start = null;
+        }
+      }
+    }
+    return kept;
+  }
+
+  /**
    * What a press on a place picks up. An empty piece is still its district's
    * land until somebody moves onto it, so pressing there lifts the district.
    */
@@ -248,7 +276,8 @@ export class Editing {
     this.camera.plugins.pause('drag');
     this.camera.plugins.pause('decelerate');
 
-    const box = boxOf(place.cells);
+    const ground = this.groundOf(place);
+    const box = boxOf(ground);
     const texture = this.pixi.renderer.generateTexture({
       target: this.host.scene(),
       frame: new Rectangle(box.x, box.y, box.width, box.height),
@@ -258,7 +287,7 @@ export class Editing {
     const land = new Sprite(texture);
     land.position.set(box.x, box.y);
     const cut = new Graphics();
-    for (const [x, y0, y1] of place.cells) {
+    for (const [x, y0, y1] of ground) {
       cut.rect(x * CELL, -(y1 + 1) * CELL, CELL, (y1 - y0 + 1) * CELL);
     }
     cut.fill(0xffffff);
@@ -266,7 +295,7 @@ export class Editing {
     /* A shadow under it, so it reads as held up off the water rather than
        slid along it. */
     const shadow = new Graphics();
-    for (const [x, y0, y1] of place.cells) {
+    for (const [x, y0, y1] of ground) {
       shadow.rect(x * CELL + 10, -(y1 + 1) * CELL + 14, CELL, (y1 - y0 + 1) * CELL);
     }
     shadow.fill({ color: 0x000000, alpha: 0.28 });
@@ -275,7 +304,7 @@ export class Editing {
     this.overlay.addChild(lifted);
 
     this.hole.clear();
-    for (const [x, y0, y1] of place.cells) {
+    for (const [x, y0, y1] of ground) {
       this.hole.rect(x * CELL, -(y1 + 1) * CELL, CELL, (y1 - y0 + 1) * CELL);
     }
     this.hole.fill({ color: 0x0b0906, alpha: 0.55 });
@@ -335,7 +364,7 @@ export class Editing {
     this.aim.clear();
     if (over && over.id !== carried.from.id) {
       const why = carried.fits ? carried.fits.places[over.id] : null;
-      for (const [x, y0, y1] of over.cells) {
+      for (const [x, y0, y1] of this.groundOf(over)) {
         this.aim.rect(x * CELL, -(y1 + 1) * CELL, CELL, (y1 - y0 + 1) * CELL);
       }
       this.aim.fill({ color: why ? SORE : WARM, alpha: why ? 0.38 : 0.3 });
@@ -429,8 +458,8 @@ export class Editing {
       return;
     }
     /* It settles where it was let go while the island is composed again. */
-    const box = boxOf(over.cells);
-    const from = boxOf(carried.from.cells);
+    const box = boxOf(this.groundOf(over));
+    const from = boxOf(this.groundOf(carried.from));
     carried.lifted.position.set(box.x - from.x, box.y - from.y);
     const swapped = this.residentOn(over.id);
     this.busy = true;
