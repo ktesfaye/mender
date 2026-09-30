@@ -36,7 +36,10 @@ export interface NewSessionHooks {
   /** Start with its own isolated workspace already on, the box naming it. */
   isolated?: boolean;
   history(): Promise<PastSession[]>;
+  elsewhere(): Promise<PastSession[]>;
   told(session: PastSession): Promise<PastTold>;
+  /** Brings a session had in another folder over into this one. */
+  adopt(session: PastSession): Promise<void>;
   submit(ask: NewSessionAsk): void;
   cancel(): void;
   revive(): void;
@@ -242,8 +245,15 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
     scrim.style.display = 'none';
     pastBoard = openPastSession({
       history: hooks.history,
+      elsewhere: hooks.elsewhere,
       told: hooks.told,
-      resume: (session) => submit(session),
+      resume: (session) => {
+        if (!session.elsewhere) return submit(session);
+        void hooks
+          .adopt(session)
+          .then(() => submit(session))
+          .catch(() => submit(session));
+      },
       back: () => {
         pastBoard = null;
         if (closed) return;

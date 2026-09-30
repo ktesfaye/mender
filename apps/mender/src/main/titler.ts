@@ -123,11 +123,12 @@ async function ask(env: EnvSource, prompt: string, session: string): Promise<str
 }
 
 const TOLD_PROMPT = [
-  'You write one line for a list of past coding sessions, so somebody picking one to resume',
-  'can tell at a glance what each one did.',
-  'Say what got done, or what was being worked on when it stopped, judged from what the',
-  'person asked and what the agent last reported. Plain words a person would use about their',
-  'own app, past tense for what was finished, "was ..." for what was left in the middle.',
+  'You write one line for a list of past conversations with an AI agent, so somebody picking',
+  'one to resume can tell at a glance what each one did. They are often about code, but just',
+  'as often about anything else: a trip, a purchase, a question, some writing.',
+  'Say what got done or worked out, or what was underway when it stopped, judged from what the',
+  'person asked and what the agent last said. Plain words a person would use,',
+  'past tense for what was finished, "was ..." for what was left in the middle.',
   'One or two short sentences, under 200 characters. No preamble, no quotes, no names of',
   'files, functions or tools unless the person used them. Reply with only the line.',
 ].join(' ');

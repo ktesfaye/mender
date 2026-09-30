@@ -3050,3 +3050,18 @@ instance: Command-N and the dashed board both opened the sign with the tile
 on, and a name typed there came out as that workspace on the beam with a
 terminal session in it. A conversation named this way was not driven, and
 Command-N out on the island, which still founds a project, was not changed.
+
+### Finding a past session had in some other folder (2026-09-29) — done
+
+The past-session board's list stays this folder's own, but its search line
+now also looks through every other folder Claude Code has kept sessions for,
+scratch folders left out, and shows what it finds under "in other folders"
+with where each was had. Resuming one copies its transcript into this
+folder's own first, leaving the original where it was, since the CLI only
+finds a session under the folder it runs in. What-it-did lines no longer
+assume a conversation was about code, and lines written under the old
+wording are written again. Driven in a dev instance: searched "orleans" from
+a scratch project with no sessions of its own, found the New Orleans
+itinerary had in slideshow, resumed it, and the whole conversation came back
+on the board.
+

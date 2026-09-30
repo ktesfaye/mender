@@ -586,7 +586,13 @@ it with a line under it saying what it did, and the one under the arrow read
 out on the right, what it did, the first thing said in it, its branch, when
 it was last worked in and how many turns it ran. What it did is not in the
 transcript: a small model reads each one once, the first time the board is
-opened on it, and it is kept, so after that it is there straight away.
+opened on it, and it is kept, so after that it is there straight away. The
+list is only ever that folder's own, but what is written on the find line
+looks through every folder on this machine as well, since a conversation is
+remembered by what it was about and not by where it happened to be started;
+those come after this folder's, under "in other folders", each saying where
+it was had, and resuming one brings a copy of it over into this folder
+first, since Claude only looks for a session under the folder it is run in.
 Resume picks the chosen one back up with whatever the tiles said, and back
 turns the sign over again. Open in a terminal makes
 the session nothing but a real login shell in the checkout, drawn the way

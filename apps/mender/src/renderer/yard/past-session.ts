@@ -6,6 +6,11 @@
  *
  * What it did is not in the transcript. It is worked out the first time a
  * session is looked at here and kept, so the wait is once per session.
+ *
+ * The list is this folder's own. What is written on the search line looks
+ * further, through every folder on this machine, since a conversation is
+ * remembered by what it was about and not where it happened to be had;
+ * those come after this folder's, under their own heading.
  */
 
 export interface PastSession {
@@ -14,6 +19,8 @@ export interface PastSession {
   said?: string | null;
   gitBranch: string | null;
   mtimeMs: number;
+  /** Had in some other folder: which, by name. */
+  elsewhere?: { folder: string; dir: string } | null;
 }
 
 export interface PastTold {
@@ -23,6 +30,8 @@ export interface PastTold {
 
 export interface PastSessionHooks {
   history(): Promise<PastSession[]>;
+  /** Every other folder's, for the search line. */
+  elsewhere(): Promise<PastSession[]>;
   told(session: PastSession): Promise<PastTold>;
   resume(session: PastSession): void;
   back(): void;
@@ -37,6 +46,7 @@ const MONO = "'Courier Prime', monospace";
 
 export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
   let sessions: PastSession[] | null = null;
+  let others: PastSession[] = [];
   let shown: PastSession[] = [];
   let chosen: PastSession | null = null;
   let closed = false;
@@ -197,9 +207,28 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
     const quiet = (words: string) =>
       list.append(text('div', words, { padding: '12px 16px', fontSize: '14px', color: '#bfa476' }));
     if (sessions === null) return quiet('reading its own history…');
-    if (!sessions.length) return quiet('nothing here yet.');
-    if (!shown.length) return quiet('nothing called that.');
+    if (!shown.length) {
+      return quiet(
+        search.value.trim()
+          ? 'nothing called that, here or anywhere else.'
+          : 'nothing had in this folder yet. write above to look in the others.'
+      );
+    }
+    let headed = false;
     for (const session of shown) {
+      if (session.elsewhere && !headed) {
+        headed = true;
+        list.append(
+          text('div', 'in other folders', {
+            padding: '14px 16px 8px',
+            fontSize: '11px',
+            letterSpacing: '.2em',
+            textTransform: 'uppercase',
+            color: '#bfa476',
+            flexShrink: '0',
+          })
+        );
+      }
       const empty = session.title === NO_TITLE;
       const row = el('div', {
         cursor: 'pointer',
@@ -228,8 +257,14 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
           color: empty ? '#bfa476' : '#f4e3c0',
         })
       );
-      if (known && known !== 'waiting' && known.did) {
-        words.append(text('span', known.did, { ...line, fontSize: '12px', color: '#bfa476' }));
+      const under = [
+        session.elsewhere ? `in ${session.elsewhere.folder}` : '',
+        known && known !== 'waiting' ? (known.did ?? '') : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      if (under) {
+        words.append(text('span', under, { ...line, fontSize: '12px', color: '#bfa476' }));
       }
       row.append(
         arrow,
@@ -323,6 +358,9 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
       color: '#bfa476',
     });
     const turns = known && known !== 'waiting' ? String(known.turns) : '';
+    if (chosen.elsewhere) {
+      meta.append(text('span', `had in · ${chosen.elsewhere.folder}, brought here to resume`, {}));
+    }
     meta.append(
       text('span', `branch · ${chosen.gitBranch ?? 'no branch'}`, {}),
       text('span', `last active · ${ago(chosen.mtimeMs)}`, {}),
@@ -332,8 +370,15 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
   };
 
   const paintFoot = (): void => {
+    const here = shown.filter((one) => !one.elsewhere).length;
+    const away = shown.length - here;
+    const plural = (n: number) => `${n} session${n === 1 ? '' : 's'}`;
     count.textContent =
-      sessions === null ? '' : `${shown.length} of ${sessions.length} sessions`;
+      sessions === null
+        ? ''
+        : search.value.trim()
+          ? `${here} here, ${away} elsewhere`
+          : plural(sessions.length);
     go.style.opacity = chosen ? '1' : '.5';
     go.style.cursor = chosen ? 'pointer' : 'default';
   };
@@ -374,14 +419,13 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
 
   const filter = (): void => {
     const q = search.value.trim().toLowerCase();
-    shown = (sessions ?? []).filter(
-      (one) =>
-        !q ||
-        one.title.toLowerCase().includes(q) ||
-        (one.said ?? '').toLowerCase().includes(q) ||
-        didOf(one).toLowerCase().includes(q) ||
-        (one.gitBranch ?? '').toLowerCase().includes(q)
-    );
+    const matches = (one: PastSession): boolean =>
+      one.title.toLowerCase().includes(q) ||
+      (one.said ?? '').toLowerCase().includes(q) ||
+      didOf(one).toLowerCase().includes(q) ||
+      (one.gitBranch ?? '').toLowerCase().includes(q) ||
+      (one.elsewhere?.folder ?? '').toLowerCase().includes(q);
+    shown = q ? [...(sessions ?? []).filter(matches), ...others.filter(matches)] : [...(sessions ?? [])];
     paintList();
     if (!chosen || !shown.some((one) => one.id === chosen?.id)) choose(shown[0] ?? null);
     else paintFoot();
@@ -442,6 +486,14 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
       if (closed) return;
       sessions = found;
       filter();
+      void hooks
+        .elsewhere()
+        .catch(() => [])
+        .then((away) => {
+          if (closed) return;
+          others = away;
+          if (search.value.trim()) filter();
+        });
       void (async () => {
         for (const one of found) {
           if (closed) return;

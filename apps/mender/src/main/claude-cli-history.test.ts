@@ -39,6 +39,7 @@ describe('parseClaudeSessionLines', () => {
       gitBranch: 'main',
       title: 'fix the thing that is broken',
       said: 'fix the thing that is broken',
+      cwd: '/x',
     });
   });
 
@@ -106,7 +107,7 @@ describe('parseClaudeSessionLines', () => {
   });
 
   it('returns all-null on an empty or fully-unparseable file', () => {
-    const none = { sessionId: null, gitBranch: null, title: null, said: null };
+    const none = { sessionId: null, gitBranch: null, title: null, said: null, cwd: null };
     expect(parseClaudeSessionLines([])).toEqual(none);
     expect(parseClaudeSessionLines(['not json', '{broken'])).toEqual(none);
   });

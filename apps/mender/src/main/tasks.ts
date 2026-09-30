@@ -13,7 +13,13 @@ import { ReplicaState } from '@emdash/wire/live';
 import { cell, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
 import type { AppSettings } from './app-settings';
-import { listClaudeSessions, type ClaudeCliSession } from './claude-cli-history';
+import {
+  adoptClaudeSession,
+  claudeProjectDirName,
+  listClaudeSessions,
+  listClaudeSessionsElsewhere,
+  type ClaudeCliSession,
+} from './claude-cli-history';
 import { createPastSessions, type PastTold } from './past-sessions';
 import type { Project, Projects } from './projects';
 import type { MenderRuntimes } from './runtimes';
@@ -167,7 +173,11 @@ export interface Tasks {
       instead of starting blank. */
   claudeHistory(project: string): Promise<ClaudeCliSession[]>;
   /** What one of those came to, in turns and in a sentence or two. */
-  claudeTold(project: string, id: string, mtimeMs: number): Promise<PastTold>;
+  claudeTold(project: string, id: string, mtimeMs: number, dir?: string): Promise<PastTold>;
+  /** Every past session had in any other folder on this machine. */
+  claudeElsewhere(project: string): Promise<ClaudeCliSession[]>;
+  /** Brings one of those over into this project's own, to be resumed here. */
+  claudeAdopt(project: string, dir: string, id: string): Promise<void>;
   /** The script that failed setting this task's worktree up, if any is still
       unresolved — read off the workspace registry's own record, never
       guessed. */
@@ -613,14 +623,26 @@ export function createTasks(
       const found = (await projects.list()).find((candidate) => candidate.id === project);
       if (!found) return [];
       const sessions = await listClaudeSessions(found.path);
-      past.warm(found.path, sessions);
+      past.warm(claudeProjectDirName(found.path), sessions);
       return sessions;
     },
 
-    async claudeTold(project, id, mtimeMs) {
+    async claudeTold(project, id, mtimeMs, dir) {
       const found = (await projects.list()).find((candidate) => candidate.id === project);
       if (!found) return { turns: 0, did: null };
-      return await past.told(found.path, id, mtimeMs);
+      return await past.told(dir ?? claudeProjectDirName(found.path), id, mtimeMs);
+    },
+
+    async claudeElsewhere(project) {
+      const found = (await projects.list()).find((candidate) => candidate.id === project);
+      if (!found) return [];
+      return await listClaudeSessionsElsewhere(found.path);
+    },
+
+    async claudeAdopt(project, dir, id) {
+      const found = (await projects.list()).find((candidate) => candidate.id === project);
+      if (!found) return;
+      await adoptClaudeSession(found.path, dir, id);
     },
 
     async setupFailure(id) {

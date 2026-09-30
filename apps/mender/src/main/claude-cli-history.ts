@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
-import { open, readdir, stat } from 'node:fs/promises';
+import { cp, open, readdir, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { createInterface } from 'node:readline';
 
 /**
@@ -21,6 +21,10 @@ export interface ClaudeCliSession {
   title: string;
   /** The first real thing typed, whole, up to a paragraph. */
   said: string | null;
+  /** Where it was had, when that is some other folder than the one being
+      asked about: the folder by name, and the CLI's own directory it is
+      kept under, which is what it is read and brought over from. */
+  elsewhere: { folder: string; dir: string } | null;
 }
 
 const TITLE_CAP = 80;
@@ -33,6 +37,8 @@ const NO_TITLE = '(a past session with nothing typed yet)';
     long-lived checkout can have hundreds, and nobody is scrolling that far
     to pick one up again. */
 const HISTORY_CAP = 30;
+/** Every other folder's sessions together, newest first. */
+const ELSEWHERE_CAP = 60;
 /** How far into one file this ever reads. Every field this cares about
     (`sessionId`, `gitBranch`, the first real turn) sits well inside a
     file's first few dozen lines in every session inspected on this
@@ -75,7 +81,9 @@ export function parseClaudeSessionLines(lines: readonly string[]): {
   gitBranch: string | null;
   title: string | null;
   said: string | null;
+  cwd: string | null;
 } {
+  let cwd: string | null = null;
   let sessionId: string | null = null;
   let gitBranch: string | null = null;
   let title: string | null = null;
@@ -91,6 +99,7 @@ export function parseClaudeSessionLines(lines: readonly string[]): {
       continue;
     }
     if (!sessionId && typeof obj.sessionId === 'string') sessionId = obj.sessionId;
+    if (!cwd && typeof obj.cwd === 'string' && obj.cwd) cwd = obj.cwd;
     if (typeof obj.gitBranch === 'string' && obj.gitBranch) gitBranch = obj.gitBranch;
     if (!title) {
       const typed = typedTurn(obj);
@@ -101,7 +110,7 @@ export function parseClaudeSessionLines(lines: readonly string[]): {
     }
   }
 
-  return { sessionId, gitBranch, title, said };
+  return { sessionId, gitBranch, title, said, cwd };
 }
 
 /** What a person actually typed, when this line is that, and nothing when
@@ -169,23 +178,18 @@ async function readSessionMeta(path: string): Promise<ReturnType<typeof parseCla
   return parseClaudeSessionLines(lines);
 }
 
-/**
- * Every past terminal session the Claude Code CLI has kept for this
- * checkout's own path — not any worktree cut from it, the checkout's real
- * root, since that is where the CLI itself was ever actually run. Newest
- * first, capped. A checkout the CLI has never touched, or one whose
- * `~/.claude/projects/` folder is simply gone, comes back empty rather than
- * failing.
- */
-export async function listClaudeSessions(projectPath: string): Promise<ClaudeCliSession[]> {
-  const dir = join(homedir(), '.claude', 'projects', claudeProjectDirName(projectPath));
+function projectsDir(): string {
+  return join(homedir(), '.claude', 'projects');
+}
+
+async function readSessionsIn(dirName: string, elsewhere: boolean): Promise<ClaudeCliSession[]> {
+  const dir = join(projectsDir(), dirName);
   let names: string[];
   try {
     names = await readdir(dir);
   } catch {
     return [];
   }
-
   const found = await Promise.all(
     names
       .filter((name) => name.endsWith('.jsonl'))
@@ -198,6 +202,7 @@ export async function listClaudeSessions(projectPath: string): Promise<ClaudeCli
           return null;
         }
         const meta = await readSessionMeta(path);
+        if (elsewhere && !meta.title) return null;
         const named = await readTail(path, stats.size)
           .then(lastAiTitle)
           .catch(() => null);
@@ -208,14 +213,78 @@ export async function listClaudeSessions(projectPath: string): Promise<ClaudeCli
           size: stats.size,
           title: named ?? meta.title ?? NO_TITLE,
           said: meta.said,
+          elsewhere: elsewhere
+            ? { folder: basename(meta.cwd ?? dirName) || dirName, dir: dirName }
+            : null,
         };
       })
   );
+  return found.filter((session): session is ClaudeCliSession => session !== null);
+}
 
-  return found
-    .filter((session): session is ClaudeCliSession => session !== null)
-    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+const newestFirst = (a: ClaudeCliSession, b: ClaudeCliSession): number => b.mtimeMs - a.mtimeMs;
+
+/**
+ * Every past terminal session the Claude Code CLI has kept for this
+ * checkout's own path — not any worktree cut from it, the checkout's real
+ * root, since that is where the CLI itself was ever actually run. Newest
+ * first, capped. A checkout the CLI has never touched, or one whose
+ * `~/.claude/projects/` folder is simply gone, comes back empty rather than
+ * failing.
+ */
+export async function listClaudeSessions(projectPath: string): Promise<ClaudeCliSession[]> {
+  return (await readSessionsIn(claudeProjectDirName(projectPath), false))
+    .sort(newestFirst)
     .slice(0, HISTORY_CAP);
+}
+
+/** A folder the CLI keeps sessions for that nobody would go back to: a
+    scratch directory under the system's temp space. */
+function isScratch(dirName: string): boolean {
+  return /^-(private-)?(tmp|var)-/.test(dirName);
+}
+
+/**
+ * Every session had in any other folder on this machine, newest first:
+ * a conversation is picked up by what it was about, and that is often not
+ * the folder it happened to be started in. Sessions nothing was ever typed
+ * in, and scratch folders, are left out.
+ */
+export async function listClaudeSessionsElsewhere(
+  projectPath: string
+): Promise<ClaudeCliSession[]> {
+  const own = claudeProjectDirName(projectPath);
+  let dirs: string[];
+  try {
+    dirs = await readdir(projectsDir());
+  } catch {
+    return [];
+  }
+  const found = await Promise.all(
+    dirs
+      .filter((dirName) => dirName !== own && !isScratch(dirName))
+      .map((dirName) => readSessionsIn(dirName, true))
+  );
+  return found.flat().sort(newestFirst).slice(0, ELSEWHERE_CAP);
+}
+
+/**
+ * Brings a session had in another folder over into this one, so the CLI,
+ * which only ever looks for a session under the folder it is run in, finds
+ * it here. A copy: the original stays where it was, whole.
+ */
+export async function adoptClaudeSession(
+  projectPath: string,
+  fromDir: string,
+  id: string
+): Promise<void> {
+  if (fromDir.includes('/') || id.includes('/') || fromDir.startsWith('.')) {
+    throw new Error('not a session');
+  }
+  const from = join(projectsDir(), fromDir);
+  const to = join(projectsDir(), claudeProjectDirName(projectPath));
+  await cp(join(from, `${id}.jsonl`), join(to, `${id}.jsonl`), { force: false });
+  await cp(join(from, id), join(to, id), { recursive: true, force: false }).catch(() => undefined);
 }
 
 /** Everything in one past session that says what it came to: every typed
@@ -232,14 +301,8 @@ const ANSWERS_KEPT = 4;
     conversation. Lines are sifted by what they contain before any is
     parsed, since the tool traffic in a long session runs to hundreds of
     megabytes and none of it is wanted here. */
-export async function readClaudeStory(projectPath: string, id: string): Promise<ClaudeStory> {
-  const path = join(
-    homedir(),
-    '.claude',
-    'projects',
-    claudeProjectDirName(projectPath),
-    `${id}.jsonl`
-  );
+export async function readClaudeStory(dirName: string, id: string): Promise<ClaudeStory> {
+  const path = join(projectsDir(), dirName, `${id}.jsonl`);
   const asked: string[] = [];
   const answered: string[] = [];
   const stream = createReadStream(path, { encoding: 'utf8' });

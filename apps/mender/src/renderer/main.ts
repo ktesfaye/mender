@@ -3600,11 +3600,25 @@ async function boot(): Promise<void> {
           client.tasks
             .claudeHistory({ project: project.id }, { timeoutMs: 5000 })
             .then((found) => found),
+        elsewhere: () =>
+          client.tasks.claudeElsewhere({ project: project.id }, { timeoutMs: 10000 }),
         told: (session) =>
           client.tasks.claudeTold(
-            { project: project.id, id: session.id, mtimeMs: session.mtimeMs },
+            {
+              project: project.id,
+              id: session.id,
+              mtimeMs: session.mtimeMs,
+              ...(session.elsewhere ? { dir: session.elsewhere.dir } : {}),
+            },
             { timeoutMs: 0 }
           ),
+        adopt: (session) =>
+          session.elsewhere
+            ? client.tasks.claudeAdopt(
+                { project: project.id, dir: session.elsewhere.dir, id: session.id },
+                { timeoutMs: 10000 }
+              )
+            : Promise.resolve(),
         submit: (ask) => {
           sign = null;
           if (!naming) return;

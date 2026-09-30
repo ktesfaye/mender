@@ -80,6 +80,7 @@ export const claudeCliSessionSchema = z.object({
   size: z.number(),
   title: z.string(),
   said: z.string().nullable(),
+  elsewhere: z.object({ folder: z.string(), dir: z.string() }).nullable(),
 });
 
 export type ClaudeCliSession = z.infer<typeof claudeCliSessionSchema>;
@@ -173,8 +174,27 @@ export const tasksContract = defineContract({
   /** What one of those past sessions came to: how many turns it ran and
       what it did, in a sentence or two, worked out once and kept. */
   claudeTold: procedure({
-    input: z.object({ project: z.string(), id: z.string(), mtimeMs: z.number() }),
+    input: z.object({
+      project: z.string(),
+      id: z.string(),
+      mtimeMs: z.number(),
+      /** The CLI's own directory it is kept under, when it was had in some
+          other folder. */
+      dir: z.string().optional(),
+    }),
     output: z.object({ turns: z.number(), did: z.string().nullable() }),
+  }),
+  /** Every past session had in any other folder on this machine, for the
+      past-session board to search when this folder's own have nothing. */
+  claudeElsewhere: procedure({
+    input: z.object({ project: z.string() }),
+    output: z.array(claudeCliSessionSchema),
+  }),
+  /** Brings a session had in another folder over into this project's, so
+      resuming it here finds it. */
+  claudeAdopt: procedure({
+    input: z.object({ project: z.string(), dir: z.string(), id: z.string() }),
+    output: z.void(),
   }),
   /** The script that failed setting this task's worktree up, if any is
       still unresolved. */
