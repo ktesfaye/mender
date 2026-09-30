@@ -54,7 +54,7 @@ import { packed } from './pack';
 import { pressing, twice } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
-import { KIT_NAMES, sprite } from './sprite';
+import { KIT_NAMES, greenLantern, sprite } from './sprite';
 import { astop, walking, type Walking } from './walk';
 import type {
   Asking as Ask,
@@ -3444,8 +3444,11 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       beam.appendChild(glow);
     }
 
+    /* Finished and not yet seen burns green in the glass, not only round it. */
     const lamp = keyed(
-      sprite(one.lit ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff, 2),
+      one.lit && one.posture === 'done'
+        ? greenLantern(2)
+        : sprite(one.lit ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff, 2),
       `lantern:${one.id}`
     );
     lamp.style.cssText += `;left:${x}px;top:${top}px`;

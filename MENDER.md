@@ -283,7 +283,7 @@ along the bottom hangs one lantern per session in the project you are in, all
 of them on the same cord, and a lantern is lit only when there is a reason to
 look: somebody working, whose light breathes and whose line says what kind of
 work and for how long; somebody asking, who flickers orange; or something
-finished while you were elsewhere, which glows green and says how long ago
+finished while you were elsewhere, green in its glass and round it, saying how long ago
 until you have stood in it. Everything else is dark and says which: idle,
 waiting out a limit with a faint red glow and when it lifts, broken, or still
 being set up. A shared session's branch is never named, since every one of

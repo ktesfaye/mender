@@ -105,6 +105,94 @@ export function sprite(file: string, times: 1 | 2 | 3 | 4 = 1): HTMLDivElement {
   return el;
 }
 
+/**
+ * The lit lantern with green in its glass rather than amber, for something
+ * finished you have not been in to see.
+ *
+ * The kit only has the one lit lantern, so this is cut from it: every pixel
+ * the lit one lights that the unlit one doesn't, and that is bright enough to
+ * be glass rather than a strap, turned round the colour wheel to the yard's
+ * own done green. Made once, the first time it is asked for.
+ */
+export function greenLantern(times: 1 | 2 | 3 | 4 = 1): HTMLDivElement {
+  const el = sprite(KIT_NAMES.lanternOn, times);
+  const on = cuts.get(KIT_NAMES.lanternOn);
+  if (!on) return el;
+  const wear = (url: string): void => {
+    el.style.backgroundImage = `url(${url})`;
+    el.style.backgroundPosition = '0 0';
+    el.style.backgroundSize = `${on.w * times}px ${on.h * times}px`;
+  };
+  if (greened) wear(greened);
+  else void greening().then((url) => url && wear(url));
+  return el;
+}
+
+let greened: string | null = null;
+let greenWork: Promise<string | null> | null = null;
+
+function greening(): Promise<string | null> {
+  greenWork ??= (async () => {
+    const on = cuts.get(KIT_NAMES.lanternOn);
+    const off = cuts.get(KIT_NAMES.lanternOff);
+    if (!on || !off) return null;
+    const pixels = async (cut: Cut): Promise<ImageData> => {
+      const image = new Image();
+      image.src = cut.sheet;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = cut.w;
+      canvas.height = cut.h;
+      const pen = canvas.getContext('2d')!;
+      pen.drawImage(image, cut.x, cut.y, cut.w, cut.h, 0, 0, cut.w, cut.h);
+      return pen.getImageData(0, 0, cut.w, cut.h);
+    };
+    const [lit, dark] = await Promise.all([pixels(on), pixels(off)]);
+    const d = lit.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (!d[i + 3]) continue;
+      const same =
+        d[i] === dark.data[i] && d[i + 1] === dark.data[i + 1] && d[i + 2] === dark.data[i + 2];
+      if (same) continue;
+      const [r, g, b] = greener(d[i]!, d[i + 1]!, d[i + 2]!);
+      d[i] = r;
+      d[i + 1] = g;
+      d[i + 2] = b;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = on.w;
+    canvas.height = on.h;
+    canvas.getContext('2d')!.putImageData(lit, 0, 0);
+    greened = canvas.toDataURL();
+    return greened;
+  })();
+  return greenWork;
+}
+
+/** Amber glass to done green: the hue moved on, a little of the heat taken out. */
+function greener(r: number, g: number, b: number): [number, number, number] {
+  const v = Math.max(r, g, b) / 255;
+  if (v < 0.5) return [r, g, b];
+  const lo = Math.min(r, g, b) / 255;
+  const s = v ? (v - lo) / v : 0;
+  const c = v - lo;
+  let h = 0;
+  if (c) {
+    const [R, G, B] = [r / 255, g / 255, b / 255];
+    if (v === R) h = ((G - B) / c + 6) % 6;
+    else if (v === G) h = (B - R) / c + 2;
+    else h = (R - G) / c + 4;
+    h *= 60;
+  }
+  h = (h + 46) % 360;
+  const s2 = s * 0.8;
+  const k = (n: number): number => {
+    const m = (n + h / 60) % 6;
+    return v - v * s2 * Math.max(0, Math.min(m, 4 - m, 1));
+  };
+  return [Math.round(k(5) * 255), Math.round(k(3) * 255), Math.round(k(1) * 255)];
+}
+
 /** The handful the yard actually asks for, by the names the kit packs them as. */
 export const KIT_NAMES = {
   fire: 'props/TX Village Props - Campfire 01 Lit.png',
