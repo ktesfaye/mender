@@ -44,6 +44,7 @@ const SIDE_MOST = 0.42;
 /** The right column's share of the page before anybody drags it: a glance down the side,
     a little more than the narrowest it goes so what it did still reads. */
 const MADE_SHARE = 0.16;
+const MADE_LEAST = SIDE_LEAST + 60;
 /** And the least the middle is ever left with. */
 const MIDDLE_LEAST = 380;
 
@@ -139,7 +140,11 @@ export function makeLayer(): Layer {
     const set = arrangement();
     const most = Math.max(SIDE_LEAST, Math.round(wide * SIDE_MOST));
     let asked = left ? Math.round(wide * (set.asked ?? COLUMN.asked / drawn)) : 0;
-    let made = right ? Math.round(wide * (set.made ?? MADE_SHARE)) : 0;
+    let made = !right
+      ? 0
+      : set.made !== undefined
+        ? Math.round(wide * set.made)
+        : Math.max(MADE_LEAST, Math.round(wide * MADE_SHARE));
     asked = left ? clamp(asked, SIDE_LEAST, most) : 0;
     made = right ? clamp(made, SIDE_LEAST, most) : 0;
     const gutters = (left ? gutter : 0) + (right ? gutter : 0);
