@@ -1144,17 +1144,17 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
     )
   );
   /* And after it, which session in there you are standing in, the same name
-     and the same warm ink its lantern hangs under at the bottom, so the top of
-     the yard says where you are without looking down to the rail. */
+     its lantern hangs under at the bottom, in bold white so it is the loudest
+     thing at the top and the yard says where you are without looking down. */
   if (yard.session) {
     const slash = exact('/', 20, '#6b5a40');
     slash.style.cssText += ';letter-spacing:0;text-transform:none;padding:0 14px 0 18px';
     /* The rail's name, which follows the session being renamed as it works;
        the session's own is only what it was called when you walked in. */
     const named = yard.rail.find((one) => one.here)?.name ?? yard.session.name;
-    const here = moves(exact(named, 20, '#ffdca4'));
+    const here = moves(exact(named, 20, '#ffffff'));
     here.style.cssText +=
-      ';letter-spacing:0;text-transform:none;font-weight:400;max-width:44vw;' +
+      ';letter-spacing:0;text-transform:none;font-weight:700;max-width:44vw;' +
       'overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom';
     title.append(slash, here);
   }
