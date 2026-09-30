@@ -218,6 +218,15 @@ checkout's own board. Under all of that is the ground itself, with whoever it
 sent out standing in the firelight with an answer or off in the dark still
 working.
 
+**A command left running in the background stays running on the board.**
+When the agent starts something and doesn't wait for it, a dev server, a
+long build, a slow test run, its step under "what it did" keeps the fire's
+blinking ember and says it is still going in the background, well after the
+answer that started it is done, and only settles once the command really
+finishes, sore if it failed. A village closed on one names it in the note
+the session gets when it opens again, so exactly that command is started
+again.
+
 **Whoever it sent out can be walked up to, and called back.** Pressing one
 on the ground lays their own board over the yard: what they were sent for,
 whether they are still out, and every step they have taken out there,

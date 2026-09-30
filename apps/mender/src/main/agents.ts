@@ -2784,6 +2784,7 @@ function toldFrom(
     note,
     tool: node.kind,
     running: node.status === 'running',
+    ...(node.kind === 'execute-tool-call' && node.background ? { background: true } : {}),
     ...(node.status === 'error' ? { wrong: true } : {}),
     ...(path ? { path } : {}),
     ...(diff ? { diff } : {}),

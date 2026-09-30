@@ -229,6 +229,7 @@ function updateToolCallItem(
     terminalId?: string;
     inputSummary?: string;
     locations?: NormalizedToolLocation[];
+    background?: boolean;
   }
 ): ToolCallItem {
   const mapped = mapToolStatus(patch.status);
@@ -273,6 +274,7 @@ function updateToolCallItem(
         ...(patch.title !== undefined && patch.title !== null ? { command: nextTitle } : {}),
         ...(patch.outputText !== undefined ? { outputText: patch.outputText } : {}),
         ...(patch.terminalId !== undefined ? { terminalId: patch.terminalId } : {}),
+        ...(patch.background !== undefined ? { background: patch.background } : {}),
       };
     case 'read-tool-call':
       return common;
@@ -745,6 +747,7 @@ export function foldItem(
           ...(event.terminalId !== undefined ? { terminalId: event.terminalId } : {}),
           ...(event.inputSummary !== undefined ? { inputSummary: event.inputSummary } : {}),
           ...(event.locations !== undefined ? { locations: event.locations } : {}),
+          ...(event.background !== undefined ? { background: event.background } : {}),
         });
         next = base.map((it, i) => (i === idx ? updated : it));
       } else if (hasFileOperationsForToolCall(base, event.toolCallId)) {

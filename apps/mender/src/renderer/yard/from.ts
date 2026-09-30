@@ -459,7 +459,10 @@ function stepsOf(deeds: readonly DeedIn[]): Step[] {
     }
     flush();
     const step = stepOf(deed);
-    if (deed.tool === 'execute-tool-call') {
+    if (deed.tool === 'execute-tool-call' && deed.background && deed.running) {
+      step.did = plain.said ?? deed.did;
+      step.note = 'still going in the background';
+    } else if (deed.tool === 'execute-tool-call') {
       step.did = plain.said ?? (deed.running ? 'looking around' : deed.did);
       if (plain.said === 'ran the tests' && !deed.running)
         step.note = deed.wrong ? 'failed' : 'passed';
@@ -499,6 +502,7 @@ function stepOf(deed: {
   note?: string;
   tool: string;
   running: boolean;
+  background?: boolean;
   wrong?: boolean;
   path?: string;
   diff?: string[];

@@ -25,6 +25,8 @@ export interface ExecuteToolCall extends BaseToolCallItem {
   command?: string;
   outputText?: string;
   terminalId?: string;
+  /** Left running in the background: it can outlive the turn that started it. */
+  background?: boolean;
 }
 
 export interface ReadToolCall extends BaseToolCallItem {
@@ -148,6 +150,8 @@ export const executeToolCallSchema = baseToolCallItemSchema.extend({
   outputText: z.string().optional(),
   /** Managed terminal id when this execute call is backed by terminal state. */
   terminalId: z.string().optional(),
+  /** Left running in the background: it can outlive the turn that started it. */
+  background: z.boolean().optional(),
 });
 
 export const readToolCallSchema = baseToolCallItemSchema.extend({

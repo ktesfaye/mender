@@ -65,9 +65,19 @@ export function enrichClaudeUpdate(update: NormalizedEvent, raw: SessionUpdate):
     };
   }
 
-  if (!parentPatch.parentToolCallId && outputPatch.outputText === undefined)
+  /* A command left running in the background; see `background-tasks.ts`. */
+  const backgroundPatch =
+    normalizedUpdate.kind === 'tool_update' && claudeMeta(raw)?.menderBackground === true
+      ? { background: true }
+      : {};
+
+  if (
+    !parentPatch.parentToolCallId &&
+    outputPatch.outputText === undefined &&
+    !('background' in backgroundPatch)
+  )
     return normalizedUpdate;
-  return { ...normalizedUpdate, ...parentPatch, ...outputPatch };
+  return { ...normalizedUpdate, ...parentPatch, ...outputPatch, ...backgroundPatch };
 }
 
 type ClaudeMeta = {
@@ -75,6 +85,7 @@ type ClaudeMeta = {
     parentToolUseId?: unknown;
     toolName?: unknown;
     toolResponse?: unknown;
+    menderBackground?: unknown;
   };
 };
 

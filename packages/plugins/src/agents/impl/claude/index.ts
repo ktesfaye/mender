@@ -12,6 +12,7 @@ import { resolveAdapterAsset } from '../../helpers/adapter-assets';
 import { enrichClaudeUpdate } from './acp-transform';
 import { claudeAdapter } from './adapter';
 import { claudeAuthStatus } from './auth';
+import { withBackgroundTasks } from './background-tasks';
 import { buildClaudeHookConfig } from './hooks';
 import { icon } from './icon';
 import { buildClaudeTrustBehavior } from './trust';
@@ -151,7 +152,7 @@ export const provider = registerPluginBehavior(plugin, {
       },
     }),
     connect: (io, toClient) => {
-      return connectStdioAcp(io, toClient);
+      return connectStdioAcp({ ...io, stdout: withBackgroundTasks(io.stdout) }, toClient);
     },
     enrich: enrichClaudeUpdate,
   },

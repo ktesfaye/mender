@@ -278,6 +278,8 @@ export const deedSchema = z.object({
    */
   tool: z.string(),
   running: z.boolean(),
+  /** A command left running in the background, which can outlive its turn. */
+  background: z.boolean().optional(),
   wrong: z.boolean().optional(),
   /** The file this step touched, so the board knows what "open it" means. */
   path: z.string().optional(),

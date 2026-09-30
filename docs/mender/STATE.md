@@ -3285,3 +3285,21 @@ client answers to both. Driven in a dev instance: a two-question form, one of
 them several-answer, answered by keys (Claude read back SQLite, Auth and
 Billing), and a one-question form answered by writing on the line (read back
 exactly as written).
+
+### A background command stays running until it finishes (2026-09-30) — done
+
+Checked what else Claude's bridge withholds, with a new `check:bridge` that
+drives a real terminal Claude and the bridge against a fake local API. Tools
+now match a terminal's exactly. Of the switches still off, only background
+command lifecycle was worth having: live command output doesn't exist over the
+bridge either way, browser sign-in only fires for MCP servers the client hands
+over (Mender hands over none), and the changed-files report costs a hidden
+extra model turn for what git already knows. Background lifecycle comes as
+`async_task_*` updates the ACP SDK rejects, so the Claude plugin rewrites them
+off the wire into updates on the Bash step that started the command, marked
+background so the transcript keeps it running past its turn. The step reads
+"still going in the background" with the running ember, settles when the
+command ends, and the cut-off record names the commands still out so a reopen
+restarts exactly those. Driven in a dev instance: a backgrounded `sleep 45`
+stayed running after the answer, settled on its own when it finished, and a
+second one sat in the cut-off record by its command.

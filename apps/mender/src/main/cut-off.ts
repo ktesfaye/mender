@@ -13,6 +13,8 @@ export interface CutOff {
   mood: Mood;
   /** Helpers still out, by what they were sent to do. */
   helpers: { errand: string; background?: boolean }[];
+  /** Commands it had left running in the background, as it ran them. */
+  commands?: string[];
   /** What was said while it worked that it had not read yet. */
   unread: string[];
 }
@@ -22,9 +24,17 @@ export function goingIn(state: WorkingState): CutOff | null {
   const helpers = state.told.errands
     .filter((one) => one.running)
     .map((one) => ({ errand: one.errand, ...(one.background ? { background: true } : {}) }));
+  const commands = state.told.deeds
+    .filter((one) => one.background && one.running)
+    .map((one) => one.did);
   const busy = state.mood === 'working' || state.mood === 'asking';
-  if (!busy && !helpers.length) return null;
-  return { mood: state.mood, helpers, unread: state.queued.map((one) => one.text) };
+  if (!busy && !helpers.length && !commands.length) return null;
+  return {
+    mood: state.mood,
+    helpers,
+    ...(commands.length ? { commands } : {}),
+    unread: state.queued.map((one) => one.text),
+  };
 }
 
 /** What the session is told when it is picked back up: the part on the gatepost. */
@@ -50,6 +60,13 @@ export function pickUpNote(cut: CutOff): string {
         `same job, the same way, unless what it was doing is already done: ${named}.`
     );
   }
+  if (cut.commands?.length)
+    parts.push(
+      `These commands were still running in the background and were stopped, so run each ` +
+        `again the same way unless it is no longer needed: ` +
+        cut.commands.map((one) => `\`${one}\``).join(', ') +
+        '.'
+    );
   if (cut.unread.length)
     parts.push(
       `These were said to you while you worked and you had not read them yet: ` +

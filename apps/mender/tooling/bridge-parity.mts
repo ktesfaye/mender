@@ -53,7 +53,10 @@ const DECIDED: Record<string, { on: boolean; why: string }> = {
     on: false,
     why: 'helpers are already read off the transcript; this moves them to separate sessions',
   },
-  'air.asyncTasks': { on: false, why: 'background command lifecycle; see STATE.md' },
+  'air.asyncTasks': {
+    on: true,
+    why: 'a background command stays running on its step until it really finishes',
+  },
   'air.agentFileChangeReport': {
     on: false,
     why: 'spends a hidden extra model turn to list changed files; git already knows',

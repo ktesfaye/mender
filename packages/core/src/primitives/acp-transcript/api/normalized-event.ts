@@ -125,6 +125,8 @@ export type NormalizedEvent =
       inputSummary?: string;
       outputText?: string;
       terminalId?: string;
+      /** A command that carries on after the turn: its status is the command's own, not the call's. */
+      background?: boolean;
     }
   | {
       kind: 'plan';

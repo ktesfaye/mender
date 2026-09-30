@@ -18,7 +18,9 @@ export function clientCapabilities(canSpawnTerminal: boolean): ClientCapabilitie
     /* Opts in to Claude's ACP adapter's "AIR" `sessionFailure` extension: a
        typed usage/rate limit, overload, empty quota, or auth-required report
        instead of ordinary transcript prose. Unknown `_meta` is ignored by
-       every other provider, so this is safe to advertise unconditionally. */
-    _meta: { jetbrains: { air: { version: 1, capabilities: ['sessionFailure'] } } },
+       every other provider, so this is safe to advertise unconditionally.
+       `asyncTasks` is the lifecycle of a command left running in the
+       background; Claude's plugin folds it into the command's own step. */
+    _meta: { jetbrains: { air: { version: 1, capabilities: ['sessionFailure', 'asyncTasks'] } } },
   };
 }
