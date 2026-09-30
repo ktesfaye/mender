@@ -2934,6 +2934,17 @@ the test, since Claude Code's own config isn't touched by Mender's own data
 isolation — it was found and removed immediately after, and nothing further
 was left behind.
 
+Driven a second time on the actual task it's for: asked to open a browser,
+go to Gmail and find a flight for the weekend, it opened Arc, searched
+Gmail's own AI search, opened the right email and read back a real
+itinerary correctly. That run found a real bug: every click was landing at
+roughly double where the screenshot showed it, because the tool took
+screenshot pixels as if they were the screen's own points, and this
+machine's Retina display means those are not the same thing. Fixed by
+converting every coordinate through the display's own scale factor before
+it reaches `cliclick`, so a point read off a screenshot is now the point
+that actually gets clicked.
+
 ### The lanterns say one clear thing each (2026-09-29) — done
 
 A lantern is lit only when there is a reason to look. Working breathes and
