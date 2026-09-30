@@ -3094,3 +3094,14 @@ and come back the moment you walk out; the camera still flies when you switch
 projects. Driven in a dev instance: scrolling and dragging on the land behind
 an open session left it where it was, and after Escape the same moves panned
 and zoomed the island again.
+
+### Put away is per session, and nothing shows before it is used (2026-09-29) — done
+
+What is put away used to be one list for the whole village, saved to disk, so
+hiding what it did in one session hid it in every one after. Now it is kept per
+session for the sitting, and the rules alone stay village-wide. "What you
+asked" no longer stands as a bare heading before anything is said, and a left
+column with nothing in it gives the middle its width like the right already
+did. Driven in a dev instance: the changelog put away in one session, a second
+session started showed it, and the first still had it put away on walking back;
+"what you asked" appeared the moment the first thing was said.

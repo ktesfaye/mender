@@ -3,9 +3,11 @@
  *
  * Every part of a session's board but the middle can be put away, and every
  * rule between two parts can be dragged, the thing on either side taking the
- * room. None of that is a fact about any one session or project: it is a way
- * of reading, so it is one arrangement for the whole village, kept on this
- * machine and put back the next time it opens.
+ * room. Where the rules sit is a way of reading, so it is one arrangement for
+ * the whole village, kept on this machine and put back the next time it opens.
+ * What is put away is not: it is put away in the session it was put away in,
+ * for this sitting, and every other session still shows it once it has
+ * something in it.
  */
 
 /** The parts that can be put away. The middle is never one of them. */
@@ -21,7 +23,6 @@ export const PART_NAME: Record<Part, string> = {
 };
 
 export interface Arrangement {
-  hidden: Part[];
   /** The share of the page the left column takes, when it has been dragged. */
   asked?: number;
   /** The share of the page the right column takes, when it has been dragged. */
@@ -36,18 +37,26 @@ const KEY = 'mender.yard.arrangement';
 
 let now: Arrangement = load();
 
+/** What has been put away, by session, for this sitting only. */
+const away = new Map<string, Part[]>();
+let standing = '';
+
+/** The session whose board is being drawn, which is whose parts are put away. */
+export function standIn(session: string | undefined): void {
+  standing = session ?? '';
+}
+
 function load(): Arrangement {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Arrangement>;
     return {
-      hidden: Array.isArray(raw.hidden) ? raw.hidden.filter((one) => one in PART_NAME) : [],
       ...(typeof raw.asked === 'number' ? { asked: share(raw.asked) } : {}),
       ...(typeof raw.made === 'number' ? { made: share(raw.made) } : {}),
       ...(typeof raw.changelog === 'number' ? { changelog: raw.changelog } : {}),
       ...(typeof raw.now === 'number' ? { now: raw.now } : {}),
     };
   } catch {
-    return { hidden: [] };
+    return {};
   }
 }
 
@@ -74,16 +83,21 @@ export function save(): void {
   }
 }
 
+/** What is put away in the session being drawn. */
+export function putAwayHere(): Part[] {
+  return away.get(standing) ?? [];
+}
+
 export function hidden(part: Part): boolean {
-  return now.hidden.includes(part);
+  return putAwayHere().includes(part);
 }
 
 export function putAway(part: Part): void {
-  if (!hidden(part)) arrange({ hidden: [...now.hidden, part] });
+  if (!hidden(part)) away.set(standing, [...putAwayHere(), part]);
 }
 
 export function bringBack(part: Part): void {
-  arrange({ hidden: now.hidden.filter((one) => one !== part) });
+  away.set(standing, putAwayHere().filter((one) => one !== part));
 }
 
 /** Whether anything has been dragged away from where it starts. */
@@ -98,6 +112,6 @@ export function moved(): boolean {
 
 /** Every rule back where it started. What is put away stays put away. */
 export function unmove(): void {
-  now = { hidden: now.hidden };
+  now = {};
   save();
 }

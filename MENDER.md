@@ -207,8 +207,11 @@ in it goes entirely and the answer has its width. Every rule between two
 parts can be taken hold of, the columns sideways and the changelog's and the
 plan's up and down, and whatever is on either side takes the room. Nothing
 shows it until the pointer is on one: the rule warms, and the cursor says
-which way it goes. It is one arrangement for the whole village, kept on this
-machine. A question is never put away with the plan, since it is the one
+which way it goes. Where the rules sit is one arrangement for the whole
+village, kept on this machine; what is put away is put away in that session
+only, for this sitting, and a new one shows everything again. Nothing shows
+before it is in use: a column heading only goes up once there is something
+under it, and a side with nothing on it gives the answer its width. A question is never put away with the plan, since it is the one
 thing that stops the work until it is answered.
 
 The fire is the session. Lit is somebody working, banked is somebody who has

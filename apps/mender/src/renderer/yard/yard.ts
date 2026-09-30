@@ -27,7 +27,9 @@ import {
   moved,
   PART_NAME,
   putAway,
+  putAwayHere,
   save as keepArrangement,
+  standIn,
   unmove,
   type Part,
 } from './arrange';
@@ -409,7 +411,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   /* Where the wash comes down, which is the same whether or not there is a
      yard under it: from the gatepost's own column to the right edge. */
   function lay(): void {
-    const columns = layer.columns(rightEmpty(last));
+    const columns = layer.columns(rightEmpty(last), leftEmpty(last));
     const floor = window.innerHeight - MARGIN - RAIL_TALL - 60 - grown;
     scrim.place(
       columns.thinking.x - GUTTER / 2,
@@ -468,6 +470,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   function show(yard: Yard, moving = true): void {
     const before = drawn;
     last = yard;
+    standIn(yard.session?.id);
     const walkedIn =
       entering ||
       before?.project.id !== yard.project.id ||
@@ -519,7 +522,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     root.replaceChildren(covered);
     covered.replaceChildren();
     hung = yard.workspaces?.length ? SIGNS : 0;
-    const columns = layer.columns(rightEmpty(last));
+    const columns = layer.columns(rightEmpty(last), leftEmpty(last));
     /* Everything from under the header rule to above the line you write on.
        The columns live in here and the bands top and bottom do not. */
     const floor =
@@ -740,7 +743,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   function fly(text: string): void {
     const leaving = lastSaid;
     lastSaid = null;
-    const columns = layer.columns(rightEmpty(last));
+    /* Where the post will be once this is on it, even if it is the first. */
+    const columns = layer.columns(rightEmpty(last), hidden('asked'));
     if (!leaving || !same(leaving.text, text) || !last?.session) return;
     flight?.el.remove();
     const el = document.createElement('div');
@@ -942,7 +946,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const part = partAt(event.clientX, event.clientY);
     const offers: { said: string; run: () => void }[] = [];
     if (part) offers.push({ said: `put ${PART_NAME[part]} away`, run: () => putAway(part) });
-    for (const gone of arrangement().hidden) {
+    for (const gone of putAwayHere()) {
       offers.push({ said: `bring back ${PART_NAME[gone]}`, run: () => bringBack(gone) });
     }
     if (moved()) offers.push({ said: 'put the dividers back', run: unmove });
@@ -1412,9 +1416,9 @@ function asked(
         yard,
         floor,
         hidden('asked') || !yard.session?.notes.length,
-        hidden('asked')
+        hidden('asked') || !yard.session?.notes.length
       );
-  if (hidden('asked')) return;
+  if (hidden('asked') || !yard.session?.notes.length) return;
   region('asked', at, HEAD.label, under - 20);
   /* Clear air between the last of the post and the changelog's rule, rather
      than the notes running into it. */
@@ -1432,8 +1436,6 @@ function asked(
   const notes = yard.session?.notes ?? [];
   const [newest, ...older] = notes;
   root.appendChild(stays(label('what you asked', { left: at.x, top: HEAD.label }), 'label:asked'));
-  /* Nothing said yet is nothing nailed up, so no bare post, but the heading
-     stays: it is a session, and a session has these columns from the start. */
   if (!newest) {
     post.remove();
     return;
@@ -2212,6 +2214,19 @@ function thought(
    edit, scrolling, following the live end the way the answer does. At the
    foot of the column the yard itself: the fire, and everybody it sent out,
    placed by what they are doing rather than listed. */
+/**
+ * Whether the left column has nothing in it to draw: nothing said yet and no
+ * changelog, or whatever there is put away. It gives its room to the middle
+ * the same way an empty right column does.
+ */
+function leftEmpty(yard: Yard | undefined): boolean {
+  if (!yard) return false;
+  return (
+    (hidden('asked') || !yard.session?.notes.length) &&
+    (hidden('changelog') || !yard.versions?.length)
+  );
+}
+
 /**
  * Whether the right column has nothing in it to draw. Nothing is written over
  * nothing there, so an empty column gives its room to the middle rather than
