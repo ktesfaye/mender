@@ -15,6 +15,8 @@ export interface Walked {
   hand: Hand;
   /** Where calling them back has got to, if it has been pressed. */
   recall?: 'armed' | 'going' | 'refused' | 'done';
+  /** Whether sending them away has been pressed once and waits for the second. */
+  away?: 'armed' | 'going';
   /** Why calling them back did not work, when it did not. */
   because?: string;
   /** Claude's own record of them: every step, and what they came back with. */
@@ -30,7 +32,11 @@ export interface Walked {
 export function helper(walked: Walked): Row[] {
   const { hand } = walked;
   const rows: Row[] = [{ kind: 'prose', text: hand.said }, { kind: 'gap' }];
-  rows.push({ kind: 'line', text: standing(hand), tone: hand.wrong ? 'sore' : 'faded' });
+  rows.push({
+    kind: 'line',
+    text: hand.tokens ? `${standing(hand).replace(/\.$/, '')} · ${hand.tokens}` : standing(hand),
+    tone: hand.wrong ? 'sore' : 'faded',
+  });
   rows.push({ kind: 'gap' });
   rows.push({
     kind: 'line',
@@ -50,6 +56,7 @@ export function helper(walked: Walked): Row[] {
   /* Once pressed, what happened stays said, even after they are home. */
   if ((hand.where === 'out' && hand.call) || walked.recall)
     rows.push({ kind: 'gap' }, recalling(walked));
+  if (hand.call) rows.push(sendingAway(walked));
 
   /* While they are out the live steps are the ones to follow; once they are
      back, or after a restart has lost them, Claude's own record says it. */
@@ -126,4 +133,26 @@ function recalling(walked: Walked): Row {
     default:
       return { kind: 'entry', mark: '✗', text: 'call them back', tone: 'faded', pick: 'recall' };
   }
+}
+
+/**
+ * Taking them off the yard for good. Two presses, like anything that cannot be
+ * taken back, and the first says what it costs: a helper still out stops where
+ * they stand, and whichever way, they are not drawn again.
+ */
+function sendingAway(walked: Walked): Row {
+  if (walked.away === 'going')
+    return { kind: 'entry', mark: '✗', text: 'sending them away…', tone: 'faded' };
+  if (walked.away === 'armed')
+    return {
+      kind: 'entry',
+      mark: '✗',
+      text:
+        walked.hand.where === 'out'
+          ? 'press again — they stop where they are and leave the yard for good'
+          : 'press again — they leave the yard for good',
+      tone: 'sore',
+      pick: 'away!',
+    };
+  return { kind: 'entry', mark: '✗', text: 'send them away', tone: 'faded', pick: 'away' };
 }

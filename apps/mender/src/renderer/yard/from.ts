@@ -556,6 +556,7 @@ function handOf(errand: Errand): Hand {
     ...(errand.background ? { background: true } : {}),
     ...(errand.wrong ? { wrong: true } : {}),
     steps: stepsOf(errand.steps ?? []),
+    ...(errand.tokens ? { tokens: tokensSaid(errand.tokens) } : {}),
   };
 }
 
@@ -806,6 +807,13 @@ export function longFor(ms: number): string {
   const hours = minutes / 60;
   if (hours < 100) return `${Math.floor(hours)}h ${Math.floor(minutes % 60)}m`;
   return `${Math.floor(hours / 24)}d`;
+}
+
+/** A count of tokens, the way Claude Code says one: `850`, `45.2k`, `1.3m`. */
+function tokensSaid(n: number): string {
+  if (n < 1000) return `${n} tokens`;
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k tokens`;
+  return `${(n / 1_000_000).toFixed(1)}m tokens`;
 }
 
 /** A helper's steps read off Claude's own record, worded the way a session's are. */

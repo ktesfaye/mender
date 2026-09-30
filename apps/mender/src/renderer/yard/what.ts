@@ -303,6 +303,8 @@ export interface Hand {
   wrong?: boolean;
   /** What they were sent to do, in full. */
   said: string;
+  /** How many tokens they are working with, said short: `45k tokens`. */
+  tokens?: string;
   /** Everything they have done out there, read the same way a session's is. */
   steps: Step[];
 }

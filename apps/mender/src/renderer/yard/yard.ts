@@ -2940,7 +2940,7 @@ function standing(hand: Hand, i: number, wide: number, does: Doings): HTMLElemen
     { left: Math.round(wide / 2) - 10, top: 102, flip: false },
   ];
   const spot = out
-    ? { left: wide - 38 - (i % 2) * 16, top: 30 + (i % 3) * 28, flip: false }
+    ? { left: wide - 38 - (i % 2) * 16, top: 44 + (i % 3) * 24, flip: false }
     : (near[i % near.length] ?? near[0]!);
 
   const it = box({ left: spot.left, top: spot.top, width: 28, height: 54 });
@@ -2971,18 +2971,31 @@ function standing(hand: Hand, i: number, wide: number, does: Doings): HTMLElemen
       )
     );
     /* Named from their right-hand edge, since out in the dark is the right
-       of the patch and a name written rightward runs off it. */
+       of the patch and a name written rightward runs off it, and over their
+       head, since under their feet is where the fire's own name is. */
     const name = box(
-      { right: 0, top: 52, width: Math.min(220, spot.left + 20) },
+      { right: 0, top: -36, width: Math.min(220, spot.left + 20) },
       'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right'
     );
-    const said = pressing(`${hand.errand} · out ${hand.gone ?? ''}`.trim(), () =>
-      does.press(`helper:${hand.id}`)
-    );
+    const said = pressing(hand.errand, () => does.press(`helper:${hand.id}`));
     said.style.cssText += "font-family:'Courier Prime',monospace;font-size:11px";
     said.addEventListener('click', (event) => event.stopPropagation());
     name.appendChild(said);
     it.appendChild(name);
+    /* What they are costing sits on a line of its own under the name, so a
+       long errand never pushes it off the end. */
+    const cost = box(
+      { right: 0, top: -21, width: Math.min(220, spot.left + 20) },
+      'white-space:nowrap;text-align:right'
+    );
+    cost.appendChild(
+      exact(
+        [hand.tokens, `out ${hand.gone ?? ''}`.trim()].filter(Boolean).join(' · '),
+        11,
+        '#bfa476'
+      )
+    );
+    it.appendChild(cost);
   }
   return it;
 }

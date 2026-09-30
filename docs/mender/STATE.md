@@ -319,6 +319,11 @@ told so in a note only the agent sees, and what comes back is written on the
 helper's board as it arrives. Every board laid over the yard also says "close"
 in gold at its top right now, because Escape and a click off it were the only
 ways out and neither could be seen. Driven in the running app.
+A helper can be sent away: two presses on their board stop them if they are
+still working and take them off the yard for good, kept across a restart. And
+while one is out, how many tokens they are working with is written over their
+head in the yard and on their board, counted the way Claude Code counts a
+helper's and read off Claude's own record of them, so it climbs as they work.
 
 Two things are cut on purpose. A resource link never arrives: neither CLI ever
 sends one back, both of them turn a file reference into ordinary writing on the

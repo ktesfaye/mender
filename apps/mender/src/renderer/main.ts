@@ -1663,7 +1663,8 @@ async function boot(): Promise<void> {
                     going: Boolean(now.session?.live),
                   };
                 /* Once the reply has landed, their own record has the new answer. */
-                if (was !== false && walkedUp.reply && !walkedUp.reply.going) void readTrail(again.id);
+                if (was !== false && walkedUp.reply && !walkedUp.reply.going)
+                  void readTrail(again.id);
               }
               rewrite(helper(walkedUp));
               if (home) void readTrail(again.id);
@@ -4240,9 +4241,7 @@ async function boot(): Promise<void> {
       walkedUp = {
         ...walkedUp,
         trail:
-          got.success && got.data
-            ? { ...got.data, steps: stepsFromTrail(got.data.steps) }
-            : null,
+          got.success && got.data ? { ...got.data, steps: stepsFromTrail(got.data.steps) } : null,
       };
       rewrite(helper(walkedUp));
     };
@@ -4258,6 +4257,31 @@ async function boot(): Promise<void> {
         walkedUp = { hand };
         wood(helper(walkedUp));
         void readTrail(hand.id);
+        return;
+      }
+      if (pick === 'away' && walkedUp) {
+        walkedUp = { ...walkedUp, away: 'armed' };
+        rewrite(helper(walkedUp));
+        return;
+      }
+      if (pick === 'away!' && walkedUp) {
+        const task = inside;
+        const call = walkedUp.hand.call;
+        if (!task || !call) return;
+        walkedUp = { ...walkedUp, away: 'going' };
+        rewrite(helper(walkedUp));
+        void client.agents.sendAway({ task: task.id, call }, { timeoutMs: 15000 }).then((done) => {
+          if (!done.success) {
+            say(done.error.kind === 'refused' ? done.error.because : 'they would not go.', 6000);
+            if (walkedUp) {
+              walkedUp = { ...walkedUp };
+              delete walkedUp.away;
+              rewrite(helper(walkedUp));
+            }
+            return;
+          }
+          dismiss();
+        });
         return;
       }
       if (pick === 'recall' && walkedUp) {
@@ -4899,6 +4923,12 @@ async function boot(): Promise<void> {
           return;
         }
         if (walkedUp) {
+          if (walkedUp.away === 'armed') {
+            walkedUp = { ...walkedUp };
+            delete walkedUp.away;
+            rewrite(helper(walkedUp));
+            return;
+          }
           if (walkedUp.recall === 'armed' || walkedUp.recall === 'refused') {
             walkedUp = { hand: walkedUp.hand };
             rewrite(helper(walkedUp));

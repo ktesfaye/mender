@@ -42,7 +42,14 @@ import type {
   Wrote,
 } from '@shared/agents';
 import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
-import { helperTrail, type HelperTrail } from './helper-trail';
+import {
+  helperTrail,
+  holdAway,
+  isAway,
+  sendAway,
+  tokensOf,
+  type HelperTrail,
+} from './helper-trail';
 import { kept, madeIn, stillThere } from './made';
 
 /**
@@ -177,6 +184,11 @@ export interface Agents {
     task: string,
     call: string
   ): Promise<{ success: true; data: { stopped: boolean } } | { success: false; error: TellError }>;
+  /** Stop a helper if they are still out, and take them off the yard for good. */
+  sendAway(
+    task: string,
+    call: string
+  ): Promise<{ success: true; data: void } | { success: false; error: TellError }>;
   /** What a helper did and said, read off Claude's own record of them. */
   helperTrail(
     task: string,
@@ -237,6 +249,7 @@ const KEY = 'agents';
 const DRAFTS_KEY = 'drafts';
 const MADE_KEY = 'made';
 const RECAPS_KEY = 'recaps';
+const AWAY_KEY = 'helpersAway';
 
 export function createAgents(
   runtimes: MenderRuntimes,
@@ -261,6 +274,11 @@ export function createAgents(
     if (held.success && held.data && typeof held.data === 'object') {
       lodgers = held.data as unknown as Record<string, string>;
     }
+    const heldAway = await store.get(AWAY_KEY);
+    holdAway(
+      heldAway.success && Array.isArray(heldAway.data) ? (heldAway.data as string[]) : [],
+      (calls) => void store.set(AWAY_KEY, calls as unknown as never)
+    );
     const heldDrafts = await store.get(DRAFTS_KEY);
     if (heldDrafts.success && heldDrafts.data && typeof heldDrafts.data === 'object') {
       drafts = heldDrafts.data as unknown as Record<string, string>;
@@ -1184,6 +1202,21 @@ export function createAgents(
         : { success: false, error: { kind: 'refused', because: whatItSaid(done.error) } };
     },
 
+    async sendAway(task, call) {
+      await loaded;
+      const house = houses.get(task);
+      const out = house
+        ? peek(house.state).told.errands.find((one) => one.call === call && one.running)
+        : undefined;
+      const conversation = lodgers[task];
+      if (out && conversation)
+        await runtimes.acp.stopSubagent({ conversationId: conversation, toolCallId: call });
+      sendAway(call);
+      log.info('agents: sent a helper away', { area: 'agents', task, call, wasOut: !!out });
+      house?.again();
+      return { success: true, data: undefined };
+    },
+
     async helperTrail(task, call) {
       await loaded;
       const conversation = lodgers[task];
@@ -1564,6 +1597,11 @@ class House {
     if (this.conversation) this.publish();
   }
 
+  /** Say it all again, for something that changed outside the transcript. */
+  again(): void {
+    this.publish();
+  }
+
   private publish(): void {
     const was = peek(this.state);
     const next = this.read();
@@ -1648,7 +1686,10 @@ class House {
       doing: this.trouble ?? (failure ? failureDoing(failure) : doingOf(mood, this.live)),
       lines,
       told: {
-        ...toldOf(turns, this.where(), (id, over) => this.time(id, over), clockOf(this.dated)),
+        ...helpersIn(
+          toldOf(turns, this.where(), (id, over) => this.time(id, over), clockOf(this.dated)),
+          this.claude()
+        ),
         ...(this.hushed && this.live?.id === this.hushed && !this.live.outcome
           ? { stopping: true }
           : {}),
@@ -2146,6 +2187,19 @@ const ASIDE_TO_AGENT = /\s*\[mender, for the agent only:[\s\S]*?\]\s*$/;
 /** How the runtime names a message it handed into a turn already running. */
 const STEERED = /-steer-/;
 
+/** The helpers still on the yard, each with how many tokens they are working with. */
+function helpersIn<T extends { errands: Errand[] }>(told: T, session: string | null): T {
+  return {
+    ...told,
+    errands: told.errands
+      .filter((one) => !isAway(one.call))
+      .map((one) => {
+        const tokens = tokensOf(session, one.call);
+        return tokens === undefined ? one : { ...one, tokens };
+      }),
+  };
+}
+
 function flatten(turns: readonly TranscriptTurn[]): Flat[] {
   const flat: Flat[] = [];
   turns.forEach((turn, at) => {
@@ -2339,7 +2393,7 @@ function toldFrom(
       call: node.toolCallId,
       ...(node.background ? { background: true } : {}),
       ...(node.status === 'error' ? { wrong: true } : {}),
-      steps: steps.slice(-KEPT),
+      steps: steps.filter((step) => !/subagenthandback/i.test(step.did)).slice(-KEPT),
     });
     return;
   }

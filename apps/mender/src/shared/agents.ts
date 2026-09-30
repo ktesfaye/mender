@@ -277,6 +277,8 @@ export const errandSchema = z.object({
   wrong: z.boolean().optional(),
   /** Everything they have done out there, oldest first, the same as a session's. */
   steps: z.array(deedSchema).default([]),
+  /** How many tokens they are working with, as Claude Code counts a helper's. */
+  tokens: z.number().optional(),
 });
 export type Errand = z.infer<typeof errandSchema>;
 
@@ -694,6 +696,12 @@ export const agentsContract = defineContract({
   recall: fallible({
     input: z.object({ task: z.string(), call: z.string() }),
     data: z.object({ stopped: z.boolean() }),
+    error: agentErrorSchema,
+  }),
+  /** Stop a helper if they are still out, and take them off the yard for good. */
+  sendAway: fallible({
+    input: z.object({ task: z.string(), call: z.string() }),
+    data: z.void(),
     error: agentErrorSchema,
   }),
   /** Everything a helper did and said, off Claude's own record of them. */

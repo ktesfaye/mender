@@ -1,3 +1,4 @@
+import { closeSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -170,4 +171,126 @@ function deedOf(
 
 function lower(said: string): string {
   return said.charAt(0).toLowerCase() + said.slice(1);
+}
+
+/**
+ * How many tokens a helper is working with, read the way Claude Code itself
+ * counts one: everything in play on their latest turn, what they were given
+ * plus what they wrote. Read off the tail of their record and kept until the
+ * file grows, since the yard asks every time anything in the session moves.
+ */
+export function tokensOf(session: string | null, call: string | undefined): number | undefined {
+  if (!session || !call) return undefined;
+  const file = fileFor(session, call);
+  if (!file) return undefined;
+  let size: number;
+  try {
+    size = statSync(file).size;
+  } catch {
+    return undefined;
+  }
+  const held = counted.get(file);
+  if (held && held.size === size) return held.tokens;
+  const tokens = lastUsage(file, size);
+  counted.set(file, { size, tokens });
+  return tokens;
+}
+
+const counted = new Map<string, { size: number; tokens: number | undefined }>();
+const files = new Map<string, string>();
+const looked = new Map<string, number>();
+
+/** Which record is which helper's, found once and remembered. */
+function fileFor(session: string, call: string): string | undefined {
+  const known = files.get(call);
+  if (known) return known;
+  /* A helper just sent may not have written anything yet; ask again soon. */
+  if (Date.now() - (looked.get(session) ?? 0) < 3000) return undefined;
+  looked.set(session, Date.now());
+  let places: string[];
+  try {
+    places = readdirSync(PROJECTS);
+  } catch {
+    return undefined;
+  }
+  for (const place of places) {
+    const dir = join(PROJECTS, place, session, 'subagents');
+    let names: string[];
+    try {
+      names = readdirSync(dir);
+    } catch {
+      continue;
+    }
+    for (const name of names) {
+      if (!name.endsWith('.meta.json')) continue;
+      try {
+        const meta = JSON.parse(readFileSync(join(dir, name), 'utf8')) as { toolUseId?: unknown };
+        if (typeof meta.toolUseId === 'string')
+          files.set(meta.toolUseId, join(dir, name.replace(/\.meta\.json$/, '.jsonl')));
+      } catch {
+        continue;
+      }
+    }
+  }
+  return files.get(call);
+}
+
+function lastUsage(file: string, size: number): number | undefined {
+  const span = Math.min(size, 512 * 1024);
+  const buffer = Buffer.alloc(span);
+  let fd: number | undefined;
+  try {
+    fd = openSync(file, 'r');
+    readSync(fd, buffer, 0, span, size - span);
+  } catch {
+    return undefined;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+  const lines = buffer.toString('utf8').split('\n');
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]!;
+    if (!line.includes('"usage"')) continue;
+    try {
+      const entry = JSON.parse(line) as {
+        type?: string;
+        message?: { usage?: Record<string, unknown> };
+      };
+      const usage = entry.type === 'assistant' ? entry.message?.usage : undefined;
+      if (!usage) continue;
+      const n = (key: string): number =>
+        typeof usage[key] === 'number' ? (usage[key] as number) : 0;
+      return (
+        n('input_tokens') +
+        n('cache_creation_input_tokens') +
+        n('cache_read_input_tokens') +
+        n('output_tokens')
+      );
+    } catch {
+      continue;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The helpers you have sent away, by the tool call that sent them. They are
+ * gone from the yard for good: stopped if they were still working, and never
+ * drawn again, whatever the session replays.
+ */
+const away = new Set<string>();
+let keepAway: (calls: string[]) => void = () => {};
+
+export function holdAway(calls: readonly string[], save: (calls: string[]) => void): void {
+  for (const call of calls) away.add(call);
+  keepAway = save;
+}
+
+export function sendAway(call: string): void {
+  away.add(call);
+  keepAway([...away]);
+}
+
+export function isAway(call: string | undefined): boolean {
+  return Boolean(call && away.has(call));
 }
