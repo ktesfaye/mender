@@ -154,7 +154,7 @@ export interface Agents {
   glances(): Cell<Record<string, Glance>>;
   /** Start whoever lives in there, so they can say what they work with. */
   wake(task: string): Promise<Told>;
-  tell(task: string, text: string, carrying?: readonly Carried[]): Promise<Told>;
+  tell(task: string, text: string, carrying?: readonly Carried[], hidden?: string): Promise<Told>;
   /** Start a brand-new conversation already pointed at a foreign session
       id — see `doTell` for the ordinary path this is a stripped-down
       sibling of. */
@@ -586,7 +586,8 @@ export function createAgents(
   const doTell = async (
     task: string,
     text: string,
-    carrying?: readonly Carried[]
+    carrying?: readonly Carried[],
+    hidden?: string
   ): Promise<Told> => {
     const said = text.trim();
     // A picture handed over without a word is still something said.
@@ -661,6 +662,7 @@ export function createAgents(
         promptId: crypto.randomUUID(),
         prompt: {
           text: said,
+          ...(hidden ? { hiddenContext: hidden } : {}),
           ...(carrying?.length
             ? {
                 attachments: carrying.map((each) => ({
@@ -1871,7 +1873,9 @@ function linesOf(turns: readonly TranscriptTurn[], root: string | undefined): Li
     let said = false;
     for (const item of turn.items) {
       if (item.kind === 'message') {
-        const text = item.text.trim();
+        /* What the village said to the agent alongside what you said is never
+           read back as yours. */
+        const text = item.text.replace(ASIDE_TO_AGENT, '').trim();
         /* What was handed over with it. A picture cannot be written on the
            wood, so what stays in the transcript is that you gave them one. */
         const handed = item.attachments?.length
@@ -2076,6 +2080,9 @@ type Flat = (
 /** How Claude's own transcript writes down a turn you stopped. */
 const INTERRUPTED = /^\[Request interrupted by user[^\]]*\]$/;
 
+/** A note the village rides alongside what you said, marked so it can come back off. */
+const ASIDE_TO_AGENT = /\s*\[mender, for the agent only:[\s\S]*?\]\s*$/;
+
 function flatten(turns: readonly TranscriptTurn[]): Flat[] {
   const flat: Flat[] = [];
   turns.forEach((turn, at) => {
@@ -2084,7 +2091,7 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
     let saidLast = false;
     for (const item of turn.items) {
       if (item.kind === 'message') {
-        const text = item.text.trim();
+        const text = item.text.replace(ASIDE_TO_AGENT, '').trim();
         const pictures = item.role === 'user' ? (item.attachments?.length ?? 0) : 0;
         if (!text && !pictures) continue;
         /* Claude's own transcript writes a stop down as if you had said it,
@@ -2255,8 +2262,12 @@ function toldFrom(
        into their own list and nowhere else. The cart is still the session's:
        a file a helper wrote is a file this session wrote. */
     const steps: Deed[] = [];
-    for (const child of node.children ?? [])
+    for (const child of node.children ?? []) {
+      /* How a helper hands its answer back is plumbing, not something it did. */
+      if ('name' in child && child.name === 'SubagentHandback') continue;
+      if (child.kind !== 'tool-group' && child.title === 'SubagentHandback') continue;
       toldFrom(child, over, root, stamp, earliest, steps, errands, written);
+    }
     errands.push({
       id: node.id,
       errand: node.inputSummary ?? node.name,

@@ -248,6 +248,12 @@ async function boot(): Promise<void> {
           void begin();
           return;
         }
+        /* Standing in front of somebody it sent out, what is written is for
+           them, and the session is what carries it there. */
+        if (walkedUp) {
+          void tellHelper(text);
+          return;
+        }
         void tell(text);
       },
       leave: () => void backOut(),
@@ -1644,6 +1650,21 @@ async function boot(): Promise<void> {
             if (again && open === aim) {
               const home = walkedUp.hand.where === 'out' && again.where !== 'out';
               walkedUp = { ...walkedUp, hand: again };
+              if (walkedUp.told?.length) {
+                const spoken = (now.session?.thoughts ?? []).filter((one) => !one.quiet);
+                const from = walkedUp.since
+                  ? spoken.findIndex((one) => one.id === walkedUp?.since) + 1
+                  : 0;
+                const last = spoken.slice(from).at(-1);
+                const was = walkedUp.reply?.going;
+                if (last)
+                  walkedUp.reply = {
+                    said: last.said,
+                    going: Boolean(now.session?.live),
+                  };
+                /* Once the reply has landed, their own record has the new answer. */
+                if (was !== false && walkedUp.reply && !walkedUp.reply.going) void readTrail(again.id);
+              }
               rewrite(helper(walkedUp));
               if (home) void readTrail(again.id);
             }
@@ -4162,6 +4183,49 @@ async function boot(): Promise<void> {
       rewrite(helper(walkedUp));
     };
 
+    /**
+     * Something said to a helper rather than to the session.
+     *
+     * Nothing on this machine can reach a subagent directly: the session that
+     * sent them is the only one that can, with Claude's own SendMessage. So it
+     * goes to the session, with a note only the session sees saying who it is
+     * for, and whatever comes back is the session's next answer.
+     */
+    const tellHelper = async (text: string): Promise<void> => {
+      const task = inside;
+      const walked = walkedUp;
+      const said = text.trim();
+      if (!task || !walked || !said) return;
+      const who = walked.trail?.agentId ? ` (agent id ${walked.trail.agentId})` : '';
+      const hidden =
+        `\n\n[mender, for the agent only: that message is for the helper you sent to ` +
+        `"${walked.hand.said}"${who}. Pass it to them with SendMessage, word for word, then ` +
+        'tell me what they said back. If they cannot be reached any more, say so plainly.]';
+      const visible = `to the helper sent to ${walked.hand.errand}: ${said}`;
+      const spoken = watching?.yard().session?.thoughts.filter((one) => !one.quiet) ?? [];
+      const since = spoken.at(-1)?.id;
+      /* Said, not half-written any more. */
+      const pending = draftTimers.get(task.id);
+      if (pending) clearTimeout(pending);
+      draftTimers.delete(task.id);
+      drafts.delete(task.id);
+      void client.agents.setDraft({ task: task.id, text: '' });
+      walkedUp = {
+        ...walked,
+        told: [...(walked.told ?? []), said],
+        ...(since ? { since } : {}),
+      };
+      delete walkedUp.reply;
+      rewrite(helper(walkedUp));
+      const heard = await client.agents.tell(
+        { task: task.id, text: visible, hidden },
+        { timeoutMs: 0 }
+      );
+      if (!heard.success) {
+        say(heard.error.kind === 'refused' ? heard.error.because : 'nobody heard that.', 6000);
+      }
+    };
+
     /** Claude's own record of a helper, read once they are walked up to and
         again when they come back, since that is when the answer lands. */
     const readTrail = async (id: string): Promise<void> => {
@@ -4184,6 +4248,10 @@ async function boot(): Promise<void> {
     };
 
     const press = (pick: string): void => {
+      if (pick === 'close') {
+        dismiss();
+        return;
+      }
       if (pick.startsWith('helper:')) {
         const hand = watching?.yard().session?.agents.find((one) => one.id === pick.slice(7));
         if (!hand) return;

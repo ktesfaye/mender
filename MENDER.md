@@ -197,7 +197,10 @@ following as they take more. While they are out, "call them back" stops that
 one and nobody else, in the same two presses anything irreversible takes: the
 session that sent them keeps going, and so does anybody else it sent, and it
 hears that this one came back without an answer. They come home at once,
-whether they were sent to be waited for or sent off on their own.
+whether they were sent to be waited for or sent off on their own. And while
+their board is open the line is theirs: what is written there goes to them,
+carried by the session that sent them, and what they say back is written on
+their board as it comes.
 
 **Everything but the middle can be put away, and every rule can be moved.**
 Right-clicking what you asked, the changelog, what it made, the plan or what it did offers

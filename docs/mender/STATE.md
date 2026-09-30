@@ -301,6 +301,12 @@ still working; it comes home now. Driven in the running app, both kinds. A finis
 helper's board after a restart used to say nothing came back, because the
 protocol never replays what a helper did; it is read off Claude's own record of
 them now, steps and the answer they came back with.
+And a helper can be talked to. With their board open, what is written on the
+line goes to them: the session carries it there with Claude's own SendMessage,
+told so in a note only the agent sees, and what comes back is written on the
+helper's board as it arrives. Every board laid over the yard also says "close"
+in gold at its top right now, because Escape and a click off it were the only
+ways out and neither could be seen. Driven in the running app.
 
 Two things are cut on purpose. A resource link never arrives: neither CLI ever
 sends one back, both of them turn a file reference into ordinary writing on the

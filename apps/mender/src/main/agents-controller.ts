@@ -26,9 +26,12 @@ export function createAgentsController(
       const started = await tuiSessions.open(task);
       return started.success
         ? { success: true as const, data: undefined }
-        : { success: false as const, error: { kind: 'refused' as const, because: started.because } };
+        : {
+            success: false as const,
+            error: { kind: 'refused' as const, because: started.because },
+          };
     },
-    tell: ({ task, text, carrying }) => agents.tell(task, text, carrying),
+    tell: ({ task, text, carrying, hidden }) => agents.tell(task, text, carrying, hidden),
     resume: ({ task, providerSessionId }) => agents.resume(task, providerSessionId),
     carry: ({ task }, file) => agents.carry(task, file),
     putDown: ({ task, id }) => agents.putDown(task, id),

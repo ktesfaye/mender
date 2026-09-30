@@ -612,6 +612,8 @@ export const agentsContract = defineContract({
       text: z.string(),
       /** Whatever was picked up off the wood, handed over with it. */
       carrying: z.array(carriedSchema).optional(),
+      /** Said to the agent alongside, and never shown back as what you said. */
+      hidden: z.string().optional(),
     }),
     data: z.void(),
     error: agentErrorSchema,
@@ -699,6 +701,7 @@ export const agentsContract = defineContract({
           })
         ),
         answer: z.string().optional(),
+        agentId: z.string().optional(),
       })
       .nullable(),
     error: agentErrorSchema,

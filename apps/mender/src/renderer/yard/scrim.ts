@@ -17,7 +17,7 @@
  */
 
 import type { Row } from '../board/row';
-import { trail as trailOf } from './press';
+import { pressing, trail as trailOf } from './press';
 import { makeRows, type Written } from './rows';
 import { box, exact, rule } from './write';
 
@@ -62,7 +62,13 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
   root.appendChild(head);
   const way = box({}, 'position:relative');
   const meta = box({}, 'position:relative');
-  head.append(way, meta);
+  /* Escape and a click off it were the only ways out, and neither can be
+     seen. The way out is written where anybody looks for it. */
+  const shut = pressing('close ✕', () => press('close'));
+  shut.style.cssText += "font-family:'Courier Prime',monospace;font-size:13px";
+  const right = box({}, 'position:relative;display:flex;align-items:baseline;gap:24px');
+  right.append(meta, shut);
+  head.append(way, right);
   const across = rule({ left: 32, right: 32, height: 2 });
   across.style.position = 'relative';
   across.style.margin = '12px 0 0';

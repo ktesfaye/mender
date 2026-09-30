@@ -20,6 +20,8 @@ export interface HelperTrail {
   steps: { id: string; did: string; why?: string; tool: string; wrong?: boolean }[];
   /** The last thing they said, which is what they came back with. */
   answer?: string;
+  /** Claude's own name for them, which is what the session reaches them by. */
+  agentId?: string;
 }
 
 const PROJECTS = join(homedir(), '.claude', 'projects');
@@ -31,7 +33,8 @@ export async function helperTrail(
 ): Promise<HelperTrail | null> {
   const file = await find(session, call);
   if (!file) return null;
-  return read(await readFile(file, 'utf8'), root);
+  const agentId = /agent-([^/]+)\.jsonl$/.exec(file)?.[1];
+  return { ...read(await readFile(file, 'utf8'), root), ...(agentId ? { agentId } : {}) };
 }
 
 async function find(session: string, call: string): Promise<string | null> {

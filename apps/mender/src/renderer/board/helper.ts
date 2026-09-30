@@ -18,13 +18,34 @@ export interface Walked {
   /** Why calling them back did not work, when it did not. */
   because?: string;
   /** Claude's own record of them: every step, and what they came back with. */
-  trail?: { prompt?: string; steps: Step[]; answer?: string } | null;
+  trail?: { prompt?: string; steps: Step[]; answer?: string; agentId?: string } | null;
+  /** What you have said to them from here, through the session. */
+  told?: string[];
+  /** The last thing the session said before that, so what comes after is the reply. */
+  since?: string;
+  /** What came back, as the session said it, and whether it is still coming. */
+  reply?: { said: string; going: boolean };
 }
 
 export function helper(walked: Walked): Row[] {
   const { hand } = walked;
   const rows: Row[] = [{ kind: 'prose', text: hand.said }, { kind: 'gap' }];
   rows.push({ kind: 'line', text: standing(hand), tone: hand.wrong ? 'sore' : 'faded' });
+  rows.push({ kind: 'gap' });
+  rows.push({
+    kind: 'line',
+    text: 'what you write on the line now goes to them, passed on by the session.',
+    tone: 'faded',
+  });
+  for (const said of walked.told ?? []) {
+    rows.push({ kind: 'entry', mark: '→', text: `you told them: ${said}`, tone: 'ink' });
+  }
+  if (walked.told?.length) {
+    rows.push({ kind: 'gap' }, { kind: 'heading', text: 'what came back' });
+    if (walked.reply?.said) rows.push(...saying(walked.reply.said, undefined, 'ink'));
+    if (!walked.reply?.said || walked.reply.going)
+      rows.push({ kind: 'line', text: 'the session is passing it on…', tone: 'faded' });
+  }
 
   /* Once pressed, what happened stays said, even after they are home. */
   if ((hand.where === 'out' && hand.call) || walked.recall)
@@ -52,7 +73,9 @@ export function helper(walked: Walked): Row[] {
           ? 'nothing to show from out there yet.'
           : walked.trail === undefined
             ? 'reading what they did…'
-            : 'nothing they did out there was kept.',
+            : walked.trail?.answer
+              ? 'they answered straight off, without needing to do anything.'
+              : 'nothing they did out there was kept.',
       tone: 'faded',
     });
     return rows;
