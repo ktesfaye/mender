@@ -314,7 +314,8 @@ export class Atmosphere {
 
   /**
    * How long since each district's project was last committed to, and so how
-   * overgrown it is: nothing under a week, all of it after two months.
+   * overgrown it is: nothing for a few days, plain after a week, all of it
+   * after four.
    */
   setAges(byDistrict: Map<string, number>): void {
     const cells = new Map<string, number>();
@@ -323,7 +324,10 @@ export class Atmosphere {
       const last = byDistrict.get(district.id);
       if (last === undefined) continue;
       const days = (now - last) / 86_400_000;
-      const age = Math.max(0, Math.min(1, (days - 7) / 53));
+      /* Fast at first and then slower: a few days off is nothing, a week is
+         plain to see from the water, a fortnight is well gone, and four
+         weeks is as overgrown as it gets. */
+      const age = Math.sqrt(Math.max(0, Math.min(1, (days - 3) / 25)));
       if (age <= 0) continue;
       for (const [x, y0, y1] of district.cells) {
         for (let y = y0; y <= y1; y++) cells.set(`${x},${y}`, age);

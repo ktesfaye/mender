@@ -1110,10 +1110,11 @@ project's face reads from the water at any hour.
 
 **And a district nobody has committed to grows over.** How long since a
 project's last commit on any of its own branches is read from git, not from
-anything said in the village: under a week it is as he drew it; after that its
-grass dries toward straw, its colours fade, moss creeps over roofs and paths in
-clumps and the kit's own weeds and brush come up through it, all of it the
-longer it has been, until two months on it is overgrown.
+anything said in the village: for a few days it is as he drew it; then it goes
+fast, plain to see from the water after a week, its grass drying toward straw,
+its colours fading, moss creeping over roofs and paths in clumps and the kit's
+own weeds and brush coming up through it, and four weeks on it is as overgrown
+as it gets.
 
 **None of it is allowed to cost the battery.** All of it moves only on frames the
 screen is actually going to show and only near the view; behind another window it
