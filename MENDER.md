@@ -782,7 +782,7 @@ it would mean written quietly under it, and the one the agent favours
 marked "recommended" after its name rather than inside it. The answers are rows, each with
 a ring, or a box when several can be ticked, and the keyboard works it
 wherever it happens to be while nothing is written on the line: the arrows
-walk a light over the rows, return picks or ticks the one it is on, a number
+walk a light over the rows, return or space picks or ticks the one it is on, a number
 picks that one outright, and tab sends whatever is ticked. The last row is
 "something else", for writing your own answer on the line, and writing there
 does the same without pressing it. What you can do with the answers is never

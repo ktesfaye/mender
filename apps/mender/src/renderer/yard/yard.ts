@@ -2407,7 +2407,9 @@ export function askKey(
     does.answer(answer.id, answer.requestId);
     return true;
   };
-  if (event.key === 'Enter') return pick(at) || true;
+  /* Space ticks the answer under the light, the way a list of boxes does
+     everywhere else; return does the same. */
+  if (event.key === 'Enter' || event.key === ' ') return pick(at) || true;
   /* Tab sends whatever is ticked, so a question that takes several is never
      a walk down past every answer to reach the line that sends them. */
   if (event.key === 'Tab' && !event.shiftKey) {
@@ -2550,7 +2552,7 @@ function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
   how.textContent = reviewing
     ? '↑ ↓ to move · return to change one or send'
     : several
-      ? '↑ ↓ to move · return ticks · tab sends · or write your own below'
+      ? '↑ ↓ to move · space ticks · tab sends · or write your own below'
       : '↑ ↓ to move · return picks · or write your own below';
   doings.appendChild(how);
   it.appendChild(doings);
