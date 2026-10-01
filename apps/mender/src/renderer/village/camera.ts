@@ -205,15 +205,47 @@ export function holdToIsland(viewport: Viewport, island: Extent): void {
   );
   floor = Math.min(1, fit);
   viewport.clampZoom({ minScale: floor, maxScale: RUNGS[RUNGS.length - 1] });
-  const margin = 160;
-  viewport.clamp({
-    left: island.x - margin,
-    right: island.x + island.width + margin,
-    top: island.y - margin,
-    bottom: island.y + island.height + margin,
-    underflow: 'center',
-  });
+  bounds = {
+    left: island.x - MARGIN,
+    right: island.x + island.width + MARGIN,
+    top: island.y - MARGIN,
+    bottom: island.y + island.height + MARGIN,
+  };
+  if (!keeping) {
+    keeping = true;
+    /* Checked after every frame the camera moves on, its own clamp being no
+       use here: it measures against a fixed world size rather than the island,
+       and with the whole view wider than the land it shoved the island hard
+       against one edge instead of centring it. */
+    viewport.on('frame-end', () => keepOn(viewport));
+  }
   if (viewport.scale.x < floor) viewport.setZoom(floor, true);
+}
+
+/** How much sea the camera may show past the island's edge, in world pixels. */
+const MARGIN = 160;
+let bounds: { left: number; right: number; top: number; bottom: number } | null = null;
+let keeping = false;
+
+/**
+ * Pull the view back over the island: centred on it along any axis where the
+ * view is wider than the land and its margin, and otherwise not past either
+ * edge.
+ */
+function keepOn(viewport: Viewport): void {
+  const box = bounds;
+  if (!box) return;
+  const width = viewport.worldScreenWidth;
+  const height = viewport.worldScreenHeight;
+  const centre = viewport.center;
+  let x = centre.x;
+  let y = centre.y;
+  if (width >= box.right - box.left) x = (box.left + box.right) / 2;
+  else x = Math.min(Math.max(x, box.left + width / 2), box.right - width / 2);
+  if (height >= box.bottom - box.top) y = (box.top + box.bottom) / 2;
+  else y = Math.min(Math.max(y, box.top + height / 2), box.bottom - height / 2);
+  if (Math.abs(x - centre.x) < 0.01 && Math.abs(y - centre.y) < 0.01) return;
+  viewport.moveCenter(x, y);
 }
 
 /**
