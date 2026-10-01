@@ -137,7 +137,6 @@ const SAYS: Record<Posture, string> = {
   resting: '#7d6a50',
 };
 
-
 /** The light a lantern throws round itself, by what it is saying: the colour
     and how strong. Idle, broken and still being set up throw none. */
 const HALO: Partial<Record<Posture, [string, number]>> = {
@@ -206,6 +205,8 @@ export interface Standing {
   readonly open: boolean;
   /** An arrow or a page key that nothing nearer wanted. */
   scrolled(key: string): boolean;
+  /** A key for the question at the gate, wherever the keyboard is; true if it took it. */
+  answerKey(event: KeyboardEvent): boolean;
   /** Whether something written on covers that point of the window. */
   covers(x: number, y: number): boolean;
   /** Where the keyboard is, for whoever is listening to it. */
@@ -337,6 +338,10 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   /* Walk and press it by key, before anything else hears about the key: the
      line is where your hands are and this is what the line has open. */
   line.onKey((event) => {
+    /* A question up at the gate takes the arrows, return and the numbers
+       while the line is empty: you are answering it, not writing. */
+    if (menu.root.style.display === 'none' && askKey(last?.asking, line.written(), event, does))
+      return true;
     /* Shift-Tab turns the session to its next mode, as it does in Claude
        Code, whatever is on the line and whether or not a list is open. */
     if (event.key === 'Tab' && event.shiftKey && !event.metaKey && !event.ctrlKey) {
@@ -1052,6 +1057,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       return scrim.up;
     },
     scrolled: (key) => scrim.scrolled(key),
+    answerKey: (event) => askKey(last?.asking, line.written(), event, does),
     /* WHILE YOU ARE IN A YARD, THE YARD HAS THE SCREEN.
      *
      * The village keeps living behind it, though the camera is not yours, and
@@ -2339,6 +2345,85 @@ const STEP: Record<string, string> = {
  * press by hand and not by key is only half there and the other way round is
  * no better.
  */
+/**
+ * Where the keyboard is standing on the question up at the gate.
+ *
+ * The question is answered from the keyboard as much as by hand, wherever the
+ * keyboard happens to be: the arrows walk a highlight over everything that
+ * can be pressed, return presses what it is on, and a number presses that
+ * answer outright. It is kept per question, so moving on starts the
+ * highlight at the top of the next one, or on "send it" at the check.
+ */
+let askFocus = { key: '', at: 0 };
+
+function askKeyOf(asking: Ask): string {
+  return `${asking.said}|${asking.answers.map((one) => one.id).join(',')}`;
+}
+
+function askFocusOf(asking: Ask): number {
+  const key = askKeyOf(asking);
+  if (askFocus.key !== key) {
+    const send = asking.answers.findIndex((one) => one.kind === 'submit');
+    const reviewing = asking.answers.some((one) => one.id.startsWith('q:'));
+    askFocus = { key, at: reviewing && send >= 0 ? send : 0 };
+  }
+  return Math.min(askFocus.at, asking.answers.length - 1);
+}
+
+/** Lights the line the keyboard is on, without drawing the question again. */
+function lightAsk(at: number): void {
+  for (const each of document.querySelectorAll<HTMLElement>('[data-ask-at]')) {
+    const on = Number(each.dataset.askAt) === at;
+    each.style.background = on ? 'rgba(255,201,138,.10)' : 'transparent';
+    each.style.boxShadow = on ? 'inset 2px 0 0 #ffc98a' : 'none';
+  }
+}
+
+/**
+ * The question's own keys. True when it took the key: the arrows, return and
+ * the numbers, but only while nothing is written on the line, because
+ * anything written there is your own answer and return sends that instead.
+ */
+export function askKey(
+  asking: Ask | undefined,
+  written: string,
+  event: KeyboardEvent,
+  does: Doings
+): boolean {
+  if (!asking || written.trim()) return false;
+  if (event.metaKey || event.ctrlKey || event.altKey) return false;
+  const at = askFocusOf(asking);
+  const count = asking.answers.length;
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    askFocus.at = (at + (event.key === 'ArrowDown' ? 1 : count - 1)) % count;
+    lightAsk(askFocus.at);
+    return true;
+  }
+  const pick = (index: number): boolean => {
+    const answer = asking.answers[index];
+    if (!answer) return false;
+    askFocus.at = index;
+    lightAsk(index);
+    does.answer(answer.id, answer.requestId);
+    return true;
+  };
+  if (event.key === 'Enter') return pick(at) || true;
+  /* Tab sends whatever is ticked, so a question that takes several is never
+     a walk down past every answer to reach the line that sends them. */
+  if (event.key === 'Tab' && !event.shiftKey) {
+    const send = asking.answers.findIndex((one) => one.kind === 'submit');
+    return send >= 0 ? pick(send) : false;
+  }
+  if (/^[1-9]$/.test(event.key)) {
+    const numbered = asking.answers
+      .map((one, index) => ({ one, index }))
+      .filter(({ one }) => one.kind !== 'submit' && one.kind !== 'talk');
+    const hit = numbered[Number(event.key) - 1];
+    return hit ? pick(hit.index) : true;
+  }
+  return false;
+}
+
 function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'position:relative';
@@ -2358,79 +2443,118 @@ function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
   said.dataset.q = 'text';
   it.appendChild(said);
 
+  const focus = askFocusOf(asking);
+  /* Whether several can be picked: the answers then carry boxes rather than
+     rings, so it is plain before pressing anything that picks add up. */
+  const several =
+    asking.answers.some((one) => one.kind === 'submit') &&
+    !asking.answers.some((one) => one.id.startsWith('q:'));
+  const reviewing = asking.answers.some((one) => one.id.startsWith('q:'));
+
+  /* The answers, each a row of its own: a number, a ring or a box saying
+     whether it is picked, its name and what it would mean. */
   const answers = document.createElement('div');
-  answers.style.cssText = 'display:flex;flex-direction:column;gap:12px;margin-top:18px';
-  let setApart = false;
+  answers.style.cssText = 'display:flex;flex-direction:column;gap:2px;margin-top:16px';
+  /* What you can do with them, set right apart on one line of its own:
+     these are not answers, so they never look like one. */
+  const doings = document.createElement('div');
+  doings.style.cssText =
+    'display:flex;flex-wrap:wrap;align-items:center;gap:6px 22px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(244,227,192,.14)';
+
+  let number = 0;
   for (const [i, answer] of asking.answers.entries()) {
-    /* The agent's own answers first; what the board adds under them, your
-       own answer, sending, talking it over, is set apart by a short rule so
-       it never reads as one more of the agent's choices. */
-    if (answer.kind && !setApart) {
-      setApart = true;
-      const apart = document.createElement('div');
-      apart.style.cssText =
-        'width:48px;height:1px;background:rgba(244,227,192,.22);margin:4px 0 2px 34px';
-      answers.appendChild(apart);
+    const action = answer.kind === 'submit' || answer.kind === 'talk';
+    const go = (): void => {
+      askFocus.at = i;
+      does.answer(answer.id, answer.requestId);
+    };
+    const line = document.createElement('div');
+    line.dataset.askAt = String(i);
+    line.style.cssText = action
+      ? 'display:inline-flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;pointer-events:auto;border-radius:2px'
+      : 'display:flex;align-items:baseline;gap:12px;padding:7px 10px;cursor:pointer;pointer-events:auto;border-radius:2px';
+    line.addEventListener('mousedown', (event) => event.preventDefault());
+    line.addEventListener('mouseenter', () => {
+      askFocus.at = i;
+      lightAsk(i);
+    });
+    line.addEventListener('click', go);
+
+    if (action) {
+      const name = document.createElement('span');
+      name.className = 'press';
+      name.textContent = answer.said;
+      name.style.cssText +=
+        answer.kind === 'submit'
+          ? ';font-family:Silkscreen,monospace;font-size:13px;letter-spacing:.06em'
+          : ";font-family:'Josefin Sans',sans-serif;font-size:14px;font-style:italic";
+      line.appendChild(name);
+      doings.appendChild(line);
+      continue;
     }
-    const line = row(12);
-    line.style.whiteSpace = 'normal';
+
+    number += 1;
     const key = document.createElement('span');
     key.style.cssText = KEY;
-    key.textContent = String(i + 1);
+    key.textContent = String(number);
     key.dataset.q = 'key';
     line.appendChild(key);
+    const picked = answer.said.startsWith('✓ ');
+    const plain = answer.said.replace(/^✓ /, '');
+    if (!reviewing) {
+      const mark = document.createElement('span');
+      mark.style.cssText = `font-family:Silkscreen,monospace;font-size:13px;flex:none;width:22px;color:${picked ? '#ffc98a' : '#8a7452'}`;
+      mark.textContent = answer.kind === 'other' ? '' : several ? (picked ? '[x]' : '[ ]') : '( )';
+      line.appendChild(mark);
+    }
     /* An agent marks its own favourite by writing it into the name; it reads
        better said quietly after the name than shouted inside it. */
-    const favoured = /\s*\(recommended\)\s*$/i.test(answer.said);
-    const press = astop(
-      pressing(answer.said.replace(/\s*\(recommended\)\s*$/i, ''), () =>
-        does.answer(answer.id, answer.requestId)
-      ),
-      `answer:${answer.id}`
-    );
-    press.style.cssText +=
-      answer.kind === 'submit' || !answer.kind
-        ? 'font-family:Silkscreen,monospace;font-size:13px;letter-spacing:.03em'
-        : "font-family:'Josefin Sans',sans-serif;font-size:15px;font-style:italic";
-    press.dataset.q = 'option';
+    const favoured = /\s*\(recommended\)\s*$/i.test(plain);
+    const name = document.createElement('span');
+    name.className = 'press';
+    name.textContent = plain.replace(/\s*\(recommended\)\s*$/i, '');
+    name.style.cssText +=
+      answer.kind === 'other'
+        ? ";font-family:'Josefin Sans',sans-serif;font-size:15px;font-style:italic"
+        : ';font-family:Silkscreen,monospace;font-size:13px;letter-spacing:.03em';
+    name.dataset.q = 'option';
     const named = document.createElement('span');
-    named.appendChild(press);
+    named.appendChild(name);
     if (favoured) {
       const tag = document.createElement('span');
       tag.style.cssText = `${ABOUT};margin-left:10px;font-style:italic`;
       tag.textContent = 'recommended';
-      tag.dataset.q = 'about';
       named.appendChild(tag);
     }
-    if (answer.kind && answer.id === asking.submit) {
-      const tag = document.createElement('span');
-      tag.style.cssText = `${ABOUT};margin-left:10px;font-style:italic`;
-      tag.textContent = 'or return';
-      named.appendChild(tag);
-    }
-    if (answer.about) {
-      /* What picking it would mean, under the answer and quieter than it, so
-         the answers still read down the left as a list. */
+    const about =
+      answer.about ?? (answer.kind === 'other' ? 'type it on the line below' : undefined);
+    if (about) {
       const both = document.createElement('div');
       both.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0';
       both.appendChild(named);
-      const about = document.createElement('div');
-      about.style.cssText = ABOUT;
-      about.textContent = answer.about;
-      about.dataset.q = 'about';
-      both.appendChild(about);
-      line.style.alignItems = 'baseline';
+      const under = document.createElement('div');
+      under.style.cssText = ABOUT;
+      under.textContent = about;
+      under.dataset.q = 'about';
+      both.appendChild(under);
       line.appendChild(both);
     } else line.appendChild(named);
     answers.appendChild(line);
   }
   it.appendChild(answers);
-  if (asking.aside) {
-    const aside = document.createElement('div');
-    aside.style.cssText = `${ABOUT};margin-top:16px;font-style:italic`;
-    aside.textContent = asking.aside;
-    it.appendChild(aside);
-  }
+
+  /* How to work it, said once in the quiet ink: the keys are the same on
+     every question, so this is the only place they need saying. */
+  const how = document.createElement('span');
+  how.style.cssText = `${ABOUT};font-style:italic;margin-left:auto`;
+  how.textContent = reviewing
+    ? '↑ ↓ to move · return to change one or send'
+    : several
+      ? '↑ ↓ to move · return ticks · tab sends · or write your own below'
+      : '↑ ↓ to move · return picks · or write your own below';
+  doings.appendChild(how);
+  it.appendChild(doings);
+  requestAnimationFrame(() => lightAsk(focus));
   return it;
 }
 

@@ -5355,11 +5355,7 @@ async function boot(): Promise<void> {
         }
         /* A question at the gate takes the number keys and nothing else, so
            that answering it cannot be done by accident while typing. */
-        if (saying.asked()) {
-          if (!/^[1-9]$/.test(event.key)) return false;
-          void answer(event.key);
-          return true;
-        }
+        if (saying.asked()) return yard.answerKey(event);
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
           yard.walk.step(event.key === 'ArrowDown' ? 1 : -1);
           return true;

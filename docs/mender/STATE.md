@@ -3346,3 +3346,15 @@ flies up to the gatepost as though it were something new said. Driven in a
 dev instance: multi-pick sent by return, the check step, going back to rewrite
 one answer on the line, sending; and talking it over, which got Claude asking
 questions instead of picking.
+
+### A question is worked from the keyboard, and answers look like answers (2026-09-30) — done
+
+The keys only reached the question when the keyboard was not on the write
+line, and numbered rows mixed the agent's answers with the board's own
+actions, so neither arrows nor return did anything visible and nothing said
+which rows were choices. Now the write line hands the question its keys while
+it is empty: arrows walk a lit row, return presses it, numbers pick, tab sends
+what is ticked. Answers carry a ring or a box; the actions sit on their own
+line under a rule with the keys spelled out. Driven in a dev instance with
+keys only: a single pick by arrow and return, a multi-pick ticked by return
+and sent with tab, the check sent with return, Claude reading back the picks.

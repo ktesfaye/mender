@@ -779,14 +779,17 @@ left over it. It is put to you the way a game puts a choice: what it calls
 it and which of how many in pixel capitals, the question in a large warm
 italic, each answer's name in pixel type with a number beside it and what
 it would mean written quietly under it, and the one the agent favours
-marked "recommended" after its name rather than inside it. A number picks it
-and goes on to the next question; on one that takes several, numbers mark and
-unmark and "that's my answer", or return on an empty line, moves on. Under the
-agent's own answers, set apart by a short rule, are what the board adds:
-"something else", which hands you the line to write your own answer on (and
-writing there without pressing it does the same), and "talk it over instead",
-which answers every question with wanting to talk first, so the agent comes
-back to discuss it rather than being stopped. When there was more than one
+marked "recommended" after its name rather than inside it. The answers are rows, each with
+a ring, or a box when several can be ticked, and the keyboard works it
+wherever it happens to be while nothing is written on the line: the arrows
+walk a light over the rows, return picks or ticks the one it is on, a number
+picks that one outright, and tab sends whatever is ticked. The last row is
+"something else", for writing your own answer on the line, and writing there
+does the same without pressing it. What you can do with the answers is never
+a row: "that's my answer" and "talk it over instead", which answers every
+question with wanting to talk first so the agent comes back to discuss it
+rather than being stopped, sit on a line of their own under a rule, with the
+keys said once in the quiet ink beside them. When there was more than one
 question, the last one leads to a check before it goes: each question with
 what you said, any of them pressed to go back and change it, and "send it",
 or return. Nothing goes back until that is
