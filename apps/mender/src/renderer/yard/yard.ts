@@ -35,7 +35,8 @@ import {
 } from './arrange';
 import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
-import { makeLine, type Asking as Prompting, type Line } from './line';
+import { makeLine, preview, unpreview, type Asking as Prompting, type Line } from './line';
+import { onThisMachine } from './pictures';
 import { makeMenu } from './menu';
 import {
   catching,
@@ -417,6 +418,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   line.onEmpty(() => does.leave());
   line.onType((text) => does.typed(text));
   line.onPutDown((id) => does.press(`putdown:${id}`));
+  line.onPickBack((id) => does.press(`pickback:${id}`));
 
   /* And the wash that comes down over the middle and right of the screen when
      you open something to read. The gatepost keeps its own column and the rail
@@ -1682,7 +1684,11 @@ export function named(said: string): string {
     .replace(/(^|\s)(?:~|\/)\S*\/([^\s/]+)(?=\s|$)/g, '$1$2');
 }
 
-/** The pictures that went with a note, said under it since the post never draws them. */
+/**
+ * The pictures that went with a note, said under it since the post never
+ * draws them. Pointing at that holds them up, the same as pointing at one
+ * still on the line does.
+ */
 function handed(on: HTMLElement, note: Note, tone?: string): void {
   if (!note.pictures) return;
   const line = said(
@@ -1691,6 +1697,12 @@ function handed(on: HTMLElement, note: Note, tone?: string): void {
   );
   line.style.display = 'block';
   line.style.marginTop = '5px';
+  const seen = note.seen ?? [];
+  if (seen.length) {
+    line.style.alignSelf = 'flex-start';
+    line.addEventListener('mouseenter', () => preview(line, seen.map(onThisMachine)));
+    line.addEventListener('mouseleave', unpreview);
+  }
   on.appendChild(line);
 }
 

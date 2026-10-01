@@ -211,6 +211,8 @@ export const notedSchema = z.object({
   turn: z.number().int().optional(),
   /** How many pictures went with it, which the post says rather than shows. */
   pictures: z.number().int().optional(),
+  /** Where on this machine each of those pictures can still be read, where known. */
+  seen: z.array(z.string()).optional(),
   /**
    * Handed into a turn already running and not read yet: nothing has come
    * back since it went in, so it is still what is coming, not what was asked.

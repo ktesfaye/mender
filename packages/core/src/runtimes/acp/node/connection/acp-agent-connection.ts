@@ -1,3 +1,7 @@
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Client, McpCapabilities, SessionUpdate } from '@agentclientprotocol/sdk';
 import type { Result } from '@emdash/shared';
 import { ok, toSerializedError } from '@emdash/shared';
@@ -99,7 +103,7 @@ export async function createAcpAgentConnection(
   const processClosed = onceProcessClosed(handle, logger);
 
   const normalize = (raw: SessionUpdate): NormalizedEvent => {
-    const base = decodeSessionUpdate(raw);
+    const base = keptOnDisk(decodeSessionUpdate(raw), raw);
     return behavior.enrich ? behavior.enrich(base, raw) : base;
   };
 
@@ -184,4 +188,38 @@ function failClosedBeforeReady(closed: ProcessClosed): never {
 
 function exitCodeFromClosed(closed: ProcessClosed): number | null {
   return closed.exitCode;
+}
+
+const KEPT_PICTURES = join(tmpdir(), 'acp-pictures');
+const EXTENSIONS: Record<string, string> = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+};
+
+/**
+ * A picture read back out of a resumed conversation arrives as its bytes, and
+ * the transcript keeps only that one was handed over. Written once to disk by
+ * what it is, so a client can still show it without the bytes riding along in
+ * every transcript update.
+ */
+function keptOnDisk(event: NormalizedEvent, raw: SessionUpdate): NormalizedEvent {
+  if (event.kind !== 'message' || !event.attachments?.length) return event;
+  if (raw.sessionUpdate !== 'user_message_chunk' || raw.content.type !== 'image') return event;
+  const { data, mimeType } = raw.content;
+  try {
+    const name = createHash('sha1').update(data).digest('hex') + (EXTENSIONS[mimeType] ?? '');
+    const path = join(KEPT_PICTURES, name);
+    if (!existsSync(path)) {
+      mkdirSync(KEPT_PICTURES, { recursive: true, mode: 0o700 });
+      writeFileSync(path, Buffer.from(data, 'base64'), { mode: 0o600 });
+    }
+    return {
+      ...event,
+      attachments: event.attachments.map((one) => ({ ...one, targetPath: path })),
+    };
+  } catch {
+    return event;
+  }
 }

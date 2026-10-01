@@ -138,7 +138,8 @@ function figure(one: Picture): HTMLElement {
   return it;
 }
 
-function onThisMachine(url: string): Promise<string | null> {
+/** A picture on this machine, read once, as something an `<img>` can draw. */
+export function onThisMachine(url: string): Promise<string | null> {
   let path = url;
   if (path.startsWith('file://')) {
     try {

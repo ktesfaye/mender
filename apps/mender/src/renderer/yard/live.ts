@@ -62,6 +62,8 @@ export interface Watching {
   pickUp(file: File): Promise<string | null>;
   /** Put one down again. */
   putDown(id: string): void;
+  /** Pick one just put down back up, the way undo puts a deleted word back. */
+  pickBack(id: string): void;
   /** Notes pinned to a diff line, waiting to go with what you next say. */
   notes(): readonly PinnedNote[];
   /** Pin one. */
@@ -161,6 +163,18 @@ export async function openYard(
     if (url) URL.revokeObjectURL(url);
     previews.delete(id);
   };
+  /* Put down off the line but not let go of yet, because undo can put it
+     straight back. Only once something is said, or the yard closes, is it
+     really gone. */
+  const aside = new Map<string, Carried>();
+  const letAsideGo = (): void => {
+    for (const id of aside.keys()) {
+      letGo(id);
+      if (from.here) void client.agents.putDown({ task: from.here.id, id });
+    }
+    aside.clear();
+  };
+  shut.push(async () => letAsideGo());
   let pinned: readonly PinnedNote[] = [];
 
   const again = (): void => changed(build());
@@ -331,10 +345,18 @@ export async function openYard(
       return null;
     },
     putDown: (id) => {
-      held = held.filter((each) => each.id !== id);
-      letGo(id);
+      const one = held.find((each) => each.id === id);
+      if (!one) return;
+      held = held.filter((each) => each !== one);
+      aside.set(id, one);
       again();
-      if (from.here) void client.agents.putDown({ task: from.here.id, id });
+    },
+    pickBack: (id) => {
+      const one = aside.get(id);
+      if (!one) return;
+      aside.delete(id);
+      held = [...held, one];
+      again();
     },
     notes: () => pinned,
     noteIt: (note) => {
@@ -348,6 +370,7 @@ export async function openYard(
     handed: () => {
       for (const one of held) letGo(one.id);
       held = [];
+      letAsideGo();
       pinned = [];
       again();
     },

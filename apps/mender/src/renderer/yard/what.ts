@@ -241,6 +241,8 @@ export interface Note {
   answered: boolean;
   /** How many pictures went with it. The post says so; it never draws them. */
   pictures?: number;
+  /** Where those pictures can still be read on this machine, for pointing at. */
+  seen?: readonly string[];
   /** The oldest note is the standing one, and it reads differently. */
   standing?: boolean;
   /** The one it is working on right now. */

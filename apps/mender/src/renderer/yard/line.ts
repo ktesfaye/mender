@@ -120,6 +120,8 @@ export interface Line {
   carries(tokens: readonly Token[]): void;
   /** A carried picture was deleted off the line. */
   onPutDown(run: (id: string) => void): void;
+  /** One deleted off it came back, by undo. */
+  onPickBack(run: (id: string) => void): void;
   close(): void;
 }
 
@@ -149,7 +151,11 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   let instead: () => boolean = () => false;
   let first: (event: KeyboardEvent) => boolean = () => false;
   let putDown: (id: string) => void = () => {};
+  let pickBack: (id: string) => void = () => {};
   let carried: readonly Token[] = [];
+  /* Backspaced off but not forgotten, since undo puts the very same picture
+     back where it was, the way it puts back a word. */
+  const putAside = new Map<string, Token>();
 
   /** The words on the line, with whatever is carried among them left out. */
   function words(): string {
@@ -176,7 +182,10 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     for (const [id, chip] of there) {
       const token = carried.find((one) => one.id === id);
       if (!token) chip.remove();
-      else if (chip.textContent !== token.label) chip.textContent = token.label;
+      else {
+        if (chip.textContent !== token.label) chip.textContent = token.label;
+        if (token.preview) chip.dataset.preview = token.preview;
+      }
     }
     for (const token of carried) {
       if (there.has(token.id)) continue;
@@ -248,6 +257,18 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     take();
   });
 
+  /* Pointing at a picture on the line holds it up. Asked of whatever is under
+     the pointer rather than wired to each one, because the one undo puts back
+     is not always the very element that was taken off. */
+  said.addEventListener('mouseover', (event) => {
+    const chip = (event.target as Element | null)?.closest<HTMLElement>('[data-carried]');
+    if (chip?.dataset.preview) preview(chip, chip.dataset.preview);
+  });
+  said.addEventListener('mouseout', (event) => {
+    const chip = (event.target as Element | null)?.closest('[data-carried]');
+    if (chip && !chip.contains(event.relatedTarget as Node | null)) unpreview();
+  });
+
   said.addEventListener('input', () => {
     /* A picture backspaced off the line is put down, the same as a word
        backspaced off it is gone. */
@@ -255,8 +276,18 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     const gone = carried.filter((one) => !still.has(one.id));
     if (gone.length) {
       carried = carried.filter((one) => still.has(one.id));
-      for (const one of gone) putDown(one.id);
+      for (const one of gone) {
+        putAside.set(one.id, one);
+        putDown(one.id);
+      }
       unpreview();
+    }
+    for (const id of still) {
+      const back = id === undefined ? undefined : putAside.get(id);
+      if (!back) continue;
+      putAside.delete(back.id);
+      carried = [...carried, back];
+      pickBack(back.id);
     }
     showing();
     typed(words());
@@ -457,6 +488,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       stand();
     },
     onPutDown: (run) => (putDown = run),
+    onPickBack: (run) => (pickBack = run),
     close: () => {
       unpreview();
       document.removeEventListener('selectionchange', place);
@@ -472,27 +504,43 @@ function tokenChip(token: Token): HTMLElement {
   chip.contentEditable = 'false';
   chip.dataset.carried = token.id;
   chip.textContent = token.label;
+  if (token.preview) chip.dataset.preview = token.preview;
   chip.style.cssText = CHIP;
-  chip.addEventListener('mouseenter', () => {
-    if (token.preview) preview(chip, token.preview);
-  });
-  chip.addEventListener('mouseleave', unpreview);
   return chip;
 }
 
 let showingPicture: HTMLElement | null = null;
 
-/** The picture itself, standing over the word that stands for it. */
-function preview(chip: HTMLElement, url: string): void {
+/**
+ * The picture itself, standing over the word that stands for it. Several
+ * stand side by side, and one still being read off the disk arrives when it
+ * has been.
+ */
+export function preview(
+  chip: HTMLElement,
+  urls: string | readonly (string | Promise<string | null>)[]
+): void {
   unpreview();
   const frame = document.createElement('div');
   frame.style.cssText = PICTURE;
-  const img = document.createElement('img');
-  img.src = url;
-  img.style.cssText = 'display:block;max-width:320px;max-height:240px';
-  frame.appendChild(img);
+  /* Nothing stands there until a picture has actually arrived to stand. */
+  frame.style.visibility = 'hidden';
   document.body.appendChild(frame);
   showingPicture = frame;
+  for (const url of typeof urls === 'string' ? [urls] : urls) {
+    const img = document.createElement('img');
+    img.style.cssText = 'display:block;max-width:320px;max-height:240px';
+    img.addEventListener('load', () => {
+      frame.style.visibility = '';
+      place();
+    });
+    frame.appendChild(img);
+    void Promise.resolve(url).then((src) => {
+      if (showingPicture !== frame) return;
+      if (src) img.src = src;
+      else img.remove();
+    });
+  }
   const place = (): void => {
     const at = chip.getBoundingClientRect();
     const size = frame.getBoundingClientRect();
@@ -501,10 +549,17 @@ function preview(chip: HTMLElement, url: string): void {
     frame.style.top = `${Math.round(Math.max(8, at.top - size.height - 10))}px`;
   };
   place();
-  img.addEventListener('load', place);
+  /* The board is drawn again under the pointer as things change, and what it
+     was pointing at can go without the pointer ever leaving it. */
+  const watch = (): void => {
+    if (showingPicture !== frame) return;
+    if (!chip.isConnected) unpreview();
+    else requestAnimationFrame(watch);
+  };
+  requestAnimationFrame(watch);
 }
 
-function unpreview(): void {
+export function unpreview(): void {
   showingPicture?.remove();
   showingPicture = null;
 }
@@ -553,6 +608,8 @@ const CHIP = [
 
 const PICTURE = [
   'position:fixed',
+  'display:flex',
+  'gap:4px',
   'z-index:1000',
   'padding:4px',
   'background:#1b1712',

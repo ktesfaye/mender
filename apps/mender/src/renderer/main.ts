@@ -4621,6 +4621,10 @@ async function boot(): Promise<void> {
         watching?.putDown(pick.slice(8));
         return;
       }
+      if (pick.startsWith('pickback:')) {
+        watching?.pickBack(pick.slice(9));
+        return;
+      }
       if (pick.startsWith('name:')) {
         const line = watching?.names.named(yard.line.written(), pick);
         if (line !== null && line !== undefined) said(line);

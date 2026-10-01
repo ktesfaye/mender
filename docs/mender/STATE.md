@@ -282,11 +282,14 @@ A picture dropped on the wood or pasted onto it is carried. It cannot be drawn
 on the board, so what the board says is that you have it: it stands on the line
 among the words as `[picture 1]`, the way Claude Code writes `[Image #1]`, holds
 the picture itself up when pointed at, goes with whatever you say next, and
-backspacing over it puts it down. Handing one over with no words at all counts as something said, which is
+backspacing over it puts it down, and undo picks the same one straight back
+up. Handing one over with no words at all counts as something said, which is
 the one place the empty-line rule bends. Afterwards the transcript says you
 handed it over, because otherwise a picture leaves no trace of having gone, and
 so does its note on the gatepost, under what you said with it, including one
-handed over mid-turn and one read back out of a session reopened later.
+handed over mid-turn and one read back out of a session reopened later; and
+pointing at that line holds the pictures up there too, the same as on the line,
+reopened or not.
 Anything that is not a picture is refused out loud rather than silently, and
 dropping one on the island says so too, since nothing out there has hands.
 

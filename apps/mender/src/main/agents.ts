@@ -1291,6 +1291,7 @@ export function createAgents(
       if (!held.success) return refusal(whatItSaid(held.error));
       const mime = pictured(held.data.mimeType);
       if (!mime) return refusal('the village only carries pictures.');
+      if (held.data.targetPath) carriedTo.set(held.data.id, held.data.targetPath);
       return { success: true as const, data: { id: held.data.id, name: held.data.name, mime } };
     },
 
@@ -2489,6 +2490,7 @@ function toldOf(
         answered: answered[i],
         turn: item.turn,
         ...(item.pictures ? { pictures: item.pictures } : {}),
+        ...(item.seen.length ? { seen: item.seen } : {}),
         ...(unread[i] ? { unread: true } : {}),
       });
     } else if (item.kind === 'said') {
@@ -2599,7 +2601,14 @@ function endedOf(
 
 /** One chronological item, flattened out of the turn/message/tool tree. */
 type Flat = (
-  | { kind: 'note'; id: string; text: string; hasOutcome: boolean; pictures: number }
+  | {
+      kind: 'note';
+      id: string;
+      text: string;
+      hasOutcome: boolean;
+      pictures: number;
+      seen: string[];
+    }
   | { kind: 'said'; id: string; text: string; hasOutcome: boolean; broke: boolean }
   | { kind: 'thinking'; item: TranscriptThinking }
   | { kind: 'tool'; node: ToolNode; hasOutcome: boolean }
@@ -2634,6 +2643,9 @@ function helpersIn<T extends { errands: Errand[] }>(told: T, session: string | n
   };
 }
 
+/** Where each picture handed over this run was kept, by the id it went with. */
+const carriedTo = new Map<string, string>();
+
 function flatten(turns: readonly TranscriptTurn[]): Flat[] {
   const flat: Flat[] = [];
   turns.forEach((turn, at) => {
@@ -2644,6 +2656,13 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
       if (item.kind === 'message') {
         const text = item.text.replace(ASIDE_TO_AGENT, '').trim();
         const pictures = item.role === 'user' ? (item.attachments?.length ?? 0) : 0;
+        const seen =
+          item.role === 'user'
+            ? (item.attachments ?? []).flatMap((one) => {
+                const path = one.targetPath ?? carriedTo.get(one.id);
+                return path ? [path] : [];
+              })
+            : [];
         if (!text && !pictures) continue;
         /* Claude's own transcript writes a stop down as if you had said it,
            and the next resume answers it; read back, that is you stopped
@@ -2667,7 +2686,7 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
         if (item.role !== 'user' && text === 'No response requested.') continue;
         flat.push(
           item.role === 'user'
-            ? { kind: 'note', id: item.id, text, hasOutcome, pictures, turn: at }
+            ? { kind: 'note', id: item.id, text, hasOutcome, pictures, seen, turn: at }
             : { kind: 'said', id: item.id, text, hasOutcome, broke, turn: at }
         );
         saidLast = item.role !== 'user';
