@@ -858,7 +858,11 @@ no half-built district and no growth model anywhere in this app: the five-stage
 pipeline that used to draw them is gone, and what replaced it is measured
 against `world/his.py` in the village repo, tile for tile, at every state.
 
-**But who lives where is his to rearrange.** A right-click on the island
+**A right-click on a district brings it into focus.** The camera flies in to
+frame that one district, as close as keeps all of it on screen, and nothing
+opens: it is looking, not walking in. Only the main button ever walks in.
+
+**But who lives where is his to rearrange.** A right-click on the water
 offers "edit districts", and while it is on a district is something you pick
 up: its land lifts off, houses and trees and all, and follows the pointer.
 Let go on somebody else's place and the two swap; on an empty place and it

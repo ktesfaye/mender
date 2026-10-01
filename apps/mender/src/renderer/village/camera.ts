@@ -171,6 +171,20 @@ export function flyTo(
   });
 }
 
+/**
+ * Bring one district into focus without walking into it: centred, and as close
+ * as a whole rung lets the whole of it stay on screen.
+ */
+export function flyToDistrict(viewport: Viewport, district: DistrictBounds, padding = 64): void {
+  viewport.animate({
+    position: { x: district.centerX, y: district.centerY },
+    scale: fitScale(viewport, district, padding),
+    time: FLIGHT_MS,
+    ease: 'easeInOutSine',
+    removeOnInterrupt: true,
+  });
+}
+
 /** Fly back out until the whole island is in front of you again. */
 export function flyOut(viewport: Viewport, island: Extent, padding = 48): void {
   if (!island.width || !island.height) return;

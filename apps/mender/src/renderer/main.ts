@@ -66,10 +66,18 @@ import { watchGrip } from './grip';
 import { ran } from './job';
 import { drawingNow, setPace, watched } from './pace';
 import { Atmosphere, loadEmitters, type Lit } from './village/atmosphere';
-import { createCamera, flyOut, flyToYard, frame, holdStill, type Extent } from './village/camera';
+import {
+  createCamera,
+  flyOut,
+  flyToDistrict,
+  flyToYard,
+  frame,
+  holdStill,
+  type Extent,
+} from './village/camera';
 import { Editing } from './village/editing';
 import { Folk, loadFolk, type Look, type Standing } from './village/folk';
-import { Ground, type Aim } from './village/ground';
+import { districtBounds, Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
 import { say } from './village/notice';
 import './yard/tokens.css';
@@ -5595,6 +5603,14 @@ async function boot(): Promise<void> {
       if (open || yard.showing || yard.open || founding || windmill || settings) return;
       if (editing?.active) return;
       event.preventDefault();
+      /* On land, a right-click brings that district into focus: the camera
+         flies to frame it, nothing opens. The water keeps the menu. */
+      const point = camera.toWorld(event.clientX, event.clientY);
+      const aim = drawn.ground.at(point.x, point.y);
+      if (aim && aim.district.id !== CAMP) {
+        flyToDistrict(camera, districtBounds(aim.district));
+        return;
+      }
       const slab = document.createElement('div');
       slab.className = 'menu slab';
       const offer = pressing('edit districts', () => {
@@ -6120,6 +6136,13 @@ function watchPointer(
 
   let pressedBehind = false;
   pixi.stage.on('pointerdown', (event: FederatedPointerEvent) => {
+    /* Only the main button picks. A right-click has its own meaning on the
+       island, and letting its release count as a press walked straight into
+       the district it was meant to bring into focus. */
+    if (event.button !== 0) {
+      pressedAt = null;
+      return;
+    }
     pressedAt = { x: event.global.x, y: event.global.y };
     pressedBehind = behind(event);
   });
