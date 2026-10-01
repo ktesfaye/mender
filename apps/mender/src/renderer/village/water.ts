@@ -440,7 +440,9 @@ export class Water {
     graded: boolean
   ): void {
     const u = this.uniforms.uniforms;
-    u.uMark = graded ? 0.5 : 1;
+    /* A shade short of opaque, not half: at half the sea's own gentle
+       gradient lost a bit of colour depth and broke into visible bands. */
+    u.uMark = graded ? 0.94 : 1;
     u.uRain = rain;
     u.uStars = stars;
     for (let i = 0; i < 3; i++) u.uLift[i] = Math.min(3, 0.95 / Math.max(0.2, ambient[i]!));

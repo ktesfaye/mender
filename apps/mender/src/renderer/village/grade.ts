@@ -114,7 +114,7 @@ void main(void) {
   vec3 c = src.rgb / src.a;
   /* The sea draws itself at half strength while this is on: it is the one
      thing in the picture snow, moss and puddles never land on. */
-  float landed = step(0.75, src.a);
+  float landed = step(0.97, src.a);
 
   /* Which world pixel this is. Everything below is decided per world pixel,
      not per screen pixel, so it stays on the art's grid at any zoom. */
@@ -169,8 +169,9 @@ void main(void) {
     /* The shaded side of anything keeps its own colour, so a tree is still a
        tree under it, and a roof still has its courses. */
     lies *= mix(0.35, 1.0, smoothstep(0.14, 0.38, lum));
-    vec3 snow = mix(vec3(0.86, 0.9, 0.97), vec3(0.97, 0.98, 1.0), step(0.5, noise(wp / 3.0)));
-    c = mix(c, snow * (0.85 + lum * 0.25), lies * min(1.0, uCover * 1.2) * 0.92);
+    /* Snow is white, with a cool blue in its hollows rather than grey. */
+    vec3 snow = mix(vec3(0.84, 0.89, 0.98), vec3(1.0, 1.0, 1.0), step(0.45, noise(wp / 3.0)));
+    c = mix(c, snow * (0.93 + lum * 0.12), lies * min(1.0, uCover * 1.2) * 0.95);
   }
 
   /* The sky's own light, and what has gone grey under it. */

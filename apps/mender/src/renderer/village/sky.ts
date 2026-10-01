@@ -271,9 +271,13 @@ export class Sky {
     const weather = this.weatherShown();
 
     // Weather takes light out of the day and colour out of everything.
-    const grey = weather.cloud * 0.22 + weather.rain * 0.16 + weather.fog * 0.08;
-    const cool = weather.cloud * 0.5 + weather.rain * 0.5;
-    const snowLift = weather.snow * 0.08;
+    /* Snow throws the light back up: under a snowy sky the day is bright and
+       white rather than grey, so snow takes most of the gloom out of the
+       cloud it falls from. */
+    const gloom = weather.cloud * (1 - weather.snow * 0.8);
+    const grey = gloom * 0.22 + weather.rain * 0.16 + weather.fog * 0.08;
+    const cool = gloom * 0.5 + weather.rain * 0.5;
+    const snowLift = weather.snow * 0.1 * Math.max(0, Math.min(1, elevation * 4));
     const ambient = key.ambient.map((value, i) => {
       // Overcast is a flat grey-blue light: the warm end of a sunset under it
       // is mostly gone.
@@ -285,7 +289,7 @@ export class Sky {
     const dim = Math.min(1, grey * 1.6) * 0.35;
     return {
       ambient,
-      desat: Math.min(0.6, key.desat + weather.cloud * 0.12 + weather.rain * 0.1),
+      desat: Math.min(0.6, key.desat + gloom * 0.12 + weather.rain * 0.1),
       // A storm at four in the afternoon turns the lamps on too.
       dark: Math.min(1, dark + dim * (1 - dark)),
       low: Math.max(0, 1 - Math.abs(elevation) / 0.2) * (1 - weather.cloud * 0.8),
