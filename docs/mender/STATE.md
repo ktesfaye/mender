@@ -3323,3 +3323,17 @@ question, Josefin kept for what each answer means. An agent's "(Recommended)"
 comes out of the name into a quiet tag. Driven in a dev instance: a
 two-question form pinned at the foot, answered by keys, and the column took
 its room back once it was answered.
+
+### A question can be sent, answered your own way, checked, or talked over (2026-09-30) — done
+
+Under the agent's own answers the board now adds, set apart: "something else"
+(takes the line for your own answer; the line's prompt says so), "that's my
+answer" on a question that takes several (return on an empty line too),
+and "talk it over instead", which answers each question with wanting to talk
+first so the agent comes back to discuss rather than being stopped. A form of
+more than one question ends on a check before it goes, each answer pressable
+to go back and change, then "send it" or return. A written answer no longer
+flies up to the gatepost as though it were something new said. Driven in a
+dev instance: multi-pick sent by return, the check step, going back to rewrite
+one answer on the line, sending; and talking it over, which got Claude asking
+questions instead of picking.

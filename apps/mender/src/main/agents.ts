@@ -1461,8 +1461,13 @@ class House {
    *  until `finishAsking` sends them or the question itself moves on. */
   private marked = new Map<string, string>();
   /** How far through a standing form the answering has got, and what has been said so far. */
-  private filling: { requestId: string; at: number; content: Record<string, FormValue> } | null =
-    null;
+  private filling: {
+    requestId: string;
+    at: number;
+    content: Record<string, FormValue>;
+    /** Gone back to one question from the check before it goes, so answering returns there. */
+    back?: boolean;
+  } | null = null;
 
   constructor(
     private readonly task: string,
@@ -1820,17 +1825,17 @@ class House {
     return questions.length ? { request, questions } : null;
   }
 
-  private filled(requestId: string): { at: number; content: Record<string, FormValue> } {
+  private filled(requestId: string): NonNullable<typeof this.filling> {
     if (this.filling?.requestId !== requestId) this.filling = { requestId, at: 0, content: {} };
     return this.filling;
   }
 
   /**
    * Answers whichever question of a standing form is up: a number picked, a
-   * pick toggled on a question that takes several, "that's everything" on
-   * one of those, or something written on the line instead. Moves on to the
-   * next question, and hands back the whole form once the last one is
-   * answered. `'no-form'` when what is asking is not a form at all.
+   * pick toggled on a question that takes several, "that's my answer", a
+   * question gone back to from the check before it goes, talking it over
+   * instead, or something written on the line. Moves on, and hands back the
+   * whole form once it is sent. `'no-form'` when what is asking is not a form.
    */
   fill(
     answer: { pick: string } | { enough: true } | { written: string }
@@ -1839,62 +1844,119 @@ class House {
     if (!standing) return 'no-form';
     const { request, questions } = standing;
     const filled = this.filled(request.requestId);
-    const question = questions[Math.min(filled.at, questions.length - 1)];
-    if ('pick' in answer) {
-      const option = question.options[Number(answer.pick)];
-      if (!option) return 'more';
-      if (question.several) {
-        const had = (filled.content[question.key] as string[] | undefined) ?? [];
-        const label = String(option.value);
-        filled.content[question.key] = had.includes(label)
-          ? had.filter((each) => each !== label)
-          : [...had, label];
-        this.publish();
-        return 'more';
+    const done = (): { requestId: string; content: Record<string, FormValue> } => {
+      this.filling = null;
+      return { requestId: request.requestId, content: filled.content };
+    };
+    /* On to the next question, or to the check before it goes once there is
+       more than one to check, or straight back there if that is where this
+       question was gone back to from. */
+    const onward = (): 'more' | ReturnType<typeof done> => {
+      if (filled.back) {
+        filled.back = false;
+        filled.at = questions.length;
+      } else filled.at += 1;
+      if (filled.at >= questions.length && questions.length === 1) return done();
+      this.publish();
+      return 'more';
+    };
+    const pick = 'pick' in answer ? answer.pick : 'enough' in answer ? SUBMIT_FORM : undefined;
+    if (pick === TALK_FORM) {
+      for (const question of questions) {
+        if (question.written) filled.content[question.written] = TALK_IT_OVER;
       }
-      filled.content[question.key] = option.value;
-    } else if ('written' in answer) {
+      return done();
+    }
+    if (filled.at >= questions.length) {
+      if (pick === SUBMIT_FORM) return done();
+      const back = pick?.startsWith('q:') ? Number(pick.slice(2)) : NaN;
+      if (questions[back]) {
+        filled.at = back;
+        filled.back = true;
+        this.publish();
+      }
+      return 'more';
+    }
+    const question = questions[filled.at];
+    if ('written' in answer) {
       if (!question.written) return 'more';
       filled.content[question.written] = answer.written;
+      if (question.several) delete filled.content[question.key];
+      return onward();
     }
-    filled.at += 1;
-    if (filled.at < questions.length) {
+    if (pick === SUBMIT_FORM) return onward();
+    const option = question.options[Number(pick)];
+    if (!option) return 'more';
+    if (question.written) delete filled.content[question.written];
+    if (question.several) {
+      const had = (filled.content[question.key] as string[] | undefined) ?? [];
+      const label = String(option.value);
+      filled.content[question.key] = had.includes(label)
+        ? had.filter((each) => each !== label)
+        : [...had, label];
       this.publish();
       return 'more';
     }
-    this.filling = null;
-    return { requestId: request.requestId, content: filled.content };
+    filled.content[question.key] = option.value;
+    return onward();
   }
 
-  /** The question up on a standing form, as the board asks it. */
+  /** The question up on a standing form, or the check before it goes, as the board asks it. */
   private formAsk(): Ask | null {
     const standing = this.standingForm();
     if (!standing) return null;
     const { request, questions } = standing;
     const filled = this.filled(request.requestId);
-    const question = questions[Math.min(filled.at, questions.length - 1)];
+    const talk = { optionId: TALK_FORM, name: 'talk it over instead', kind: 'talk' as const };
+    if (filled.at >= questions.length) {
+      return {
+        requestId: request.requestId,
+        text: 'Is that everything right?',
+        header: 'before it goes',
+        submit: SUBMIT_FORM,
+        options: [
+          ...questions.map((question, index) => ({
+            optionId: `q:${index}`,
+            name: question.header ?? question.text,
+            about: answeredAs(question, filled.content) ?? 'not answered',
+          })),
+          { optionId: SUBMIT_FORM, name: 'send it', kind: 'submit' as const },
+          talk,
+        ],
+      };
+    }
+    const question = questions[filled.at];
     const chosen = (filled.content[question.key] as string[] | undefined) ?? [];
+    const own = question.written ? filled.content[question.written] : undefined;
     return {
       requestId: request.requestId,
       text: question.text,
       ...(question.header && question.header !== question.text ? { header: question.header } : {}),
       ...(questions.length > 1 ? { step: `${filled.at + 1} of ${questions.length}` } : {}),
-      ...(question.several ? { multi: true } : {}),
-      ...(question.written
-        ? {
-            aside: question.options.length
-              ? 'or write your own on the line.'
-              : 'write it on the line.',
-          }
-        : {}),
-      options: question.options.map((option, index) => ({
-        optionId: String(index),
-        name: option.label,
-        ...(option.about ? { about: option.about } : {}),
+      ...(question.written ? { writable: true } : {}),
+      ...(question.several ? { submit: SUBMIT_FORM } : {}),
+      options: [
+        ...question.options.map((option, index) => ({
+          optionId: String(index),
+          name: option.label,
+          ...(option.about ? { about: option.about } : {}),
+          ...(question.several ? { picked: chosen.includes(String(option.value)) } : {}),
+        })),
+        ...(question.written
+          ? [
+              {
+                optionId: OTHER_FORM,
+                name: typeof own === 'string' ? own : 'something else',
+                ...(typeof own === 'string' ? { picked: true } : {}),
+                kind: 'other' as const,
+              },
+            ]
+          : []),
         ...(question.several
-          ? { requestId: request.requestId, picked: chosen.includes(String(option.value)) }
-          : {}),
-      })),
+          ? [{ optionId: SUBMIT_FORM, name: "that's my answer", kind: 'submit' as const }]
+          : []),
+        talk,
+      ],
     };
   }
 
@@ -2211,6 +2273,30 @@ function roomOf(usage: SessionUsage | null): number | null {
 /** What it has cost so far, straight off the provider's own report. */
 function costOf(usage: SessionUsage | null): { amount: number; currency: string } | null {
   return usage?.cost ?? null;
+}
+
+/** The lines a form adds under a question's own answers, by what they do. */
+const SUBMIT_FORM = '__submit__';
+const TALK_FORM = '__talk__';
+const OTHER_FORM = '__other__';
+/* What every question is answered with when you would rather talk it over:
+   the agent reads it as the answer and comes back to talk, instead of being
+   stopped mid-turn as calling it off would. */
+const TALK_IT_OVER = 'I would rather talk this over with you before choosing. Ask me about it.';
+
+/** What a form's question has been answered with so far, in words. */
+function answeredAs(
+  question: FormQuestion,
+  content: Record<string, FormValue>
+): string | undefined {
+  const own = question.written ? content[question.written] : undefined;
+  if (typeof own === 'string' && own) return own;
+  const value = content[question.key];
+  const values = Array.isArray(value) ? value : value === undefined ? [] : [value];
+  const labels = values.map(
+    (one) => question.options.find((option) => option.value === one)?.label ?? String(one)
+  );
+  return labels.length ? labels.join(', ') : undefined;
 }
 
 function askOf(

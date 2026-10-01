@@ -32,6 +32,7 @@ export type Asking =
   | 'file'
   | 'changes'
   | 'answer'
+  | 'own'
   | 'server'
   | 'skill'
   | 'built';
@@ -48,6 +49,7 @@ const PROMPTS: Record<Asking, string> = {
   file: '› say something about this file',
   changes: '› say something about these changes',
   answer: '› answer it',
+  own: '› or write your own answer',
   server: '› its name, then the command',
   skill: '› its name',
 };

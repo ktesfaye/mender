@@ -219,6 +219,14 @@ async function boot(): Promise<void> {
         if (inside) saveDraft(inside.id, text);
       },
       say: (text) => {
+        /* Return on an empty line, with a question up that has something to
+           send, sends it: picks on a question that takes several, or the
+           whole form from the check before it goes. */
+        const asked = watching?.asked();
+        if (!text.trim() && asked?.submit) {
+          void answered(asked.submit);
+          return;
+        }
         if (talking) {
           talking.shell?.focus();
           return;
@@ -4038,7 +4046,9 @@ async function boot(): Promise<void> {
         return;
       }
       saying.handed();
-      if (said.trim()) yard.fly(said.trim());
+      /* Written as a question's own answer, it goes into the question, not up
+         onto the gatepost as though it were something new said. */
+      if (said.trim() && !saying.asked()?.writable) yard.fly(said.trim());
       /* Said, not half-written any more. */
       const pending = draftTimers.get(task.id);
       if (pending) clearTimeout(pending);
@@ -4058,6 +4068,11 @@ async function boot(): Promise<void> {
       const task = inside;
       const asked = watching?.asked();
       if (!task || !asked) return;
+      /* "Something else" is answered on the line, so it only hands it the keyboard. */
+      if (optionId === '__other__') {
+        yard.line.take();
+        return;
+      }
       /* Not an answer at all: sends every mark a multi-select question has
          picked up so far. */
       if (optionId === SEND_ALL) {
@@ -5905,7 +5920,7 @@ function watchPointer(
       event.stopImmediatePropagation();
       pointing.fled();
     },
-    true,
+    true
   );
   window.addEventListener('keydown', (event) => {
     if (pointing.held(event)) return;

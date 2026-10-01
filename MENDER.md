@@ -780,8 +780,15 @@ italic, each answer's name in pixel type with a number beside it and what
 it would mean written quietly under it, and the one the agent favours
 marked "recommended" after its name rather than inside it. A number picks it
 and goes on to the next question; on one that takes several, numbers mark and
-unmark and "that's everything" moves on. Anything written on the line instead
-is your own answer to that question. Nothing goes back until the last one is
+unmark and "that's my answer", or return on an empty line, moves on. Under the
+agent's own answers, set apart by a short rule, are what the board adds:
+"something else", which hands you the line to write your own answer on (and
+writing there without pressing it does the same), and "talk it over instead",
+which answers every question with wanting to talk first, so the agent comes
+back to discuss it rather than being stopped. When there was more than one
+question, the last one leads to a check before it goes: each question with
+what you said, any of them pressed to go back and change it, and "send it",
+or return. Nothing goes back until that is
 answered, and then all of them go together.
 
 An agent that needs signing in to work at all says so on its own `/agent`

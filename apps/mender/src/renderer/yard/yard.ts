@@ -630,7 +630,10 @@ export function makeYard(layer: Layer, does: Doings): Standing {
        wants an answer, an empty project wants to know what to build, and
        anything else is the next thing you have to say. Not while something is
        laid over the yard, though: that has its own question. */
-    if (!scrim.up) line.asks(yard.asking ? 'answer' : yard.session ? 'say' : 'start');
+    if (!scrim.up)
+      line.asks(
+        yard.asking ? (yard.asking.writable ? 'own' : 'answer') : yard.session ? 'say' : 'start'
+      );
 
     /* The keyboard was standing on something before the rewrite and the board
        under it is new, so put the mark back on whatever it was standing on. */
@@ -2361,7 +2364,18 @@ function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
 
   const answers = document.createElement('div');
   answers.style.cssText = 'display:flex;flex-direction:column;gap:12px;margin-top:18px';
+  let setApart = false;
   for (const [i, answer] of asking.answers.entries()) {
+    /* The agent's own answers first; what the board adds under them, your
+       own answer, sending, talking it over, is set apart by a short rule so
+       it never reads as one more of the agent's choices. */
+    if (answer.kind && !setApart) {
+      setApart = true;
+      const apart = document.createElement('div');
+      apart.style.cssText =
+        'width:48px;height:1px;background:rgba(244,227,192,.22);margin:4px 0 2px 34px';
+      answers.appendChild(apart);
+    }
     const line = row(12);
     line.style.whiteSpace = 'normal';
     const key = document.createElement('span');
@@ -2378,7 +2392,10 @@ function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
       ),
       `answer:${answer.id}`
     );
-    press.style.cssText += 'font-family:Silkscreen,monospace;font-size:13px;letter-spacing:.03em';
+    press.style.cssText +=
+      answer.kind === 'submit' || !answer.kind
+        ? 'font-family:Silkscreen,monospace;font-size:13px;letter-spacing:.03em'
+        : "font-family:'Josefin Sans',sans-serif;font-size:15px;font-style:italic";
     press.dataset.q = 'option';
     const named = document.createElement('span');
     named.appendChild(press);
@@ -2387,6 +2404,12 @@ function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
       tag.style.cssText = `${ABOUT};margin-left:10px;font-style:italic`;
       tag.textContent = 'recommended';
       tag.dataset.q = 'about';
+      named.appendChild(tag);
+    }
+    if (answer.kind && answer.id === asking.submit) {
+      const tag = document.createElement('span');
+      tag.style.cssText = `${ABOUT};margin-left:10px;font-style:italic`;
+      tag.textContent = 'or return';
       named.appendChild(tag);
     }
     if (answer.about) {

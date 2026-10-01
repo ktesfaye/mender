@@ -85,6 +85,10 @@ export const askSchema = z.object({
   step: z.string().optional(),
   /** What else answers it besides a number: writing on the line. */
   aside: z.string().optional(),
+  /** Writing on the line answers it too. */
+  writable: z.boolean().optional(),
+  /** What an empty return presses: sending what is marked, or the whole form. */
+  submit: z.string().optional(),
   multi: z.boolean().optional(),
   options: z.array(
     z.object({
@@ -92,6 +96,8 @@ export const askSchema = z.object({
       name: z.string(),
       /** What picking it would mean, when the agent said. */
       about: z.string().optional(),
+      /** A line the board adds under the agent's own answers, set apart from them. */
+      kind: z.enum(['other', 'submit', 'talk']).optional(),
       /** Which pending question this answers. Only set when `multi`. */
       requestId: z.string().optional(),
       /** Marked but not sent yet. Only meaningful when `multi`. */

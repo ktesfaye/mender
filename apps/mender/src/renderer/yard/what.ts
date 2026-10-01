@@ -59,12 +59,23 @@ export interface Asking {
   step?: string;
   /** What else answers it: writing on the line. */
   aside?: string;
+  /** Writing on the line answers it too. */
+  writable?: boolean;
+  /** What an empty return presses, when it presses anything. */
+  submit?: string;
   /** Several things are asking at once: an answer marks its own pending
    *  question instead of sending, until the last one — "that's everything" —
    *  is pressed. */
   multi?: boolean;
   /** In the order the number keys answer them. */
-  answers: { id: string; said: string; about?: string; requestId?: string }[];
+  answers: {
+    id: string;
+    said: string;
+    about?: string;
+    requestId?: string;
+    /** A line the board adds under the agent's own answers. */
+    kind?: 'other' | 'submit' | 'talk';
+  }[];
 }
 
 export interface Project {

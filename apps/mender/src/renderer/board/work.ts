@@ -15,14 +15,19 @@ export const SEND_ALL = '__send_all__';
  * one line at the end that is not an answer at all: "that's everything",
  * which is what actually sends the marks.
  */
-export function answersFor(
-  ask: Ask
-): { optionId: string; requestId?: string; name: string; about?: string }[] {
+export function answersFor(ask: Ask): {
+  optionId: string;
+  requestId?: string;
+  name: string;
+  about?: string;
+  kind?: 'other' | 'submit' | 'talk';
+}[] {
   const answers = ask.options.map((option) => ({
     optionId: option.optionId,
     requestId: option.requestId,
     name: option.picked ? `✓ ${option.name}` : option.name,
     ...(option.about ? { about: option.about } : {}),
+    ...(option.kind ? { kind: option.kind } : {}),
   }));
   if (ask.multi)
     answers.push({ optionId: SEND_ALL, requestId: undefined, name: "that's everything" });
