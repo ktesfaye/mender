@@ -7,13 +7,16 @@ import { longFor } from './from';
  *
  * A strip of cells is everything it was holding in mind. While it packs, a hot front crosses what it was
  * holding and presses each cell flat behind it, sparks going up off the front;
- * once it has, what is left stands up green and what it let go of lies flat.
+ * once it has, what is left stands up green for a moment and the strip goes,
+ * leaving how far down it went and how long it took as one quiet line.
  * Claude says nothing while it works, so how far the front has got is its
  * clock against how long one usually takes here, said as such underneath.
  */
 
 const CELLS = 48;
 const TALL = 16;
+/** How long a finished strip stands before it goes. */
+const SETTLE = 2400;
 
 const WARM = '#ffc98a';
 const DONE = '#a8c469';
@@ -147,30 +150,34 @@ export function packed(id: string, pack: Pack): HTMLElement {
           : `${longFor(elapsed)} in · usually about ${longFor(pack.expect).replace(/ 0s$/, '')}`;
       return;
     }
-    const left = pack.to !== undefined ? cellsOf(pack.to, pack.from, 1) : 1;
+    /* Done is said, not drawn: the strip only stays long enough to stand
+       back up once, then goes and leaves the line under the words. */
     const fresh = pack.ended ? Date.now() - pack.ended : Infinity;
-    cells.forEach((cell, i) => {
-      cell.style.boxShadow = '';
-      if (i < left) {
-        cell.style.height = `${TALL}px`;
-        cell.style.background = DONE;
-        /* Standing back up, once, anchored to when it finished so the board
-           being redrawn under it never plays it again. */
-        if (fresh < 1600)
-          cell.style.animation = `yard-pack-rise 520ms steps(4,end) ${i * 40 - fresh}ms both`;
-      } else {
-        cell.style.height = '2px';
-        cell.style.background = 'rgba(168,196,105,.28)';
-      }
-    });
-    big.textContent =
+    const left = pack.to !== undefined ? cellsOf(pack.to, pack.from, CELLS) : CELLS;
+    if (fresh < SETTLE) {
+      cells.forEach((cell, i) => {
+        cell.style.boxShadow = '';
+        if (i < left) {
+          cell.style.height = `${TALL}px`;
+          cell.style.background = DONE;
+          cell.style.animation = `yard-pack-rise 520ms steps(4,end) ${i * 20 - fresh}ms both`;
+        } else {
+          cell.style.height = '2px';
+          cell.style.background = 'rgba(168,196,105,.28)';
+        }
+      });
+      window.setTimeout(() => row.remove(), SETTLE - fresh);
+    } else {
+      row.remove();
+    }
+    const down =
       pack.from && pack.to !== undefined ? `${short(pack.from)} → ${short(pack.to)}` : '';
     const took = pack.began && pack.ended ? `took ${longFor(pack.ended - pack.began)}` : '';
     const now =
       pack.to !== undefined && pack.size
         ? `now ${Math.max(1, Math.round((pack.to / pack.size) * 100))}% full`
         : '';
-    meta.textContent = [took, now].filter(Boolean).join(' · ');
+    meta.textContent = [down, took, now].filter(Boolean).join(' · ');
     meta.style.display = meta.textContent ? '' : 'none';
   }
 

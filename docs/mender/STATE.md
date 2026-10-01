@@ -3198,6 +3198,15 @@ real `/compact` counted up to 89% at 18s against a usual 16s with the fire
 saying "packing it down", then settled at 35k to 30k, took 22s; after a restart
 the carried summary was gone from the post.
 
+### A finished packing is said, not left drawn (2026-09-30) — done
+
+The finished strip stayed on the board for good, and when the village had no
+sizes for it, it was one green cell over a dashed line that read as broken.
+Now it stands up green for a moment once it finishes and goes, leaving the
+sentence and a single line of before, after and how long. Driven in a dev
+instance with a fresh one with sizes, one without, and an old one: the first
+two stood up and went, the third was only the sentence.
+
 ### Shift-Escape goes straight to the island (2026-09-30) — done
 
 Escape walks out one step at a time and, in a yard where somebody is working,
