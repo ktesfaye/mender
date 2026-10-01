@@ -34,8 +34,9 @@ export const HOURS = [
 export interface SkyChoice {
   /** 'real' for his own clock, or an hour of the day to hold the sky at. */
   time: 'real' | number;
-  /** 'real' for his own weather, or a kind of weather to hold it at. */
-  weather: 'real' | WeatherKind;
+  /** 'real' for his own weather, or the kinds of weather to hold it at,
+      together: sun with snow is a bright snowy day, rain with fog a wet mist. */
+  weather: 'real' | WeatherKind[];
   /** How much of it: a light shower to a downpour, a flurry to a blizzard. */
   amount: number;
 }
@@ -48,15 +49,20 @@ export function keptChoice(): SkyChoice {
     if (!read) return { time: 'real', weather: 'real', amount: 1 };
     return {
       time: typeof read.time === 'number' || read.time === 'real' ? read.time : 'real',
-      weather:
-        read.weather === 'real' || WEATHERS.includes(read.weather as WeatherKind)
-          ? (read.weather as SkyChoice['weather'])
-          : 'real',
+      weather: weatherOf(read.weather),
       amount: typeof read.amount === 'number' ? Math.min(2, Math.max(0.3, read.amount)) : 1,
     };
   } catch {
     return { time: 'real', weather: 'real', amount: 1 };
   }
+}
+
+/** What was kept, read back: one kind on its own as it used to be kept, or several. */
+function weatherOf(kept: unknown): SkyChoice['weather'] {
+  const kinds = (Array.isArray(kept) ? kept : [kept]).filter((one): one is WeatherKind =>
+    WEATHERS.includes(one as WeatherKind)
+  );
+  return kinds.length ? kinds : 'real';
 }
 
 function keep(choice: SkyChoice): void {
@@ -124,6 +130,8 @@ const KEYS: { at: number; ambient: [number, number, number]; desat: number }[] =
   { at: 0.42, ambient: [1, 1, 1], desat: 0 },
   { at: 1, ambient: [1, 1, 1], desat: 0 },
 ];
+
+type Weather = Omit<Target, 'ambient' | 'desat' | 'dark' | 'low'>;
 
 /** Somewhere sensible to put the sun before the real one is known. */
 const DEFAULT_SUNRISE = 6.75;
@@ -279,7 +287,7 @@ export class Sky {
     };
   }
 
-  private weatherShown(): Omit<Target, 'ambient' | 'desat' | 'dark' | 'low'> {
+  private weatherShown(): Weather {
     const amount = this.choice.amount;
     if (this.choice.weather === 'real') {
       const real = this.real;
@@ -294,27 +302,44 @@ export class Sky {
       };
     }
     const clamp = (value: number): number => Math.min(1, value * amount);
-    switch (this.choice.weather) {
-      case 'clear':
-        return { cloud: 0.05, rain: 0, snow: 0, fog: 0, wind: 0.12, thunder: false };
-      case 'cloudy':
-        return { cloud: clamp(0.85), rain: 0, snow: 0, fog: 0, wind: 0.3, thunder: false };
-      case 'rain':
-        return { cloud: 0.9, rain: clamp(0.55), snow: 0, fog: 0.1, wind: 0.35, thunder: false };
-      case 'storm':
-        return {
-          cloud: 1,
-          rain: clamp(0.95),
-          snow: 0,
-          fog: 0.15,
-          wind: clamp(0.85),
-          thunder: true,
-        };
-      case 'snow':
-        return { cloud: 0.8, rain: 0, snow: clamp(0.6), fog: 0.12, wind: 0.2, thunder: false };
-      case 'fog':
-        return { cloud: 0.6, rain: 0, snow: 0, fog: clamp(0.8), wind: 0.05, thunder: false };
-    }
+    const one = (kind: WeatherKind): Weather => {
+      switch (kind) {
+        case 'clear':
+          return { cloud: 0.05, rain: 0, snow: 0, fog: 0, wind: 0.12, thunder: false };
+        case 'cloudy':
+          return { cloud: clamp(0.85), rain: 0, snow: 0, fog: 0, wind: 0.3, thunder: false };
+        case 'rain':
+          return { cloud: 0.9, rain: clamp(0.55), snow: 0, fog: 0.1, wind: 0.35, thunder: false };
+        case 'storm':
+          return {
+            cloud: 1,
+            rain: clamp(0.95),
+            snow: 0,
+            fog: 0.15,
+            wind: clamp(0.85),
+            thunder: true,
+          };
+        case 'snow':
+          return { cloud: 0.8, rain: 0, snow: clamp(0.6), fog: 0.12, wind: 0.2, thunder: false };
+        case 'fog':
+          return { cloud: 0.6, rain: 0, snow: 0, fog: clamp(0.8), wind: 0.05, thunder: false };
+      }
+    };
+    /* Several kinds at once fall together: the most of each that any of them
+       brings. Sun among them clears the sky, whatever else is falling, so
+       sun with snow is a bright snowy day and not a grey one. */
+    const kinds = this.choice.weather;
+    const all = kinds.map(one);
+    const mixed: Weather = {
+      cloud: Math.max(...all.map((w) => w.cloud)),
+      rain: Math.max(...all.map((w) => w.rain)),
+      snow: Math.max(...all.map((w) => w.snow)),
+      fog: Math.max(...all.map((w) => w.fog)),
+      wind: Math.max(...all.map((w) => w.wind)),
+      thunder: all.some((w) => w.thunder),
+    };
+    if (kinds.includes('clear')) mixed.cloud = Math.min(mixed.cloud, 0.12);
+    return mixed;
   }
 
   /** His local hour, or the one the sky has been held at. */

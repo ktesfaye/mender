@@ -1571,5 +1571,4 @@ body.gripping-row * {
   color: var(--yard-ink-bright);
   background: rgba(244, 227, 192, 0.1);
   border-color: var(--yard-ink-bright);
-  pointer-events: none;
 }

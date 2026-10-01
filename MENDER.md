@@ -1092,7 +1092,7 @@ autumn the leaves come down. A right-click on the water offers "the sky" beside
 "edit districts", and it is a panel, not a list of words: the hour is a slider
 whose track is the island's own light across the day, from a low sun coming up at
 one end to the moon at the other, and dragging it moves the light on the island
-as you go; the weather is a row of pixel pictures with the one in force framed;
+as you go; the weather is a row of pixel pictures, each on or off and any of them together, sun with snow a bright snowy day, rain with fog a wet mist, every one in force framed, and the last one taken off handing it back to outside;
 how much of whatever is falling is a second slider, a few drops to a downpour.
 "Outside" by either puts it back to the real one, and whatever is picked is kept
 on this machine. The same panel opens off a slot at the head of the projects rack

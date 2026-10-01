@@ -203,7 +203,7 @@ export function skyPicture(sky: Sky): string {
   const look = sky.current;
   const chosen = sky.chosen.weather;
   const kind =
-    chosen === 'storm' || (chosen === 'real' && look.flash > 0)
+    (chosen !== 'real' && chosen.includes('storm')) || (chosen === 'real' && look.flash > 0)
       ? 'storm'
       : look.snow > 0.1
         ? 'snow'
@@ -283,8 +283,13 @@ export function skySlab(sky: Sky): HTMLElement {
     label.textContent = name;
     tile.appendChild(label);
     tile.addEventListener('mousedown', (event) => event.preventDefault());
+    /* Each picture is on or off, and any of them go together. Taking the
+       last one off hands the weather back to outside. */
     tile.addEventListener('click', () => {
-      sky.choose({ weather: kind });
+      const now = sky.chosen.weather;
+      const kinds = now === 'real' ? [] : [...now];
+      const next = kinds.includes(kind) ? kinds.filter((one) => one !== kind) : [...kinds, kind];
+      sky.choose({ weather: next.length ? next : 'real' });
       paint();
     });
     tiles.appendChild(tile);
@@ -325,9 +330,9 @@ export function skySlab(sky: Sky): HTMLElement {
     hourSaid.textContent = `${clock(at)} · ${real ? 'as it is outside' : partOfDay(at)}`;
     weatherOutside.dataset.on = chosen.weather === 'real' ? 'yes' : '';
     for (const [kind, tile] of tileOf) {
-      tile.dataset.on = chosen.weather === kind ? 'yes' : '';
+      tile.dataset.on = chosen.weather !== 'real' && chosen.weather.includes(kind) ? 'yes' : '';
     }
-    const falls = chosen.weather !== 'real' && chosen.weather !== 'clear';
+    const falls = chosen.weather !== 'real' && chosen.weather.some((one) => one !== 'clear');
     amountHead.hidden = !falls;
     amount.root.hidden = !falls;
     keepOnScreen(panel);
