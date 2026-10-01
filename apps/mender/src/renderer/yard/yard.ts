@@ -137,10 +137,6 @@ const SAYS: Record<Posture, string> = {
   resting: '#7d6a50',
 };
 
-/* Under the one you are standing in, the same step down from its name the
-   others take from theirs. Nearly as bright as the name, the two lines ran
-   together into one block of cream. */
-const HERE_SAYS = '#9c8662';
 
 /** The light a lantern throws round itself, by what it is saying: the colour
     and how strong. Idle, broken and still being set up throw none. */
@@ -3532,7 +3528,14 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     const cutting = one.ground === 'cutting';
     const halo = HALO[one.posture];
     if (one.here && one.lit) {
-      const glow = firelight({ left: x - 34, top: top - 24, width: 90, height: 90 }, 0.3);
+      /* The light you are standing in reaches past its lantern and over its
+         name too, so the one you are in reads from across the room as a lit
+         patch of the rail rather than one bright lamp among dim ones. */
+      const reach = step + 40;
+      const glow = box({ left: x - 34, top: top - 34, width: reach + 34, height: 110 });
+      glow.style.pointerEvents = 'none';
+      glow.appendChild(firelight({ left: 0, top: 10, width: 90, height: 90 }, 0.4));
+      glow.appendChild(firelight({ left: 20, top: 0, width: reach, height: 110 }, 0.36, false));
       /* The light you are standing in belongs to its lantern: taking another
          one lets this one's light go and swells the new one's up in place. */
       glow.dataset.glow = 'here';
@@ -3594,6 +3597,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       const wide = step - 34 - WORDS_GAP;
       const name = box({ left: 34, top: 2, width: wide }, CLIPPED);
       const written = exact(one.name, 12, one.here ? '#ffdca4' : TONE[one.posture]);
+      if (one.here) written.style.textShadow = '1px 1px 0 #120d07,0 0 8px rgba(255,168,60,.55)';
       clipped(written, one.name);
       /* The keyboard stands on the name rather than on the whole lantern,
          because the mark it leaves is a fill and a fill the size of a lantern
@@ -3602,7 +3606,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       name.appendChild(written);
       hung.appendChild(name);
       const under = box({ left: 34, top: 20, width: wide }, CLIPPED);
-      const saying = exact(one.saying, 11, one.here ? HERE_SAYS : SAYS[one.posture]);
+      const saying = exact(one.saying, 11, one.here ? '#ecd6a8' : SAYS[one.posture]);
       if (cutting) {
         written.style.opacity = '.6';
         saying.style.opacity = '.6';
