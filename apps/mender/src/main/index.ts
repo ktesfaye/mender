@@ -215,10 +215,10 @@ async function openVillageWindow(): Promise<BrowserWindow> {
  * the corner of your eye — and the price of that switch is a page which believes
  * it is visible forever. So the window itself says, because the window knows.
  *
- * Behind is not gone. Half of what this app is for is glanceable: the village
- * sitting beside the thing he is really working in, with a light on in a house
- * where somebody wants him. That has to keep moving. It just does not have to
- * keep moving sixty times a second.
+ * Behind freezes the village the same as gone does, because he asked that it
+ * cost nothing while he is working in something else. It stays glanceable all
+ * the same: the page wakes for a moment to repaint a house whose session
+ * changed state, then stops again.
  */
 function tellItWhoIsLooking(window: BrowserWindow): void {
   let said: Watching | null = null;

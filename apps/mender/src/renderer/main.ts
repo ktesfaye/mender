@@ -65,7 +65,7 @@ import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
 import { answerFor, SEND_ALL } from './board/work';
 import { watchGrip } from './grip';
 import { ran } from './job';
-import { drawingNow, setPace, watched } from './pace';
+import { drawingNow, nudge, setPace, watched } from './pace';
 import { Atmosphere, loadEmitters, type Lit } from './village/atmosphere';
 import {
   createCamera,
@@ -5871,8 +5871,11 @@ async function boot(): Promise<void> {
             else if (now !== 'resting') unseen.delete(task);
           }
           for (const task of unseen.keys()) if (!(task in value)) unseen.delete(task);
+          const moved = JSON.stringify(seen) !== JSON.stringify(value);
           seen = value;
           people();
+          // Frozen behind another window, a house whose light changed is repainted.
+          if (moved) nudge();
         },
       }
     );

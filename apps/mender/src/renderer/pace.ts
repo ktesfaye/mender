@@ -17,8 +17,9 @@ import type { Watching } from '@shared/channels';
  * it draws as fast as the screen will take it, because that is the only time
  * smoothness is something anyone can see. A moment after the movement stops it
  * falls back to a handful of frames a second, which is still more than a
- * nine-hundred-millisecond breath has any use for. Behind another window it
- * falls further, and with the window put away it stops dead.
+ * nine-hundred-millisecond breath has any use for. The moment another window
+ * has his attention it stops dead, the same as when it is put away, waking for
+ * a moment only to repaint a house whose session changed state.
  *
  * **What is throttled is the drawing, not the thinking.** The tick itself still
  * runs every frame and still gets the real time since the last one, so an ease
@@ -64,6 +65,24 @@ export function stir(): void {
   until = performance.now() + TAIL_MS;
 }
 
+let woken: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Something real changed while the village is frozen behind another window:
+ * a session started working, asked, finished or broke. Run just long enough
+ * for its light to ease to the new state, then freeze again, so a glance at the
+ * window is never a lie.
+ */
+export function nudge(): void {
+  if (!ticker || watch === 'front') return;
+  if (watch === 'gone') return;
+  ticker.start();
+  clearTimeout(woken);
+  woken = setTimeout(() => {
+    if (watch !== 'front') ticker?.stop();
+  }, 1500);
+}
+
 /** Rain or snow is coming down: draw often enough for it to read as falling. */
 export function setFalling(now: boolean): void {
   falling = now;
@@ -93,7 +112,9 @@ export function watched(now: Watching): void {
   if (now === watch) return;
   watch = now;
   if (!ticker) return;
-  if (watch === 'gone') {
+  /* Behind another window it freezes, the same as put away: nothing moves
+     and nothing is drawn while he is looking at something else. */
+  if (watch === 'gone' || watch === 'behind') {
     ticker.stop();
     return;
   }

@@ -1132,9 +1132,11 @@ own weeds and brush coming up through it, and four weeks on it is as overgrown
 as it gets.
 
 **None of it is allowed to cost the battery.** All of it moves only on frames the
-screen is actually going to show and only near the view; behind another window it
-draws as seldom as the island always has, minimised it stops, and with a board
-open over the village the air goes still. At noon on a clear day the grade comes
+screen is actually going to show and only near the view. The moment another
+window has his attention the whole village freezes, the same as when it is
+minimised, waking for a moment only to repaint a house whose session changed
+state, so a glance at it is still true; and with a board open over the village
+the air and the crowd hold still. At noon on a clear day the grade comes
 off entirely and the art costs exactly what it did. Measured against the island
 with all of it switched off, in front of everything it is inside the noise, and
 behind another window it adds a small slice on top.
