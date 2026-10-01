@@ -232,6 +232,12 @@ export class Sky {
     return look;
   }
 
+  /** The light the island has at an hour on a clear day, for drawing the day. */
+  lightAt(hour: number): [number, number, number] {
+    const { rise, set } = this.sun();
+    return keyAt(sunAt(hour, rise, set)).ambient;
+  }
+
   /** What the last tick worked out, without working anything out again. */
   get current(): SkyLook {
     return this.look;

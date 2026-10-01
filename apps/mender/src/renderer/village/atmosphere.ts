@@ -172,11 +172,9 @@ export class Atmosphere {
   private readonly puffs: Puff[] = [];
   private readonly chimneys: Chimney[] = [];
   private readonly lamps: Lamp[] = [];
-  private readonly windows = new Map<number, Sprite[]>();
-  private readonly windowSpots = new Map<
-    number,
-    { x: number; y: number; w: number; h: number }[]
-  >();
+  private readonly windowSpots = new Map<number, Spot[]>();
+  /** Every house with glass in it, lit or not. */
+  private readonly homes: Home[] = [];
   private readonly bugs: Bug[] = [];
   private readonly butterflies: Bug[] = [];
   private readonly gulls: Gull[] = [];
@@ -213,6 +211,7 @@ export class Atmosphere {
     input.weatherLayer.addChild(this.rain);
     this.rain.eventMode = 'none';
     this.findEmitters();
+    this.makeHomes();
     const fire = input.fire;
     if (fire) {
       this.fireLights.push(
@@ -239,29 +238,65 @@ export class Atmosphere {
   setHouses(lit: readonly Lit[], inhabited: Set<string>): void {
     this.houses = [...lit];
     this.inhabited = inhabited;
-    for (const sprites of this.windows.values()) for (const one of sprites) one.visible = false;
-    for (const { building, look } of lit) {
-      const glow = WINDOW[look];
-      if (!glow) continue;
-      let sprites = this.windows.get(building.object);
-      if (!sprites) {
-        const spots = this.windowSpots.get(building.object) ?? [
-          {
-            x: building.doorX,
-            y: building.y + building.height * 0.72,
-            w: building.width * 0.5,
-            h: 6,
-          },
-        ];
-        sprites = spots.map((spot) =>
-          this.lights.add(spot.x, spot.y + spot.h, Math.max(26, spot.w * 2.4), 0xffc070, 1)
+    const moods = new Map<number, Look>();
+    for (const { building, look } of lit) moods.set(building.object, look);
+    for (const home of this.homes) home.mood = moods.get(home.building.object);
+  }
+
+  /**
+   * Every house with glass in it gets its windows lit once it is dark: the
+   * panes themselves glow and a little light spills out of each onto the
+   * ground. A house somebody is in burns in that session's own colour, as
+   * bright as its lantern on the rail; any other is a plain warm hearth, lit
+   * one by one as the light goes like the lamps, because a village at night
+   * with every window black is a ruin, not a place.
+   */
+  private makeHomes(): void {
+    for (const building of this.input.buildings) {
+      if (!building.district || building.district === 'CAMP') continue;
+      const spots = this.windowSpots.get(building.object);
+      if (!spots?.length) continue;
+      const panes: Sprite[] = [];
+      const pools: Sprite[] = [];
+      for (const spot of spots) {
+        if (!spot.door) {
+          const pane = new Sprite(Texture.WHITE);
+          pane.position.set(Math.round(spot.x - spot.w / 2), Math.round(spot.y));
+          pane.width = spot.w;
+          pane.height = spot.h;
+          pane.blendMode = 'add';
+          pane.alpha = 0;
+          pane.visible = false;
+          building.stand.addChild(pane);
+          panes.push(pane);
+        }
+        // Light falls out of a window down onto the ground in front of it.
+        pools.push(
+          this.lights.add(spot.x, spot.y + spot.h + 6, Math.max(30, spot.w * 3), 0xffb45a, 0)
         );
-        this.windows.set(building.object, sprites);
       }
-      for (const sprite of sprites) {
-        sprite.visible = true;
-        sprite.tint = glow.color;
-        sprite.alpha = glow.strength;
+      this.homes.push({ building, panes, pools, when: 0.2 + Math.random() * 0.4, on: 0 });
+    }
+  }
+
+  private tickHomes(look: SkyLook, seconds: number): void {
+    const night = Math.min(1, Math.max(0, (look.dark - 0.12) / 0.5));
+    for (const home of this.homes) {
+      const glow = home.mood ? WINDOW[home.mood] : null;
+      const hearth = look.dark > home.when;
+      const want = glow ? glow.strength : hearth ? 0.75 : 0;
+      home.on += (want - home.on) * Math.min(1, seconds * 1.5);
+      const color = glow?.color ?? 0xffb45a;
+      const flicker = 0.94 + Math.random() * 0.06;
+      const pane = home.on * night * flicker;
+      for (const one of home.panes) {
+        one.visible = pane > 0.01;
+        one.tint = color;
+        one.alpha = Math.min(0.85, pane * 0.9);
+      }
+      for (const one of home.pools) {
+        one.tint = color;
+        one.alpha = home.on * 0.75 * flicker;
       }
     }
   }
@@ -315,6 +350,7 @@ export class Atmosphere {
 
     this.tickFire(look, seconds, view);
     this.tickLamps(look, seconds);
+    this.tickHomes(look, seconds);
     this.tickSmoke(look, seconds, view);
     this.tickWalkerLights(look);
     if (!this.quiet) {
@@ -364,7 +400,7 @@ export class Atmosphere {
   private findEmitters(): void {
     const { items, layout } = this.input;
     const known = emitters ?? {};
-    const byObject = new Map<number, { x: number; y: number; w: number; h: number }[]>();
+    const byObject = new Map<number, Spot[]>();
     for (const item of items) {
       if (item.origin.kind !== 'object' || item.multiply) continue;
       const object = layout.objects[item.origin.oi];
@@ -383,10 +419,14 @@ export class Atmosphere {
           const at = worldOf(item, cx, cy);
           this.chimneys.push({ ...at, building: item.origin.oi, next: Math.random() * 2 });
         }
-        for (const [wx, wy, ww, wh] of [...(marks.windows ?? []), ...(marks.doors ?? [])]) {
+        const glass = (marks.windows ?? []).map((one) => ({ one, door: false }));
+        const doors = (marks.doors ?? []).map((one) => ({ one, door: true }));
+        for (const { one, door } of [...glass, ...doors]) {
+          const [wx, wy, ww, wh] = one;
+          // Flipped, the pane's right edge is where its left edge was.
           const at = worldOf(item, wx + (item.flip ? ww : 0), wy);
           const list = byObject.get(item.origin.oi) ?? [];
-          list.push({ x: at.x + ww / 2 - (item.flip ? ww : 0), y: at.y, w: ww, h: wh });
+          list.push({ x: at.x + ww / 2, y: at.y, w: ww, h: wh, door });
           byObject.set(item.origin.oi, list);
         }
         for (const [lx, ly] of marks.lamps ?? [])
@@ -401,7 +441,7 @@ export class Atmosphere {
 
   private addLamp(at: { x: number; y: number }, isFire: boolean): void {
     if (isFire) return;
-    const sprite = this.lights.add(at.x, at.y + 14, 120, 0xffc77a, 0);
+    const sprite = this.lights.add(at.x, at.y + 14, 120, 0xffae5c, 0);
     // Lit in no particular order as the light goes, a few at a time.
     this.lamps.push({ ...at, sprite, when: 0.25 + Math.random() * 0.35, on: 0 });
   }
@@ -925,6 +965,25 @@ export class Atmosphere {
 }
 
 type Rect = { x: number; y: number; width: number; height: number };
+
+/** A pane of glass or a doorway, in world pixels: its middle, its top, its size. */
+interface Spot {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  door: boolean;
+}
+
+interface Home {
+  building: Building;
+  panes: Sprite[];
+  pools: Sprite[];
+  mood?: Look;
+  /** How dark it has to be before an empty house lights its hearth. */
+  when: number;
+  on: number;
+}
 
 function inView(view: Rect, x: number, y: number, pad: number): boolean {
   return (

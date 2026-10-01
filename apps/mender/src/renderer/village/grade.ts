@@ -186,7 +186,11 @@ void main(void) {
   /* Banded by how bright it is, not channel by channel: stepping each colour
      on its own puts green and pink rings round a warm fire. */
   float power = max(max(light.r, light.g), light.b);
+  /* The bright middle steps the way pixel art does; the edge does not, or
+     every pool ends in a hard ring that reads as a disc from far out. Under
+     the lowest step it fades away as it really does. */
   float stepped = floor(power * 7.0 + 0.4) / 7.0;
+  stepped = mix(power, stepped, smoothstep(0.12, 0.3, power));
   light = power > 0.001 ? light * (stepped / power) : vec3(0.0);
 
   /* Light past full only warms what it falls on a little further, rather
@@ -279,8 +283,9 @@ function softDot(): Texture {
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const d = Math.hypot(x + 0.5 - size / 2, y + 0.5 - size / 2) / (size / 2);
+      // A long soft tail rather than a cone: lamplight thins out, it does not stop.
       const v = Math.max(0, 1 - d);
-      const a = Math.round(v * v * 255);
+      const a = Math.round(Math.min(1, v * v * (0.65 + 0.35 * v) + v * 0.08) * 255);
       const i = (y * size + x) * 4;
       // Premultiplied: what is added is the light itself.
       data[i] = a;

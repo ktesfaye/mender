@@ -1067,8 +1067,9 @@ gone, warm and low at either end of the day, flat and grey under cloud, and then
 whatever gives off light of its own adds its colour back only where it reaches,
 which is why the grass by the fire at midnight is still green. The lamps along
 the roads come on one by one as it gets dark, the fire flickers and throws sparks
-and smoke, the windows of every house somebody is in glow in that session's own
-colour, chimneys smoke over houses with somebody working in them and over every
+and smoke, every house's windows light up one by one, the panes themselves glowing
+and a little light falling out of each onto the ground, a plain warm hearth in an
+empty one and that session's own colour in one somebody is in, chimneys smoke over houses with somebody working in them and over every
 hearth on a cold evening, and black smoke sputters out of one that has broken.
 Clouds pass over land and water alike. Rain comes down slanted by the wind, rings
 the sea and leaves the ground dark and shining for a good while after; a storm
@@ -1078,8 +1079,14 @@ show in a still sea on a clear night. Gulls cross the island by day with their
 shadows under them, butterflies work the bushes on a bright one, a fish jumps off
 the shore now and then, fireflies come out over the bushes after dark, and in
 autumn the leaves come down. A right-click on the water offers "the sky" beside
-"edit districts": the hour and the weather, each "as it is outside" until another
-is picked, and how much of whatever is falling, kept on this machine.
+"edit districts", and it is a panel, not a list of words: the hour is a slider
+whose track is the island's own light across the day, from a low sun coming up at
+one end to the moon at the other, and dragging it moves the light on the island
+as you go; the weather is a row of pixel pictures with the one in force framed;
+how much of whatever is falling is a second slider, a few drops to a downpour.
+"Outside" by either puts it back to the real one, and whatever is picked is kept
+on this machine. Lamplight does not end in a ring: its middle steps the way pixel
+art does and its edge fades away.
 
 **And a district nobody has committed to grows over.** How long since a
 project's last commit on any of its own branches is read from git, not from

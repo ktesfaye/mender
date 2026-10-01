@@ -1447,21 +1447,129 @@ body.gripping-row * {
   }
 }
 
-/* The sky, taken in hand: the same slab a right-click on the water opens,
-   grown into two short lists. What is in force is written in plain cream. */
-.yard .sky-slab {
-  max-height: calc(100vh - 32px);
+/* The sky, taken in hand: a panel off a right-click on the water. The hour
+   and how much are sliders with a pixel picture either end, the weather a row
+   of pictures, the one in force framed in cream. */
+.yard .sky-panel {
+  width: 340px;
+  padding: 10px 18px 16px;
+  max-height: calc(100vh - 24px);
   overflow-y: auto;
-}
-.yard .sky-slab .menu-head {
-  padding: 10px 18px 4px;
-}
-.yard .sky-chosen {
-  color: var(--yard-ink-bright);
   font-family: var(--yard-face-label);
-  font-size: 13px;
 }
-.yard .sky-amount {
+.yard .sky-head {
   display: flex;
-  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 8px;
+}
+.yard .sky-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+.yard .sky-chip[data-on='yes'] {
+  color: var(--yard-ink-bright);
+  pointer-events: none;
+}
+.yard .sky-panel [hidden] {
+  display: none;
+}
+.yard .sky-icon {
+  flex: none;
+  image-rendering: pixelated;
+}
+.yard .sky-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.yard .sky-track {
+  position: relative;
+  flex: 1;
+  height: 12px;
+  border: 2px solid #120d07;
+  box-shadow: inset 0 0 0 1px rgba(244, 227, 192, 0.18);
+  cursor: pointer;
+  touch-action: none;
+  pointer-events: auto;
+}
+.yard .sky-thumb {
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  background: #1c140b;
+  border: 2px solid var(--yard-gold);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.yard .sky-track:hover .sky-thumb,
+.yard .sky-track[data-held='yes'] .sky-thumb {
+  border-color: var(--yard-gold-hover);
+}
+.yard .sky-slider[data-real='yes'] .sky-thumb {
+  border-color: var(--yard-ink-bright);
+}
+.yard .sky-marks {
+  position: relative;
+  height: 16px;
+  margin: 6px 32px 0;
+}
+.yard .sky-mark {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+.yard .sky-mark:nth-child(even) {
+  top: 9px;
+}
+.yard .sky-said {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--yard-ink-bright);
+  letter-spacing: 0.04em;
+}
+.yard .sky-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.yard .sky-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px 8px;
+  background: rgba(244, 227, 192, 0.04);
+  border: 2px solid rgba(244, 227, 192, 0.1);
+  color: var(--yard-gold);
+  font-family: var(--yard-face-label);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: default;
+  pointer-events: auto;
+}
+.yard .sky-tile:hover {
+  color: var(--yard-gold-hover);
+  border-color: rgba(224, 181, 106, 0.5);
+}
+.yard .sky-tile:active {
+  transform: translate(2px, 2px);
+}
+.yard .sky-tile[data-on='yes'] {
+  color: var(--yard-ink-bright);
+  background: rgba(244, 227, 192, 0.1);
+  border-color: var(--yard-ink-bright);
+  pointer-events: none;
 }
