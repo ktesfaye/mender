@@ -1111,7 +1111,7 @@ as you go; the weather is a row of pixel pictures, each on or off and any of the
 how much of whatever is falling is a second slider, a few drops to a downpour.
 "Outside" by either puts it back to the real one, and whatever is picked is kept
 on this machine. The same panel opens off a slot at the head of the projects rack
-out on the island, which wears a picture of what the sky is doing right now.
+out on the island, just left of the settings wheel, which wears a picture of what the sky is doing right now.
 
 Lamplight is light, not a disc. Each light is worked out per pixel on the
 ground under it and marched back to its source through a map of what stands on

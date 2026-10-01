@@ -94,7 +94,9 @@ export function makeShelf(
 
   /* The sky has a slot of its own out on the island, showing what it is
      doing right now: pressing it opens the hour and the weather. Standing in
-     a project it folds away, since the sky is the island's, not the yard's. */
+     a project it folds away, since the sky is the island's, not the yard's.
+     It stands just left of the wheel, among the rack's own slots rather than
+     ahead of the projects. */
   const weather = slot({ tool: KIT_NAMES.wheel }, false);
   weather.dataset.shelf = 'sky';
   weather.title = 'the sky';
@@ -260,6 +262,7 @@ export function makeShelf(
       }
       node.title = project.name;
     }
+    strip.appendChild(weather);
     strip.appendChild(wheel);
     strip.appendChild(fire);
   }
@@ -337,6 +340,7 @@ export function makeShelf(
           const each = nodes.get(other);
           if (each) strip.appendChild(each);
         }
+        strip.appendChild(weather);
         strip.appendChild(wheel);
         strip.appendChild(fire);
         node.style.zIndex = '';
