@@ -76,7 +76,7 @@ import './yard/tokens.css';
 import { loadFeet, Pennants, plantFlag } from './village/pennants';
 import { buildScene } from './village/scene';
 import { Sky } from './village/sky';
-import { keepOnScreen, skySlab } from './village/sky-slab';
+import { keepOnScreen, skyPicture, skySlab } from './village/sky-slab';
 import { Paths, Walkers, type Walking } from './village/walkers';
 import { Water } from './village/water';
 import { wire, type MenderClient } from './wire';
@@ -154,6 +154,11 @@ async function boot(): Promise<void> {
   skyFrame.addChild(camera);
   const world = new Container();
   camera.addChild(world);
+  /* The flags fly over the world rather than in it, so the night only half
+     darkens them: a project's face has to be readable from the water at any
+     hour. */
+  const flagLayer = new Container();
+  camera.addChild(flagLayer);
   /* Rain and snow fall in front of the camera rather than in the world, so
      they are whole screen pixels at any zoom and cost the same at every one. */
   const weatherLayer = new Container();
@@ -172,6 +177,7 @@ async function boot(): Promise<void> {
        rack in the corner and the old plank is not drawn at all. */
     await loadCuts();
     const layer = makeLayer();
+    let openTheSky = (): void => undefined;
     const shelf = makeShelf(
       layer.root,
       (id) => void go(`project:${id}`),
@@ -186,8 +192,14 @@ async function boot(): Promise<void> {
           paintRail();
         });
       },
-      () => openTheWindmill()
+      () => openTheWindmill(),
+      () => openTheSky()
     );
+    /* The rack's sky slot wears what the sky is doing, kept up to date. */
+    const paintSkySlot = (): void => shelf.setSky(skyPicture(sky));
+    window.setTimeout(paintSkySlot, 1500);
+    window.setInterval(paintSkySlot, 30_000);
+    sky.onChange(() => window.setTimeout(paintSkySlot, 2500));
 
     /* What was half-written on a session's line, kept against that session so
        it is still there after the app itself restarts. Written a moment
@@ -601,7 +613,17 @@ async function boot(): Promise<void> {
     /** What the line asks for while a particular thing is open. */
     const prompting = (): 'file' | 'changes' | undefined =>
       reading ? 'changes' : opened ? 'file' : undefined;
-    let drawn = await draw(world, client, pixi.renderer, camera, null, sky, weatherLayer, skyFrame);
+    let drawn = await draw(
+      world,
+      client,
+      pixi.renderer,
+      camera,
+      null,
+      sky,
+      weatherLayer,
+      skyFrame,
+      flagLayer
+    );
     let projects = await client.projects.list({});
     let tasks: Task[] = [];
     /* A session that has been asked for but whose worktree is still being cut
@@ -1376,7 +1398,8 @@ async function boot(): Promise<void> {
             drawn,
             sky,
             weatherLayer,
-            skyFrame
+            skyFrame,
+            flagLayer
           );
           projects = await client.projects.list({});
           people();
@@ -3310,7 +3333,17 @@ async function boot(): Promise<void> {
          same way founding one draws it: the island is composed again from
          what is standing now, rather than left showing a place nobody has. */
       await shut();
-      drawn = await draw(world, client, pixi.renderer, camera, drawn, sky, weatherLayer, skyFrame);
+      drawn = await draw(
+        world,
+        client,
+        pixi.renderer,
+        camera,
+        drawn,
+        sky,
+        weatherLayer,
+        skyFrame,
+        flagLayer
+      );
       projects = await client.projects.list({});
       tasks = tasks.filter((task) => task.project !== project.id);
       people();
@@ -4907,7 +4940,8 @@ async function boot(): Promise<void> {
             drawn,
             sky,
             weatherLayer,
-            skyFrame
+            skyFrame,
+            flagLayer
           );
           projects = await client.projects.list({});
           people();
@@ -5493,7 +5527,8 @@ async function boot(): Promise<void> {
             drawn,
             sky,
             weatherLayer,
-            skyFrame
+            skyFrame,
+            flagLayer
           );
           projects = await client.projects.list({});
           people();
@@ -5525,7 +5560,8 @@ async function boot(): Promise<void> {
             drawn,
             sky,
             weatherLayer,
-            skyFrame
+            skyFrame,
+            flagLayer
           );
           people();
         },
@@ -5539,6 +5575,20 @@ async function boot(): Promise<void> {
     const unslabIsland = (): void => {
       rearrangeSlab?.remove();
       rearrangeSlab = null;
+    };
+    /* The same panel, off the rack's sky slot: hung just under the rack. */
+    openTheSky = (): void => {
+      if (rearrangeSlab?.classList.contains('sky-panel')) {
+        unslabIsland();
+        return;
+      }
+      unslabIsland();
+      const opened = skySlab(sky);
+      layer.root.appendChild(opened);
+      opened.style.top = '62px';
+      opened.style.left = `${window.innerWidth - opened.offsetWidth - 12}px`;
+      rearrangeSlab = opened;
+      keepOnScreen(opened);
     };
     window.addEventListener('contextmenu', (event) => {
       unslabIsland();
@@ -5878,7 +5928,8 @@ async function draw(
   was: Drawn | null,
   sky: Sky,
   weatherLayer: Container,
-  skyFrame: Container
+  skyFrame: Container,
+  flagLayer: Container
 ): Promise<Drawn> {
   say('drawing the island…');
   const map = await client.village.map({});
@@ -5899,6 +5950,7 @@ async function draw(
 
   was?.atmosphere.destroy();
   for (const old of world.removeChildren()) old.destroy({ children: true });
+  for (const old of flagLayer.removeChildren()) old.destroy({ children: true });
   was?.pennants.destroy();
   const fire = campfireOf(map.layout);
   const atmosphere = new Atmosphere(
@@ -5907,6 +5959,7 @@ async function draw(
       world,
       frame: skyFrame,
       camera,
+      flags: flagLayer,
       weatherLayer,
       layout: map.layout,
       items,
@@ -5916,6 +5969,12 @@ async function draw(
       laneAt: scene.laneAt,
       land: groundCells(map.layout),
       extent: island,
+      extentPx: {
+        x: island.x - 256,
+        y: island.y - 256,
+        width: island.width + 512,
+        height: island.height + 512,
+      },
     },
     sky
   );
@@ -5930,7 +5989,11 @@ async function draw(
     atmosphere,
     walkers,
     folk: new Folk(ground.windows),
-    pennants: new Pennants(feet, scene.posts, camera),
+    pennants: new Pennants(
+      feet,
+      scene.posts.map(() => flagLayer),
+      camera
+    ),
     districts: new Map(map.districts.map((district) => [district.id, district])),
     island,
     moored: map.moored,

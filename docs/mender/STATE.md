@@ -1060,7 +1060,10 @@ Done, driven in a scratch dev instance against his real project folders
 morning came through as overcast), and can be held at any hour or weather from a
 right-click on the water, on a panel with an hour slider coloured by the
 island's own light and the weather as pixel pictures. Night relights every pixel
-rather than darkening it: lamps come on one by one and fade softly at the edge,
+rather than darkening it: lamps come on one by one, their light cast per pixel
+with shadows from walls, trees and fences and dithered rather than ringed, each
+with a glow at the glass, flags staying readable over the night, and the sky
+panel also opening off a slot on the projects rack,
 the fire lights the ground round it, every house's window panes glow, warm in an
 empty one and in the session's colour where there is one, and people carry
 lanterns.

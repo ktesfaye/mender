@@ -57,6 +57,8 @@ export interface Shelf {
   show(projects: OnShelf[]): void;
   /** Fold it away, or bring it back. */
   fold(away?: boolean): void;
+  /** The picture on the sky's slot: what the sky over the island is doing now. */
+  setSky(picture: string): void;
   close(): void;
 }
 
@@ -65,7 +67,8 @@ export function makeShelf(
   open: (id: string) => void,
   out: () => void,
   reorder: (ids: string[]) => void,
-  settings: () => void
+  settings: () => void,
+  sky: () => void
 ): Shelf {
   const root = box({ right: 0, top: 0 }, RACK);
   // Its bare wood holds the window, like the empty part of any Mac toolbar.
@@ -88,6 +91,21 @@ export function makeShelf(
   strip.style.cssText = STRIP;
   strip.dataset.grip = '';
   root.appendChild(strip);
+
+  /* The sky has a slot of its own out on the island, showing what it is
+     doing right now: pressing it opens the hour and the weather. Standing in
+     a project it folds away, since the sky is the island's, not the yard's. */
+  const weather = slot({ tool: KIT_NAMES.wheel }, false);
+  weather.dataset.shelf = 'sky';
+  weather.title = 'the sky';
+  weather.style.transition += `,${SHUT}`;
+  weather.addEventListener('pointerenter', () => crossfade(() => paintLabel('the sky', '#f4e3c0')));
+  weather.addEventListener('pointerleave', () => crossfade(settle));
+  weather.addEventListener('click', (event) => {
+    event.stopPropagation();
+    sky();
+  });
+  strip.appendChild(weather);
 
   /* The windmill has no island of its own to stand on yet, so the rack
      carries its own way in: a wheel, always here, on the island or standing
@@ -180,6 +198,7 @@ export function makeShelf(
     const was = inside;
     inside = projects.some((project) => project.here);
     up(fire, inside);
+    up(weather, !inside);
     /* Walking into a yard folds it shut and walking back out to the island
        opens it; in between it stays however he left it. */
     if (inside !== was) away = inside;
@@ -341,6 +360,7 @@ export function makeShelf(
   return {
     show,
     fold,
+    setSky: (picture) => updateSlot(weather, { tool: KIT_NAMES.wheel, icon: picture }, false),
     close: () => root.remove(),
   };
 }
@@ -379,11 +399,6 @@ const LABEL = [
 /* Its own strip so folding is a real collapse: the width eases to nothing
    and the slots ride along inside it, rather than every slot just
    vanishing while the shelf reflows around them in one frame. */
-const STRIP = [
-  'display:flex',
-  'align-items:center',
-  `gap:${PAD}px`,
-  'overflow:hidden',
-].join(';');
+const STRIP = ['display:flex', 'align-items:center', `gap:${PAD}px`, 'overflow:hidden'].join(';');
 
 const SHUT = `opacity 220ms ease,width 340ms ${EASE},margin 340ms ${EASE},border-width 340ms ${EASE}`;

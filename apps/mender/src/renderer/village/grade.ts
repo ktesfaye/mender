@@ -84,6 +84,10 @@ uniform vec2 uScreen;
 uniform mat3 uToWorld;
 uniform vec4 uMossBox;
 
+const float BAYER[16] = float[16](
+  0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0
+);
+
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
   p += dot(p, p + 45.32);
@@ -186,11 +190,13 @@ void main(void) {
   /* Banded by how bright it is, not channel by channel: stepping each colour
      on its own puts green and pink rings round a warm fire. */
   float power = max(max(light.r, light.g), light.b);
-  /* The bright middle steps the way pixel art does; the edge does not, or
-     every pool ends in a hard ring that reads as a disc from far out. Under
-     the lowest step it fades away as it really does. */
-  float stepped = floor(power * 7.0 + 0.4) / 7.0;
-  stepped = mix(power, stepped, smoothstep(0.12, 0.3, power));
+  /* Stepped the way pixel art steps a gradient: a few levels, dithered
+     between on the world's own pixel grid, so a pool of light reads as drawn
+     rather than as rings or an airbrush. */
+  int bi = int(mod(floor(wp.y), 4.0)) * 4 + int(mod(floor(wp.x), 4.0));
+  float bayer = (BAYER[bi] + 0.5) / 16.0;
+  float levels = 8.0;
+  float stepped = floor(power * levels + bayer) / levels;
   light = power > 0.001 ? light * (stepped / power) : vec3(0.0);
 
   /* Light past full only warms what it falls on a little further, rather
@@ -216,36 +222,293 @@ void main(void) {
 }
 `;
 
+/* One light: a quad round its ground point, the falloff worked out per pixel,
+   and the way back to the light marched through the island's occluders so a
+   wall or a trunk between them throws a shadow. A pixel inside something
+   solid ignores that something until the march has left it, which is how the
+   face of a house turned to a lamp is lit while its roof and the ground behind
+   it are not. */
+const lightVertex = /* glsl */ `#version 300 es
+in vec2 aPosition;
+out vec2 vWorld;
+
+uniform mat3 uProjectionMatrix;
+uniform mat3 uWorldTransformMatrix;
+uniform mat3 uTransformMatrix;
+uniform vec2 uCenter;
+uniform float uRadius;
+
+void main() {
+  vec2 world = uCenter + aPosition * uRadius;
+  mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
+  gl_Position = vec4((mvp * vec3(world, 1.0)).xy, 0.0, 1.0);
+  vWorld = world;
+}
+`;
+
+const lightFragment = /* glsl */ `#version 300 es
+precision highp float;
+in vec2 vWorld;
+out vec4 finalColor;
+
+uniform sampler2D uOcc;
+uniform vec4 uOccBox;
+uniform vec2 uCenter;
+uniform float uRadius;
+uniform vec3 uLightColor;
+uniform float uStrength;
+uniform float uHeight;
+
+const int STEPS = 18;
+/* What the occluder map's one means, in world pixels of height. */
+const float TALL = 96.0;
+
+float occAt(vec2 w) {
+  vec2 uv = (w - uOccBox.xy) / uOccBox.zw;
+  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return 0.0;
+  return texture(uOcc, uv).r;
+}
+
+void main() {
+  vec2 d = vWorld - uCenter;
+  float dist = length(d);
+  float r = dist / uRadius;
+  if (r >= 1.0) discard;
+  /* Bright close in and a long thin tail, then nothing: light thins out, it
+     does not stop at a line. */
+  float k = 1.0 - r;
+  float fall = k * k * (0.55 + 0.45 * k) + k * 0.05;
+  /* Warmer and deeper toward the edge, whiter at the heart, the way a flame's
+     light reads on the ground. */
+  vec3 colour = mix(uLightColor * vec3(1.0, 0.82, 0.62), mix(uLightColor, vec3(1.0), 0.25), k * k);
+
+  float lit = 1.0;
+  if (dist > 4.0) {
+    vec2 step = -d / float(STEPS);
+    vec2 p = vWorld + step * 0.5;
+    bool left = occAt(vWorld) < 0.5;
+    for (int i = 0; i < STEPS; i++) {
+      /* The ray climbs from the ground at this pixel to the light's own
+         height, so a fence near a high lamp casts a short shadow and a wall
+         a long one, the way they would. */
+      float o = occAt(p) * TALL;
+      float along = (float(i) + 0.5) / float(STEPS);
+      float toLight = (1.0 - along) * dist;
+      float ray = uHeight * along;
+      if (!left) {
+        if (o < 2.0) left = true;
+      } else if (toLight > 5.0 && dist - toLight > 3.0) {
+        lit *= 1.0 - smoothstep(ray - 3.0, ray + 5.0, o) * 0.8;
+      }
+      p += step;
+    }
+  }
+  vec3 light = colour * uStrength * fall * lit;
+  finalColor = vec4(light, 0.0);
+}
+`;
+
+/** Something that gives off light: where it lands on the ground, and how much. */
+export class Light {
+  x = 0;
+  y = 0;
+  radius: number;
+  tint: number;
+  alpha: number;
+  visible = true;
+  /** How high off the ground it burns, in world pixels: what its shadows grow from. */
+  height = 24;
+  /** Where the glow of the thing itself sits, the glass or the flame, if it shows one. */
+  glow: { x: number; y: number; size: number; sprite: Sprite } | null = null;
+  readonly position = {
+    set: (x: number, y: number): void => {
+      this.x = x;
+      this.y = y;
+    },
+  };
+  readonly mesh: Mesh<Geometry, Shader>;
+  readonly uniforms: {
+    uCenter: Float32Array;
+    uRadius: number;
+    uLightColor: Float32Array;
+    uStrength: number;
+    uHeight: number;
+  };
+
+  constructor(
+    private readonly owner: Lights,
+    x: number,
+    y: number,
+    radius: number,
+    color: number,
+    strength: number
+  ) {
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.tint = color;
+    this.alpha = strength;
+    const shader = Shader.from({
+      gl: { vertex: lightVertex, fragment: lightFragment },
+      resources: {
+        lightUniforms: {
+          uCenter: { value: new Float32Array([x, y]), type: 'vec2<f32>' },
+          uRadius: { value: radius, type: 'f32' },
+          uLightColor: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
+          uStrength: { value: strength, type: 'f32' },
+          uHeight: { value: 24, type: 'f32' },
+          uOccBox: { value: owner.occBox, type: 'vec4<f32>' },
+        },
+        uOcc: owner.occ.source,
+      },
+    });
+    this.uniforms = (shader.resources.lightUniforms as { uniforms: Light['uniforms'] }).uniforms;
+    this.mesh = new Mesh({ geometry: owner.quad, shader });
+    this.mesh.blendMode = 'add';
+    owner.root.addChild(this.mesh);
+  }
+
+  /** Give it a visible glow at the thing itself, drawn over the night rather than under it. */
+  glowAt(x: number, y: number, size: number): this {
+    if (this.glow) {
+      this.glow.x = x;
+      this.glow.y = y;
+      this.glow.size = size;
+      return this;
+    }
+    const sprite = new Sprite(this.owner.halo);
+    sprite.anchor.set(0.5);
+    sprite.blendMode = 'add';
+    sprite.visible = false;
+    this.owner.glows.addChild(sprite);
+    this.glow = { x, y, size, sprite };
+    return this;
+  }
+
+  /** Copy what it is now onto what draws it. Says whether it draws at all. */
+  sync(view: { x: number; y: number; width: number; height: number }): boolean {
+    const shown =
+      this.visible &&
+      this.alpha > 0.003 &&
+      this.x + this.radius > view.x &&
+      this.x - this.radius < view.x + view.width &&
+      this.y + this.radius > view.y &&
+      this.y - this.radius < view.y + view.height;
+    this.mesh.visible = shown;
+    if (!shown) return false;
+    const u = this.uniforms;
+    u.uCenter[0] = this.x;
+    u.uCenter[1] = this.y;
+    u.uRadius = this.radius;
+    u.uLightColor[0] = ((this.tint >> 16) & 255) / 255;
+    u.uLightColor[1] = ((this.tint >> 8) & 255) / 255;
+    u.uLightColor[2] = (this.tint & 255) / 255;
+    u.uStrength = this.alpha;
+    u.uHeight = this.height;
+    return true;
+  }
+
+  destroy(): void {
+    this.mesh.destroy();
+    this.glow?.sprite.destroy();
+    this.owner.forget(this);
+  }
+}
+
 /**
  * Light, drawn into a texture of its own.
  *
- * Soft round sprites, each tinted and added: a lamp is one, the fire is a
- * couple at different sizes, a lit window is a small warm one. Drawn at half
+ * Every light is worked out per pixel, shadows and all, into a texture at half
  * the screen's size, because nothing about a pool of light is sharper than
- * that and a quarter of the pixels is a quarter of the cost.
+ * that and a quarter of the pixels is a quarter of the cost; only lights
+ * whose reach touches the view are drawn at all. The glow of the thing
+ * itself, the lamp glass and the flame and the lit pane, is a second, small
+ * layer drawn over the night rather than lit by it, which is what makes a
+ * lamp read as burning rather than as a lit patch of ground.
  */
 export class Lights {
   /** Everything that gives off light, in world pixels. Not on the stage. */
   readonly root = new Container();
+  /** The glows, on the camera over the graded picture. */
+  readonly glows = new Container();
+  readonly quad = new Geometry({
+    attributes: { aPosition: [-1, -1, 1, -1, 1, 1, -1, 1] },
+    indexBuffer: [0, 1, 2, 0, 2, 3],
+  });
+  occ: Texture = Texture.WHITE;
+  readonly occBox = new Float32Array([0, 0, 0, 0]);
+  readonly halo = softDot();
+  private readonly all = new Set<Light>();
   private target: RenderTexture | null = null;
-  private readonly glow = softDot();
 
-  /** A pool of light, kept: move it or change it by holding the sprite. */
-  add(x: number, y: number, radius: number, color: number, strength = 1): Sprite {
-    const sprite = new Sprite(this.glow);
-    sprite.anchor.set(0.5);
-    sprite.position.set(x, y);
-    sprite.width = radius * 2;
-    sprite.height = radius * 2;
-    sprite.tint = color;
-    sprite.alpha = Math.min(1, strength);
-    sprite.blendMode = 'add';
-    this.root.addChild(sprite);
-    return sprite;
+  constructor() {
+    this.glows.eventMode = 'none';
   }
 
-  /** Render the light as it falls on screen right now. */
-  draw(renderer: Renderer, world: Container, width: number, height: number): Texture {
+  /**
+   * What stands on the ground and blocks light, drawn once per island: walls,
+   * trunks, rocks, fences. Four world pixels a texel, blended between, so
+   * shadow edges are soft rather than stair-stepped.
+   */
+  setOccluders(
+    box: { x: number; y: number; width: number; height: number },
+    shapes: readonly { x: number; y: number; w: number; h: number; tall: number }[]
+  ): void {
+    const per = 4;
+    const width = Math.max(1, Math.ceil(box.width / per));
+    const height = Math.max(1, Math.ceil(box.height / per));
+    const data = new Uint8Array(width * height * 4);
+    for (const shape of shapes) {
+      const x0 = Math.max(0, Math.floor((shape.x - box.x) / per));
+      const x1 = Math.min(width - 1, Math.ceil((shape.x + shape.w - box.x) / per));
+      const y0 = Math.max(0, Math.floor((shape.y - box.y) / per));
+      const y1 = Math.min(height - 1, Math.ceil((shape.y + shape.h - box.y) / per));
+      const v = Math.round(Math.min(1, shape.tall / 96) * 255);
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          const i = (y * width + x) * 4;
+          data[i] = Math.max(data[i] ?? 0, v);
+          data[i + 3] = 255;
+        }
+      }
+    }
+    if (this.occ !== Texture.WHITE) this.occ.destroy(true);
+    this.occ = new Texture({
+      source: new BufferImageSource({
+        resource: data,
+        width,
+        height,
+        scaleMode: 'linear',
+        addressMode: 'clamp-to-edge',
+      }),
+    });
+    this.occBox.set([box.x, box.y, width * per, height * per]);
+    for (const light of this.all) {
+      light.mesh.shader!.resources.uOcc = this.occ.source;
+    }
+  }
+
+  /** A light, kept: move it or change it through what this hands back. */
+  add(x: number, y: number, radius: number, color: number, strength = 1): Light {
+    const light = new Light(this, x, y, radius, color, strength);
+    light.mesh.shader!.resources.uOcc = this.occ.source;
+    this.all.add(light);
+    return light;
+  }
+
+  forget(light: Light): void {
+    this.all.delete(light);
+  }
+
+  /** Render the light as it falls on screen right now, and set the glows. */
+  draw(
+    renderer: Renderer,
+    world: Container,
+    width: number,
+    height: number,
+    view: { x: number; y: number; width: number; height: number },
+    look: { dark: number; fog: number; rain: number }
+  ): Texture {
     const scale = 0.5;
     const w = Math.max(1, Math.ceil(width * scale));
     const h = Math.max(1, Math.ceil(height * scale));
@@ -253,13 +516,31 @@ export class Lights {
       this.target?.destroy(true);
       this.target = RenderTexture.create({ width: w, height: h, resolution: 1 });
     }
-    const transform = new Matrix().copyFrom(world.worldTransform).prepend(new Matrix());
-    transform.a *= scale;
-    transform.b *= scale;
-    transform.c *= scale;
-    transform.d *= scale;
-    transform.tx *= scale;
-    transform.ty *= scale;
+    // Mist and rain catch the light: glows grow and soften in them.
+    const haze = 1 + look.fog * 1.4 + look.rain * 0.6;
+    for (const light of this.all) {
+      const shown = light.sync(view);
+      const glow = light.glow;
+      if (!glow) continue;
+      const on = shown && look.dark > 0.05;
+      glow.sprite.visible = on;
+      if (!on) continue;
+      glow.sprite.position.set(glow.x, glow.y);
+      const size = glow.size * haze;
+      glow.sprite.width = size * 2;
+      glow.sprite.height = size * 2;
+      glow.sprite.tint = light.tint;
+      glow.sprite.alpha = Math.min(1, light.alpha * look.dark * 0.85);
+    }
+    const t = world.worldTransform;
+    const transform = new Matrix(
+      t.a * scale,
+      t.b * scale,
+      t.c * scale,
+      t.d * scale,
+      t.tx * scale,
+      t.ty * scale
+    );
     renderer.render({
       container: this.root,
       target: this.target,
@@ -273,19 +554,21 @@ export class Lights {
   destroy(): void {
     this.target?.destroy(true);
     this.root.destroy({ children: true });
+    this.glows.destroy({ children: true });
+    if (this.occ !== Texture.WHITE) this.occ.destroy(true);
+    this.quad.destroy();
   }
 }
 
-/** A white dot that fades to nothing at its edge, the falloff squared. */
+/** A soft dot: a hot middle and a long thin falloff, for the glow of a lit thing. */
 function softDot(): Texture {
   const size = 64;
   const data = new Uint8Array(size * size * 4);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const d = Math.hypot(x + 0.5 - size / 2, y + 0.5 - size / 2) / (size / 2);
-      // A long soft tail rather than a cone: lamplight thins out, it does not stop.
       const v = Math.max(0, 1 - d);
-      const a = Math.round(Math.min(1, v * v * (0.65 + 0.35 * v) + v * 0.08) * 255);
+      const a = Math.round(Math.min(1, v ** 3 * 0.9 + v * 0.1) * 255);
       const i = (y * size + x) * 4;
       // Premultiplied: what is added is the light itself.
       data[i] = a;

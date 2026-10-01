@@ -10,7 +10,7 @@ import {
 } from 'pixi.js';
 import { drawingNow, setFalling } from '../pace';
 import { folkTexture, type Look } from './folk';
-import { Grade, Lights, mossTexture, screenInWorld, type Moss } from './grade';
+import { Grade, Lights, mossTexture, screenInWorld, type Light, type Moss } from './grade';
 import { texture as kitTexture } from './kit';
 import { SHADOW_TINT, type Building } from './scene';
 import type { Sky, SkyLook } from './sky';
@@ -96,7 +96,7 @@ interface Chimney {
 interface Lamp {
   x: number;
   y: number;
-  sprite: Sprite;
+  sprite: Light;
   /** How dark it has to get before this one is lit: they come on one by one. */
   when: number;
   on: number;
@@ -104,7 +104,7 @@ interface Lamp {
 
 interface Bug {
   sprite: Sprite;
-  light?: Sprite;
+  light?: Light;
   x: number;
   y: number;
   vx: number;
@@ -152,6 +152,8 @@ export interface AtmosphereInput {
   frame: Container;
   /** The camera the world hangs from. */
   camera: Container;
+  /** The flags, over the world, which the night only half darkens. */
+  flags: Container;
   /** The layer over the whole camera, for rain and snow in screen pixels. */
   weatherLayer: Container;
   layout: Layout;
@@ -162,6 +164,8 @@ export interface AtmosphereInput {
   laneAt: (y: number) => Container;
   land: Set<string>;
   extent: { x: number; y: number; width: number; height: number };
+  /** The same, in the screen's sense of y: what the scene places things in. */
+  extentPx: { x: number; y: number; width: number; height: number };
 }
 
 export class Atmosphere {
@@ -186,10 +190,10 @@ export class Atmosphere {
     dynamicProperties: { position: true, color: true, vertex: true, rotation: true, uvs: false },
   });
   private readonly pixel = whitePixel();
-  private readonly fireLights: Sprite[] = [];
+  private readonly fireLights: Light[] = [];
   private readonly flames: Sprite | null = null;
   private readonly embers: Puff[] = [];
-  private readonly walkerLights = new Map<unknown, Sprite>();
+  private readonly walkerLights = new Map<unknown, Light>();
   private readonly fish: { sprite: Sprite; age: number; x: number; y: number }[] = [];
   private nextFish = 4;
   private moss: Moss | null = null;
@@ -210,13 +214,17 @@ export class Atmosphere {
     this.air.eventMode = 'none';
     input.weatherLayer.addChild(this.rain);
     this.rain.eventMode = 'none';
+    /* The glow of lit things rides on the camera just over the world, so the
+       grade's night never darkens it. */
+    input.camera.addChildAt(this.lights.glows, input.camera.children.indexOf(input.world) + 1);
     this.findEmitters();
     this.makeHomes();
+    this.lights.setOccluders(input.extentPx, this.occluders());
     const fire = input.fire;
     if (fire) {
       this.fireLights.push(
-        this.lights.add(fire.x, fire.y - 4, 170, 0xff9a40, 0.95),
-        this.lights.add(fire.x, fire.y - 6, 70, 0xffd28a, 0.8)
+        this.lights.add(fire.x, fire.y + 2, 180, 0xff9a40, 0.95).glowAt(fire.x, fire.y - 6, 26),
+        this.lights.add(fire.x, fire.y, 70, 0xffd28a, 0.8)
       );
       const flame = folkTexture('flame-0');
       if (flame) {
@@ -257,7 +265,7 @@ export class Atmosphere {
       const spots = this.windowSpots.get(building.object);
       if (!spots?.length) continue;
       const panes: Sprite[] = [];
-      const pools: Sprite[] = [];
+      const pools: Light[] = [];
       for (const spot of spots) {
         if (!spot.door) {
           const pane = new Sprite(Texture.WHITE);
@@ -270,10 +278,13 @@ export class Atmosphere {
           building.stand.addChild(pane);
           panes.push(pane);
         }
-        // Light falls out of a window down onto the ground in front of it.
-        pools.push(
-          this.lights.add(spot.x, spot.y + spot.h + 6, Math.max(30, spot.w * 3), 0xffb45a, 0)
-        );
+        /* Light falls out of a window onto the ground in front of the house,
+           and the pane itself glows. */
+        const front = building.y + building.height + 3;
+        const pool = this.lights.add(spot.x, front, Math.max(40, spot.w * 3.4), 0xffb45a, 0);
+        pool.height = Math.max(8, front - (spot.y + spot.h));
+        if (!spot.door) pool.glowAt(spot.x, spot.y + spot.h / 2, Math.max(spot.w, spot.h) * 0.9);
+        pools.push(pool);
       }
       this.homes.push({ building, panes, pools, when: 0.2 + Math.random() * 0.4, on: 0 });
     }
@@ -361,6 +372,12 @@ export class Atmosphere {
     }
     this.tickWeather(look, seconds, screen);
 
+    /* Flags are dimmed by half what everything else is, so a project's face
+       still reads from out on the water at midnight. */
+    const half = (v: number): number => Math.round(Math.min(1, 1 - (1 - v) * 0.5) * 255);
+    this.input.flags.tint =
+      (half(look.ambient[0]) << 16) | (half(look.ambient[1]) << 8) | half(look.ambient[2]);
+
     const needed = Grade.needed(look, !!this.moss);
     const world = this.input.world;
     if (needed) {
@@ -368,7 +385,14 @@ export class Atmosphere {
         this.input.frame.addChildAt(this.grade.mesh, 0);
         this.applied = true;
       }
-      const light = this.lights.draw(this.input.renderer, world, screen.width, screen.height);
+      const light = this.lights.draw(
+        this.input.renderer,
+        world,
+        screen.width,
+        screen.height,
+        view,
+        look
+      );
       this.grade.set(look, light, screen, world.worldTransform.clone().invert(), this.moss);
       this.grade.photograph(
         this.input.renderer,
@@ -396,6 +420,42 @@ export class Atmosphere {
   }
 
   /* ── where things are ──────────────────────────────────────────────── */
+
+  /**
+   * What stands on the ground and blocks light, as rectangles in world
+   * pixels: the walls of every building (its lower part, the roof being over
+   * them), the foot of every tree and rock and barrel, and fences, which let
+   * some through.
+   */
+  private occluders(): { x: number; y: number; w: number; h: number; tall: number }[] {
+    const out: { x: number; y: number; w: number; h: number; tall: number }[] = [];
+    const { layout } = this.input;
+    for (const b of this.input.buildings) {
+      const prefab = layout.objects[b.object]?.prefab ?? '';
+      if (/Dock/.test(prefab)) continue;
+      const top = b.y + b.height * 0.5;
+      // Stops short of the foot, so the doorstep is ground, not wall.
+      out.push({ x: b.x + 3, y: top, w: b.width - 6, h: b.y + b.height - top - 9, tall: 96 });
+    }
+    for (const object of layout.objects) {
+      if (object.group !== 'Props' && object.group !== 'Plant') continue;
+      const name = object.prefab;
+      if (/Grass|Flower|Wheat|Carrot|Cabbage|Pumpkin|Water|Lamp|Lantern|Campfire/.test(name)) {
+        continue;
+      }
+      const sprite = object.sprites.find((one) => one.blend !== 'multiply');
+      const w = sprite?.size_px[0] ?? 16;
+      const x = object.pos[0] * CELL;
+      const y = -object.pos[1] * CELL;
+      // How tall each thing stands decides how far its shadow reaches.
+      if (/Tree/.test(name)) out.push({ x: x - 5, y: y - 6, w: 10, h: 6, tall: 96 });
+      else if (/Fence/.test(name)) out.push({ x: x - w / 2, y: y - 4, w, h: 4, tall: 12 });
+      else if (/Bush/.test(name))
+        out.push({ x: x - w * 0.3, y: y - 6, w: w * 0.6, h: 6, tall: 14 });
+      else out.push({ x: x - w * 0.35, y: y - 6, w: w * 0.7, h: 6, tall: 16 });
+    }
+    return out;
+  }
 
   private findEmitters(): void {
     const { items, layout } = this.input;
@@ -429,19 +489,34 @@ export class Atmosphere {
           list.push({ x: at.x + ww / 2, y: at.y, w: ww, h: wh, door });
           byObject.set(item.origin.oi, list);
         }
-        for (const [lx, ly] of marks.lamps ?? [])
-          this.addLamp(worldOf(item, lx, ly), /Campfire/.test(name));
+        for (const [lx, ly] of marks.lamps ?? []) {
+          this.addLamp(worldOf(item, lx, ly), isLamp ? -item.y : null, /Campfire/.test(name));
+        }
       } else if (isLamp) {
         // Not measured: the glass is near the top of a lamp post.
-        this.addLamp(worldOf(item, item.w / 2, item.h * 0.18), false);
+        this.addLamp(worldOf(item, item.w / 2, item.h * 0.18), -item.y, false);
       }
     }
     for (const [object, spots] of byObject) this.windowSpots.set(object, spots);
   }
 
-  private addLamp(at: { x: number; y: number }, isFire: boolean): void {
+  /**
+   * A lamp: its light lands on the ground under it, where a post stands or a
+   * little below a lantern hung on a wall, and its glass glows where it is.
+   */
+  private addLamp(at: { x: number; y: number }, foot: number | null, isFire: boolean): void {
     if (isFire) return;
-    const sprite = this.lights.add(at.x, at.y + 14, 120, 0xffae5c, 0);
+    const ground = { x: at.x, y: foot ?? at.y + 18 };
+    // A lantern on a wall throws its light out in front of the wall, not into it.
+    for (const b of this.input.buildings) {
+      const inside =
+        ground.x > b.x && ground.x < b.x + b.width && ground.y > b.y && ground.y < b.y + b.height;
+      if (inside) ground.y = b.y + b.height + 4;
+    }
+    // The kit carries a lantern's lit and unlit pieces both; one lamp is enough.
+    if (this.lamps.some((lamp) => Math.hypot(lamp.x - at.x, lamp.y - at.y) < 6)) return;
+    const sprite = this.lights.add(ground.x, ground.y, 130, 0xffae5c, 0).glowAt(at.x, at.y, 11);
+    sprite.height = Math.max(14, ground.y - at.y);
     // Lit in no particular order as the light goes, a few at a time.
     this.lamps.push({ ...at, sprite, when: 0.25 + Math.random() * 0.35, on: 0 });
   }
@@ -457,9 +532,7 @@ export class Atmosphere {
     const [outer, inner] = this.fireLights;
     if (outer) {
       outer.alpha = 0.9 * flicker;
-      outer.scale.set(
-        (outer.texture.width ? 340 / outer.texture.width : 1) * (0.97 + flicker * 0.05)
-      );
+      outer.radius = 180 * (0.97 + flicker * 0.05);
     }
     if (inner) inner.alpha = 0.75 * flicker;
     if (this.flames) {
@@ -577,10 +650,11 @@ export class Atmosphere {
         seen.add(walker);
         let light = this.walkerLights.get(walker);
         if (!light) {
-          light = this.lights.add(walker.x, walker.y, 34, 0xffc884, 0.7);
+          light = this.lights.add(walker.x, walker.y, 46, 0xffc884, 0.7);
           this.walkerLights.set(walker, light);
         }
-        light.position.set(walker.x + 4, walker.y - 10);
+        light.position.set(walker.x + 3, walker.y + 1);
+        light.glowAt(walker.x + 5, walker.y - 9, 5);
         light.alpha = 0.6 + Math.random() * 0.08;
       }
     }
@@ -599,7 +673,7 @@ export class Atmosphere {
     this.keepBugs(this.bugs, fireflies, this.bushes.length ? this.bushes : this.trees, (home) => {
       const sprite = new Sprite(folkTexture('firefly') ?? this.pixel);
       sprite.tint = 0xe8ff8a;
-      const light = this.lights.add(home.x, home.y, 12, 0xd8ff70, 0.8);
+      const light = this.lights.add(home.x, home.y, 16, 0xd8ff70, 0.8).glowAt(home.x, home.y, 4);
       return { sprite, light };
     });
     for (const bug of this.bugs) {
@@ -616,7 +690,8 @@ export class Atmosphere {
       bug.sprite.position.set(Math.round(bug.x), Math.round(bug.y));
       bug.sprite.alpha = 0.25 + blink * 0.75;
       if (bug.light) {
-        bug.light.position.set(bug.x, bug.y);
+        bug.light.position.set(bug.x, bug.y + 8);
+        bug.light.glowAt(bug.x, bug.y, 4);
         bug.light.alpha = blink * 0.7;
       }
     }
@@ -658,7 +733,7 @@ export class Atmosphere {
     list: Bug[],
     want: number,
     homes: readonly { x: number; y: number }[],
-    make: (home: { x: number; y: number }) => { sprite: Sprite; light?: Sprite }
+    make: (home: { x: number; y: number }) => { sprite: Sprite; light?: Light }
   ): void {
     while (list.length > want) {
       const bug = list.pop()!;
@@ -703,7 +778,7 @@ export class Atmosphere {
         sprite,
         shadow,
         cx: box.x + box.width * (0.2 + Math.random() * 0.6),
-        cy: -(box.y + box.height * (0.2 + Math.random() * 0.6)),
+        cy: box.y + box.height * (0.2 + Math.random() * 0.6),
         r: 120 + Math.random() * 260,
         angle: Math.random() * Math.PI * 2,
         speed: (0.08 + Math.random() * 0.08) * (Math.random() < 0.5 ? 1 : -1),
@@ -978,7 +1053,7 @@ interface Spot {
 interface Home {
   building: Building;
   panes: Sprite[];
-  pools: Sprite[];
+  pools: Light[];
   mood?: Look;
   /** How dark it has to be before an empty house lights its hearth. */
   when: number;

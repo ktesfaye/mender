@@ -1085,8 +1085,18 @@ one end to the moon at the other, and dragging it moves the light on the island
 as you go; the weather is a row of pixel pictures with the one in force framed;
 how much of whatever is falling is a second slider, a few drops to a downpour.
 "Outside" by either puts it back to the real one, and whatever is picked is kept
-on this machine. Lamplight does not end in a ring: its middle steps the way pixel
-art does and its edge fades away.
+on this machine. The same panel opens off a slot at the head of the projects rack
+out on the island, which wears a picture of what the sky is doing right now.
+
+Lamplight is light, not a disc. Each light is worked out per pixel on the
+ground under it and marched back to its source through a map of what stands on
+the island, how tall each thing is and how high the light burns: a wall throws a
+long shadow, a fence a short one, the face of a house turned to a lamp is lit and
+its roof is not. The fall-off is dithered on the art's own pixel grid rather than
+stepped into rings, and the lamp glass, the flame and every lit pane carry a
+small glow of their own drawn over the night, which grows in mist and rain. The
+flags fly over the night rather than in it, darkened by only half as much, so a
+project's face reads from the water at any hour.
 
 **And a district nobody has committed to grows over.** How long since a
 project's last commit on any of its own branches is read from git, not from

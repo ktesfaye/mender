@@ -198,6 +198,29 @@ function icon(name: string, size: number, tint?: string): SVGSVGElement {
   return svg;
 }
 
+/** A picture of what the sky is doing right now, as an image the rack can wear. */
+export function skyPicture(sky: Sky): string {
+  const look = sky.current;
+  const chosen = sky.chosen.weather;
+  const kind =
+    chosen === 'storm' || (chosen === 'real' && look.flash > 0)
+      ? 'storm'
+      : look.snow > 0.1
+        ? 'snow'
+        : look.rain > 0.1
+          ? 'rain'
+          : look.fog > 0.3
+            ? 'fog'
+            : look.cloud > 0.6
+              ? 'cloud'
+              : look.dark > 0.5
+                ? 'moon'
+                : 'sun';
+  const svg = icon(kind, 9);
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg.outerHTML)}`;
+}
+
 export function skySlab(sky: Sky): HTMLElement {
   const panel = document.createElement('div');
   panel.className = 'menu sky-panel';

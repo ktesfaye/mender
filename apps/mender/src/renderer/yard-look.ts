@@ -104,7 +104,8 @@ async function boot(): Promise<void> {
     (id) => console.log('go to', id),
     () => console.log('out to the island'),
     (ids) => console.log('rack order', ids),
-    () => console.log('open the windmill')
+    () => console.log('open the windmill'),
+    () => console.log('open the sky')
   ).show([
     { id: 'a', name: 'mender', at: 0, here: true },
     { id: 'b', name: 'aurio', at: 1, here: false },
@@ -125,7 +126,9 @@ async function boot(): Promise<void> {
   /* `?bare` is a session that has made nothing and posted no plan yet. */
   const bare = new URLSearchParams(location.search).has('bare');
   yard.show(
-    bare && SAMPLE.session ? { ...SAMPLE, session: { ...SAMPLE.session, plan: [], made: [] } } : SAMPLE
+    bare && SAMPLE.session
+      ? { ...SAMPLE, session: { ...SAMPLE.session, plan: [], made: [] } }
+      : SAMPLE
   );
   yard.line.take();
 
