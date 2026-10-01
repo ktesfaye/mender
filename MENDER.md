@@ -305,9 +305,16 @@ new session is started, and right-clicking it opens the other ways to start one 
 sitting, remembers the last one taken down here: it offers to put it straight
 back up, on the very same branch, before it ever offers to start something
 new. The projects moved to a rack
-in the top right, over both the island and the yard, one slot each with the
-project's own face in it, its app icon or its logo, and a prop from the kit
-until it has one, and no names until you hover. It folds away, and it
+in the top right, over both the island and the yard, drawn rather than boxed:
+a log along the top of the window, sawn off at its left end, and each project
+a board of three planks hung off it on two chains, the way the kit's own shop
+signs hang, with the project's own face nailed to it, its app icon or its
+logo, and a prop from the kit until it has one. The one you are standing in
+is painted gold. Past an iron band round the beam the rack's own doings hang
+as small round tokens off one chain each, the sky, the windmill's wheel and
+the fire home, so none of them is ever taken for a project. No names until
+you hover, and then the name is burned into the beam and the board drops a
+pixel as if tugged. It folds away, and it
 folds itself: walking into a project shuts it, walking back out to the island
 opens it, and the whole block of wood its handle is written on is the
 handle, not only the word. A slot held
@@ -408,7 +415,7 @@ Anything that cannot be taken back needs two presses and the first press is
 what names the cost. Nothing spins: a wait is a number counting up, and a wait
 too short to notice says nothing at all. There are two exceptions to the gold
 rule in the whole app and they are both deliberate: the rack of projects, which
-is an inventory rack out of a game rather than a piece of the board, and the
+is signs hung off a beam out of the kit rather than a piece of the board, and the
 names on the rail, which keep their posture tints because the rail's whole job
 is telling you from across the room which session wants you.
 

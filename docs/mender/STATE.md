@@ -850,6 +850,16 @@ block of wood the handle's word sits on takes the press rather than only the
 letters. Driven: in off the rack it arrived folded, a press on the bare
 corner of the wood opened and shut it, and the fire out left it open.
 
+**The rack is drawn, not boxed.** The flat brown bar of tan boxes is gone: a
+log runs along the top of the window, each project hangs off it as a board of
+three planks on two chains with its face nailed on, gold where you are
+standing, and past an iron band the sky, the windmill and the fire home hang
+as small round tokens so they no longer read as projects. All of it is drawn
+by `tools/make-rack.py` in the kit's own outline and wood, at two whole pixels
+a pixel. Driven: out on the island and folded inside a yard, hovering burned
+the name into the beam, the asking glow followed the board's own outline, and
+a board dragged along the beam landed where it was let go.
+
 **The rack is in whatever order he drags it into.** Holding a slot and
 dragging it along the rack lifts it out, the slots between step aside to open
 its gap, and letting go hangs it there for good; a press that never really

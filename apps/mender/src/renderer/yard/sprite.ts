@@ -52,11 +52,13 @@ export async function loadCuts(): Promise<number> {
   for (const name of index.sheets) await take(KIT + name, (file) => file);
   await take(FOLK + 'folk.json', (file) => 'folk/' + file);
   await take(WHEEL + 'wheel.json', (file) => 'wheel/' + file);
+  await take(RACK + 'rack.json', (file) => 'rack/' + file);
   return cuts.size;
 }
 
 const FOLK = './folk/';
 const WHEEL = './wheel/';
+const RACK = './rack/';
 
 async function take(where: string, name: (file: string) => string): Promise<void> {
   const sheet = (await (await fetch(where)).json()) as Sheet;
