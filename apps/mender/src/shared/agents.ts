@@ -196,6 +196,8 @@ export const glanceSchema = z.object({
     .optional(),
   /** It cannot go on until somebody signs it in. */
   signIn: z.boolean().optional(),
+  /** How many helpers it has out right now, who walk the island while they are. */
+  helpers: z.number().int().optional(),
 });
 export type Glance = z.infer<typeof glanceSchema>;
 

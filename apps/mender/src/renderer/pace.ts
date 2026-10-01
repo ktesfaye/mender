@@ -43,7 +43,13 @@ const BEHIND = 5;
  */
 const TAIL_MS = 500;
 
+/** While weather is falling and somebody can see it: rain at ten frames a
+    second is a slideshow of lines, and twenty is still a fifth of what the
+    screen could take. */
+const FALLING = 20;
+
 let ticker: Ticker | null = null;
+let falling = false;
 let watch: Watching = 'front';
 let until = 0;
 let last = 0;
@@ -56,6 +62,30 @@ let last = 0;
  */
 export function stir(): void {
   until = performance.now() + TAIL_MS;
+}
+
+/** Rain or snow is coming down: draw often enough for it to read as falling. */
+export function setFalling(now: boolean): void {
+  falling = now;
+}
+
+/**
+ * Whether the picture is about to be drawn this frame.
+ *
+ * Everything that only changes what is on screen — weather, smoke, people
+ * walking — asks this and does its work only then, carrying the time across
+ * the frames it skipped. Working it out sixty times a second for a picture
+ * taken ten times a second is the battery spent on nothing.
+ */
+export function drawingNow(): boolean {
+  if (watch === 'gone') return false;
+  const now = performance.now();
+  return now < until || now - last >= everyMs();
+}
+
+function everyMs(): number {
+  if (watch === 'behind') return 1000 / BEHIND;
+  return 1000 / (falling ? FALLING : RESTING);
 }
 
 /** Whether anybody is looking, which the main process is the one to know. */
@@ -92,8 +122,7 @@ export function setPace(pixi: Application): void {
         pixi.render();
         return;
       }
-      const every = 1000 / (watch === 'behind' ? BEHIND : RESTING);
-      if (now - last < every) return;
+      if (now - last < everyMs()) return;
       last = now;
       pixi.render();
     },

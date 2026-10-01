@@ -7,7 +7,6 @@ import { createAgents } from './agents';
 import { createAgentsController } from './agents-controller';
 import { createAppSettings } from './app-settings';
 import { createAppSettingsController } from './app-settings-controller';
-import { createSessionUsageReader } from './session-usage';
 import { watchForAttention } from './attend';
 import { watchStayingAwake } from './awake';
 import { watchDockBadge } from './badge';
@@ -16,10 +15,10 @@ import { createBoardController } from './board-controller';
 import { createChanges } from './changes';
 import { createChangesController } from './changes-controller';
 import { installDragOut } from './drag';
-import { installGrip } from './grip';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
 import { createGitHubStatus } from './github';
+import { installGrip } from './grip';
 import { logWindow } from './logging';
 import { installAppMenu } from './menu';
 import { watchMissed } from './missed';
@@ -30,12 +29,14 @@ import { installQuitGuard } from './quit';
 import { startRuntimes } from './runtimes';
 import { createSchedules } from './schedules';
 import { createSchedulesController } from './schedules-controller';
+import { createSessionUsageReader } from './session-usage';
+import { createSkyController } from './sky';
 import { createTasks } from './tasks';
 import { createTasksController } from './tasks-controller';
 import { createTuiSessions, mergedMoods } from './tui-sessions';
 import { createVillageController } from './village';
-import { installWire } from './wire';
 import { restoredBounds, watchWindowBounds } from './window-state';
+import { installWire } from './wire';
 
 export async function main(): Promise<void> {
   const scope = createScope({ label: 'mender' });
@@ -98,6 +99,7 @@ export async function main(): Promise<void> {
     projects: createProjectsController(projects),
     prompts: createPromptsController(),
     schedules: createSchedulesController(schedules),
+    sky: createSkyController(projects),
     tasks: createTasksController(tasks),
     village: createVillageController({ state: () => projects.standing() }),
   });

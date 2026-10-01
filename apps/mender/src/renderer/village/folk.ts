@@ -44,6 +44,11 @@ export async function loadFolk(): Promise<number> {
   return folk.size;
 }
 
+/** One of the villagers' frames, or the critters' and the fire's drawn beside them. */
+export function folkTexture(name: string): Texture | undefined {
+  return folk.get(name);
+}
+
 /** How long a breath is. Slow: a person standing still, not a person panting. */
 const BREATH = 900;
 
@@ -55,7 +60,15 @@ const BREATH = 900;
  * you have not seen, and both are dark, because a light is a reason to go and
  * look and there is none.
  */
-export type Look = 'empty' | 'arriving' | 'working' | 'wants' | 'done' | 'idle' | 'waiting' | 'broken';
+export type Look =
+  | 'empty'
+  | 'arriving'
+  | 'working'
+  | 'wants'
+  | 'done'
+  | 'idle'
+  | 'waiting'
+  | 'broken';
 
 /**
  * Light in the windows, by what is going on behind them.
@@ -122,6 +135,9 @@ class Person {
     this.view.x = Math.round(building.doorX);
     this.view.y = Math.round(building.y + building.height + DOORSTEP);
     this.view.addChild(this.shade, this.body);
+    /* Whoever works here walks the island now rather than standing at the
+       door; what stays at the house is its light. */
+    this.view.visible = false;
     this.turn();
   }
 

@@ -1050,10 +1050,31 @@ installed, updated, authenticated and pinned from it; MCP servers can be added
 and edited rather than only switched on and off; skills can be installed and
 written; and accounts connect.
 
-### W9 — the village is alive
+### W9 — the village is alive · started
 
 Mostly art and behaviour rather than ledger rows, and the one wave whose payoff
 is purely how it feels.
+
+Done, driven in a scratch dev instance against his real project folders
+(2026-10-01): the sky follows his real clock and real weather (an overcast
+morning came through as overcast), and can be held at any hour or weather from a
+right-click on the water. Night relights every pixel rather than darkening it:
+lamps come on one by one, the fire lights the ground round it, houses with a
+session in them glow in that session's colour, and people carry lanterns.
+Clouds, rain (slanted, ringing the sea, ground left wet), storms with lightning,
+snow that settles on grass and roofs and leaves the paths, fog, stars in a
+still sea. Chimney and fire smoke, sparks, fireflies, gulls, butterflies,
+jumping fish, autumn leaves. Every open session is a villager walking its own
+patch by what it is doing, every helper it has out is a hooded one walking from
+its door, and nobody else is on the island. A district whose project has gone
+weeks without a commit dries out and grows moss and weeds, from git. Measured:
+in front of everything the island costs what it did before within noise; behind
+another window it adds a small slice.
+
+Not yet: real sessions and real helpers walking were driven only with stand-ins
+in the scratch instance (the island's own session data drives them in the
+installed app); nobody walks between districts or carries anything that says
+what tool is running; the dog and the cat drawn for it are not out yet.
 
 Closes AG-18, AG-38, AG-40, FS-29, and the unnumbered work: a diagram drawn on
 the wood in the same lines everything else is drawn in, villagers that walk and

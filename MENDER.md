@@ -1040,10 +1040,61 @@ said.
 The villagers are ours and drawn from nothing. The kit's four "character" files
 are an unfinished template — a featureless slab with cat ears, taller than the
 doors of the houses it would stand at, never used in the artist's own demo — so
-`tools/make-folk.py` draws a front, a back and two frames of breath each, in the
-kit's own outline colour and at a height that fits its doorways. Nobody walks
-anywhere: there is no walk cycle and the path network that says where a villager
-could walk is still only in Python.
+`tools/make-folk.py` draws ours, in the kit's own outline colour and at a height
+that fits its doorways: standing, walking four ways, sitting, and the same again
+in a hood for a helper, plus the island's small life.
+
+**Every open session is somebody walking about, and every helper it sends out
+is somebody else.** Nobody lives on the island but the sessions: with none open
+there is nobody on it but the fire. A new session walks up from the fire to its
+house. What it is doing is said with a body: working, it is busy about its own
+patch at a working pace, back and forth to the door; asking for you or holding
+something finished you have not seen, it goes and stands at its door facing you;
+broken, it stands there grey and still; idle, it ambles, and after dark it wanders
+up to the fire and sits round it if it can get there. A helper steps out of its
+session's door in a hood and ranges further and quicker, and when it comes back
+it walks home and is gone. Where anybody can walk is read off the ground itself:
+grass and path, never a cliff face, a field, a fence or a wall, only on the level
+they are on, preferring the artist's own roads. After dark every one of them
+carries a lantern.
+
+**The sky is his, unless he takes it in hand.** The hour on the island is the
+hour where he is, sunrise and sunset and all, and the weather is his weather,
+asked of Open-Meteo from wherever his address on the internet says he is, now
+and then and kept in between. Night is not a dark sheet over the picture: every
+pixel is relit, taken back toward deep blue moonlight with most of its colour
+gone, warm and low at either end of the day, flat and grey under cloud, and then
+whatever gives off light of its own adds its colour back only where it reaches,
+which is why the grass by the fire at midnight is still green. The lamps along
+the roads come on one by one as it gets dark, the fire flickers and throws sparks
+and smoke, the windows of every house somebody is in glow in that session's own
+colour, chimneys smoke over houses with somebody working in them and over every
+hearth on a cold evening, and black smoke sputters out of one that has broken.
+Clouds pass over land and water alike. Rain comes down slanted by the wind, rings
+the sea and leaves the ground dark and shining for a good while after; a storm
+throws lightning; snow falls, lies on the grass and the roofs and leaves the
+trodden paths open, and melts slowly once it stops; mist lies in drifts. Stars
+show in a still sea on a clear night. Gulls cross the island by day with their
+shadows under them, butterflies work the bushes on a bright one, a fish jumps off
+the shore now and then, fireflies come out over the bushes after dark, and in
+autumn the leaves come down. A right-click on the water offers "the sky" beside
+"edit districts": the hour and the weather, each "as it is outside" until another
+is picked, and how much of whatever is falling, kept on this machine.
+
+**And a district nobody has committed to grows over.** How long since a
+project's last commit on any of its own branches is read from git, not from
+anything said in the village: under a week it is as he drew it; after that its
+grass dries toward straw, its colours fade, moss creeps over roofs and paths in
+clumps and the kit's own weeds and brush come up through it, all of it the
+longer it has been, until two months on it is overgrown.
+
+**None of it is allowed to cost the battery.** All of it moves only on frames the
+screen is actually going to show and only near the view; behind another window it
+draws as seldom as the island always has, minimised it stops, and with a board
+open over the village the air goes still. At noon on a clear day the grade comes
+off entirely and the art costs exactly what it did. Measured against the island
+with all of it switched off, in front of everything it is inside the noise, and
+behind another window it adds a small slice on top.
 
 A session is taken down from the bottom of its card, in two presses, with what
 it would cost written above the offer: what is uncommitted in there and how far

@@ -47,6 +47,8 @@ export const DOORSTEP = 9;
 export interface Building {
   /** The district it stands on. */
   district: string;
+  /** Which of the layout's objects it is, for anything that knows that object's art. */
+  object: number;
   x: number;
   y: number;
   width: number;
@@ -90,6 +92,15 @@ export interface BuiltScene {
   /** One empty container per post asked for, at the place in the draw order
       its foot belongs, in the order they were asked for. */
   posts: Container[];
+  /**
+   * Where something moving belongs in the draw order, by where its foot is.
+   *
+   * Somebody walking has to pass behind a house and in front of the next one,
+   * and the order is fixed when the island is built. So it is cut into lanes,
+   * an empty container every few pixels of ground from north to south, and
+   * anything moving is carried from lane to lane as it goes.
+   */
+  laneAt(y: number): Container;
 }
 
 /** Where something standing on its own foot goes, in world pixels, y down. */
@@ -137,12 +148,13 @@ export function buildScene(
       if (object?.group === 'Building') grow(boxes, object.district ?? '', item, sprite);
     }
   }
-  const { buildings, posts } = standsOf(root, boxes, feetOf, feet, groundTop);
-  return { root, buildings, drawn, missing, groundTop, posts };
+  const { buildings, posts, laneAt } = standsOf(root, boxes, feetOf, feet, groundTop);
+  return { root, buildings, drawn, missing, groundTop, posts, laneAt };
 }
 
 interface Box {
   district: string;
+  object: number;
   left: number;
   top: number;
   right: number;
@@ -163,6 +175,7 @@ function grow(boxes: Map<number, Box>, district: string, item: Linked, sprite: S
   if (!held) {
     boxes.set(item.origin.oi, {
       district,
+      object: item.origin.oi,
       left,
       top,
       right: left + item.w,
@@ -199,7 +212,7 @@ function standsOf(
   posted: readonly Foot[],
   feet: readonly number[],
   groundTop: number
-): { buildings: Building[]; posts: Container[] } {
+): { buildings: Building[]; posts: Container[]; laneAt: (y: number) => Container } {
   const found = [...boxes.values()];
   /* Each building gets an empty container at the place in the draw order its
      doorstep belongs: after everything standing further north, including the
@@ -219,6 +232,19 @@ function standsOf(
     wanted.push({ at: placeFor(feet, groundTop, foot.y), stand });
     return stand;
   });
+  /* The lanes run the whole height of what stands on the land, and one past
+     either end so somebody stepping off the edge still has somewhere to be. */
+  const standingFeet = feet.slice(groundTop);
+  const north = Math.floor((Math.min(...standingFeet, 0) - LANE) / LANE) * LANE;
+  const south = Math.ceil((Math.max(...standingFeet, 0) + LANE) / LANE) * LANE;
+  const lanes: Container[] = [];
+  for (let y = north; y <= south; y += LANE) {
+    const lane = new Container();
+    lanes.push(lane);
+    wanted.push({ at: placeFor(feet, groundTop, y), stand: lane });
+  }
+  const laneAt = (y: number): Container =>
+    lanes[Math.max(0, Math.min(lanes.length - 1, Math.floor((y - north) / LANE)))] as Container;
   for (const { at, stand } of wanted.sort((a, b) => b.at - a.at)) {
     root.addChildAt(stand, Math.min(at, root.children.length));
   }
@@ -226,6 +252,7 @@ function standsOf(
     .sort((a, b) => a.top - b.top || a.left - b.left)
     .map((box) => ({
       district: box.district,
+      object: box.object,
       x: box.left,
       y: box.top,
       width: box.right - box.left,
@@ -233,8 +260,11 @@ function standsOf(
       doorX: box.frontX,
       stand: stands.get(box) as Container,
     }));
-  return { buildings, posts };
+  return { buildings, posts, laneAt };
 }
+
+/** How many pixels of ground one lane of moving things covers. */
+const LANE = 6;
 
 function makeSprite(item: Linked): Sprite | null {
   const tex = texture(item.file);

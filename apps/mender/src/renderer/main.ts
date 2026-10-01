@@ -15,7 +15,7 @@ import {
 } from '@emdash/core/runtimes/git/api';
 import type { WorkspaceRecord } from '@emdash/core/runtimes/workspace-registry/api';
 import { ReplicaState } from '@emdash/wire/live';
-import { CAMP, Document, extentOf, type District } from '@mender/village';
+import { CAMP, campfireOf, Document, extentOf, groundCells, type District } from '@mender/village';
 import type { Viewport } from 'pixi-viewport';
 import { Application, Container, type FederatedPointerEvent, type Renderer } from 'pixi.js';
 import type { Glance, Mood } from '@shared/agents';
@@ -64,7 +64,8 @@ import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
 import { answerFor, SEND_ALL } from './board/work';
 import { watchGrip } from './grip';
 import { ran } from './job';
-import { setPace } from './pace';
+import { drawingNow, setPace, watched } from './pace';
+import { Atmosphere, loadEmitters, type Lit } from './village/atmosphere';
 import { createCamera, flyOut, flyToYard, frame, holdStill, type Extent } from './village/camera';
 import { Editing } from './village/editing';
 import { Folk, loadFolk, type Look, type Standing } from './village/folk';
@@ -74,6 +75,9 @@ import { say } from './village/notice';
 import './yard/tokens.css';
 import { loadFeet, Pennants, plantFlag } from './village/pennants';
 import { buildScene } from './village/scene';
+import { Sky } from './village/sky';
+import { keepOnScreen, skySlab } from './village/sky-slab';
+import { Paths, Walkers, type Walking } from './village/walkers';
 import { Water } from './village/water';
 import { wire, type MenderClient } from './wire';
 import { openFounding, type Founding } from './yard/founding';
@@ -141,12 +145,25 @@ async function boot(): Promise<void> {
   document.body.appendChild(pixi.canvas);
 
   const camera = createCamera(pixi);
+  /* The camera stands in a frame that sits exactly on the screen and never
+     moves: the sky's grade goes on it, so the grade's working area is the
+     screen to the pixel. Put on anything the camera moves, it lands a hair off
+     the pixel grid and opens a seam between tiles. */
+  const skyFrame = new Container();
+  pixi.stage.addChildAt(skyFrame, 0);
+  skyFrame.addChild(camera);
   const world = new Container();
   camera.addChild(world);
+  /* Rain and snow fall in front of the camera rather than in the world, so
+     they are whole screen pixels at any zoom and cost the same at every one. */
+  const weatherLayer = new Container();
+  weatherLayer.eventMode = 'none';
+  pixi.stage.addChild(weatherLayer);
+  const sky = new Sky();
 
   try {
     say('waking the village…');
-    const [client] = await Promise.all([wire(), loadKit(), loadFolk()]);
+    const [client] = await Promise.all([wire(), loadKit(), loadFolk(), loadEmitters()]);
     seedLocalPictures(
       async (path, width) => (await client.board.picture({ path, width })).picture?.src ?? null
     );
@@ -584,7 +601,7 @@ async function boot(): Promise<void> {
     /** What the line asks for while a particular thing is open. */
     const prompting = (): 'file' | 'changes' | undefined =>
       reading ? 'changes' : opened ? 'file' : undefined;
-    let drawn = await draw(world, client, pixi.renderer, camera, null);
+    let drawn = await draw(world, client, pixi.renderer, camera, null, sky, weatherLayer, skyFrame);
     let projects = await client.projects.list({});
     let tasks: Task[] = [];
     /* A session that has been asked for but whose worktree is still being cut
@@ -634,7 +651,61 @@ async function boot(): Promise<void> {
       drawn.folk.tick(ticker);
       drawn.water.tick(ticker);
       drawn.pennants.tick();
+      /* The air and the people only move on frames that are actually drawn:
+         working them out between photographs is the battery spent on nothing. */
+      if (!drawingNow()) return;
+      const now = performance.now();
+      const seconds = Math.min(0.5, (now - walkedAt) / 1000);
+      walkedAt = now;
+      const dimmed = !!pixi.canvas.style.filter && pixi.canvas.style.filter !== 'none';
+      drawn.atmosphere.setQuiet(dimmed);
+      /* The sea is told first, from the last frame's sky: the picture the
+         grade is about to take has to have the sea already marked in it. */
+      const was = drawn.atmosphere.sky.current;
+      drawn.water.weather(dimmed ? 0 : was.rain, was.stars, was.ambient, drawn.atmosphere.graded);
+      drawn.atmosphere.tick(pixi.screen);
+      const look = drawn.atmosphere.sky.current;
+      drawn.walkers.tick(now, seconds, look.dark > 0.6);
     });
+    let walkedAt = performance.now();
+    /* A handle for driving the sky and the people from a debug port, in a
+       development build only. */
+    if (import.meta.env.DEV) {
+      (window as unknown as Record<string, unknown>).__village = {
+        sky,
+        drawn: () => drawn,
+        camera,
+        watched,
+      };
+    }
+
+    /* His weather, asked for now and then; the main process keeps it and
+       answers from memory almost every time. */
+    const askWeather = (): void => {
+      void client.sky.weather({}, { timeoutMs: 20_000 }).then(
+        (real) => sky.told(real),
+        () => undefined
+      );
+    };
+    askWeather();
+    window.setInterval(askWeather, 10 * 60_000);
+    /* How long since each project was committed to, which is how overgrown
+       its district is. */
+    const askAges = (): void => {
+      void client.sky.aging({}, { timeoutMs: 30_000 }).then(
+        (ages) => {
+          const byDistrict = new Map<string, number>();
+          for (const project of projects) {
+            const at = ages[project.id];
+            if (at !== undefined) byDistrict.set(project.district, at);
+          }
+          drawn.atmosphere.setAges(byDistrict);
+        },
+        () => undefined
+      );
+    };
+    askAges();
+    window.setInterval(askAges, 5 * 60_000);
 
     /** The place the board is standing in front of, while it is in. */
     let open: Aim | null = null;
@@ -1297,7 +1368,16 @@ async function boot(): Promise<void> {
         client,
         async () => {
           await shut();
-          drawn = await draw(world, client, pixi.renderer, camera, drawn);
+          drawn = await draw(
+            world,
+            client,
+            pixi.renderer,
+            camera,
+            drawn,
+            sky,
+            weatherLayer,
+            skyFrame
+          );
           projects = await client.projects.list({});
           people();
           frame(camera, drawn.island);
@@ -3230,7 +3310,7 @@ async function boot(): Promise<void> {
          same way founding one draws it: the island is composed again from
          what is standing now, rather than left showing a place nobody has. */
       await shut();
-      drawn = await draw(world, client, pixi.renderer, camera, drawn);
+      drawn = await draw(world, client, pixi.renderer, camera, drawn, sky, weatherLayer, skyFrame);
       projects = await client.projects.list({});
       tasks = tasks.filter((task) => task.project !== project.id);
       people();
@@ -4819,7 +4899,16 @@ async function boot(): Promise<void> {
       const moved = await found(
         client,
         async () => {
-          drawn = await draw(world, client, pixi.renderer, camera, drawn);
+          drawn = await draw(
+            world,
+            client,
+            pixi.renderer,
+            camera,
+            drawn,
+            sky,
+            weatherLayer,
+            skyFrame
+          );
           projects = await client.projects.list({});
           people();
           frame(camera, drawn.island);
@@ -5396,7 +5485,16 @@ async function boot(): Promise<void> {
           const done = await client.projects.move({ id, to });
           if (!done.success) return done.error;
           const was = drawn.island;
-          drawn = await draw(world, client, pixi.renderer, camera, drawn);
+          drawn = await draw(
+            world,
+            client,
+            pixi.renderer,
+            camera,
+            drawn,
+            sky,
+            weatherLayer,
+            skyFrame
+          );
           projects = await client.projects.list({});
           people();
           /* A swap leaves the coast where it was; a lone project carrying the
@@ -5419,7 +5517,16 @@ async function boot(): Promise<void> {
         flags: () => drawn.pennants,
         plant: async (district, foot) => {
           plantFlag(district, foot, drawn.moored);
-          drawn = await draw(world, client, pixi.renderer, camera, drawn);
+          drawn = await draw(
+            world,
+            client,
+            pixi.renderer,
+            camera,
+            drawn,
+            sky,
+            weatherLayer,
+            skyFrame
+          );
           people();
         },
       },
@@ -5448,6 +5555,16 @@ async function boot(): Promise<void> {
       });
       offer.className += ' slab-line';
       slab.appendChild(offer);
+      const weather = pressing('the sky', () => {
+        const opened = skySlab(sky);
+        opened.style.left = slab.style.left;
+        opened.style.top = slab.style.top;
+        slab.replaceWith(opened);
+        rearrangeSlab = opened;
+        keepOnScreen(opened);
+      });
+      weather.className += ' slab-line';
+      slab.appendChild(weather);
       layer.root.appendChild(slab);
       slab.style.left = `${Math.min(event.clientX, window.innerWidth - slab.offsetWidth - 12)}px`;
       slab.style.top = `${Math.min(event.clientY, window.innerHeight - slab.offsetHeight - 12)}px`;
@@ -5495,6 +5612,7 @@ async function boot(): Promise<void> {
     };
     lightHouses = (): void => {
       const standing: Standing[] = [];
+      const walking: Walking[] = [];
       for (const task of tasks) {
         const mood = seen[task.id];
         if (!mood || mood === 'empty') continue;
@@ -5503,8 +5621,29 @@ async function boot(): Promise<void> {
         const building =
           district && task.slot !== null && drawn.ground.buildingAt(district, task.slot);
         if (building) standing.push({ id: task.id, building, look: lookOf(task.id, mood) });
+        const look = lookOf(task.id, mood);
+        walking.push({
+          id: task.id,
+          look,
+          building: building || null,
+          district: district ?? null,
+          helper: false,
+        });
+        const out = glances[task.id]?.helpers ?? 0;
+        for (let i = 0; i < out; i++) {
+          walking.push({
+            id: `${task.id}#${i}`,
+            look: 'working',
+            building: building || null,
+            district: district ?? null,
+            helper: true,
+          });
+        }
       }
       drawn.folk.set(standing);
+      drawn.walkers.set(walking);
+      const lit: Lit[] = standing.map((one) => ({ building: one.building, look: one.look }));
+      drawn.atmosphere.setHouses(lit, new Set(projects.map((project) => project.district)));
     };
     const people = (): void => {
       lightHouses();
@@ -5717,6 +5856,10 @@ interface Drawn {
   ground: Ground;
   water: Water;
   folk: Folk;
+  /** The sky, the light, the smoke and the small life. */
+  atmosphere: Atmosphere;
+  /** Everybody walking about. */
+  walkers: Walkers;
   /** A flag on every district somebody lives in, and its name on hover. */
   pennants: Pennants;
   /** The districts by plot, which is how a project finds its own land. */
@@ -5732,7 +5875,10 @@ async function draw(
   client: MenderClient,
   renderer: Renderer,
   camera: Viewport,
-  was: Drawn | null
+  was: Drawn | null,
+  sky: Sky,
+  weatherLayer: Container,
+  skyFrame: Container
 ): Promise<Drawn> {
   say('drawing the island…');
   const map = await client.village.map({});
@@ -5740,7 +5886,8 @@ async function draw(
      a flagpole in the sea. */
   const standing = new Set<string>(map.districts.map((district) => district.id));
   const feet = new Map([...(await loadFeet(map.moored))].filter(([id]) => standing.has(id)));
-  const scene = buildScene(new Document(map.layout).items(), map.layout, [...feet.values()]);
+  const items = new Document(map.layout).items();
+  const scene = buildScene(items, map.layout, [...feet.values()]);
   if (scene.missing.length) {
     console.warn(`${scene.missing.length} sprites are not in the kit`, scene.missing.slice(0, 8));
   }
@@ -5750,14 +5897,38 @@ async function draw(
   const ground = new Ground(map.districts, map.layout, scene.buildings);
   scene.root.addChildAt(ground.overlay, scene.groundTop);
 
+  was?.atmosphere.destroy();
   for (const old of world.removeChildren()) old.destroy({ children: true });
   was?.pennants.destroy();
-  world.addChild(water.mesh, scene.root);
+  const fire = campfireOf(map.layout);
+  const atmosphere = new Atmosphere(
+    {
+      renderer,
+      world,
+      frame: skyFrame,
+      camera,
+      weatherLayer,
+      layout: map.layout,
+      items,
+      districts: map.districts,
+      buildings: scene.buildings,
+      fire,
+      laneAt: scene.laneAt,
+      land: groundCells(map.layout),
+      extent: island,
+    },
+    sky
+  );
+  const walkers = new Walkers(new Paths(map.layout, scene.buildings), scene.laneAt, fire);
+  atmosphere.follow(walkers);
+  world.addChild(water.mesh, scene.root, atmosphere.air);
   say(null);
   return {
     root: scene.root,
     ground,
     water,
+    atmosphere,
+    walkers,
     folk: new Folk(ground.windows),
     pennants: new Pennants(feet, scene.posts, camera),
     districts: new Map(map.districts.map((district) => [district.id, district])),

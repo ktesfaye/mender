@@ -1,0 +1,643 @@
+{
+  "building-parts/TX Village Building - Barn 01 Inner.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Barn 01.png": {
+    "chimneys": [],
+    "windows": [[46, 119, 26, 9]],
+    "doors": [[44, 137, 28, 44]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Blacksmith 01 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Blacksmith 01 02.png": {
+    "chimneys": [],
+    "windows": [[36, 160, 17, 9]],
+    "doors": [[30, 178, 27, 36]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Blacksmith 01 03.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Blacksmith 01 Chimney Lit.png": {
+    "chimneys": [[29, 3]],
+    "windows": [],
+    "doors": [],
+    "lamps": [[29, 153]]
+  },
+  "building-parts/TX Village Building - Blacksmith 01 Chimney.png": {
+    "chimneys": [[29, 3]],
+    "windows": [],
+    "doors": [],
+    "lamps": [[29, 153]]
+  },
+  "building-parts/TX Village Building - Chape 01 01.png": {
+    "chimneys": [],
+    "windows": [[18, 217, 10, 30]],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Chape 01 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Chape 01 03.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Chape 01 04.png": {
+    "chimneys": [],
+    "windows": [
+      [9, 161, 11, 25],
+      [10, 50, 10, 10]
+    ],
+    "doors": [[3, 252, 26, 22]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Chape 01 05.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Chape 01 06.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Chape 01 07.png": {
+    "chimneys": [],
+    "windows": [[7, 217, 11, 30]],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Dock 01 E 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Dock 01 E 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Dock 01 N 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Dock 01 N 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Dock 01 S 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Dock 01 S 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Dock 01 W 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Dock 01 W 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 01 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 01 02.png": {
+    "chimneys": [[29, 41]],
+    "windows": [
+      [27, 224, 18, 17],
+      [84, 224, 18, 17]
+    ],
+    "doors": [[78, 275, 28, 39]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 02.png": {
+    "chimneys": [[96, 25]],
+    "windows": [
+      [80, 256, 33, 17],
+      [94, 313, 9, 16],
+      [129, 313, 9, 16]
+    ],
+    "doors": [],
+    "lamps": [[197, 292]]
+  },
+  "building-parts/TX Village Building - House 03 01.png": {
+    "chimneys": [],
+    "windows": [
+      [85, 105, 15, 20],
+      [103, 105, 15, 20]
+    ],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 03 02.png": {
+    "chimneys": [],
+    "windows": [[19, 124, 11, 11]],
+    "doors": [[13, 155, 26, 27]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 03 Inner.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 04 01.png": {
+    "chimneys": [[34, 22]],
+    "windows": [
+      [42, 224, 25, 18],
+      [70, 224, 26, 18]
+    ],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 04 02.png": {
+    "chimneys": [],
+    "windows": [
+      [69, 110, 18, 19],
+      [22, 169, 10, 10]
+    ],
+    "doors": [[65, 171, 25, 26]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 05 01.png": {
+    "chimneys": [],
+    "windows": [[45, 245, 55, 22]],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 05 02.png": {
+    "chimneys": [],
+    "windows": [[25, 23, 12, 12]],
+    "doors": [[78, 11, 27, 38]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 06.png": {
+    "chimneys": [[28, 15]],
+    "windows": [[92, 238, 18, 17]],
+    "doors": [[32, 238, 29, 36]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 07 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 07 02.png": {
+    "chimneys": [],
+    "windows": [
+      [83, 130, 10, 23],
+      [21, 152, 10, 23]
+    ],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 07 03.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 07 04.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 07 Inner.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 08 01.png": {
+    "chimneys": [[35, 22]],
+    "windows": [
+      [39, 185, 17, 21],
+      [87, 185, 17, 21],
+      [31, 246, 10, 16],
+      [68, 246, 10, 16],
+      [103, 246, 10, 16]
+    ],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 08 02.png": {
+    "chimneys": [],
+    "windows": [[20, 140, 13, 22]],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 08 Inner 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [[9, 6, 28, 41]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 08 Inner 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 09.png": {
+    "chimneys": [],
+    "windows": [
+      [81, 170, 10, 16],
+      [203, 169, 10, 17],
+      [233, 169, 10, 17],
+      [140, 111, 17, 18],
+      [206, 111, 14, 18]
+    ],
+    "doors": [[31, 163, 27, 30]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 10 01.png": {
+    "chimneys": [[142, 22]],
+    "windows": [
+      [56, 139, 26, 20],
+      [22, 184, 12, 12],
+      [104, 184, 14, 12]
+    ],
+    "doors": [[59, 174, 28, 38]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 10 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 11 01.png": {
+    "chimneys": [],
+    "windows": [
+      [33, 325, 11, 11],
+      [70, 325, 10, 11],
+      [105, 325, 11, 11]
+    ],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 11 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 11 03.png": {
+    "chimneys": [],
+    "windows": [
+      [58, 17, 13, 13],
+      [90, 17, 14, 13]
+    ],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 11 04.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 11 Chimney.png": {
+    "chimneys": [[18, 3]],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 11 Inner.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 12 01.png": {
+    "chimneys": [[116, 22]],
+    "windows": [],
+    "doors": [[37, 205, 41, 36]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 12 02.png": {
+    "chimneys": [],
+    "windows": [
+      [245, 113, 14, 13],
+      [279, 113, 13, 13]
+    ],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 12 03.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 13 01.png": {
+    "chimneys": [],
+    "windows": [
+      [29, 149, 11, 11],
+      [99, 149, 11, 11],
+      [47, 91, 18, 17]
+    ],
+    "doors": [[141, 145, 28, 36]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 13 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 14 01.png": {
+    "chimneys": [],
+    "windows": [
+      [128, 108, 12, 11],
+      [139, 28, 31, 7]
+    ],
+    "doors": [[166, 104, 26, 37]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 14 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - House 15.png": {
+    "chimneys": [[120, 22]],
+    "windows": [
+      [32, 157, 16, 12],
+      [102, 157, 15, 12]
+    ],
+    "doors": [[63, 150, 22, 28]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Shed 01 S Back.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Shed 01 S.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Shed 01 W.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Shrine 01 Lit.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": [[20, 58]]
+  },
+  "building-parts/TX Village Building - Shrine 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": [[20, 58]]
+  },
+  "building-parts/TX Village Building - Stall 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Stall 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Stall 03.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Stall 04.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Stall 05.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Stall 06.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Teepee 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Tent 01 V L.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Tent 01 V R.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Tower 01 01.png": {
+    "chimneys": [],
+    "windows": [[22, 347, 10, 10]],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Tower 01 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Tower 01 03.png": {
+    "chimneys": [],
+    "windows": [
+      [2, 108, 13, 23],
+      [19, 108, 13, 23],
+      [36, 108, 13, 23],
+      [53, 108, 14, 23],
+      [103, 192, 9, 20],
+      [57, 249, 10, 24]
+    ],
+    "doors": [[22, 353, 28, 22]],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Wall 01 Coner BL.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Wall 01 Coner TR 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Wall 01 Coner TR 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Wall 01 H 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Wall 01 H 02.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Wall 01 H 03.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Wall 01 H Gate.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Wall 01 V.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Warehouse 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "building-parts/TX Village Building - Well 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "props/TX Village Props - Campfire 01 Lit.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": [[22, 14]]
+  },
+  "props/TX Village Props - Campfire 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": []
+  },
+  "props/TX Village Props - Campfire Cauldron 01 Lit.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": [[31, 23]]
+  },
+  "props/TX Village Props - Campfire Cauldron 01.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": [[31, 23]]
+  },
+  "props/TX Village Props - Lantern 01 Off.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": [[5, 9]]
+  },
+  "props/TX Village Props - Lantern 01 On.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": [[5, 9]]
+  },
+  "props/TX Village Props - Lantern 02 Off.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": [[4, 9]]
+  },
+  "props/TX Village Props - Lantern 02 On.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": [[4, 9]]
+  },
+  "props/TX Village Props - Road Lamp 01 L.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": [[39, 31]]
+  },
+  "props/TX Village Props - Road Lamp 01 R.png": {
+    "chimneys": [],
+    "windows": [],
+    "doors": [],
+    "lamps": [[5, 31]]
+  }
+}

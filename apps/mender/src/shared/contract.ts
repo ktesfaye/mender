@@ -16,6 +16,7 @@ import { githubContract } from './github';
 import { projectsContract } from './projects';
 import { promptsContract } from './prompts';
 import { schedulesContract } from './schedules';
+import { skyContract } from './sky';
 import { tasksContract } from './tasks';
 import { villageContract } from './village';
 
@@ -42,6 +43,7 @@ export const menderDomainContracts = {
   pulls: pullRequestsContract,
   resourceUsage: resourceUsageContract,
   schedules: schedulesContract,
+  sky: skyContract,
   tasks: tasksContract,
   terminals: terminalsContract,
   tuiAgents: tuiAgentsContract,

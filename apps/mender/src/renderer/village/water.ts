@@ -77,6 +77,10 @@ uniform float uTime;
 uniform float uFar;
 uniform float uReach;
 uniform float uNear;
+uniform float uRain;
+uniform float uStars;
+uniform float uMark;
+uniform vec3 uLift;
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -272,17 +276,62 @@ void main() {
   float flash = pow(max(0.0, sin(t * (0.7 + 0.8 * hash(gslot + 7.7)) + 6.2831 * hash(gslot + 9.3))), 24.0);
   c = mix(c, vec3(0.93, 0.98, 0.96), glint * flash * offShore * 0.9);
 
+  /* Rain on the water: a ring opening out of each drop, whole pixels, gone
+     as it widens. Squashed, because the sea is seen from above and a little
+     to the south like everything else. */
+  if (uRain > 0.01) {
+    vec2 rbin = max(vec2(22.0) / sqrt(u), vec2(12.0));
+    vec2 rslot = floor(q / rbin);
+    vec2 rlocal = q - rslot * rbin;
+    float rclock = t * (1.1 + hash(rslot + 3.1)) + hash(rslot + 8.8) * 9.0;
+    float rlife = fract(rclock);
+    vec2 rat = floor(hash2(rslot + floor(rclock) * 1.7) * (rbin - 6.0)) + 3.0;
+    vec2 rd = (rlocal - rat) * vec2(1.0, 1.7);
+    float radius = rlife * 4.5;
+    float rring = 1.0 - step(0.7, abs(length(rd) - radius));
+    float falls = step(hash(rslot + floor(rclock) * 2.3), uRain);
+    c = mix(c, foam, rring * falls * (1.0 - rlife) * 0.45);
+    c *= 1.0 - uRain * 0.08;
+  }
+
+  /* Stars on a still night sea, and on a clear one only: a pixel each, some
+     brighter, slowly coming and going. Lifted against the dark the grade is
+     about to put on everything, so they still read once it has. */
+  if (uStars > 0.01) {
+    vec2 sbin = max(vec2(34.0, 30.0) / sqrt(u), vec2(18.0, 16.0));
+    vec2 sslot = floor(q / sbin);
+    vec2 sat = floor(hash2(sslot + 33.0) * sbin);
+    vec2 sd = q - sslot * sbin - sat;
+    float star = step(abs(sd.x), 0.5) * step(abs(sd.y), 0.5);
+    float bright = hash(sslot + 5.5);
+    float twinkle = 0.55 + 0.45 * sin(t * (0.6 + bright) + bright * 40.0);
+    float shown = step(0.35, bright) * twinkle * offShore;
+    c = mix(c, uLift * mix(0.75, 1.0, bright), star * shown * uStars);
+  }
+
   /* A breath of noise under everything, or a gradient this gentle breaks into
      visible terraces in eight bits a channel. */
   c += (hash(floor(gl_FragCoord.xy)) - 0.5) / 255.0;
 
-  finalColor = vec4(c, 1.0);
+  /* While the sky's grade is on, the sea marks itself by drawing a shade
+     short of opaque, so the grade can tell water from land and keep snow,
+     moss and puddles off it. Premultiplied, so the grade gets the colour
+     back exactly. Off, it is opaque like it always was. */
+  finalColor = vec4(c * uMark, uMark);
 }
 `;
 
 export class Water {
   readonly mesh: Mesh<Geometry, Shader>;
-  private readonly uniforms: { uniforms: { uTime: number } };
+  private readonly uniforms: {
+    uniforms: {
+      uTime: number;
+      uRain: number;
+      uStars: number;
+      uMark: number;
+      uLift: Float32Array;
+    };
+  };
 
   /**
    * Measure the coast off the ground the scene draws, and lay water under it.
@@ -342,12 +391,16 @@ export class Water {
       uReach: { value: REACH, type: 'f32' },
       uNear: { value: NEAR, type: 'f32' },
       uFar: { value: FAR, type: 'f32' },
+      uRain: { value: 0, type: 'f32' },
+      uStars: { value: 0, type: 'f32' },
+      uMark: { value: 1, type: 'f32' },
+      uLift: { value: new Float32Array([1, 1, 1]), type: 'vec3<f32>' },
     } as const;
     const shader = Shader.from({
       gl: { vertex, fragment },
       resources: { uField: texture.source, uDeep: deep.source, waterUniforms: uniforms },
     });
-    this.uniforms = shader.resources.waterUniforms as { uniforms: { uTime: number } };
+    this.uniforms = shader.resources.waterUniforms as Water['uniforms'];
 
     const x0 = island.x - SEA;
     const y0 = island.y - SEA;
@@ -377,6 +430,20 @@ export class Water {
 
   tick(_ticker: Ticker): void {
     this.uniforms.uniforms.uTime = (performance.now() / 1000) % 3600;
+  }
+
+  /** What the sky is doing to the sea: rain on it, and stars in it. */
+  weather(
+    rain: number,
+    stars: number,
+    ambient: readonly [number, number, number],
+    graded: boolean
+  ): void {
+    const u = this.uniforms.uniforms;
+    u.uMark = graded ? 0.5 : 1;
+    u.uRain = rain;
+    u.uStars = stars;
+    for (let i = 0; i < 3; i++) u.uLift[i] = Math.min(3, 0.95 / Math.max(0.2, ambient[i]!));
   }
 }
 

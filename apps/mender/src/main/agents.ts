@@ -1819,6 +1819,8 @@ class House {
       };
     }
     if (failure && state.mood === 'hurt' && failure.category === 'access') glance.signIn = true;
+    const out = state.told.errands.filter((one) => one.running).length;
+    if (out) glance.helpers = out;
     return glance;
   }
 
