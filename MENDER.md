@@ -158,8 +158,10 @@ land in the session you were last in, standing in its yard at night. What you
 asked for is nailed to a gatepost on the left, newest on parchment and the ones
 under it weathered into the post, any of them written back on the line by
 pressing it, and up on an empty line walks back through them. A small
-gold loop in the parchment's corner says it again as it stands, straight
-to the agent without going through the line. The parchment
+gold loop in the parchment's corner has it go again at that note without
+saying it a second time: one it cut short carries on from where it stopped,
+and one it finished gets another go, and nothing new goes up on the post,
+because the agent still has the note. The parchment
 is what it is working on, and says so in the fire's orange; whatever you say
 while it works goes up above the parchment in the post's own weathered ink,
 "not read yet", and only takes the parchment once the agent has actually
@@ -281,7 +283,7 @@ it is waiting on is said plainly, with the reset time in your own clock when
 Claude names one, and three gold lines sit under it — try again now, where an
 immediate retry is worth it; carry on when it lifts, which is Claude Code's own
 "continuing automatically at five" said the same way, arming a real wait that
-sends the same thing again on its own once the time comes, cancelled by
+tells it to carry on, on its own, once the time comes, cancelled by
 pressing that same line again or by Escape, which reaches for an armed wait
 before it reaches for anything else; and starting over, two presses, the first
 naming that the conversation is what it costs. A refusal or a turn that ran out

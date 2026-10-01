@@ -3227,6 +3227,18 @@ rest of the parchment still writes it back on the line to change. Driven in a
 dev instance: pressing the loop after "pong" sent it again, the agent answered
 a second time and the line stayed empty.
 
+### Going again never puts the note up twice (2026-10-01) — done
+
+The loop, "try again now" and a continue armed on a limit no longer send what
+was said a second time, which stacked a copy on the post, dropped its pictures
+and made a job cut off halfway start over. Claude keeps the note even when the
+turn dies, so each sends a word only the agent reads: carry on from where you
+stopped when the last turn was cut short, have another go when it finished.
+The loop is gone while it is already at it. Driven in a dev instance: the loop
+on an answered note put the parchment back to "working on it" and it answered
+again, and after Escape stopped a story halfway, the loop had it finish
+writing it; the post held one note each time.
+
 ### A project is let go on the water, flag or land, and asked about (2026-09-30) — done
 
 In edit districts, a district or just its flag let go out on the open sea

@@ -764,14 +764,13 @@ export const agentsContract = defineContract({
       .nullable(),
     error: agentErrorSchema,
   }),
-  /** Say the last thing you said again, now that a limit's fire has banked. */
+  /** Have it go again at the last thing said, without saying it again. */
   retryFailure: fallible({
     input: z.object({ task: z.string() }),
     data: z.void(),
     error: agentErrorSchema,
   }),
-  /** Schedule the last thing said to go out again on its own once a limit
-   *  lifts. Cancelled by pressing the same line again, or Escape. */
+  /** Schedule that same go-again to send itself once a limit lifts. Cancelled by pressing the same line again, or Escape. */
   waitOutFailure: fallible({
     input: z.object({ task: z.string() }),
     data: z.void(),

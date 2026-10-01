@@ -460,11 +460,12 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     recalled = -1;
     fill(text);
   }
-  /** The newest note's own mark says it again as it stands, without the line. */
-  function rerun(text: string): void {
+  /** The newest note's own mark has it go again at that note, without
+   *  saying it a second time: the note stays the one it is working on. */
+  function rerun(): void {
     recalled = -1;
     lastSaid = null;
-    does.say(text);
+    does.press('failure:retry');
   }
 
   let last: Yard | undefined;
@@ -1460,7 +1461,7 @@ function asked(
   cramped: boolean,
   pick: (said: string) => void,
   takeBack?: (id: string) => void,
-  rerun?: (said: string) => void
+  rerun?: () => void
 ): void {
   if (!at.wide) return;
   /* What you said while it worked goes on the post too, above the parchment
@@ -1583,7 +1584,7 @@ const NOTE_LINE = 19 * 1.25;
 function pinned(
   note: Note,
   where: { left: number; top: number; width: number },
-  rerun?: (said: string) => void
+  rerun?: () => void
 ): HTMLElement {
   const card = box(where, CARD);
   card.classList.add('paper');
@@ -1604,18 +1605,19 @@ function pinned(
   body.textContent = named(note.said);
   card.appendChild(body);
   handed(card, note, '#b3651f');
-  if (rerun) card.appendChild(again(() => rerun(note.said)));
+  /* Already at it, there is nothing to go again at yet. */
+  if (rerun && !note.on) card.appendChild(again(rerun));
   return card;
 }
 
 /**
- * The one mark on the parchment: says the newest note again, as it stands,
- * without going through the line. Gold, but the paper's own darker gold,
- * because the board's would all but vanish on cream.
+ * The one mark on the parchment: has it go again at the newest note, without
+ * going through the line or putting the note up a second time. Gold, but the
+ * paper's own darker gold, because the board's would all but vanish on cream.
  */
 function again(press: () => void): HTMLElement {
   const it = document.createElement('div');
-  it.title = 'say it again';
+  it.title = 'have another go';
   it.style.cssText = [
     'position:absolute',
     'top:9px',

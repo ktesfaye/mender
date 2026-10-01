@@ -198,10 +198,11 @@ export interface Agents {
     task: string,
     call: string
   ): Promise<{ success: true; data: HelperTrail | null } | { success: false; error: TellError }>;
-  /** Say the last thing said to this session again. */
+  /** Have it go again at the last thing said, without saying it again: on
+   *  where it was cut off, or afresh at one it already answered. */
   retryFailure(task: string): Promise<Told>;
-  /** Schedule the last thing said to go out again on its own, once a typed
-   *  failure's reset time comes. */
+  /** Schedule that same go-again to send itself once a typed failure's
+   *  reset time comes. */
   waitOutFailure(task: string): Promise<Told>;
   /** Disarm a scheduled continue. */
   stopWaiting(task: string): Promise<Told>;
@@ -285,7 +286,7 @@ export function createAgents(
   let leftGoing: Record<string, CutOff> = {};
   /** Continues armed to send themselves once a limit lifts, so a restart
       does not quietly disarm them. */
-  let carryOns: Record<string, { text: string; at: number }> = {};
+  let carryOns: Record<string, { at: number }> = {};
   const loaded = (async () => {
     const held = await store.get(KEY);
     if (held.success && held.data && typeof held.data === 'object') {
@@ -315,7 +316,7 @@ export function createAgents(
     }
     const heldCarry = await store.get(CARRY_ON_KEY);
     if (heldCarry.success && heldCarry.data && typeof heldCarry.data === 'object') {
-      carryOns = heldCarry.data as unknown as Record<string, { text: string; at: number }>;
+      carryOns = heldCarry.data as unknown as Record<string, { at: number }>;
     }
   })();
 
@@ -592,8 +593,8 @@ export function createAgents(
         noteGoing();
       });
     }
-    for (const [task, { text, at }] of Object.entries(carryOns)) {
-      if (alive.has(task)) armCarryOn(task, text, at);
+    for (const [task, { at }] of Object.entries(carryOns)) {
+      if (alive.has(task)) armCarryOn(task, at);
       else forgetCarryOn(task);
     }
   });
@@ -756,10 +757,10 @@ export function createAgents(
     forgetCarryOn(task);
   };
 
-  /** Sends `text` again on its own at `at`, and keeps it armed across a restart. */
-  const armCarryOn = (task: string, text: string, at: number): void => {
+  /** Goes again on its own at `at`, and keeps it armed across a restart. */
+  const armCarryOn = (task: string, at: number): void => {
     houseOf(task).carryOn(at);
-    carryOns = { ...carryOns, [task]: { text, at } };
+    carryOns = { ...carryOns, [task]: { at } };
     void store.set(CARRY_ON_KEY, carryOns as unknown as never);
     carryOnTimers.set(
       task,
@@ -767,7 +768,7 @@ export function createAgents(
         () => {
           carryOnTimers.delete(task);
           forgetCarryOn(task);
-          void doTell(task, text);
+          void goAgain(task);
         },
         Math.max(0, at - Date.now())
       )
@@ -777,8 +778,10 @@ export function createAgents(
   /**
    * Say something to whoever is in there, moving somebody in if nobody is.
    *
-   * Pulled out of the `tell` RPC so "try again" and a scheduled continue can
-   * say the same thing again without going back out through the wire.
+   * Pulled out of the `tell` RPC so "try again", a scheduled continue and
+   * the pick-up after a restart can speak without going back out through
+   * the wire. With only `hidden` and no text, it is said to the agent and
+   * never reaches the gatepost.
    */
   const doTell = async (
     task: string,
@@ -788,7 +791,8 @@ export function createAgents(
   ): Promise<Told> => {
     const said = text.trim();
     // A picture handed over without a word is still something said.
-    if (!said && !carrying?.length) return { success: false, error: { kind: 'nothing' } };
+    if (!said && !carrying?.length && !hidden?.trim())
+      return { success: false, error: { kind: 'nothing' } };
     await loaded;
     const record = (await tasks.list()).find((candidate) => candidate.id === task);
     if (!record) return { success: false, error: { kind: 'no-such-task' } };
@@ -815,11 +819,9 @@ export function createAgents(
       carrying: carrying?.length ?? 0,
     });
 
-    /* Anything said fresh — by hand or by a scheduled continue — is this
-       session's own "retry" from here on, and stops any continue still armed
-       from an earlier limit. */
+    /* Anything said, by hand or by a scheduled continue, stops any continue
+       still armed from an earlier limit. */
     stopWaiting(task);
-    house.sent(said);
     /* Named off what was just said, once it has landed in the transcript —
        which for a fresh agent is after it has finished starting — rather than
        left as "claude" for however long the first turn takes. */
@@ -889,6 +891,16 @@ export function createAgents(
     log.info('agents: tell landed', { area: 'agents', task, queued: sent.data?.queued });
     return { success: true, data: undefined };
   };
+
+  /**
+   * Has it go again at what was last said, without saying it a second time:
+   * Claude keeps what you said in its conversation even when the turn dies on
+   * a limit, so sending it again would be the same request twice in a row,
+   * and one cut off halfway would start the whole job over. A word only the
+   * agent reads is enough, and nothing new goes up on the gatepost.
+   */
+  const goAgain = (task: string): Promise<Told> =>
+    doTell(task, '', undefined, houseOf(task).cutShort() ? CARRY_ON_ASIDE : REDO_ASIDE);
 
   /**
    * `doTell` without a prompt to send: creates the conversation if none
@@ -1197,25 +1209,20 @@ export function createAgents(
     tell: doTell,
     resume: resumeInto,
 
-    async retryFailure(task) {
-      const text = houseOf(task).retryText();
-      if (!text) return { success: false, error: { kind: 'nothing' } };
-      return doTell(task, text);
-    },
+    retryFailure: goAgain,
 
     /**
      * Arms a continue that sends itself once the failure's own reset time
      * comes: the village's own take on Claude Code's "continuing
      * automatically at 5pm". Needs both a reset time to aim for and
-     * something to say again; either missing means nothing to schedule.
+     * something already said to go again at.
      */
     async waitOutFailure(task) {
       const house = houseOf(task);
-      const text = house.retryText();
       const resetAt = house.currentResetAt();
-      if (!text || !resetAt) return { success: false, error: { kind: 'nothing' } };
+      if (!house.everSaid() || !resetAt) return { success: false, error: { kind: 'nothing' } };
       stopWaiting(task);
-      armCarryOn(task, text, resetAt);
+      armCarryOn(task, resetAt);
       return { success: true, data: undefined };
     },
 
@@ -1452,9 +1459,6 @@ class House {
   private wakingUp = false;
   /* Whoever is waiting to hear the session has got past starting. */
   private past = new Set<() => void>();
-  /** The last thing said to this session, for "try again" and the scheduled
-   *  continue to say again. */
-  private lastSent: string | undefined;
   /** When a continue is scheduled to send itself, or null. */
   private carryOnAt: number | null = null;
   private carryOnTimer: ReturnType<typeof setTimeout> | undefined;
@@ -1697,14 +1701,21 @@ class House {
     this.publish();
   }
 
-  /** The last thing said to this session, for "try again" and a scheduled
-   *  continue to say again — set every time something actually goes out. */
-  sent(text: string): void {
-    this.lastSent = text;
+  /** Whether anything has been said here for a go-again to go again at. */
+  everSaid(): boolean {
+    return [...this.before, ...(this.live ? [this.live] : [])].some((turn) =>
+      turn.items.some((item) => item.kind === 'message' && item.role === 'user')
+    );
   }
 
-  retryText(): string | undefined {
-    return this.lastSent;
+  /** Whether the last turn stopped before it was done: broken off, called
+   *  off, or settled on a limit that only says so beside an ordinary finish. */
+  cutShort(): boolean {
+    if (this.lifecycle?.failure) return true;
+    const last = this.live ?? this.before.at(-1);
+    const outcome = last?.outcome;
+    if (!outcome) return false;
+    return outcome.kind !== 'done' || outcome.reason !== 'end_turn';
   }
 
   currentResetAt(): number | undefined {
@@ -2620,6 +2631,16 @@ type Flat = (
 const INTERRUPTED = /^\[Request interrupted by user[^\]]*\]$/;
 
 /** A note the village rides alongside what you said, marked so it can come back off. */
+/** Said to a session whose last turn was cut off, in place of saying it all again. */
+const CARRY_ON_ASIDE =
+  '[mender, for the agent only: your last turn was cut off before you finished. Carry on ' +
+  'with my last message from exactly where you stopped, without redoing anything already done.]';
+
+/** Said to one that finished, when the newest note's loop is pressed. */
+const REDO_ASIDE =
+  '[mender, for the agent only: I asked you to have another go at my last message. Take a ' +
+  'fresh look at it rather than repeating your last answer.]';
+
 const ASIDE_TO_AGENT = /\s*\[mender, for the agent only:[\s\S]*?\]\s*$/;
 
 /** How the runtime names a message it handed into a turn already running. */
