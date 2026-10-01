@@ -241,7 +241,7 @@ export class Walker {
   }
 }
 
-type Spot = { x: number; y: number };
+export type Spot = { x: number; y: number };
 
 /**
  * Where anybody can walk, and the ways between.
@@ -272,8 +272,10 @@ export class Paths {
     const blocked = buildings.map((building) => ({
       left: building.x + 3,
       right: building.x + building.width - 3,
-      // The roof overhangs the ground it stands on; the foot is the bottom third.
-      top: building.y + building.height * 0.45,
+      /* The whole of it, roof and all: ground behind a roof is ground nobody
+         looking at the island can see, and a villager walking there has
+         simply vanished. */
+      top: building.y + 2,
       bottom: building.y + building.height - 2,
     }));
     /* What stands on the ground and is not walked through: crops, fences,
@@ -339,7 +341,7 @@ export class Paths {
   }
 
   /** Somewhere walkable within reach, on the walker's own level. */
-  near(walker: Walker, district: District | null, reach: number): Spot | null {
+  near(walker: Spot, district: District | null, reach: number): Spot | null {
     const level = this.levelAt(walker);
     const owned = district ? cellsOf(district) : null;
     for (let tries = 0; tries < 24; tries++) {
@@ -356,7 +358,7 @@ export class Paths {
     return null;
   }
 
-  somewhere(walker: Walker, reach: number): Spot | null {
+  somewhere(walker: Spot, reach: number): Spot | null {
     return this.near(walker, null, reach);
   }
 
@@ -367,7 +369,7 @@ export class Paths {
    * it is on. Capped, so an unreachable spot costs a bounded search and not
    * the whole island.
    */
-  route(walker: Walker, to: Spot): Spot[] | null {
+  route(walker: Spot, to: Spot, budget = 2600): Spot[] | null {
     const level = this.levelAt(walker);
     const start = this.nearestKey(walker, 3);
     const goal = this.nearestKey(to, 3);
@@ -382,7 +384,7 @@ export class Paths {
     while (open.size) {
       const key = open.pop()!;
       if (key === goal) break;
-      if (++seen > 2600) return null;
+      if (++seen > budget) return null;
       const [x, y] = key.split(',').map(Number) as [number, number];
       for (const [dx, dy] of EIGHT) {
         const nx = x + dx;
@@ -415,6 +417,17 @@ export class Paths {
     // The last step lands exactly where it was going, not a cell's middle.
     if (path.length) path[path.length - 1] = { x: to.x, y: to.y };
     return path;
+  }
+
+  /** Whether two spots stand on the same level of ground, so one can walk to the other. */
+  sameLevel(a: Spot, b: Spot): boolean {
+    const one = this.levelAt(a);
+    return one !== undefined && one === this.levelAt(b);
+  }
+
+  /** The nearest walkable spot to one, or null. */
+  walkableNear(spot: Spot, reach = 4): Spot | null {
+    return this.nearestWalkable(spot, reach);
   }
 
   private levelAt(spot: Spot): number | undefined {
@@ -579,8 +592,12 @@ export class Walkers {
   }
 
   /** Move everybody along. Says whether anybody visibly moved. */
+  private sorted = 0;
+
   tick(now: number, seconds: number, night: boolean): boolean {
     let moved = false;
+    const resort = now - this.sorted > 400;
+    if (resort) this.sorted = now;
     for (const [id, walker] of this.people) {
       if (walker.gone) {
         walker.view.destroy({ children: true });
@@ -589,10 +606,13 @@ export class Walkers {
         continue;
       }
       if (walker.step(now, seconds, this.paths, night, this.fire)) moved = true;
-      const lane = this.laneAt(walker.y);
-      if (lane !== walker.lane) {
-        lane.addChild(walker.view);
-        walker.lane = lane;
+      // Re-sorted a few times a second at most: each move rebuilds the island's draw list.
+      if (!walker.lane || resort) {
+        const lane = this.laneAt(walker.y);
+        if (lane !== walker.lane) {
+          lane.addChild(walker.view);
+          walker.lane = lane;
+        }
       }
     }
     return moved;

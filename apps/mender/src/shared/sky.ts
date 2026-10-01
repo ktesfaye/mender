@@ -29,6 +29,18 @@ export const realWeatherSchema = z.object({
 });
 export type RealWeather = z.infer<typeof realWeatherSchema>;
 
+export const bustleSchema = z.object({
+  /** The newest commit on any of its own branches, milliseconds since the epoch. */
+  last: z.number(),
+  /** Commits on its own branches in the last day, and in the last week. */
+  today: z.number(),
+  week: z.number(),
+  /** How many commits the checked-out branch is ahead of where it pushes to;
+      dropping to none is a push going out. */
+  ahead: z.number(),
+});
+export type Bustle = z.infer<typeof bustleSchema>;
+
 export const skyContract = defineContract({
   /** Null when the machine is offline or nobody answered; the sky then
       falls back to the clock alone. */
@@ -42,6 +54,12 @@ export const skyContract = defineContract({
   aging: procedure({
     input: z.object({}),
     output: z.record(z.string(), z.number()),
+  }),
+  /** How busy each project has been lately, read off git: what the crowd in
+      its district grows from. */
+  bustle: procedure({
+    input: z.object({}),
+    output: z.record(z.string(), bustleSchema),
   }),
 });
 

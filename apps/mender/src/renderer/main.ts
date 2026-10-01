@@ -31,6 +31,7 @@ import type { At, Change } from '@shared/changes';
 import { parseEnvLines } from '@shared/env-lines';
 import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
+import type { Bustle } from '@shared/sky';
 import type { Task, Workspace } from '@shared/tasks';
 import { branchMade, branchUnmade, unbranchMade } from './board/branch';
 import { browsing, openPage, safe as safeAddress } from './board/browsing';
@@ -77,12 +78,13 @@ import {
   smartZoom,
   type Extent,
 } from './village/camera';
+import { Crowd, type Life } from './village/crowd';
 import { Editing } from './village/editing';
 import { Folk, loadFolk, type Look, type Standing } from './village/folk';
 import { districtBounds, Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
-import { say } from './village/notice';
 import './yard/tokens.css';
+import { say } from './village/notice';
 import { loadFeet, Pennants, plantFlag } from './village/pennants';
 import { buildScene } from './village/scene';
 import { Sky } from './village/sky';
@@ -719,6 +721,14 @@ async function boot(): Promise<void> {
       drawn.atmosphere.tick(pixi.screen);
       const look = drawn.atmosphere.sky.current;
       drawn.walkers.tick(now, seconds, look.dark > 0.6);
+      // Behind a board the village is scenery: the crowd holds still.
+      if (!dimmed)
+        drawn.crowd.tick(now, seconds, look.dark > 0.6, {
+          x: camera.left,
+          y: camera.top,
+          width: camera.worldScreenWidth,
+          height: camera.worldScreenHeight,
+        });
     });
     let walkedAt = performance.now();
     /* A handle for driving the sky and the people from a debug port, in a
@@ -744,21 +754,77 @@ async function boot(): Promise<void> {
     window.setInterval(askWeather, 10 * 60_000);
     /* How long since each project was committed to, which is how overgrown
        its district is. */
-    const askAges = (): void => {
-      void client.sky.aging({}, { timeoutMs: 30_000 }).then(
-        (ages) => {
+    /* How busy each project has been, read off git every minute or so: the
+       moss grows from how long since the last commit, the crowd in each
+       district from how much work is going on, and a commit or a push since
+       the last look sends a cart or a boat. */
+    let bustled: Record<string, Bustle> | null = null;
+    let lives = new Map<string, Life>();
+    const livesNow = (all: Record<string, Bustle>): Map<string, Life> => {
+      const out = new Map<string, Life>();
+      const now = Date.now();
+      for (const project of projects) {
+        const read = all[project.id];
+        if (!read) continue;
+        const open = tasks.filter((task) => task.project === project.id);
+        const working = open.filter((task) => seen[task.id] === 'working').length;
+        const days = (now - read.last) / 86_400_000;
+        out.set(project.district, {
+          busy: open.length * 0.8 + working * 1.5 + read.today * 0.8 + read.week * 0.15,
+          age: Math.sqrt(Math.max(0, Math.min(1, (days - 3) / 25))),
+        });
+      }
+      return out;
+    };
+    const askBustle = (): void => {
+      void client.sky.bustle({}, { timeoutMs: 30_000 }).then(
+        (all) => {
           const byDistrict = new Map<string, number>();
           for (const project of projects) {
-            const at = ages[project.id];
-            if (at !== undefined) byDistrict.set(project.district, at);
+            const read = all[project.id];
+            if (read) byDistrict.set(project.district, read.last);
+            const was = bustled?.[project.id];
+            if (!read || !was) continue;
+            const home = tasks.find((task) => task.project === project.id && task.slot !== null);
+            const district = drawn.districts.get(project.district);
+            const building =
+              (district && home && drawn.ground.buildingAt(district, home.slot ?? 0)) || null;
+            if (read.last > was.last) drawn.crowd.cart(project.district, building);
+            if (was.ahead > 0 && read.ahead === 0) drawn.crowd.boat(project.district);
           }
+          bustled = all;
           drawn.atmosphere.setAges(byDistrict);
+          lives = livesNow(all);
+          drawn.crowd.setLife(lives);
         },
         () => undefined
       );
     };
-    askAges();
-    window.setInterval(askAges, 5 * 60_000);
+    // Once the sessions and moods it reads are in.
+    window.setTimeout(askBustle, 3000);
+    window.setInterval(askBustle, 60_000);
+    /* A session's agent starting on something sends a runner out of its
+       door with it. */
+    const doingNow = new Map<string, string>();
+    const sendRunnersNow = (): void => {
+      if (bustled) drawn.crowd.setLife(livesNow(bustled));
+      for (const task of tasks) {
+        const tool = glances[task.id]?.tool;
+        const was = doingNow.get(task.id);
+        if (tool) doingNow.set(task.id, tool);
+        else doingNow.delete(task.id);
+        if (!tool || tool === was) continue;
+        const where = projects.find((project) => project.id === task.project)?.district;
+        const district = where ? drawn.districts.get(where) : undefined;
+        if (!where || !district) continue;
+        const building =
+          (task.slot !== null && drawn.ground.buildingAt(district, task.slot)) || null;
+        drawn.crowd.errand(where, building, tool);
+      }
+    };
+    window.setTimeout(() => {
+      sendRunners = sendRunnersNow;
+    }, 3000);
 
     /** The place the board is standing in front of, while it is in. */
     let open: Aim | null = null;
@@ -937,6 +1003,7 @@ async function boot(): Promise<void> {
     /* Lights the houses again; set once everything it reads exists, and called
        the moment you walk into a finished session so its house goes dark too. */
     let lightHouses = (): void => {};
+    let sendRunners = (): void => {};
 
     /* Where you have been, so you can go back. One list, one finger on it:
        arriving somewhere new cuts off whatever you had gone back from, which
@@ -5736,6 +5803,7 @@ async function boot(): Promise<void> {
     };
     const people = (): void => {
       lightHouses();
+      sendRunners();
       paintRail();
       /* The yard you are standing in was handed who was awake when it opened,
          and moods move after that: a session that has just been cut is still
@@ -5949,6 +6017,8 @@ interface Drawn {
   atmosphere: Atmosphere;
   /** Everybody walking about. */
   walkers: Walkers;
+  /** Everybody else: townsfolk, animals, runners, carts and boats. */
+  crowd: Crowd;
   /** A flag on every district somebody lives in, and its name on hover. */
   pennants: Pennants;
   /** The districts by plot, which is how a project finds its own land. */
@@ -6017,8 +6087,17 @@ async function draw(
     },
     sky
   );
-  const walkers = new Walkers(new Paths(map.layout, scene.buildings), scene.laneAt, fire);
-  atmosphere.follow(walkers);
+  const paths = new Paths(map.layout, scene.buildings);
+  const walkers = new Walkers(paths, scene.laneAt, fire);
+  was?.crowd.destroy();
+  const crowd = new Crowd(paths, scene.laneAt, map.layout, map.districts, scene.buildings, {
+    x: island.x + island.width / 2,
+    y: island.y + island.height / 2,
+  });
+  atmosphere.follow(
+    () => walkers.positions(),
+    () => crowd.lit()
+  );
   world.addChild(water.mesh, scene.root, atmosphere.air);
   // The island may have grown or shrunk: the camera's limits follow it.
   holdToIsland(camera, island);
@@ -6029,6 +6108,7 @@ async function draw(
     water,
     atmosphere,
     walkers,
+    crowd,
     folk: new Folk(ground.windows),
     pennants: new Pennants(
       feet,

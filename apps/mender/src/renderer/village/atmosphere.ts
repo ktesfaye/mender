@@ -14,7 +14,6 @@ import { Grade, Lights, mossTexture, screenInWorld, type Light, type Moss } from
 import { texture as kitTexture } from './kit';
 import { SHADOW_TINT, type Building } from './scene';
 import type { Sky, SkyLook } from './sky';
-import type { Walkers } from './walkers';
 
 /**
  * Everything on the island that is not the art standing still.
@@ -202,7 +201,7 @@ export class Atmosphere {
   private inhabited = new Set<string>();
   private last = performance.now();
   private quiet = false;
-  private walkers: Walkers | null = null;
+  private carriers: (() => Iterable<{ x: number; y: number }>)[] = [];
   private time = 0;
   private applied = false;
 
@@ -238,8 +237,8 @@ export class Atmosphere {
   }
 
   /** Who is walking, for the lanterns they carry once it is dark. */
-  follow(walkers: Walkers): void {
-    this.walkers = walkers;
+  follow(...sources: (() => Iterable<{ x: number; y: number }>)[]): void {
+    this.carriers = sources;
   }
 
   /** The houses somebody is in, and what they are doing in there. */
@@ -649,8 +648,11 @@ export class Atmosphere {
 
   private tickWalkerLights(look: SkyLook): void {
     const seen = new Set<unknown>();
-    if (this.walkers && look.dark > 0.45) {
-      for (const walker of this.walkers.positions()) {
+    let carried = 0;
+    if (look.dark > 0.45) {
+      for (const walker of this.carriers.flatMap((source) => [...source()])) {
+        // Enough lanterns to read as a village out after dark, and no more.
+        if (++carried > 36) break;
         seen.add(walker);
         let light = this.walkerLights.get(walker);
         if (!light) {

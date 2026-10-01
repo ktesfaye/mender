@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draw the villagers.
+"""Draw the villagers, the townsfolk, the animals and the boat.
 
 The kit ships four "character" files and they are a template, not a character:
 a featureless slab with cat ears and two eyes, forty-eight pixels tall, taller
@@ -13,6 +13,18 @@ gathering round the fire. One villager walks per open session; the subagents a
 session sends out are `helper-` copies of all of it, in an ochre tunic and a
 green hood with a satchel, two pixels shorter so they read as a different kind
 of person at a glance. The side frames face right and the renderer flips them.
+
+Eight townsfolk (`town-a-` .. `town-h-`: farmer, woman in red, elder, child,
+blacksmith, merchant, fisher, woman in a headscarf) carry exactly the villager's
+frame set. They are not redrawn: each takes the villager's own rows, swaps the
+palette, stamps its hat, hair, apron or skirt on top, and runs the same walk
+pipeline, so the legs alternate exactly as the villager's do. `carry-*` are the
+small things a walker holds out in front; `chicken`, `hen`, `sheep`, `pig`, `cow`,
+`duck`, `crow`, `cat-walk`, `dog-sit` are farm and yard animals (walks face right,
+the renderer flips them; each also has a peck/graze/idle or hop/fly frame); then
+`cart-0/1` (a handcart, wheel turning) and `boat-0/1` (a sailboat bobbing). The
+animals are drawn without an outline and ringed in the kit's ink automatically.
+The sheet wraps to a new row at 2048px.
 
 The rest of the sheet is the life round them: gulls, butterflies, fireflies,
 fish and the splash they leave, a falling leaf, a cat, a dog, smoke, and the
@@ -276,11 +288,12 @@ def side_arm(rows: list[str], dx: int) -> list[str]:
     return rows
 
 
-def walk_side() -> list[list[str]]:
-    a = side_arm(with_legs(SIDE, SIDE_CONTACT), -2)
-    b = side_arm(with_legs(SIDE, SIDE_PASS), 0)
-    c = side_arm(with_legs(SIDE, swap_legs(SIDE_CONTACT)), 2)
-    d = side_arm(with_legs(SIDE, SIDE_PASS), 0)
+def walk_side(side: list[str] | None = None) -> list[list[str]]:
+    side = side or SIDE
+    a = side_arm(with_legs(side, SIDE_CONTACT), -2)
+    b = side_arm(with_legs(side, SIDE_PASS), 0)
+    c = side_arm(with_legs(side, swap_legs(SIDE_CONTACT)), 2)
+    d = side_arm(with_legs(side, SIDE_PASS), 0)
     # Contact frames sit a pixel lower than the passing ones.
     return [lower(a), b, lower(c), d]
 
@@ -599,6 +612,519 @@ def shadow() -> Image.Image:
     return image
 
 
+# ---------------------------------------------------------------------------
+# Townsfolk: the villager's body, dressed eight other ways
+# ---------------------------------------------------------------------------
+
+
+def hx(value: int) -> tuple[int, int, int]:
+    return (value >> 16 & 255, value >> 8 & 255, value & 255)
+
+
+# Keys the villager does not use, for the accessories the townsfolk add.
+EXTRA = {
+    "W": 0xF4F1E8, "w": 0xD6D0BE,  # linen, apron, headscarf
+    "R": 0xD63A32, "r": 0x9C2420,  # red
+    "Y": 0xE2BE5C, "y": 0xC49A3A,  # straw, gold
+    "L": 0x9A622E, "l": 0x6E4220,  # leather, belt
+    "N": 0x24523A, "n": 0x38785A,  # dark green felt
+    "Q": 0x2E58A8, "q": 0x1E3C78,  # blue cap
+    "V": 0x7A4FA0, "v": 0x5A3A7C,  # purple
+    "Z": 0xEEEEE8, "z": 0xC8C6C0,  # white beard
+}
+VPAL = {**PALETTE, **{key: hx(value) for key, value in EXTRA.items()}}
+
+
+def stamp(rows: list[str], y: int, x: int, text: str) -> None:
+    """Write text into a row; a '.' in it leaves what is there alone."""
+    row = list(rows[y])
+    for i, ch in enumerate(text):
+        if ch != "." and 0 <= x + i < len(row):
+            row[x + i] = ch
+    rows[y] = "".join(row)
+
+
+def colour(**kw: int) -> dict:
+    return {key: hx(value) for key, value in kw.items()}
+
+
+def skirt(rows: list[str], kind: str, sway: int, top: str, mid: str, hem: str,
+          apron: str | None = None, trim: str | None = None) -> None:
+    if kind == "side":
+        shape = ["...KTTTTTTK...", "..KTTTTTTTTK..", "..KTTTTTTTTK..", "..KttttttttK.."]
+    else:
+        shape = ["..KTTTTTTTTK..", "..KTuTTTTTTK..", ".KTTTTTTTTTTK.", ".KttttttttttK."]
+    for i, row in enumerate(shape):
+        row = row.replace("T", mid).replace("t", hem).replace("u", top)
+        if i >= 2 and sway:
+            row = (row[-sway:] + row[:-sway]) if sway > 0 else (row[-sway:] + row[:-sway])
+        rows[20 + i] = row
+        if apron and kind != "side" and i < 4:
+            stamp(rows, 20 + i, 5 + (sway if i >= 2 else 0), apron[i] * 4)
+        if trim and i == 3:
+            stamp(rows, 20 + i, 2, "".join(trim if c in "tT" else c for c in row[2:12]))
+
+
+def sway_of(name: str) -> int:
+    return {"walk-down-0": -1, "walk-down-2": 1, "walk-up-0": -1, "walk-up-2": 1}.get(name, 0)
+
+
+def cut(rows: list[str], drop: tuple[int, ...]) -> list[str]:
+    return [row for y, row in enumerate(rows) if y not in drop]
+
+
+def dress_up(front, back, side, pal, post=None, drop=()) -> dict[str, Image.Image]:
+    frames: dict[str, list[str]] = {
+        "front-0": front, "front-1": breathing(front),
+        "back-0": back, "back-1": breathing(back),
+        "side-0": side, "side-1": breathing(side),
+    }
+    for i, rows in enumerate(walk_vertical(front)):
+        frames[f"walk-down-{i}"] = rows
+    for i, rows in enumerate(walk_vertical(back)):
+        frames[f"walk-up-{i}"] = rows
+    for i, rows in enumerate(walk_side(side)):
+        frames[f"walk-side-{i}"] = rows
+    out = {}
+    for name, rows in frames.items():
+        rows = list(rows)
+        if post:
+            post(name, rows)
+        out[name] = draw(cut(rows, drop), {**VPAL, **pal})
+    return out
+
+
+def copy3():
+    return list(FRONT), list(BACK), list(SIDE)
+
+
+def fill(rows, ys, xs, ch):
+    for y in ys:
+        for x in xs:
+            stamp(rows, y, x, ch)
+
+
+def town_a():
+    f, b, s = copy3()
+    hat = ["....KKKKKK....", "...KYYYYYYK...", "...KLLLLLLK...", "KKYYYYYYYYYYKK",
+           ".KKyyyyyyyyKK."]
+    for rows in (f, b, s):
+        for y, text in enumerate(hat):
+            rows[y] = text
+    for rows, xs in ((f, (5, 8)), (b, (5, 8)), (s, (5,))):
+        fill(rows, range(14, 19), xs, "P")
+    pal = colour(S=0xD9A06C, s=0xB97F4E, H=0x5A391D, h=0x734C28, T=0xE8DFC8, u=0xF6F0E0,
+                 t=0xC4B89C, P=0x4F6A9A, p=0x3B527C)
+    return dress_up(f, b, s, pal)
+
+
+def town_b():
+    f, b, s = copy3()
+    stamp(f, 9, 3, "H"); stamp(f, 9, 10, "H")
+    stamp(f, 10, 3, "H"); stamp(f, 10, 10, "H")
+    f[11] = "..KHKKKKKKHK.."
+    f[12] = "..KHKTTTTKHK.."
+    for y in range(15, 19):
+        stamp(f, y, 5, "WWWW")
+    stamp(f, 19, 5, "wwww")
+    fill(b, range(12, 15), range(4, 10), "H")
+    stamp(b, 16, 6, "WW"); stamp(b, 17, 5, "WWWW")
+    fill(s, range(12, 15), (4, 5), "H")
+    fill(s, range(15, 19), (8, 9), "W")
+    pal = colour(S=0xF0C8A2, s=0xD0A07C, H=0x8A3C1E, h=0xA6522A, T=0xB8322C, u=0xD24E44,
+                 t=0x8C2420)
+
+    def post(name, rows):
+        kind = kind_of(name)
+        skirt(rows, kind, sway_of(name), "u", "T", "t", apron="WWWw" if kind == "front" else None)
+        if kind == "back":
+            stamp(rows, 20, 6, "WW")
+
+    return dress_up(f, b, s, pal, post)
+
+
+def town_c():
+    f, b, s = copy3()
+    stamp(f, 8, 4, "ZZZZZZ"); stamp(f, 9, 3, "ZZZZZZZZ"); stamp(f, 10, 3, "zZZZZZZz")
+    stamp(s, 8, 8, "ZZZZ"); stamp(s, 9, 8, "ZZZ"); stamp(s, 10, 8, "ZZ")
+    for y in range(12):
+        s[y] = "." + s[y][:-1]
+    pal = colour(S=0xE2BC9C, s=0xC29C80, H=0xD8D6D2, h=0xEEECE8, T=0x9A6A6E, u=0xB4868A,
+                 t=0x764A50, P=0x6E6258, p=0x584E46)
+
+    def post(name, rows):
+        fill(rows, (17,), range(4, 10), "L") if kind_of(name) != "side" else None
+
+    return dress_up(f, b, s, pal, post, drop=(15, 16))
+
+
+def town_d():
+    f, b, s = copy3()
+    pal = colour(S=0xF4CFAF, s=0xD8A98A, H=0xD9822E, h=0xEE9A44, T=0xF0C23A, u=0xFAD866,
+                 t=0xC89A22, P=0x4A6CA8, p=0x3A5A94)
+    return dress_up(f, b, s, pal, drop=(15, 16, 21, 22))
+
+
+def town_e():
+    f, b, s = copy3()
+    stamp(f, 8, 4, "HHHHHH"); stamp(f, 9, 3, "HHHHHHHH"); stamp(f, 10, 4, "HHHHHH")
+    stamp(s, 8, 8, "HHHH"); stamp(s, 9, 8, "HHH"); stamp(s, 10, 8, "HH")
+    for rows in (f, b):
+        for y in (14, 15, 16):
+            rows[y] = "KSSK" + rows[y][4:10] + "KSSK"
+        rows[17] = "KsSK" + rows[17][4:10] + "KSsK"
+    stamp(f, 13, 5, "l..l"); stamp(f, 14, 4, "lLLLLl")
+    for y in (15, 16, 17, 18):
+        stamp(f, y, 4, "LLLLLL")
+    stamp(f, 19, 4, "llllll")
+    stamp(b, 15, 6, "ll"); stamp(b, 17, 5, "llll")
+    for y in range(14, 19):
+        stamp(s, y, 7, "LL")
+    stamp(s, 19, 7, "ll")
+    pal = colour(S=0xAC784E, s=0x8C5C38, H=0x4A3A32, h=0x5E4A40, T=0x6A6668, u=0x82787A,
+                 t=0x4C484A, P=0x4A4440, p=0x38322E, B=0x2A2220)
+
+    def post(name, rows):
+        kind = kind_of(name)
+        if kind == "front":
+            fill(rows, (20, 21), range(4, 10), "L")
+            fill(rows, (22,), range(4, 10), "l")
+        if kind == "side":
+            for y in (14, 15, 16):
+                rows[y] = rows[y].replace("t", "s")
+
+    return dress_up(f, b, s, pal, post)
+
+
+def town_f():
+    f, b, s = copy3()
+    hat = ["....KKKKKKRR..", "...KnNNNNNKR..", "...KYYYYYYK...", ".KKNNNNNNNNKK."]
+    for rows in (f, b, s):
+        for y, text in enumerate(hat):
+            rows[y] = text
+    stamp(f, 13, 5, "WWWW"); fill(f, (14, 15, 16), (6,), "Y")
+    for rows, x in ((f, 4), (b, 4), (s, 4)):
+        stamp(rows, 18, x, "LLLLLL")
+    stamp(f, 18, 6, "YY")
+    stamp(f, 17, 9, "L"); stamp(f, 18, 9, "L")
+    pal = colour(S=0xF1CDAA, s=0xD4A886, H=0x7A6A5A, h=0x948472, T=0x2E7D5B, u=0x44A07A,
+                 t=0x1F5C42, P=0x3A3440, p=0x2C2630, B=0x2A1E18)
+    return dress_up(f, b, s, pal)
+
+
+def town_g():
+    f, b, s = copy3()
+    cap = ["....KKKKKK....", "..KKQQQQQQKK..", ".KQQQQQQQQQQK.", ".KqqqqqqqqqqK."]
+    for rows in (f, b):
+        for y, text in enumerate(cap):
+            rows[y] = text
+    for y, text in enumerate(cap):
+        s[y] = text
+    s[3] = ".KqqqqqqqqqqqK"
+    for rows in (f, b):
+        fill(rows, (15, 17), (6,), "t")
+    pal = colour(S=0xC98A62, s=0xA86E4A, H=0x8C8C8C, h=0xA4A4A4, T=0xE4B82C, u=0xF6D24A,
+                 t=0xB88C1A, P=0x2C3E6A, p=0x22305A, B=0x1E2A4A, Q=0x2E58A8, q=0x1E3C78)
+
+    def post(name, rows):
+        kind = kind_of(name)
+        if kind == "side":
+            rows[20] = "...KTTTTTTK..."
+            rows[21] = "...KttttttK..."
+        else:
+            rows[20] = "..KTTTTTTTTK.."
+            rows[21] = "..KttttttttK.."
+
+    return dress_up(f, b, s, pal, post)
+
+
+def town_h():
+    f, b, s = copy3()
+    scarf = ["....KKKKKK....", "..KKWWWWWWKK..", ".KWWWWWWWWWWK.", ".KWwWWWWWWwWK."]
+    for rows in (f, b, s):
+        for y, text in enumerate(scarf):
+            rows[y] = text
+    for y in range(4, 9):
+        stamp(f, y, 2, "W"); stamp(f, y, 11, "W")
+    for y in range(4, 11):
+        b[y] = b[y].replace("H", "W").replace("h", "w")
+        s[y] = s[y].replace("H", "W").replace("h", "w")
+    fill(b, range(8, 12), (6, 7), "w")
+    for rows in (f, b):
+        for y in (14, 15, 16):
+            stamp(rows, y, 2, "V"); stamp(rows, y, 11, "V")
+    fill(f, (17,), range(4, 10), "Y")
+    fill(b, (17,), range(4, 10), "Y")
+    fill(s, (17,), range(4, 10), "Y")
+    pal = colour(S=0x96623E, s=0x784A2C, H=0x3A2A22, h=0x4C382C, T=0x7A4FA0, u=0x9468BC,
+                 t=0x5A3A7C)
+
+    def post(name, rows):
+        skirt(rows, kind_of(name), sway_of(name), "u", "T", "t", trim="Y")
+
+    return dress_up(f, b, s, pal, post)
+
+
+TOWNSFOLK = {"a": town_a, "b": town_b, "c": town_c, "d": town_d, "e": town_e,
+             "f": town_f, "g": town_g, "h": town_h}
+
+
+# ---------------------------------------------------------------------------
+# Animals, carried things, the handcart and the boat
+# ---------------------------------------------------------------------------
+
+ANI = {
+    ".": None, "K": INK,
+    "W": hx(0xF4F1E8), "w": hx(0xD8D4CA), "R": hx(0xD63A32), "Y": hx(0xE8A02C),
+    "O": hx(0xE8822E), "M": hx(0xB0682F), "m": hx(0x864A24), "e": hx(0x1E1614),
+    "E": hx(0xF6F2E0),
+    "C": hx(0xF2EAD2), "c": hx(0xD2C6A8), "D": hx(0x6A5A52), "d": hx(0x3E3230),
+    "P": hx(0xF2AEA6), "p": hx(0xD4827C), "n": hx(0xF8C8BE),
+    "N": hx(0x2E282C), "h": hx(0xD0A860),
+    "G": hx(0x2E865A), "b": hx(0xA0866A), "B": hx(0x7A644C),
+    "S": hx(0x6272A0), "s": hx(0x52586E), "l": hx(0x6A5C60), "k": hx(0x9A8E78),
+    "C2": None,
+    "T": hx(0xC98A4A), "t": hx(0x9A622E), "f": hx(0xB8864E), "g": hx(0x8A5E33),
+    "u": hx(0xE8B898), "x": hx(0x2A1C18),
+    "L": hx(0xB07A3E), "j": hx(0x7A4E26), "a": hx(0xD8C49A),
+    "q": hx(0xA9D4E8), "r": hx(0xD6407A), "I": hx(0xA4A09A), "i": hx(0x7C7872),
+}
+
+
+def outlined(rows: list[str]) -> list[str]:
+    """Pad by one and ring the silhouette in the kit's ink, as every sprite here is."""
+    w = len(rows[0])
+    grid = ["." * (w + 2)] + ["." + r + "." for r in rows] + ["." * (w + 2)]
+    out = []
+    for y, row in enumerate(grid):
+        line = ""
+        for x, ch in enumerate(row):
+            if ch != ".":
+                line += ch
+                continue
+            near = any(
+                0 <= y + dy < len(grid) and 0 <= x + dx < len(row) and grid[y + dy][x + dx] != "."
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+            )
+            line += "K" if near else "."
+        out.append(line)
+    return out
+
+
+def group(frames: dict[str, list[str]], rings: bool = True) -> dict[str, Image.Image]:
+    """Outline every frame of one animal and crop them all to the same box, so the
+    foot point stays put from frame to frame."""
+    w = max(len(r) for rows in frames.values() for r in rows)
+    h = max(len(rows) for rows in frames.values())
+    padded = {}
+    for name, rows in frames.items():
+        rows = [r.ljust(w, ".") for r in rows]
+        rows = ["." * w] * (h - len(rows)) + rows
+        padded[name] = outlined(rows) if rings else rows
+    boxes = [
+        (x, y)
+        for rows in padded.values()
+        for y, r in enumerate(rows)
+        for x, ch in enumerate(r)
+        if ch != "."
+    ]
+    x0, x1 = min(b[0] for b in boxes), max(b[0] for b in boxes)
+    y0, y1 = min(b[1] for b in boxes), max(b[1] for b in boxes)
+    return {
+        name: draw([r[x0 : x1 + 1] for r in rows[y0 : y1 + 1]], ANI)
+        for name, rows in padded.items()
+    }
+
+
+def recolour(rows: list[str], **swap: str) -> list[str]:
+    table = str.maketrans(swap)
+    return [r.translate(table) for r in rows]
+
+
+CHICKEN = {
+    "walk-0": ["...RR.", "W..WeY", "WWWWWR", ".WwWW.", ".O.O.."],
+    "walk-1": ["...RR.", "W..WeY", "WWWWWR", ".WwWW.", "..O.O."],
+    "peck": ["W...R.", "WWWWW.", ".WwWeY", ".O.O.."],
+}
+SHEEP = {
+    "walk-0": [
+        ".CCCCCC.....", "CCCcCCCCdD..", "CCCCCCCDDDDd", "CcCCCcCCDEDD", ".CCCcCCC.DDD",
+        ".d.d..d.d...", ".d.d..d.d...",
+    ],
+    "walk-1": [
+        ".CCCCCC.....", "CCCcCCCCdD..", "CCCCCCCDDDDd", "CcCCCcCCDEDD", ".CCCcCCC.DDD",
+        "..d.d..d.d..", "..d.d..d.d..",
+    ],
+    "graze": [
+        ".CCCCCC.....", "CCCcCCCC....", "CCCCCCCCDd..", "CcCCCcCCCDDD", ".CCCcCCC.DED",
+        ".d.d..d.d.DD", ".d.d..d.d...",
+    ],
+}
+PIG = {
+    "walk-0": ["p.PPPPp...", ".PPPPPPPP.", ".PPpPPPPeNn", ".PPPPPPPnnn", ".pp.pp.pp.", ".p.p..p.p."],
+    "walk-1": ["p.PPPPp...", ".PPPPPPPP.", ".PPpPPPPeNn", ".PPPPPPPnnn", "..pp.pp.pp", "..p.p..p.p"],
+    "idle": ["p.PPPPp...", ".PPPPPPPP.", ".PPpPPPPeNn", ".PPPPPPPnnn", ".pp.pp.pp.", ".pp.pp.pp."],
+}
+COW = {
+    "walk-0": [
+        ".WWWWWWWWW.h..h", "WWWNNWWWWWWWWWW", "WWNNNNWWWWWNWeW", "WWWNNWWWNNWWWWW",
+        "WWWWWWWNNNWWnnn", "WWWWWWWWWWWWnnn", ".WWWWWWWWWW.nn.", ".W.W..nn..W.W..",
+        ".W.W......W.W..", ".N.N......N.N..",
+    ],
+    "walk-1": [
+        ".WWWWWWWWW.h..h", "WWWNNWWWWWWWWWW", "WWNNNNWWWWWNWeW", "WWWNNWWWNNWWWWW",
+        "WWWWWWWNNNWWnnn", "WWWWWWWWWWWWnnn", ".WWWWWWWWWW.nn.", "..W.W.nn.W.W...",
+        "..W.W.....W.W..", "..N.N.....N.N..",
+    ],
+    "graze": [
+        ".WWWWWWWWW.....", "WWWNNWWWWWWW...", "WWNNNNWWWWWWWh.", "WWWNNWWWNNWWWWh",
+        "WWWWWWWNNNWNWeW", "WWWWWWWWWWWWWWW", ".WWWWWWWWWW.WnW", ".W.W..nn..W.Wnn",
+        ".W.W......W.W..", ".N.N......N.N..",
+    ],
+}
+DUCK = {
+    "walk-0": ["...GG.", "...GeY", "bbbbW.", "BbbbB.", ".O.O.."],
+    "walk-1": ["...GG.", "...GeY", "bbbbW.", "BbbbB.", "..OO.."],
+    "idle": ["......", "...GG.", "BbbGeY", "bbbbB.", ".O.O.."],
+}
+CROW = {
+    "hop-0": ["...NN.", "..NNEk", "NSSNN.", "NNNNN.", ".l.l.."],
+    "hop-1": ["...NN.", "..NNEk", "NSSNN.", "NNNNN.", "......"],
+    "fly-0": ["N.....N.", "NN...NN.", ".NSSNNEk", "..NNNN..", "........"],
+    "fly-1": ["........", "..NNNNEk", ".NSSSNN.", "NN....NN", "........"],
+}
+CAT_W = {
+    "walk-0": ["t....T.T", "tTTTTTeT", ".TTTTTTu", ".t.t..t."],
+    "walk-1": ["t....T.T", "tTTTTTeT", ".TTTTTTu", "..tt.tt."],
+}
+DOG_SIT = [
+    "...gg...", "...ffff.", "...fefxx", "...ffff.", "..ffff..", ".fffff..",
+    ".ffffg..", "fffffg..", "gfffgfg.",
+]
+
+
+def animals() -> dict[str, Image.Image]:
+    out: dict[str, Image.Image] = {}
+
+    def add(prefix, frames, rings=True):
+        for name, image in group(frames, rings).items():
+            out[f"{prefix}-{name}"] = image
+
+    add("chicken", CHICKEN)
+    add("hen", {k: recolour(v, W="M", w="m") for k, v in CHICKEN.items()})
+    add("sheep", SHEEP)
+    add("pig", PIG)
+    add("cow", {k: v for k, v in COW.items() if v})
+    add("duck", DUCK)
+    add("crow", {k: v for k, v in CROW.items() if k.startswith("hop")})
+    add("crow", {k: v for k, v in CROW.items() if k.startswith("fly")})
+    add("cat", CAT_W)
+    add("dog", {"sit": DOG_SIT})
+    return out
+
+
+def sprite(rows: list[str]) -> Image.Image:
+    return draw(rows, ANI)
+
+
+CARRIED = {
+    "carry-scroll": [".KKKK.", "KWWWRK", "KwWWwK", ".KKKK."],
+    "carry-crate": ["KKKKKKK", "KLLLLLK", "KLLLLLK", "KjjjjjK", "KLLLLLK", "KKKKKKK"],
+    "carry-hammer": ["KKKKKK", "KIIIiK", "KIIIiK", "KKLLKK", ".KLjK.", ".KLjK.", ".KKKK."],
+    "carry-flask": [".KKK.", ".KLK.", ".KqK.", "KqRRK", "KRRrK", ".KKK."],
+    "carry-letter": ["KKKKK", "KwWwK", "KWRWK", "KKKKK"],
+    "carry-basket": [".KRYK..", "KRYRRK.", "KLjLjLK"[:7], "KjLjLjK", ".KKKKK."],
+}
+
+
+class Cv:
+    def __init__(self, w: int, h: int):
+        self.w, self.h = w, h
+        self.g = [["."] * w for _ in range(h)]
+
+    def px(self, x, y, ch):
+        if 0 <= x < self.w and 0 <= y < self.h:
+            self.g[y][x] = ch
+
+    def rect(self, x0, y0, x1, y1, ch):
+        for y in range(y0, y1 + 1):
+            for x in range(x0, x1 + 1):
+                self.px(x, y, ch)
+
+    def rows(self):
+        return ["".join(r) for r in self.g]
+
+
+def crate(c: Cv, x0, y0, x1, y1):
+    c.rect(x0, y0, x1, y1, "L")
+    c.rect(x0 + 1, y0 + 1, x1 - 1, y1 - 1, "a")
+    for dx, dy in ((1, 1), (4, 1), (2, 2), (3, 2)):
+        c.px(x0 + dx, y0 + dy, "L")
+
+
+def cart(phase: int) -> Image.Image:
+    c = Cv(20, 13)
+    c.rect(1, 4, 14, 4, "L")
+    c.rect(1, 5, 14, 5, "j")
+    crate(c, 2, 0, 7, 3)
+    crate(c, 8, 0, 13, 3)
+    c.rect(15, 4, 19, 4, "j")
+    c.rect(15, 5, 17, 5, "j")
+    c.rect(2, 6, 2, 12, "j")
+    c.rect(1, 12, 3, 12, "j")
+    cx, cy = 7.5, 8.5
+    for y in range(13):
+        for x in range(20):
+            d2 = (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2
+            if d2 <= 16.5:
+                c.px(x, y, "B" if d2 > 9.5 else "a")
+    if phase == 0:
+        for k in range(6, 12):
+            c.px(7, k, "B")
+        for k in range(5, 11):
+            c.px(k, 8, "B")
+    else:
+        for k in range(1, 6):
+            c.px(4 + k, 5 + k, "B"); c.px(11 - k, 5 + k, "B")
+    c.px(7, 8, "K")
+    return draw(outlined(c.rows()), ANI)
+
+
+def boat(bob: int) -> Image.Image:
+    c = Cv(20, 17)
+    top = 1 + bob
+    for x in range(1, 20):
+        t = (x - 1) / 18
+        half = 3.2 * (1 - t ** 3) ** 0.55 * (0.45 + 0.55 * min(1, t * 3.2))
+        cy = 12.0 + bob
+        for y in range(int(cy - half + 0.5), int(cy + half + 0.5) + 1):
+            edge = y <= cy - half + 0.6
+            c.px(x, y, "j" if edge else ("L" if y < cy + 1 else "j"))
+    for y in range(top, 11 + bob):
+        t = (y - top) / (10 + bob - top)
+        for x in range(round(9 - 6 * t), 9):
+            c.px(x, y, "W" if x < 8 else "w")
+        if y >= top + 2:
+            for x in range(10, round(10 + 7 * (y - top - 2) / 8) + 1):
+                c.px(x, y, "W" if x < round(10 + 7 * (y - top - 2) / 8) else "w")
+    for y in range(top - 1, 12 + bob):
+        c.px(9, y, "j")
+    return draw(outlined(c.rows()), ANI)
+
+
+def extra_frames() -> dict[str, Image.Image]:
+    out: dict[str, Image.Image] = {}
+    for v, make in TOWNSFOLK.items():
+        for name, image in make().items():
+            out[f"town-{v}-{name}"] = image
+    out.update(animals())
+    for name, rows in CARRIED.items():
+        out[name] = sprite(rows)
+    out["cart-0"], out["cart-1"] = cart(0), cart(1)
+    out["boat-0"], out["boat-1"] = boat(0), boat(1)
+    return out
+
+
 def main() -> None:
     frames = {
         "front-0": draw(FRONT),
@@ -612,23 +1138,32 @@ def main() -> None:
             frames[name] = draw(rows)
         frames[f"helper-{name}"] = draw(helperise(rows, kind_of(name)))
     frames.update(critter_frames())
+    frames.update(extra_frames())
 
     pad = 1
-    width = sum(image.width + pad for image in frames.values()) + pad
-    height = max(image.height for image in frames.values()) + pad * 2
+    limit = 2048
+    placed: list[tuple[str, Image.Image, int, int]] = []
+    x = y = pad
+    row_h = 0
+    for name, image in frames.items():
+        if x + image.width + pad > limit:
+            x, y, row_h = pad, y + row_h + pad, 0
+        placed.append((name, image, x, y))
+        x += image.width + pad
+        row_h = max(row_h, image.height)
+    width = max(px + image.width for _, image, px, _ in placed) + pad
+    height = y + row_h + pad
     sheet = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     meta: dict[str, dict] = {}
-    x = pad
-    for name, image in frames.items():
-        sheet.alpha_composite(image, (x, pad))
+    for name, image, px, py in placed:
+        sheet.alpha_composite(image, (px, py))
         meta[name] = {
-            "frame": {"x": x, "y": pad, "w": image.width, "h": image.height},
+            "frame": {"x": px, "y": py, "w": image.width, "h": image.height},
             "sourceSize": {"w": image.width, "h": image.height},
             "spriteSourceSize": {"x": 0, "y": 0, "w": image.width, "h": image.height},
             "rotated": False,
             "trimmed": False,
         }
-        x += image.width + pad
 
     OUT.mkdir(parents=True, exist_ok=True)
     sheet.save(OUT / "folk.png")

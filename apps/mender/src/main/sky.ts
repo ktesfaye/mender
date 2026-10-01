@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createController, type Controller } from '@emdash/wire/rpc';
-import { skyContract, type RealWeather } from '@shared/sky';
+import { skyContract, type Bustle, type RealWeather } from '@shared/sky';
 import type { Projects } from './projects';
 
 const ran = promisify(execFile);
@@ -12,6 +12,8 @@ const WEATHER_EVERY = 15 * 60_000;
 const PLACE_EVERY = 6 * 60 * 60_000;
 /** Commits do not happen every second either, and git is a process each time. */
 const AGING_EVERY = 5 * 60_000;
+/** The crowd follows the work closely enough to notice a commit within a minute. */
+const BUSTLE_EVERY = 45_000;
 
 interface Place {
   lat: number;
@@ -33,6 +35,8 @@ export function createSkyController(projects: Projects): Controller {
   let weather: RealWeather | null = null;
   let asking: Promise<RealWeather | null> | null = null;
   let aging: { at: number; ages: Record<string, number> } | null = null;
+  let bustling: { at: number; all: Record<string, Bustle> } | null = null;
+  let reading: Promise<Record<string, Bustle>> | null = null;
 
   const whereAmI = async (): Promise<Place | null> => {
     if (place && Date.now() - place.at < PLACE_EVERY) return place;
@@ -81,6 +85,23 @@ export function createSkyController(projects: Projects): Controller {
       });
       return asking;
     },
+    async bustle() {
+      if (bustling && Date.now() - bustling.at < BUSTLE_EVERY) return bustling.all;
+      reading ??= (async () => {
+        const all: Record<string, Bustle> = {};
+        await Promise.all(
+          (await projects.list()).map(async (project) => {
+            const read = await bustleOf(project.path);
+            if (read) all[project.id] = read;
+          })
+        );
+        bustling = { at: Date.now(), all };
+        return all;
+      })().finally(() => {
+        reading = null;
+      });
+      return reading;
+    },
     async aging() {
       if (aging && Date.now() - aging.at < AGING_EVERY) return aging.ages;
       const ages: Record<string, number> = {};
@@ -109,6 +130,37 @@ async function lastCommit(path: string): Promise<number | null> {
   } catch {
     return null;
   }
+}
+
+/** How busy a checkout has been: three cheap questions to git, any of which
+    may fail on a folder that is not one. */
+async function bustleOf(path: string): Promise<Bustle | null> {
+  const last = await lastCommit(path);
+  if (!last) return null;
+  const count = async (since: string): Promise<number> => {
+    try {
+      const { stdout } = await ran(
+        'git',
+        ['rev-list', '--count', '--branches', `--since=${since}`],
+        { cwd: path, timeout: 5000 }
+      );
+      return Number(stdout.trim()) || 0;
+    } catch {
+      return 0;
+    }
+  };
+  let ahead = 0;
+  try {
+    const { stdout } = await ran('git', ['rev-list', '--count', '@{push}..HEAD'], {
+      cwd: path,
+      timeout: 5000,
+    });
+    ahead = Number(stdout.trim()) || 0;
+  } catch {
+    // Nowhere to push to: nothing ever goes out by boat.
+  }
+  const [today, week] = await Promise.all([count('1 day ago'), count('7 days ago')]);
+  return { last, today, week, ahead };
 }
 
 /** Somebody else's JSON, typed as what it is hoped to be and read as if it might not be. */

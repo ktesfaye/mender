@@ -1,6 +1,6 @@
 {
   "name": "@emdash/mender",
-  "version": "0.45.3",
+  "version": "0.46.0",
   "private": true,
   "description": "Mender — an agentic coding environment that is a village",
   "license": "Apache-2.0",

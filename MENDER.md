@@ -1068,6 +1068,21 @@ grass and path, never a cliff face, a field, a fence or a wall, only on the leve
 they are on, preferring the artist's own roads. After dark every one of them
 carries a lantern.
 
+**And a district is as lively as its project.** How busy a project has been is
+read off git and off the sessions open in it, and how long since anybody
+committed thins it out again, on the moss's own clock. A project being worked
+hard is full of townsfolk of every sort, a farmer in a straw hat, a woman in a
+red dress, an elder, a child, a smith, a merchant, a fisher, with chickens,
+sheep, pigs, cows, a dog and a cat about the farms and yards. Every single thing
+an agent does sends a runner out of its session's door carrying it: a scroll to
+the signpost for something read, a crate to the storehouse for something
+written, a hammer to the forge for something run, and back. A commit wheels a
+handcart down the road; a push sails a boat off from the district's dock. Two
+busy districts send people along the road between them. A quiet one has
+somebody about, and that is all; a forgotten one empties and gets crows. After
+dark most go indoors and the rest carry lanterns, and with a board open over the
+village the whole crowd holds still.
+
 **The sky is his, unless he takes it in hand.** The hour on the island is the
 hour where he is, sunrise and sunset and all, and the weather is his weather,
 asked of Open-Meteo from wherever his address on the internet says he is, now
