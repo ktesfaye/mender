@@ -858,6 +858,12 @@ no half-built district and no growth model anywhere in this app: the five-stage
 pipeline that used to draw them is gone, and what replaced it is measured
 against `world/his.py` in the village repo, tile for tile, at every state.
 
+**The camera stays on the island.** Zooming out stops once the whole island and
+a little sea round it fit the window, and panning stops before the land can
+leave it. A two-finger double tap on the trackpad, the Mac's own smart zoom, goes
+in close wherever the fingers were and, tapped again, back out to the whole
+island.
+
 **A right-click on a district brings it into focus.** The camera flies in to
 frame that one district, as close as keeps all of it on screen, and nothing
 opens: it is looking, not walking in. Only the main button ever walks in.

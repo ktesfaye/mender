@@ -89,10 +89,15 @@ export function holdStill(pixi: Application, viewport: Viewport, still: () => bo
   window.addEventListener('wheel', sync, { capture: true, passive: true });
 }
 
+/** The furthest out the camera goes: the whole island, a little sea round it. */
+let floor = RUNGS[0] as number;
+
 function snapToRung(viewport: Viewport): void {
   const scale = viewport.scale.x;
   const rung = nearestRung(scale);
   if (rung === scale) return;
+  // Never past the floor: the island is as far out as it goes.
+  if (rung < floor - 1e-6) return;
   // snapZoom is told a world width to fit, not a scale.
   viewport.snapZoom({
     width: viewport.screenWidth / rung,
@@ -179,6 +184,53 @@ export function flyToDistrict(viewport: Viewport, district: DistrictBounds, padd
   viewport.animate({
     position: { x: district.centerX, y: district.centerY },
     scale: fitScale(viewport, district, padding),
+    time: FLIGHT_MS,
+    ease: 'easeInOutSine',
+    removeOnInterrupt: true,
+  });
+}
+
+/**
+ * Keep the camera on the island.
+ *
+ * Zooming out stops once the whole island and a margin of sea fit the window,
+ * and panning stops before the island can leave it: past either, the view was
+ * open water with nothing to look at and no way to tell where the land went.
+ */
+export function holdToIsland(viewport: Viewport, island: Extent): void {
+  if (!island.width || !island.height) return;
+  const fit = Math.min(
+    viewport.screenWidth / (island.width * 1.15),
+    viewport.screenHeight / (island.height * 1.15)
+  );
+  floor = Math.min(1, fit);
+  viewport.clampZoom({ minScale: floor, maxScale: RUNGS[RUNGS.length - 1] });
+  const margin = 160;
+  viewport.clamp({
+    left: island.x - margin,
+    right: island.x + island.width + margin,
+    top: island.y - margin,
+    bottom: island.y + island.height + margin,
+    underflow: 'center',
+  });
+  if (viewport.scale.x < floor) viewport.setZoom(floor, true);
+}
+
+/**
+ * The two-finger double tap: in close on wherever the fingers were, or, if
+ * already in close, back out to the whole island. The way a Mac does it in
+ * every app that reads it.
+ */
+export function smartZoom(viewport: Viewport, island: Extent, at: { x: number; y: number }): void {
+  const close = viewport.scale.x >= 1;
+  if (close) {
+    flyOut(viewport, island);
+    return;
+  }
+  const point = viewport.toWorld(at.x, at.y);
+  viewport.animate({
+    position: { x: point.x, y: point.y },
+    scale: 2,
     time: FLIGHT_MS,
     ease: 'easeInOutSine',
     removeOnInterrupt: true,

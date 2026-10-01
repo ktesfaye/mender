@@ -73,6 +73,8 @@ import {
   flyToYard,
   frame,
   holdStill,
+  holdToIsland,
+  smartZoom,
   type Extent,
 } from './village/camera';
 import { Editing } from './village/editing';
@@ -674,8 +676,29 @@ async function boot(): Promise<void> {
        a corner of a window it was never measured against. Only while nothing
        is open: once you are looking at something, the camera is yours. */
     window.addEventListener('resize', () => {
+      holdToIsland(camera, drawn.island);
       if (!open) frame(camera, drawn.island);
     });
+    /* The Mac's smart zoom, a two-finger double tap, reaches the page as a
+       ctrl-wheel that moves nothing: in close where the fingers are, or back
+       out to the island. Only out on the island; in a yard the camera is
+       scenery. */
+    let tappedAt = 0;
+    window.addEventListener(
+      'wheel',
+      (event) => {
+        if (!event.ctrlKey || event.deltaX !== 0 || event.deltaY !== 0) return;
+        if (open || yard.showing || yard.open || founding || windmill || settings) return;
+        if (editing?.active) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const now = performance.now();
+        if (now - tappedAt < 400) return;
+        tappedAt = now;
+        smartZoom(camera, drawn.island, { x: event.clientX, y: event.clientY });
+      },
+      { capture: true, passive: false }
+    );
     pixi.ticker.add((ticker) => {
       drawn.ground.tick(ticker);
       drawn.folk.tick(ticker);
@@ -5997,6 +6020,8 @@ async function draw(
   const walkers = new Walkers(new Paths(map.layout, scene.buildings), scene.laneAt, fire);
   atmosphere.follow(walkers);
   world.addChild(water.mesh, scene.root, atmosphere.air);
+  // The island may have grown or shrunk: the camera's limits follow it.
+  holdToIsland(camera, island);
   say(null);
   return {
     root: scene.root,
