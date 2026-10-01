@@ -246,6 +246,12 @@ export class Sky {
     return keyAt(sunAt(hour, rise, set)).ambient;
   }
 
+  /** How high the sun is at an hour, minus one to one, by today's sunrise and sunset. */
+  sunHeight(hour: number): number {
+    const { rise, set } = this.sun();
+    return sunAt(hour, rise, set);
+  }
+
   /** What the last tick worked out, without working anything out again. */
   get current(): SkyLook {
     return this.look;

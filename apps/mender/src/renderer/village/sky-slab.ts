@@ -404,18 +404,43 @@ function slider(options: {
   return { root, paint };
 }
 
-/** The island's own light across the slider's hours, as the track. */
+/**
+ * The day across the slider, as a sky rather than as the island's light: the
+ * light barely changes colour, so drawn as it is the whole track read as one
+ * blue. This is the same sun, exaggerated, from deep night through a pink and
+ * orange dawn to a bright pale noon, a gold evening, a violet dusk and night.
+ */
+const SKY: { at: number; colour: [number, number, number] }[] = [
+  { at: -1, colour: [14, 18, 48] },
+  { at: -0.3, colour: [26, 30, 78] },
+  { at: -0.08, colour: [92, 58, 128] },
+  { at: 0.0, colour: [232, 112, 84] },
+  { at: 0.08, colour: [255, 176, 92] },
+  { at: 0.25, colour: [150, 206, 240] },
+  { at: 0.6, colour: [196, 232, 252] },
+  { at: 1, colour: [255, 246, 196] },
+];
+
 function hourGradient(sky: Sky): string {
   const stops: string[] = [];
-  const steps = 24;
+  const steps = 48;
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     const at = (FIRST + t * (LAST - FIRST)) % 24;
-    const [r, g, b] = sky.lightAt(at);
-    // The light, shown as a sky: blue enough to read as one at noon.
-    const colour = [r * 120 + 20, g * 165 + 20, b * 215 + 25].map((v) =>
-      Math.round(Math.min(255, v))
-    );
+    const height = sky.sunHeight(at);
+    let colour = SKY[SKY.length - 1]!.colour;
+    for (let k = 1; k < SKY.length; k++) {
+      const high = SKY[k]!;
+      if (height > high.at) continue;
+      const low = SKY[k - 1]!;
+      const f = (height - low.at) / (high.at - low.at);
+      colour = low.colour.map((v, c) => Math.round(v + (high.colour[c]! - v) * f)) as [
+        number,
+        number,
+        number,
+      ];
+      break;
+    }
     stops.push(`rgb(${colour.join(',')}) ${(t * 100).toFixed(1)}%`);
   }
   return `linear-gradient(90deg, ${stops.join(', ')})`;
