@@ -865,6 +865,10 @@ a pixel. Driven: out on the island and folded inside a yard, hovering burned
 the name into the beam, the asking glow followed the board's own outline, and
 a board dragged along the beam landed where it was let go.
 
+**Rope, not iron, marks where the doings start.** The dark band that hung
+under the beam is a lashing of rope bound round it now, sitting on the log.
+Driven: looked at on the island in the running app.
+
 **The beam carries no word.** "projects" is gone off the log; folded, the beam
 itself takes the warm or red light when anywhere wants him. Driven: open and
 folded on the island, and the beam lit warm while folded.

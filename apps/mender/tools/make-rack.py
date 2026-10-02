@@ -64,8 +64,6 @@ GOLD = {
     "dk": rgb("#a8743a"),
     "dp": rgb("#8a5a2a"),
 }
-IRON = rgb("#3a2a22")
-IRON_HI = rgb("#8a7a6a")
 
 FRAMES: dict[str, Image.Image] = {}
 
@@ -136,15 +134,25 @@ def chain(n: int) -> Image.Image:
 
 
 def bracket() -> Image.Image:
-    """An iron band round the beam, where projects stop and doings start."""
-    w, h = 5, 12
+    """Rope lashed round the beam where two lengths of log are bound, which is
+    where the projects stop and the rack's own doings start. It sits on the
+    wood, a pixel proud of it top and bottom, rather than hanging under it."""
+    w, h = 11, 11
     img, px = canvas(w, h)
+    rope = {"lt": rgb("#d8bb84"), "md": rgb("#b8935a"), "dk": rgb("#86663a")}
     for y in range(h):
         for x in range(w):
-            edge = x in (0, w - 1) or y in (0, h - 1)
-            px[x, y] = INK if edge else IRON
-    for y in (3, 8):
-        px[2, y] = IRON_HI
+            corner = (x in (0, w - 1)) and (y in (0, h - 1))
+            if corner:
+                continue
+            if x in (0, w - 1) or y in (0, h - 1):
+                px[x, y] = INK
+                continue
+            # Each turn of rope runs round the log, so from the front it is a
+            # strand leaning a little as it goes down, lit on one side and
+            # shaded into the next turn on the other.
+            turn = (x - 1 - y // 4) % 3
+            px[x, y] = rope["lt"] if turn == 0 else rope["md"] if turn == 1 else rope["dk"]
     return img
 
 

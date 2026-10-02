@@ -19,7 +19,7 @@
  * and that is deliberate: it is a sign out of the kit, not a piece of the
  * board. Everything else on the wood follows the rule.
  *
- * Past an iron band round the beam, the rack ends with its own doings, each a
+ * Past a lashing of rope round the beam, the rack ends with its own doings, each a
  * small round token off one chain so none of them is ever mistaken for a
  * project, pinned to its right end whatever order the projects are in and
  * never folded away: a wheel,
@@ -343,11 +343,12 @@ export function makeShelf(
     node.addEventListener('pointerdown', () => hideTag(true));
   };
 
-  /* Where the projects stop and the rack's own doings start, an iron band
-     round the beam. Folded away with the sky, out on the island only when
-     there is anything left of the projects to stand it beside. */
+  /* Where the projects stop and the rack's own doings start, rope lashed
+     round the beam, drawn over the wood rather than under it. Folded away
+     with the sky, out on the island only when there is anything left of the
+     projects to stand it beside. */
   const band = sprite('rack/bracket', X);
-  band.style.cssText += `;position:relative;flex:none;align-self:flex-start;margin:0 ${PAD}px`;
+  band.style.cssText += `;position:relative;z-index:3;flex:none;align-self:flex-start;margin:0 ${PAD}px`;
 
   /* The sky has a token of its own out on the island, showing what it is
      doing right now: pressing it opens the hour and the weather. Standing in

@@ -311,7 +311,7 @@ a board of three planks hung off it on two chains, the way the kit's own shop
 signs hang, with the project's own face painted into a square carved in its
 planks, its app icon or its logo warmed toward the wood with the grain showing
 through, and a prop from the kit until it has one. The one you are standing in
-is painted gold. Past an iron band round the beam the rack's own doings hang
+is painted gold. Past a lashing of rope round the beam the rack's own doings hang
 as small round tokens off one chain each, the sky, the windmill's wheel and
 the fire home, so none of them is ever taken for a project. No names until
 you hover, and then the board drops a pixel as if tugged and the name comes
