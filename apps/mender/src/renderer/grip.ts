@@ -13,6 +13,13 @@
  */
 const TOP = 28;
 
+/* Whether the last hold on the top edge actually carried the window
+   anywhere. The rack's beam is both the thing the window is held by and the
+   handle that folds the rack, so a press on it that never went anywhere is
+   a press, and one that moved the window is not. */
+let carried = false;
+export const gripCarried = (): boolean => carried;
+
 export function watchGrip(canvas: HTMLCanvasElement): void {
   const holdable = (event: MouseEvent): boolean =>
     event.button === 0 &&
@@ -25,13 +32,20 @@ export function watchGrip(canvas: HTMLCanvasElement): void {
   window.addEventListener(
     'pointerdown',
     (event) => {
+      carried = false;
       if (!holdable(event)) return;
       event.stopPropagation();
       event.preventDefault();
       const target = event.target as Element;
       target.setPointerCapture(event.pointerId);
       window.mender.grip('start');
-      const move = (): void => window.mender.grip('move');
+      const fromX = event.screenX;
+      const fromY = event.screenY;
+      const move = (moved: Event): void => {
+        if (!(moved instanceof PointerEvent)) return;
+        if (Math.hypot(moved.screenX - fromX, moved.screenY - fromY) > 3) carried = true;
+        window.mender.grip('move');
+      };
       const up = (): void => {
         target.removeEventListener('pointermove', move);
         target.removeEventListener('pointerup', up);

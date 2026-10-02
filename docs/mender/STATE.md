@@ -860,6 +860,16 @@ a pixel. Driven: out on the island and folded inside a yard, hovering burned
 the name into the beam, the asking glow followed the board's own outline, and
 a board dragged along the beam landed where it was let go.
 
+**The rack folds like something hung, and names what you point at.** A press
+anywhere on the beam folds it, a drag on the beam still carries the window;
+the boards go up behind the beam in turn and come back down in turn, where
+they used to blink, because every repaint was taking each board off the rack
+and hanging it straight back. Pointing at a board drops its name under it on a
+small chained board that slides along to the next, and a face sits in a square
+carved into its planks. Driven: filmed both ways frame by frame, the beam
+pressed to fold and unfold, a drag on it moved the window and left the rack
+as it was, and the tag slid from board to board.
+
 **The rack is in whatever order he drags it into.** Holding a slot and
 dragging it along the rack lifts it out, the slots between step aside to open
 its gap, and letting go hangs it there for good; a press that never really

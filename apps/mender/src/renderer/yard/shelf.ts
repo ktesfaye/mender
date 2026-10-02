@@ -38,6 +38,7 @@
  * that never really moved is still just a press.
  */
 
+import { gripCarried } from '../grip';
 import { toolFor } from './face';
 import { cutOf, sprite } from './sprite';
 import { box } from './write';
@@ -158,7 +159,10 @@ function paintBoard(hang: HTMLDivElement, project: OnShelf): void {
     picture.src = project.icon;
     picture.alt = '';
     picture.draggable = false;
-    picture.style.cssText = `max-width:${room}px;max-height:${room}px;display:block`;
+    picture.style.cssText = `max-width:${room}px;max-height:${room}px;display:block;${PAINTED}`;
+    const seat = document.createElement('div');
+    seat.style.cssText = 'position:relative;display:block;line-height:0';
+    seat.appendChild(picture);
     /* A picture drawn as pixels stays pixels. A favicon at sixteen across
        blown up smooth is a smudge; blown up square it is still the favicon. */
     picture.addEventListener('load', () => {
@@ -168,7 +172,29 @@ function paintBoard(hang: HTMLDivElement, project: OnShelf): void {
         picture.style.width = `${picture.naturalWidth * Math.max(1, Math.floor(room / big))}px`;
       }
     });
-    face.appendChild(picture);
+    face.appendChild(seat);
+    /* The grain of the board it is painted on, showing up through it: the
+       planks' own picture laid over the face, cut to the face's own shape
+       and blended in soft, so it reads as painted onto the wood rather than
+       stuck on top of it. */
+    const grain = document.createElement('div');
+    const cut = cutOf('rack/board');
+    grain.style.cssText = [
+      'position:absolute',
+      'inset:0',
+      'pointer-events:none',
+      `background-image:url(${cut?.sheet ?? ''})`,
+      `background-size:${(cut?.sheetWide ?? 0) * X}px ${(cut?.sheetTall ?? 0) * X}px`,
+      `background-position:${-((cut?.x ?? 0) + 4) * X}px ${-((cut?.y ?? 0) + 4) * X}px`,
+      'image-rendering:pixelated',
+      'mix-blend-mode:soft-light',
+      'opacity:.55',
+      `-webkit-mask-image:url("${project.icon}")`,
+      '-webkit-mask-size:contain',
+      '-webkit-mask-repeat:no-repeat',
+      '-webkit-mask-position:center',
+    ].join(';');
+    seat.appendChild(grain);
     return;
   }
   const tool = toolFor(project.at);
@@ -223,23 +249,98 @@ export function makeShelf(
   const end = sprite('rack/beam-end', X);
   end.style.left = '0px';
   end.style.top = '0px';
+  end.style.zIndex = '2';
   root.appendChild(end);
 
-  /* The label is also the handle, burned into the beam. Pressing it folds the
-     rack away. It doubles as where a name appears when you are over a board,
-     so nothing has to be drawn under the rack and nothing collides with the
-     two facts the header keeps in that corner. It is made once and kept:
-     swapping its text is a cross fade, not a jump cut. */
+  /* The word burned into the beam. The whole beam is the handle, the word
+     with it: a press anywhere along the wood the boards hang from folds the
+     rack away, unless that press carried the window somewhere instead. */
   const label = document.createElement('div');
   label.style.cssText = LABEL;
   label.dataset.shelf = 'fold';
-  label.addEventListener('click', () => fold(!away));
   root.appendChild(label);
+  root.addEventListener('click', (event) => {
+    if (gripCarried()) return;
+    const on = event.target instanceof Element ? event.target : null;
+    if (on?.closest('[data-project],[data-shelf]:not([data-shelf=fold])')) return;
+    fold(!away);
+  });
 
   const strip = document.createElement('div');
   strip.style.cssText = STRIP;
   strip.dataset.grip = '';
   root.appendChild(strip);
+
+  /* The name, on a small board of its own that drops on two chains from
+     under whatever is being pointed at, and slides along under the next one
+     rather than going up and coming down again. Never pressable: the pointer
+     goes straight through it. */
+  const tag = document.createElement('div');
+  tag.style.cssText = TAG;
+  const tagChains = [chain(0, 0, false), chain(0, 0, false)];
+  for (const each of tagChains) tag.appendChild(each);
+  const tagPlate = document.createElement('div');
+  tagPlate.style.cssText = TAG_PLATE;
+  tag.appendChild(tagPlate);
+  root.appendChild(tag);
+  let tagFor: HTMLElement | null = null;
+  let tagLeave = 0;
+
+  const showTag = (over: HTMLElement, name: string): void => {
+    window.clearTimeout(tagLeave);
+    const already = tagFor !== null;
+    tagFor = over;
+    tagPlate.textContent = name;
+    const wide = tagPlate.offsetWidth;
+    const box = over.getBoundingClientRect();
+    const rack = root.getBoundingClientRect();
+    const swing = over.querySelector<HTMLElement>('.swing');
+    const bottom = (swing?.getBoundingClientRect().bottom ?? box.bottom) - rack.top;
+    const middle = box.left - rack.left + box.width / 2;
+    const left = Math.round(Math.max(4, Math.min(rack.width - wide - 6, middle - wide / 2)));
+    const top = Math.round(bottom - X * 2);
+    /* The chains hang straight down off the board above, so they stay put
+       under it however far the name runs either side. */
+    const reach = Math.min(box.width, BOARD) / 2 - 7 * X;
+    tagChains[0].style.left = `${Math.round(middle - left - reach - X)}px`;
+    tagChains[1].style.left = `${Math.round(middle - left + reach - X * 2)}px`;
+    for (const each of tagChains) each.style.top = '0px';
+    if (!already) {
+      tag.style.transition = 'none';
+      tag.style.left = `${left}px`;
+      tag.style.top = `${top}px`;
+      tag.style.transform = `translateY(-${X * 5}px)`;
+      void tag.offsetWidth;
+      tag.style.transition = TAG_MOVES;
+    }
+    tag.style.left = `${left}px`;
+    tag.style.top = `${top}px`;
+    tag.style.opacity = '1';
+    tag.style.transform = 'translateY(0)';
+  };
+
+  const hideTag = (atOnce = false): void => {
+    window.clearTimeout(tagLeave);
+    /* A moment's grace, so going from one board to the next slides the tag
+       along rather than putting it up and taking it down. */
+    tagLeave = window.setTimeout(
+      () => {
+        tagFor = null;
+        tag.style.opacity = '0';
+        tag.style.transform = `translateY(-${X * 5}px)`;
+      },
+      atOnce ? 0 : 90
+    );
+  };
+
+  const named = (node: HTMLElement, name: () => string | undefined): void => {
+    node.addEventListener('pointerenter', () => {
+      const now = name();
+      if (now) showTag(node, now);
+    });
+    node.addEventListener('pointerleave', () => hideTag());
+    node.addEventListener('pointerdown', () => hideTag(true));
+  };
 
   /* Where the projects stop and the rack's own doings start, an iron band
      round the beam. Folded away with the sky, out on the island only when
@@ -256,9 +357,7 @@ export function makeShelf(
   skyMark.style.cssText = `width:${9 * X}px;height:${9 * X}px;image-rendering:pixelated`;
   const weather = hangToken(skyMark);
   weather.dataset.shelf = 'sky';
-  weather.title = 'the sky';
-  weather.addEventListener('pointerenter', () => crossfade(() => paintLabel('the sky')));
-  weather.addEventListener('pointerleave', () => crossfade(settle));
+  named(weather, () => 'the sky');
   weather.addEventListener('click', (event) => {
     event.stopPropagation();
     sky();
@@ -269,18 +368,13 @@ export function makeShelf(
      deep in a project alike, right beside the fire that takes you home. */
   const wheel = hangToken('rack/glyph-wheel');
   wheel.dataset.shelf = 'windmill';
-  wheel.title = 'settings';
-  wheel.addEventListener('pointerenter', () => crossfade(() => paintLabel('settings')));
-  wheel.addEventListener('pointerleave', () => crossfade(settle));
+  named(wheel, () => 'settings');
   wheel.addEventListener('click', () => settings());
 
   const fire = hangToken('rack/glyph-fire');
   fire.dataset.shelf = 'island';
-  fire.title = 'the island';
-  fire.addEventListener('pointerenter', () => crossfade(() => paintLabel('the island')));
-  fire.addEventListener('pointerleave', () => crossfade(settle));
+  named(fire, () => 'the island');
   fire.addEventListener('click', () => out());
-  for (const each of [weather, wheel, fire]) each.style.transition += `,${SHUT}`;
   let inside = false;
 
   const nodes = new Map<string, HTMLDivElement>();
@@ -289,11 +383,32 @@ export function makeShelf(
   let last: OnShelf[] = [];
   let labelGen = 0;
 
-  /* A board folds to nothing rather than being taken out: its width eases
-     away and a margin swallows the gap it stood in, so its neighbours close
-     up over it instead of jumping. */
-  const up = (node: HTMLDivElement, on: boolean, wide: number): void => {
+  /* A board folds away by being drawn up on its chains behind the beam, and
+     only then does the gap it hung in close, its neighbours sliding up to
+     where it was. Unfolding is the same played back: the gap opens and the
+     board drops into it. Several at once go one after another, `order`
+     saying which turn is this one's, so the rack rolls up and down rather
+     than every board blinking at once. Nothing is touched when a board is
+     already where it is asked to be, since the rack is repainted far more
+     often than it folds. */
+  const up = (node: HTMLDivElement, on: boolean, wide: number, order = 0, now = true): void => {
+    const state = on ? 'up' : 'away';
+    if (node.dataset.hung === state) return;
+    node.dataset.hung = state;
+    const turn = order * STAGGER;
+    const lift = on ? turn + 140 : turn;
+    const close = on ? turn : turn + 170;
+    node.style.transition = now
+      ? [
+          `filter 520ms ${EASE}`,
+          `opacity 160ms ease ${on ? lift : lift + 150}ms`,
+          `transform 300ms ${EASE} ${lift}ms`,
+          `width 360ms ${EASE} ${close}ms`,
+          `margin 360ms ${EASE} ${close}ms`,
+        ].join(',')
+      : 'none';
     node.style.opacity = on ? '1' : '0';
+    node.style.transform = on ? 'translateY(0)' : `translateY(-${TALL}px)`;
     node.style.width = on ? `${wide}px` : '0px';
     node.style.marginLeft = on ? '0px' : `-${PAD}px`;
     node.style.pointerEvents = on ? 'auto' : 'none';
@@ -324,11 +439,10 @@ export function makeShelf(
     paintLabel(away ? `projects ${last.length}` : 'projects', away ? worstWant(last) : undefined);
   };
 
-  /* A hover swaps the label to that project's name and back, and folding
-     swaps it between "projects" and its resting count. All three fade the
-     old text out before the new one fades in, rather than jump-cutting, and
-     a crossed-out generation stops a quick in-and-out from landing the wrong
-     text after its own fade has already moved on. */
+  /* Folding swaps the word between "projects" and its resting count, fading
+     the old out before the new comes in rather than jump-cutting, and a
+     crossed-out generation stops a quick fold and unfold from landing the
+     wrong one after its own fade has already moved on. */
   const crossfade = (paint: () => void): void => {
     const gen = ++labelGen;
     label.style.opacity = '0';
@@ -339,11 +453,22 @@ export function makeShelf(
     }, 130);
   };
 
+  /* Puts each where it belongs along the strip, touching only the ones
+     that are not already there. Taking an element out of the page and
+     putting it back, even in the very same place, throws away whatever it
+     was in the middle of easing toward, which is what used to make the rack
+     blink rather than fold: it was being rebuilt on every repaint. */
+  const lineUp = (order: HTMLElement[]): void => {
+    order.forEach((each, at) => {
+      const there = strip.children[at];
+      if (there !== each) strip.insertBefore(each, there ?? null);
+    });
+  };
   const tail = (): void => {
-    strip.appendChild(band);
-    strip.appendChild(weather);
-    strip.appendChild(wheel);
-    strip.appendChild(fire);
+    const boards = last
+      .map((project) => nodes.get(project.id))
+      .filter((node): node is HTMLDivElement => !!node);
+    lineUp([...boards, band, weather, wheel, fire]);
   };
 
   function show(projects: OnShelf[], fading = false): void {
@@ -358,6 +483,7 @@ export function makeShelf(
     /* Walking into a yard folds it shut and walking back out to the island
        opens it; in between it stays however he left it. */
     if (inside !== was) away = inside;
+    if (away) hideTag(true);
 
     if (fading) crossfade(settle);
     else settle();
@@ -372,20 +498,28 @@ export function makeShelf(
       held.delete(id);
     }
 
+    /* Whose turn it is to go: unfolding drops them in from the handle
+       outward, folding draws them up from the far end back toward it. */
+    const going = projects.filter((project) => {
+      const node = nodes.get(project.id);
+      return node && node.dataset.hung !== (!away || project.here ? 'up' : 'away');
+    });
+    const turnOf = (id: string): number => {
+      const at = going.findIndex((project) => project.id === id);
+      return at === -1 ? 0 : away ? going.length - 1 - at : at;
+    };
+
     for (const project of projects) {
       const on = !away || project.here;
       let node = nodes.get(project.id);
       if (!node) {
         node = hangBoard();
-        node.style.transition += `,transform 260ms ${EASE},${SHUT}`;
+        node.dataset.hung = 'up';
+        node.style.transition += `,transform 260ms ${EASE},opacity 220ms ease`;
         node.style.opacity = '0';
         node.style.transform = 'translateY(-12px)';
         node.dataset.project = project.id;
-        node.addEventListener('pointerenter', () => {
-          const now = held.get(project.id);
-          if (now) crossfade(() => paintLabel(now.name));
-        });
-        node.addEventListener('pointerleave', () => crossfade(settle));
+        named(node, () => held.get(project.id)?.name);
         node.addEventListener('click', (event) => {
           if (justDragged) {
             event.stopImmediatePropagation();
@@ -395,8 +529,8 @@ export function makeShelf(
         });
         node.addEventListener('pointerdown', (event) => hold(project.id, event));
         nodes.set(project.id, node);
-        strip.appendChild(node);
-        if (!on) up(node, false, BOARD);
+        strip.insertBefore(node, band.parentNode === strip ? band : null);
+        if (!on) up(node, false, BOARD, 0, false);
         /* A new board drops onto its chains rather than fading up out of
            nothing. */
         requestAnimationFrame(() => {
@@ -407,11 +541,9 @@ export function makeShelf(
           });
         });
       } else {
-        strip.appendChild(node); // re-append moves it into place without touching it
-        up(node, on, BOARD);
+        up(node, on, BOARD, turnOf(project.id));
       }
       paintBoard(node, project);
-      node.title = project.name;
     }
     const anyUp = projects.some((project) => !away || project.here);
     band.style.display = anyUp ? '' : 'none';
@@ -435,7 +567,7 @@ export function makeShelf(
     const startX = down.clientX;
     let lifted = false;
     let to = from;
-    const kept = node.style.transition;
+    const saved = new Map<HTMLDivElement, string>();
     const glow = node.style.filter;
 
     const place = (dx: number): void => {
@@ -456,7 +588,13 @@ export function makeShelf(
         if (Math.abs(dx) < 4) return;
         lifted = true;
         node.setPointerCapture(event.pointerId);
-        node.style.transition = `${kept},transform 0s`;
+        /* While one is carried the rest step aside straight away, without
+           the turns they take when the rack folds. */
+        for (const each of nodes.values()) {
+          saved.set(each, each.style.transition);
+          each.style.transition = `filter 520ms ${EASE},transform 180ms ${EASE}`;
+        }
+        node.style.transition = `filter 520ms ${EASE},transform 0s`;
         node.style.position = 'relative';
         node.style.zIndex = '2';
         node.style.cursor = 'grabbing';
@@ -475,24 +613,24 @@ export function makeShelf(
       /* It eases the rest of the way into its gap, and then the rack is
          rebuilt in the new order with every board already where it is drawn,
          so nothing jumps when the transforms come off. */
-      node.style.transition = `${kept},transform 160ms ${EASE}`;
+      node.style.transition = `filter 520ms ${EASE},transform 160ms ${EASE}`;
       node.style.transform = `translate(${(to - from) * STEP}px,0)`;
       window.setTimeout(() => {
         const next = [...order];
         next.splice(from, 1);
         next.splice(to, 0, id);
         for (const each of nodes.values()) {
-          const settled = each === node ? kept : each.style.transition;
           each.style.transition = 'none';
           each.style.transform = 'translateY(0)';
-          void each.offsetWidth;
-          each.style.transition = settled;
         }
-        for (const other of next) {
-          const each = nodes.get(other);
-          if (each) strip.appendChild(each);
-        }
+        last = next
+          .map((other) => held.get(other))
+          .filter((project): project is OnShelf => !!project);
         tail();
+        for (const each of nodes.values()) {
+          void each.offsetWidth;
+          each.style.transition = saved.get(each) ?? '';
+        }
         node.style.zIndex = '';
         node.style.cursor = '';
         node.style.filter = glow;
@@ -538,6 +676,9 @@ const RACK = [
 
 const BEAM_LOG = [
   'position:absolute',
+  /* In front of what hangs off it, so a board folding away is drawn up
+     behind the wood rather than over it. */
+  'z-index:2',
   'left:12px',
   'right:0',
   'top:0',
@@ -557,6 +698,7 @@ const LABEL = [
   `text-shadow:${BURNED}`,
   'white-space:nowrap',
   'position:relative',
+  'z-index:2',
   'flex:none',
   /* The whole stretch of beam the word is burned into is the handle, not
      just the letters. Wide enough that most names fit without the beam
@@ -582,7 +724,53 @@ const STRIP = [
   'position:relative',
 ].join(';');
 
-const SHUT = `opacity 220ms ease,width 340ms ${EASE},margin 340ms ${EASE}`;
+/* How far apart, one board's turn from the next, when several fold at once. */
+const STAGGER = 22;
+
+/* The face painted on the planks sits down in its carved square: a hard
+   dark edge where the lip throws its shadow in, a lit edge where the light
+   catches the far lip, and its colours pulled a little toward the wood's own
+   warmth so a bright app icon does not read as a sticker. */
+const PAINTED = [
+  'filter:sepia(.18) saturate(.88) brightness(.96)',
+  'drop-shadow(-1px -1px 0 rgba(36,18,6,.7))',
+  'drop-shadow(1px 1px 0 rgba(255,232,186,.28))',
+].join(' ');
+
+const TAG = [
+  'position:absolute',
+  'left:0',
+  'top:0',
+  'z-index:3',
+  'pointer-events:none',
+  'opacity:0',
+  `transform:translateY(-${5 * X}px)`,
+].join(';');
+
+const TAG_MOVES = [
+  `left 200ms ${EASE}`,
+  `top 200ms ${EASE}`,
+  'opacity 140ms ease',
+  `transform 220ms ${EASE}`,
+].join(',');
+
+/* A small board of the same wood, the name in the flags' own lettering in
+   cream with the ink under it, hung a chain's length below. */
+const TAG_PLATE = [
+  'position:relative',
+  `margin-top:${5 * X}px`,
+  `padding:${3 * X}px ${4 * X}px ${2 * X}px`,
+  "font-family:'Silkscreen',monospace",
+  'font-size:16px',
+  'line-height:1',
+  'text-transform:lowercase',
+  'white-space:nowrap',
+  'color:#f4e3c0',
+  'text-shadow:0 2px 0 #2a1508',
+  'background:#74593a',
+  `border:${X}px solid #482510`,
+  `box-shadow:inset 0 ${X}px 0 #947e5c,inset 0 -${X}px 0 #56351d`,
+].join(';');
 
 const HANG = (wide: number): string =>
   [
@@ -613,5 +801,4 @@ const FACE = [
   'display:flex',
   'align-items:center',
   'justify-content:center',
-  'filter:drop-shadow(2px 2px 0 rgba(58,29,12,.55))',
 ].join(';');

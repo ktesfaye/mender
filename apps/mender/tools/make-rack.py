@@ -194,10 +194,26 @@ def board(tones: dict[str, tuple[int, int, int, int]]) -> Image.Image:
     for x, y0, y1 in [(4, 4, 9), (11, 12, 18), (19, 3, 7), (5, 14, 19), (20, 13, 17)]:
         for y in range(y0, y1):
             px[x, y] = tones["sh"]
+    # A square carved into the planks for the face to sit down in: the lip
+    # above and to the left throws its shadow in, the lip below and to the
+    # right catches the light, and the seams run on across its floor.
+    for y in range(3, 21):
+        for x in range(3, 21):
+            if y == 3 or x == 3:
+                tone = "dp"
+            elif y == 20 or x == 20:
+                tone = "hi"
+            elif x in seams:
+                tone = "dp"
+            elif y == 4 or x == 4:
+                tone = "dk"
+            else:
+                tone = "sh"
+            px[x, y] = tones[tone]
     # The eyelets the chains go through.
     for x in (4, w - 5):
-        px[x, 2] = INK
-        px[x, 3] = tones["dp"]
+        px[x, 1] = INK
+        px[x, 2] = tones["dp"]
     return img
 
 

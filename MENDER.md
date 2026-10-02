@@ -308,16 +308,21 @@ new. The projects moved to a rack
 in the top right, over both the island and the yard, drawn rather than boxed:
 a log along the top of the window, sawn off at its left end, and each project
 a board of three planks hung off it on two chains, the way the kit's own shop
-signs hang, with the project's own face nailed to it, its app icon or its
-logo, and a prop from the kit until it has one. The one you are standing in
+signs hang, with the project's own face painted into a square carved in its
+planks, its app icon or its logo warmed toward the wood with the grain showing
+through, and a prop from the kit until it has one. The one you are standing in
 is painted gold. Past an iron band round the beam the rack's own doings hang
 as small round tokens off one chain each, the sky, the windmill's wheel and
 the fire home, so none of them is ever taken for a project. No names until
-you hover, and then the name is burned into the beam and the board drops a
-pixel as if tugged. It folds away, and it
+you hover, and then the board drops a pixel as if tugged and the name comes
+down under it on a small board of its own on two chains, sliding along under
+the next one as you go. It folds away, and it
 folds itself: walking into a project shuts it, walking back out to the island
-opens it, and the whole block of wood its handle is written on is the
-handle, not only the word. A slot held
+opens it, and the whole beam is the handle, a press anywhere along the wood
+the boards hang from, unless the press carried the window off instead. Folding
+draws the boards up behind the beam one after another from the far end and
+then rolls the beam in; unfolding plays it back, the beam running out and the
+boards dropping in one by one. A slot held
 and dragged along it moves there, the others stepping aside, and stays.
 
 A slot on the rack carries the same warm or red wash a lit house gets, the
