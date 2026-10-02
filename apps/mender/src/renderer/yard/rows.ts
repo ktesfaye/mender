@@ -190,6 +190,8 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
       line.textContent = row.text === '' ? ' ' : row.text;
   }
 
+  /* A row nobody presses is writing, and writing is taken by dragging across it. */
+  if (!pick) line.style.userSelect = 'text';
   if (pick) {
     line.classList.add('press');
     line.addEventListener('mousedown', (event) => event.preventDefault());

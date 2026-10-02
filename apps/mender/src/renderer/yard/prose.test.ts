@@ -20,6 +20,15 @@ describe('prose', () => {
     ]);
   });
 
+  it('links a bare address without the punctuation after it', () => {
+    expect(runsOf('go to https://example.com/a?b=1. or <https://x.io>')).toEqual([
+      { text: 'go to ' },
+      { text: 'https://example.com/a?b=1', href: 'https://example.com/a?b=1' },
+      { text: '. or ' },
+      { text: 'https://x.io', href: 'https://x.io' },
+    ]);
+  });
+
   it('reads a mermaid fence as a diagram block and any other fence as code', () => {
     expect(blocksOf('```mermaid\ngraph TD\n  A --> B\n```')).toEqual([
       { kind: 'mermaid', text: 'graph TD\n  A --> B' },

@@ -1019,17 +1019,18 @@ html.still *::after {
   flex-direction: column;
   gap: 0.8em;
 }
-/* The whole answer is pressed onto the clipboard exactly the way one of its
-   own code blocks already is, everywhere in it that isn't a link or a code
-   block of its own. */
-.yard .prose-press {
+/* What is said is read, and taken by dragging across it: whatever is
+   selected is on the clipboard the moment the pointer comes up. Only a link
+   is pressed. */
+.yard .prose {
+  user-select: text;
+  cursor: text;
+}
+.yard .prose a {
   cursor: pointer;
 }
-.yard .prose-press:hover {
-  filter: brightness(1.08);
-}
-.yard .prose-press:active {
-  filter: brightness(0.96);
+.yard ::selection {
+  background: rgba(224, 181, 106, 0.32);
 }
 .yard .prose-heading {
   margin-top: 0.5em;

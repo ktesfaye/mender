@@ -2045,7 +2045,7 @@ function thinking(
           : `font-size:${size}px;line-height:1.6;letter-spacing:.01em;color:${trouble?.ink ?? '#ebe3d3'}`;
         if (!one.quiet) body.classList.add('clear');
         if (trouble) body.classList.add('prose-trouble');
-        prose(body, one.id, one.said, !walkedIn, keepCode(does), openLink(does));
+        prose(body, one.id, one.said, !walkedIn, openLink(does));
         it.appendChild(body);
         items.appendChild(it);
         return;
@@ -2063,7 +2063,6 @@ function thinking(
               ? `color-mix(in srgb, ${trouble.ink} ${Math.round(fade * 100)}%, transparent)`
               : `rgba(244,227,192,${fade})`,
             trouble?.head,
-            keepCode(does),
             trouble?.ink,
             openLink(does)
           ),
@@ -2612,11 +2611,6 @@ const KEY = [
   'flex:none',
 ].join(';');
 
-/** A block of code pressed off the column goes on the clipboard, like one pressed anywhere. */
-function keepCode(does: Doings): (code: string) => void {
-  return (code) => does.press(`keep:${code}`);
-}
-
 /** A link an agent wrote, pressed out to whatever the machine reads the web with. */
 function openLink(does: Doings): (url: string) => void {
   return (url) => does.press(`link:${url}`);
@@ -2627,7 +2621,6 @@ function thought(
   size: number,
   ink: string,
   name?: string,
-  keep?: (code: string) => void,
   tone?: string,
   link?: (url: string) => void
 ): HTMLElement {
@@ -2641,7 +2634,7 @@ function thought(
   body.style.cssText = `font-size:${size}px;line-height:1.6;letter-spacing:.01em;color:${ink}`;
   body.classList.add('clear');
   if (tone) body.classList.add('prose-trouble');
-  prose(body, one.id, one.said, false, keep, link);
+  prose(body, one.id, one.said, false, link);
   it.appendChild(body);
   return it;
 }

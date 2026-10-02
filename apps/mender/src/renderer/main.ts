@@ -4809,11 +4809,6 @@ async function boot(): Promise<void> {
         if (on) void openChange(pick.slice(12), { sha: 'HEAD', from: on.mergeBase });
         return;
       }
-      if (pick.startsWith('keep:')) {
-        window.mender.keep(pick.slice(5));
-        say('copied.', 2000);
-        return;
-      }
       if (pick.startsWith('link:')) {
         window.mender.openLink(pick.slice(5));
         return;
@@ -5086,6 +5081,19 @@ async function boot(): Promise<void> {
       return true;
     };
 
+    /* Writing on the wood is taken by dragging across it: whatever is
+       selected when the pointer comes up is on the clipboard, the way a
+       terminal does it, with nothing to press after. The write line is left
+       alone, since selecting there is how a word gets written over. */
+    window.addEventListener('mouseup', () => {
+      const picked = window.getSelection();
+      const text = picked?.toString() ?? '';
+      if (!text.trim()) return;
+      const at = picked?.anchorNode;
+      const held = at instanceof Element ? at : at?.parentElement;
+      if (held?.closest('[contenteditable], input, textarea')) return;
+      window.mender.keep(text);
+    });
     // Without this the window navigates to the file and the village vanishes.
     window.addEventListener('dragover', (event) => event.preventDefault());
     window.addEventListener('drop', (event) => {

@@ -60,19 +60,8 @@ export function saying(text: string, mark: string | undefined, tone?: Tone): Row
         rows.push(drawn);
         continue;
       }
-      /* A block of code is the one thing on a board you want out of it and
-         cannot retype: press it and it is on the clipboard. Every row of it
-         presses the same thing, so the whole block lights up as one. */
-      const pick = `keep:${body}`;
       for (const written of block) {
-        rows.push({
-          kind: 'line',
-          text: EDGE + written,
-          tone: 'faded',
-          keep: 'front',
-          face: 'type',
-          pick,
-        });
+        rows.push({ kind: 'line', text: EDGE + written, tone: 'faded', keep: 'front', face: 'type' });
       }
       continue;
     }

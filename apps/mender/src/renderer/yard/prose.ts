@@ -8,7 +8,7 @@
  * not read a number off.
  *
  * So this reads the shape and sets it. A paragraph is a paragraph, a list is
- * a list, a heading is a label, code is set in the type and pressed to keep,
+ * a list, a heading is a label, code is set in the type,
  * and a table is a table, with its columns lined up and its numbers to the
  * right. It is deliberately not the whole of markdown: nothing here needs
  * footnotes or HTML, and anything it does not know it leaves as writing.
@@ -152,14 +152,15 @@ function tabled(raw: readonly string[]): Block {
  * The runs inside one line of writing: plain, code, heavy, leaning, linked.
  *
  * Emphasis keeps its words and loses its marks. A link keeps its words and
- * its address both: it is the one mark here worth pressing.
+ * its address both: it is the one mark here worth pressing. An address
+ * written out bare is a link too, since that is how most of them arrive.
  */
 export function runsOf(text: string): InkRun[] {
   const runs: InkRun[] = [];
   /* Underscores only count at a word's edge: `mcp__server__tool` is a name,
      not a name with a bold word in the middle of it. */
   const pattern =
-    /`([^`]+)`|\*\*([^*]+)\*\*|(?<![\w])__([^_]+)__(?![\w])|(?<![\w*])\*([^*\s][^*]*)\*(?![\w*])|\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+    /`([^`]+)`|\*\*([^*]+)\*\*|(?<![\w])__([^_]+)__(?![\w])|(?<![\w*])\*([^*\s][^*]*)\*(?![\w*])|\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|<(https?:\/\/[^>\s]+)>|(https?:\/\/[^\s<>]*[^\s<>.,;:!?'")\]])/g;
   let from = 0;
   for (const found of text.matchAll(pattern)) {
     const at = found.index ?? 0;
@@ -170,7 +171,11 @@ export function runsOf(text: string): InkRun[] {
     } else if (found[4] !== undefined) runs.push({ text: found[4], className: 'prose-lean' });
     else if (found[6] !== undefined && /^https?:\/\//.test(found[6])) {
       runs.push({ text: found[5] ?? '', href: found[6] });
-    } else runs.push({ text: found[5] ?? '' });
+    } else if (found[5] !== undefined) runs.push({ text: found[5] });
+    else {
+      const url = found[7] ?? found[8] ?? '';
+      runs.push({ text: url, href: url });
+    }
     from = at + found[0].length;
   }
   if (from < text.length) runs.push({ text: text.slice(from) });
@@ -182,36 +187,23 @@ export function runsOf(text: string): InkRun[] {
  *
  * `id` names it for the ink, and each block inks under its own part of that
  * name, so only the block still being written fades in as it arrives.
- * `keep` hears about a block of code being pressed, or the whole answer
- * pressed anywhere that isn't a link or a code block of its own — the same
- * way a code block already goes onto the clipboard by being pressed.
+ * `link` hears about a link being pressed. Nothing else in it is pressed:
+ * what is said is read, and dragged across to be taken.
  */
 export function prose(
   into: HTMLElement,
   id: string,
   text: string,
   fresh: boolean,
-  keep?: (code: string) => void,
   link?: (url: string) => void
 ): void {
   into.replaceChildren();
   into.classList.add('prose');
-  if (keep) {
-    into.classList.add('prose-press');
-    into.title = 'press to keep it';
-    into.addEventListener('mousedown', (event) => {
-      if ((event.target as HTMLElement).closest('a,.prose-block')) return;
-      event.preventDefault();
-    });
+  if (link && !into.dataset.linked) {
+    into.dataset.linked = '1';
     into.addEventListener('click', (event) => {
-      const target = event.target as HTMLElement;
-      const anchor = target.closest('a');
-      if (anchor) {
-        link?.(anchor.href);
-        return;
-      }
-      if (target.closest('.prose-block')) return;
-      keep(text);
+      const anchor = (event.target as HTMLElement).closest('a');
+      if (anchor && !window.getSelection()?.toString()) link(anchor.href);
     });
   }
   blocksOf(text).forEach((block, i) => {
@@ -257,18 +249,13 @@ export function prose(
       }
       case 'code': {
         const code = document.createElement('pre');
-        code.className = keep ? 'prose-block press' : 'prose-block';
+        code.className = 'prose-block';
         code.textContent = block.text;
-        if (keep) {
-          code.title = 'press to keep it';
-          code.addEventListener('mousedown', (event) => event.preventDefault());
-          code.addEventListener('click', () => keep(block.text));
-        }
         into.appendChild(code);
         return;
       }
       case 'mermaid': {
-        into.appendChild(mermaidBlock(block.text, keep));
+        into.appendChild(mermaidBlock(block.text));
         return;
       }
       case 'table':
@@ -278,17 +265,12 @@ export function prose(
 }
 
 /** A diagram, drawn — or, when it will not parse, its own fenced text back. */
-function mermaidBlock(text: string, keep?: (code: string) => void): HTMLElement {
+function mermaidBlock(text: string): HTMLElement {
   const svg = mermaidSVG(text);
   if (!svg) {
     const code = document.createElement('pre');
-    code.className = keep ? 'prose-block press' : 'prose-block';
+    code.className = 'prose-block';
     code.textContent = text;
-    if (keep) {
-      code.title = 'press to keep it';
-      code.addEventListener('mousedown', (event) => event.preventDefault());
-      code.addEventListener('click', () => keep(text));
-    }
     return code;
   }
   const wrap = document.createElement('div');

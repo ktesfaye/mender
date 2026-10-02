@@ -300,13 +300,13 @@ the line you are writing on, quoted if it has a space in it, and goes with
 whatever you say about it. Dragged from anywhere on this machine, not only from
 the checkout.
 
-A block of code comes off the board. It is the one thing written on the wood
-that you want out of it and cannot retype, so pressing it puts it on the
-clipboard and the village says it did; the whole block lights as one thing
-rather than the row your hand landed on. It is reached by key as well as by
-hand, because a line you can press and cannot walk to is only half there, and
-fixing that turned out to fix the same hole under the carried pictures and the
-session card, which the keyboard had never been able to press at all.
+A block of code comes off the board by being dragged across, like everything
+else written there: nothing copies itself for being pressed any more, which
+used to swallow a press meant for a link and copy the whole answer instead.
+Whatever is selected is on the clipboard the moment the pointer comes up, and
+a bare address an agent writes is a link now too. Driven in a dev copy: a drag
+over half a sentence and over a code block each put exactly that on the
+clipboard, a plain click on either put nothing there.
 
 Somebody sent off to do something says what they were sent to do. The name on a
 subagent is the tool's and it is the same word every time, so the board says the
@@ -1519,7 +1519,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | AG-36 | Turn outcome / filler rows | part | W2 |
 | AG-37 | Markdown rendering (headings, tables, code, Mermaid, GFM, math) | part | W2 |
 | AG-38 | Mermaid diagram, drawn in an answer (colored to the wood, via `beautiful-mermaid`, panned and zoomed with the wheel and a drag) | done | W9 |
-| AG-39 | Copy-to-clipboard affordance — a code block or a whole answer, pressed | done | W2 |
+| AG-39 | Copy-to-clipboard affordance — anything written, dragged across and copied on release | done | W2 |
 | AG-39a | Links in an answer, pressable and gold, opening in the system browser | done | W2 |
 | AG-39c | Pictures in an answer: a markdown image is drawn where it was written, several side by side with their captions, and every session is told they show so a place it suggests comes with a look at it | done | W2 |
 | AG-39b | Export the transcript as markdown, from the session card | done | W2 |

@@ -487,13 +487,14 @@ across by describing it, so writing an @ turns the lines under it into what is
 actually in there, narrowing as you type, and picking one writes the whole path
 where the @ was. The same slab and the same keys as the slash.
 
-**A block of code is pressed and it is yours.** Writing on the wood is read, not
-selected, so the one thing you cannot retype comes off it by being pressed: the
-whole block lights up and it is on the clipboard. By key as much as by hand.
-A whole answer is pressed the same way, anywhere in it that isn't a block of
-its own or a link, and a link an agent wrote is gold and pressable too,
-opening in whatever the machine reads the web with rather than pulling the
-village itself away to it.
+**What is written is taken by dragging across it.** Nothing on the wood
+copies itself for being pressed. Drag over any of what was said, a word, a
+sentence, a block of code, a line on a board nobody presses, and the moment
+the pointer comes up it is on the clipboard, the way a terminal does it, with
+nothing to press after. The write line is left out, since selecting there is
+how a word gets written over. A link an agent wrote is gold and pressable,
+written as a link or just as a bare address, opening in whatever the machine
+reads the web with rather than pulling the village itself away to it.
 
 **A file that changed is read on the board.** Every checkout board, a project's
 and a session's alike, lists what is uncommitted in it, and pressing one of
