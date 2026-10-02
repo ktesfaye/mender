@@ -134,25 +134,40 @@ def chain(n: int) -> Image.Image:
 
 
 def bracket() -> Image.Image:
-    """Rope lashed round the beam where two lengths of log are bound, which is
-    where the projects stop and the rack's own doings start. It sits on the
-    wood, a pixel proud of it top and bottom, rather than hanging under it."""
-    w, h = 11, 11
+    """Rope lashed round the beam, which is where the projects stop and the
+    rack's own doings start. Three turns, each a round strand of its own with
+    the log showing between them, going over the top of the wood and under
+    the bottom a pixel proud of it, so it reads as bound on rather than as a
+    patch stuck to the front."""
+    turns, gap = 3, 1
+    tw = 4
+    w, h = turns * tw + (turns - 1) * gap, 12
     img, px = canvas(w, h)
-    rope = {"lt": rgb("#d8bb84"), "md": rgb("#b8935a"), "dk": rgb("#86663a")}
-    for y in range(h):
-        for x in range(w):
-            corner = (x in (0, w - 1)) and (y in (0, h - 1))
-            if corner:
-                continue
-            if x in (0, w - 1) or y in (0, h - 1):
-                px[x, y] = INK
-                continue
-            # Each turn of rope runs round the log, so from the front it is a
-            # strand leaning a little as it goes down, lit on one side and
-            # shaded into the next turn on the other.
-            turn = (x - 1 - y // 4) % 3
-            px[x, y] = rope["lt"] if turn == 0 else rope["md"] if turn == 1 else rope["dk"]
+    rope = {"hi": rgb("#c4a674"), "lt": rgb("#a98a58"), "md": rgb("#8e6f42"),
+            "dk": rgb("#6a4e2c")}
+    for t in range(turns):
+        x0 = t * (tw + gap)
+        for y in range(h):
+            for i in range(tw):
+                x = x0 + i
+                end = y in (0, h - 1)
+                side = i in (0, tw - 1)
+                if end and side:
+                    continue
+                if end or side:
+                    px[x, y] = INK
+                    continue
+                # Rolling over the top and under the bottom of the log it
+                # turns away from the light.
+                if y in (1, h - 2):
+                    px[x, y] = rope["dk"] if y == h - 2 else rope["md"]
+                    continue
+                # The twist: a shaded lay crossing the strand every three rows.
+                lay = (y + t) % 3 == 0
+                if i == 1:
+                    px[x, y] = rope["md"] if lay else rope["hi"]
+                else:
+                    px[x, y] = rope["dk"] if lay else rope["lt"]
     return img
 
 

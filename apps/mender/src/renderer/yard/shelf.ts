@@ -344,11 +344,11 @@ export function makeShelf(
   };
 
   /* Where the projects stop and the rack's own doings start, rope lashed
-     round the beam, drawn over the wood rather than under it. Folded away
+     round the beam, drawn over the wood and a pixel proud of it either side. Folded away
      with the sky, out on the island only when there is anything left of the
      projects to stand it beside. */
   const band = sprite('rack/bracket', X);
-  band.style.cssText += `;position:relative;z-index:3;flex:none;align-self:flex-start;margin:0 ${PAD}px`;
+  band.style.cssText += `;position:relative;z-index:3;flex:none;align-self:flex-start;margin:-${X}px ${PAD}px 0`;
 
   /* The sky has a token of its own out on the island, showing what it is
      doing right now: pressing it opens the hour and the weather. Standing in
