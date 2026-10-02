@@ -2102,6 +2102,11 @@ function thinking(
      column grows, for as long as it is being followed. */
   /* A question is what the work is stopped on, so it is never left scrolled out of sight. */
   if (walkedIn || asking) followed.delete(sessionId);
+  /* And so is the end of a turn: once it is done, whatever it came back with
+     is what you are there to read, wherever you had scrolled to while it worked. */
+  const working = Boolean(live);
+  if (wasWorking.get(sessionId) && !working) followed.delete(sessionId);
+  wasWorking.set(sessionId, working);
   const kept = followed.get(sessionId);
   const foot = (): void => {
     if (!stream.isConnected) return growing.disconnect();
@@ -2111,12 +2116,40 @@ function thinking(
   if (kept === undefined) foot();
   else stream.scrollTop = kept;
   growing.observe(col);
-  stream.addEventListener('scroll', () => {
-    const atEdge = stream.scrollTop + stream.clientHeight >= stream.scrollHeight - 24;
-    if (atEdge) followed.delete(sessionId);
-    else followed.set(sessionId, stream.scrollTop);
-  });
+  heldWhereLeft(stream, followed, sessionId);
 }
+
+/**
+ * Lets go of the live end only when somebody actually scrolls up. A scroll the
+ * column made itself is reported a frame late, by which time the answer may
+ * have inked in another line, so "not at the foot" alone would read that as
+ * somebody scrolling away and stop following in the middle of an answer.
+ */
+function heldWhereLeft(el: HTMLElement, left: Map<string, number>, id: string): void {
+  let last = el.scrollTop;
+  el.addEventListener('scroll', () => {
+    /* A column laid over by the next one still reports, with nothing in it,
+       and nothing in it reads as sitting at the foot. */
+    if (!el.isConnected) return;
+    const top = el.scrollTop;
+    const rose = top < last;
+    last = top;
+    if (top + el.clientHeight >= el.scrollHeight - 24) left.delete(id);
+    else if (rose || left.has(id)) left.set(id, top);
+  });
+  /* While an answer inks in the column is laid again faster than a scroll is
+     reported, so the wheel itself is what says somebody has gone up to read. */
+  el.addEventListener(
+    'wheel',
+    (event) => {
+      if (event.deltaY < 0) left.set(id, Math.max(0, el.scrollTop + event.deltaY));
+    },
+    { passive: true }
+  );
+}
+
+/** Whether each session was working when its column was last laid. */
+const wasWorking = new Map<string, boolean>();
 
 /**
  * Where the whole thing stands, once an answer is finished: what it was for,
@@ -2889,11 +2922,7 @@ function made(
        the live end is found again once they have. */
     for (const wait of [60, 250, 700]) window.setTimeout(settle, wait);
   } else steps.scrollTop = kept;
-  steps.addEventListener('scroll', () => {
-    const atEdge = steps.scrollTop + steps.clientHeight >= steps.scrollHeight - 24;
-    if (atEdge) stepsFollowed.delete(id);
-    else stepsFollowed.set(id, steps.scrollTop);
-  });
+  heldWhereLeft(steps, stepsFollowed, id);
 
   /* And the ground only once there is somebody standing on it. The fire is
      already said by the light of the whole screen and by the lantern on the

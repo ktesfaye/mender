@@ -174,7 +174,9 @@ the version in the project's own manifest rather than kept anywhere. What it
 said is in the middle, read top to bottom the way a conversation is: the answers
 before dimmed at the top and the newest set large under them, the column
 starting under its heading and only scrolling to keep the newest in view once
-there is more than fits, and everything it thought
+there is more than fits, following the answer down as it inks in unless you
+scroll up to read, and going back down to the foot the moment it is done
+wherever you had got to, and everything it thought
 and said on the way there folded out of sight. Once an answer has finished
 something, the foot of that column, right over the line you write on, however
 short the answer above it, is the recap, a sentence or two in a quieter italic saying what the
