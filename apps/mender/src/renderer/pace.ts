@@ -1,4 +1,4 @@
-import { UPDATE_PRIORITY, type Application, type Ticker } from 'pixi.js';
+import { Ticker, UPDATE_PRIORITY, type Application } from 'pixi.js';
 import type { Watching } from '@shared/channels';
 
 /**
@@ -119,8 +119,14 @@ export function watched(now: Watching): void {
      and nothing is drawn while he is looking at something else. */
   if (watch === 'gone' || watch === 'behind') {
     ticker.stop();
+    /* Pixi keeps a clock of its own besides the village's, for its texture
+       housekeeping, and it asks for every frame the screen offers whether
+       anything is drawn or not. Left running it is most of what a frozen
+       village still costs. */
+    Ticker.system.stop();
     return;
   }
+  Ticker.system.start();
   /* Coming back is a real moment even though nothing about the world changed
      while it was away: the fire is mid-breath somewhere it was not, so draw it
      at once rather than up to a tenth of a second later. */
