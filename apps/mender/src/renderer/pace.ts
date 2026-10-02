@@ -51,6 +51,7 @@ const FALLING = 20;
 
 let ticker: Ticker | null = null;
 let falling = false;
+let scenery = false;
 let watch: Watching = 'front';
 let until = 0;
 let last = 0;
@@ -63,6 +64,25 @@ let last = 0;
  */
 export function stir(): void {
   until = performance.now() + TAIL_MS;
+}
+
+/**
+ * A board is open and the island behind it is only scenery.
+ *
+ * What a hand does then is aimed at the board: scrolling what was said, moving
+ * over the columns, typing on the line. Every one of those used to stir the
+ * island under the dark into drawing at the screen's full rate for half a
+ * second, so writing a sentence in a yard kept a picture nobody could see
+ * being repainted flat out underneath it, fighting the board for the graphics
+ * card. Behind a board only the camera itself moving is worth a full rate, and
+ * the rest of the time it is drawn as seldom as it is behind another window.
+ */
+export function setScenery(now: boolean): void {
+  scenery = now;
+}
+
+function handled(): void {
+  if (!scenery) stir();
 }
 
 let woken: ReturnType<typeof setTimeout> | undefined;
@@ -103,7 +123,7 @@ export function drawingNow(): boolean {
 }
 
 function everyMs(): number {
-  if (watch === 'behind') return 1000 / BEHIND;
+  if (watch === 'behind' || scenery) return 1000 / BEHIND;
   return 1000 / (falling ? FALLING : RESTING);
 }
 
@@ -165,7 +185,7 @@ export function setPace(pixi: Application): void {
      the stage only hears a pointer that is over something it owns, and a drag
      across the sea is still a drag. */
   for (const kind of ['pointermove', 'pointerdown', 'pointerup', 'wheel', 'keydown', 'resize']) {
-    window.addEventListener(kind, stir, { capture: true, passive: true });
+    window.addEventListener(kind, handled, { capture: true, passive: true });
   }
 
   /* The main process says whether the window is in front, behind, or put away.

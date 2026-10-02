@@ -65,7 +65,7 @@ import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
 import { answerFor, SEND_ALL } from './board/work';
 import { watchGrip } from './grip';
 import { ran } from './job';
-import { drawingNow, nudge, setPace, watched } from './pace';
+import { drawingNow, nudge, setPace, setScenery, watched } from './pace';
 import { Atmosphere, loadEmitters, type Lit } from './village/atmosphere';
 import {
   createCamera,
@@ -714,6 +714,7 @@ async function boot(): Promise<void> {
       walkedAt = now;
       const dimmed = !!pixi.canvas.style.filter && pixi.canvas.style.filter !== 'none';
       drawn.atmosphere.setQuiet(dimmed);
+      setScenery(dimmed);
       /* The sea is told first, from the last frame's sky: the picture the
          grade is about to take has to have the sea already marked in it. */
       const was = drawn.atmosphere.sky.current;

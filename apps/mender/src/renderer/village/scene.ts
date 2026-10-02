@@ -12,7 +12,7 @@ import { texture } from './kit';
  *     integer scale, no filter . texture scaleMode 'nearest'
  *     pivot = ground point ..... sprite.anchor, with the y axis inverted
  *     depth = (order, y+z) ..... insertion order into a plain Container
- *     shadows MULTIPLY ......... blendMode 'multiply' on a whitened mask + tint
+ *     shadows MULTIPLY ......... blendMode 'multiply' on a whitened mask + tint, cast ones in one layer
  */
 
 /* MT Shadow: Blend DstColor Zero, tint (0.830, 0.728, 0.654).
@@ -130,6 +130,19 @@ export function buildScene(
   const feet: number[] = [];
   let drawn = 0;
   let groundTop = 0;
+  /* Every shadow a standing thing casts on the ground, drawn together in one
+     go right after the ground. Threaded between the things that cast them, as
+     the depth order would put them, the draw flips between multiplying and
+     plain painting at every tree and every house, and each flip is a separate
+     trip to the graphics card: the island was sixteen hundred of them a frame,
+     which is what made every flight across it stutter. A shadow lies on the
+     ground, so the only thing lost is one falling across the foot of something
+     standing further north, which nobody can see. Shading drawn over a thing's
+     own art, the dark in an arch or under the eaves, is not cast and stays
+     where it is. */
+  const shades = new Container();
+  shades.label = 'shades';
+  const begun = new Set<number>();
 
   for (const item of items) {
     const sprite = makeSprite(item);
@@ -137,6 +150,12 @@ export function buildScene(
       missing.push(item.file);
       continue;
     }
+    const object = item.origin.kind === 'object' ? item.origin.oi : null;
+    if (item.multiply && item.order >= 0 && object !== null && !begun.has(object)) {
+      shades.addChild(sprite);
+      continue;
+    }
+    if (object !== null && !item.multiply) begun.add(object);
     root.addChild(sprite);
     feet.push(sprite.y);
     drawn++;
@@ -149,6 +168,7 @@ export function buildScene(
     }
   }
   const { buildings, posts, laneAt } = standsOf(root, boxes, feetOf, feet, groundTop);
+  root.addChildAt(shades, groundTop);
   return { root, buildings, drawn, missing, groundTop, posts, laneAt };
 }
 
