@@ -1085,7 +1085,9 @@ carries a lantern.
 
 **And a district is as lively as its project.** How busy a project has been is
 read off git and off the sessions open in it, and how long since anybody
-committed thins it out again, on the moss's own clock. A project being worked
+committed or any of its sessions last said anything thins it out again, on
+the moss's own clock, so a scratch folder worked in all day and never
+committed to is as lived in as one that ships every hour. A project being worked
 hard is full of townsfolk of every sort, a farmer in a straw hat, a woman in a
 red dress, an elder, a child, a smith, a merchant, a fisher, with chickens,
 sheep, pigs, cows, a dog and a cat about the farms and yards. Every single thing
@@ -1138,10 +1140,10 @@ small glow of their own drawn over the night, which grows in mist and rain. The
 flags fly over the night rather than in it, darkened by only half as much, so a
 project's face reads from the water at any hour.
 
-**And a district nobody has committed to grows over.** How long since a
-project's last commit on any of its own branches is read from git, not from
-anything said in the village: for a few days it is as he drew it; then it goes
-fast, plain to see from the water after a week, its grass drying toward straw,
+**And a district nobody has worked in grows over.** How long since a
+project's last commit on any of its own branches, or the last word any of its
+sessions wrote into Claude's own transcript if that is later: for a few days
+it is as he drew it; then it goes fast, plain to see from the water after a week, its grass drying toward straw,
 its colours fading, moss creeping over roofs and paths in clumps and the kit's
 own weeds and brush coming up through it, and four weeks on it is as overgrown
 as it gets.

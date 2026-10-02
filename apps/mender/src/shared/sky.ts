@@ -30,14 +30,19 @@ export const realWeatherSchema = z.object({
 export type RealWeather = z.infer<typeof realWeatherSchema>;
 
 export const bustleSchema = z.object({
-  /** The newest commit on any of its own branches, milliseconds since the epoch. */
+  /** The newest commit on any of its own branches, or the last word any of
+      its sessions said if that is later, milliseconds since the epoch. */
   last: z.number(),
+  /** The newest commit alone, nought when there is none: what sends a cart. */
+  committed: z.number(),
   /** Commits on its own branches in the last day, and in the last week. */
   today: z.number(),
   week: z.number(),
   /** How many commits the checked-out branch is ahead of where it pushes to;
       dropping to none is a push going out. */
   ahead: z.number(),
+  /** Its sessions that said anything in the last day. */
+  talked: z.number(),
 });
 export type Bustle = z.infer<typeof bustleSchema>;
 

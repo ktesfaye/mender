@@ -1,8 +1,13 @@
 import { execFile } from 'node:child_process';
+import { readdir, stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { createController, type Controller } from '@emdash/wire/rpc';
 import { skyContract, type Bustle, type RealWeather } from '@shared/sky';
+import { claudeProjectDirName } from './claude-cli-history';
 import type { Projects } from './projects';
+import type { Tasks } from './tasks';
 
 const ran = promisify(execFile);
 
@@ -30,7 +35,7 @@ interface Place {
  * the island asks for the weather every few minutes and almost every one of
  * those is answered from memory.
  */
-export function createSkyController(projects: Projects): Controller {
+export function createSkyController(projects: Projects, tasks: Tasks): Controller {
   let place: Place | null = null;
   let weather: RealWeather | null = null;
   let asking: Promise<RealWeather | null> | null = null;
@@ -91,7 +96,9 @@ export function createSkyController(projects: Projects): Controller {
         const all: Record<string, Bustle> = {};
         await Promise.all(
           (await projects.list()).map(async (project) => {
-            const read = await bustleOf(project.path);
+            const where = new Set([project.path]);
+            for (const task of await tasks.list(project.id)) where.add(task.path);
+            const read = await bustleOf(project.path, [...where]);
             if (read) all[project.id] = read;
           })
         );
@@ -132,10 +139,46 @@ async function lastCommit(path: string): Promise<number | null> {
   }
 }
 
-/** How busy a checkout has been: three cheap questions to git, any of which
-    may fail on a folder that is not one. */
-async function bustleOf(path: string): Promise<Bustle | null> {
-  const last = await lastCommit(path);
+/** The last time any session in these folders said or did anything, read off
+    Claude's own transcripts. A scratch folder that is worked in all day and
+    never committed to is as lived in as one that ships every hour. */
+async function lastTalk(paths: string[]): Promise<{ last: number; today: number }> {
+  let newest = 0;
+  let today = 0;
+  const dayAgo = Date.now() - 86_400_000;
+  await Promise.all(
+    paths.map(async (path) => {
+      const dir = join(homedir(), '.claude', 'projects', claudeProjectDirName(path));
+      let names: string[];
+      try {
+        names = await readdir(dir);
+      } catch {
+        return;
+      }
+      await Promise.all(
+        names
+          .filter((name) => name.endsWith('.jsonl'))
+          .map(async (name) => {
+            try {
+              const { mtimeMs } = await stat(join(dir, name));
+              newest = Math.max(newest, mtimeMs);
+              if (mtimeMs > dayAgo) today++;
+            } catch {
+              // Gone between the listing and the look.
+            }
+          })
+      );
+    })
+  );
+  return { last: newest, today };
+}
+
+/** How busy a checkout has been: a few cheap questions to git, any of which
+    may fail on a folder that is not one or has nothing committed yet, and
+    when its sessions last spoke. */
+async function bustleOf(path: string, worked: string[]): Promise<Bustle | null> {
+  const [committed, talked] = await Promise.all([lastCommit(path), lastTalk(worked)]);
+  const last = Math.max(committed ?? 0, talked.last);
   if (!last) return null;
   const count = async (since: string): Promise<number> => {
     try {
@@ -160,7 +203,7 @@ async function bustleOf(path: string): Promise<Bustle | null> {
     // Nowhere to push to: nothing ever goes out by boat.
   }
   const [today, week] = await Promise.all([count('1 day ago'), count('7 days ago')]);
-  return { last, today, week, ahead };
+  return { last, committed: committed ?? 0, today, week, ahead, talked: talked.today };
 }
 
 /** Somebody else's JSON, typed as what it is hoped to be and read as if it might not be. */

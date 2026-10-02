@@ -99,7 +99,7 @@ export async function main(): Promise<void> {
     projects: createProjectsController(projects),
     prompts: createPromptsController(),
     schedules: createSchedulesController(schedules),
-    sky: createSkyController(projects),
+    sky: createSkyController(projects, tasks),
     tasks: createTasksController(tasks),
     village: createVillageController({ state: () => projects.standing() }),
   });

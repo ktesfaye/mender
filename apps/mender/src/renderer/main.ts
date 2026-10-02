@@ -771,7 +771,12 @@ async function boot(): Promise<void> {
         const working = open.filter((task) => seen[task.id] === 'working').length;
         const days = (now - read.last) / 86_400_000;
         out.set(project.district, {
-          busy: open.length * 0.8 + working * 1.5 + read.today * 0.8 + read.week * 0.15,
+          busy:
+            open.length * 0.8 +
+            working * 1.5 +
+            read.today * 0.8 +
+            read.week * 0.15 +
+            read.talked * 1.2,
           age: Math.sqrt(Math.max(0, Math.min(1, (days - 3) / 25))),
         });
       }
@@ -790,7 +795,7 @@ async function boot(): Promise<void> {
             const district = drawn.districts.get(project.district);
             const building =
               (district && home && drawn.ground.buildingAt(district, home.slot ?? 0)) || null;
-            if (read.last > was.last) drawn.crowd.cart(project.district, building);
+            if (read.committed > was.committed) drawn.crowd.cart(project.district, building);
             if (was.ahead > 0 && read.ahead === 0) drawn.crowd.boat(project.district);
           }
           bustled = all;

@@ -1114,7 +1114,8 @@ still sea. Chimney and fire smoke, sparks, fireflies, gulls, butterflies,
 jumping fish, autumn leaves. Every open session is a villager walking its own
 patch by what it is doing, every helper it has out is a hooded one walking from
 its door, and nobody else is on the island. A district whose project has gone
-weeks without a commit dries out and grows moss and weeds, from git. Measured:
+weeks without a commit or a word from any of its sessions dries out and grows
+moss and weeds. Measured:
 in front of everything the island costs what it did before within noise; behind
 another window it adds a small slice.
 
