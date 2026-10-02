@@ -329,8 +329,8 @@ A slot on the rack carries the same warm or red wash a lit house gets, the
 moment somebody in that project is asking or hurt, easing in and out the same
 way — the rack is visible even standing deep in another project's yard, so it
 is the one place that answers "does anywhere else want me" without leaving
-where you are. Folded shut, that same light plays across the "projects"
-handle itself. And a chord reaches whoever it is without walking there first:
+where you are. Folded shut, that same light plays along the beam itself,
+which carries no word: the beam is the handle and says nothing. And a chord reaches whoever it is without walking there first:
 held with command, `U` stands you in the yard of whichever session wants you
 most, island-wide, asking or hurt outranking merely working and the oldest
 first; pressed again it goes to the next. A clicked notification lands on

@@ -860,6 +860,10 @@ a pixel. Driven: out on the island and folded inside a yard, hovering burned
 the name into the beam, the asking glow followed the board's own outline, and
 a board dragged along the beam landed where it was let go.
 
+**The beam carries no word.** "projects" is gone off the log; folded, the beam
+itself takes the warm or red light when anywhere wants him. Driven: open and
+folded on the island, and the beam lit warm while folded.
+
 **The rack folds like something hung, and names what you point at.** A press
 anywhere on the beam folds it, a drag on the beam still carries the window;
 the boards go up behind the beam in turn and come back down in turn, where

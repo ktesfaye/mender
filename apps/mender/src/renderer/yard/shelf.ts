@@ -250,19 +250,20 @@ export function makeShelf(
   end.style.left = '0px';
   end.style.top = '0px';
   end.style.zIndex = '2';
+  end.style.transition = `filter 520ms ${EASE}`;
   root.appendChild(end);
 
-  /* The word burned into the beam. The whole beam is the handle, the word
-     with it: a press anywhere along the wood the boards hang from folds the
-     rack away, unless that press carried the window somewhere instead. */
-  const label = document.createElement('div');
-  label.style.cssText = LABEL;
-  label.dataset.shelf = 'fold';
-  root.appendChild(label);
+  /* No word on it: the whole beam is the handle, and a press anywhere along
+     the wood the boards hang from folds the rack away, unless that press
+     carried the window somewhere instead. A short length of bare beam stands
+     before the first board so there is always some of it to take hold of. */
+  const stub = document.createElement('div');
+  stub.style.cssText = `flex:none;width:${8 * X}px;height:${BEAM}px`;
+  root.appendChild(stub);
   root.addEventListener('click', (event) => {
     if (gripCarried()) return;
     const on = event.target instanceof Element ? event.target : null;
-    if (on?.closest('[data-project],[data-shelf]:not([data-shelf=fold])')) return;
+    if (on?.closest('[data-project],[data-shelf]')) return;
     fold(!away);
   });
 
@@ -381,7 +382,6 @@ export function makeShelf(
   const held = new Map<string, OnShelf>();
   let away = false;
   let last: OnShelf[] = [];
-  let labelGen = 0;
 
   /* A board folds away by being drawn up on its chains behind the beam, and
      only then does the gap it hung in close, its neighbours sliding up to
@@ -421,36 +421,14 @@ export function makeShelf(
         ? 'asking'
         : undefined;
 
-  const paintLabel = (text: string, want?: Want): void => {
-    label.textContent = text;
-    label.style.color = want === 'hurt' ? '#ff7a52' : want === 'asking' ? '#ffc46a' : INKED;
-    label.style.textShadow =
-      want === 'hurt'
-        ? '0 0 8px #ff7a52, 0 2px 0 #3a1d0c'
-        : want === 'asking'
-          ? '0 0 8px #ffc46a, 0 2px 0 #3a1d0c'
-          : BURNED;
-  };
-
-  /* Folded shut, every other project is only this label, so it carries the same
-     question the open boards would answer: does anywhere else want him.
-     Worst first, the same way a house's own light would read it. */
+  /* Folded shut, every other project is behind the beam, so the beam carries
+     the question the open boards would answer: does anywhere else want him.
+     It takes the same warm or red light a board would, worst first, the way
+     a house's own light would read it. */
   const settle = (): void => {
-    paintLabel(away ? `projects ${last.length}` : 'projects', away ? worstWant(last) : undefined);
-  };
-
-  /* Folding swaps the word between "projects" and its resting count, fading
-     the old out before the new comes in rather than jump-cutting, and a
-     crossed-out generation stops a quick fold and unfold from landing the
-     wrong one after its own fade has already moved on. */
-  const crossfade = (paint: () => void): void => {
-    const gen = ++labelGen;
-    label.style.opacity = '0';
-    window.setTimeout(() => {
-      if (gen !== labelGen) return;
-      paint();
-      label.style.opacity = '1';
-    }, 130);
+    const want = away ? worstWant(last) : undefined;
+    const glow = want ? GLOW[want] : GLOW.none;
+    for (const each of [beam, end]) each.style.filter = glow;
   };
 
   /* Puts each where it belongs along the strip, touching only the ones
@@ -471,7 +449,7 @@ export function makeShelf(
     lineUp([...boards, band, weather, wheel, fire]);
   };
 
-  function show(projects: OnShelf[], fading = false): void {
+  function show(projects: OnShelf[]): void {
     last = projects;
     for (const project of projects) held.set(project.id, project);
     /* Only while there is somewhere to come back out of. It folds to nothing
@@ -485,8 +463,7 @@ export function makeShelf(
     if (inside !== was) away = inside;
     if (away) hideTag(true);
 
-    if (fading) crossfade(settle);
-    else settle();
+    settle();
 
     const wanted = new Set(projects.map((project) => project.id));
     for (const [id, node] of nodes) {
@@ -646,7 +623,7 @@ export function makeShelf(
   function fold(shut = true): void {
     if (away === shut) return;
     away = shut;
-    show(last, true);
+    show(last);
   }
 
   return {
@@ -658,11 +635,6 @@ export function makeShelf(
     close: () => root.remove(),
   };
 }
-
-/* Burned into the log: the dark of a brand, with the lip of wood under it
-   catching the light. */
-const INKED = '#3a1d0c';
-const BURNED = '0 2px 0 rgba(255,232,186,.22)';
 
 const RACK = [
   'display:flex',
@@ -687,29 +659,7 @@ const BEAM_LOG = [
   'background-repeat:repeat-x',
   `background-size:${32 * X}px ${BEAM}px`,
   'image-rendering:pixelated',
-].join(';');
-
-const LABEL = [
-  "font-family:'Silkscreen',monospace",
-  'font-size:16px',
-  'line-height:1',
-  'text-transform:lowercase',
-  `color:${INKED}`,
-  `text-shadow:${BURNED}`,
-  'white-space:nowrap',
-  'position:relative',
-  'z-index:2',
-  'flex:none',
-  /* The whole stretch of beam the word is burned into is the handle, not
-     just the letters. Wide enough that most names fit without the beam
-     growing under the pointer. */
-  `height:${BEAM - X}px`,
-  'min-width:128px',
-  'display:flex',
-  'align-items:center',
-  `padding:${X}px ${PAD * 2}px 0 ${X * 2}px`,
-  'cursor:default',
-  `transition:opacity 130ms ease,color 520ms ${EASE},text-shadow 520ms`,
+  `transition:filter 520ms ${EASE}`,
 ].join(';');
 
 /* Its own strip so folding is a real collapse: the width eases to nothing
