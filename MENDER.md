@@ -477,6 +477,8 @@ with what you say, and backspacing over it puts it down again, the same as a
 word. Pointing at it holds the picture itself up over the line. It is never
 drawn on the board, because the board is writing, so what the board says is
 that you have it and afterwards that you handed it over.
+A long link pasted on the line stands there the same way, as `[expedia.com]`,
+and the whole address is still what gets said.
 
 Anything else dropped on it is written on the line as where it is: a picture is
 the only thing an agent can be shown, but any file has a path, and that is the

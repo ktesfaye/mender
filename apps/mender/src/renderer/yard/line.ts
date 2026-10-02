@@ -163,6 +163,10 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     const walk = (node: Node): void => {
       for (const child of node.childNodes) {
         if (child instanceof HTMLElement && child.dataset.carried !== undefined) continue;
+        if (child instanceof HTMLElement && child.dataset.link !== undefined) {
+          text += child.dataset.link;
+          continue;
+        }
         if (child instanceof Text) text += child.data;
         else if (child instanceof HTMLBRElement) text += '\n';
         else walk(child);
@@ -386,12 +390,17 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   function insert(text: string): void {
     const where = window.getSelection();
     if (!where || where.rangeCount === 0) {
-      said.textContent = (said.textContent ?? '') + text;
+      said.appendChild(linked(text));
     } else {
       const range = where.getRangeAt(0);
       range.deleteContents();
-      range.insertNode(document.createTextNode(text));
-      range.collapse(false);
+      const nodes = linked(text);
+      const last = nodes.lastChild;
+      range.insertNode(nodes);
+      if (last) range.setStartAfter(last);
+      range.collapse(true);
+      where.removeAllRanges();
+      where.addRange(range);
     }
     said.scrollTop = said.scrollHeight;
     showing();
@@ -423,7 +432,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     root,
     written: words,
     write: (text) => {
-      said.textContent = text;
+      said.replaceChildren(linked(text));
       stand();
     },
     asks: (what) => {
@@ -462,13 +471,32 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       /* Walked off the text itself, because a contenteditable is free to split
          what is written into as many nodes as it likes. */
       let left = index;
-      const walker = document.createTreeWalker(said, NodeFilter.SHOW_TEXT, {
-        acceptNode: (node) =>
-          node.parentElement?.closest('[data-carried]')
-            ? NodeFilter.FILTER_REJECT
-            : NodeFilter.FILTER_ACCEPT,
-      });
+      const walker = document.createTreeWalker(
+        said,
+        NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+        {
+          acceptNode: (node) => {
+            if (!(node instanceof HTMLElement)) {
+              return node.parentElement?.closest('[data-link]')
+                ? NodeFilter.FILTER_REJECT
+                : NodeFilter.FILTER_ACCEPT;
+            }
+            if (node.dataset.carried !== undefined) return NodeFilter.FILTER_REJECT;
+            return node.dataset.link !== undefined
+              ? NodeFilter.FILTER_ACCEPT
+              : NodeFilter.FILTER_SKIP;
+          },
+        }
+      );
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        /* A shortened link counts as the whole address it stands for, and
+           anything under it is pointed at by the shortening itself. */
+        if (node instanceof HTMLElement) {
+          const length = node.dataset.link?.length ?? 0;
+          if (left < length) return node.getBoundingClientRect();
+          left -= length;
+          continue;
+        }
         const length = node.textContent?.length ?? 0;
         if (left <= length) {
           const range = document.createRange();
@@ -496,6 +524,44 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       root.remove();
     },
   };
+}
+
+/** Long enough that writing it out in full drowns what is said round it. */
+const LONG_LINK = 40;
+
+/**
+ * Text as it goes onto the line, with every long address in it shortened.
+ *
+ * A pasted link is usually a tracking-laden mile of query string, and it
+ * buried the sentence it was pasted into. So it stands on the line as where
+ * it goes, `[expedia.com]`, the way a picture stands as `[picture 1]`, and
+ * the whole address is still what gets said. Backspace takes it off whole.
+ */
+function linked(text: string): DocumentFragment {
+  const out = document.createDocumentFragment();
+  let from = 0;
+  for (const found of text.matchAll(/https?:\/\/[^\s<>"'`]+/g)) {
+    const url = found[0].replace(/[.,;:!?)\]}'"]+$/, '');
+    const at = found.index;
+    let host: string;
+    try {
+      host = new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      continue;
+    }
+    if (url.length < LONG_LINK || !host) continue;
+    if (at > from) out.appendChild(document.createTextNode(text.slice(from, at)));
+    const chip = document.createElement('span');
+    chip.contentEditable = 'false';
+    chip.dataset.link = url;
+    chip.title = url;
+    chip.textContent = `[${host}]`;
+    chip.style.cssText = CHIP;
+    out.appendChild(chip);
+    from = at + url.length;
+  }
+  if (from < text.length) out.appendChild(document.createTextNode(text.slice(from)));
+  return out;
 }
 
 /** One carried picture as it stands among the words. */

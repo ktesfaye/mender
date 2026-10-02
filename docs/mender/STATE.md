@@ -290,6 +290,11 @@ so does its note on the gatepost, under what you said with it, including one
 handed over mid-turn and one read back out of a session reopened later; and
 pointing at that line holds the pictures up there too, the same as on the line,
 reopened or not.
+
+A long link pasted onto the line stands there as where it goes, `[expedia.com]`,
+the same way, so a mile of query string no longer buries the sentence it was
+pasted into. The whole address is still what gets said, pointing at it shows it,
+and backspace takes it off whole.
 Anything that is not a picture is refused out loud rather than silently, and
 dropping one on the island says so too, since nothing out there has hands.
 
