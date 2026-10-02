@@ -165,7 +165,19 @@
  * The sprites are stepped rather than eased, because a sprite flips between
  * frames and does not glide between them. Writing is not pixel art, and it
  * eases.
+ *
+ * And none of it moves while nobody is looking. One blinking cursor left
+ * running keeps the whole window being drawn at the screen's full rate, island
+ * and all, behind whatever he is really working in; `still` is put on the page
+ * the moment another window has his attention, and holds every one of these
+ * where it is until he comes back.
  */
+html.still *,
+html.still *::before,
+html.still *::after {
+  animation-play-state: paused !important;
+}
+
 @keyframes yard-blink {
   0%,
   49% {

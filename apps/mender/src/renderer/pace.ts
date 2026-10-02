@@ -111,6 +111,9 @@ function everyMs(): number {
 export function watched(now: Watching): void {
   if (now === watch) return;
   watch = now;
+  /* The board's own CSS loops would otherwise keep the window drawing on
+     their own, frozen island or not. */
+  document.documentElement.classList.toggle('still', watch !== 'front');
   if (!ticker) return;
   /* Behind another window it freezes, the same as put away: nothing moves
      and nothing is drawn while he is looking at something else. */
