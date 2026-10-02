@@ -259,6 +259,14 @@ that writing, and pictures can be files on this machine too. Driven: "the top
 5 brunch spots near me and their top foods" came back with each place's dish
 beside its own entry.
 
+Left that loose, it was skipped: asked to rank New Orleans swamp tours, a
+session looked once for an img tag on a script-built site, found none and
+answered in plain text. Recommending or comparing real things is now a rule,
+every one named gets its picture, and the page's own share image is named as
+the first place to look, with Commons and Wikipedia after it, so one dry page
+is no longer the end of it. Driven: the same question came back with a real,
+loading photo beside each of five tours.
+
 A fenced ` ```mermaid ` block is now drawn — colored to the wood rather than
 left in whatever the diagram's own default is, via `beautiful-mermaid` (already
 in the lockfile, no DOM dependency of its own) — and panned and zoomed rather
