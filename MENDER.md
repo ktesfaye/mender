@@ -277,6 +277,17 @@ and the light in the whole yard follows it. A place nobody has touched for days
 is darker than one somebody is standing in, because age is carried by the light
 here and never by a date.
 
+**Out of usage is a wait you can see, and it ends on its own.** When a
+limit cuts a turn off, the session carries on by itself a little after the
+time Claude names, read off its own words in its own zone, without anybody
+asking. Until then the board draws the wait rather than saying it: the
+hearth banked low and red, a strip of cells from when it was hit to when it
+lifts with the one glowing cell where now is, and how long is left set large
+beside it. Its lantern burns low red in its glass, "limit · back" and the
+time, even the one you are standing in, its house glows red and slow, and
+its project's board on the rack carries a low red wash, so a session that
+stopped for a limit never reads as one that is simply idle.
+
 **A limit banks the fire; it does not put it out.** Claude knows the difference
 between hitting a usage limit, an overloaded service, a lost connection and a
 question it flatly refuses, and says so as what it is instead of an ordinary

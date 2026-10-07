@@ -67,7 +67,8 @@ export interface OnShelf {
   icon?: string;
   here: boolean;
   /** Whether somebody in this project is asking or hurt, worst first. */
-  wants?: 'asking' | 'hurt';
+  /** Asking or hurt, or only out of usage, which glows low rather than calling. */
+  wants?: 'asking' | 'hurt' | 'limited';
 }
 
 export interface Shelf {
@@ -79,13 +80,14 @@ export interface Shelf {
   close(): void;
 }
 
-type Want = 'asking' | 'hurt' | undefined;
+type Want = 'asking' | 'hurt' | 'limited' | undefined;
 
 /* The same two colours a lit house's window uses (`village/folk.ts`'s own
    `LIGHT` table): amber for somebody asking, red for somebody hurt. It is a
    glow round the board's own outline rather than round a box, so the board
    stays the shape it was drawn. */
-const GLOW: Record<'asking' | 'hurt' | 'none', string> = {
+const GLOW: Record<'asking' | 'hurt' | 'limited' | 'none', string> = {
+  limited: 'drop-shadow(0 0 2px #d0583e) drop-shadow(0 0 7px #d0583e88)',
   none: 'drop-shadow(0 0 0 rgba(0,0,0,0)) drop-shadow(0 0 0 rgba(0,0,0,0))',
   asking: 'drop-shadow(0 0 3px #ffc46a) drop-shadow(0 0 9px #ffc46acc)',
   hurt: 'drop-shadow(0 0 3px #ff7a52) drop-shadow(0 0 9px #ff7a52cc)',
@@ -420,7 +422,9 @@ export function makeShelf(
       ? 'hurt'
       : projects.some((project) => project.wants === 'asking')
         ? 'asking'
-        : undefined;
+        : projects.some((project) => project.wants === 'limited')
+          ? 'limited'
+          : undefined;
 
   /* Folded shut, every other project is behind the beam, so the beam carries
      the question the open boards would answer: does anywhere else want him.

@@ -1585,3 +1585,14 @@ body.gripping-row * {
   background: rgba(244, 227, 192, 0.1);
   border-color: var(--yard-ink-bright);
 }
+
+/** A banked fire: low, slow, and never quite out. */
+@keyframes yard-banked {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}

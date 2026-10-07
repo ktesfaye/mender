@@ -76,8 +76,8 @@ export type Look =
  * Per ring, and the rings stack, so what lands on the grass is a good deal
  * more than the number on the page. Working is lamplight breathing slowly;
  * wanting you is orange and the only quick thing on the island; something
- * finished you have not seen is a steady green; a limit is a faint red ember
- * and broken a strong red with a slow throb. `pace` is how slow the beat is.
+ * finished you have not seen is a steady green; a limit is a low red ember
+ * breathing slowly, banked rather than out, and broken a strong red with a slow throb. `pace` is how slow the beat is.
  */
 const LIGHT: Record<Look, { color: number; alpha: number; beat: number; pace: number }> = {
   empty: { color: 0xffdf9e, alpha: 0, beat: 0, pace: 420 },
@@ -86,7 +86,7 @@ const LIGHT: Record<Look, { color: number; alpha: number; beat: number; pace: nu
   working: { color: 0xffdf9e, alpha: 0.036, beat: 0.012, pace: 1100 },
   wants: { color: 0xff691e, alpha: 0.06, beat: 0.035, pace: 240 },
   done: { color: 0x84dc68, alpha: 0.034, beat: 0, pace: 420 },
-  waiting: { color: 0xff6e5a, alpha: 0.022, beat: 0, pace: 420 },
+  waiting: { color: 0xff6e5a, alpha: 0.036, beat: 0.016, pace: 1700 },
   broken: { color: 0xff5a46, alpha: 0.05, beat: 0.02, pace: 700 },
 };
 

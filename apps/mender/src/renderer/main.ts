@@ -1136,13 +1136,17 @@ async function boot(): Promise<void> {
      * working, resting, arriving — is not a reason to light the rack, which
      * only ever answers "does somebody want me," not "is anybody home."
      */
-    const wantsOf = (project: string): 'asking' | 'hurt' | undefined => {
-      let worst: 'asking' | 'hurt' | undefined;
+    const wantsOf = (project: string): 'asking' | 'hurt' | 'limited' | undefined => {
+      let worst: 'asking' | 'hurt' | 'limited' | undefined;
       for (const task of tasks) {
         if (task.project !== project) continue;
         const mood = seen[task.id];
         if (mood === 'hurt') return 'hurt';
         if (mood === 'asking') worst = 'asking';
+        /* Out of usage only glows low: nothing to do but wait, yet a project
+           whose work has stopped should not look like one at rest. */
+        else if (!worst && mood === 'resting' && glances[task.id]?.waiting?.kind === 'limit')
+          worst = 'limited';
       }
       return worst;
     };
@@ -5912,7 +5916,8 @@ async function boot(): Promise<void> {
        either is on it. */
     window.setInterval(() => {
       const counting = Object.values(seen).some((mood) => mood === 'working');
-      if (counting || unseen.size) people();
+      const waits = Object.values(glances).some((glance) => glance.waiting);
+      if (counting || waits || unseen.size) people();
     }, 60_000);
 
     /* And open on whatever you were looking at. Closing the app is not the

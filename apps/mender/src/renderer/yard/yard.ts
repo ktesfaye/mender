@@ -51,15 +51,15 @@ import {
   sweepingIn,
   swelling,
 } from './motion';
+import { waitOut } from './limit';
 import { packed } from './pack';
-import { pressing, twice } from './press';
+import { pressing } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, greenLantern, sprite } from './sprite';
 import { astop, walking, type Walking } from './walk';
 import type {
   Asking as Ask,
-  FailureView,
   Fire,
   Hand,
   Live,
@@ -144,7 +144,7 @@ const HALO: Partial<Record<Posture, [string, number]>> = {
   working: ['255,168,60', 0.14],
   'wants-you': ['255,120,60', 0.28],
   done: ['168,196,105', 0.26],
-  waiting: ['242,102,90', 0.2],
+  waiting: ['242,102,90', 0.34],
 };
 
 /** What a thought that went wrong is headed with, and written in. */
@@ -1959,7 +1959,7 @@ function thinking(
 
   const recap = yard.session?.recap;
   if (recap && !live && !failure && !asking) col.appendChild(recapped(recap));
-  if (failure) col.appendChild(failureEmber(failure, does));
+  if (failure) col.appendChild(waitOut(failure, does));
   if (live) col.appendChild(ember(live, since));
 
   function laidOlder(): void {
@@ -2206,81 +2206,6 @@ const REVEAL_CHUNK = 80;
 
 /** The same, for the "what it did" column's own steps. */
 const revealedSteps = new Map<string, number>();
-
-/**
- * The fire banked — a limit, an overload, a lost connection — with what there
- * is to do about it.
- *
- * Not the same shape as `ember`: nothing is burning, so there is no hearth and
- * nothing animates. What is here instead is what a wait like this actually
- * needs: try again now, let it try itself once the wait is over, or leave the
- * conversation behind and start clean. All three are ordinary gold lines —
- * "carry on when it lifts" is the one that changes what it says once pressed,
- * from an offer to what is now scheduled, and pressing it again is how you
- * take that back.
- */
-function failureEmber(failure: FailureView, does: Doings): HTMLElement {
-  const it = keyed(document.createElement('div'), 'failure');
-  it.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:6px 0 4px';
-
-  const said = document.createElement('div');
-  said.style.cssText = [
-    "font-family:'Josefin Sans',sans-serif",
-    'font-size:13px',
-    'letter-spacing:.1em',
-    'text-transform:uppercase',
-    'color:var(--yard-warn)',
-  ].join(';');
-  said.textContent = failure.doing;
-  it.appendChild(said);
-
-  const actions = document.createElement('div');
-  actions.style.cssText =
-    "display:flex;gap:18px;font-family:'Josefin Sans',sans-serif;font-size:14px";
-
-  if (failure.canRetry) {
-    actions.appendChild(
-      astop(
-        pressing('try again', () => does.press('failure:retry')),
-        'failure:retry'
-      )
-    );
-  }
-  if (failure.canCarryOn) {
-    const armed = failure.carryOnAt !== undefined;
-    const said2 = armed
-      ? `continuing automatically at ${clockOf(failure.carryOnAt!)} · esc to cancel`
-      : 'carry on when it lifts';
-    actions.appendChild(
-      astop(
-        pressing(said2, () => does.press(armed ? 'failure:cancel' : 'failure:carryon')),
-        'failure:carryon'
-      )
-    );
-  }
-  actions.appendChild(
-    astop(
-      twice('start over', 'this conversation is gone for good', {
-        while: 'starting over',
-        run: async () => {
-          does.press('failure:new');
-          return { said: 'started over.' };
-        },
-      }),
-      'failure:new'
-    )
-  );
-  it.appendChild(actions);
-  return it;
-}
-
-/** A clock time in this machine's own zone, the way the village says one. */
-function clockOf(at: number): string {
-  return new Date(at)
-    .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-    .toLowerCase()
-    .replace(/\s+/g, '');
-}
 
 /**
  * The live edge: a small fire with sparks going up off it, what it is doing,
@@ -3712,6 +3637,8 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
         glow.style.animation = 'yard-breathe 2.4s steps(6,end) infinite alternate';
       } else if (one.posture === 'wants-you') {
         glow.style.animation = 'yard-wants 480ms steps(2,end) infinite alternate';
+      } else if (one.posture === 'waiting') {
+        glow.style.animation = 'yard-banked 3.2s ease-in-out infinite';
       }
       beam.appendChild(glow);
     }
@@ -3720,7 +3647,10 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     const lamp = keyed(
       one.lit && one.posture === 'done'
         ? greenLantern(2)
-        : sprite(one.lit ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff, 2),
+        : sprite(
+            one.lit || one.posture === 'waiting' ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff,
+            2
+          ),
       `lantern:${one.id}`
     );
     lamp.style.cssText += `;left:${x}px;top:${top}px`;
@@ -3728,11 +3658,22 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       onTheBeam.add(one.id);
       lamp.style.animation = 'yard-hang 240ms steps(3,end)';
     }
-    const dimmed = one.here ? '' : one.posture === 'done' ? 'brightness(.9)' : 'brightness(.75)';
+    /* Out of usage burns low and red in its glass, banked rather than out:
+       somebody is still in there, only waiting for the limit to lift. */
+    const dimmed =
+      one.posture === 'waiting'
+        ? 'sepia(.5) hue-rotate(-28deg) saturate(1.8) brightness(.72)'
+        : one.here
+          ? ''
+          : one.posture === 'done'
+            ? 'brightness(.9)'
+            : 'brightness(.75)';
     lamp.style.filter = dimmed;
     if (cutting) lamp.style.opacity = '.45';
     if (one.posture === 'wants-you') {
       lamp.style.animation = 'yard-wants 480ms steps(2,end) infinite alternate';
+    } else if (one.posture === 'waiting') {
+      lamp.style.animation = 'yard-banked 3.2s ease-in-out infinite';
     }
     beam.appendChild(lamp);
 

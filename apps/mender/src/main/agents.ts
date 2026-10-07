@@ -55,6 +55,7 @@ import {
   type HelperTrail,
 } from './helper-trail';
 import { kept, madeIn, stillThere } from './made';
+import { resetFrom } from './limit-clock';
 
 /**
  * Why an install left them not here, in its own words.
@@ -263,6 +264,7 @@ const RECAPS_KEY = 'recaps';
 const AWAY_KEY = 'helpersAway';
 const CUT_OFF_KEY = 'cutOff';
 const CARRY_ON_KEY = 'carryOn';
+const LIMITS_HIT_KEY = 'limitsHit';
 
 export function createAgents(
   runtimes: MenderRuntimes,
@@ -287,6 +289,10 @@ export function createAgents(
   /** Continues armed to send themselves once a limit lifts, so a restart
       does not quietly disarm them. */
   let carryOns: Record<string, { at: number }> = {};
+  /** When each failure was first seen, by its id, so a limit read back after
+      a restart still knows which morning it was hit on. */
+  let limitsHit: Record<string, number> = {};
+  let hitLoaded = false;
   const loaded = (async () => {
     const held = await store.get(KEY);
     if (held.success && held.data && typeof held.data === 'object') {
@@ -318,6 +324,11 @@ export function createAgents(
     if (heldCarry.success && heldCarry.data && typeof heldCarry.data === 'object') {
       carryOns = heldCarry.data as unknown as Record<string, { at: number }>;
     }
+    const heldHit = await store.get(LIMITS_HIT_KEY);
+    if (heldHit.success && heldHit.data && typeof heldHit.data === 'object') {
+      limitsHit = heldHit.data as unknown as Record<string, number>;
+    }
+    hitLoaded = true;
   })();
 
   const houses = new Map<string, House>();
@@ -538,7 +549,33 @@ export function createAgents(
             ? sessionFor(task, conversation)
             : null;
         },
-        () => recaps[task]
+        () => recaps[task],
+        (failure, live) => {
+          const known = limitsHit[failure.id];
+          if (known !== undefined) return known;
+          const now = Date.now();
+          /* Only once the store is read: before that, a limit already on
+             record would look new and be armed a second time. */
+          if (!hitLoaded) return now;
+          limitsHit = Object.fromEntries(
+            [...Object.entries(limitsHit), [failure.id, now] as const].slice(-60)
+          );
+          void store.set(LIMITS_HIT_KEY, limitsHit as unknown as never);
+          /* A limit that cut a turn off carries on by itself once it lifts,
+             the way Claude Code's own "continuing automatically at 11:20"
+             does, without anybody having to ask for it. */
+          if (live && failure.category === 'limit' && failure.severity === 'error') {
+            const lifts = failure.resetAt ?? resetFrom(liftText(failure), now);
+            if (lifts !== undefined) {
+              setTimeout(() => {
+                /* A little past the minute it named, which is all Claude says. */
+                if (!carryOnTimers.has(task))
+                  armCarryOn(task, Math.max(lifts + 30_000, Date.now() + 60_000));
+              }, 0);
+            }
+          }
+          return now;
+        }
       );
       houses.set(task, house);
       void loaded.then(async () => {
@@ -1487,7 +1524,10 @@ class House {
     /** Claude's own id for this conversation, when it is a Claude one. */
     private readonly claude: () => string | null = () => null,
     /** The last recap written for it, and the answer it was written under. */
-    private readonly recapped: () => { said: string; after: string } | undefined = () => undefined
+    private readonly recapped: () => { said: string; after: string } | undefined = () => undefined,
+    /** When a failure was first seen, which the first sighting of a live one
+     *  also arms a carry-on from. */
+    private readonly banked: (failure: SessionFailure, live: boolean) => number = () => Date.now()
   ) {
     this.state = cell<WorkingState>(EMPTY, { name: `agent:${task}` });
   }
@@ -1719,7 +1759,17 @@ class House {
   }
 
   currentResetAt(): number | undefined {
-    return this.lifecycle?.failure?.resetAt;
+    return this.failureNow()?.resetAt;
+  }
+
+  /** The failure standing, with when it was hit, and when it lifts where
+   *  Claude only said so in its headline. */
+  private failureNow(): (SessionFailure & { since: number }) | null {
+    const failure = this.lifecycle?.failure;
+    if (!failure) return null;
+    const since = this.banked(failure, this.lifecycle?.lifecycle !== 'replaying');
+    const resetAt = failure.resetAt ?? resetFrom(liftText(failure), since);
+    return { ...failure, since, ...(resetAt !== undefined ? { resetAt } : {}) };
   }
 
   /** Called off, and waiting for the turn to say it has stopped. */
@@ -1811,11 +1861,12 @@ class House {
         }
       }
     }
-    const failure = this.lifecycle?.failure;
+    const failure = this.failureNow();
     if (failure && state.mood === 'resting' && bankable(failure.category)) {
       glance.waiting = {
         kind: failure.category as 'limit' | 'service' | 'connection',
         ...(failure.resetAt !== undefined ? { resetAt: failure.resetAt } : {}),
+        ...(this.carryOnAt !== null ? { carryOn: this.carryOnAt } : {}),
       };
     }
     if (failure && state.mood === 'hurt' && failure.category === 'access') glance.signIn = true;
@@ -2045,7 +2096,7 @@ class House {
         this.where(),
         this.marked
       );
-    const failure = this.lifecycle?.failure ?? null;
+    const failure = this.failureNow();
     const mood = moodOf(this.lifecycle, asking, this.trouble, failure);
     const told = helpersIn(
       this.sized(
@@ -2059,7 +2110,7 @@ class House {
       doing:
         this.trouble ??
         (failure
-          ? failureDoing(failure)
+          ? failureDoing(failure, this.carryOnAt)
           : packing
             ? 'packing the conversation down.'
             : doingOf(mood, this.live)),
@@ -2155,9 +2206,20 @@ function bankable(category: SessionFailure['category']): boolean {
   return category === 'limit' || category === 'service' || category === 'connection';
 }
 
+/** Everything Claude said about a failure, where a reset time might be. */
+function liftText(failure: SessionFailure): string {
+  return `${failure.title} ${failure.details ?? ''}`;
+}
+
 /** The doing-line for a typed session failure, said the way the fire itself
  *  would say it — what kind of wait it is, and when it lifts, in local time. */
-function failureDoing(failure: SessionFailure): string {
+function failureDoing(failure: SessionFailure, carryOn?: number | null): string {
+  if (failure.category === 'limit' && failure.severity !== 'warning') {
+    if (carryOn) return `out of usage, carrying on by itself at ${localClock(carryOn)}.`;
+    if (failure.resetAt && failure.resetAt <= Date.now()) return 'the limit has lifted.';
+    if (failure.resetAt) return `out of usage until ${localClock(failure.resetAt)}.`;
+    return 'out of usage.';
+  }
   const resets = failure.resetAt ? ` · resets ${localClock(failure.resetAt)}` : '';
   if (failure.severity === 'warning' && failure.category === 'connection')
     return 'the line to the agent dropped, and it is trying again.';
@@ -2187,9 +2249,11 @@ function failureDoing(failure: SessionFailure): string {
  * "carry on when it lifts" (when a reset time is known) and starting over —
  * never an immediate retry.
  */
-function failureViewOf(failure: SessionFailure, bankable: boolean): Failure {
+function failureViewOf(failure: SessionFailure & { since?: number }, bankable: boolean): Failure {
   return {
     bankable,
+    ...(failure.since !== undefined ? { since: failure.since } : {}),
+    ...(bankable ? { kind: failure.category as 'limit' | 'service' | 'connection' } : {}),
     doing: failureDoing(failure),
     canRetry: bankable && (failure.category === 'service' || failure.category === 'connection'),
     ...(failure.resetAt !== undefined ? { resetAt: failure.resetAt } : {}),

@@ -274,6 +274,9 @@ function sessionOf(
             canRetry: from.failure.canRetry,
             canCarryOn: from.failure.resetAt !== undefined,
             ...(from.carryOn ? { carryOnAt: from.carryOn } : {}),
+            ...(from.failure.kind ? { kind: from.failure.kind } : {}),
+            ...(from.failure.since !== undefined ? { since: from.failure.since } : {}),
+            ...(from.failure.resetAt !== undefined ? { resetAt: from.failure.resetAt } : {}),
           },
         }
       : {}),
@@ -669,7 +672,8 @@ function lanternOf(
     };
   }
   const { posture, saying, lit } = stateOf(task, mood, at.glance, at.finished);
-  const said = at.here ? 'you are here' : saying;
+  /* Out of usage outranks saying where you are: it is why nothing is moving. */
+  const said = at.here && posture !== 'waiting' ? 'you are here' : saying;
   /* Something in this checkout is answering on a port right now. Said in the
      same words the rest of the lantern speaks in, not a mark beside it. */
   return {
@@ -713,13 +717,18 @@ function stateOf(
       };
     case 'resting': {
       if (glance?.waiting) {
-        const { kind, resetAt } = glance.waiting;
-        const what =
-          kind === 'limit'
-            ? 'usage limit'
-            : kind === 'service'
-              ? 'trouble at the other end'
-              : 'lost the connection';
+        const { kind, resetAt, carryOn } = glance.waiting;
+        if (kind === 'limit') {
+          const saying = carryOn
+            ? `limit · back ${clockOf(carryOn)}`
+            : resetAt && resetAt <= now
+              ? 'limit lifted · carry on?'
+              : resetAt
+                ? `limit · lifts ${clockOf(resetAt)}`
+                : 'out of usage';
+          return { posture: 'waiting', saying, lit: false };
+        }
+        const what = kind === 'service' ? 'trouble at the other end' : 'lost the connection';
         const back = resetAt && resetAt > now ? ` · back at ${clockOf(resetAt)}` : '';
         return { posture: 'waiting', saying: what + back, lit: false };
       }

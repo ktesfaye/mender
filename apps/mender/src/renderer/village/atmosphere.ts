@@ -72,7 +72,7 @@ const WINDOW: Record<Look, { color: number; strength: number } | null> = {
   working: { color: 0xffc070, strength: 1 },
   wants: { color: 0xff7a2a, strength: 1 },
   done: { color: 0x9be37a, strength: 0.85 },
-  waiting: { color: 0xff6e5a, strength: 0.45 },
+  waiting: { color: 0xff6e5a, strength: 0.75 },
   broken: { color: 0xff4a3a, strength: 0.9 },
 };
 

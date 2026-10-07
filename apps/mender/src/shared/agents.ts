@@ -172,6 +172,10 @@ export const failureSchema = z.object({
   canRetry: z.boolean(),
   /** Set only when a reset time is known, so a wait can be scheduled. */
   resetAt: z.number().optional(),
+  /** When it was hit, so the wait can be drawn as how much of it is behind. */
+  since: z.number().optional(),
+  /** Which kind of wait, so the board can draw it rather than say it. */
+  kind: z.enum(['limit', 'service', 'connection']).optional(),
 });
 export type Failure = z.infer<typeof failureSchema>;
 
@@ -192,6 +196,8 @@ export const glanceSchema = z.object({
     .object({
       kind: z.enum(['limit', 'service', 'connection']),
       resetAt: z.number().optional(),
+      /** When it will carry on by itself, if that is armed. */
+      carryOn: z.number().optional(),
     })
     .optional(),
   /** It cannot go on until somebody signs it in. */

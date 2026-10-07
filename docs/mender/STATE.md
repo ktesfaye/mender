@@ -3442,3 +3442,22 @@ what is ticked. Answers carry a ring or a box; the actions sit on their own
 line under a rule with the keys spelled out. Driven in a dev instance with
 keys only: a single pick by arrow and return, a multi-pick ticked by return
 and sent with tab, the check sent with return, Claude reading back the picks.
+
+### Out of usage is drawn, and carries on by itself (2026-10-07) — done
+
+A limit used to be one line of capitals and "start over": Claude's typed
+report carries its reset time only in its headline ("resets 11:20am
+(America/Los_Angeles)"), which nothing read, so "carry on when it lifts" was
+never offered and the lantern read like any idle one. Now the headline is
+read in the zone it names, counted from when the limit was hit (kept across
+a restart), and a limit that cuts a live turn off arms its own carry-on,
+a little past the minute Claude named. The board draws it: a banked red
+hearth, a strip from hit to lift with the front glowing where now is, how
+long is left set large, and "don't carry on by itself" / "start over" (or
+"carry on now" once it has lifted). The lantern burns low red in its glass
+and says "limit · back 12:14pm", even the one you stand in; the house glows
+red-amber and slowly; the project's board on the rack carries a low red wash.
+Driven in a dev instance against a local fake API answering as a real
+subscription limit (Claude printed the exact real line): the board, rail,
+house and auto carry-on all seen, and the turn went again unprompted once
+the reset passed. Not driven: a weekly (dated) limit, read only by test.

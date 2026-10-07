@@ -193,6 +193,11 @@ export interface FailureView {
   /** Set while a continue is scheduled — the target to count down to, and
    *  pressing the line again (or Escape) cancels it. */
   carryOnAt?: number;
+  /** Which kind of wait, so it is drawn rather than said. */
+  kind?: 'limit' | 'service' | 'connection';
+  /** When it was hit, and when it lifts, where those are known. */
+  since?: number;
+  resetAt?: number;
 }
 
 /** The live edge of a session that is working. */
