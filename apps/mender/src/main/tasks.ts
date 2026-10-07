@@ -233,7 +233,11 @@ export interface Tasks {
    *  down or swept alike, so nothing goes on answering for a place that no
    *  longer exists. Set after construction, same reason as `Projects.sweeps`:
    *  the two need each other and one has to be told second. */
-  onGone(hook: (task: string) => void): void;
+  onGone(hook: (task: string, forget: boolean) => void): void;
+  /** Lets go of what was worked out about a Claude session now forgotten. */
+  forgetPast(id: string): Promise<void>;
+  /** Whether what was said in this session goes with it when it ends. */
+  forgets(task: string): Promise<boolean>;
   dispose(): Promise<void>;
 }
 
@@ -275,7 +279,7 @@ export function createTasks(
      agent itself is not woken back up by a restart either. */
   const lastTakenDown = new Map<string, Task>();
   /** Told once a session's building is gone, so its lodger can be let go too. */
-  let gone: ((task: string) => void) | undefined;
+  let gone: ((task: string, forget: boolean) => void) | undefined;
 
   const raw = async (): Promise<Task[]> => {
     const loaded = await store.get(KEY);
@@ -453,11 +457,16 @@ export function createTasks(
   });
 
   /** Lets go of everything held for a session that has just come down. */
-  const letGo = (id: string): void => {
+  const letGo = (id: string, forget = false): void => {
     indexed.get(id)?.dispose();
     indexed.delete(id);
-    gone?.(id);
+    gone?.(id, forget);
   };
+
+  /** Whether what was said in this project's sessions goes with them when
+      they come down. It does, unless the project says to keep it. */
+  const forgets = async (project: string): Promise<boolean> =>
+    !(await projects.list()).find((each) => each.id === project)?.keepsTranscripts;
 
   const save = async (tasks: Task[]): Promise<Task[]> => {
     await store.set(KEY, tasks as unknown as never);
@@ -598,15 +607,18 @@ export function createTasks(
       }
       const tasks = await all();
       const going = tasks.filter((task) => task.workspace === id);
+      const forget = await forgets(workspace.project);
       for (const task of going) {
-        await remember({
-          id: task.id,
-          project: task.project,
-          title: task.title,
-          branch: task.branch,
-          endedAt: new Date().toISOString(),
-        });
-        letGo(task.id);
+        if (!forget) {
+          await remember({
+            id: task.id,
+            project: task.project,
+            title: task.title,
+            branch: task.branch,
+            endedAt: new Date().toISOString(),
+          });
+        }
+        letGo(task.id, forget);
       }
       await save(tasks.filter((task) => task.workspace !== id));
       await saveWorkspaces((await rawWorkspaces()).filter((each) => each.id !== id));
@@ -848,9 +860,12 @@ export function createTasks(
         // The empty hook remembers this one, in case letting go of it was a
         // slip on the second press.
         lastTakenDown.set(going.project, going);
-        // And the ledger remembers it too, past the end of this sitting —
-        // its conversation is untouched by any of this, so there is still
-        // something to read back once it is off the hook.
+      }
+      // What was said goes with it, unless the project keeps it, and then
+      // the ledger remembers it past the end of this sitting, since there is
+      // still something to read back once it is off the hook.
+      const forget = going ? await forgets(going.project) : false;
+      if (going && !forget) {
         await remember({
           id: going.id,
           project: going.project,
@@ -859,7 +874,7 @@ export function createTasks(
           endedAt: new Date().toISOString(),
         });
       }
-      letGo(id);
+      letGo(id, forget);
       return await save(tasks.filter((task) => task.id !== id));
     },
 
@@ -961,6 +976,7 @@ export function createTasks(
     async sweep(project) {
       const tasks = await all();
       const going = tasks.filter((task) => task.project === project);
+      const forget = await forgets(project);
       for (const task of going) {
         if (!task.shared && !task.workspace) {
           await runtimes.workspaces.deleteWorktree(
@@ -968,7 +984,7 @@ export function createTasks(
             { timeoutMs: 0 }
           );
         }
-        letGo(task.id);
+        letGo(task.id, forget);
       }
       if (going.length) await save(tasks.filter((task) => task.project !== project));
       const standing = await rawWorkspaces();
@@ -984,6 +1000,13 @@ export function createTasks(
 
     onGone(hook) {
       gone = hook;
+    },
+
+    forgetPast: (id) => past.forget(id),
+
+    async forgets(task) {
+      const found = (await all()).find((each) => each.id === task);
+      return found ? await forgets(found.project) : false;
     },
 
     async dispose() {

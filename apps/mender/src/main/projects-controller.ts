@@ -17,6 +17,7 @@ export function createProjectsController(projects: Projects): Controller {
     identity: ({ id, name, email }) => projects.identity(id, name, email),
     setEnv: ({ id, text }) => projects.setEnv(id, text),
     setExcludes: ({ id, text }) => projects.setExcludes(id, text),
+    setKeepsTranscripts: ({ id, keeps }) => projects.setKeepsTranscripts(id, keeps),
     scripts: ({ id }) => projects.scripts(id),
     script: ({ id, which, value }) => projects.script(id, which, value),
     relink: ({ id }) => projects.relink(id),

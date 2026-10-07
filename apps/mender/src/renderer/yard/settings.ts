@@ -75,6 +75,8 @@ export interface SettingsDoings {
   /** What search and file watching leave out here, one glob a line, on top
       of the default policy. Blank clears it. */
   excludes(text: string): Promise<void>;
+  /** Whether what was said in a session here outlives it. */
+  keepTranscripts(keeps: boolean): Promise<void>;
   /** Blank clears that script, back to nothing running for it. */
   script(which: ScriptKind, value: string): Promise<void>;
   /** A session cut on its own, without you pressing the hook. */
@@ -206,17 +208,28 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   }
 
   function drawHistory(): void {
+    const keeps = now.project.keepsTranscripts === true;
+    const toggle = button(
+      keeps
+        ? 'What was said is kept, and read back here.'
+        : 'What was said goes with a session when it ends.',
+      'settings-link',
+      () => void does.keepTranscripts(!keeps)
+    );
+    const fill = (children: HTMLElement[]): void => history.fill([toggle, ...children]);
     const entries = now.history;
     if (!entries) {
       const hint = el('p', 'settings-hint');
       hint.textContent = 'Reading what has ended here…';
-      history.fill([hint]);
+      fill([hint]);
       return;
     }
     if (!entries.length) {
       const hint = el('p', 'settings-hint');
-      hint.textContent = 'Nothing has ended here yet.';
-      history.fill([hint]);
+      hint.textContent = keeps
+        ? 'Nothing has ended here yet.'
+        : 'Its transcript, its helpers, the pictures handed to it and the copies of files it kept for undoing are all taken off this machine.';
+      fill([hint]);
       return;
     }
     const list = el('div', 'settings-list');
@@ -228,7 +241,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       );
       list.appendChild(row);
     }
-    history.fill([list]);
+    fill([list]);
   }
 
   async function openPast(entry: HistoryEntry): Promise<void> {

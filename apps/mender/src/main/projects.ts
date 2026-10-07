@@ -58,6 +58,8 @@ export interface Project {
   /** What search and file watching leave out here, beyond the default
       policy — one glob a line. */
   readonly excludes?: string;
+  /** Whether what was said in a session is kept once it comes down. */
+  readonly keepsTranscripts?: boolean;
 }
 
 /** Where a project's picture is to come from. */
@@ -141,6 +143,7 @@ export interface Projects {
   /** What search and file watching leave out here, beyond the default
       policy — one glob a line. Blank clears it. */
   setExcludes(id: string, text: string): Promise<Project[]>;
+  setKeepsTranscripts(id: string, keeps: boolean): Promise<Project[]>;
   /** What runs when a worktree is cut: prepare, setup, run, teardown. */
   scripts(id: string): Promise<Scripts>;
   /** Blank clears that script, back to nothing running for it. */
@@ -536,6 +539,17 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
           if (project.id !== id) return project;
           const { excludes: _x, ...bare } = project;
           return written ? { ...bare, excludes: written } : bare;
+        })
+      );
+    },
+
+    async setKeepsTranscripts(id, keeps) {
+      const projects = await stored();
+      return save(
+        projects.map((project) => {
+          if (project.id !== id) return project;
+          const { keepsTranscripts: _k, ...bare } = project;
+          return keeps ? { ...bare, keepsTranscripts: true } : bare;
         })
       );
     },

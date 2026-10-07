@@ -1,5 +1,5 @@
 import { createReadStream } from 'node:fs';
-import { cp, open, readdir, stat } from 'node:fs/promises';
+import { cp, open, readdir, rm, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -285,6 +285,43 @@ export async function adoptClaudeSession(
   const to = join(projectsDir(), claudeProjectDirName(projectPath));
   await cp(join(from, `${id}.jsonl`), join(to, `${id}.jsonl`), { force: false });
   await cp(join(from, id), join(to, id), { recursive: true, force: false }).catch(() => undefined);
+}
+
+/**
+ * Takes every trace of one session off this machine: its transcript in
+ * whichever folder it was had, the helpers' transcripts and tool output
+ * beside it, the copies of files it edited kept for rewinding, and its
+ * shell environment. Looked for in every folder rather than worked out from
+ * the checkout, so a session resumed from somewhere else goes too.
+ */
+export async function forgetClaudeSession(id: string): Promise<void> {
+  if (!/^[0-9a-f-]{8,}$/i.test(id)) return;
+  await wipeClaudeSession(id);
+  /* The CLI writes a last few lines as it exits, the last thing said among
+     them, and that can land just after the transcript has gone, so it is
+     looked for again once it has surely finished. */
+  for (const after of AFTERWARDS_MS) {
+    await new Promise((settle) => setTimeout(settle, after));
+    await wipeClaudeSession(id);
+  }
+}
+
+const AFTERWARDS_MS = [2_000, 10_000];
+
+async function wipeClaudeSession(id: string): Promise<void> {
+  const home = join(homedir(), '.claude');
+  const folders = await readdir(projectsDir(), { withFileTypes: true }).catch(() => []);
+  const gone = (path: string) => rm(path, { recursive: true, force: true }).catch(() => undefined);
+  await Promise.all([
+    ...folders
+      .filter((folder) => folder.isDirectory())
+      .flatMap((folder) => [
+        gone(join(projectsDir(), folder.name, `${id}.jsonl`)),
+        gone(join(projectsDir(), folder.name, id)),
+      ]),
+    gone(join(home, 'file-history', id)),
+    gone(join(home, 'session-env', id)),
+  ]);
 }
 
 /** Everything in one past session that says what it came to: every typed

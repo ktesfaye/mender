@@ -2208,6 +2208,10 @@ async function boot(): Promise<void> {
           await client.projects.setExcludes({ id: project.id, text }, { timeoutMs: 0 });
           await refreshed();
         },
+        keepTranscripts: async (keeps) => {
+          await client.projects.setKeepsTranscripts({ id: project.id, keeps }, { timeoutMs: 0 });
+          await refreshed();
+        },
         script: async (which, value) => {
           state.scripts = await client.projects.script(
             { id: project.id, which, value },

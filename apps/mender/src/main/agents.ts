@@ -54,6 +54,7 @@ import {
   tokensOf,
   type HelperTrail,
 } from './helper-trail';
+import { forgetClaudeSession } from './claude-cli-history';
 import { kept, madeIn, stillThere } from './made';
 import { resetFrom } from './limit-clock';
 
@@ -209,8 +210,9 @@ export interface Agents {
   stopWaiting(task: string): Promise<Told>;
   /** Leave this conversation behind and start a fresh one in its place. */
   startOver(task: string): Promise<Told>;
-  /** Whoever is in there moves out with the building. */
-  evict(task: string): Promise<void>;
+  /** Whoever is in there moves out with the building, and when `forget`,
+      everything that was said in there goes with them. */
+  evict(task: string, forget?: boolean): Promise<void>;
   /** Sends them home for the night: the process stops, everything else stays. */
   rest(task: string): Promise<Told>;
   /** What was half-written on this session's line, so it survives a restart. */
@@ -383,7 +385,12 @@ export function createAgents(
   };
   /* Changing who works in a building empties it: a different agent is a
      different villager, not the same one with a new hat. */
-  const kits = createKits(runtimes, tasks, (task) => evict(task), settings);
+  const kits = createKits(
+    runtimes,
+    tasks,
+    async (task) => evict(task, await tasks.forgets(task)),
+    settings
+  );
 
   /* The host's conversation index, held open for the life of the app. It is
      where the provider's own session id lands when a session starts, which is
@@ -723,18 +730,44 @@ export function createAgents(
     return done.success ? ok() : refused(whatItSaid(done.error));
   };
 
-  const evict = async (task: string): Promise<void> => {
+  const evict = async (task: string, forget = false): Promise<void> => {
     await loaded;
     const conversation = lodgers[task];
+    const session = conversation ? sessionFor(task, conversation) : null;
     await putToBed(task);
     island.set(moodsOf(houses));
     reglance();
+    if (forget) {
+      asleep.delete(task);
+      resuming.delete(task);
+      const { [task]: _draft, ...draftsLeft } = drafts;
+      const { [task]: _made, ...madeLeft } = madeBy;
+      const { [task]: _recap, ...recapsLeft } = recaps;
+      drafts = draftsLeft;
+      madeBy = madeLeft;
+      recaps = recapsLeft;
+      await store.set(DRAFTS_KEY, drafts as unknown as never);
+      await store.set(MADE_KEY, madeBy as unknown as never);
+      await store.set(RECAPS_KEY, recaps as unknown as never);
+    }
     if (!conversation) return;
-    await runtimes.acp.terminate({ conversationId: conversation });
+    /* Purging rather than only stopping it also takes the pictures dropped
+       on it, which nothing could ever show again once it is gone. */
+    await runtimes.acp.purgeConversationData({ conversationId: conversation });
     await runtimes.conversations.delete({ conversationId: conversation });
     const { [task]: _gone, ...remaining } = lodgers;
     lodgers = remaining;
     await store.set(KEY, lodgers as unknown as never);
+    /* Once the agent's own process has been told to stop. Not waited on:
+       it keeps looking for a while in case the CLI writes on its way out. */
+    if (forget && session) {
+      await tasks.forgetPast(session);
+      void forgetClaudeSession(session).then(
+        () => log.info('agents: forgot what was said', { area: 'agents', task }),
+        (error: unknown) =>
+          log.warn('agents: could not forget a transcript', { area: 'agents', task, error })
+      );
+    }
   };
 
   /**
@@ -1273,7 +1306,7 @@ export function createAgents(
      *  are untouched; only the conversation this building is lodging is. */
     async startOver(task) {
       stopWaiting(task);
-      await evict(task);
+      await evict(task, await tasks.forgets(task));
       return { success: true, data: undefined };
     },
 

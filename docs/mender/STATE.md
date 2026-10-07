@@ -3461,3 +3461,17 @@ Driven in a dev instance against a local fake API answering as a real
 subscription limit (Claude printed the exact real line): the board, rail,
 house and auto carry-on all seen, and the turn went again unprompted once
 the reset passed. Not driven: a weekly (dated) limit, read only by test.
+
+### What was said goes with a session (2026-10-07) — done
+
+Taking a session down used to leave every word of it on the machine: Claude's
+own transcript, its helpers' transcripts, the copies of files it kept for
+undoing, and on Mender's side its recap, what it made, its draft, and every
+picture ever dropped on it (those were never cleaned up at all). Now all of
+it goes, by default in every project, whichever way the session comes down;
+a project's settings can keep it instead, which brings back the readable
+ledger. Driven in a dev instance: a session spoken to, taken down from its
+card, its transcript gone and still gone after Claude's own exit writes,
+which on the first try had put the last prompt back. The keep switch
+flipped both ways in the settings window. Not driven: the keep path end to
+end, and a terminal-only session, whose hand-started Claude this cannot see.

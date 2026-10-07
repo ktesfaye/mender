@@ -395,12 +395,22 @@ that isn't signed in opens the same one-time code `gh` itself would give you
 in a terminal — where it is, and removing it. A project that has just moved
 in opens it first.
 
-**Taking a session down does not throw away what was said in it.** Settings
-also carries the ledger of every session this project has taken down, newest
-first, each saying how long ago in words. Pressing one reads its whole
-conversation back, plainly, right there in the window — nothing woken, no
-worktree needed, since taking a session down was always only ever the
-worktree going. Escape steps back out to settings.
+**Taking a session down takes what was said in it too.** Unless a project
+says otherwise, a session coming down, by its own card, with its workspace,
+with its project, by starting over or by changing who works in it, takes its
+whole conversation off the machine: the agent's own transcript wherever it
+was had, its helpers' transcripts beside it, the copies of files it kept for
+undoing, its shell's environment, the pictures handed to it, its recap, what
+it made, its half-written line and anything Mender had worked out about it.
+The CLI writes a last few lines on its way out, so the transcript is looked
+for again a little after, until nothing comes back. A project's settings
+turn that round in one gold line under "sessions that have ended": kept,
+the ledger of every session taken down there fills, newest first, each
+saying how long ago in words, and pressing one reads its whole conversation
+back, plainly, right there in the window, nothing woken and no worktree
+needed. Escape steps back out to settings. A session opened as its own
+terminal is a plain shell running whatever was typed in it, so what a
+Claude started by hand in there writes is not the village's to find.
 
 **A session can cut itself, on a timetable.** The same window offers sessions
 on their own schedule: what it's for — the first thing said, exactly as if

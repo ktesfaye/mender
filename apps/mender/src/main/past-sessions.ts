@@ -39,6 +39,8 @@ export function createPastSessions(env: Pick<ShellEnvManager, 'current'>): {
   /** Works through a list in the background, a few at a time, so the board
       has them ready by the time they are looked at. */
   warm(dir: string, sessions: readonly { id: string; mtimeMs: number }[]): void;
+  /** Lets go of what was worked out about a session whose transcript is gone. */
+  forget(id: string): Promise<void>;
 } {
   const store = createJsonFileKeyValueStore({
     path: join(process.env.MENDER_DATA_DIR ?? app.getPath('userData'), 'past-sessions.json'),
@@ -85,6 +87,9 @@ export function createPastSessions(env: Pick<ShellEnvManager, 'current'>): {
     warm(dir, sessions) {
       warming = sessions.map((one) => ({ dir, id: one.id, mtimeMs: one.mtimeMs }));
       next();
+    },
+    async forget(id) {
+      await store.delete(id);
     },
   };
 }
