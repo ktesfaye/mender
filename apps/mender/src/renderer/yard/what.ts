@@ -114,6 +114,8 @@ export interface Lantern {
   /** Lit is somebody at it, asking, or done with something you have not seen.
       Dark is idle, waiting out a limit, broken, or still being set up. */
   lit: boolean;
+  /** Waiting out a limit, how much of the wait is behind it, nought to one. */
+  ember?: number;
   /** The one you are standing in hangs lowest and says so. */
   here: boolean;
   unread: boolean;

@@ -138,18 +138,7 @@ function greening(): Promise<string | null> {
     const on = cuts.get(KIT_NAMES.lanternOn);
     const off = cuts.get(KIT_NAMES.lanternOff);
     if (!on || !off) return null;
-    const pixels = async (cut: Cut): Promise<ImageData> => {
-      const image = new Image();
-      image.src = cut.sheet;
-      await image.decode();
-      const canvas = document.createElement('canvas');
-      canvas.width = cut.w;
-      canvas.height = cut.h;
-      const pen = canvas.getContext('2d')!;
-      pen.drawImage(image, cut.x, cut.y, cut.w, cut.h, 0, 0, cut.w, cut.h);
-      return pen.getImageData(0, 0, cut.w, cut.h);
-    };
-    const [lit, dark] = await Promise.all([pixels(on), pixels(off)]);
+    const [lit, dark] = await Promise.all([pixelsOf(on), pixelsOf(off)]);
     const d = lit.data;
     for (let i = 0; i < d.length; i += 4) {
       if (!d[i + 3]) continue;
@@ -169,6 +158,91 @@ function greening(): Promise<string | null> {
     return greened;
   })();
   return greenWork;
+}
+
+/**
+ * An unlit lantern whose glass is filled with ember from the bottom up, as far
+ * as `fill` says, for a session waiting out a limit.
+ *
+ * Dark because nothing is happening in there and nobody needs to look, but not
+ * out: the red rising in the glass is how much of the wait is behind it, so a
+ * lantern nearly full is nearly back. The ember is the lit lantern's own glass,
+ * every pixel the lit one lights that the unlit one doesn't, turned to coals
+ * and cut off at the fill line on the art's own rows.
+ */
+export function emberLantern(fill: number, times: 1 | 2 | 3 | 4 = 1): HTMLDivElement {
+  const el = sprite(KIT_NAMES.lanternOff, times);
+  const on = cuts.get(KIT_NAMES.lanternOn);
+  if (!on) return el;
+  const glass = document.createElement('div');
+  glass.style.cssText = `position:absolute;left:0;top:0;width:${on.w * times}px;height:${on.h * times}px;image-rendering:pixelated;background-size:100% 100%;animation:yard-banked 3.2s ease-in-out infinite`;
+  el.appendChild(glass);
+  const wear = (made: Embered): void => {
+    const rows = made.bottom - made.top + 1;
+    const lit = Math.round(Math.max(0, Math.min(1, fill)) * rows);
+    glass.style.backgroundImage = `url(${made.url})`;
+    glass.style.clipPath = `inset(${(made.bottom + 1 - lit) * times}px 0 0 0)`;
+  };
+  if (embered) wear(embered);
+  else void embering().then((made) => made && wear(made));
+  return el;
+}
+
+interface Embered {
+  url: string;
+  /** The first and last rows of the sprite that are glass. */
+  top: number;
+  bottom: number;
+}
+
+let embered: Embered | null = null;
+let emberWork: Promise<Embered | null> | null = null;
+
+function embering(): Promise<Embered | null> {
+  emberWork ??= (async () => {
+    const on = cuts.get(KIT_NAMES.lanternOn);
+    const off = cuts.get(KIT_NAMES.lanternOff);
+    if (!on || !off) return null;
+    const [lit, dark] = await Promise.all([pixelsOf(on), pixelsOf(off)]);
+    const d = lit.data;
+    let top = on.h;
+    let bottom = -1;
+    for (let i = 0; i < d.length; i += 4) {
+      const same =
+        d[i] === dark.data[i] && d[i + 1] === dark.data[i + 1] && d[i + 2] === dark.data[i + 2];
+      if (!d[i + 3] || same) {
+        d[i + 3] = 0;
+        continue;
+      }
+      const row = Math.floor(i / 4 / on.w);
+      top = Math.min(top, row);
+      bottom = Math.max(bottom, row);
+      const l = (d[i]! + d[i + 1]! + d[i + 2]!) / 3 / 255;
+      d[i] = Math.round(150 + 105 * l);
+      d[i + 1] = Math.round(40 + 60 * l);
+      d[i + 2] = Math.round(25 + 30 * l);
+    }
+    if (bottom < 0) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = on.w;
+    canvas.height = on.h;
+    canvas.getContext('2d')!.putImageData(lit, 0, 0);
+    embered = { url: canvas.toDataURL(), top, bottom };
+    return embered;
+  })();
+  return emberWork;
+}
+
+async function pixelsOf(cut: Cut): Promise<ImageData> {
+  const image = new Image();
+  image.src = cut.sheet;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = cut.w;
+  canvas.height = cut.h;
+  const pen = canvas.getContext('2d')!;
+  pen.drawImage(image, cut.x, cut.y, cut.w, cut.h, 0, 0, cut.w, cut.h);
+  return pen.getImageData(0, 0, cut.w, cut.h);
 }
 
 /** Amber glass to done green: the hue moved on, a little of the heat taken out. */

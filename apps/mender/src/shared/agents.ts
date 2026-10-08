@@ -196,6 +196,8 @@ export const glanceSchema = z.object({
     .object({
       kind: z.enum(['limit', 'service', 'connection']),
       resetAt: z.number().optional(),
+      /** When it was hit, so how much of the wait is behind it can be drawn. */
+      since: z.number().optional(),
       /** When it will carry on by itself, if that is armed. */
       carryOn: z.number().optional(),
     })

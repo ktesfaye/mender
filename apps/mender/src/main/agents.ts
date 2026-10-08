@@ -1899,6 +1899,7 @@ class House {
       glance.waiting = {
         kind: failure.category as 'limit' | 'service' | 'connection',
         ...(failure.resetAt !== undefined ? { resetAt: failure.resetAt } : {}),
+        since: failure.since,
         ...(this.carryOnAt !== null ? { carryOn: this.carryOnAt } : {}),
       };
     }

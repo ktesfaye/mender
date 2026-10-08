@@ -3462,6 +3462,18 @@ subscription limit (Claude printed the exact real line): the board, rail,
 house and auto carry-on all seen, and the turn went again unprompted once
 the reset passed. Not driven: a weekly (dated) limit, read only by test.
 
+### A limit's lantern fills with ember as the wait runs out (2026-10-07) — done
+
+The limit lantern was lit and tinted red with its name in the warn orange,
+which across the room read the same as one asking for you, though a limit
+needs nobody. Now it hangs dark with ember rising from the bottom of its
+glass by how much of the wait is behind it, a little and no more when no end
+was named; its glow sits low and only grows in the last stretch, its name is
+the idle tan, and only the line under it is red. The one you stand in gets
+the same lantern rather than the bright standing-here one. Looked at in the
+yard harness, an early and a late limit side by side on the real rail; not
+provoked as a live limit in the app.
+
 ### What was said goes with a session (2026-10-07) — done
 
 Taking a session down used to leave every word of it on the machine: Claude's

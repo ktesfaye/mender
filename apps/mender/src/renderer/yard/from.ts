@@ -683,9 +683,22 @@ function lanternOf(
     /* The one you are standing in is lit whatever it is doing: you are in
        there with the lights on. */
     lit: lit || at.here,
+    ...(posture === 'waiting' ? { ember: emberOf(at.glance) } : {}),
     unread: posture === 'done',
     ground: 'ready',
   };
+}
+
+/**
+ * How much of a wait is behind it, which is how full of ember its lantern is.
+ * A wait with no end anybody named shows a little and stays there, banked
+ * rather than out; one already over is full.
+ */
+function emberOf(glance: Glance | undefined): number {
+  const wait = glance?.waiting;
+  const end = wait?.carryOn ?? wait?.resetAt;
+  if (!wait || end === undefined || wait.since === undefined || end <= wait.since) return 0.15;
+  return Math.max(0.08, Math.min(1, (Date.now() - wait.since) / (end - wait.since)));
 }
 
 function stateOf(

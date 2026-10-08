@@ -283,8 +283,10 @@ time Claude names, read off its own words in its own zone, without anybody
 asking. Until then the board draws the wait rather than saying it: the
 hearth banked low and red, a strip of cells from when it was hit to when it
 lifts with the one glowing cell where now is, and how long is left set large
-beside it. Its lantern burns low red in its glass, "limit · back" and the
-time, even the one you are standing in, its house glows red and slow, and
+beside it. Its lantern hangs dark with ember rising in its glass as the
+wait runs out, so one nearly full is nearly back, its name left in the idle
+tan so it never reads as one that wants you and "limit · back" and the time
+in red under it, even the one you are standing in, its house glows red and slow, and
 its project's board on the rack carries a low red wash, so a session that
 stopped for a limit never reads as one that is simply idle.
 
@@ -309,7 +311,7 @@ look: somebody working, whose light breathes and whose line says what kind of
 work and for how long; somebody asking, who flickers orange; or something
 finished while you were elsewhere, green in its glass and round it, saying how long ago
 until you have stood in it. Everything else is dark and says which: idle,
-waiting out a limit with a faint red glow and when it lifts, broken, or still
+waiting out a limit with ember filling its glass and when it lifts, broken, or still
 being set up. A shared session's branch is never named, since every one of
 them is on it; one in its own copy names its branch after "idle". The one you
 are standing in burns brightest. At the end of the beam is one
@@ -404,8 +406,8 @@ undoing, its shell's environment, the pictures handed to it, its recap, what
 it made, its half-written line and anything Mender had worked out about it.
 The CLI writes a last few lines on its way out, so the transcript is looked
 for again a little after, until nothing comes back. A project's settings
-turn that round in one gold line under "sessions that have ended": kept,
-the ledger of every session taken down there fills, newest first, each
+turn that round under their own heading near the top, "when a session
+ends", which says which it does and offers the other: kept, the ledger of every session taken down there fills, newest first, each
 saying how long ago in words, and pressing one reads its whole conversation
 back, plainly, right there in the window, nothing woken and no worktree
 needed. Escape steps back out to settings. A session opened as its own

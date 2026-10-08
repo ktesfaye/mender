@@ -56,7 +56,7 @@ import { packed } from './pack';
 import { pressing } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
-import { KIT_NAMES, greenLantern, sprite } from './sprite';
+import { KIT_NAMES, emberLantern, greenLantern, sprite } from './sprite';
 import { astop, walking, type Walking } from './walk';
 import type {
   Asking as Ask,
@@ -123,7 +123,10 @@ const TONE: Record<Posture, string> = {
   working: '#f4e3c0',
   'wants-you': '#ff9a6a',
   done: 'var(--yard-well)',
-  waiting: 'var(--yard-warn)',
+  /* A limit is a wait, not a reason to come: its name stays the idle tan, so
+     it is never read across the room as one that wants you. The red is in
+     the line under it and the glass. */
+  waiting: '#a89272',
   broken: 'var(--yard-wrong)',
   resting: '#a89272',
 };
@@ -133,7 +136,7 @@ const SAYS: Record<Posture, string> = {
   working: '#a89272',
   'wants-you': '#e0a07a',
   done: '#9aae70',
-  waiting: '#c08a62',
+  waiting: '#c4705f',
   broken: '#b86a60',
   resting: '#7d6a50',
 };
@@ -3614,7 +3617,8 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
 
     const cutting = one.ground === 'cutting';
     const halo = HALO[one.posture];
-    if (one.here && one.lit) {
+    const waiting = one.posture === 'waiting';
+    if (one.here && one.lit && !waiting) {
       /* The light you are standing in reaches past its lantern and over its
          name too, so the one you are in reads from across the room as a lit
          patch of the rail rather than one bright lamp among dim ones. */
@@ -3629,9 +3633,14 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       beam.appendChild(glow);
     } else if (halo && !cutting) {
       const [tint, strength] = halo;
+      /* Ember throws light from low in the glass, and more of it as the wait
+         nears its end, so only the last stretch of a limit shows from afar. */
+      const fill = one.ember ?? 0;
       const glow = box(
         { left: x - 34, top: top - 24, width: 90, height: 90 },
-        `background:radial-gradient(circle at 50% 50%,rgba(${tint},${strength}),rgba(0,0,0,0) 62%);pointer-events:none`
+        waiting
+          ? `background:radial-gradient(circle at 50% ${72 - fill * 12}%,rgba(${tint},${(0.08 + fill * 0.18).toFixed(3)}),rgba(0,0,0,0) ${44 + fill * 14}%);pointer-events:none`
+          : `background:radial-gradient(circle at 50% 50%,rgba(${tint},${strength}),rgba(0,0,0,0) 62%);pointer-events:none`
       );
       if (one.posture === 'working') {
         glow.style.animation = 'yard-breathe 2.4s steps(6,end) infinite alternate';
@@ -3645,12 +3654,11 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
 
     /* Finished and not yet seen burns green in the glass, not only round it. */
     const lamp = keyed(
-      one.lit && one.posture === 'done'
-        ? greenLantern(2)
-        : sprite(
-            one.lit || one.posture === 'waiting' ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff,
-            2
-          ),
+      waiting
+        ? emberLantern(one.ember ?? 0, 2)
+        : one.lit && one.posture === 'done'
+          ? greenLantern(2)
+          : sprite(one.lit ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff, 2),
       `lantern:${one.id}`
     );
     lamp.style.cssText += `;left:${x}px;top:${top}px`;
@@ -3658,11 +3666,11 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       onTheBeam.add(one.id);
       lamp.style.animation = 'yard-hang 240ms steps(3,end)';
     }
-    /* Out of usage burns low and red in its glass, banked rather than out:
+    /* Out of usage is dark with ember in its glass, banked rather than out:
        somebody is still in there, only waiting for the limit to lift. */
     const dimmed =
-      one.posture === 'waiting'
-        ? 'sepia(.5) hue-rotate(-28deg) saturate(1.8) brightness(.72)'
+      waiting
+        ? ''
         : one.here
           ? ''
           : one.posture === 'done'
@@ -3672,8 +3680,6 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     if (cutting) lamp.style.opacity = '.45';
     if (one.posture === 'wants-you') {
       lamp.style.animation = 'yard-wants 480ms steps(2,end) infinite alternate';
-    } else if (one.posture === 'waiting') {
-      lamp.style.animation = 'yard-banked 3.2s ease-in-out infinite';
     }
     beam.appendChild(lamp);
 
@@ -3709,7 +3715,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       name.appendChild(written);
       hung.appendChild(name);
       const under = box({ left: 34, top: 20, width: wide }, CLIPPED);
-      const saying = exact(one.saying, 11, one.here ? '#ecd6a8' : SAYS[one.posture]);
+      const saying = exact(one.saying, 11, one.here && !waiting ? '#ecd6a8' : SAYS[one.posture]);
       if (cutting) {
         written.style.opacity = '.6';
         saying.style.opacity = '.6';
