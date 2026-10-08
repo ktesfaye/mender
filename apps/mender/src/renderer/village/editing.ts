@@ -39,6 +39,8 @@ export interface EditingHost {
   move(id: string, to: string): Promise<string | null>;
   /** Take it off the map. */
   forget(id: string): Promise<void>;
+  /** Off the island, still on the rack, every session kept. */
+  putAway(id: string): Promise<void>;
   /** How many sessions it has, which is what forgetting it costs. */
   sessions(id: string): number;
   /** A point on screen that something written already covers. */
@@ -73,8 +75,10 @@ const SAND = 0xf4e3c0;
  * now. Onto somebody else's place and the two of them swap. Onto an empty
  * one, drawn as pale ground on the water while this is on, and it moves in.
  * Out onto the open sea, the district or only its flag, and a window comes up
- * over the island asking whether to take the project out of the village,
- * saying what that costs, because its sessions go with it.
+ * over the island asking what it is to be: put away, which keeps it on the
+ * rack with every session in it and only sends its land back to sea, or
+ * removed, which forgets it and takes its sessions down, saying what that
+ * costs.
  *
  * Nothing about the land moves: his districts stand where he drew them, and
  * what changes is who lives in which. What cannot be, a district that would no
@@ -519,11 +523,11 @@ export class Editing {
     const carried = this.carrying;
     const parts: (string | HTMLElement)[] = [];
     if (this.forgetting) {
-      parts.push(`take ${this.forgetting.name} out of the village?`);
+      parts.push(`put ${this.forgetting.name} away, or remove it?`);
     } else if (this.flag) {
       parts.push(
         this.flag.sea
-          ? `let go on the water to take ${this.flag.who.name} out of the village`
+          ? `let go on the water to put ${this.flag.who.name} away`
           : this.flag.fits
             ? `standing ${this.flag.who.name}'s flag`
             : `${this.flag.who.name}'s flag can only stand on its own district`
@@ -534,7 +538,7 @@ export class Editing {
       const there = over ? this.residentOn(over.id) : undefined;
       parts.push(
         !over
-          ? `let go on the water to take ${carried.who.name} out of the village`
+          ? `let go on the water to put ${carried.who.name} away`
           : over.id === carried.from.id
             ? `carrying ${carried.who.name}`
             : why
@@ -546,7 +550,7 @@ export class Editing {
     } else {
       parts.push(
         result ??
-          'pick up a district or its flag to move it. let go of either on the water to take it out of the village',
+          'pick up a district or its flag to move it. let go of either on the water to put it away',
         '   ',
         pressing('done', () => this.stop())
       );
@@ -584,7 +588,7 @@ export class Editing {
     head.className = 'settings-head';
     const heading = document.createElement('div');
     heading.className = 'settings-name founding-heading';
-    heading.textContent = `Remove ${who.name}?`;
+    heading.textContent = `Off the island?`;
     const title = document.createElement('div');
     title.className = 'settings-who';
     title.appendChild(heading);
@@ -596,19 +600,21 @@ export class Editing {
     const hint = document.createElement('p');
     hint.className = 'settings-hint forgetting-cost';
     hint.textContent =
+      `Put away, ${who.name} stays on the rack with everything in it and only its district goes back to sea. ` +
       (n === 0
-        ? `It comes out of the village and its district goes back to sea.`
+        ? `Removed, it is forgotten.`
         : n === 1
-          ? `It comes out of the village, and its one session is taken down with it.`
-          : `It comes out of the village, and all ${n} of its sessions are taken down with it.`) +
-      ' The folder stays exactly where it is on disk.' +
+          ? `Removed, it is forgotten and its one session is taken down with it.`
+          : `Removed, it is forgotten and all ${n} of its sessions are taken down with it.`) +
+      ' Either way the folder stays exactly where it is on disk.' +
       (shifts ? ` ${shifts}` : '');
     const list = document.createElement('div');
     list.className = 'founding-list';
+    const away = pressing('put it away', () => void this.putAway(who));
     const remove = pressing(`remove ${who.name}`, () => void this.forget(who));
     remove.classList.add('forgetting-go');
-    const keep = pressing('keep it', () => this.escaped());
-    for (const one of [remove, keep]) {
+    const keep = pressing('keep it here', () => this.escaped());
+    for (const one of [away, remove, keep]) {
       const row = document.createElement('div');
       row.className = 'founding-row';
       row.appendChild(one);
@@ -633,6 +639,16 @@ export class Editing {
     this.forgetting = null;
     this.asking?.remove();
     this.asking = null;
+  }
+
+  private async putAway(who: Resident): Promise<void> {
+    this.unask();
+    this.busy = true;
+    this.say(`putting ${who.name} away…`);
+    await this.host.putAway(who.id);
+    this.busy = false;
+    this.refresh();
+    this.say(`${who.name} is put away. it is still on the rack.`);
   }
 
   private async forget(who: Resident): Promise<void> {

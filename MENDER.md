@@ -392,6 +392,15 @@ most, island-wide, asking or hurt outranking merely working and the oldest
 first; pressed again it goes to the next. A clicked notification lands on
 that same door.
 
+**A project can be put away without being forgotten.** The rack holds any
+number of projects and the island does not have to: right-clicking a board on
+the rack puts it away, which sends its district back to sea and leaves the
+board hanging there weathered grey, every session in it kept, still walked
+into with a press, its yard stood over the campfire. Right-clicked again it
+goes back on the island at the next free place. Letting a district go on the
+water in edit districts asks which, put away or removed. A project founded
+when every place is taken moves in put away rather than being refused.
+
 **A checkout arrives one of three ways, and the campfire is where you say
 which.** Command-N or the campfire itself opens a small board over the
 island with one question and three lines to answer it: pick a folder

@@ -66,6 +66,8 @@ export interface OnShelf {
   /** Its own picture, which outranks the tool whenever it has one. */
   icon?: string;
   here: boolean;
+  /** Put away: on the rack and off the island. Its board hangs weathered. */
+  away?: boolean;
   /** Whether somebody in this project is asking or hurt, worst first. */
   /** Asking or hurt, or only out of usage, which glows low rather than calling. */
   wants?: 'asking' | 'hurt' | 'limited';
@@ -150,6 +152,12 @@ function paintBoard(hang: HTMLDivElement, project: OnShelf): void {
     if (cut) plank.style.backgroundPosition = `${-cut.x * X}px ${-cut.y * X}px`;
   }
   hang.style.filter = GLOW[project.wants ?? 'none'];
+  /* One put away has been out in the weather: the paint gone grey and the
+     wood paler, still there to press but never mistaken for a district. */
+  const swing = hang.querySelector<HTMLDivElement>('.swing');
+  if (swing) {
+    swing.style.filter = project.away && !project.here ? WEATHERED : '';
+  }
 
   const key = project.icon ?? toolFor(project.at);
   if (face.dataset.face === key) return;
@@ -235,7 +243,8 @@ export function makeShelf(
   out: () => void,
   reorder: (ids: string[]) => void,
   settings: () => void,
-  sky: () => void
+  sky: () => void,
+  menu: (id: string, x: number, y: number) => void
 ): Shelf {
   const root = box({ right: 0, top: 0 }, RACK);
   // Its bare wood holds the window, like the empty part of any Mac toolbar.
@@ -510,6 +519,14 @@ export function makeShelf(
           open(project.id);
         });
         node.addEventListener('pointerdown', (event) => hold(project.id, event));
+        node.addEventListener('contextmenu', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          hideTag(true);
+          /* Under the board rather than over it, so the board it is about
+             stays in sight and the rack never takes the press. */
+          menu(project.id, event.clientX, node.getBoundingClientRect().bottom);
+        });
         nodes.set(project.id, node);
         strip.insertBefore(node, band.parentNode === strip ? band : null);
         if (!on) up(node, false, BOARD, 0, false);
@@ -640,6 +657,8 @@ export function makeShelf(
     close: () => root.remove(),
   };
 }
+
+const WEATHERED = 'saturate(.3) brightness(.82) sepia(.25) opacity(.78)';
 
 const RACK = [
   'display:flex',

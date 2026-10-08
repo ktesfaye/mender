@@ -190,6 +190,7 @@ async function boot(): Promise<void> {
     await loadCuts();
     const layer = makeLayer();
     let openTheSky = (): void => undefined;
+    let rackMenu = (_id: string, _x: number, _y: number): void => undefined;
     const shelf = makeShelf(
       layer.root,
       (id) => void go(`project:${id}`),
@@ -205,7 +206,8 @@ async function boot(): Promise<void> {
         });
       },
       () => openTheWindmill(),
-      () => openTheSky()
+      () => openTheSky(),
+      (id, x, y) => rackMenu(id, x, y)
     );
     /* The rack's sky slot wears what the sky is doing, kept up to date. */
     const paintSkySlot = (): void => shelf.setSky(skyPicture(sky));
@@ -1052,6 +1054,28 @@ async function boot(): Promise<void> {
 
     const projectOn = (district: District): Project | undefined =>
       projects.find((candidate) => candidate.district === district.id);
+    /* A project put away has no land of its own, so its yard is stood in
+       over the camp, the one place on the island that is nobody's. Kept, so
+       the same project is always the same place. */
+    const awayPlaces = new Map<string, District>();
+    const districtFor = (id: string): District | undefined => {
+      const standing = drawn.districts.get(id);
+      if (standing || !id.startsWith('away:')) return standing;
+      if (!projects.some((one) => one.district === id)) return undefined;
+      const camp = drawn.districts.get(CAMP);
+      const kept = awayPlaces.get(id);
+      if (kept && kept.cells === camp?.cells) return kept;
+      const made: District = {
+        id,
+        name: 'Campground',
+        core: camp?.core ?? [0, 0],
+        cells: camp?.cells ?? [],
+        kind: 'project',
+      };
+      awayPlaces.set(id, made);
+      return made;
+    };
+    const isAway = (project: Project): boolean => project.district.startsWith('away:');
     const tasksOn = (district: District): Task[] => {
       const project = projectOn(district);
       return project ? tasksFor(project.id).filter((task) => !cutting.has(task.id)) : [];
@@ -1084,7 +1108,7 @@ async function boot(): Promise<void> {
     const paintRail = (): void => {
       const here = open ? projectOn(open.district) : undefined;
       drawn.pennants.set(
-        projects.map((project) => ({
+        projects.filter((project) => !isAway(project)).map((project) => ({
           district: project.district,
           name: project.name,
           ...(project.icon ? { icon: project.icon } : {}),
@@ -1096,6 +1120,7 @@ async function boot(): Promise<void> {
           name: project.name,
           at: foundedRank(project),
           here: project.id === here?.id,
+          away: isAway(project),
           ...(project.icon ? { icon: project.icon } : {}),
           ...(wantsOf(project.id) ? { wants: wantsOf(project.id) } : {}),
         }))
@@ -1417,7 +1442,7 @@ async function boot(): Promise<void> {
       }
       if (id.startsWith('project:')) {
         const project = projects.find((candidate) => candidate.id === id.slice(8));
-        const district = project && drawn.districts.get(project.district ?? '');
+        const district = project && districtFor(project.district);
         // A peg always takes you to that project, never away from it: pressing
         // the one you are standing on is how you get back out of a session.
         if (district) void openDistrict({ kind: 'district', district });
@@ -1426,7 +1451,7 @@ async function boot(): Promise<void> {
       if (!id.startsWith('task:')) return;
       const task = tasks.find((candidate) => candidate.id === id.slice(5));
       if (!task) return;
-      const district = drawn.districts.get(
+      const district = districtFor(
         projects.find((project) => project.id === task.project)?.district ?? ''
       );
       if (district) void openTask({ kind: 'district', district }, task);
@@ -1482,7 +1507,7 @@ async function boot(): Promise<void> {
       }
       if (going.kind === 'project') {
         const project = projects.find((each) => each.id === going.id);
-        const district = project && drawn.districts.get(project.district ?? '');
+        const district = project && districtFor(project.district);
         if (district) await openDistrict({ kind: 'district', district });
         else {
           await shut();
@@ -1492,7 +1517,7 @@ async function boot(): Promise<void> {
       }
       const task = tasks.find((each) => each.id === going.id);
       const district =
-        task && drawn.districts.get(projects.find((p) => p.id === task.project)?.district ?? '');
+        task && districtFor(projects.find((p) => p.id === task.project)?.district ?? '');
       // Somewhere that is not there any more puts you back out on the water,
       // rather than leaving you looking at whatever was already on the board.
       if (!task || !district) {
@@ -1531,7 +1556,7 @@ async function boot(): Promise<void> {
       /* And the first thing a project that has just moved in is asked is what
          it looks like, standing in its own yard, with the pictures its checkout
          already has laid out to choose from. */
-      const district = moved && drawn.districts.get(moved.district);
+      const district = moved && districtFor(moved.district);
       if (!moved || !district) return;
       await openDistrict({ kind: 'district', district });
       const project = projects.find((one) => one.id === moved.id);
@@ -3479,6 +3504,51 @@ async function boot(): Promise<void> {
     };
 
     /**
+     * Putting a project away, or back. Away it is still on the rack with
+     * every session in it, and only its district goes back to sea, so the
+     * island can be the few that are worked in and nothing else. Back, it
+     * takes the next free place, the way founding hands them out. Standing
+     * in it while it goes keeps you standing in it.
+     */
+    const reseat = async (id: string, change: () => Promise<string | null>): Promise<void> => {
+      const inIt = open !== null && projectOn(open.district)?.id === id;
+      const wrong = await change();
+      if (wrong) {
+        say(`${wrong}.`, 4000);
+        return;
+      }
+      drawn = await draw(
+        world,
+        client,
+        pixi.renderer,
+        camera,
+        drawn,
+        sky,
+        weatherLayer,
+        skyFrame,
+        flagLayer
+      );
+      projects = await client.projects.list({});
+      people();
+      paintRail();
+      nudge();
+      const now = projects.find((one) => one.id === id);
+      const district = now && districtFor(now.district);
+      if (inIt && district) await openDistrict({ kind: 'district', district });
+      else if (!open && !yard.showing) frame(camera, drawn.island);
+    };
+    const putAway = (id: string): Promise<void> =>
+      reseat(id, async () => {
+        await client.projects.putAway({ id });
+        return null;
+      });
+    const putBack = (id: string): Promise<void> =>
+      reseat(id, async () => {
+        const done = await client.projects.putBack({ id });
+        return done.success ? null : done.error;
+      });
+
+    /**
      * The end of a session, which takes two presses like everything that
      * cannot be pressed again.
      *
@@ -3990,7 +4060,7 @@ async function boot(): Promise<void> {
      */
     const reopenClosed = async (project: string | null): Promise<void> => {
       const found = projects.find((one) => one.id === project);
-      const district = found && drawn.districts.get(found.district ?? '');
+      const district = found && districtFor(found.district);
       if (!found || !district) {
         say('nothing closed to bring back.', 3000);
         return;
@@ -5129,7 +5199,7 @@ async function boot(): Promise<void> {
         { kind: 'path', path }
       );
       if (!moved) return true; // Not a checkout, or nowhere left to put it — said already.
-      const district = drawn.districts.get(moved.district);
+      const district = districtFor(moved.district);
       if (district) {
         await openDistrict({ kind: 'district', district });
         const project = projects.find((one) => one.id === moved.id);
@@ -5708,7 +5778,7 @@ async function boot(): Promise<void> {
       camera,
       await client.village.places({}),
       {
-        residents: () => projects,
+        residents: () => projects.filter((project) => !isAway(project)),
         scene: () => drawn.root,
         moves: (id) => client.projects.moves({ id }),
         move: async (id, to) => {
@@ -5742,6 +5812,9 @@ async function boot(): Promise<void> {
         },
         forget: async (id) => {
           await forget(id);
+        },
+        putAway: async (id) => {
+          await putAway(id);
         },
         sessions: (id) => tasks.filter((task) => task.project === id).length,
         covered: (x, y) => yard.covers(x, y),
@@ -5785,6 +5858,37 @@ async function boot(): Promise<void> {
       opened.style.left = `${window.innerWidth - opened.offsetWidth - 12}px`;
       rearrangeSlab = opened;
       keepOnScreen(opened);
+    };
+    /* A board on the rack, right-clicked: it can come off the island and
+       stay on the rack, or go back on. */
+    rackMenu = (id, x, y): void => {
+      unslabIsland();
+      const project = projects.find((one) => one.id === id);
+      if (!project || editing?.active) return;
+      const slab = document.createElement('div');
+      slab.className = 'menu slab';
+      const offer = isAway(project)
+        ? pressing('put it back on the island', () => {
+            unslabIsland();
+            void putBack(id);
+          })
+        : pressing('put it away', () => {
+            unslabIsland();
+            void putAway(id);
+          });
+      offer.className += ' slab-line';
+      slab.appendChild(offer);
+      /* On a layer of its own over everything, since the rack is reached
+         from the island and from inside a yard alike. */
+      const over = document.createElement('div');
+      over.className = 'yard';
+      over.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:30';
+      over.appendChild(slab);
+      document.body.appendChild(over);
+      slab.style.pointerEvents = 'auto';
+      slab.style.left = `${Math.min(x, window.innerWidth - slab.offsetWidth - 12)}px`;
+      slab.style.top = `${Math.min(y, window.innerHeight - slab.offsetHeight - 12)}px`;
+      rearrangeSlab = over;
     };
     window.addEventListener('contextmenu', (event) => {
       unslabIsland();

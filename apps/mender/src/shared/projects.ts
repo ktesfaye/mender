@@ -5,7 +5,8 @@ export const projectSchema = z.object({
   id: z.string(),
   name: z.string(),
   path: z.string(),
-  /** Which of his thirteen it stands on. */
+  /** Which of his thirteen it stands on, or `away:` and its id when it is
+      put away: on the rack, off the island. */
   district: z.string(),
   foundedAt: z.string(),
   /** Where its own picture came from. Without one it is the rack's prop. */
@@ -124,6 +125,14 @@ export const projectsContract = defineContract({
     error: foundErrorSchema,
   }),
   abandon: procedure({ input: z.object({ id: z.string() }), output: z.array(projectSchema) }),
+  /** Off the island and still on the rack, every session in it kept. */
+  putAway: procedure({ input: z.object({ id: z.string() }), output: z.array(projectSchema) }),
+  /** Back onto the island, wherever the next free place is. */
+  putBack: fallible({
+    input: z.object({ id: z.string() }),
+    data: z.array(projectSchema),
+    error: z.string(),
+  }),
   rename: procedure({
     input: z.object({ id: z.string(), name: z.string() }),
     output: z.array(projectSchema),

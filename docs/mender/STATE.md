@@ -3605,3 +3605,19 @@ falls off the pile or the app restarts. Driven in a dev instance: told a
 session a word, closed it, pressed the chord from the island, and it came back
 with the conversation on the board and named the word when asked; pressed
 again it said there was nothing closed to bring back.
+
+### A project can be put away: on the rack, off the island (2026-10-08) — done
+
+The rack holds any number of projects, the island does not, and most of them
+are rarely worked in. Right-clicking a board on the rack offers "put it away":
+its district goes back to sea and the island lays itself out with only the
+ones kept on it, while the board stays on the rack, weathered grey, every
+session in it untouched. Pressing a put-away board still walks straight into
+its yard, stood over the campfire. Right-clicking it again offers "put it back
+on the island", which takes the next free place the way founding hands them
+out. Letting a district go on the water in edit districts now asks "off the
+island?" with "put it away" first and "remove" second. And founding a project
+when every place is taken no longer refuses: it moves in put away. Driven in a
+dev instance: five projects, two put away from the rack and one by dragging it
+onto the water, the island down to three districts, one put back onto the
+castle it had left, a put-away one walked into from the rack and out again.

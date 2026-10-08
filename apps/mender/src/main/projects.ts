@@ -42,7 +42,8 @@ export interface Project {
   readonly name: string;
   /** The checkout, as the filesystem spells it. */
   readonly path: string;
-  /** Which of his districts it took. They are handed out from the fire outward. */
+  /** Which of his districts it took. They are handed out from the fire outward.
+      One put away has none, and says so as `away:` and its own id. */
   readonly district: string;
   readonly foundedAt: string;
   /** Where its own picture was taken from, if it has one. The rack's prop if not. */
@@ -121,6 +122,12 @@ export interface Projects {
     from?: FoundFrom
   ): Promise<{ success: true; data: Project } | { success: false; error: FoundError }>;
   abandon(id: string): Promise<Project[]>;
+  /** Off the island and still on the rack, sessions and all. */
+  putAway(id: string): Promise<Project[]>;
+  /** Back onto the island, wherever the next free place is. */
+  putBack(
+    id: string
+  ): Promise<{ success: true; data: Project[] } | { success: false; error: string }>;
   /** Called something else on the island. The folder keeps its name. */
   rename(id: string, name: string): Promise<Project[]>;
   /** Stand them on the rack in this order; anybody left out keeps to the end. */
@@ -168,6 +175,11 @@ export interface Projects {
 }
 
 const KEY = 'projects';
+
+/** What a project put away stands on instead of a district. */
+const AWAY = 'away:';
+export const isAway = (project: Pick<Project, 'district'>): boolean =>
+  project.district.startsWith(AWAY);
 
 /**
  * Which districts a checkout can stand on.
@@ -284,12 +296,42 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
 
   const standingIn = (projects: readonly Project[]): string[] => [
     CAMP,
-    ...projects.map((project) => project.district),
+    ...projects.filter((project) => !isAway(project)).map((project) => project.district),
   ];
 
-  /* Where everybody stands, and what one move would do to it. */
+  /* Where everybody stands, and what one move would do to it. Whoever is put
+     away stands nowhere, so they are in nobody's way. */
   const arranged = (projects: readonly Project[]): Map<string, string> =>
-    new Map(projects.map((project) => [project.id, project.district]));
+    new Map(
+      projects
+        .filter((project) => !isAway(project))
+        .map((project) => [project.id, project.district])
+    );
+
+  /* The next place free on the island, the way founding hands them out: the
+     first his growth order offers that nobody is on and that can be walked
+     to from what is already there, then the islet, then a piece of a big one. */
+  const nextFree = (projects: readonly Project[]): string | null => {
+    const taken = new Set(projects.map((project) => project.district));
+    const subdistricts = loadSubdistricts();
+    const here = new Set(standingIn(projects).map((id) => landOf(id, subdistricts)));
+    const free: string[] = plan()
+      .order()
+      .filter(
+        (district) =>
+          district !== CAMP && !taken.has(district) && plan().reachable(here).includes(district)
+      );
+    if (!free.length && !taken.has(ISLET)) free.push(ISLET);
+    if (!free.length) {
+      free.push(...subdistricts.map((one) => one.id).filter((id) => !taken.has(id)));
+    }
+    return free[0] ?? null;
+  };
+
+  /* Off the island: whoever it was the only way to the fire for moves in
+     closer, and whoever shared its district on a piece takes the whole. */
+  const without = (projects: readonly Project[], id: string): Map<string, string> =>
+    leaving(plan(), loadSubdistricts(), arranged(projects), id);
   const faultAfter = (projects: readonly Project[], id: string, move: Move): string | null =>
     faultIn(
       plan(),
@@ -336,6 +378,8 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
       const known = whole.includes(to) || loadSubdistricts().some((one) => one.id === to);
       if (!known || to === CAMP)
         return { success: false, error: 'nobody can live there' };
+      if (isAway(project) && projects.some((one) => one.district === to))
+        return { success: false, error: 'somebody already lives there' };
       const fault = faultAfter(projects, id, { kind: 'to', place: to });
       if (fault) return { success: false, error: fault };
       const after = moved(arranged(projects), id, { kind: 'to', place: to }, loadSubdistricts());
@@ -352,30 +396,12 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
       /* The next district is the first one his growth order offers that nobody
          is on and that can be walked to from what is already there. The order
          is measured off his own partition, so the island fills out round the
-         middle rather than growing an arm. */
-      const taken = new Set(projects.map((project) => project.district));
-      const subdistricts = loadSubdistricts();
-      const here = new Set(standingIn(projects).map((id) => landOf(id, subdistricts)));
-      const free: string[] = plan()
-        .order()
-        .filter(
-          (district) =>
-            district !== CAMP &&
-            !taken.has(district) &&
-            plan().reachable(here).includes(district)
-        );
-      /* The islet is moored to whatever coast there is, so it is never out of
-         reach; it is simply the last of his to be lived on. */
-      if (!free.length && !taken.has(ISLET)) free.push(ISLET);
-      /* Only once all twelve of his are taken does a big district give up a
-         piece, and in the order the pieces are listed. */
-      if (!free.length) {
-        free.push(...subdistricts.map((one) => one.id).filter((id) => !taken.has(id)));
-      }
-      // Every district and every piece taken. Checked before a clone or a
-      // fresh repository spends any time, since neither would have anywhere
-      // to stand.
-      if (!free.length) return { success: false, error: { kind: 'island-full' } };
+         middle rather than growing an arm. The islet is moored to whatever
+         coast there is, so it is never out of reach; it is simply the last of
+         his to be lived on, and only once all twelve are taken does a big
+         district give up a piece. With every piece taken too it still moves
+         in, put away: the rack holds any number, the island does not. */
+      const free = nextFree(projects);
 
       const path =
         from.kind === 'folder'
@@ -405,11 +431,12 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
         return { success: false, error: { kind: 'not-a-repository', path: path.data } };
       }
 
+      const id = crypto.randomUUID();
       const project: Project = {
-        id: crypto.randomUUID(),
+        id,
         name: basename(path.data),
         path: path.data,
-        district: free[0],
+        district: free ?? `${AWAY}${id}`,
         foundedAt: new Date().toISOString(),
       };
       await save([...projects, project]);
@@ -591,6 +618,33 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
       return { success: true, data: { ...relinked, available: true } };
     },
 
+    async putAway(id) {
+      const projects = await stored();
+      const project = projects.find((one) => one.id === id);
+      if (!project || isAway(project)) return list();
+      const after = without(projects, id);
+      return save(
+        projects.map((one) =>
+          one.id === id
+            ? { ...one, district: `${AWAY}${id}` }
+            : { ...one, district: after.get(one.id) ?? one.district }
+        )
+      );
+    },
+
+    async putBack(id) {
+      const projects = await stored();
+      const project = projects.find((one) => one.id === id);
+      if (!project) return { success: false, error: 'that project is gone' };
+      if (!isAway(project)) return { success: true, data: await list() };
+      const free = nextFree(projects);
+      if (!free) return { success: false, error: 'every place on the island is taken' };
+      return {
+        success: true,
+        data: await save(projects.map((one) => (one.id === id ? { ...one, district: free } : one))),
+      };
+    },
+
     async abandon(id) {
       const projects = await stored();
       /* Whoever is working in there goes home first. A project forgotten with
@@ -600,7 +654,7 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
       await rm(iconPath(id), { force: true });
       /* Whoever was sharing its district on a piece takes the whole of it, and
          whoever it was the only way to the fire for moves in closer. */
-      const after = leaving(plan(), loadSubdistricts(), arranged(projects), id);
+      const after = without(projects, id);
       return await save(
         projects
           .filter((project) => project.id !== id)
