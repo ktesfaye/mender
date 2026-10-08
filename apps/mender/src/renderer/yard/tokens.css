@@ -1897,6 +1897,7 @@ body.gripping-row * {
   align-items: flex-start;
   gap: 10px;
   min-width: 0;
+  max-width: 100%;
 }
 .yard .deed-sign {
   flex: none;
@@ -1920,6 +1921,7 @@ body.gripping-row * {
   animation: yard-blink 700ms steps(1, end) infinite;
 }
 .yard .deed-said {
+  flex: 1 1 auto;
   min-width: 0;
   padding-top: 1px;
   font-size: 13px;

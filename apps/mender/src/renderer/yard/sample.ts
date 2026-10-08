@@ -314,7 +314,7 @@ export function richSample(live: boolean): Yard {
           id: 'x4d',
           prop: KIT_NAMES.sign,
           kind: 'look',
-          did: 'read a file and ran 2 checks',
+          did: 'read 3 files, looked at 4 pictures, searched 7 times and ran 4 checks',
           group: [{ id: 'g3', did: 'read STATE.md' }],
         },
         { id: 'x5', prop: KIT_NAMES.pot, kind: 'build', did: 'built the app', running: live },
