@@ -3633,3 +3633,10 @@ when every place is taken no longer refuses: it moves in put away. Driven in a
 dev instance: five projects, two put away from the rack and one by dragging it
 onto the water, the island down to three districts, one put back onto the
 castle it had left, a put-away one walked into from the rack and out again.
+
+After dark a wagon hangs a lantern at either corner of its box, drawn on the
+wagon by day and lit at night, each throwing a pool of warm light on the road
+bigger than a walker's lantern, and they are lit before anybody else's so a
+wagon is never left dark by the cap on lights. Driven in a dev instance at
+midnight from the top: every wagon on screen lit at both corners, side on,
+coming and going.

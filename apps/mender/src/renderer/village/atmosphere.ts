@@ -652,16 +652,29 @@ export class Atmosphere {
     if (look.dark > 0.45) {
       for (const walker of this.carriers.flatMap((source) => [...source()])) {
         // Enough lanterns to read as a village out after dark, and no more.
-        if (++carried > 36) break;
+        if (++carried > 64) break;
         seen.add(walker);
+        /* A lantern hung on a wagon is bigger and brighter than one swung
+           in a hand, and is where it hangs rather than at somebody's side:
+           a wagon on the road after dark is two warm points and the road lit
+           round it, which is what still reads from high over the island. */
+        const hung = 'lamp' in walker;
         let light = this.walkerLights.get(walker);
         if (!light) {
-          light = this.lights.add(walker.x, walker.y, 46, 0xffc884, 0.7);
+          light = hung
+            ? this.lights.add(walker.x, walker.y, 72, 0xffbe6a, 0.85)
+            : this.lights.add(walker.x, walker.y, 46, 0xffc884, 0.7);
           this.walkerLights.set(walker, light);
         }
-        light.position.set(walker.x + 3, walker.y + 1);
-        light.glowAt(walker.x + 5, walker.y - 9, 5);
-        light.alpha = 0.6 + Math.random() * 0.08;
+        if (hung) {
+          light.position.set(walker.x, walker.y + 12);
+          light.glowAt(walker.x, walker.y, 7);
+          light.alpha = 0.78 + Math.random() * 0.06;
+        } else {
+          light.position.set(walker.x + 3, walker.y + 1);
+          light.glowAt(walker.x + 5, walker.y - 9, 5);
+          light.alpha = 0.6 + Math.random() * 0.08;
+        }
       }
     }
     for (const [key, light] of this.walkerLights) {

@@ -1274,6 +1274,11 @@ def arch(c: Cv, x0: int, x1: int, top: int, bottom: int, ch: str = "C") -> None:
             c.px(x, y, ch)
 
 
+def lamp(c: Cv, x: int, y: int) -> None:
+    """A carriage lantern: a cap, two panes of glass and a foot, hung at a corner."""
+    paint(c, x, y, ["KK", "YO", "OY", "KK"])
+
+
 def wagon_side(frame: int) -> list[str]:
     c = Cv(54, 34)
     x0, x1, top, bottom = 2, 24, 8, 19
@@ -1297,6 +1302,8 @@ def wagon_side(frame: int) -> list[str]:
         c.px(x, 21, "j")
     c.rect(26, 21, 34, 21, "j")
     paint(c, 28, 14, horse_side(frame))
+    lamp(c, 25, 15)
+    lamp(c, 0, 15)
     big_wheel(c, 7, 27.5, 6, frame)
     big_wheel(c, 21.5, 28.5, 5, frame)
     return c.rows()
@@ -1313,6 +1320,8 @@ def wagon_front(frame: int) -> list[str]:
     wheel_edge(c, 24, 17, 27, frame)
     c.rect(7, 22, 7, 25, "j")
     c.rect(18, 22, 18, 25, "j")
+    lamp(c, 2, 14)
+    lamp(c, 22, 14)
     paint(c, 7, 20, horse_front(frame))
     return c.rows()
 
@@ -1332,6 +1341,8 @@ def wagon_back(frame: int) -> list[str]:
         c.px(x, 23, "j")
     wheel_edge(c, 0, 21, 32, frame)
     wheel_edge(c, 24, 21, 32, frame)
+    lamp(c, 3, 18)
+    lamp(c, 21, 18)
     return c.rows()
 
 

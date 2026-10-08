@@ -123,6 +123,15 @@ interface Mover {
   lane: Container | null;
   /** When a wagon or rider last turned, so a diagonal road does not flicker it. */
   turnedAt: number;
+  /** A wagon's lanterns, where they hang right now. */
+  lamps: Lamp[];
+}
+
+/** A lantern hung on something, rather than carried in a hand. */
+export interface Lamp {
+  x: number;
+  y: number;
+  lamp: true;
 }
 
 interface Place {
@@ -307,9 +316,9 @@ export class Crowd {
 
   /** Every walker that would carry a lantern after dark. */
   *lit(): IterableIterator<Spot> {
-    for (const one of this.movers) {
-      if (isPerson(one.kind) || one.kind === 'wagon' || one.kind === 'rider') yield one;
-    }
+    // The wagons' lanterns first, so the cap on lights never leaves a wagon dark.
+    for (const one of this.movers) if (one.kind === 'wagon') yield* one.lamps;
+    for (const one of this.movers) if (isPerson(one.kind) || one.kind === 'rider') yield one;
   }
 
   get count(): number {
@@ -533,6 +542,13 @@ export class Crowd {
       life: 0,
       lane: null,
       turnedAt: 0,
+      lamps:
+        kind === 'wagon'
+          ? [
+              { x: at.x, y: at.y, lamp: true },
+              { x: at.x, y: at.y, lamp: true },
+            ]
+          : [],
     };
     // Coming out of a door, they fade in rather than appear.
     view.alpha = 0;
@@ -789,6 +805,12 @@ export class Crowd {
     }
     mover.view.position.set(Math.round(mover.x), Math.round(mover.y));
     if (mover.kind === 'wagon' || mover.kind === 'rider') mover.view.scale.set(this.roadScale);
+    WAGON_LAMPS[mover.dir].forEach(([dx, dy], i) => {
+      const lamp = mover.lamps[i];
+      if (!lamp) return;
+      lamp.x = mover.view.x + dx * flip * this.roadScale;
+      lamp.y = mover.view.y + dy * this.roadScale;
+    });
   }
 
   private frameName(mover: Mover, walking: boolean): string {
@@ -816,6 +838,26 @@ export class Crowd {
     }
   }
 }
+
+/**
+ * Where a wagon's two lanterns hang on its sprite, from the foot of it, for
+ * each way it can face: the corners of the box behind the carter side on,
+ * the front corners coming down the screen and the back ones going up.
+ */
+const WAGON_LAMPS: Record<Dir, [number, number][]> = {
+  side: [
+    [-26, -18],
+    [-1, -18],
+  ],
+  down: [
+    [-10, -25],
+    [10, -25],
+  ],
+  up: [
+    [-9, -14],
+    [9, -14],
+  ],
+};
 
 /** How long each frame of a walk is held, by what is walking. */
 const WALK_FRAME: Partial<Record<Kind, number>> = { runner: 110, wagon: 170, rider: 130 };
