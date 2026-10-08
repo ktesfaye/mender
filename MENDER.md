@@ -1157,7 +1157,11 @@ an agent does sends a runner out of its session's door carrying it: a scroll to
 the signpost for something read, a crate to the storehouse for something
 written, a hammer to the forge for something run, and back. A commit wheels a
 handcart down the road; a push sails a boat off from the district's dock. Two
-busy districts send people along the road between them. A quiet one has
+busy districts send people along the road between them, and the roads carry
+covered wagons with a carter on the box and riders on horseback between any
+lived-in districts, more the busier the island is, drawn a little larger as
+the camera rises so they still read from the top, with horses grazing on the
+farms. A quiet one has
 somebody about, and that is all; a forgotten one empties and gets crows. After
 dark most go indoors and the rest carry lanterns, and with a board open over the
 village the whole crowd holds still.

@@ -3556,3 +3556,22 @@ line. Now up there calls the turn off the same way Escape would, when nothing
 has come of it yet, and only walks back through what was said once it has.
 Driven in a dev instance: sent, pressed up while it was thinking, and the
 words came back to the line with the fire out and the post clean.
+
+### Wagons and riders on the roads, read from high up (2026-10-07) — done
+
+Pulled back over the whole island a villager is a fleck, so the roads now
+carry what still reads from there: covered wagons with a carter on the box and
+riders on horseback, each drawn side on, coming and going, going from one
+lived-in district to another along the artist's paths, more of them the busier
+the island is, and horses grazing on the farms. They grow a little as the
+camera rises, one waits behind another rather than driving through it, and
+after dark each carries a lantern.
+
+Underneath it was a fault older than any of this: every road counted as the
+lowest ground on the island, because the paths are one layer drawn under all
+the grass, so nobody could step off a road onto the grass beside it and most
+of the village was dozens of sealed pens. Each stretch of road now takes the
+height of the grass it runs through, and the main plateau is one place.
+Driven in a dev instance with his projects, from the top at noon and at night:
+wagons and riders set off, kept moving, turned without flicker, finished their
+trips and went, and none of them stacked or stalled.

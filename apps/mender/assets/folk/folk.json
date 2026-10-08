@@ -5039,14 +5039,594 @@
    },
    "rotated": false,
    "trimmed": false
+  },
+  "wagon-side-0": {
+   "frame": {
+    "x": 1405,
+    "y": 29,
+    "w": 55,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 55,
+    "h": 30
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 55,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "wagon-side-1": {
+   "frame": {
+    "x": 1461,
+    "y": 29,
+    "w": 55,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 55,
+    "h": 30
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 55,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "wagon-side-2": {
+   "frame": {
+    "x": 1517,
+    "y": 29,
+    "w": 55,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 55,
+    "h": 30
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 55,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "wagon-side-3": {
+   "frame": {
+    "x": 1573,
+    "y": 29,
+    "w": 55,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 55,
+    "h": 30
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 55,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "wagon-down-0": {
+   "frame": {
+    "x": 1629,
+    "y": 29,
+    "w": 28,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 28,
+    "h": 41
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 28,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "wagon-down-1": {
+   "frame": {
+    "x": 1658,
+    "y": 29,
+    "w": 28,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 28,
+    "h": 41
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 28,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "wagon-down-2": {
+   "frame": {
+    "x": 1687,
+    "y": 29,
+    "w": 28,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 28,
+    "h": 41
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 28,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "wagon-down-3": {
+   "frame": {
+    "x": 1716,
+    "y": 29,
+    "w": 28,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 28,
+    "h": 41
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 28,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "wagon-up-0": {
+   "frame": {
+    "x": 1745,
+    "y": 29,
+    "w": 28,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 28,
+    "h": 35
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 28,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "wagon-up-1": {
+   "frame": {
+    "x": 1774,
+    "y": 29,
+    "w": 28,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 28,
+    "h": 35
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 28,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "wagon-up-2": {
+   "frame": {
+    "x": 1803,
+    "y": 29,
+    "w": 28,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 28,
+    "h": 35
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 28,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "wagon-up-3": {
+   "frame": {
+    "x": 1832,
+    "y": 29,
+    "w": 28,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 28,
+    "h": 35
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 28,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-side-0": {
+   "frame": {
+    "x": 1861,
+    "y": 29,
+    "w": 27,
+    "h": 27
+   },
+   "sourceSize": {
+    "w": 27,
+    "h": 27
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 27,
+    "h": 27
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-side-1": {
+   "frame": {
+    "x": 1889,
+    "y": 29,
+    "w": 27,
+    "h": 27
+   },
+   "sourceSize": {
+    "w": 27,
+    "h": 27
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 27,
+    "h": 27
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-side-2": {
+   "frame": {
+    "x": 1917,
+    "y": 29,
+    "w": 27,
+    "h": 27
+   },
+   "sourceSize": {
+    "w": 27,
+    "h": 27
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 27,
+    "h": 27
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-side-3": {
+   "frame": {
+    "x": 1945,
+    "y": 29,
+    "w": 27,
+    "h": 27
+   },
+   "sourceSize": {
+    "w": 27,
+    "h": 27
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 27,
+    "h": 27
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-down-0": {
+   "frame": {
+    "x": 1973,
+    "y": 29,
+    "w": 14,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 31
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-down-1": {
+   "frame": {
+    "x": 1988,
+    "y": 29,
+    "w": 14,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 31
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-down-2": {
+   "frame": {
+    "x": 2003,
+    "y": 29,
+    "w": 14,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 31
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-down-3": {
+   "frame": {
+    "x": 2018,
+    "y": 29,
+    "w": 14,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 31
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-up-0": {
+   "frame": {
+    "x": 2033,
+    "y": 29,
+    "w": 14,
+    "h": 26
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 26
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 26
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-up-1": {
+   "frame": {
+    "x": 1,
+    "y": 71,
+    "w": 14,
+    "h": 26
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 26
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 26
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-up-2": {
+   "frame": {
+    "x": 16,
+    "y": 71,
+    "w": 14,
+    "h": 26
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 26
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 26
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "rider-up-3": {
+   "frame": {
+    "x": 31,
+    "y": 71,
+    "w": 14,
+    "h": 26
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 26
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 26
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "horse-walk-0": {
+   "frame": {
+    "x": 46,
+    "y": 71,
+    "w": 27,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 27,
+    "h": 22
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 27,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "horse-walk-1": {
+   "frame": {
+    "x": 74,
+    "y": 71,
+    "w": 27,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 27,
+    "h": 22
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 27,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "horse-walk-2": {
+   "frame": {
+    "x": 102,
+    "y": 71,
+    "w": 27,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 27,
+    "h": 22
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 27,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "horse-walk-3": {
+   "frame": {
+    "x": 130,
+    "y": 71,
+    "w": 27,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 27,
+    "h": 22
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 27,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false
+  },
+  "horse-graze": {
+   "frame": {
+    "x": 158,
+    "y": 71,
+    "w": 27,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 27,
+    "h": 22
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 27,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false
   }
  },
  "meta": {
   "image": "folk.png",
   "format": "RGBA8888",
   "size": {
-   "w": 2047,
-   "h": 57
+   "w": 2048,
+   "h": 98
   },
   "scale": "1"
  }

@@ -22,7 +22,10 @@ pipeline, so the legs alternate exactly as the villager's do. `carry-*` are the
 small things a walker holds out in front; `chicken`, `hen`, `sheep`, `pig`, `cow`,
 `duck`, `crow`, `cat-walk`, `dog-sit` are farm and yard animals (walks face right,
 the renderer flips them; each also has a peck/graze/idle or hop/fly frame); then
-`cart-0/1` (a handcart, wheel turning) and `boat-0/1` (a sailboat bobbing). The
+`cart-0/1` (a handcart, wheel turning) and `boat-0/1` (a sailboat bobbing);
+`wagon-*` and `rider-*` (a covered wagon behind a horse, and a horse with a rider
+on it) in `side`, `down` and `up` views four frames each, and `horse-walk-*` and
+`horse-graze`, which are what still read from high over the island. The
 animals are drawn without an outline and ringed in the kit's ink automatically.
 The sheet wraps to a new row at 2048px.
 
@@ -39,6 +42,7 @@ Writes assets/folk/folk.png and assets/folk/folk.json.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 from PIL import Image
@@ -1112,6 +1116,279 @@ def boat(bob: int) -> Image.Image:
     return draw(outlined(c.rows()), ANI)
 
 
+
+# ---------------------------------------------------------------------------
+# Horses, riders and wagons: what reads from high up
+# ---------------------------------------------------------------------------
+#
+# A villager is a dozen pixels across and vanishes once the camera pulls back
+# over the whole island. A horse is twice that and a covered wagon four times,
+# and a white canvas moving along a brown road is the one thing you can still
+# pick out from the water. Each comes three ways, side (drawn facing right and
+# flipped), front (coming down the screen) and back (going up), four frames a
+# walk.
+
+def paint(c: Cv, x0: int, y0: int, rows: list[str]) -> None:
+    for y, r in enumerate(rows):
+        for x, ch in enumerate(r):
+            if ch != ".":
+                c.px(x0 + x, y0 + y, ch)
+
+
+HORSE_SIDE = [
+    "...................m.m....",
+    "..................NMMMm...",
+    ".................NMMMeMm..",
+    "................NNMMMMMMM.",
+    "...............NNMMMmMMMMh",
+    "..............NNMMMm..mMMd",
+    ".............NNMMMm...mmd.",
+    ".....hhhhhhhNMMMMm........",
+    "...MMMMMMMMMMMMMMMm.......",
+    "..NMMMMMMMMMMMMMMMm.......",
+    ".NNMMMMMMMMMMMMMMMm.......",
+    ".NNmMMMMMMMMMMMMMmm.......",
+    ".NNmmMMMMMMMMMMMmm........",
+    ".NN.mmmmmmmmmmmmm.........",
+    "..N.......................",
+    "..N.......................",
+]
+HORSE_GRAZE_HEAD = [
+    "NNMm.......",
+    ".NNMMm.....",
+    "..NMMMm....",
+    "...mMMMm...",
+    "....mMMMm..",
+    ".....MeMMm.",
+    "......MMMm.",
+    ".......mdd.",
+]
+HORSE_FRONT = [
+    "...M....M...",
+    "...MMNNMM...",
+    "...eMNNMe...",
+    "...mMhhMm...",
+    "..MmMhhMmM..",
+    ".MMmMMhMmMM.",
+    "MMMmMMMMmMMM",
+    "MMMmMMMMmMMM",
+    "MMMMmddmMMMM",
+    "mMMMmddmMMMm",
+    ".mMMMmmMMMm.",
+    "..mmmmmmmm..",
+]
+HORSE_BACK = [
+    "...m....m...",
+    "...mMNNMm...",
+    "....NNNN....",
+    "...MNNNNM...",
+    "...MMNNMM...",
+    "...mMMMMm...",
+]
+HORSE_RUMP = [
+    ".MMMMMMMMMM.",
+    "MMMMMMMMMMMM",
+    "MMMMMMMMMMMM",
+    "mMMMMMMMMMMm",
+    "mMMMMNNMMMMm",
+    ".mMMMNNMMMm.",
+    "..mmmNNmmm..",
+    ".....NN.....",
+]
+# Each hoof's swing through a side walk, and which front leg is lifted head on.
+SWING = [(1, -1, -1, 1), (0, 0, 0, 0), (-1, 1, 1, -1), (0, 0, 0, 0)]
+LIFT = [(0, 2), (0, 0), (2, 0), (0, 0)]
+CARTER_SIDE = [".ggg.", "ggggg", ".uux.", ".uuu.", "SSSS.", "SSSSu", "SSSS.", "BBBB."]
+CARTER_FRONT = [".ggggg.", "ggggggg", ".uuuuu.", ".uxuxu.", ".uuuuu.", "SSSSSSS", "SSSSSSS",
+                "SSSSSSS", "SSSSSSS"]
+RIDER_SIDE = [".ggg.", "ggggg", ".uux.", ".uuu.", "RRRR.", "RRRRu", "RRRR."]
+RIDER_FRONT = [".gggggg.", "gggggggg", ".uuuuuu.", ".uxuuxu.", ".uuuuuu.", "RRRRRRRR",
+               "RRRRRRRR"]
+RIDER_BACK = [".gggggg.", "gggggggg", ".gggggg.", ".uuuuuu.", "RRRRRRRR", "RRRRRRRR",
+              "RRRRRRRR", "BRRRRRRB", "B......B", "B......B"]
+
+
+def horse_side(frame: int, graze: bool = False) -> list[str]:
+    c = Cv(26, 20)
+    bob = frame % 2
+    for y, row in enumerate(HORSE_SIDE):
+        for x, ch in enumerate(row):
+            if ch != "." and not (graze and x >= 15 and y <= 7):
+                c.px(x, y + bob, ch)
+    if graze:
+        paint(c, 15, 7 + bob, HORSE_GRAZE_HEAD)
+    for (x, front), s in zip(((4, 0), (7, 0), (13, 1), (16, 1)), SWING[frame]):
+        top = 13 + bob
+        for y in range(top, 19):
+            dx = round(s * (y - top) / (18 - top))
+            c.px(x + dx, y, "M" if front else "m")
+            c.px(x + 1 + dx, y, "m")
+        c.px(x + s, 19, "d")
+        c.px(x + s + 1, 19, "d")
+    return c.rows()
+
+
+def front_legs(c: Cv, frame: int, top: int, foot: int) -> None:
+    for x, lift in zip((2, 8), LIFT[frame]):
+        for y in range(top, foot - lift):
+            c.px(x, y, "M")
+            c.px(x + 1, y, "m")
+        c.px(x, foot - lift, "d")
+        c.px(x + 1, foot - lift, "d")
+
+
+def horse_front(frame: int) -> list[str]:
+    c = Cv(12, 20)
+    paint(c, 0, 0, HORSE_FRONT)
+    front_legs(c, frame, 12, 19)
+    return c.rows()
+
+
+def big_wheel(c: Cv, cx: float, cy: float, r: float, phase: int) -> None:
+    for y in range(int(cy - r - 1), int(cy + r + 2)):
+        for x in range(int(cx - r - 1), int(cx + r + 2)):
+            d = math.hypot(x + 0.5 - cx, y + 0.5 - cy)
+            if d <= r:
+                c.px(x, y, "j" if d > r - 1.2 else "g")
+    for k in range(4):
+        a = (phase % 2) * math.pi / 4 + k * math.pi / 2
+        for i in range(1, int(r)):
+            c.px(int(cx + math.cos(a) * i), int(cy + math.sin(a) * i), "f")
+    c.px(int(cx), int(cy), "K")
+
+
+def wheel_edge(c: Cv, x: int, y0: int, y1: int, frame: int) -> None:
+    """A wheel seen end on, its spokes ticking past as it turns."""
+    for y in range(y0, y1 + 1):
+        c.px(x, y, "j")
+        c.px(x + 1, y, "g")
+    c.px(x, y0 + (frame % 2) * 2 + 2, "f")
+    c.px(x + 1, y0 + ((frame + 1) % 2) * 2 + 5, "f")
+
+
+def arch(c: Cv, x0: int, x1: int, top: int, bottom: int, ch: str = "C") -> None:
+    for x in range(x0, x1 + 1):
+        t = (x - x0) / (x1 - x0)
+        lift = round(4 * (1 - (2 * t - 1) ** 2) ** 0.5)
+        for y in range(top + 4 - lift, bottom + 1):
+            c.px(x, y, ch)
+
+
+def wagon_side(frame: int) -> list[str]:
+    c = Cv(54, 34)
+    x0, x1, top, bottom = 2, 24, 8, 19
+    for x in range(x0, x1 + 1):
+        t = (x - x0) / (x1 - x0)
+        lift = round(2.5 * (1 - (2 * t - 1) ** 2) ** 0.5)
+        for y in range(top - lift, bottom + 1):
+            c.px(x, y, "C")
+        c.px(x, bottom, "c")
+    for hoop in range(x0 + 4, x1 - 1, 6):
+        for y in range(top - 3, bottom + 1):
+            if c.g[y][hoop] == "C":
+                c.px(hoop, y, "c")
+    for y in range(top - 1, bottom + 1):
+        c.px(x0, y, "c")
+        c.px(x1, y, "c")
+    paint(c, 23, 11, CARTER_SIDE)
+    c.rect(1, 20, 27, 22, "L")
+    c.rect(1, 23, 27, 23, "j")
+    for x in range(3, 27, 5):
+        c.px(x, 21, "j")
+    c.rect(26, 21, 34, 21, "j")
+    paint(c, 28, 14, horse_side(frame))
+    big_wheel(c, 7, 27.5, 6, frame)
+    big_wheel(c, 21.5, 28.5, 5, frame)
+    return c.rows()
+
+
+def wagon_front(frame: int) -> list[str]:
+    c = Cv(26, 41)
+    arch(c, 2, 23, 1, 17)
+    arch(c, 6, 19, 5, 17, "d")
+    paint(c, 10, 9, CARTER_FRONT)
+    c.rect(1, 18, 24, 21, "L")
+    c.rect(1, 21, 24, 21, "j")
+    wheel_edge(c, 0, 17, 27, frame)
+    wheel_edge(c, 24, 17, 27, frame)
+    c.rect(7, 22, 7, 25, "j")
+    c.rect(18, 22, 18, 25, "j")
+    paint(c, 7, 20, horse_front(frame))
+    return c.rows()
+
+
+def wagon_back(frame: int) -> list[str]:
+    c = Cv(26, 34)
+    paint(c, 7, 0, HORSE_BACK)
+    arch(c, 2, 23, 3, 21)
+    arch(c, 7, 18, 9, 21, "d")
+    for x in range(7, 19, 2):
+        c.px(x, 9 + round(4 - 4 * (1 - ((x - 7) / 5.5 - 1) ** 2) ** 0.5), "c")
+    c.rect(9, 17, 16, 21, "L")
+    c.rect(9, 17, 16, 17, "j")
+    c.rect(1, 22, 24, 25, "L")
+    c.rect(1, 25, 24, 25, "j")
+    for x in range(4, 23, 5):
+        c.px(x, 23, "j")
+    wheel_edge(c, 0, 21, 32, frame)
+    wheel_edge(c, 24, 21, 32, frame)
+    return c.rows()
+
+
+def rider_side(frame: int) -> list[str]:
+    c = Cv(26, 29)
+    bob = frame % 2
+    paint(c, 0, 9, horse_side(frame))
+    paint(c, 8, 4 + bob, RIDER_SIDE)
+    for y in range(11 + bob, 17 + bob):
+        c.px(9, y, "B")
+        c.px(10, y, "B")
+    c.px(10, 17 + bob, "x")
+    c.px(11, 17 + bob, "x")
+    return c.rows()
+
+
+def rider_front(frame: int) -> list[str]:
+    c = Cv(12, 30)
+    paint(c, 2, 1 + frame % 2, RIDER_FRONT)
+    paint(c, 0, 10, horse_front(frame))
+    for y in (15, 16):
+        c.px(0, y, "B")
+        c.px(11, y, "B")
+    return c.rows()
+
+
+def rider_back(frame: int) -> list[str]:
+    c = Cv(12, 30)
+    paint(c, 0, 10, HORSE_RUMP)
+    front_legs(c, frame, 18, 25)
+    paint(c, 2, 2 + frame % 2, RIDER_BACK)
+    return c.rows()
+
+
+def steeds() -> dict[str, Image.Image]:
+    out: dict[str, Image.Image] = {}
+    walks = {
+        "wagon": (wagon_side, wagon_front, wagon_back),
+        "rider": (rider_side, rider_front, rider_back),
+    }
+    for name, (side, front, back) in walks.items():
+        frames = {}
+        for i in range(4):
+            frames[f"side-{i}"] = side(i)
+            frames[f"down-{i}"] = front(i)
+            frames[f"up-{i}"] = back(i)
+        # Each view cropped on its own, so a turn never jumps the wheels off the road.
+        for view in ("side", "down", "up"):
+            for key, image in group({k: v for k, v in frames.items() if k.startswith(view)}).items():
+                out[f"{name}-{key}"] = image
+    horse = {f"walk-{i}": horse_side(i) for i in range(4)}
+    horse["graze"] = horse_side(1, graze=True)
+    for key, image in group(horse).items():
+        out[f"horse-{key}"] = image
+    return out
+
+
 def extra_frames() -> dict[str, Image.Image]:
     out: dict[str, Image.Image] = {}
     for v, make in TOWNSFOLK.items():
@@ -1122,6 +1399,7 @@ def extra_frames() -> dict[str, Image.Image]:
         out[name] = sprite(rows)
     out["cart-0"], out["cart-1"] = cart(0), cart(1)
     out["boat-0"], out["boat-1"] = boat(0), boat(1)
+    out.update(steeds())
     return out
 
 

@@ -20,16 +20,31 @@ import type { Paths, Spot } from './walkers';
  * them. A quiet one has somebody about, and that is all. A forgotten one
  * empties out and gets crows.
  *
+ * And on the roads, what still reads once the camera is up over the whole
+ * island and a villager is a speck: covered wagons with a carter on the box
+ * and riders on horseback, going from one lived-in district to another along
+ * the artist's paths, more of them the busier the island is, and horses
+ * grazing on the farms.
+ *
  * None of it costs anything it does not have to. It moves only on frames that
  * are drawn, a path is found once per walk and only a few a frame, and the
  * whole crowd is capped well under what would ever be felt.
  */
 
-type Kind = 'town' | 'runner' | 'traveller' | 'animal' | 'crow' | 'cart' | 'boat';
+type Kind =
+  | 'town'
+  | 'runner'
+  | 'traveller'
+  | 'animal'
+  | 'crow'
+  | 'cart'
+  | 'boat'
+  | 'wagon'
+  | 'rider';
 type Dir = 'down' | 'up' | 'side';
 
 const TOWNSFOLK = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-const FARM_ANIMALS = ['chicken', 'hen', 'sheep', 'cow', 'pig', 'chicken', 'hen'];
+const FARM_ANIMALS = ['chicken', 'hen', 'sheep', 'cow', 'pig', 'horse', 'chicken', 'hen'];
 const TOWN_ANIMALS = ['dog', 'cat', 'chicken', 'hen', 'duck'];
 /** What an animal does standing still, by kind. */
 const IDLE: Record<string, string> = {
@@ -37,6 +52,7 @@ const IDLE: Record<string, string> = {
   hen: 'hen-peck',
   sheep: 'sheep-graze',
   cow: 'cow-graze',
+  horse: 'horse-graze',
   pig: 'pig-idle',
   duck: 'duck-idle',
   dog: 'dog-sit',
@@ -51,9 +67,16 @@ const PACE: Record<Kind, number> = {
   crow: 14,
   cart: 16,
   boat: 14,
+  wagon: 15,
+  rider: 26,
 };
 /** Never more than this on the island at once, whatever is going on. */
 const CAP = 120;
+/** Wagons and riders on the island at most, however busy it gets. */
+const ROAD_CAP = { wagon: 5, rider: 5 };
+/** How hard a wagon keeps to the road, and how far it will look for one. */
+const WAGON_OFF_ROAD = 3;
+const LONG_ROUTE = 30000;
 /** Paths found per frame at most, so a burst of work never costs a frame. */
 const ROUTES_PER_FRAME = 4;
 
@@ -98,6 +121,8 @@ interface Mover {
   heading: Spot | null;
   life: number;
   lane: Container | null;
+  /** When a wagon or rider last turned, so a diagonal road does not flicker it. */
+  turnedAt: number;
 }
 
 interface Place {
@@ -108,6 +133,7 @@ interface Place {
   sign: Spot[];
   farm: Spot[];
   docks: Spot[];
+  roads: Spot[];
 }
 
 /** How lively a district is right now. */
@@ -124,9 +150,16 @@ export class Crowd {
   private readonly want = new Map<string, { town: number; animals: number; crows: number }>();
   private routes = 0;
   private nextTraveller = 15;
+  private nextOnRoad = 3;
   private night = false;
   private counted = 0;
   private sorted = 0;
+  /**
+   * How much bigger what travels the roads is drawn than it really is. Pulled
+   * right back over the island a wagon is a fleck, so it grows as the camera
+   * rises, up to not quite twice its size, and is itself again close in.
+   */
+  private roadScale = 1;
   /** The part of the world on screen, with a margin: nobody outside it is drawn. */
   private view = { x: -Infinity, y: -Infinity, width: Infinity, height: Infinity };
 
@@ -148,6 +181,7 @@ export class Crowd {
         sign: [],
         farm: [],
         docks: [],
+        roads: paths.roadsIn(district),
       });
     }
     for (const building of buildings) {
@@ -274,7 +308,7 @@ export class Crowd {
   /** Every walker that would carry a lantern after dark. */
   *lit(): IterableIterator<Spot> {
     for (const one of this.movers) {
-      if (one.kind === 'town' || one.kind === 'runner' || one.kind === 'traveller') yield one;
+      if (isPerson(one.kind) || one.kind === 'wagon' || one.kind === 'rider') yield one;
     }
   }
 
@@ -290,13 +324,18 @@ export class Crowd {
   ): void {
     this.night = night;
     this.routes = 0;
-    if (view) this.view = view;
+    if (view) {
+      this.view = view;
+      const zoom = window.innerWidth / view.width;
+      this.roadScale = Math.min(1.8, Math.max(1, 0.5 / zoom));
+    }
     // Counting heads is a once-a-second job, not a once-a-frame one.
     if (now - this.counted > 1000) {
       this.counted = now;
       this.populate();
     }
     this.travel(seconds);
+    this.roadTraffic(seconds);
     const resort = now - this.sorted > 400;
     if (resort) this.sorted = now;
     for (let i = this.movers.length - 1; i >= 0; i--) {
@@ -392,6 +431,65 @@ export class Crowd {
     mover.carry = this.item(mover, pick(['carry-basket', 'carry-letter', 'carry-crate'])!);
   }
 
+  /**
+   * Wagons and riders. However many the island's life calls for, a few
+   * seconds apart: each leaves from a road in a lived-in district for a road
+   * in another one on the same level, or failing that the far end of its own,
+   * and comes back again before it is gone.
+   */
+  private roadTraffic(seconds: number): void {
+    this.nextOnRoad -= seconds;
+    if (this.nextOnRoad > 0) return;
+    this.nextOnRoad = rand(4, 9);
+    const lived = [...this.want.entries()]
+      .filter(([id, want]) => want.town > 0 && (this.places.get(id)?.roads.length ?? 0) > 6)
+      .map(([id, want]) => ({ id, town: this.night ? Math.ceil(want.town / 3) : want.town }));
+    if (!lived.length || this.movers.length >= CAP) return;
+    const bustle = lived.reduce((sum, one) => sum + one.town, 0);
+    const want = {
+      wagon: Math.min(ROAD_CAP.wagon, Math.max(1, Math.round(bustle / 5))),
+      rider: Math.min(ROAD_CAP.rider, Math.round(bustle / 4)),
+    };
+    const out = (kind: Kind) => this.movers.filter((one) => one.kind === kind).length;
+    const kind: Kind | null =
+      out('wagon') < want.wagon ? 'wagon' : out('rider') < want.rider ? 'rider' : null;
+    if (!kind) return;
+    // Busier districts send more of them.
+    let roll = Math.random() * bustle;
+    const from = lived.find((one) => (roll -= one.town) < 0) ?? lived[0]!;
+    const place = this.places.get(from.id)!;
+    const start = pick(place.roads)!;
+    const others = lived
+      .filter((one) => one.id !== from.id)
+      .map((one) => pick(this.places.get(one.id)!.roads)!)
+      .filter((spot) => this.paths.sameLevel(start, spot));
+    const offRoad = kind === 'wagon' ? WAGON_OFF_ROAD : 1.5;
+    let path: Spot[] | null = null;
+    let end: Spot | undefined = pick(others);
+    if (end) path = this.paths.route(start, end, LONG_ROUTE, offRoad);
+    if (!path?.length) {
+      // Nowhere else to go: the far end of its own roads.
+      end = [...place.roads]
+        .filter((spot) => this.paths.sameLevel(start, spot))
+        .sort((a, b) => far(b, start) - far(a, start))[Math.floor(Math.random() * 4)];
+      path = end ? this.paths.route(start, end, LONG_ROUTE, offRoad) : null;
+    }
+    if (!end || !path || path.length < 12) return;
+    // Never two setting off from the same spot, one on top of the other.
+    if (
+      this.movers.some(
+        (one) => (one.kind === 'wagon' || one.kind === 'rider') && far(one, start) < 80
+      )
+    ) {
+      return;
+    }
+    const mover = this.make(kind, kind, start, from.id);
+    mover.path = path;
+    mover.target = end;
+    mover.home = start;
+    mover.back = true;
+  }
+
   /* ── one of them ───────────────────────────────────────────────────── */
 
   private make(kind: Kind, look: string, at: Spot, district: string): Mover {
@@ -404,6 +502,8 @@ export class Crowd {
     body.anchor.set(0.5, 1);
     if (kind === 'animal' || kind === 'crow') shade.scale.set(0.6);
     if (kind === 'boat') shade.visible = false;
+    if (kind === 'wagon') shade.scale.set(3, 1.6);
+    if (kind === 'rider') shade.scale.set(1.8, 1.1);
     view.addChild(shade, body);
     view.position.set(Math.round(at.x), Math.round(at.y));
     const mover: Mover = {
@@ -430,6 +530,7 @@ export class Crowd {
       heading: null,
       life: 0,
       lane: null,
+      turnedAt: 0,
     };
     // Coming out of a door, they fade in rather than appear.
     view.alpha = 0;
@@ -457,7 +558,9 @@ export class Crowd {
       return;
     }
     let walking = false;
-    if (mover.path.length) {
+    if (mover.path.length && this.blocked(mover)) {
+      // Held up behind another on the same road: stand, horse and all.
+    } else if (mover.path.length) {
       const next = mover.path[0]!;
       const dx = next.x - mover.x;
       const dy = next.y - mover.y;
@@ -471,7 +574,8 @@ export class Crowd {
         mover.x += (dx / far) * go;
         mover.y += (dy / far) * go;
       }
-      if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+      if (mover.kind === 'wagon' || mover.kind === 'rider') this.steer(mover, now);
+      else if (Math.abs(dx) > Math.abs(dy) * 1.2) {
         mover.dir = 'side';
         mover.flip = dx < 0;
       } else if (Math.abs(dy) > 0.01) {
@@ -486,7 +590,7 @@ export class Crowd {
       mover.view.alpha -= seconds * 2.5;
       if (mover.view.alpha <= 0) mover.gone = true;
     }
-    const pace = walking ? (mover.kind === 'runner' ? 110 : 160) : 700;
+    const pace = walking ? WALK_FRAME[mover.kind] ?? 160 : 700;
     let changed = walking;
     if (now - mover.frameAt > pace) {
       mover.frameAt = now;
@@ -494,11 +598,12 @@ export class Crowd {
       changed = true;
     }
     const v = this.view;
+    const margin = mover.kind === 'wagon' ? 80 : 40;
     const seen =
-      mover.x > v.x - 40 &&
-      mover.x < v.x + v.width + 40 &&
-      mover.y > v.y - 40 &&
-      mover.y < v.y + v.height + 40;
+      mover.x > v.x - margin &&
+      mover.x < v.x + v.width + margin &&
+      mover.y > v.y - margin &&
+      mover.y < v.y + v.height + margin;
     if (changed && seen) this.draw(mover, walking);
   }
 
@@ -512,6 +617,10 @@ export class Crowd {
         return rand(800, 3000);
       case 'cart':
         return 1200;
+      case 'wagon':
+        return rand(3000, 7000);
+      case 'rider':
+        return rand(1500, 4000);
       default:
         return rand(1200, 5000);
     }
@@ -525,7 +634,13 @@ export class Crowd {
     }
     const place = this.places.get(mover.district);
     // Somewhere to be, and then home, and then gone.
-    if (mover.kind === 'runner' || mover.kind === 'cart' || mover.kind === 'traveller') {
+    if (
+      mover.kind === 'runner' ||
+      mover.kind === 'cart' ||
+      mover.kind === 'traveller' ||
+      mover.kind === 'wagon' ||
+      mover.kind === 'rider'
+    ) {
       if (mover.target && !mover.back) {
         mover.back = true;
         this.goTo(mover, mover.target);
@@ -567,8 +682,59 @@ export class Crowd {
 
   private goTo(mover: Mover, to: Spot): void {
     this.routes++;
-    const path = this.paths.route(mover, to, mover.kind === 'traveller' ? 16000 : 3000);
+    const path =
+      mover.kind === 'wagon' || mover.kind === 'rider'
+        ? this.paths.route(mover, to, LONG_ROUTE, mover.kind === 'wagon' ? WAGON_OFF_ROAD : 1.5)
+        : this.paths.route(mover, to, mover.kind === 'traveller' ? 16000 : 3000);
     mover.path = path ?? [];
+  }
+
+  /**
+   * Whether a wagon or rider has another right in front of it on the road.
+   * Two going the same way would otherwise drive on through each other, one
+   * canvas laid over the other; the one behind waits for a gap instead.
+   */
+  private blocked(mover: Mover): boolean {
+    if (mover.kind !== 'wagon' && mover.kind !== 'rider') return false;
+    const next = mover.path[Math.min(mover.path.length - 1, 2)]!;
+    const hx = next.x - mover.x;
+    const hy = next.y - mover.y;
+    const length = Math.hypot(hx, hy) || 1;
+    for (const other of this.movers) {
+      if (other === mover || (other.kind !== 'wagon' && other.kind !== 'rider')) continue;
+      const dx = other.x - mover.x;
+      const dy = other.y - mover.y;
+      const ahead = (dx * hx + dy * hy) / length;
+      const aside = Math.abs(dx * hy - dy * hx) / length;
+      if (!(ahead > 0 && ahead < 46 * this.roadScale && aside < 14)) continue;
+      // Coming the other way they pass; only one going the same way holds it up.
+      const its = other.path[Math.min(other.path.length - 1, 2)];
+      if (its && (its.x - other.x) * hx + (its.y - other.y) * hy < 0) continue;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Which way a wagon or rider faces, read off the road a few steps ahead
+   * rather than the next one, and held a moment once turned: a diagonal road
+   * is a staircase of steps, and something this big flicking between its
+   * side and its front on every one of them is the first thing anybody sees.
+   */
+  private steer(mover: Mover, now: number): void {
+    const ahead = mover.path[Math.min(mover.path.length - 1, 4)];
+    if (!ahead) return;
+    const dx = ahead.x - mover.x;
+    const dy = ahead.y - mover.y;
+    let dir: Dir = mover.dir;
+    if (Math.abs(dx) > Math.abs(dy) * 1.4) dir = 'side';
+    else if (Math.abs(dy) > Math.abs(dx) * 1.4) dir = dy < 0 ? 'up' : 'down';
+    const flip = dir === 'side' ? dx < 0 : mover.flip;
+    if (dir === mover.dir && flip === mover.flip) return;
+    if (now - mover.turnedAt < 500) return;
+    mover.dir = dir;
+    mover.flip = flip;
+    mover.turnedAt = now;
   }
 
   private sail(mover: Mover, now: number, seconds: number): void {
@@ -602,7 +768,8 @@ export class Crowd {
       folkTexture(name) ??
       folkTexture(mover.kind === 'animal' ? `${mover.look}-walk-0` : 'front-0');
     if (texture && mover.body.texture !== texture) mover.body.texture = texture;
-    const flip = mover.flip && (mover.dir === 'side' || !isPerson(mover.kind)) ? -1 : 1;
+    const facesAll = !isPerson(mover.kind) && mover.kind !== 'wagon' && mover.kind !== 'rider';
+    const flip = mover.flip && (mover.dir === 'side' || facesAll) ? -1 : 1;
     mover.body.scale.x = flip;
     if (mover.pusher) {
       const frame = folkTexture(`walk-side-${mover.frame % 4}`);
@@ -619,13 +786,14 @@ export class Crowd {
       );
     }
     mover.view.position.set(Math.round(mover.x), Math.round(mover.y));
+    if (mover.kind === 'wagon' || mover.kind === 'rider') mover.view.scale.set(this.roadScale);
   }
 
   private frameName(mover: Mover, walking: boolean): string {
     const f = mover.frame;
     switch (mover.kind) {
       case 'animal': {
-        if (walking) return `${mover.look}-walk-${f % 2}`;
+        if (walking) return `${mover.look}-walk-${f % (mover.look === 'horse' ? 4 : 2)}`;
         return IDLE[mover.look] ?? `${mover.look}-walk-0`;
       }
       case 'crow':
@@ -634,6 +802,9 @@ export class Crowd {
         return `cart-${f % 2}`;
       case 'boat':
         return `boat-${f % 2}`;
+      case 'wagon':
+      case 'rider':
+        return `${mover.look}-${mover.dir}-${walking ? f % 4 : 1}`;
       default: {
         const prefix = mover.look;
         if (walking) return `${prefix}walk-${mover.dir}-${f % 4}`;
@@ -642,6 +813,13 @@ export class Crowd {
       }
     }
   }
+}
+
+/** How long each frame of a walk is held, by what is walking. */
+const WALK_FRAME: Partial<Record<Kind, number>> = { runner: 110, wagon: 170, rider: 130 };
+
+function far(a: Spot, b: Spot): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
 function isPerson(kind: Kind): boolean {

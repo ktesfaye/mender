@@ -312,12 +312,59 @@ export class Paths {
         }
       }
     }
+    this.raiseRoads();
     for (const building of buildings) {
       const door = {
         x: Math.round(building.doorX),
         y: Math.round(building.y + building.height + 6),
       };
       this.doors.set(building, this.nearestWalkable(door, 4) ?? door);
+    }
+  }
+
+  /**
+   * The paths are one layer drawn under all the grass, showing wherever the
+   * grass leaves a gap, so a road up on a plateau is at the plateau's height
+   * even though its tiles say the bottom. Each stretch of road takes the
+   * height of the grass it runs through; counted as the bottom, every road
+   * was walled off from the grass on either side of it.
+   */
+  private raiseRoads(): void {
+    const seen = new Set<string>();
+    for (const start of this.roads) {
+      if (seen.has(start)) continue;
+      const stretch: string[] = [];
+      const beside = new Map<number, number>();
+      const queue = [start];
+      seen.add(start);
+      while (queue.length) {
+        const key = queue.pop()!;
+        stretch.push(key);
+        const [x, y] = key.split(',').map(Number) as [number, number];
+        for (const [dx, dy] of EIGHT) {
+          const next = `${x + dx},${y + dy}`;
+          const level = this.ground.get(next);
+          if (level === undefined) continue;
+          if (this.roads.has(next)) {
+            if (!seen.has(next) && !dx !== !dy) {
+              seen.add(next);
+              queue.push(next);
+            }
+          } else {
+            beside.set(level, (beside.get(level) ?? 0) + 1);
+          }
+        }
+      }
+      let level: number | undefined;
+      let most = 0;
+      for (const [one, count] of beside) {
+        if (count > most) {
+          level = one;
+          most = count;
+        }
+      }
+      if (level === undefined) continue;
+      for (const key of stretch) this.ground.set(key, level);
     }
   }
 
@@ -367,9 +414,10 @@ export class Paths {
    *
    * A* over the grid, eight ways, paths cheaper than grass, only on the level
    * it is on. Capped, so an unreachable spot costs a bounded search and not
-   * the whole island.
+   * the whole island. `offRoad` weighs grass against path: a wagon keeps to
+   * the road far harder than somebody on foot.
    */
-  route(walker: Spot, to: Spot, budget = 2600): Spot[] | null {
+  route(walker: Spot, to: Spot, budget = 2600, offRoad = 1): Spot[] | null {
     const level = this.levelAt(walker);
     const start = this.nearestKey(walker, 3);
     const goal = this.nearestKey(to, 3);
@@ -400,7 +448,7 @@ export class Paths {
         ) {
           continue;
         }
-        const step = (dx && dy ? 1.414 : 1) * (this.roads.has(next) ? 0.55 : 1);
+        const step = (dx && dy ? 1.414 : 1) * (this.roads.has(next) ? 0.55 : offRoad);
         const total = (cost.get(key) ?? 0) + step;
         if (total >= (cost.get(next) ?? Infinity)) continue;
         cost.set(next, total);
@@ -423,6 +471,17 @@ export class Paths {
   sameLevel(a: Spot, b: Spot): boolean {
     const one = this.levelAt(a);
     return one !== undefined && one === this.levelAt(b);
+  }
+
+  /** Every step of the artist's paths inside a district, where a wagon can stand. */
+  roadsIn(district: District): Spot[] {
+    const cells = cellsOf(district);
+    const out: Spot[] = [];
+    for (const key of this.roads) {
+      const at = centreOf(key);
+      if (cells.has(`${Math.floor(at.x / CELL)},${Math.floor(-at.y / CELL)}`)) out.push(at);
+    }
+    return out;
   }
 
   /** The nearest walkable spot to one, or null. */
