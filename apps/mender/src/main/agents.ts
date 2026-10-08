@@ -43,6 +43,7 @@ import type {
   Wrote,
 } from '@shared/agents';
 import { carried, packExpect, piecesOf, USUAL_PACK } from '@shared/packing';
+import { forgetClaudeSession } from './claude-cli-history';
 import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
 import { goingIn, pickUpNote, PICK_UP_SAID, type CutOff } from './cut-off';
 import { questionsOf, type FormQuestion, type FormValue } from './form';
@@ -55,9 +56,8 @@ import {
   tokensOf,
   type HelperTrail,
 } from './helper-trail';
-import { forgetClaudeSession } from './claude-cli-history';
-import { kept, madeIn, stillThere } from './made';
 import { resetFrom } from './limit-clock';
+import { kept, madeIn, stillThere } from './made';
 
 /**
  * Why an install left them not here, in its own words.
@@ -361,6 +361,10 @@ export function createAgents(
      touched the moment a turn settles into resting — the idle clock starts
      counting from exactly the point there is nothing left to wait for. */
   const lastActive = new Map<string, number>();
+  /* Finished a turn and nobody has opened it or said anything since: its
+     lantern is green for exactly that, so it is not idle and stays up. */
+  const unlooked = new Set<string>();
+  const was = new Map<string, Mood>();
   const learn = async (): Promise<void> => {
     for (const record of await tasks.list()) wheres.set(record.id, record.path);
   };
@@ -556,6 +560,11 @@ export function createAgents(
           lastActive.set(task, Date.now());
           island.set(moodsOf(houses));
           const here = houses.get(task);
+          const mood = here ? peek(here.state).mood : undefined;
+          const before = was.get(task);
+          if (mood) was.set(task, mood);
+          if (mood === 'resting' && (before === 'working' || before === 'asking'))
+            unlooked.add(task);
           if (here) retitleFromWork(task, here);
         },
         () => wheres.get(task),
@@ -847,7 +856,7 @@ export function createAgents(
   const sweep = setInterval(() => {
     const now = Date.now();
     for (const [task, house] of houses) {
-      if (peek(house.state).mood !== 'resting') continue;
+      if (!house.idle() || unlooked.has(task)) continue;
       const since = lastActive.get(task) ?? now;
       if (now - since >= IDLE_MS) void rest(task);
     }
@@ -935,6 +944,7 @@ export function createAgents(
     /* Anything said, by hand or by a scheduled continue, stops any continue
        still armed from an earlier limit. */
     stopWaiting(task);
+    unlooked.delete(task);
     /* Named off what was just said, once it has landed in the transcript —
        which for a fresh agent is after it has finished starting — rather than
        left as "claude" for however long the first turn takes. */
@@ -1069,6 +1079,7 @@ export function createAgents(
 
   const wake = async (task: string): Promise<Told> => {
     await loaded;
+    unlooked.delete(task);
     const record = (await tasks.list()).find((candidate) => candidate.id === task);
     if (!record) return { success: false, error: { kind: 'no-such-task' } };
     /* A session nobody has spoken to yet has no conversation, and the card
@@ -1812,6 +1823,21 @@ class House {
     return Boolean(now && !now.suspended && now.lifecycle !== 'closed');
   }
 
+  /** Stopped with nothing at all going on: no limit or retry being waited
+   *  out, no continue armed, nobody sent out still out, no command left
+   *  running in the background and nothing queued to be said. */
+  idle(): boolean {
+    const state = peek(this.state);
+    return (
+      state.mood === 'resting' &&
+      !this.lifecycle?.failure &&
+      this.carryOnAt === null &&
+      !this.lifecycle?.queuedPrompts?.length &&
+      !state.told.errands.some((one) => one.running) &&
+      !state.told.deeds.some((one) => one.running)
+    );
+  }
+
   /** A wake has started reading this session back in, or has finished. */
   waking(on: boolean): void {
     if (this.wakingUp === on) return;
@@ -2363,7 +2389,8 @@ function bankable(category: SessionFailure['category']): boolean {
 }
 
 /** How a limit begins in Claude's own transcript, folded to lower case. */
-const LIMIT_KEY = /^you(?:'ve| have) (?:hit|reached) your|^you're out of (?:usage|extra usage)|usage limit/;
+const LIMIT_KEY =
+  /^you(?:'ve| have) (?:hit|reached) your|^you're out of (?:usage|extra usage)|usage limit/;
 
 /** Everything Claude said about a failure, where a reset time might be. */
 function liftText(failure: SessionFailure): string {
