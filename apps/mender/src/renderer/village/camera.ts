@@ -94,10 +94,12 @@ let floor = RUNGS[0] as number;
 
 function snapToRung(viewport: Viewport): void {
   const scale = viewport.scale.x;
-  const rung = nearestRung(scale);
-  if (rung === scale) return;
-  // Never past the floor: the island is as far out as it goes.
-  if (rung < floor - 1e-6) return;
+  /* The floor is a rung of its own. Below 1:1 it is rarely one of the ladder's,
+     and without it a camera resting on the whole island was nearer a half than
+     anything else and got pulled back in, cropping the coast every time. */
+  const rungs = [floor, ...RUNGS.filter((r) => r > floor + 1e-6)];
+  const rung = nearestRung(scale, rungs);
+  if (Math.abs(rung - scale) < 1e-6) return;
   // snapZoom is told a world width to fit, not a scale.
   viewport.snapZoom({
     width: viewport.screenWidth / rung,
@@ -108,10 +110,10 @@ function snapToRung(viewport: Viewport): void {
   });
 }
 
-function nearestRung(scale: number): number {
+function nearestRung(scale: number, rungs: readonly number[] = RUNGS): number {
   // Compared in the log, because the rungs are a ratio ladder: halfway between
   // 1 and 2 is 1.41, not 1.5.
-  return RUNGS.reduce((best, rung) =>
+  return rungs.reduce((best, rung) =>
     Math.abs(Math.log(rung / scale)) < Math.abs(Math.log(best / scale)) ? rung : best
   );
 }
