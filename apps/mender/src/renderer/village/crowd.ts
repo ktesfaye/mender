@@ -71,9 +71,9 @@ const PACE: Record<Kind, number> = {
   rider: 26,
 };
 /** Never more than this on the island at once, whatever is going on. */
-const CAP = 120;
+const CAP = 170;
 /** Wagons and riders on the island at most, however busy it gets. */
-const ROAD_CAP = { wagon: 5, rider: 5 };
+const ROAD_CAP = { wagon: 14, rider: 16 };
 /** How hard a wagon keeps to the road, and how far it will look for one. */
 const WAGON_OFF_ROAD = 3;
 const LONG_ROUTE = 30000;
@@ -440,20 +440,22 @@ export class Crowd {
   private roadTraffic(seconds: number): void {
     this.nextOnRoad -= seconds;
     if (this.nextOnRoad > 0) return;
-    this.nextOnRoad = rand(4, 9);
+    this.nextOnRoad = rand(1, 2.5);
     const lived = [...this.want.entries()]
       .filter(([id, want]) => want.town > 0 && (this.places.get(id)?.roads.length ?? 0) > 6)
       .map(([id, want]) => ({ id, town: this.night ? Math.ceil(want.town / 3) : want.town }));
     if (!lived.length || this.movers.length >= CAP) return;
     const bustle = lived.reduce((sum, one) => sum + one.town, 0);
     const want = {
-      wagon: Math.min(ROAD_CAP.wagon, Math.max(1, Math.round(bustle / 5))),
-      rider: Math.min(ROAD_CAP.rider, Math.round(bustle / 4)),
+      wagon: Math.min(ROAD_CAP.wagon, Math.max(3, lived.length + Math.round(bustle / 3))),
+      rider: Math.min(ROAD_CAP.rider, Math.max(3, lived.length + Math.round(bustle / 2.5))),
     };
     const out = (kind: Kind) => this.movers.filter((one) => one.kind === kind).length;
-    const kind: Kind | null =
-      out('wagon') < want.wagon ? 'wagon' : out('rider') < want.rider ? 'rider' : null;
-    if (!kind) return;
+    // Whichever is furthest short of its number goes next, so they come out mixed.
+    const shortWagon = 1 - out('wagon') / want.wagon;
+    const shortRider = want.rider ? 1 - out('rider') / want.rider : 0;
+    if (shortWagon <= 0 && shortRider <= 0) return;
+    const kind: Kind = shortRider > shortWagon ? 'rider' : 'wagon';
     // Busier districts send more of them.
     let roll = Math.random() * bustle;
     const from = lived.find((one) => (roll -= one.town) < 0) ?? lived[0]!;

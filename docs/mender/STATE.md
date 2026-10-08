@@ -3586,3 +3586,9 @@ village closed", and stops one straight after another with nothing between
 them fold into one. Driven in a dev instance: a long answer under way, the app
 killed, reopened, and the board said the village closed where it used to say
 you stopped it, and the session picked back up and finished.
+
+Then turned well up: every lived-in district keeps a couple of wagons and a
+couple of riders on the road, more on top for how busy the island is, sent
+out a second or two apart and mixed rather than all the wagons first. Driven
+in a dev instance at noon from the top: wagons and riders on most roads at
+once, none stacked.
