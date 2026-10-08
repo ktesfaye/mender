@@ -235,10 +235,7 @@ answer's own face with an ember diamond and a rule off them, bullets as
 ember squares, numbers on small timber tiles, code on a slate with its
 language over it, a name quoted exactly on a slate of its own, tables
 framed with a timber head and banded rows, quotes on a wash with a bar down
-them. The recap is pinned under it on parchment; the notes under the newest
-on the gatepost are parchment too, weathered darker; and every step under
-"what it did" sits on a small tile on one thread down the column, its
-changed lines on the same slate code is read on.
+them.
 
 **A command left running in the background stays running on the board.**
 When the agent starts something and doesn't wait for it, a dev server, a

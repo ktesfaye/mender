@@ -1714,15 +1714,13 @@ function handed(on: HTMLElement, note: Note, tone?: string): void {
 /** A note that has been on the post a while. */
 function weathered(note: Note): HTMLElement {
   const it = document.createElement('div');
-  it.className = `post-scrap paper${note.standing ? ' post-standing' : ''}`;
+  it.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0';
   it.appendChild(
-    said(
-      `${note.when} · ${note.standing ? 'standing' : note.answered ? 'answered' : 'unanswered'}`,
-      '#7a5530'
-    )
+    said(`${note.when} · ${note.standing ? 'standing' : note.answered ? 'answered' : 'unanswered'}`)
   );
   const body = document.createElement('span');
-  body.className = 'post-scrap-said';
+  body.style.cssText =
+    "font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
   body.textContent = named(note.said);
   it.appendChild(body);
   handed(it, note);
@@ -1732,15 +1730,13 @@ function weathered(note: Note): HTMLElement {
 /** Something said while it worked, on the post but not yet read. */
 function unheard(one: { said: string; handed?: boolean }): HTMLElement {
   const it = document.createElement('div');
-  it.className = 'post-unheard';
+  it.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0';
   it.appendChild(
-    said(
-      one.handed ? 'just now · not read yet' : 'waiting its turn · press to take back',
-      '#d8a868'
-    )
+    said(one.handed ? 'just now · not read yet' : 'waiting its turn · press to take back')
   );
   const body = document.createElement('span');
-  body.className = 'post-scrap-said';
+  body.style.cssText =
+    "font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
   body.textContent = one.said;
   it.appendChild(body);
   return it;
@@ -2066,10 +2062,10 @@ function thinking(
         const body = document.createElement('div');
         /* Set large, unless it is long enough that large is a wall: a whole
          report at the size of one sentence is read a word at a time. */
-        const size = one.said.length > 700 ? 18 : 20;
+        const size = one.said.length > 700 ? 19 : 21;
         body.style.cssText = one.quiet
-          ? 'font-size:17px;line-height:1.45;font-style:italic;color:rgba(255,220,164,.78)'
-          : `font-size:${size}px;line-height:1.6;letter-spacing:.005em;color:${trouble?.ink ?? '#ebe3d3'}`;
+          ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
+          : `font-size:${size}px;line-height:1.6;letter-spacing:.01em;color:${trouble?.ink ?? '#ebe3d3'}`;
         if (!one.quiet) body.classList.add('clear');
         if (trouble) body.classList.add('prose-trouble');
         prose(body, one.id, one.said, !walkedIn, openLink(does));
@@ -2298,13 +2294,11 @@ function troubleSign(kind: NonNullable<Thought['trouble']>): Sign {
  */
 function recapped(text: string): HTMLElement {
   const it = keyed(document.createElement('div'), 'recap');
-  it.className = 'said-recap paper';
-  const head = document.createElement('div');
-  head.className = 'said-recap-head';
-  head.textContent = 'where it stands';
-  it.appendChild(head);
+  it.style.cssText = 'display:flex;flex-direction:column;gap:5px;flex:none;margin-top:auto';
+  it.appendChild(said('recap', '#b39a74'));
   const body = document.createElement('div');
-  body.className = 'said-recap-body';
+  body.style.cssText =
+    'font-size:17px;line-height:1.5;font-style:italic;color:rgba(235,222,196,.72)';
   body.textContent = text;
   it.appendChild(body);
   return it;
@@ -3079,7 +3073,7 @@ function planned(plan: Session['plan']): HTMLElement {
 /** One thing it did, with the prop that stands for it in a fixed slot. */
 function did(one: Step, does: Doings): HTMLElement {
   const it = document.createElement('div');
-  it.className = `step${one.running ? ' step-running' : ''}${one.group ? ' step-looked' : ''}${one.tone === 'broken' ? ' step-broken' : ''}`;
+  it.style.cssText = 'display:flex;flex-direction:column;gap:2px';
   if (one.group) {
     it.appendChild(lookedLine(one));
     return it;
@@ -3098,20 +3092,21 @@ function lookedLine(one: Step): HTMLElement {
   it.style.cssText = 'display:flex;flex-direction:column;gap:2px';
   const line = row(8);
   const slot = document.createElement('span');
-  slot.className = 'step-tile step-tile-quiet';
+  slot.style.cssText =
+    'width:28px;height:18px;display:flex;justify-content:center;align-items:center;flex:none;position:relative;opacity:.55';
   const prop = sprite(one.prop, 1);
-  prop.style.cssText += ';position:relative;flex:none;transform:scale(.5)';
+  prop.style.cssText += ';position:relative;flex:none;transform:scale(.45)';
   slot.appendChild(prop);
   line.appendChild(slot);
   const text = document.createElement('span');
   const open = openLooks.has(one.id);
-  text.style.cssText = 'color:#a8936f;cursor:pointer;pointer-events:auto;white-space:normal';
+  text.style.cssText = 'color:#8f7c5f;cursor:pointer;pointer-events:auto;white-space:normal';
   text.textContent = `${open ? '\u25be' : '\u25b8'} ${one.did}`;
   text.addEventListener('mousedown', (event) => event.preventDefault());
   line.appendChild(text);
   it.appendChild(line);
   const list = document.createElement('div');
-  list.className = 'step-looks';
+  list.style.cssText = 'margin-left:36px;display:flex;flex-direction:column;gap:2px';
   const fill = (): void => {
     list.replaceChildren();
     if (!openLooks.has(one.id)) return;
@@ -3142,7 +3137,8 @@ const openLooks = new Set<string>();
 function deedLine(one: Step): HTMLElement {
   const line = row(8);
   const slot = document.createElement('span');
-  slot.className = 'step-tile';
+  slot.style.cssText =
+    'width:28px;height:26px;display:flex;justify-content:center;align-items:center;flex:none;position:relative';
   if (one.running) {
     /* Nothing spins in this village. Something happening now is a light that
        goes on and off, which is what a fire does. */
@@ -3156,7 +3152,7 @@ function deedLine(one: Step): HTMLElement {
     const prop = sprite(one.prop, 1);
     prop.style.position = 'relative';
     prop.style.flex = 'none';
-    prop.style.transform = 'scale(.62)';
+    prop.style.transform = 'scale(.6)';
     slot.appendChild(prop);
   }
   line.appendChild(slot);
@@ -3208,12 +3204,12 @@ function noted(note: string): (string | HTMLElement)[] {
  */
 function diffPreview(one: Step, does: Doings): HTMLElement {
   const wrap = document.createElement('div');
-  wrap.className = 'step-diff';
+  wrap.style.cssText = 'margin-left:36px;display:flex;flex-direction:column;gap:0';
   for (const marked of one.diff ?? []) {
     const line = document.createElement('span');
     const kind = marked[0];
     line.style.cssText =
-      "font-family:'Courier Prime',monospace;font-size:11px;line-height:1.4;white-space:pre;overflow:hidden;text-overflow:ellipsis";
+      "font-family:'Josefin Sans',sans-serif;font-size:10.5px;line-height:1.35;white-space:pre;overflow:hidden;text-overflow:ellipsis;opacity:.8";
     line.style.color =
       kind === '+' ? 'var(--yard-well)' : kind === '-' ? 'var(--yard-wrong)' : '#a89272';
     line.textContent = marked;
