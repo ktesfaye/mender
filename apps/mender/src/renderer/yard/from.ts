@@ -26,6 +26,7 @@ import type {
   Session,
   Signboard,
   Step,
+  StepKind,
   Thought,
   Yard,
 } from './what';
@@ -461,6 +462,7 @@ function stepsOf(deeds: readonly DeedIn[]): Step[] {
       id: `look:${first.deed.id}`,
       did: lookedAround(run.map((one) => one.plain.looked)),
       prop: KIT_NAMES.sign,
+      kind: 'look',
       group: run.map((one) => ({ id: one.deed.id, did: one.deed.why ?? one.deed.did })),
     });
     run = [];
@@ -473,11 +475,15 @@ function stepsOf(deeds: readonly DeedIn[]): Step[] {
     }
     flush();
     const step = stepOf(deed);
+    step.kind = kindOf(deed);
+    /* A command that only looked has no words of its own worth printing: the
+       raw command is the least readable thing there is. */
+    const looked = plain.kind === 'look' ? (deed.why ?? 'ran a check') : undefined;
     if (deed.tool === 'execute-tool-call' && deed.background && deed.running) {
-      step.did = plain.said ?? deed.did;
+      step.did = plain.said ?? looked ?? deed.did;
       step.note = 'still going in the background';
     } else if (deed.tool === 'execute-tool-call') {
-      step.did = plain.said ?? (deed.running ? 'looking around' : deed.did);
+      step.did = plain.said ?? (deed.running ? 'looking around' : (looked ?? deed.did));
       if (plain.said === 'ran the tests' && !deed.running)
         step.note = deed.wrong ? 'failed' : 'passed';
       else if (deed.wrong) step.note = 'failed';
@@ -486,6 +492,40 @@ function stepsOf(deeds: readonly DeedIn[]): Step[] {
   }
   flush();
   return out;
+}
+
+/** Which sign a step is drawn with, from what it actually did. */
+function kindOf(deed: DeedIn): StepKind {
+  switch (deed.tool) {
+    case 'read-tool-call':
+    case 'web-fetch-tool-call':
+      return 'read';
+    case 'search-tool-call':
+    case 'tool-group':
+      return 'look';
+    case 'create-file-tool-call':
+      return 'write';
+    case 'modify-file-tool-call':
+      return 'edit';
+    case 'delete-file-tool-call':
+      return 'delete';
+    case 'spawn-subagent-tool-call':
+      return 'send';
+    case 'create-plan-tool-call':
+      return 'plan';
+    case 'execute-tool-call': {
+      const said = plainCommand(deed.did).said ?? '';
+      if (said.startsWith('committed')) return 'commit';
+      if (said === 'pushed' || said === 'opened a pull request') return 'push';
+      if (said === 'ran the tests') return 'test';
+      if (said === 'built the app') return 'build';
+      if (said.startsWith('installed')) return 'install';
+      if (said) return 'git';
+      return 'run';
+    }
+    default:
+      return 'tool';
+  }
 }
 
 function plainOf(deed: DeedIn): Plain {

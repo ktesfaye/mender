@@ -1873,5 +1873,93 @@ body.gripping-row * {
   padding: 6px 0 4px;
 }
 
-
-
+/* ── what it did: one thread down the column, a sign on it for each step ── */
+.yard .deed {
+  position: relative;
+  flex: none;
+}
+/* The thread runs from each sign down to the next, so the column reads as
+   one trail of work rather than a list of separate lines. */
+.yard .deed::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 19px;
+  bottom: -9px;
+  width: 1px;
+  background: rgba(244, 227, 192, 0.13);
+}
+.yard .deed:last-child::before {
+  display: none;
+}
+.yard .deed-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.yard .deed-sign {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(1px 1px 0 #120d07);
+}
+.yard .deed-sign svg {
+  display: block;
+}
+/* Something still running is an ember going on and off, the fire's way of
+   saying now; nothing here spins. */
+.yard .deed-ember {
+  width: 7px;
+  height: 7px;
+  background: #ff8a4a;
+  box-shadow: 0 0 0 3px rgba(255, 138, 74, 0.22);
+  animation: yard-blink 700ms steps(1, end) infinite;
+}
+.yard .deed-said {
+  min-width: 0;
+  padding-top: 1px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #d8c6a2;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.yard .deed-running .deed-said {
+  color: #ffc98a;
+}
+/* A run of looking around is the quiet part of the trail. */
+.yard .deed-said-looked {
+  font-size: 12px;
+  color: #8f7c5f;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.yard .deed-said-looked:hover {
+  color: #a89272;
+}
+.yard .deed-under {
+  margin: 3px 0 0 27px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.yard .deed-under-line {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #8f7c5f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.yard .deed-diff {
+  padding-left: 8px;
+  border-left: 1px solid rgba(244, 227, 192, 0.12);
+}

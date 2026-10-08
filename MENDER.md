@@ -212,10 +212,15 @@ worked out from the command itself rather than the command: what changed
 something gets its own line, built, installed, tested and whether it passed,
 committed with its message, pushed, a file written or changed, and every run
 of reading and grepping and checking between them folds into one quiet line
-that says how much looking it was and opens to show it. A prop from the kit
-stands for each: a signpost for something read, a crate for something
-written, an anvil for something changed, a tub over the fire for something set
-running. A crate's or an anvil's own step carries the lines it actually wrote
+that says how much looking it was and opens to show it. The steps hang on
+one thread down the column, and each carries a small sign drawn in whole
+pixels in the colour of what it is: an eye for looking around, a page for
+something read, a page with a plus in green for something written, a pencil
+for something changed, a flame for something run, a flask for the tests, a
+box for a build, an arrow into a tray for an install, a ring in the exact
+blue for a commit and an arrow up for a push, and the sore cross in place of
+any of them when it failed. A check that failed is said as what it was for,
+never as its raw command. A written or changed file's own step carries the lines it actually wrote
 right under it, capped, in the same warm and sore tones a change is read in
 anywhere else in the village; pressing the cap opens the whole change on the
 checkout's own board. Under all of that is the ground itself, with whoever it

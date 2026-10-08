@@ -67,6 +67,7 @@ import type {
   Posture,
   Session,
   Step,
+  StepKind,
   Thought,
   Yard,
 } from './what';
@@ -2894,7 +2895,7 @@ function made(
   const top = labelAt + (HEAD.top - HEAD.label);
   const steps = stack(
     { left: 0, top, width: at.wide, height: Math.max(0, above.offsetHeight - top) },
-    6
+    9
   );
   /* A glance down the side, not a second thing to read: small, quiet type
      and the props shrunk to match, so the answer in the middle stays the one
@@ -3073,7 +3074,7 @@ function planned(plan: Session['plan']): HTMLElement {
 /** One thing it did, with the prop that stands for it in a fixed slot. */
 function did(one: Step, does: Doings): HTMLElement {
   const it = document.createElement('div');
-  it.style.cssText = 'display:flex;flex-direction:column;gap:2px';
+  it.className = `deed${one.group ? ' deed-looked' : ''}${one.running ? ' deed-running' : ''}${one.tone === 'broken' ? ' deed-broken' : ''}`;
   if (one.group) {
     it.appendChild(lookedLine(one));
     return it;
@@ -3083,37 +3084,97 @@ function did(one: Step, does: Doings): HTMLElement {
   return it;
 }
 
+/* ── the signs a step is drawn with ─────────────────────────────────────────
+   Each kind of thing it did has a small sign of its own in whole pixels, in
+   the colour of what it is: looking is the post's own tan, something new is
+   green, something changed is cream, something run is the fire, git is the
+   exact blue, a helper sent out is violet. A kit prop shrunk to fit a line
+   was a blur; these are drawn at the size they are read. */
+const DEED_ART: Record<StepKind, string[]> = {
+  look: ['.........', '..#####..', '.#..#..#.', '#..###..#', '.#..#..#.', '..#####..', '.........'],
+  read: ['#####..', '#...##.', '#.....#', '#.###.#', '#.....#', '#.###.#', '#######'],
+  write: ['#####..', '#...##.', '#..#..#', '#.###.#', '#..#..#', '#.....#', '#######'],
+  edit: ['.....##', '....###', '...###.', '..###..', '.###...', '##.....', '#......'],
+  delete: ['.#####.', '#######', '.#...#.', '.#.#.#.', '.#.#.#.', '.#...#.', '.#####.'],
+  run: ['...#...', '..##...', '..###.#', '.#####.', '.##.##.', '.#...#.', '..###..'],
+  test: ['..###..', '..#.#..', '..#.#..', '.#...#.', '#.....#', '#.###.#', '#######'],
+  build: ['.#####.', '#.....#', '#######', '#..#..#', '#..#..#', '#..#..#', '#######'],
+  install: ['...#...', '...#...', '.#####.', '..###..', '...#...', '#.....#', '#######'],
+  commit: ['.......', '..###..', '.#...#.', '##...##', '.#...#.', '..###..', '.......'],
+  push: ['...#...', '..###..', '.#####.', '...#...', '...#...', '...#...', '.#####.'],
+  git: ['.#...#.', '.#...#.', '.#..#..', '.#.#...', '.##....', '.#.....', '.#.....'],
+  send: ['..##...', '..##...', '.####..', '#.##.#.', '..##...', '.#..#..', '.#..#..'],
+  plan: ['#.#####', '.......', '#.#####', '.......', '#.#####', '.......', '#.###..'],
+  tool: ['.......', '..###..', '.#####.', '.##.##.', '.#####.', '..###..', '.......'],
+};
+
+const DEED_INK: Record<StepKind, string> = {
+  look: '#8f7c5f',
+  read: '#b39a74',
+  write: '#a8c469',
+  edit: '#f4e3c0',
+  delete: '#d98a6a',
+  run: '#ffa54f',
+  test: '#a8c469',
+  build: '#ffa54f',
+  install: '#f4e3c0',
+  commit: '#8cc4d6',
+  push: '#8cc4d6',
+  git: '#8cc4d6',
+  send: '#c9b2ff',
+  plan: '#b39a74',
+  tool: '#b39a74',
+};
+
+/** A step's sign: its kind's, the sore cross when it failed, a blinking ember while it runs. */
+function deedSign(one: Step): HTMLElement {
+  const slot = document.createElement('span');
+  slot.className = 'deed-sign';
+  if (one.running) {
+    const ember = document.createElement('span');
+    ember.className = 'deed-ember';
+    slot.appendChild(ember);
+    return slot;
+  }
+  const kind: StepKind = one.kind ?? (one.group ? 'look' : 'tool');
+  const broke = one.tone === 'broken' || one.note === 'failed';
+  const art = broke ? SIGN_ART.wrong : DEED_ART[kind];
+  slot.style.color = broke ? 'var(--yard-wrong)' : DEED_INK[kind];
+  const wide = Math.max(...art.map((row) => row.length));
+  const cells = art.flatMap((row, y) =>
+    [...row].flatMap((c, x) =>
+      c === '#' ? [`<rect x="${x}" y="${y}" width="1" height="1"/>`] : []
+    )
+  );
+  slot.innerHTML = `<svg viewBox="0 0 ${wide} ${art.length}" width="${wide * 2}" height="${art.length * 2}" shape-rendering="crispEdges" fill="currentColor">${cells.join('')}</svg>`;
+  return slot;
+}
+
 /**
  * A run of looking around, as one quiet line. Pressing it opens what each of
  * those actually was, small, under it; pressing it again folds them away.
  */
 function lookedLine(one: Step): HTMLElement {
   const it = document.createElement('div');
-  it.style.cssText = 'display:flex;flex-direction:column;gap:2px';
-  const line = row(8);
-  const slot = document.createElement('span');
-  slot.style.cssText =
-    'width:28px;height:18px;display:flex;justify-content:center;align-items:center;flex:none;position:relative;opacity:.55';
-  const prop = sprite(one.prop, 1);
-  prop.style.cssText += ';position:relative;flex:none;transform:scale(.45)';
-  slot.appendChild(prop);
-  line.appendChild(slot);
+  it.className = 'deed-body';
+  const line = document.createElement('div');
+  line.className = 'deed-line';
+  line.appendChild(deedSign(one));
   const text = document.createElement('span');
+  text.className = 'deed-said deed-said-looked';
   const open = openLooks.has(one.id);
-  text.style.cssText = 'color:#8f7c5f;cursor:pointer;pointer-events:auto;white-space:normal';
-  text.textContent = `${open ? '\u25be' : '\u25b8'} ${one.did}`;
+  text.textContent = `${one.did} ${open ? '\u25be' : '\u25b8'}`;
   text.addEventListener('mousedown', (event) => event.preventDefault());
   line.appendChild(text);
   it.appendChild(line);
   const list = document.createElement('div');
-  list.style.cssText = 'margin-left:36px;display:flex;flex-direction:column;gap:2px';
+  list.className = 'deed-under';
   const fill = (): void => {
     list.replaceChildren();
     if (!openLooks.has(one.id)) return;
     for (const each of one.group ?? []) {
       const said = document.createElement('span');
-      said.style.cssText =
-        'font-size:10.5px;line-height:1.35;color:#8f7c5f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+      said.className = 'deed-under-line';
       said.textContent = each.did;
       said.title = each.did;
       list.appendChild(said);
@@ -3122,7 +3183,7 @@ function lookedLine(one: Step): HTMLElement {
   text.addEventListener('click', () => {
     if (openLooks.has(one.id)) openLooks.delete(one.id);
     else openLooks.add(one.id);
-    text.textContent = `${openLooks.has(one.id) ? '\u25be' : '\u25b8'} ${one.did}`;
+    text.textContent = `${one.did} ${openLooks.has(one.id) ? '\u25be' : '\u25b8'}`;
     fill();
   });
   fill();
@@ -3133,39 +3194,18 @@ function lookedLine(one: Step): HTMLElement {
 /** Which runs of looking around have been opened, across redraws. */
 const openLooks = new Set<string>();
 
-/** The line itself: the prop, what it did, and what it cost. */
+/** The line itself: the sign, what it did, and what came of it. */
 function deedLine(one: Step): HTMLElement {
-  const line = row(8);
-  const slot = document.createElement('span');
-  slot.style.cssText =
-    'width:28px;height:26px;display:flex;justify-content:center;align-items:center;flex:none;position:relative';
-  if (one.running) {
-    /* Nothing spins in this village. Something happening now is a light that
-       goes on and off, which is what a fire does. */
-    slot.appendChild(
-      box(
-        { width: 7, height: 7 },
-        'position:relative;border-radius:50%;background:#ff8a4a;box-shadow:0 0 0 3px rgba(255,138,74,.22);animation:yard-blink 700ms steps(1,end) infinite'
-      )
-    );
-  } else {
-    const prop = sprite(one.prop, 1);
-    prop.style.position = 'relative';
-    prop.style.flex = 'none';
-    prop.style.transform = 'scale(.6)';
-    slot.appendChild(prop);
-  }
-  line.appendChild(slot);
+  const line = document.createElement('div');
+  line.className = 'deed-line';
+  line.appendChild(deedSign(one));
   const text = document.createElement('span');
   /* Two lines and then it stops, because a step cut off mid-word halfway
      across the column reads as the board being broken, and a third line is
      the step telling you more than you glanced over for. */
-  text.style.cssText =
-    'white-space:normal;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden';
-  text.style.color =
-    one.tone === 'broken' ? 'var(--yard-wrong)' : one.running ? '#ffc98a' : '#cbb491';
+  text.className = 'deed-said';
   text.textContent = one.did;
-  if (one.note) text.append(' · ', ...noted(one.note));
+  if (one.note) text.append('  ', ...noted(one.note));
   line.appendChild(text);
   return line;
 }
@@ -3189,8 +3229,9 @@ function noted(note: string): (string | HTMLElement)[] {
       tinted(`−${counts[2]}`, 'var(--yard-wrong)'),
     ];
   }
-  if (/^\d+ lines?$/.test(note)) return [tinted(note, 'var(--yard-well)')];
-  return [tinted(note, '#a89272')];
+  if (/^\d+ lines?$/.test(note) || note === 'passed') return [tinted(note, 'var(--yard-well)')];
+  if (note === 'failed') return [tinted(note, 'var(--yard-wrong)')];
+  return [tinted(note, '#8f7c5f')];
 }
 
 /**
@@ -3204,12 +3245,12 @@ function noted(note: string): (string | HTMLElement)[] {
  */
 function diffPreview(one: Step, does: Doings): HTMLElement {
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'margin-left:36px;display:flex;flex-direction:column;gap:0';
+  wrap.className = 'deed-under deed-diff';
   for (const marked of one.diff ?? []) {
     const line = document.createElement('span');
     const kind = marked[0];
     line.style.cssText =
-      "font-family:'Josefin Sans',sans-serif;font-size:10.5px;line-height:1.35;white-space:pre;overflow:hidden;text-overflow:ellipsis;opacity:.8";
+      "font-family:'Courier Prime',monospace;font-size:11px;line-height:1.4;white-space:pre;overflow:hidden;text-overflow:ellipsis";
     line.style.color =
       kind === '+' ? 'var(--yard-well)' : kind === '-' ? 'var(--yard-wrong)' : '#a89272';
     line.textContent = marked;

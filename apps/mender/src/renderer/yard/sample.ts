@@ -266,6 +266,7 @@ export function richSample(live: boolean): Yard {
         {
           id: 'x1',
           prop: KIT_NAMES.sign,
+          kind: 'look',
           did: 'read 6 files and searched 4 times',
           group: [
             { id: 'g1', did: 'read rail.ts' },
@@ -275,6 +276,7 @@ export function richSample(live: boolean): Yard {
         {
           id: 'x2',
           prop: KIT_NAMES.anvil,
+          kind: 'edit',
           did: 'changed rail.ts',
           note: '+14 −6',
           path: 'rail.ts',
@@ -285,9 +287,37 @@ export function richSample(live: boolean): Yard {
           ],
           diffMore: 9,
         },
-        { id: 'x3', prop: KIT_NAMES.crate, did: 'wrote agents-flush.ts', note: '38 lines' },
-        { id: 'x4', prop: KIT_NAMES.fire, did: 'tested, 212 passed' },
-        { id: 'x5', prop: KIT_NAMES.fire, did: 'running pnpm run package', running: live },
+        {
+          id: 'x3',
+          prop: KIT_NAMES.crate,
+          kind: 'write',
+          did: 'wrote agents-flush.ts',
+          note: '38 lines',
+        },
+        {
+          id: 'x3b',
+          prop: KIT_NAMES.pot,
+          kind: 'run',
+          did: 'check whether the crash predates my change',
+          note: 'failed',
+          tone: 'broken',
+        },
+        { id: 'x4', prop: KIT_NAMES.pot, kind: 'test', did: 'ran the tests', note: 'passed' },
+        {
+          id: 'x4b',
+          prop: KIT_NAMES.pot,
+          kind: 'commit',
+          did: 'committed “the rail follows only the tail”',
+        },
+        { id: 'x4c', prop: KIT_NAMES.pot, kind: 'install', did: 'installed it on the Mac' },
+        {
+          id: 'x4d',
+          prop: KIT_NAMES.sign,
+          kind: 'look',
+          did: 'read a file and ran 2 checks',
+          group: [{ id: 'g3', did: 'read STATE.md' }],
+        },
+        { id: 'x5', prop: KIT_NAMES.pot, kind: 'build', did: 'built the app', running: live },
       ],
       notes: [
         {

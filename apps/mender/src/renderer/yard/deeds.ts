@@ -29,22 +29,28 @@ function parts(command: string): string[][] {
     .map((one) => one.split('|')[0]!.trim())
     .filter(Boolean)
     .map((one) =>
-      one
-        .replace(/^(?:[A-Z_][A-Z0-9_]*=(?:"[^"]*"|'[^']*'|\$\([^)]*\)|\S*)\s+)+/, '')
-        .split(/\s+/)
+      one.replace(/^(?:[A-Z_][A-Z0-9_]*=(?:"[^"]*"|'[^']*'|\$\([^)]*\)|\S*)\s+)+/, '').split(/\s+/)
     )
     .filter((words) => words[0] && !/^[A-Z_][A-Z0-9_]*=/.test(words[0]) && words[0] !== 'cd');
 }
 
 /** The message a commit went in with, first line only. */
 function message(command: string): string | undefined {
+  /* Only what comes after the commit itself is its message: a command that
+     writes a file out of a heredoc first and commits after would otherwise
+     read that file's first line as what the commit was for. */
+  const at = command.search(/\bgit\b[^\n]*?\bcommit\b/);
+  const tail = at === -1 ? command : command.slice(at);
   /* A message written out long comes in a heredoc, and then the first line
      of that is the message, whatever the `-m` around it says. */
-  const long = /<<-?\s*'?"?([A-Z]+)'?"?\s*\n\s*([^\n]+)/.exec(command)?.[2];
-  const quoted = /(?:^|\s)-[a-zA-Z]*m\s+(?:"([^"$]+)"|'([^']+)')/.exec(command);
+  const long = /<<-?\s*'?"?([A-Z]+)'?"?\s*\n\s*([^\n]+)/.exec(tail)?.[2];
+  const quoted = /(?:^|\s)-[a-zA-Z]*m\s+(?:"([^"$]+)"|'([^']+)')/.exec(tail);
   const text = long ?? quoted?.[1] ?? quoted?.[2];
   if (!text) return undefined;
-  const line = text.split('\n')[0]!.replace(/^[a-z]+(\([^)]*\))?!?:\s+/, '').trim();
+  const line = text
+    .split('\n')[0]!
+    .replace(/^[a-z]+(\([^)]*\))?!?:\s+/, '')
+    .trim();
   return line || undefined;
 }
 
@@ -79,9 +85,7 @@ export function plainCommand(command: string): Plain {
     return { kind: 'act', said: 'ran the tests' };
   if (
     has(
-      (w) =>
-        (w[0] === 'adb' && w.includes('install')) ||
-        (w[0] === 'flutter' && w[1] === 'install')
+      (w) => (w[0] === 'adb' && w.includes('install')) || (w[0] === 'flutter' && w[1] === 'install')
     )
   )
     return { kind: 'act', said: 'installed it on the phone' };
@@ -93,12 +97,16 @@ export function plainCommand(command: string): Plain {
         (w[0] === 'flutter' && w[1] === 'build') ||
         /^(xcodebuild|gradle|\.\/gradlew)$/.test(w[0]!) ||
         (w[0] === 'cargo' && w[1] === 'build') ||
-        (/^(pnpm|npm|yarn|bun)$/.test(w[0]!) &&
-          w.some((one) => /^(build|package|dist)$/.test(one)))
+        (/^(pnpm|npm|yarn|bun)$/.test(w[0]!) && w.some((one) => /^(build|package|dist)$/.test(one)))
     )
   )
     return { kind: 'act', said: 'built the app' };
-  if (has((w) => /^(pnpm|npm|yarn|bun|pip3?|brew|cargo)$/.test(w[0]!) && /^(add|install|i)$/.test(w[1] ?? '')))
+  if (
+    has(
+      (w) =>
+        /^(pnpm|npm|yarn|bun|pip3?|brew|cargo)$/.test(w[0]!) && /^(add|install|i)$/.test(w[1] ?? '')
+    )
+  )
     return { kind: 'act', said: 'installed packages' };
   if (has((w) => w[0] === 'gh' && w[1] === 'pr' && w[2] === 'create'))
     return { kind: 'act', said: 'opened a pull request' };

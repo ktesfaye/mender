@@ -283,9 +283,29 @@ export interface Thought {
 }
 
 /** Something it did: a tool call, with a prop from the kit standing for it. */
+/** What sort of thing a step was, which is the sign it is drawn with. */
+export type StepKind =
+  | 'look'
+  | 'read'
+  | 'write'
+  | 'edit'
+  | 'delete'
+  | 'run'
+  | 'test'
+  | 'build'
+  | 'install'
+  | 'commit'
+  | 'push'
+  | 'git'
+  | 'send'
+  | 'plan'
+  | 'tool';
+
 export interface Step {
   id: string;
   did: string;
+  /** What sort of thing it was, for its sign. */
+  kind?: StepKind;
   /** Which sprite sits in the fixed slot at the left of the line. */
   prop: string;
   running?: boolean;
