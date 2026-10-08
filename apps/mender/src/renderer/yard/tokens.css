@@ -1734,40 +1734,19 @@ body.gripping-row * {
    is at the top of it. The newest is the one with the warm edge and the
    lantern burning; the ones before it are smaller and quieter, so the column
    still dims as it goes up into the past. */
+/* An answer sits straight on the wood, the way writing does here. No box
+   round it: what sets one off from the next is the gap and the small line
+   at its top, and the newest is told apart by being larger and brighter. */
 .yard .said-turn {
   --turn-ink: #ffc98a;
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   flex: none;
-  padding: 14px 22px 18px;
-  background: linear-gradient(180deg, rgba(36, 26, 15, 0.94), rgba(26, 19, 11, 0.94));
-  border: 1px solid rgba(244, 227, 192, 0.1);
-  box-shadow:
-    0 0 0 1px #0c0804,
-    inset 0 1px 0 rgba(255, 220, 164, 0.06),
-    4px 4px 0 rgba(0, 0, 0, 0.38);
-}
-.yard .said-newest {
-  border-color: rgba(255, 201, 138, 0.22);
-}
-/* The edge at the top of the newest answer says how its turn stands. */
-.yard .said-newest::before {
-  content: '';
-  position: absolute;
-  left: -1px;
-  right: -1px;
-  top: -1px;
-  height: 3px;
-  background: var(--turn-ink);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
 }
 .yard .said-going {
   --turn-ink: #ffa54f;
-}
-.yard .said-going::before {
-  animation: yard-breathe 2.4s ease-in-out infinite;
 }
 .yard .said-done {
   --turn-ink: #a8c469;
@@ -1775,77 +1754,103 @@ body.gripping-row * {
 .yard .said-stopped {
   --turn-ink: #b8a07a;
 }
-.yard .said-quiet {
-  background: rgba(26, 19, 11, 0.6);
-  border-style: dashed;
-  border-color: rgba(255, 220, 164, 0.16);
-  box-shadow: none;
-}
-.yard .said-quiet::before {
-  display: none;
-}
 .yard .said-older {
-  padding: 10px 18px 13px;
-  gap: 8px;
-  background: rgba(24, 18, 10, 0.78);
-  box-shadow:
-    0 0 0 1px #0c0804,
-    3px 3px 0 rgba(0, 0, 0, 0.3);
+  gap: 4px;
 }
-.yard .said-trouble {
-  border-color: color-mix(in srgb, var(--turn-ink) 40%, transparent);
-}
-
 .yard .said-turn-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 30px;
+  gap: 8px;
 }
-.yard .said-turn-glass {
-  position: relative;
+/* ── a status: what happened to the turn, drawn rather than said ──────────── */
+.yard .said-sign {
   flex: none;
-  width: 22px;
-  height: 30px;
-  overflow: visible;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(1px 1px 0 #120d07);
 }
-.yard .said-turn-glass > * {
-  position: absolute !important;
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
+.yard .said-sign svg {
+  display: block;
 }
-.yard .said-going .said-turn-glass::before {
+/* Still going is the fire's own ember, breathing. */
+.yard .said-sign-going {
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
+  animation: yard-breathe 1.6s ease-in-out infinite;
+}
+.yard .said-status {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0;
+}
+.yard .said-status-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+/* The rule runs on from the words to the column's edge, so a status reads as
+   a break in the conversation rather than one more line of it. */
+.yard .said-status-line::after {
   content: '';
-  position: absolute;
-  left: -14px;
-  top: -12px;
-  width: 44px;
-  height: 44px;
-  background: radial-gradient(circle, rgba(255, 168, 60, 0.38), rgba(255, 168, 60, 0) 62%);
-  animation: yard-glow 2.4s ease-in-out infinite;
-  pointer-events: none;
+  flex: 1;
+  min-width: 24px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--status) 45%, transparent),
+    transparent
+  );
 }
-.yard .said-older .said-turn-glass {
-  opacity: 0.5;
+.yard .said-status-what {
+  font-family: var(--yard-face-label);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--status);
+  white-space: nowrap;
+}
+.yard .said-status-why {
+  font-family: var(--yard-face-label);
+  font-size: 13px;
+  color: color-mix(in srgb, var(--status) 60%, #a89272);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.yard .said-status-when {
+  font-family: var(--yard-face-mono);
+  font-size: 11px;
+  color: #8a7452;
+  white-space: nowrap;
+}
+.yard .said-status-long {
+  margin-left: 24px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--status) 75%, #ebe3d3);
+}
+.yard .said-status-older {
+  opacity: 0.7;
 }
 .yard .said-turn-chip {
   --chip: #ffc98a;
-  padding: 4px 8px 3px;
-  font-family: 'Silkscreen', var(--yard-face-label);
+  font-family: var(--yard-face-label);
   font-size: 10px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  line-height: 1;
   color: var(--chip);
-  background: color-mix(in srgb, var(--chip) 14%, rgba(0, 0, 0, 0.35));
-  border: 1px solid color-mix(in srgb, var(--chip) 45%, transparent);
   white-space: nowrap;
 }
 .yard .said-older .said-turn-chip {
-  --chip: #a89272;
-  font-size: 9px;
-  padding: 3px 6px 2px;
+  --chip: #9c8a68;
 }
 .yard .said-turn-when {
   font-family: var(--yard-face-mono);
@@ -1904,12 +1909,7 @@ body.gripping-row * {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 10px 16px 8px 12px;
-  background: linear-gradient(90deg, rgba(60, 30, 10, 0.85), rgba(26, 19, 11, 0.6));
-  border: 1px solid rgba(255, 165, 79, 0.28);
-  box-shadow:
-    0 0 0 1px #0c0804,
-    3px 3px 0 rgba(0, 0, 0, 0.35);
+  padding: 6px 0 4px;
 }
 
 /* ── the gatepost: every note is paper, the old ones weathered ─────────────── */

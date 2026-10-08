@@ -318,6 +318,34 @@ export function richSample(live: boolean): Yard {
           answer: true,
           said: 'Slowed the breath from 1.6s to 2.4s and eased it, so a working lantern reads as **calm** rather than *anxious*. Nothing else on the rail moved.',
         },
+        {
+          id: 's1',
+          when: '35m ago',
+          answer: true,
+          trouble: 'stopped',
+          said: 'Partway through what it was saying.',
+        },
+        {
+          id: 's2',
+          when: '20m ago',
+          answer: true,
+          trouble: 'warn',
+          said: 'It ran out of room to answer and stopped short.',
+        },
+        {
+          id: 's3',
+          when: '10m ago',
+          answer: true,
+          trouble: 'wrong',
+          said: 'The agent went away in the middle of it. Claude Code exited with code 1 after the API returned an overloaded error twice in a row.',
+        },
+        { id: 'n1', when: '3m ago', said: 'Looking at how the rail reads each session.' },
+        {
+          id: 'n2',
+          when: '2m ago',
+          quiet: true,
+          said: 'The tick re-reads whole transcripts; that would explain it.',
+        },
         live
           ? {
               id: 'q3',

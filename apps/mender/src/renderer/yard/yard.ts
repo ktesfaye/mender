@@ -2040,8 +2040,16 @@ function thinking(
               : one.ended === 'stopped'
                 ? 'stopped'
                 : 'going';
+        if (trouble && one.trouble && !pack) {
+          items.appendChild(
+            keyed(
+              statusMark(troubleSign(one.trouble), trouble.head, trouble.ink, one.said, clock),
+              `thought:${one.id}`
+            )
+          );
+          return;
+        }
         it.className = `said-turn said-newest said-${state}`;
-        if (trouble) it.style.setProperty('--turn-ink', trouble.ink);
         const head = turnHead(
           name,
           one.pack?.state !== 'packing' ? clock : undefined,
@@ -2172,9 +2180,37 @@ const wasWorking = new Map<string, boolean>();
 
 type TurnState = 'going' | 'done' | 'stopped' | 'trouble' | 'quiet' | 'old';
 
+/** Which small pixel sign a status carries. */
+type Sign = 'going' | 'done' | 'stopped' | 'wrong' | 'warn';
+
+/* Drawn in whole pixels, like everything else in the village. */
+const SIGN_ART: Record<Exclude<Sign, 'going'>, string[]> = {
+  done: ['......#', '.....##', '#...##.', '##.##..', '.###...', '..#....'],
+  stopped: ['.#####.', '#######', '##...##', '##...##', '##...##', '#######', '.#####.'],
+  wrong: ['##...##', '.##.##.', '..###..', '..###..', '.##.##.', '##...##'],
+  warn: ['...#...', '..###..', '..#.#..', '.##.##.', '.#####.', '###.###', '#######'],
+};
+
+/** A status's own small sign, in its own colour. */
+function signOf(sign: Sign, ink: string): HTMLElement {
+  const it = document.createElement('span');
+  it.className = `said-sign said-sign-${sign}`;
+  it.style.color = ink;
+  if (sign === 'going') return it;
+  const art = SIGN_ART[sign];
+  const wide = Math.max(...art.map((row) => row.length));
+  const cells = art.flatMap((row, y) =>
+    [...row].flatMap((c, x) =>
+      c === '#' ? [`<rect x="${x}" y="${y}" width="1" height="1"/>`] : []
+    )
+  );
+  it.innerHTML = `<svg viewBox="0 0 ${wide} ${art.length}" width="${wide * 2}" height="${art.length * 2}" shape-rendering="crispEdges" fill="currentColor">${cells.join('')}</svg>`;
+  return it;
+}
+
 /**
- * The top of an answer's panel: a lantern that burns the way the rail's does
- * for the same turn, what the turn is in a small chip, and when.
+ * The line over an answer: how its turn stands, said with its sign and its
+ * colour, and when.
  */
 function turnHead(
   name: string,
@@ -2184,30 +2220,73 @@ function turnHead(
 ): HTMLElement {
   const head = document.createElement('div');
   head.className = 'said-turn-head';
-  const glass = document.createElement('span');
-  glass.className = 'said-turn-glass';
-  const times = 2;
-  glass.appendChild(
-    state === 'done'
-      ? greenLantern(times)
-      : sprite(
-          state === 'going' || state === 'quiet' ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff,
-          times
-        )
-  );
-  head.appendChild(glass);
+  const sign: Sign | undefined =
+    state === 'going'
+      ? 'going'
+      : state === 'done'
+        ? 'done'
+        : state === 'stopped'
+          ? 'stopped'
+          : undefined;
+  if (sign) head.appendChild(signOf(sign, ink ?? '#ffc98a'));
   const chip = document.createElement('span');
   chip.className = 'said-turn-chip';
   if (ink) chip.style.setProperty('--chip', ink);
-  chip.textContent = name;
+  chip.textContent = clock ? `${name} · ${clock}` : name;
   head.appendChild(chip);
+  return head;
+}
+
+/**
+ * Something that happened to the turn rather than something said in it: you
+ * stopped it, it broke off, it ran short. Not a paragraph dressed as an
+ * answer but a marked line across the column, its sign and its colour, what
+ * happened, and why in a quieter line under it when the why is long.
+ */
+function statusMark(
+  sign: Sign,
+  head: string,
+  ink: string,
+  why: string,
+  clock?: string
+): HTMLElement {
+  const it = document.createElement('div');
+  it.className = `said-status said-status-${sign}`;
+  it.style.setProperty('--status', ink);
+  const line = document.createElement('div');
+  line.className = 'said-status-line';
+  line.appendChild(signOf(sign, ink));
+  const what = document.createElement('span');
+  what.className = 'said-status-what';
+  what.textContent = head;
+  line.appendChild(what);
+  const short = why.trim().replace(/\.$/, '');
+  const inline = short.length <= 60;
+  if (short && inline) {
+    const rest = document.createElement('span');
+    rest.className = 'said-status-why';
+    rest.textContent = short.charAt(0).toLowerCase() + short.slice(1);
+    line.appendChild(rest);
+  }
   if (clock) {
     const when = document.createElement('span');
-    when.className = 'said-turn-when';
+    when.className = 'said-status-when';
     when.textContent = clock;
-    head.appendChild(when);
+    line.appendChild(when);
   }
-  return head;
+  it.appendChild(line);
+  if (short && !inline) {
+    const rest = document.createElement('div');
+    rest.className = 'said-status-long clear';
+    rest.textContent = why.trim();
+    it.appendChild(rest);
+  }
+  return it;
+}
+
+/** Which sign a kind of trouble is drawn with. */
+function troubleSign(kind: NonNullable<Thought['trouble']>): Sign {
+  return kind === 'stopped' ? 'stopped' : kind === 'warn' ? 'warn' : 'wrong';
 }
 
 /**
@@ -2643,16 +2722,17 @@ function thought(
   tone?: string,
   link?: (url: string) => void
 ): HTMLElement {
+  if (one.trouble && name && tone) {
+    const mark = statusMark(troubleSign(one.trouble), name, tone, one.said, one.when || undefined);
+    mark.classList.add('said-status-older');
+    return mark;
+  }
   const it = document.createElement('div');
-  it.className = `said-turn said-older${one.quiet ? ' said-quiet' : ''}${tone ? ' said-trouble' : ''}`;
-  if (tone) it.style.setProperty('--turn-ink', tone);
+  it.className = `said-turn said-older${one.quiet ? ' said-quiet' : ''}`;
   /* Only where there is something true to say. A thought with no clock on it
      gets no line above it at all rather than an empty one. */
-  if (name || one.when || !one.quiet) {
-    it.appendChild(
-      turnHead(name ?? (one.quiet ? 'thinking' : 'answered'), one.when || undefined, tone, 'old')
-    );
-  }
+  const label = name ? (one.when ? `${name} · ${one.when}` : name) : one.when;
+  if (label) it.appendChild(turnHead(label, undefined, tone, 'old'));
   const body = document.createElement('div');
   body.style.cssText = `font-size:${size}px;line-height:1.6;letter-spacing:.01em;color:${ink}`;
   body.classList.add('clear');

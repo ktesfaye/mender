@@ -222,20 +222,23 @@ checkout's own board. Under all of that is the ground itself, with whoever it
 sent out standing in the firelight with an answer or off in the dark still
 working.
 
-**Every answer is a board of its own, built rather than poured.** What it
-said is a stack of dark wooden panels with a hard outline and a hard shadow,
-the way a game's dialogue box is, each with its lantern and a small chip
-saying what the turn is, "done" in green or "so far" in the fire's orange; the
-newest carries a strip of that colour along its top and the ones before it
-are smaller and quieter. Inside, the markdown is drawn rather than set as one
-weight: headings in the answer's own face with an ember diamond and a rule
-running off them, bullets as ember squares, numbers on small timber tiles,
-code on a slate with its language over it, a name quoted exactly on a slate
-of its own, tables framed with a timber head and banded rows, quotes on a
-wash with a bar down them. The recap is pinned under it on parchment; the
-notes under the newest on the gatepost are parchment too, weathered darker;
-and every step under "what it did" sits on a small tile on one thread down
-the column, its changed lines on the same slate code is read on.
+**What happens to a turn is drawn, and what is said in it is set.** The
+answers stay on the wood with no box round them. What happened to a turn,
+rather than anything said in it, is a marked line across the column with a
+small pixel sign of its own: a stop for "you stopped it", a warning for
+"it stopped short", a cross in the sore red for "it stopped" with why in a
+quieter line under it, a tick in green over a finished answer and a
+breathing ember over one still going, each with a rule running off it to
+the column's edge so it reads as a break in the conversation, not one more
+line of it. Inside an answer the markdown is drawn: headings in the
+answer's own face with an ember diamond and a rule off them, bullets as
+ember squares, numbers on small timber tiles, code on a slate with its
+language over it, a name quoted exactly on a slate of its own, tables
+framed with a timber head and banded rows, quotes on a wash with a bar down
+them. The recap is pinned under it on parchment; the notes under the newest
+on the gatepost are parchment too, weathered darker; and every step under
+"what it did" sits on a small tile on one thread down the column, its
+changed lines on the same slate code is read on.
 
 **A command left running in the background stays running on the board.**
 When the agent starts something and doesn't wait for it, a dev server, a
