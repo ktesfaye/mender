@@ -365,6 +365,8 @@ export function createAgents(
      lantern is green for exactly that, so it is not idle and stays up. */
   const unlooked = new Set<string>();
   const was = new Map<string, Mood>();
+  /** Whether each session had a failure standing at its last change. */
+  const failed = new Map<string, boolean>();
   const learn = async (): Promise<void> => {
     for (const record of await tasks.list()) wheres.set(record.id, record.path);
   };
@@ -565,6 +567,11 @@ export function createAgents(
           if (mood) was.set(task, mood);
           if (mood === 'resting' && (before === 'working' || before === 'asking'))
             unlooked.add(task);
+          /* A limit that cleared, by a real answer after it, has nothing
+             left for a continue armed against it to carry on from. */
+          const failing = here?.failing() ?? false;
+          if (failed.get(task) && !failing) stopWaiting(task);
+          failed.set(task, failing);
           if (here) retitleFromWork(task, here);
         },
         () => wheres.get(task),
@@ -1894,6 +1901,10 @@ class House {
     const outcome = last?.outcome;
     if (!outcome) return false;
     return outcome.kind !== 'done' || outcome.reason !== 'end_turn';
+  }
+
+  failing(): boolean {
+    return !!this.lifecycle?.failure;
   }
 
   currentResetAt(): number | undefined {

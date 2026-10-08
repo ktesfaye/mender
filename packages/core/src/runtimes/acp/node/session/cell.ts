@@ -281,6 +281,12 @@ export class SessionCell {
     if (this.currentFailure?.severity === 'warning' && this.isTranscriptEvent(event)) {
       this.clearSessionFailure();
     }
+    /* Claude's adapter replays every limit a conversation ever hit, at the
+       point it was hit, and never says when one lifted. A real answer after
+       it is the adapter's own proof that it did, live or read back. */
+    if (this.currentFailure && this.answeredByModel(event)) {
+      this.clearSessionFailure();
+    }
 
     const previousRunningAgentCount = this.lastRunningAgentCount;
     this.transcript.pushEvent(event);
@@ -963,6 +969,11 @@ export class SessionCell {
       default:
         return false;
     }
+  }
+
+  private answeredByModel(event: NormalizedEvent): boolean {
+    if (event.kind === 'message') return event.role === 'assistant';
+    return event.kind === 'thinking' || event.kind === 'tool_call';
   }
 
   private isIdleAgentTranscriptEvent(event: NormalizedEvent): boolean {
