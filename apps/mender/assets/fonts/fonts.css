@@ -21,8 +21,8 @@
 .said-face {
   font-family: 'Mender Said', 'Cormorant Garamond', serif;
   font-weight: 400;
-  --said-tracking: 0.04em;
-  word-spacing: 0.08em;
+  --said-tracking: 0.08em;
+  word-spacing: 0.12em;
 }
 .yard .said-face .prose {
   gap: 1.1em;
