@@ -39,6 +39,7 @@ import { waitOut } from './limit';
 import { makeLine, preview, unpreview, type Asking as Prompting, type Line } from './line';
 import { makeMenu } from './menu';
 import {
+  arrive,
   catching,
   dwindling,
   forgetInk,
@@ -745,7 +746,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   /** The lantern you took catches; the one you let go of turns down. */
   function relit(before: Yard, yard: Yard): void {
     const lamp = (id: string | undefined): HTMLElement | null =>
-      id ? root.querySelector<HTMLElement>(`[data-key="lantern:${CSS.escape(id)}"]`) : null;
+      id ? root.querySelector<HTMLElement>(`[data-lamp="${CSS.escape(id)}"]`) : null;
     const took = lamp(yard.rail.find((one) => one.here)?.id);
     const left = lamp(before.rail.find((one) => one.here)?.id);
     if (took) catching(took, took.style.filter);
@@ -3815,25 +3816,48 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   beam.style.overflowX = 'auto';
   beam.style.overflowY = 'hidden';
   beam.style.scrollbarWidth = 'none';
-  const spans = yard.rail.map((one) =>
-    bare
-      ? 44 + WORDS_GAP
-      : 34 +
-        Math.max(
-          RAIL_NAME_MIN,
-          widthOf(one.name, 12),
-          Math.min(widthOf(one.saying, 11), RAIL_SAYING_MAX)
-        ) +
-        WORDS_GAP
-  );
+  /* What a lantern is doing changes every few seconds and its words change
+     width with it. A span that followed them exactly shoved every lantern
+     after it back and forth on each change, so a span only ever grows at
+     once, in whole steps, and gives room back only once its words have been
+     shorter for a good while. */
+  const now = Date.now();
+  const spans = yard.rail.map((one) => {
+    if (bare) return 44 + WORDS_GAP;
+    const needs =
+      34 +
+      Math.max(
+        RAIL_NAME_MIN,
+        widthOf(one.name, 12),
+        Math.min(widthOf(one.saying, 11), RAIL_SAYING_MAX)
+      ) +
+      WORDS_GAP;
+    const fits = Math.ceil(needs / RAIL_STEP) * RAIL_STEP;
+    const held = railSpans.get(one.id);
+    if (!held || fits > held.span) {
+      railSpans.set(one.id, { span: fits, roomy: now });
+      return fits;
+    }
+    if (fits === held.span) held.roomy = now;
+    else if (now - held.roomy > RAIL_GIVES_BACK_MS) held.span = fits;
+    return held.span;
+  });
   const at = spans.map((_, i) => GLOW_ROOM + spans.slice(0, i).reduce((a, b) => a + b, 0));
 
   for (const [i, one] of yard.rail.entries()) {
-    const x = at[i]!;
     const step = spans[i]!;
     const cord = LANTERN.cord;
     const top = 3 + cord;
-    beam.appendChild(box({ left: x + 10, top: 3, width: 3, height: cord }, 'background:#3a2712'));
+    /* Everything one lantern is, its cord, its light, the lamp and its words,
+       hangs off one hook and moves along the beam as one. Keyed separately,
+       the lamp slid and its cord and light jumped. */
+    const slot = keyed(
+      box({ left: at[i]!, top: 0, width: step, height: top + 58 }),
+      `lantern:${one.id}`
+    );
+    beam.appendChild(slot);
+    const x = 0;
+    slot.appendChild(box({ left: x + 10, top: 3, width: 3, height: cord }, 'background:#3a2712'));
 
     const cutting = one.ground === 'cutting';
     const halo = HALO[one.posture];
@@ -3850,7 +3874,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       /* The light you are standing in belongs to its lantern: taking another
          one lets this one's light go and swells the new one's up in place. */
       glow.dataset.glow = 'here';
-      beam.appendChild(glow);
+      slot.appendChild(glow);
     } else if (halo && !cutting) {
       const [tint, strength] = halo;
       /* Ember throws light from low in the glass, and more of it as the wait
@@ -3869,18 +3893,16 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       } else if (one.posture === 'waiting') {
         glow.style.animation = 'yard-banked 3.2s ease-in-out infinite';
       }
-      beam.appendChild(glow);
+      slot.appendChild(glow);
     }
 
     /* Finished and not yet seen burns green in the glass, not only round it. */
-    const lamp = keyed(
-      waiting
-        ? emberLantern(one.ember ?? 0, 2)
-        : one.lit && one.posture === 'done'
-          ? greenLantern(2)
-          : sprite(one.lit ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff, 2),
-      `lantern:${one.id}`
-    );
+    const lamp = waiting
+      ? emberLantern(one.ember ?? 0, 2)
+      : one.lit && one.posture === 'done'
+        ? greenLantern(2)
+        : sprite(one.lit ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff, 2);
+    lamp.dataset.lamp = one.id;
     lamp.style.cssText += `;left:${x}px;top:${top}px`;
     if (!onTheBeam.has(one.id)) {
       onTheBeam.add(one.id);
@@ -3900,7 +3922,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     if (one.posture === 'wants-you') {
       lamp.style.animation = 'yard-wants 480ms steps(2,end) infinite alternate';
     }
-    beam.appendChild(lamp);
+    slot.appendChild(lamp);
 
     /* The one place in this app where a pressable thing is not gold.
        Everywhere else gold means "press me" and nothing else is gold; the rail
@@ -3908,10 +3930,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
        across the room and without reading, which session wants you. Six gold
        names in a row would say nothing at all. What says it is pressable is the
        lantern: a physical object hanging there, lighting under your hand. */
-    const hung = keyed(
-      box({ left: x, top, width: bare ? 44 : step, height: 58 }),
-      `hung:${one.id}`
-    );
+    const hung = box({ left: x, top, width: bare ? 44 : step, height: 58 });
     /* A lantern still being cut has nowhere to walk into yet: it hangs there
        to say so, not to be pressed. */
     hung.style.pointerEvents = one.here || cutting ? 'none' : 'auto';
@@ -3942,6 +3961,12 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       clipped(saying, one.saying);
       under.appendChild(saying);
       hung.appendChild(under);
+      /* A new kind of doing comes up into the line rather than snapping over
+         the last one; only the clock ticking on it changes nothing. */
+      const kind = one.saying.split(' · ')[0]!;
+      const was = railSaid.get(one.id);
+      railSaid.set(one.id, kind);
+      if (was !== undefined && was !== kind) arrive(under, 0, 4);
     }
 
     if (!one.here && !cutting) {
@@ -3951,7 +3976,7 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       hung.addEventListener('pointerenter', () => (lamp.style.filter = 'brightness(1.15)'));
       hung.addEventListener('pointerleave', () => (lamp.style.filter = dimmed));
     }
-    beam.appendChild(hung);
+    slot.appendChild(hung);
   }
 
   /* THE END OF THE RAIL IS HOW A SESSION STARTS.
@@ -4008,6 +4033,12 @@ const PLUS_BANKED = '#b08648';
 const PLUS = `background:${PLUS_BANKED}`;
 /* Where the beam was scrolled to, so hanging a lantern doesn't throw it back to the start. */
 let railScrolled = 0;
+/** How wide each lantern's stretch of beam is held, and when its words last needed all of it. */
+const railSpans = new Map<string, { span: number; roomy: number }>();
+/** What each lantern was last saying it was doing, so a change can be seen arriving. */
+const railSaid = new Map<string, string>();
+const RAIL_STEP = 24;
+const RAIL_GIVES_BACK_MS = 20_000;
 
 /** How much bare beam there is between the words beside one lantern and the next. */
 const WORDS_GAP = 18;
