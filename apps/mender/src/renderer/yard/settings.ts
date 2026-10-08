@@ -169,6 +169,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   const welcome = el('p', 'settings-welcome');
   const faces = section('Icon');
   const sessions = section('New sessions');
+  const ending = section('When a session ends');
   const timetable = section('Sessions on a timetable');
   const scripts = section('What runs when a worktree is cut');
   const identity = section('Commits go out as');
@@ -181,6 +182,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     welcome,
     faces.root,
     sessions.root,
+    ending.root,
     timetable.root,
     scripts.root,
     identity.root,
@@ -207,16 +209,25 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     body.style.display = '';
   }
 
-  function drawHistory(): void {
+  function drawEnding(): void {
     const keeps = now.project.keepsTranscripts === true;
-    const toggle = button(
-      keeps
-        ? 'What was said is kept, and read back here.'
-        : 'What was said goes with a session when it ends.',
-      'settings-link',
+    const said = el('p', 'settings-hint');
+    said.textContent = keeps
+      ? 'Everything said in it is kept on this machine, and can be read back under "sessions that have ended".'
+      : 'Everything said in it is deleted from this machine: its transcript, its helpers, the pictures handed to it and the copies of files it kept for undoing.';
+    const flip = button(
+      keeps ? 'Delete it instead' : 'Keep it instead',
+      'settings-button',
       () => void does.keepTranscripts(!keeps)
     );
-    const fill = (children: HTMLElement[]): void => history.fill([toggle, ...children]);
+    const actions = el('div', 'settings-actions');
+    actions.appendChild(flip);
+    ending.fill([said, actions]);
+  }
+
+  function drawHistory(): void {
+    const keeps = now.project.keepsTranscripts === true;
+    const fill = (children: HTMLElement[]): void => history.fill(children);
     const entries = now.history;
     if (!entries) {
       const hint = el('p', 'settings-hint');
@@ -228,7 +239,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       const hint = el('p', 'settings-hint');
       hint.textContent = keeps
         ? 'Nothing has ended here yet.'
-        : 'Its transcript, its helpers, the pictures handed to it and the copies of files it kept for undoing are all taken off this machine.';
+        : 'Nothing is kept here once a session ends.';
       fill([hint]);
       return;
     }
@@ -749,6 +760,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     welcome.style.display = now.fresh ? '' : 'none';
     drawFaces();
     drawSessions();
+    drawEnding();
     if (document.activeElement?.closest('.settings-section') !== timetable.root) drawTimetable();
     if (document.activeElement?.closest('.settings-scripts-list') == null) drawScripts();
     if (document.activeElement?.closest('.settings-identity-row') == null) drawIdentity();

@@ -3482,7 +3482,9 @@ undoing, and on Mender's side its recap, what it made, its draft, and every
 picture ever dropped on it (those were never cleaned up at all). Now all of
 it goes, by default in every project, whichever way the session comes down;
 a project's settings can keep it instead, which brings back the readable
-ledger. Driven in a dev instance: a session spoken to, taken down from its
+ledger, under its own heading near the top of the settings, "when a
+session ends", with a button for the other way (it first went in as a line
+at the very bottom, where it was not found). Driven in a dev instance: a session spoken to, taken down from its
 card, its transcript gone and still gone after Claude's own exit writes,
 which on the first try had put the last prompt back. The keep switch
 flipped both ways in the settings window. Not driven: the keep path end to
