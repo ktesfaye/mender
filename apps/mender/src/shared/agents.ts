@@ -206,6 +206,8 @@ export const glanceSchema = z.object({
   signIn: z.boolean().optional(),
   /** How many helpers it has out right now, who walk the island while they are. */
   helpers: z.number().int().optional(),
+  /** How many commands it left running in the background are still going. */
+  background: z.number().int().optional(),
 });
 export type Glance = z.infer<typeof glanceSchema>;
 

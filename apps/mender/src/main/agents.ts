@@ -2068,6 +2068,8 @@ class House {
     if (failure && state.mood === 'hurt' && failure.category === 'access') glance.signIn = true;
     const out = state.told.errands.filter((one) => one.running).length;
     if (out) glance.helpers = out;
+    const behind = state.told.deeds.filter((one) => one.background && one.running).length;
+    if (behind) glance.background = behind;
     return glance;
   }
 

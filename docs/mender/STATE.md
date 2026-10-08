@@ -3419,6 +3419,18 @@ restarts exactly those. Driven in a dev instance: a backgrounded `sleep 45`
 stayed running after the answer, settled on its own when it finished, and a
 second one sat in the cut-off record by its command.
 
+### Background work keeps the answer and the lantern lit (2026-10-08) — done
+
+A turn that answered with a command still going in the background used to say
+"done" over the answer and "idle" on its lantern, so a glance read finished
+when it wasn't. The answer now says "still running in the background" in the
+fire's orange with its ember, and the lantern stays lit as working, saying
+"running in the background", until the last background command ends, then
+settles to done and idle by itself. The lantern you are standing in no longer
+says "you are here"; it says what it is doing like any other. Driven in a dev
+instance with a backgrounded `sleep 150`: both read running while it ran and
+flipped to done and idle on their own when it finished.
+
 ### A question stands at the foot of what it said (2026-09-30) — done
 
 A question, a permission or a form, used to take the top of the right column,

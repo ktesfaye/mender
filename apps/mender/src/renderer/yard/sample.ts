@@ -137,7 +137,7 @@ export const SAMPLE: Yard = {
       id: 'nola-photos',
       name: 'nola-photos',
       posture: 'working',
-      saying: 'you are here · 20m 45s',
+      saying: 'running something · 20m',
       lit: true,
       here: true,
       unread: false,

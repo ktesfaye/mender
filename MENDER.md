@@ -263,7 +263,12 @@ When the agent starts something and doesn't wait for it, a dev server, a
 long build, a slow test run, its step under "what it did" keeps the fire's
 blinking ember and says it is still going in the background, well after the
 answer that started it is done, and only settles once the command really
-finishes, sore if it failed. A village closed on one names it in the note
+finishes, sore if it failed. Until then the answer is not called done: the
+word over it says "still running in the background" with the same ember, and
+its lantern on the rail stays lit saying "running in the background" rather
+than idle, and only goes to done once the last of them has. The lantern you
+are standing in says what it is doing, the same as every other, since the
+light round it already says it is the one you are in. A village closed on one names it in the note
 the session gets when it opens again, so exactly that command is started
 again.
 

@@ -178,6 +178,7 @@ const PACKING = {
 /** How the newest answer's turn stands, said over it: still going, finished, or called off. */
 const ENDED = {
   going: { head: 'so far', ink: '#ffc98a' },
+  running: { head: 'still running in the background', ink: '#ffc98a' },
   done: { head: 'done', ink: '#a8c469' },
   stopped: { head: 'you stopped it', ink: STOPPED },
   closed: { head: 'the village closed', ink: STOPPED },

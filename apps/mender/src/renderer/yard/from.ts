@@ -333,7 +333,11 @@ function thoughtsOf(told: Told | undefined, mood: Mood | undefined): Thought[] {
       ? told.ended
       : told?.ended === 'broke'
         ? undefined
-        : 'done';
+        : /* Finished talking is not finished: a command it left going in
+             the background is still the work, so it is not called done. */
+          told?.deeds.some((one) => one.background && one.running)
+          ? 'running'
+          : 'done';
   const now = turnOf(told);
   /* An answer to something you said before the newest note is not what is
      happening now, however recently it was said: once you have said the next
@@ -716,8 +720,9 @@ function lanternOf(
     };
   }
   const { posture, saying, lit } = stateOf(task, mood, at.glance, at.finished);
-  /* Out of usage outranks saying where you are: it is why nothing is moving. */
-  const said = at.here && posture !== 'waiting' ? 'you are here' : saying;
+  /* The highlight already says which one you are standing in, so the words
+     under it say what it is doing, the same as every other lantern. */
+  const said = saying;
   /* Something in this checkout is answering on a port right now. Said in the
      same words the rest of the lantern speaks in, not a mark beside it. */
   return {
@@ -788,6 +793,16 @@ function stateOf(
         const what = kind === 'service' ? 'trouble at the other end' : 'lost the connection';
         const back = resetAt && resetAt > now ? ` · back at ${clockOf(resetAt)}` : '';
         return { posture: 'waiting', saying: what + back, lit: false };
+      }
+      /* Stopped talking with a command still going in the background is
+         still at work, and reads as it from across the room. */
+      const behind = glance?.background ?? 0;
+      if (behind) {
+        return {
+          posture: 'working',
+          saying: behind > 1 ? `${behind} running in the background` : 'running in the background',
+          lit: true,
+        };
       }
       if (finished !== undefined) {
         return { posture: 'done', saying: `done · ${agoFor(now - finished)}`, lit: true };
