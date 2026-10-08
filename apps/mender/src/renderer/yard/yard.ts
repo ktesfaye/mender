@@ -2137,7 +2137,7 @@ function thinking(
         const size = one.said.length > 700 ? 19 : 21;
         body.style.cssText = one.quiet
           ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
-          : `font-size:${size}px;line-height:1.6;letter-spacing:.01em;color:${trouble?.ink ?? '#ebe3d3'}`;
+          : `font-size:${size}px;line-height:1.6;letter-spacing:var(--said-tracking,.01em);color:${trouble?.ink ?? '#ebe3d3'}`;
         if (!one.quiet) body.classList.add('clear');
         if (trouble) body.classList.add('prose-trouble');
         prose(body, one.id, one.said, !walkedIn, openLink(does));
@@ -2399,7 +2399,7 @@ function recapped(text: string): HTMLElement {
   it.appendChild(said('recap', '#b39a74'));
   const body = document.createElement('div');
   body.style.cssText =
-    'font-size:17px;line-height:1.5;font-style:italic;color:rgba(235,222,196,.72)';
+    'font-size:17px;line-height:1.6;font-style:italic;max-width:72ch;letter-spacing:var(--said-tracking,0);color:rgba(235,222,196,.72)';
   body.textContent = text;
   it.appendChild(body);
   return it;
@@ -2829,7 +2829,7 @@ function thought(
   const label = name ? (one.when ? `${name} · ${one.when}` : name) : one.when;
   if (label) it.appendChild(turnHead(label, undefined, tone, 'old'));
   const body = document.createElement('div');
-  body.style.cssText = `font-size:${size}px;line-height:1.6;letter-spacing:.01em;color:${ink}`;
+  body.style.cssText = `font-size:${size}px;line-height:1.6;letter-spacing:var(--said-tracking,.01em);color:${ink}`;
   body.classList.add('clear');
   if (tone) body.classList.add('prose-trouble');
   prose(body, one.id, one.said, false, link);
