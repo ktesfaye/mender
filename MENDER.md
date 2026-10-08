@@ -200,7 +200,8 @@ as if you had said it reads back the same way after a restart, and pressing
 Escape turns the fire's line to "stopping" until it has. Pressing that word,
 or the
 column's own heading, opens the trail upward out of it and pressing either
-again folds it, and it stays however you left it. They look no different for
+again folds it, the trail rising up out of the answer and sinking back
+into it rather than snapping, and it stays however you left it. They look no different for
 being pressable, the one place the gold rule gives way, because a gold word
 over every answer was one more thing to read. At the top of the right column
 is what it made, nailed to a billboard: not the source it changed on the way,

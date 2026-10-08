@@ -2730,6 +2730,13 @@ moved the version in `pubspec.yaml`, `package.json`, a gradle `versionName` or
 `Cargo.toml`, the commits since the last bump under "not in a version yet".
 "Elsewhere in" is gone; the rail already says it.
 
+Opening and folding the trail moves rather than snaps (2026-10-07): opening
+holds the answer and lets what it thought and did rise in out of it, nearest
+first; folding lets the trail go, farthest first, and the answers glide up
+over the gap. Only what is on screen animates. Driven over the debug port on
+a scratch session: the step faded up blurred as the answer slid down, and on
+folding the answer held still while the step went and then glided up.
+
 Driven over the debug port on the Aurio sessions: the scrubbing session's
 edits showed their written lines under the crates, the fold opened the whole
 trail above the answer and folded it back, the changelog listed Aurio's

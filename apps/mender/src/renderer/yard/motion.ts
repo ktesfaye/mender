@@ -318,6 +318,120 @@ export function lettingGo(lamp: HTMLElement, settled: string): void {
   });
 }
 
+/**
+ * The trail on the way to an answer, opening and folding.
+ *
+ * It used to snap: pressing the word over an answer threw the column away and
+ * wrote it again with every thought and step in it, or without. Now opening
+ * it holds the answers still and lets the trail come up out of them, nearest
+ * first, the way a fold of paper opens from the crease; and folding it lets
+ * the trail go, farthest first, before the answers close up over the gap.
+ * Only what is on screen moves. A trail can be hundreds of steps long, and
+ * the ones scrolled out of sight are simply there or gone.
+ */
+const UNFOLD_MS = 420;
+const UNFOLD_STEP_MS = 34;
+const UNFOLD_MAX_DELAY = 520;
+export const FOLD_MS = 200;
+const FOLD_STEP_MS = 22;
+const FOLD_MAX_DELAY = 260;
+
+/** Where each of a column's own keyed parts is, the moment before it is laid again. */
+export function measureParts(items: HTMLElement): Map<string, DOMRect> {
+  const was = new Map<string, DOMRect>();
+  for (const el of items.children as HTMLCollectionOf<HTMLElement>) {
+    const key = el.dataset.key;
+    if (key) was.set(key, el.getBoundingClientRect());
+  }
+  return was;
+}
+
+function onScreen(rect: DOMRect, view: DOMRect): boolean {
+  return rect.bottom > view.top && rect.top < view.bottom;
+}
+
+/** The trail coming up out of the answers, once the column has been laid with it. */
+export function unfold(view: HTMLElement, items: HTMLElement, was: Map<string, DOMRect>): void {
+  if (reduced()) return;
+  const sight = view.getBoundingClientRect();
+  const coming: { el: HTMLElement; rect: DOMRect }[] = [];
+  for (const el of items.children as HTMLCollectionOf<HTMLElement>) {
+    const rect = el.getBoundingClientRect();
+    if (!onScreen(rect, sight)) continue;
+    const before = el.dataset.key ? was.get(el.dataset.key) : undefined;
+    if (before) {
+      const dy = before.top - rect.top;
+      if (Math.abs(dy) >= 0.5 && Math.abs(dy) < sight.height)
+        slide(el, `translate(0,${dy}px)`, UNFOLD_MS);
+      continue;
+    }
+    coming.push({ el, rect });
+  }
+  /* Nearest the answer first, which is the foot of the column. */
+  coming.sort((a, b) => b.rect.top - a.rect.top);
+  coming.forEach(({ el }, i) => {
+    const delay = Math.min(i * UNFOLD_STEP_MS, UNFOLD_MAX_DELAY);
+    const settled = Number(getComputedStyle(el).opacity) || 1;
+    slide(el, 'translateY(14px)', UNFOLD_MS, delay);
+    el.animate([{ opacity: 0, filter: 'blur(1.5px)' }, { opacity: settled, filter: 'blur(0)' }], {
+      duration: UNFOLD_MS,
+      delay,
+      easing: 'ease-out',
+      fill: 'backwards',
+    });
+  });
+}
+
+/** The trail letting go, farthest from the answer first. Resolves once it has. */
+export function foldAway(view: HTMLElement, going: HTMLElement[]): Promise<void> {
+  if (reduced()) return Promise.resolve();
+  const sight = view.getBoundingClientRect();
+  const seen = going
+    .map((el) => ({ el, rect: el.getBoundingClientRect() }))
+    .filter(({ rect }) => onScreen(rect, sight))
+    .sort((a, b) => a.rect.top - b.rect.top);
+  if (!seen.length) return Promise.resolve();
+  const runs = seen.map(({ el }, i) =>
+    el.animate(
+      [
+        { transform: 'translateY(0)', opacity: getComputedStyle(el).opacity, filter: 'blur(0)' },
+        { transform: 'translateY(8px)', opacity: 0, filter: 'blur(1.5px)' },
+      ],
+      {
+        duration: FOLD_MS,
+        delay: Math.min(i * FOLD_STEP_MS, FOLD_MAX_DELAY),
+        easing: 'cubic-bezier(.4,0,1,1)',
+        fill: 'forwards',
+      }
+    ).finished
+  );
+  return Promise.all(runs).then(
+    () => {},
+    () => {}
+  );
+}
+
+/** The answers closing up over where the trail was, once it has been laid without it. */
+export function closeUp(view: HTMLElement, items: HTMLElement, was: Map<string, DOMRect>): void {
+  if (reduced()) return;
+  const sight = view.getBoundingClientRect();
+  for (const el of items.children as HTMLCollectionOf<HTMLElement>) {
+    const before = el.dataset.key ? was.get(el.dataset.key) : undefined;
+    const rect = el.getBoundingClientRect();
+    if (!onScreen(rect, sight)) continue;
+    if (!before) {
+      arrive(el);
+      continue;
+    }
+    const dy = before.top - rect.top;
+    if (Math.abs(dy) < 0.5) continue;
+    /* One that was scrolled out of sight comes from just past the edge
+       rather than from the whole length of the trail away. */
+    const from = Math.max(-sight.height * 0.5, Math.min(sight.height * 0.5, dy));
+    slide(el, `translate(0,${from}px)`, UNFOLD_MS);
+  }
+}
+
 function reduced(): boolean {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 }

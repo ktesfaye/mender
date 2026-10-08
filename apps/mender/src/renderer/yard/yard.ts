@@ -41,16 +41,21 @@ import { makeMenu } from './menu';
 import {
   arrive,
   catching,
+  closeUp,
+  FOLD_MS,
+  foldAway,
   dwindling,
   forgetInk,
   keyed,
   leavingInPlace,
   lettingGo,
   measure,
+  measureParts,
   play,
   steppingOff,
   sweepingIn,
   swelling,
+  unfold,
 } from './motion';
 import { packed } from './pack';
 import { onThisMachine } from './pictures';
@@ -2037,15 +2042,29 @@ function thinking(
         next += 1;
         const it = keyed(did(step, does, true), `trail:${step.id}`);
         it.classList.add('trail-deed');
+        it.dataset.folds = '1';
         keep.add(`trail:${step.id}`);
         items.appendChild(it);
       }
     };
+    /* What would go if the trail were folded is marked, so folding can let
+       exactly that go before the column is laid again without it. */
+    let markFrom = 0;
+    let marking = false;
+    const marked = (): void => {
+      if (marking)
+        for (let c = markFrom; c < items.children.length; c += 1)
+          (items.children[c] as HTMLElement).dataset.folds = '1';
+      marking = false;
+    };
     thoughts.slice(start).forEach((one, si) => {
       const i = start + si;
       const far = thoughts.length - 1 - i;
+      marked();
       if (open && one.seq !== undefined) placeUpTo(one.seq);
       if (!open && i !== answer && !one.answer) return;
+      markFrom = items.children.length;
+      marking = open && i !== answer && !one.answer;
       if (one.live) {
         keep.add(one.id);
         const it = keyed(document.createElement('div'), `thought:${one.id}`);
@@ -2122,17 +2141,45 @@ function thinking(
         )
       );
     });
+    marked();
     if (open) placeUpTo(undefined);
     forgetInk(keep);
   }
 
   /** Open or fold the trail on the way to the answer. */
+  let turning = false;
   function toggle(): void {
-    setThinkingOpen(!thinkingOpen());
-    laidOlder();
-    laidItems();
-    followed.delete(sessionId);
-    stream.scrollTop = stream.scrollHeight;
+    if (turning) return;
+    const opening = !thinkingOpen();
+    setThinkingOpen(opening);
+    const lay = (): Map<string, DOMRect> => {
+      const was = measureParts(items);
+      laidOlder();
+      laidItems();
+      followed.delete(sessionId);
+      stream.scrollTop = stream.scrollHeight;
+      return was;
+    };
+    if (opening) {
+      unfold(stream, items, lay());
+      return;
+    }
+    const going = [...(items.children as HTMLCollectionOf<HTMLElement>)].filter(
+      (el) => el.dataset.folds
+    );
+    turning = true;
+    older.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FOLD_MS, fill: 'forwards' });
+    void foldAway(stream, going).then(() => {
+      turning = false;
+      /* The yard may have been written again while it let go, already folded. */
+      if (!stream.isConnected) return;
+      older.getAnimations().forEach((one) => one.cancel());
+      const kept = new Map<string, DOMRect>();
+      for (const [key, rect] of measureParts(items))
+        if (!going.some((el) => el.dataset.key === key)) kept.set(key, rect);
+      lay();
+      closeUp(stream, items, kept);
+    });
   }
   /** Something that opens and folds the trail when pressed, and looks no different. */
   function folding(el: HTMLElement): void {
