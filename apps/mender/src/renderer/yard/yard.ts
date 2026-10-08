@@ -2399,7 +2399,7 @@ function recapped(text: string): HTMLElement {
   it.appendChild(said('recap', '#b39a74'));
   const body = document.createElement('div');
   body.style.cssText =
-    'font-size:17px;line-height:1.6;font-style:italic;max-width:72ch;letter-spacing:var(--said-tracking,0);color:rgba(235,222,196,.72)';
+    'font-size:17px;line-height:1.6;font-style:italic;letter-spacing:var(--said-tracking,0);color:rgba(235,222,196,.72)';
   body.textContent = text;
   it.appendChild(body);
   return it;

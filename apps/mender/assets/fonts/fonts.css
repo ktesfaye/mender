@@ -16,9 +16,8 @@
 
 /* Grunell comes in one weight and no italic, so what the agent stressed and
    the recap's italic are leaned and thickened by the browser. It is drawn
-   tight, so the letters and the words are spaced out and a line stops well
-   short of the column's edge: set as it comes, a paragraph read as one grey
-   bar. */
+   tight, so the letters and the words are spaced out: set as it comes, a
+   paragraph read as one grey bar. */
 .said-face {
   font-family: 'Mender Said', 'Cormorant Garamond', serif;
   font-weight: 400;
@@ -26,7 +25,6 @@
   word-spacing: 0.08em;
 }
 .yard .said-face .prose {
-  max-width: 64ch;
   gap: 1.1em;
 }
 
