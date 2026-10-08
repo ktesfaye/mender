@@ -160,7 +160,13 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
   const hostDependencies = createHostDependenciesComponent({
     store: createJsonFileKeyValueStore({ path: data('host-dependencies.json') }),
     exec: new NodeExecutionContext({
-      env: process.env,
+      // A window opened from the Finder starts on launchd's bare PATH, so
+      // nothing is looked for until the login shell's own PATH has landed:
+      // a session woken in that first second otherwise finds no claude.
+      env: async () => {
+        await shellEnv.current();
+        return process.env;
+      },
       refreshShellEnv: () => shellEnv.refresh(),
     }),
   }).create({

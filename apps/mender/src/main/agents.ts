@@ -659,7 +659,20 @@ export function createAgents(
         helpers: cut.helpers.length,
         unread: cut.unread.length,
       });
-      void doTell(task, PICK_UP_SAID, undefined, pickUpNote(cut)).finally(() => {
+      /* A launch can fall over in the first seconds of a sitting for reasons
+         that are gone a moment later, so a failed pick-up tries again rather
+         than leaving the work stopped for him to find. Something said by
+         hand in between ends it: the session has been told by then. */
+      const pickUp = async (): Promise<void> => {
+        for (const wait of [0, 3000, 10_000, 30_000]) {
+          if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+          if (wait && peek(houseOf(task).state).mood !== 'hurt') return;
+          const told = await doTell(task, PICK_UP_SAID, undefined, pickUpNote(cut));
+          if (told.success) return;
+          log.warn('agents: pick-up failed', { area: 'agents', task, attempt: wait });
+        }
+      };
+      void pickUp().finally(() => {
         pickingUp.delete(task);
         noteGoing();
       });
