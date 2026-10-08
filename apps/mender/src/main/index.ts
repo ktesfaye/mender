@@ -98,7 +98,7 @@ export async function main(): Promise<void> {
     github: createGitHubStatus(),
     projects: createProjectsController(projects),
     prompts: createPromptsController(),
-    schedules: createSchedulesController(schedules),
+    schedules: createSchedulesController(schedules, appSettings),
     sky: createSkyController(projects, tasks),
     tasks: createTasksController(tasks),
     village: createVillageController({ state: () => projects.standing() }),

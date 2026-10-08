@@ -35,7 +35,12 @@ export const scheduleSchema = z.object({
 
 export type Schedule = z.infer<typeof scheduleSchema>;
 
-export const scheduleHandSchema = z.object({ id: z.string(), name: z.string() });
+export const scheduleHandSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  /** Installed on this machine, so a session it cuts would actually start. */
+  here: z.boolean().optional(),
+});
 export type ScheduleHand = z.infer<typeof scheduleHandSchema>;
 
 export const schedulesContract = defineContract({

@@ -917,6 +917,21 @@ git ignores that it would otherwise be missing (the `.env`, the local keys,
 the second of which takes two clicks. A project that has just moved in opens it
 first.
 
+That window grew one heading at a time until it was eleven of them in one long
+scroll, so it is pages now, down a rail on its left, each with a line under its
+name saying what is set there: General (the icon, what search leaves out,
+removing it), Sessions (what happens to a conversation when one ends, the ones
+that have, and the environment every session carries), Own copies (the files
+and the four scripts that only matter to a session in its own worktree, and
+it says so), Timetable and Git. Whatever is written saves on leaving the field
+and says "saved" beside its heading. The timetable is a form now rather than a
+row of words that cycled when pressed, and offers only the agents actually
+installed here, the default first. And an "every few hours" schedule counts
+from when it was made, rather than cutting a session the moment it was added.
+Driven on a scratch project: every page, a schedule added and kept on disk
+without firing, a script saved, keeping and deleting what was said flipped,
+Escape out.
+
 And anything laid over the yard now closes on a click outside it. It used to
 swallow every click that was not on something gold, so Escape was the only way
 out and nothing said so.

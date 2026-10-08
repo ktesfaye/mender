@@ -403,7 +403,10 @@ its real path, the same door a dropped-in file already opened, the other way.
 **A project's name opens its settings, in a window of their own.** Settings
 are about the place, not the work, so they are the one thing that is not laid
 over the yard: a window pops up over everything with a close mark, and it goes
-on a click outside it or Escape, leaving the session under it untouched. In it
+on a click outside it or Escape, leaving the session under it untouched. It is
+pages down a rail on its left, General, Sessions, Own copies, Timetable and
+Git, each saying under its name what is set there, and whatever is written
+says "saved" beside its heading once it is. In it
 is the icon it wears on the rack, picked from the images already in its
 checkout or chosen from anywhere, its name, typed straight into the window,
 what every new session carries into its worktree that git would leave behind,

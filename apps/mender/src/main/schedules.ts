@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { pluginRegistry } from '@emdash/plugins/agents';
 import { app } from 'electron';
@@ -16,6 +16,9 @@ const ran = promisify(execFile);
 interface Stored extends Schedule {
   lastDay?: string;
   lastRef?: string | null;
+  /** When it was made, which is what "every n hours" counts from until it
+      has run once. */
+  madeAt?: string;
 }
 
 const KEY = 'schedules';
@@ -52,7 +55,7 @@ export function createSchedules(tasks: Tasks, agents: Agents, projects: Projects
   };
 
   const outward = (rows: Stored[]): Schedule[] =>
-    rows.map(({ lastDay: _lastDay, lastRef: _lastRef, ...row }) => row);
+    rows.map(({ lastDay: _lastDay, lastRef: _lastRef, madeAt: _madeAt, ...row }) => row);
 
   /** The clock's own reading of "HH:MM", in this machine's own timezone. */
   const clockNow = (): { hhmm: string; day: string } => {
@@ -79,7 +82,8 @@ export function createSchedules(tasks: Tasks, agents: Agents, projects: Projects
       return hhmm === row.when.time && row.lastDay !== day;
     }
     if (row.when.kind === 'hours') {
-      const last = row.lastRun ? new Date(row.lastRun).getTime() : 0;
+      const since = row.lastRun ?? row.madeAt;
+      const last = since ? new Date(since).getTime() : 0;
       return Date.now() - last >= row.when.n * 3_600_000;
     }
     // push: fires when the base ref has moved from the one last seen. The
@@ -144,6 +148,7 @@ export function createSchedules(tasks: Tasks, agents: Agents, projects: Projects
         kind,
         when,
         lastRun: null,
+        madeAt: new Date().toISOString(),
       };
       /* A push schedule's baseline is captured right away, so it never fires
          on whatever the branch already was the moment it was made. */

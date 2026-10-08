@@ -800,6 +800,251 @@ html.still *::after {
 .settings-env-field:focus {
   border-color: var(--yard-gold);
 }
+/* A project's settings are pages down a rail on the left, so it never
+   becomes one long scroll of everything. Fixed height, so moving between
+   pages does not make the window jump. */
+.settings.paged:focus {
+  outline: none;
+}
+.settings.paged {
+  width: min(880px, 100%);
+  height: min(720px, calc(100vh - 48px));
+  max-height: none;
+}
+.settings-middle {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.settings-rail {
+  flex: none;
+  width: 196px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 10px;
+  background: rgba(18, 13, 7, 0.28);
+  border-right: 2px solid var(--yard-outline);
+  overflow-y: auto;
+}
+.settings-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 12px 8px;
+  text-align: left;
+  background: none;
+  border: 2px solid transparent;
+  cursor: default;
+}
+.settings-tab-name {
+  font:
+    15px/1.2 'Josefin Sans',
+    sans-serif;
+  color: var(--yard-gold);
+}
+.settings-tab-sub {
+  min-height: 15px;
+  font:
+    11px/1.35 'Courier Prime',
+    monospace;
+  color: var(--yard-ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-tab:hover {
+  background: rgba(244, 227, 192, 0.05);
+}
+.settings-tab:hover .settings-tab-name {
+  color: var(--yard-gold-hover);
+}
+.settings-tab.here {
+  background: var(--yard-timber);
+  border-color: var(--yard-outline);
+  box-shadow: inset 0 1px 0 var(--yard-timber-light);
+}
+.settings-tab.here .settings-tab-name {
+  color: var(--yard-ink-bright);
+}
+.settings-tab:focus-visible {
+  outline: 2px solid var(--yard-gold);
+  outline-offset: -2px;
+}
+.settings.paged .settings-body {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 28px 28px;
+}
+.settings-page .settings-section:last-child {
+  border-bottom: none;
+}
+.settings-intro {
+  margin: 20px 0 2px;
+  font-size: 14px;
+  color: var(--yard-ink-body);
+}
+.settings.paged .settings-label {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.settings-saved {
+  letter-spacing: 0.12em;
+  color: var(--yard-done);
+  opacity: 0;
+  transition: opacity 240ms ease-out;
+}
+.settings-saved.shown {
+  opacity: 1;
+  transition-duration: 80ms;
+}
+.settings-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.settings-form-field .settings-choices {
+  margin-bottom: 0;
+}
+.settings-chip {
+  padding: 7px 12px 5px;
+  font:
+    14px/1.2 'Josefin Sans',
+    sans-serif;
+  color: var(--yard-gold);
+  background: rgba(18, 13, 7, 0.25);
+  border: 2px solid rgba(164, 137, 97, 0.45);
+  cursor: default;
+}
+.settings-chip:hover {
+  color: var(--yard-gold-hover);
+  border-color: rgba(164, 137, 97, 0.75);
+}
+.settings-chip.picked {
+  color: var(--yard-ink-bright);
+  border-color: var(--yard-gold);
+  background: rgba(224, 181, 106, 0.14);
+}
+.settings-chip:focus-visible {
+  outline: 2px solid var(--yard-gold);
+  outline-offset: 2px;
+}
+.settings-form-row {
+  display: grid;
+  grid-template-columns: 124px 1fr;
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+.settings-form-label {
+  padding-top: 8px;
+  font-size: 13px;
+  color: var(--yard-ink-dim);
+}
+.settings-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.settings-when-detail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.settings-hint-inline {
+  font-size: 14px;
+  color: var(--yard-ink-dim);
+}
+.settings-small-field {
+  flex: none;
+  width: 120px;
+}
+.settings-rows {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--yard-rule-soft);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 8px;
+  margin: 0;
+  text-align: left;
+  font: inherit;
+  color: var(--yard-ink-body);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--yard-rule-soft);
+  cursor: default;
+}
+button.settings-row:hover {
+  background: rgba(244, 227, 192, 0.05);
+}
+button.settings-row .settings-row-main {
+  color: var(--yard-gold);
+}
+button.settings-row:hover .settings-row-main {
+  color: var(--yard-gold-hover);
+}
+.settings-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-row-title {
+  color: var(--yard-ink-bright);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.settings-row-meta,
+.settings-row-side {
+  font:
+    12px/1.4 'Courier Prime',
+    monospace;
+  color: var(--yard-ink-dim);
+}
+.settings-row-side {
+  flex: none;
+}
+.settings-link-sore {
+  color: var(--yard-broken);
+}
+.settings-link-sore:hover {
+  color: #ff8a7a;
+}
+.settings.paged .settings-script-row {
+  align-items: flex-start;
+}
+.settings.paged .settings-script-label {
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.settings-script-name {
+  font-size: 14px;
+  color: var(--yard-ink-bright);
+}
+.settings-script-when {
+  font-size: 12px;
+  color: var(--yard-ink-dim);
+}
+.settings.paged .settings-past {
+  overflow: visible;
+  padding: 18px 0 0;
+}
 .settings-danger {
   padding-top: 18px;
 }
