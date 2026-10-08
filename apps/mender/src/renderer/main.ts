@@ -310,6 +310,10 @@ async function boot(): Promise<void> {
         void tell(text);
       },
       leave: () => void backOut(),
+      takeBack: async () => {
+        const task = inside;
+        return task && watching?.working() ? hush(task, true) : false;
+      },
     });
 
     /* Escape's whole ladder lives at the bottom of this file, and the yard is
@@ -4258,17 +4262,19 @@ async function boot(): Promise<void> {
     /* Calling it off before anything came of what it was asked hands that
        back, and it goes on the line to be said again, ahead of whatever was
        written there since. */
-    const hush = async (task: Task): Promise<void> => {
-      const done = await client.agents.hush({ task: task.id });
-      if (!done.success || inside?.id !== task.id) return;
+    const hush = async (task: Task, untouched = false): Promise<boolean> => {
+      const done = await client.agents.hush({ task: task.id, ...(untouched ? { untouched } : {}) });
+      if (!done.success || done.data.going) return false;
+      if (inside?.id !== task.id) return true;
       const { back, pictures } = done.data;
       if (pictures?.length) watching?.carryBack(pictures);
       if (!back) {
         if (pictures?.length && watching) yard.show(watching.yard());
-        return;
+        return true;
       }
       const now = yard.line.written().trim();
       said(now ? `${back} ${now}` : back);
+      return true;
     };
 
     const tell = async (said: string): Promise<void> => {

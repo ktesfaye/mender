@@ -185,8 +185,13 @@ export interface Agents {
   finishAsking(task: string): Promise<Told>;
   /** Take back something said while it was busy, before it is heard. */
   unsay(task: string, id: string): Promise<Told>;
-  hush(task: string): Promise<
-    | { success: true; data: { back?: string; pictures?: Returned[] } }
+  /** `untouched` calls it off only when nothing has come of what it was asked,
+   *  and otherwise leaves it working and says so with `going`. */
+  hush(
+    task: string,
+    untouched?: boolean
+  ): Promise<
+    | { success: true; data: { back?: string; pictures?: Returned[]; going?: boolean } }
     | { success: false; error: TellError }
   >;
   /** Stop one helper it sent out, leaving the session and the turn alone. */
@@ -1416,11 +1421,12 @@ export function createAgents(
       return done.success ? { success: true, data: undefined } : refused(whatItSaid(done.error));
     },
 
-    async hush(task) {
+    async hush(task, untouched) {
       await loaded;
       const conversation = lodgers[task];
       if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
       const house = houses.get(task);
+      if (untouched && !house?.untouched()) return { success: true, data: { going: true } };
       /* Called off before anything came of it, the way Claude Code's own
          Escape does it: what was asked goes back on the line to be said
          again, rather than sitting on the post as one more thing stopped. */

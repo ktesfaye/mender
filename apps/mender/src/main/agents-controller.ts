@@ -38,7 +38,7 @@ export function createAgentsController(
     answer: ({ task, requestId, optionId }) => agents.answer(task, requestId, optionId),
     finishAsking: ({ task }) => agents.finishAsking(task),
     unsay: ({ task, id }) => agents.unsay(task, id),
-    hush: ({ task }) => agents.hush(task),
+    hush: ({ task, untouched }) => agents.hush(task, untouched),
     recall: ({ task, call }) => agents.recall(task, call),
     helperTrail: ({ task, call }) => agents.helperTrail(task, call),
     sendAway: ({ task, call }) => agents.sendAway(task, call),

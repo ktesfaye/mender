@@ -195,6 +195,9 @@ export interface Doings {
   say(said: string): void;
   /** Escape with nothing left on the line to throw away. */
   leave(): void;
+  /** Call off what it is working on, but only if nothing has come of it yet,
+   *  and put it back on the line. Whether it did. */
+  takeBack?(): Promise<boolean>;
   /** What deleting a workspace would throw away, said before it is done. */
   dropCost?(id: string): Promise<string>;
 }
@@ -400,12 +403,33 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       fill(queued.map((one) => one.said).join('\n\n'));
       return true;
     }
+    /* Up on a turn that has not come to anything yet is "not yet": it is
+       called off and what was asked comes back to the line. Once it has
+       started answering, up walks back through what was said, as ever. */
+    const session = last?.session;
+    if (
+      event.key === 'ArrowUp' &&
+      recalled < 0 &&
+      written === '' &&
+      session?.fire === 'lit' &&
+      does.takeBack
+    ) {
+      void does.takeBack().then((took) => {
+        if (took || last?.session?.id !== session.id || line.written() !== '') return;
+        goBack(1, '');
+      });
+      return true;
+    }
     const untouched = recalled < 0 ? written === '' : written === notes[recalled]?.said;
     if (!untouched) {
       recalled = -1;
       return false;
     }
-    const to = recalled + (event.key === 'ArrowUp' ? 1 : -1);
+    return goBack(event.key === 'ArrowUp' ? 1 : -1, written);
+  }
+  function goBack(by: number, written: string): boolean {
+    const notes = last?.session?.notes ?? [];
+    const to = recalled + by;
     if (recalled < 0 && (to < 0 || !notes.length)) return false;
     if (to >= notes.length) return true;
     if (recalled < 0) draft = written;

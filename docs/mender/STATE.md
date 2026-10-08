@@ -3549,3 +3549,10 @@ read past, the ghost lines go with the note, and pictures come back on the
 line as `[picture 1]`. Driven in a dev instance: three stops in a row each put
 the words back with no lines left over, a pasted picture came back alone, and
 the send after them was answered.
+
+Up on an empty line while it was still only thinking used to walk back through
+what was said and leave it thinking about a note that was now back on the
+line. Now up there calls the turn off the same way Escape would, when nothing
+has come of it yet, and only walks back through what was said once it has.
+Driven in a dev instance: sent, pressed up while it was thinking, and the
+words came back to the line with the fire out and the post clean.

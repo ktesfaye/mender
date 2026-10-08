@@ -162,7 +162,8 @@ first taking back off the post anything still waiting its turn and putting
 it on the line, the way Claude Code's own up arrow does. Calling it off,
 by Escape or an empty line, before anything at all has come of what it was
 asked takes that note down too and puts it back on the line to be said
-again. A small
+again, and so does up on an empty line while it is still only thinking,
+since that is the same "not yet". A small
 gold loop in the parchment's corner has it go again at that note without
 saying it a second time: one it cut short carries on from where it stopped,
 and one it finished gets another go, and nothing new goes up on the post,
