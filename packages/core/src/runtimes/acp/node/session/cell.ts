@@ -79,6 +79,14 @@ export class SessionCell {
   private configCatalogState: SessionConfigCatalog['kind'] = 'pending';
   private quiesceTimer: ReturnType<typeof setTimeout> | null = null;
   private lastRunningAgentCount = 0;
+  /**
+   * Prompts said while a turn runs, held in the queue until the agent next
+   * pauses rather than handed to it at once. Claude Code's own terminal folds
+   * a queued message in at the next tool boundary, and until then it is still
+   * the user's to take back; handing it straight over pre-empted whatever the
+   * agent was saying and left nothing to take back.
+   */
+  private readonly heldForPause = new Map<string, PromptAcceptance | undefined>();
   private readonly effectDriver: MachineEffectDriver<Effect>;
   /** The most recent typed failure Claude's adapter has reported (its AIR
    *  `sessionFailure` extension), cleared the moment a new prompt goes out —
@@ -276,6 +284,7 @@ export class SessionCell {
 
     const previousRunningAgentCount = this.lastRunningAgentCount;
     this.transcript.pushEvent(event);
+    if (this.isPause(event)) this.steerHeld();
     if (event.kind === 'config') this.configCatalogState = 'ready';
     this.dispatchAgentsChangedIfNeeded(previousRunningAgentCount);
     if (idleTranscriptEvent) this.scheduleQuiesce();
@@ -645,7 +654,7 @@ export class SessionCell {
         phase: this.machine.phase.kind,
       });
       acceptance?.onAccepted({ queued: true });
-      if (steerable && this.deps.supportsSteering) void this.steer(prompt, acceptance);
+      if (steerable && this.deps.supportsSteering) this.heldForPause.set(prompt.id, acceptance);
       return ok({ queued: true });
     }
     /* A fresh attempt is the village's own "retry": the failure it's a retry
@@ -737,6 +746,25 @@ export class SessionCell {
       });
       this.settleTurn({ kind: 'error', reason: 'prompt_failed' });
       return err;
+    }
+  }
+
+  /** A tool the agent itself ran has come back: the moment it reads what is next. */
+  private isPause(event: NormalizedEvent): boolean {
+    if (event.kind !== 'tool_call' && event.kind !== 'tool_update') return false;
+    if (event.parentToolCallId !== null) return false;
+    if (event.kind === 'tool_update' && event.background) return false;
+    return event.status === 'completed' || event.status === 'failed';
+  }
+
+  /** Hand over whatever was held for the agent's next pause and is still queued. */
+  private steerHeld(): void {
+    if (!this.heldForPause.size) return;
+    const held = [...this.heldForPause];
+    this.heldForPause.clear();
+    for (const [id, acceptance] of held) {
+      const prompt = this.machine.queuedPrompts.find((queued) => queued.id === id);
+      if (prompt) void this.steer(prompt, acceptance);
     }
   }
 

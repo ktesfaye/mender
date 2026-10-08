@@ -3519,3 +3519,17 @@ still to wait shimmer toward it, a gold post stands where it picks back up,
 and once it lifts the strip stands up green and the fire catches. Driven in
 a dev instance against the fake limit: ticking frames, a corrupted stored
 date corrected on restart, and the session carrying on unprompted after it.
+
+### A message can be taken back before it is read (2026-10-07) — done
+
+Up on an empty line used to skip straight to what was said before, and
+anything said while the agent worked was handed to it at once, cutting off
+whatever it was saying and leaving nothing to take back. Now a message said
+mid-turn waits in the queue until the agent next pauses between steps, as
+Claude Code does, and up on an empty line takes everything still waiting back
+off the post and onto the line. Calling a turn off before any word or step
+has come of it takes its note down and puts it back on the line, and it stays
+off the post after a restart. Driven in a dev instance with a real Claude:
+a note stopped a second after sending came back on the line with the post
+empty; a queued note came back on up; a queued note left alone reached the
+agent between two shell steps and the turn finished clean.

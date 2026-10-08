@@ -157,7 +157,12 @@ said it.
 land in the session you were last in, standing in its yard at night. What you
 asked for is nailed to a gatepost on the left, newest on parchment and the ones
 under it weathered into the post, any of them written back on the line by
-pressing it, and up on an empty line walks back through them. A small
+pressing it, and up on an empty line walks back through them, after
+first taking back off the post anything still waiting its turn and putting
+it on the line, the way Claude Code's own up arrow does. Calling it off,
+by Escape or an empty line, before anything at all has come of what it was
+asked takes that note down too and puts it back on the line to be said
+again. A small
 gold loop in the parchment's corner has it go again at that note without
 saying it a second time: one it cut short carries on from where it stopped,
 and one it finished gets another go, and nothing new goes up on the post,
@@ -166,7 +171,9 @@ is what it is working on, and says so in the fire's orange; whatever you say
 while it works goes up above the parchment in the post's own weathered ink,
 "not read yet", and only takes the parchment once the agent has actually
 picked it up, so the note it is answering is never pushed down by one it has
-not seen. And at the foot of that column is the
+not seen. It is handed over the next time the agent pauses between one thing
+it does and the next, which is when Claude Code folds one in too, and until
+then it says "waiting its turn" and is still yours to take back. And at the foot of that column is the
 project's changelog, in the same small squares and cream lines the glance at
 the other sessions used to be written in: each version on its own line and
 what went into it bulleted and indented under it, newest first and scrolling, read straight off whichever commits moved

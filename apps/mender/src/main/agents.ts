@@ -184,7 +184,9 @@ export interface Agents {
   finishAsking(task: string): Promise<Told>;
   /** Take back something said while it was busy, before it is heard. */
   unsay(task: string, id: string): Promise<Told>;
-  hush(task: string): Promise<Told>;
+  hush(task: string): Promise<
+    { success: true; data: { back?: string } } | { success: false; error: TellError }
+  >;
   /** Stop one helper it sent out, leaving the session and the turn alone. */
   recall(
     task: string,
@@ -267,6 +269,7 @@ const AWAY_KEY = 'helpersAway';
 const CUT_OFF_KEY = 'cutOff';
 const CARRY_ON_KEY = 'carryOn';
 const LIMITS_HIT_KEY = 'limitsHit';
+const TAKEN_BACK_KEY = 'takenBack';
 
 export function createAgents(
   runtimes: MenderRuntimes,
@@ -295,6 +298,9 @@ export function createAgents(
       a restart still knows which morning it was hit on. */
   let limitsHit: Record<string, number> = {};
   let hitLoaded = false;
+  /** What was said and called off before anything came of it, by task. It
+      went back on the line, so the post never shows it, restart included. */
+  let takenBack: Record<string, string[]> = {};
   const loaded = (async () => {
     const held = await store.get(KEY);
     if (held.success && held.data && typeof held.data === 'object') {
@@ -321,6 +327,10 @@ export function createAgents(
     const heldCut = await store.get(CUT_OFF_KEY);
     if (heldCut.success && heldCut.data && typeof heldCut.data === 'object') {
       leftGoing = heldCut.data as unknown as Record<string, CutOff>;
+    }
+    const heldBack = await store.get(TAKEN_BACK_KEY);
+    if (heldBack.success && heldBack.data && typeof heldBack.data === 'object') {
+      takenBack = heldBack.data as unknown as Record<string, string[]>;
     }
     const heldCarry = await store.get(CARRY_ON_KEY);
     if (heldCarry.success && heldCarry.data && typeof heldCarry.data === 'object') {
@@ -591,7 +601,8 @@ export function createAgents(
             }
           }
           return at;
-        }
+        },
+        () => takenBack[task] ?? []
       );
       houses.set(task, house);
       void loaded.then(async () => {
@@ -752,6 +763,9 @@ export function createAgents(
       const { [task]: _draft, ...draftsLeft } = drafts;
       const { [task]: _made, ...madeLeft } = madeBy;
       const { [task]: _recap, ...recapsLeft } = recaps;
+      const { [task]: _back, ...backLeft } = takenBack;
+      takenBack = backLeft;
+      await store.set(TAKEN_BACK_KEY, takenBack as unknown as never);
       drafts = draftsLeft;
       madeBy = madeLeft;
       recaps = recapsLeft;
@@ -1405,10 +1419,21 @@ export function createAgents(
       const conversation = lodgers[task];
       if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
       const house = houses.get(task);
+      /* Called off before anything came of it, the way Claude Code's own
+         Escape does it: what was asked goes back on the line to be said
+         again, rather than sitting on the post as one more thing stopped. */
+      const back = house?.untouched();
       house?.hushing(true);
       const done = await runtimes.acp.cancelTurn({ conversationId: conversation });
-      if (!done.success) house?.hushing(false);
-      return done.success ? { success: true, data: undefined } : refused(whatItSaid(done.error));
+      if (!done.success) {
+        house?.hushing(false);
+        return refusal(whatItSaid(done.error));
+      }
+      if (!back) return { success: true, data: {} };
+      takenBack = { ...takenBack, [task]: [...(takenBack[task] ?? []), back].slice(-20) };
+      void store.set(TAKEN_BACK_KEY, takenBack as unknown as never);
+      house?.again();
+      return { success: true, data: { back } };
     },
 
     async recall(task, call) {
@@ -1576,7 +1601,9 @@ class House {
       failure: SessionFailure,
       live: boolean,
       written?: number
-    ) => number = () => Date.now()
+    ) => number = () => Date.now(),
+    /** What was asked here and handed back to the line before anything came of it. */
+    private readonly takenBack: () => readonly string[] = () => []
   ) {
     this.state = cell<WorkingState>(EMPTY, { name: `agent:${task}` });
   }
@@ -1836,6 +1863,33 @@ class House {
       if (one.who === 'it' && LIMIT_KEY.test(one.key) && said.startsWith(one.key)) return one.at;
     }
     return undefined;
+  }
+
+  /**
+   * What the turn in flight was asked, while nothing has come of it yet: no
+   * word back and nothing done, only thinking at most. A picture cannot go
+   * back on the line, so a note that carried one is never this.
+   */
+  untouched(): string | undefined {
+    const turn = this.live;
+    if (!turn || turn.outcome) return undefined;
+    return askedOnly(turn);
+  }
+
+  /** The turns as the post shows them, without any that went back on the line. */
+  private shown(turns: TranscriptTurn[]): TranscriptTurn[] {
+    const back = this.takenBack();
+    if (!back.length) return turns;
+    const out: TranscriptTurn[] = [];
+    let dropped = false;
+    for (const turn of turns) {
+      /* Claude's own transcript may write the stop down as a turn of its own. */
+      if (dropped && stopOnly(turn)) continue;
+      const asked = askedOnly(turn, true);
+      dropped = asked !== undefined && back.includes(asked);
+      if (!dropped) out.push(turn);
+    }
+    return out;
   }
 
   /** Called off, and waiting for the turn to say it has stopped. */
@@ -2147,7 +2201,7 @@ class House {
 
   private read(): WorkingState {
     if (!this.conversation) return EMPTY;
-    const turns = this.live ? [...this.before, this.live] : this.before;
+    const turns = this.shown(this.live ? [...this.before, this.live] : this.before);
     const lines = linesOf(turns, this.where()).slice(-KEPT);
     const pending = this.lifecycle?.pendingPermissions ?? [];
     /* A mark against a question that has moved on — answered elsewhere,
@@ -2795,6 +2849,38 @@ const REDO_ASIDE =
   'fresh look at it rather than repeating your last answer.]';
 
 const ASIDE_TO_AGENT = /\s*\[mender, for the agent only:[\s\S]*?\]\s*$/;
+
+/**
+ * The one thing a turn was asked, when nothing came of it: no word back and
+ * nothing done. A stop written down as though you said it is let through
+ * when `stopped` says the turn may have ended that way.
+ */
+function askedOnly(turn: TranscriptTurn, stopped = false): string | undefined {
+  let asked: string | undefined;
+  for (const item of turn.items) {
+    if (item.kind === 'thinking') continue;
+    if (item.kind !== 'message') return undefined;
+    const text = item.text.replace(ASIDE_TO_AGENT, '').trim();
+    if (item.role === 'assistant') {
+      if (text && text !== 'No response requested.') return undefined;
+      continue;
+    }
+    if (stopped && INTERRUPTED.test(text)) continue;
+    if (asked !== undefined || item.attachments?.length || !text || carried(text)) return undefined;
+    asked = text;
+  }
+  return asked;
+}
+
+/** A turn that is nothing but Claude writing down that it was stopped. */
+function stopOnly(turn: TranscriptTurn): boolean {
+  return turn.items.every(
+    (item) =>
+      item.kind === 'thinking' ||
+      (item.kind === 'message' &&
+        (item.role === 'user' ? INTERRUPTED.test(item.text.trim()) : !item.text.trim()))
+  );
+}
 
 /** How the runtime names a message it handed into a turn already running. */
 const STEERED = /-steer-/;

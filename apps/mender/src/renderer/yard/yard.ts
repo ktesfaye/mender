@@ -387,6 +387,14 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const notes = last?.session?.notes ?? [];
     if (recalledIn !== last?.session?.id) recalled = -1;
     const written = line.written();
+    /* What is still waiting its turn comes off the queue first, all of it
+       back on the line together, the way Claude Code's own up arrow does. */
+    const queued = (last?.session?.waiting ?? []).filter((one) => !one.handed);
+    if (event.key === 'ArrowUp' && recalled < 0 && written === '' && queued.length) {
+      for (const one of queued) does.press(`unsay:${one.id}`);
+      fill(queued.map((one) => one.said).join('\n\n'));
+      return true;
+    }
     const untouched = recalled < 0 ? written === '' : written === notes[recalled]?.said;
     if (!untouched) {
       recalled = -1;

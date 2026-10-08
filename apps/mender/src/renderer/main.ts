@@ -4255,6 +4255,16 @@ async function boot(): Promise<void> {
       rewrite(mine.rows());
     };
 
+    /* Calling it off before anything came of what it was asked hands that
+       back, and it goes on the line to be said again, ahead of whatever was
+       written there since. */
+    const hush = async (task: Task): Promise<void> => {
+      const done = await client.agents.hush({ task: task.id });
+      if (!done.success || !done.data.back || inside?.id !== task.id) return;
+      const now = yard.line.written().trim();
+      said(now ? `${done.data.back} ${now}` : done.data.back);
+    };
+
     const tell = async (said: string): Promise<void> => {
       const task = inside;
       const saying = watching;
@@ -4267,7 +4277,7 @@ async function boot(): Promise<void> {
       /* An empty line while somebody is working calls them off. It is the only
          thing in this app that means something by being nothing. */
       if (!text && !carrying.length) {
-        if (saying.working()) await client.agents.hush({ task: task.id });
+        if (saying.working()) await hush(task);
         return;
       }
       saying.handed();
@@ -5419,7 +5429,7 @@ async function boot(): Promise<void> {
            interrupt", and the same thing an empty line already does. Stopped,
            the next Escape leaves as it always did. */
         if (inside && watching?.working()) {
-          void client.agents.hush({ task: inside.id });
+          void hush(inside);
           return;
         }
         /* And then out.
