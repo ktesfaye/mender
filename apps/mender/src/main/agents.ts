@@ -1503,6 +1503,9 @@ class House {
   /** The turn that was called off, until it says it has stopped. */
   private hushed: string | undefined;
   private usage: SessionUsage | null = null;
+  /** The biggest room it has ever been said to have, since a resumed
+      conversation is told the small one again until a turn has finished. */
+  private widest = 0;
   private live: TranscriptTurn | null = null;
   private before: TranscriptTurn[] = [];
   private replicas: ReplicaState<unknown>[] = [];
@@ -1621,6 +1624,7 @@ class House {
       {
         onChange: (value) => {
           this.usage = value;
+          this.widest = Math.max(this.widest, value?.contextSize ?? 0);
           this.publish();
         },
       }
@@ -1637,6 +1641,7 @@ class House {
     this.turned(turn.current());
     this.plan = plan.current() ?? null;
     this.usage = usage.current() ?? null;
+    this.widest = Math.max(this.widest, this.usage?.contextSize ?? 0);
     this.seedSeen();
     this.publish();
     await this.readBack();
@@ -2191,7 +2196,7 @@ class House {
       asking,
       plan: stepsOf(this.plan),
       queued: waitingOf(this.lifecycle),
-      room: roomOf(this.usage),
+      room: roomOf(this.usage, this.widest),
       cost: costOf(this.usage),
       /* Mid-retry it is a line on the fire, not a board of ways out of it. */
       failure:
@@ -2406,12 +2411,21 @@ function waitingOf(lifecycle: SessionState | undefined): Waiting[] {
  * when that fills: the conversation quietly starts losing its beginning. So it
  * is worth being able to see it coming, and it is one number between a full
  * room and none.
+ *
+ * Claude's bridge only learns how big the room is once a turn finishes, and
+ * until then guesses the small one. A conversation already holding more than
+ * that is plainly in the big one, so a guess it has outgrown is not believed.
  */
-function roomOf(usage: SessionUsage | null): number | null {
+function roomOf(usage: SessionUsage | null, widest = 0): number | null {
   if (!usage || usage.contextSize <= 0) return null;
-  const left = 1 - usage.contextUsed / usage.contextSize;
+  let size = Math.max(usage.contextSize, widest);
+  if (usage.contextUsed > size) size = Math.max(size, BIG_ROOM);
+  const left = 1 - usage.contextUsed / size;
   return Math.min(1, Math.max(0, left));
 }
+
+/** The long-context window every current Claude model that has one offers. */
+const BIG_ROOM = 1_000_000;
 
 /** What it has cost so far, straight off the provider's own report. */
 function costOf(usage: SessionUsage | null): { amount: number; currency: string } | null {
