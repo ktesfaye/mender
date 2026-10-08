@@ -378,8 +378,24 @@ export function createProjects(runtimes: MenderRuntimes, appSettings: AppSetting
       const known = whole.includes(to) || loadSubdistricts().some((one) => one.id === to);
       if (!known || to === CAMP)
         return { success: false, error: 'nobody can live there' };
-      if (isAway(project) && projects.some((one) => one.district === to))
-        return { success: false, error: 'somebody already lives there' };
+      /* Brought in off the rack onto somebody's place, the two trade: it takes
+         their land and they are put away, on the same ground, so nobody
+         else's way to the fire changes. */
+      const there = projects.find((one) => one.district === to);
+      if (isAway(project) && there) {
+        return {
+          success: true,
+          data: await save(
+            projects.map((one) =>
+              one.id === id
+                ? { ...one, district: to }
+                : one.id === there.id
+                  ? { ...one, district: `${AWAY}${there.id}` }
+                  : one
+            )
+          ),
+        };
+      }
       const fault = faultAfter(projects, id, { kind: 'to', place: to });
       if (fault) return { success: false, error: fault };
       const after = moved(arranged(projects), id, { kind: 'to', place: to }, loadSubdistricts());

@@ -3640,3 +3640,15 @@ bigger than a walker's lantern, and they are lit before anybody else's so a
 wagon is never left dark by the cap on lights. Driven in a dev instance at
 midnight from the top: every wagon on screen lit at both corners, side on,
 coming and going.
+
+### A put-away board is dragged back onto the island (2026-10-08) — done
+
+Pulling a weathered board down off the rack, rather than along it, lifts it
+off its chains and carries it out over the island, which turns to edit
+districts so the empty places show pale. The place under it lights and the
+line says what letting go would do; let go on an empty place and it moves in
+there, on somebody's and the two trade, that one put away instead, and
+anywhere else it stays on the rack. A pull that starts sideways still turns
+into one once it heads well down. Driven in a dev instance: delta dragged
+onto the empty watchtower and stood there, echo dragged onto charlie's south
+houses, echo took them and charlie went back to the rack.

@@ -402,7 +402,10 @@ number of projects and the island does not have to: right-clicking a board on
 the rack puts it away, which sends its district back to sea and leaves the
 board hanging there weathered grey, every session in it kept, still walked
 into with a press, its yard stood over the campfire. Right-clicked again it
-goes back on the island at the next free place. Letting a district go on the
+goes back on the island at the next free place, or it is pulled down off
+the rack and carried out over the island, which shows its empty places, and
+let go where it is to stand: on an empty place it moves in, on somebody's the
+two trade and they are the one put away. Letting a district go on the
 water in edit districts asks which, put away or removed. A project founded
 when every place is taken moves in put away rather than being refused.
 

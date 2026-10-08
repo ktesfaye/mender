@@ -73,6 +73,13 @@ export interface OnShelf {
   wants?: 'asking' | 'hurt' | 'limited';
 }
 
+/** A put-away board carried down off the rack onto the island. */
+export interface Pulling {
+  start(id: string): void;
+  over(x: number, y: number): void;
+  drop(x: number, y: number): void;
+}
+
 export interface Shelf {
   show(projects: OnShelf[]): void;
   /** Fold it away, or bring it back. */
@@ -244,7 +251,8 @@ export function makeShelf(
   reorder: (ids: string[]) => void,
   settings: () => void,
   sky: () => void,
-  menu: (id: string, x: number, y: number) => void
+  menu: (id: string, x: number, y: number) => void,
+  pulling?: Pulling
 ): Shelf {
   const root = box({ right: 0, top: 0 }, RACK);
   // Its bare wood holds the window, like the empty part of any Mac toolbar.
@@ -525,7 +533,8 @@ export function makeShelf(
           hideTag(true);
           /* Under the board rather than over it, so the board it is about
              stays in sight and the rack never takes the press. */
-          menu(project.id, event.clientX, node.getBoundingClientRect().bottom);
+          const board = event.currentTarget as HTMLElement;
+          menu(project.id, event.clientX, board.getBoundingClientRect().bottom);
         });
         nodes.set(project.id, node);
         strip.insertBefore(node, band.parentNode === strip ? band : null);
@@ -564,7 +573,12 @@ export function makeShelf(
     const from = order.indexOf(id);
     if (from === -1) return;
     const startX = down.clientX;
+    const startY = down.clientY;
     let lifted = false;
+    /* A put-away board pulled down rather than along comes off its chains
+       and is carried out over the island, a ghost of it under the pointer,
+       to be let go on whichever place it is to stand on. */
+    let ghost: HTMLElement | null = null;
     let to = from;
     const saved = new Map<HTMLDivElement, string>();
     const glow = node.style.filter;
@@ -581,8 +595,53 @@ export function makeShelf(
       });
     };
 
+    const carryGhost = (event: PointerEvent): void => {
+      if (!ghost) return;
+      ghost.style.left = `${event.clientX - BOARD / 2}px`;
+      ghost.style.top = `${event.clientY - BOARD / 2 - BOARD_AT}px`;
+      pulling?.over(event.clientX, event.clientY);
+    };
+
     const move = (event: PointerEvent): void => {
       const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      if (ghost) {
+        carryGhost(event);
+        return;
+      }
+      if (!lifted && Math.hypot(dx, dy) < 6) return;
+      /* Mostly downward from the start, or well below the rack once it is
+         already being slid along it. */
+      const pulled = lifted ? dy > BOARD : dy > Math.abs(dx);
+      if (pulling && held.get(id)?.away && pulled) {
+        if (lifted) {
+          lifted = false;
+          for (const each of nodes.values()) {
+            each.style.transition = saved.get(each) ?? '';
+            each.style.transform = 'translateY(0)';
+          }
+          node.style.position = '';
+          node.style.zIndex = '';
+          node.style.cursor = '';
+          node.style.filter = glow;
+        }
+        node.setPointerCapture(event.pointerId);
+        hideTag(true);
+        ghost = node.cloneNode(true) as HTMLElement;
+        ghost.style.position = 'fixed';
+        ghost.style.zIndex = '40';
+        ghost.style.pointerEvents = 'none';
+        ghost.style.transition = 'none';
+        ghost.style.transform = 'none';
+        ghost.style.filter = 'drop-shadow(4px 6px 0 rgba(0,0,0,.35))';
+        const swing = ghost.querySelector<HTMLElement>('.swing');
+        if (swing) swing.style.filter = '';
+        document.body.appendChild(ghost);
+        node.style.opacity = '0.3';
+        pulling.start(id);
+        carryGhost(event);
+        return;
+      }
       if (!lifted) {
         if (Math.abs(dx) < 4) return;
         lifted = true;
@@ -602,10 +661,19 @@ export function makeShelf(
       place(dx);
     };
 
-    const let_ = (): void => {
+    const let_ = (event: PointerEvent): void => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', let_);
       window.removeEventListener('pointercancel', let_);
+      if (ghost) {
+        ghost.remove();
+        ghost = null;
+        node.style.opacity = '1';
+        justDragged = true;
+        window.setTimeout(() => (justDragged = false), 0);
+        pulling?.drop(event.clientX, event.clientY);
+        return;
+      }
       if (!lifted) return;
       justDragged = true;
       window.setTimeout(() => (justDragged = false), 0);

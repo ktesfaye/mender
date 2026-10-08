@@ -207,7 +207,20 @@ async function boot(): Promise<void> {
       },
       () => openTheWindmill(),
       () => openTheSky(),
-      (id, x, y) => rackMenu(id, x, y)
+      (id, x, y) => rackMenu(id, x, y),
+      {
+        /* Only out on the island, where there is somewhere to let it go. */
+        start: (id) => {
+          const project = projects.find((one) => one.id === id);
+          if (!project || open || yard.showing || !editing) return;
+          unslabIsland();
+          drawn.ground.hover(null);
+          drawn.pennants.show(null);
+          editing.arrive(project);
+        },
+        over: (x, y) => editing?.arriveOver({ x, y }),
+        drop: (x, y) => void editing?.arriveAt({ x, y }),
+      }
     );
     /* The rack's sky slot wears what the sky is doing, kept up to date. */
     const paintSkySlot = (): void => shelf.setSky(skyPicture(sky));

@@ -117,6 +117,12 @@ export class Editing {
     /** Out on the open sea, where letting go asks to forget it. */
     sea: boolean;
   } | null = null;
+  /** A put-away project being carried down off the rack onto the island. */
+  private arriving: {
+    who: Resident;
+    fits: { places: Record<string, string | null>; off: string | null } | null;
+    over: Place | null;
+  } | null = null;
   /** A forget waiting on its second press, and the window asking it. */
   private forgetting: Resident | null = null;
   private asking: HTMLElement | null = null;
@@ -151,7 +157,80 @@ export class Editing {
 
   /** Whether a district is in the hand right now. */
   get holding(): boolean {
-    return this.carrying !== null || this.flag !== null;
+    return this.carrying !== null || this.flag !== null || this.arriving !== null;
+  }
+
+  /**
+   * A put-away board pulled down off the rack: the island turns to edit
+   * districts so the empty places show, and wherever it is let go is where
+   * it comes back on. Onto an empty place it moves in; onto somebody's, the
+   * two trade, and they are the one put away.
+   */
+  arrive(who: Resident): void {
+    this.start();
+    this.drop();
+    this.arriving = { who, fits: null, over: null };
+    const arriving = this.arriving;
+    void this.host.moves(who.id).then((fits) => {
+      if (this.arriving !== arriving) return;
+      arriving.fits = fits;
+      this.arriveOver(null);
+    });
+    this.say();
+    stir();
+  }
+
+  /** Where on screen the carried board is now. Null is off the island. */
+  arriveOver(at: { x: number; y: number } | null): void {
+    const arriving = this.arriving;
+    if (!arriving) return;
+    const covered = at ? this.host.covered(at.x, at.y) : true;
+    const point = at && !covered ? this.camera.toWorld(at.x, at.y) : null;
+    const over = point ? this.placeAt(point.x, point.y) : null;
+    arriving.over = over;
+    this.aim.clear();
+    if (over) {
+      const why = arriving.fits ? arriving.fits.places[over.id] : null;
+      for (const [x, y0, y1] of this.groundOf(over)) {
+        this.aim.rect(x * CELL, -(y1 + 1) * CELL, CELL, (y1 - y0 + 1) * CELL);
+      }
+      this.aim.fill({ color: why ? SORE : WARM, alpha: why ? 0.38 : 0.3 });
+    }
+    this.say();
+    stir();
+  }
+
+  /** Let go: onto a place it comes on there, anywhere else it stays away. */
+  async arriveAt(at: { x: number; y: number }): Promise<void> {
+    this.arriveOver(at);
+    const arriving = this.arriving;
+    this.arriving = null;
+    this.aim.clear();
+    if (!arriving) return;
+    const over = arriving.over;
+    if (!over) {
+      this.say(`${arriving.who.name} stays put away.`);
+      return;
+    }
+    const fits = arriving.fits ?? (await this.host.moves(arriving.who.id));
+    const why = fits.places[over.id];
+    if (why) {
+      this.say(`${why}, so it stays.`);
+      return;
+    }
+    const there = this.residentOn(over.id);
+    this.busy = true;
+    this.say(`bringing ${arriving.who.name} in…`);
+    const wrong = await this.host.move(arriving.who.id, over.id);
+    this.busy = false;
+    this.refresh();
+    this.say(
+      wrong
+        ? `${wrong}, so it stays.`
+        : there
+          ? `${arriving.who.name} is on the ${over.name.toLowerCase()}. ${there.name} is put away.`
+          : `${arriving.who.name} is on the ${over.name.toLowerCase()} now.`
+    );
   }
 
   start(): void {
@@ -168,6 +247,7 @@ export class Editing {
   stop(): void {
     if (!this.on) return;
     this.drop();
+    this.arriving = null;
     this.on = false;
     this.overlay.visible = false;
     this.unask();
@@ -522,7 +602,21 @@ export class Editing {
     if (!this.on) return;
     const carried = this.carrying;
     const parts: (string | HTMLElement)[] = [];
-    if (this.forgetting) {
+    const arriving = this.arriving;
+    if (arriving) {
+      const over = arriving.over;
+      const why = over && arriving.fits?.places[over.id];
+      const there = over ? this.residentOn(over.id) : undefined;
+      parts.push(
+        !over
+          ? `let go on a place to bring ${arriving.who.name} back onto the island`
+          : why
+            ? why
+            : there
+              ? `bring ${arriving.who.name} in and put ${there.name} away`
+              : `bring ${arriving.who.name} onto the ${over.name.toLowerCase()}`
+      );
+    } else if (this.forgetting) {
       parts.push(`put ${this.forgetting.name} away, or remove it?`);
     } else if (this.flag) {
       parts.push(
