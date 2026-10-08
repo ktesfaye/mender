@@ -115,6 +115,22 @@ describe('SessionCell prompts', () => {
     await turn;
   });
 
+  it('drops a limit once a real answer comes after it, and keeps one nothing answered', () => {
+    const { cell } = makeCell();
+    const limit = {
+      id: 'l1',
+      category: 'limit' as const,
+      severity: 'error' as const,
+      title: "You've hit your session limit · resets 9:50pm",
+      actions: [],
+    };
+    cell.applySessionFailure(limit);
+    cell.push({ kind: 'message', role: 'user', messageId: 'u1', text: 'carry on' });
+    expect(cell.sessionState.failure?.id).toBe('l1');
+    cell.push({ kind: 'message', role: 'assistant', messageId: 'm1', text: 'back' });
+    expect(cell.sessionState.failure).toBeNull();
+  });
+
   it('queues while working and drains after the active turn settles', async () => {
     const { cell, agent } = makeCell();
     let resolveFirst!: (value: { stopReason: 'end_turn' }) => void;
