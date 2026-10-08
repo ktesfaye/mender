@@ -4260,9 +4260,15 @@ async function boot(): Promise<void> {
        written there since. */
     const hush = async (task: Task): Promise<void> => {
       const done = await client.agents.hush({ task: task.id });
-      if (!done.success || !done.data.back || inside?.id !== task.id) return;
+      if (!done.success || inside?.id !== task.id) return;
+      const { back, pictures } = done.data;
+      if (pictures?.length) watching?.carryBack(pictures);
+      if (!back) {
+        if (pictures?.length && watching) yard.show(watching.yard());
+        return;
+      }
       const now = yard.line.written().trim();
-      said(now ? `${done.data.back} ${now}` : done.data.back);
+      said(now ? `${back} ${now}` : back);
     };
 
     const tell = async (said: string): Promise<void> => {

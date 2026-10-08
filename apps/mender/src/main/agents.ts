@@ -10,6 +10,7 @@ import type {
   ToolNode,
   TranscriptThinking,
   TranscriptTurn,
+  AttachmentRef,
 } from '@emdash/core/runtimes/acp/api';
 import type { ConversationRecords } from '@emdash/core/runtimes/conversations/api';
 import { hostDependenciesContract } from '@emdash/core/services/host-dependencies/api';
@@ -185,7 +186,8 @@ export interface Agents {
   /** Take back something said while it was busy, before it is heard. */
   unsay(task: string, id: string): Promise<Told>;
   hush(task: string): Promise<
-    { success: true; data: { back?: string } } | { success: false; error: TellError }
+    | { success: true; data: { back?: string; pictures?: Returned[] } }
+    | { success: false; error: TellError }
   >;
   /** Stop one helper it sent out, leaving the session and the turn alone. */
   recall(
@@ -1422,18 +1424,31 @@ export function createAgents(
       /* Called off before anything came of it, the way Claude Code's own
          Escape does it: what was asked goes back on the line to be said
          again, rather than sitting on the post as one more thing stopped. */
-      const back = house?.untouched();
+      const asked = house?.untouched();
       house?.hushing(true);
       const done = await runtimes.acp.cancelTurn({ conversationId: conversation });
       if (!done.success) {
         house?.hushing(false);
         return refusal(whatItSaid(done.error));
       }
-      if (!back) return { success: true, data: {} };
-      takenBack = { ...takenBack, [task]: [...(takenBack[task] ?? []), back].slice(-20) };
+      if (!asked) return { success: true, data: {} };
+      const key = backKey(asked);
+      takenBack = { ...takenBack, [task]: [...(takenBack[task] ?? []), key].slice(-20) };
       void store.set(TAKEN_BACK_KEY, takenBack as unknown as never);
       house?.again();
-      return { success: true, data: { back } };
+      const pictures = asked.pictures.flatMap((one): Returned[] => {
+        const mime = pictured(one.mimeType);
+        if (!mime) return [];
+        const path = one.targetPath ?? carriedTo.get(one.id);
+        return [{ id: one.id, name: one.name, mime, ...(path ? { path } : {}) }];
+      });
+      return {
+        success: true,
+        data: {
+          ...(asked.text ? { back: asked.text } : {}),
+          ...(pictures.length ? { pictures } : {}),
+        },
+      };
     },
 
     async recall(task, call) {
@@ -1867,13 +1882,12 @@ class House {
 
   /**
    * What the turn in flight was asked, while nothing has come of it yet: no
-   * word back and nothing done, only thinking at most. A picture cannot go
-   * back on the line, so a note that carried one is never this.
+   * word back and nothing done, only thinking at most.
    */
-  untouched(): string | undefined {
+  untouched(): Asked | undefined {
     const turn = this.live;
     if (!turn || turn.outcome) return undefined;
-    return askedOnly(turn);
+    return askedOnly(turn, true);
   }
 
   /** The turns as the post shows them, without any that went back on the line. */
@@ -1882,11 +1896,13 @@ class House {
     if (!back.length) return turns;
     const out: TranscriptTurn[] = [];
     let dropped = false;
-    for (const turn of turns) {
-      /* Claude's own transcript may write the stop down as a turn of its own. */
-      if (dropped && stopOnly(turn)) continue;
+    for (const whole of turns) {
+      /* Claude writes the stop down as though you had said it, at the head of
+         whatever comes next, and it went with the note it stopped. */
+      const turn = dropped ? withoutStops(whole) : whole;
+      if (turn !== whole && !turn.items.some(spoken)) continue;
       const asked = askedOnly(turn, true);
-      dropped = asked !== undefined && back.includes(asked);
+      dropped = asked !== undefined && back.includes(backKey(asked));
       if (!dropped) out.push(turn);
     }
     return out;
@@ -2834,6 +2850,12 @@ type Flat = (
   | { kind: 'ended'; id: string; said: string; trouble: 'wrong' | 'warn' | 'stopped' }
 ) & { turn: number };
 
+/** What a turn was asked: its words, and the pictures that went with them. */
+type Asked = { text: string; pictures: readonly AttachmentRef[] };
+
+/** A picture handed back to the line, with where it is on this machine. */
+type Returned = Carried & { path?: string };
+
 /** How Claude's own transcript writes down a turn you stopped. */
 const INTERRUPTED = /^\[Request interrupted by user[^\]]*\]$/;
 
@@ -2855,8 +2877,8 @@ const ASIDE_TO_AGENT = /\s*\[mender, for the agent only:[\s\S]*?\]\s*$/;
  * nothing done. A stop written down as though you said it is let through
  * when `stopped` says the turn may have ended that way.
  */
-function askedOnly(turn: TranscriptTurn, stopped = false): string | undefined {
-  let asked: string | undefined;
+function askedOnly(turn: TranscriptTurn, stopped = false): Asked | undefined {
+  let asked: Asked | undefined;
   for (const item of turn.items) {
     if (item.kind === 'thinking') continue;
     if (item.kind !== 'message') return undefined;
@@ -2866,20 +2888,38 @@ function askedOnly(turn: TranscriptTurn, stopped = false): string | undefined {
       continue;
     }
     if (stopped && INTERRUPTED.test(text)) continue;
-    if (asked !== undefined || item.attachments?.length || !text || carried(text)) return undefined;
-    asked = text;
+    const pictures = item.attachments ?? [];
+    if (asked !== undefined || (!text && !pictures.length) || carried(text)) return undefined;
+    asked = { text, pictures };
   }
   return asked;
 }
 
-/** A turn that is nothing but Claude writing down that it was stopped. */
-function stopOnly(turn: TranscriptTurn): boolean {
-  return turn.items.every(
-    (item) =>
-      item.kind === 'thinking' ||
-      (item.kind === 'message' &&
-        (item.role === 'user' ? INTERRUPTED.test(item.text.trim()) : !item.text.trim()))
-  );
+/** What a note taken back is known by on the post, a restart included, when
+ *  a picture read back from Claude's transcript no longer has its own id. */
+function backKey(asked: Asked): string {
+  return asked.pictures.length ? `${asked.text}\u0000${asked.pictures.length}` : asked.text;
+}
+
+/** Whether an item of a turn is anything anybody said or did. */
+function spoken(item: TranscriptTurn['items'][number]): boolean {
+  if (item.kind === 'thinking') return false;
+  if (item.kind !== 'message') return true;
+  return Boolean(item.text.trim() || item.attachments?.length);
+}
+
+/** A turn without the stops Claude wrote down at its head as if you said them. */
+function withoutStops(turn: TranscriptTurn): TranscriptTurn {
+  let leading = true;
+  const items = turn.items.filter((item) => {
+    if (!leading) return true;
+    if (item.kind === 'message' && item.role === 'user' && INTERRUPTED.test(item.text.trim()))
+      return false;
+    if (item.kind === 'thinking' || (item.kind === 'message' && !item.text.trim())) return true;
+    leading = false;
+    return true;
+  });
+  return items.length === turn.items.length ? turn : { ...turn, items };
 }
 
 /** How the runtime names a message it handed into a turn already running. */

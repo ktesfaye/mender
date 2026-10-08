@@ -744,7 +744,10 @@ export const agentsContract = defineContract({
    *  what it was asked, that is handed back to go on the line again. */
   hush: fallible({
     input: z.object({ task: z.string() }),
-    data: z.object({ back: z.string().optional() }),
+    data: z.object({
+      back: z.string().optional(),
+      pictures: z.array(carriedSchema.extend({ path: z.string().optional() })).optional(),
+    }),
     error: agentErrorSchema,
   }),
   /** Call one of the helpers it sent out back, without stopping it. */

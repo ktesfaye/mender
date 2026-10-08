@@ -3533,3 +3533,12 @@ off the post after a restart. Driven in a dev instance with a real Claude:
 a note stopped a second after sending came back on the line with the post
 empty; a queued note came back on up; a queued note left alone reached the
 agent between two shell steps and the turn finished clean.
+
+In his own app the first cut failed twice: a second stop in a row put nothing
+back, because Claude writes the first stop down at the head of the next turn,
+and every stop left an empty "you stopped it" line on the board; a picture
+sent on its own was never taken back at all. Now the stop it wrote down is
+read past, the ghost lines go with the note, and pictures come back on the
+line as `[picture 1]`. Driven in a dev instance: three stops in a row each put
+the words back with no lines left over, a pasted picture came back alone, and
+the send after them was answered.

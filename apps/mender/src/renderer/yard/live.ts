@@ -18,6 +18,7 @@ import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { shortName, type CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import type { Ask, Carried, Glance, Kit, Mood, WorkingState } from '@shared/agents';
+import { onThisMachine } from './pictures';
 import type { BoardVersion } from '@shared/board';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
@@ -64,6 +65,8 @@ export interface Watching {
   putDown(id: string): void;
   /** Pick one just put down back up, the way undo puts a deleted word back. */
   pickBack(id: string): void;
+  /** Pictures already handed over, picked back up off a turn called off before anything came of it. */
+  carryBack(pictures: readonly (Carried & { path?: string })[]): void;
   /** Notes pinned to a diff line, waiting to go with what you next say. */
   notes(): readonly PinnedNote[];
   /** Pin one. */
@@ -356,6 +359,18 @@ export async function openYard(
       if (!one) return;
       aside.delete(id);
       held = [...held, one];
+      again();
+    },
+    carryBack: (pictures) => {
+      held = [...held, ...pictures.map(({ id, name, mime }) => ({ id, name, mime }))];
+      for (const one of pictures) {
+        if (!one.path) continue;
+        void onThisMachine(one.path).then((url) => {
+          if (!url || !held.some((each) => each.id === one.id)) return;
+          previews.set(one.id, url);
+          again();
+        });
+      }
       again();
     },
     notes: () => pinned,
