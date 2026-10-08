@@ -1057,9 +1057,10 @@ where a stray press could drop him out of whatever board was open, no raw
 developer tools, no File or View or Help standing over nothing.
 
 The board's timber is the dock, widened by `tools/make-board.py` out of the
-artist's own planks, and the writing is a handful of faces under the SIL OFL,
-all vendored in `apps/mender/assets/fonts/`. What the agent says is Fraunces,
-softened, and it is the one face meant to be swapped: the `Mender Said` blocks
+artist's own planks, and the writing is a handful of faces, all vendored in
+`apps/mender/assets/fonts/`. What the agent says is Grunell, a rounded sans
+whose free cut is for personal use only, and it is the one face meant to be
+swapped: the `Mender Said` blocks
 in `fonts.css` are the whole switch.
 There is still no parchment, no frame, no icon.
 

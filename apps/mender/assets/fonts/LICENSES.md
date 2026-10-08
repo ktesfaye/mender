@@ -20,9 +20,15 @@ SIL Open Font License, Version 1.1.
   tag on a district's pennant. Fetched from `@fontsource/silkscreen` on
   jsDelivr, latin subset.
 - **Fraunces** (variable, regular and italic) — SIL OFL 1.1 — `OFL-Fraunces.txt`
-  Source: https://github.com/google/fonts/tree/main/ofl/fraunces. What the
-  agent says, under the name `Mender Said` in `fonts.css`. Fetched from
+  Source: https://github.com/google/fonts/tree/main/ofl/fraunces. Was what the
+  agent says; kept in case Grunell goes back. Fetched from
   `@fontsource-variable/fraunces` on jsDelivr, latin subset, all axes.
+- **Grunell** by Typebae (regular 400) — the free download is for personal use
+  only and may not be converted or redistributed, so the .otf is theirs
+  unchanged, from https://www.dafont.com/grunell.font. Fine for this private
+  repo and Kirubel's own copy of the app; anything public or commercial needs
+  the licence from https://typebae.com/product/Grunell first. What the agent
+  says, under the name `Mender Said` in `fonts.css`.
 
 The woff2 files themselves were fetched from Google Fonts' CSS2 API
 (`fonts.googleapis.com/css2`) with a Chrome user-agent, one weight/style at a

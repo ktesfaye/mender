@@ -1,36 +1,24 @@
 /* Locally vendored Google Fonts. See LICENSES.md. */
 
 /* The face of what it says: the middle column, the agent's own words.
-   These three blocks are the whole switch. To change it, drop another woff2
+   These two blocks are the whole switch. To change it, drop another font
    in this folder and point src at it, nudge size-adjust until it sits the
    size the old one did, and clear or change the .said-face settings, which
    only mean anything to this face. Nothing else names this font. */
 @font-face {
   font-family: 'Mender Said';
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 400;
   font-display: block;
-  size-adjust: 100%;
-  src: url('fraunces-variable-normal.woff2') format('woff2');
+  size-adjust: 96%;
+  src: url('grunell-400-normal.otf') format('opentype');
 }
 
-@font-face {
-  font-family: 'Mender Said';
-  font-style: italic;
-  font-weight: 100 900;
-  font-display: block;
-  size-adjust: 100%;
-  src: url('fraunces-variable-italic.woff2') format('woff2');
-}
-
-/* Fraunces with its corners left sharp and none of its wonky letters: the
-   softened cut blurs every edge at reading size. Its regular is drawn heavy at
-   reading sizes, so the body sits a little under it; only what the agent
-   itself stressed is set heavier. */
+/* Grunell comes in one weight and no italic, so what the agent stressed and
+   the recap's italic are leaned and thickened by the browser. */
 .said-face {
   font-family: 'Mender Said', 'Cormorant Garamond', serif;
-  font-variation-settings: 'SOFT' 0, 'WONK' 0;
-  font-weight: 350;
+  font-weight: 400;
 }
 
 /* The face of what you write: the line you write on, what you asked on the
