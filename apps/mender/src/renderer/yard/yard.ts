@@ -35,8 +35,8 @@ import {
 } from './arrange';
 import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
+import { waitOut } from './limit';
 import { makeLine, preview, unpreview, type Asking as Prompting, type Line } from './line';
-import { onThisMachine } from './pictures';
 import { makeMenu } from './menu';
 import {
   catching,
@@ -51,8 +51,8 @@ import {
   sweepingIn,
   swelling,
 } from './motion';
-import { waitOut } from './limit';
 import { packed } from './pack';
+import { onThisMachine } from './pictures';
 import { pressing } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
@@ -1714,13 +1714,15 @@ function handed(on: HTMLElement, note: Note, tone?: string): void {
 /** A note that has been on the post a while. */
 function weathered(note: Note): HTMLElement {
   const it = document.createElement('div');
-  it.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0';
+  it.className = `post-scrap paper${note.standing ? ' post-standing' : ''}`;
   it.appendChild(
-    said(`${note.when} · ${note.standing ? 'standing' : note.answered ? 'answered' : 'unanswered'}`)
+    said(
+      `${note.when} · ${note.standing ? 'standing' : note.answered ? 'answered' : 'unanswered'}`,
+      '#7a5530'
+    )
   );
   const body = document.createElement('span');
-  body.style.cssText =
-    "font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
+  body.className = 'post-scrap-said';
   body.textContent = named(note.said);
   it.appendChild(body);
   handed(it, note);
@@ -1730,13 +1732,15 @@ function weathered(note: Note): HTMLElement {
 /** Something said while it worked, on the post but not yet read. */
 function unheard(one: { said: string; handed?: boolean }): HTMLElement {
   const it = document.createElement('div');
-  it.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0';
+  it.className = 'post-unheard';
   it.appendChild(
-    said(one.handed ? 'just now · not read yet' : 'waiting its turn · press to take back')
+    said(
+      one.handed ? 'just now · not read yet' : 'waiting its turn · press to take back',
+      '#d8a868'
+    )
   );
   const body = document.createElement('span');
-  body.style.cssText =
-    "font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
+  body.className = 'post-scrap-said';
   body.textContent = one.said;
   it.appendChild(body);
   return it;
@@ -2020,7 +2024,6 @@ function thinking(
       if (one.live) {
         keep.add(one.id);
         const it = keyed(document.createElement('div'), `thought:${one.id}`);
-        it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
         const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
         /* The same "how long ago" the gatepost puts over what you said, or
            how long it has been at it while it still is. */
@@ -2028,9 +2031,22 @@ function thinking(
         const ended = one.ended ? ENDED[one.ended] : undefined;
         const pack = one.pack && one.pack.state !== 'failed' ? PACKING[one.pack.state] : undefined;
         const name = pack?.head ?? trouble?.head ?? ended?.head ?? (one.quiet ? 'thinking' : 'now');
-        const head = said(
-          clock && one.pack?.state !== 'packing' ? `${name} · ${clock}` : name,
-          pack?.ink ?? trouble?.ink ?? ended?.ink ?? '#ffc98a'
+        const state: TurnState = one.quiet
+          ? 'quiet'
+          : trouble
+            ? 'trouble'
+            : one.ended === 'done' || one.pack?.state === 'packed'
+              ? 'done'
+              : one.ended === 'stopped'
+                ? 'stopped'
+                : 'going';
+        it.className = `said-turn said-newest said-${state}`;
+        if (trouble) it.style.setProperty('--turn-ink', trouble.ink);
+        const head = turnHead(
+          name,
+          one.pack?.state !== 'packing' ? clock : undefined,
+          pack?.ink ?? trouble?.ink ?? ended?.ink ?? '#ffc98a',
+          state
         );
         folding(head);
         it.appendChild(head);
@@ -2042,10 +2058,10 @@ function thinking(
         const body = document.createElement('div');
         /* Set large, unless it is long enough that large is a wall: a whole
          report at the size of one sentence is read a word at a time. */
-        const size = one.said.length > 700 ? 19 : 21;
+        const size = one.said.length > 700 ? 18 : 20;
         body.style.cssText = one.quiet
-          ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
-          : `font-size:${size}px;line-height:1.6;letter-spacing:.01em;color:${trouble?.ink ?? '#ebe3d3'}`;
+          ? 'font-size:17px;line-height:1.45;font-style:italic;color:rgba(255,220,164,.78)'
+          : `font-size:${size}px;line-height:1.6;letter-spacing:.005em;color:${trouble?.ink ?? '#ebe3d3'}`;
         if (!one.quiet) body.classList.add('clear');
         if (trouble) body.classList.add('prose-trouble');
         prose(body, one.id, one.said, !walkedIn, openLink(does));
@@ -2154,6 +2170,46 @@ function heldWhereLeft(el: HTMLElement, left: Map<string, number>, id: string): 
 /** Whether each session was working when its column was last laid. */
 const wasWorking = new Map<string, boolean>();
 
+type TurnState = 'going' | 'done' | 'stopped' | 'trouble' | 'quiet' | 'old';
+
+/**
+ * The top of an answer's panel: a lantern that burns the way the rail's does
+ * for the same turn, what the turn is in a small chip, and when.
+ */
+function turnHead(
+  name: string,
+  clock: string | undefined,
+  ink: string | undefined,
+  state: TurnState
+): HTMLElement {
+  const head = document.createElement('div');
+  head.className = 'said-turn-head';
+  const glass = document.createElement('span');
+  glass.className = 'said-turn-glass';
+  const times = 2;
+  glass.appendChild(
+    state === 'done'
+      ? greenLantern(times)
+      : sprite(
+          state === 'going' || state === 'quiet' ? KIT_NAMES.lanternOn : KIT_NAMES.lanternOff,
+          times
+        )
+  );
+  head.appendChild(glass);
+  const chip = document.createElement('span');
+  chip.className = 'said-turn-chip';
+  if (ink) chip.style.setProperty('--chip', ink);
+  chip.textContent = name;
+  head.appendChild(chip);
+  if (clock) {
+    const when = document.createElement('span');
+    when.className = 'said-turn-when';
+    when.textContent = clock;
+    head.appendChild(when);
+  }
+  return head;
+}
+
 /**
  * Where the whole thing stands, once an answer is finished: what it was for,
  * what got done, and the one thing next. Always at the foot of the column,
@@ -2163,11 +2219,13 @@ const wasWorking = new Map<string, boolean>();
  */
 function recapped(text: string): HTMLElement {
   const it = keyed(document.createElement('div'), 'recap');
-  it.style.cssText = 'display:flex;flex-direction:column;gap:5px;flex:none;margin-top:auto';
-  it.appendChild(said('recap', '#b39a74'));
+  it.className = 'said-recap paper';
+  const head = document.createElement('div');
+  head.className = 'said-recap-head';
+  head.textContent = 'where it stands';
+  it.appendChild(head);
   const body = document.createElement('div');
-  body.style.cssText =
-    'font-size:17px;line-height:1.5;font-style:italic;color:rgba(235,222,196,.72)';
+  body.className = 'said-recap-body';
   body.textContent = text;
   it.appendChild(body);
   return it;
@@ -2219,7 +2277,7 @@ const revealedSteps = new Map<string, number>();
  */
 function ember(live: Live, since: number | undefined): HTMLElement {
   const it = keyed(document.createElement('div'), 'live');
-  it.style.cssText = `display:flex;align-items:center;gap:14px;position:relative;padding:${live.answering ? '0' : '6px'} 0 4px`;
+  it.className = 'said-live';
 
   const hearth = document.createElement('div');
   hearth.style.cssText = 'position:relative;width:46px;height:32px;flex:none';
@@ -2586,11 +2644,15 @@ function thought(
   link?: (url: string) => void
 ): HTMLElement {
   const it = document.createElement('div');
-  it.style.cssText = 'display:flex;flex-direction:column;gap:5px';
+  it.className = `said-turn said-older${one.quiet ? ' said-quiet' : ''}${tone ? ' said-trouble' : ''}`;
+  if (tone) it.style.setProperty('--turn-ink', tone);
   /* Only where there is something true to say. A thought with no clock on it
      gets no line above it at all rather than an empty one. */
-  const label = name ? (one.when ? `${name} · ${one.when}` : name) : one.when;
-  if (label) it.appendChild(said(label, tone));
+  if (name || one.when || !one.quiet) {
+    it.appendChild(
+      turnHead(name ?? (one.quiet ? 'thinking' : 'answered'), one.when || undefined, tone, 'old')
+    );
+  }
   const body = document.createElement('div');
   body.style.cssText = `font-size:${size}px;line-height:1.6;letter-spacing:.01em;color:${ink}`;
   body.classList.add('clear');
@@ -2937,7 +2999,7 @@ function planned(plan: Session['plan']): HTMLElement {
 /** One thing it did, with the prop that stands for it in a fixed slot. */
 function did(one: Step, does: Doings): HTMLElement {
   const it = document.createElement('div');
-  it.style.cssText = 'display:flex;flex-direction:column;gap:2px';
+  it.className = `step${one.running ? ' step-running' : ''}${one.group ? ' step-looked' : ''}${one.tone === 'broken' ? ' step-broken' : ''}`;
   if (one.group) {
     it.appendChild(lookedLine(one));
     return it;
@@ -2956,21 +3018,20 @@ function lookedLine(one: Step): HTMLElement {
   it.style.cssText = 'display:flex;flex-direction:column;gap:2px';
   const line = row(8);
   const slot = document.createElement('span');
-  slot.style.cssText =
-    'width:28px;height:18px;display:flex;justify-content:center;align-items:center;flex:none;position:relative;opacity:.55';
+  slot.className = 'step-tile step-tile-quiet';
   const prop = sprite(one.prop, 1);
-  prop.style.cssText += ';position:relative;flex:none;transform:scale(.45)';
+  prop.style.cssText += ';position:relative;flex:none;transform:scale(.5)';
   slot.appendChild(prop);
   line.appendChild(slot);
   const text = document.createElement('span');
   const open = openLooks.has(one.id);
-  text.style.cssText = 'color:#8f7c5f;cursor:pointer;pointer-events:auto;white-space:normal';
+  text.style.cssText = 'color:#a8936f;cursor:pointer;pointer-events:auto;white-space:normal';
   text.textContent = `${open ? '\u25be' : '\u25b8'} ${one.did}`;
   text.addEventListener('mousedown', (event) => event.preventDefault());
   line.appendChild(text);
   it.appendChild(line);
   const list = document.createElement('div');
-  list.style.cssText = 'margin-left:36px;display:flex;flex-direction:column;gap:2px';
+  list.className = 'step-looks';
   const fill = (): void => {
     list.replaceChildren();
     if (!openLooks.has(one.id)) return;
@@ -3001,8 +3062,7 @@ const openLooks = new Set<string>();
 function deedLine(one: Step): HTMLElement {
   const line = row(8);
   const slot = document.createElement('span');
-  slot.style.cssText =
-    'width:28px;height:26px;display:flex;justify-content:center;align-items:center;flex:none;position:relative';
+  slot.className = 'step-tile';
   if (one.running) {
     /* Nothing spins in this village. Something happening now is a light that
        goes on and off, which is what a fire does. */
@@ -3016,7 +3076,7 @@ function deedLine(one: Step): HTMLElement {
     const prop = sprite(one.prop, 1);
     prop.style.position = 'relative';
     prop.style.flex = 'none';
-    prop.style.transform = 'scale(.6)';
+    prop.style.transform = 'scale(.62)';
     slot.appendChild(prop);
   }
   line.appendChild(slot);
@@ -3068,12 +3128,12 @@ function noted(note: string): (string | HTMLElement)[] {
  */
 function diffPreview(one: Step, does: Doings): HTMLElement {
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'margin-left:36px;display:flex;flex-direction:column;gap:0';
+  wrap.className = 'step-diff';
   for (const marked of one.diff ?? []) {
     const line = document.createElement('span');
     const kind = marked[0];
     line.style.cssText =
-      "font-family:'Josefin Sans',sans-serif;font-size:10.5px;line-height:1.35;white-space:pre;overflow:hidden;text-overflow:ellipsis;opacity:.8";
+      "font-family:'Courier Prime',monospace;font-size:11px;line-height:1.4;white-space:pre;overflow:hidden;text-overflow:ellipsis";
     line.style.color =
       kind === '+' ? 'var(--yard-well)' : kind === '-' ? 'var(--yard-wrong)' : '#a89272';
     line.textContent = marked;
@@ -3668,14 +3728,13 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     }
     /* Out of usage is dark with ember in its glass, banked rather than out:
        somebody is still in there, only waiting for the limit to lift. */
-    const dimmed =
-      waiting
+    const dimmed = waiting
+      ? ''
+      : one.here
         ? ''
-        : one.here
-          ? ''
-          : one.posture === 'done'
-            ? 'brightness(.9)'
-            : 'brightness(.75)';
+        : one.posture === 'done'
+          ? 'brightness(.9)'
+          : 'brightness(.75)';
     lamp.style.filter = dimmed;
     if (cutting) lamp.style.opacity = '.45';
     if (one.posture === 'wants-you') {

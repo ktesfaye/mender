@@ -100,15 +100,36 @@ export const SAMPLE: Yard = {
         when: 'published 11m ago',
         pick: 'link:https://claude.ai/artifact/nola',
       },
-      { id: 'm2', kind: 'file', what: 'candidates.md', when: 'written 14m ago', pick: 'open:candidates.md' },
+      {
+        id: 'm2',
+        kind: 'file',
+        what: 'candidates.md',
+        when: 'written 14m ago',
+        pick: 'open:candidates.md',
+      },
     ],
     waiting: [{ id: 'w1', said: 'and check the Sunday ones are open for lunch' }],
     carrying: [],
     pinnedNotes: [],
     agents: [
       { id: 'a1', errand: 'hours', said: 'hours', where: 'in-light', tint: '#c6a740', steps: [] },
-      { id: 'a2', errand: 'walking', said: 'walking', where: 'in-light', tint: '#9ca44f', steps: [] },
-      { id: 'a3', errand: 'photos', said: 'photos', where: 'out', gone: '3m', tint: '#d18b2c', steps: [] },
+      {
+        id: 'a2',
+        errand: 'walking',
+        said: 'walking',
+        where: 'in-light',
+        tint: '#9ca44f',
+        steps: [],
+      },
+      {
+        id: 'a3',
+        errand: 'photos',
+        said: 'photos',
+        where: 'out',
+        gone: '3m',
+        tint: '#d18b2c',
+        steps: [],
+      },
     ],
   },
   rail: [
@@ -196,3 +217,126 @@ export const SAMPLE: Yard = {
     },
   ],
 };
+
+/**
+ * A coding conversation the way one really reads: several answers back, the
+ * newest one carrying every shape of markdown an agent actually writes, and a
+ * recap under it. `?rich` in the harness; `?rich&live` has it still going.
+ */
+export function richSample(live: boolean): Yard {
+  const base = SAMPLE.session;
+  if (!base) return SAMPLE;
+  const newest = [
+    "Found it. The rail was re-reading every session's transcript on each tick, so the more sessions you had open the slower everything got.",
+    '',
+    '## What changed',
+    '',
+    '- **Rail** now reads each transcript once and only follows the tail after that',
+    '- The yard stops redrawing while a board is open over it',
+    '- `agents.json` is written at most once a second instead of on every token',
+    '',
+    '| | before | after |',
+    '|---|---:|---:|',
+    '| six sessions open | 41% | 6% |',
+    '| one session typing | 18% | 3% |',
+    '',
+    'The fix is basically this:',
+    '',
+    '```ts',
+    'const seen = offsets.get(path) ?? 0;',
+    'const fresh = await readFrom(path, seen);',
+    'offsets.set(path, seen + fresh.length);',
+    '```',
+    '',
+    '> One thing I left alone: the moss clock still reads git every minute. It is cheap, and changing it would touch the island.',
+    '',
+    '### Next',
+    '',
+    '1. Package and reinstall the app',
+    '2. Watch it for a day with ten sessions open',
+  ].join('\n');
+  return {
+    ...SAMPLE,
+    session: {
+      ...base,
+      plan: [],
+      made: [],
+      agents: [],
+      steps: [
+        {
+          id: 'x1',
+          prop: KIT_NAMES.sign,
+          did: 'read 6 files and searched 4 times',
+          group: [
+            { id: 'g1', did: 'read rail.ts' },
+            { id: 'g2', did: 'searched for readTranscript' },
+          ],
+        },
+        {
+          id: 'x2',
+          prop: KIT_NAMES.anvil,
+          did: 'changed rail.ts',
+          note: '+14 −6',
+          path: 'rail.ts',
+          diff: [
+            '- const all = await readAll(path);',
+            '+ const seen = offsets.get(path) ?? 0;',
+            '+ const fresh = await readFrom(path, seen);',
+          ],
+          diffMore: 9,
+        },
+        { id: 'x3', prop: KIT_NAMES.crate, did: 'wrote agents-flush.ts', note: '38 lines' },
+        { id: 'x4', prop: KIT_NAMES.fire, did: 'tested, 212 passed' },
+        { id: 'x5', prop: KIT_NAMES.fire, did: 'running pnpm run package', running: live },
+      ],
+      notes: [
+        {
+          id: 'r1',
+          when: '3m ago',
+          answered: !live,
+          on: live,
+          said: 'why is the fan going crazy with six sessions open',
+        },
+        {
+          id: 'r2',
+          when: '40m ago',
+          answered: true,
+          said: 'make the rail lanterns breathe slower',
+        },
+        { id: 'r3', when: '1h ago', answered: true, standing: true, said: 'tidy up the rail' },
+      ],
+      thoughts: [
+        {
+          id: 'q1',
+          when: '1h ago',
+          answer: true,
+          said: 'Tidied. The rail now hangs every lantern on the same cord, and a long session name is clipped instead of pushing the next one off the end.',
+        },
+        {
+          id: 'q2',
+          when: '40m ago',
+          answer: true,
+          said: 'Slowed the breath from 1.6s to 2.4s and eased it, so a working lantern reads as **calm** rather than *anxious*. Nothing else on the rail moved.',
+        },
+        live
+          ? {
+              id: 'q3',
+              when: 'now',
+              live: true,
+              ended: 'going',
+              at: '1m 12s',
+              said: newest.split('\n## What changed')[0] ?? '',
+            }
+          : { id: 'q3', when: '1m ago', live: true, answer: true, ended: 'done', said: newest },
+      ],
+      recap: live
+        ? undefined
+        : 'You asked why the fan spins up with many sessions open. The rail was re-reading every transcript constantly; it now follows only the tail. Next is reinstalling and watching it for a day.',
+      live: live
+        ? { doing: 'reading rail.ts', since: Date.now() - 72_000, answering: true }
+        : undefined,
+      fire: live ? 'lit' : 'embers',
+      waiting: [],
+    },
+  };
+}

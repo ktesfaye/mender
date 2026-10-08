@@ -33,7 +33,7 @@ describe('prose', () => {
     expect(blocksOf('```mermaid\ngraph TD\n  A --> B\n```')).toEqual([
       { kind: 'mermaid', text: 'graph TD\n  A --> B' },
     ]);
-    expect(blocksOf('```js\nconst a = 1\n```')).toEqual([{ kind: 'code', text: 'const a = 1' }]);
+    expect(blocksOf('```js\nconst a = 1\n```')).toEqual([{ kind: 'code', text: 'const a = 1', lang: 'js' }]);
   });
 
   it('reads a table with its divider dropped and numbers leaning right', () => {

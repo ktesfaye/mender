@@ -222,6 +222,21 @@ checkout's own board. Under all of that is the ground itself, with whoever it
 sent out standing in the firelight with an answer or off in the dark still
 working.
 
+**Every answer is a board of its own, built rather than poured.** What it
+said is a stack of dark wooden panels with a hard outline and a hard shadow,
+the way a game's dialogue box is, each with its lantern and a small chip
+saying what the turn is, "done" in green or "so far" in the fire's orange; the
+newest carries a strip of that colour along its top and the ones before it
+are smaller and quieter. Inside, the markdown is drawn rather than set as one
+weight: headings in the answer's own face with an ember diamond and a rule
+running off them, bullets as ember squares, numbers on small timber tiles,
+code on a slate with its language over it, a name quoted exactly on a slate
+of its own, tables framed with a timber head and banded rows, quotes on a
+wash with a bar down them. The recap is pinned under it on parchment; the
+notes under the newest on the gatepost are parchment too, weathered darker;
+and every step under "what it did" sits on a small tile on one thread down
+the column, its changed lines on the same slate code is read on.
+
 **A command left running in the background stays running on the board.**
 When the agent starts something and doesn't wait for it, a dev server, a
 long build, a slow test run, its step under "what it did" keeps the fire's

@@ -30,10 +30,10 @@ const DIVIDER = /^:?-{2,}:?$/;
 
 type Block =
   | { kind: 'para'; text: string }
-  | { kind: 'heading'; text: string }
+  | { kind: 'heading'; text: string; level: number }
   | { kind: 'item'; mark: string; depth: number; text: string }
   | { kind: 'quote'; text: string }
-  | { kind: 'code'; text: string }
+  | { kind: 'code'; text: string; lang: string }
   | { kind: 'mermaid'; text: string }
   | { kind: 'table'; rows: string[][]; right: boolean[] }
   | { kind: 'rule' };
@@ -54,13 +54,13 @@ export function blocksOf(text: string): Block[] {
       while (at < lines.length && !FENCE.test(lines[at] ?? '')) code.push(lines[at++] ?? '');
       const body = code.join('\n');
       blocks.push(
-        lang === 'mermaid' ? { kind: 'mermaid', text: body } : { kind: 'code', text: body }
+        lang === 'mermaid' ? { kind: 'mermaid', text: body } : { kind: 'code', text: body, lang }
       );
       continue;
     }
     const heading = HEADING.exec(line);
     if (heading) {
-      blocks.push({ kind: 'heading', text: heading[2] ?? '' });
+      blocks.push({ kind: 'heading', text: heading[2] ?? '', level: (heading[1] ?? '#').length });
       continue;
     }
     if (RULED.test(line)) {
@@ -219,7 +219,9 @@ export function prose(
         return;
       }
       case 'heading':
-        into.appendChild(written('h', part, block.text, fresh, 'prose-heading'));
+        into.appendChild(
+          written('h', part, block.text, fresh, `prose-heading prose-h${Math.min(3, block.level)}`)
+        );
         return;
       case 'quote':
         into.appendChild(written('q', part, block.text, fresh, 'prose-quote'));
@@ -229,7 +231,7 @@ export function prose(
         item.className = 'prose-item';
         item.style.marginLeft = `${block.depth * 1.1}em`;
         const mark = document.createElement('span');
-        mark.className = 'prose-mark';
+        mark.className = block.mark === '·' ? 'prose-mark prose-bullet' : 'prose-mark prose-number';
         mark.textContent = block.mark;
         const { text: words, pictures } = pictured(block.text);
         if (!words) {
@@ -248,10 +250,7 @@ export function prose(
         return;
       }
       case 'code': {
-        const code = document.createElement('pre');
-        code.className = 'prose-block';
-        code.textContent = block.text;
-        into.appendChild(code);
+        into.appendChild(codeCard(block.text, block.lang));
         return;
       }
       case 'mermaid': {
@@ -262,6 +261,20 @@ export function prose(
         into.appendChild(table(block));
     }
   });
+}
+
+/** Code, on a slate of its own with what language it is in over it. */
+function codeCard(text: string, lang: string): HTMLElement {
+  const card = document.createElement('div');
+  card.className = 'prose-code-card';
+  const head = document.createElement('div');
+  head.className = 'prose-code-head';
+  head.textContent = lang || 'code';
+  const code = document.createElement('pre');
+  code.className = 'prose-block';
+  code.textContent = text;
+  card.append(head, code);
+  return card;
 }
 
 /** A diagram, drawn — or, when it will not parse, its own fenced text back. */

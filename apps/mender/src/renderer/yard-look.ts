@@ -32,7 +32,7 @@ import { districtBounds, Ground } from './village/ground';
 import { loadKit } from './village/kit';
 import { buildScene } from './village/scene';
 import { dim, makeLayer } from './yard/frame';
-import { SAMPLE } from './yard/sample';
+import { richSample, SAMPLE } from './yard/sample';
 import { makeShelf } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
 import { makeYard } from './yard/yard';
@@ -124,11 +124,14 @@ async function boot(): Promise<void> {
   });
   yard.up(true);
   /* `?bare` is a session that has made nothing and posted no plan yet. */
-  const bare = new URLSearchParams(location.search).has('bare');
+  const query = new URLSearchParams(location.search);
+  const bare = query.has('bare');
   yard.show(
-    bare && SAMPLE.session
-      ? { ...SAMPLE, session: { ...SAMPLE.session, plan: [], made: [] } }
-      : SAMPLE
+    query.has('rich')
+      ? richSample(query.has('live'))
+      : bare && SAMPLE.session
+        ? { ...SAMPLE, session: { ...SAMPLE.session, plan: [], made: [] } }
+        : SAMPLE
   );
   yard.line.take();
 
