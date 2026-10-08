@@ -166,6 +166,7 @@ const TROUBLE = {
   warn: { head: 'it stopped short', ink: 'var(--yard-warn)' },
   aside: { head: 'it warns', ink: 'var(--yard-wrong)' },
   stopped: { head: 'you stopped it', ink: STOPPED },
+  closed: { head: 'the village closed', ink: STOPPED },
 } as const;
 
 /** Over the conversation being packed down, while it is and once it has. */
@@ -179,6 +180,7 @@ const ENDED = {
   going: { head: 'so far', ink: '#ffc98a' },
   done: { head: 'done', ink: '#a8c469' },
   stopped: { head: 'you stopped it', ink: STOPPED },
+  closed: { head: 'the village closed', ink: STOPPED },
 } as const;
 
 export interface Doings {
@@ -2105,7 +2107,7 @@ function thinking(
             ? 'trouble'
             : one.ended === 'done' || one.pack?.state === 'packed'
               ? 'done'
-              : one.ended === 'stopped'
+              : one.ended === 'stopped' || one.ended === 'closed'
                 ? 'stopped'
                 : 'going';
         if (trouble && one.trouble && !pack) {
@@ -2383,7 +2385,7 @@ function statusMark(
 
 /** Which sign a kind of trouble is drawn with. */
 function troubleSign(kind: NonNullable<Thought['trouble']>): Sign {
-  return kind === 'stopped' ? 'stopped' : kind === 'warn' ? 'warn' : 'wrong';
+  return kind === 'stopped' || kind === 'closed' ? 'stopped' : kind === 'warn' ? 'warn' : 'wrong';
 }
 
 /**

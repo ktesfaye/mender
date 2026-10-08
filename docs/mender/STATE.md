@@ -3575,3 +3575,14 @@ height of the grass it runs through, and the main plateau is one place.
 Driven in a dev instance with his projects, from the top at noon and at night:
 wagons and riders set off, kept moving, turned without flicker, finished their
 trips and went, and none of them stacked or stalled.
+
+### A stop the village caused is not blamed on him (2026-10-07) — done
+
+Closing the app kills every Claude that is mid-answer, and Claude writes that
+down exactly as if he had stopped it, so every reinstall left a "you stopped
+it" line in every busy session, stacking up where several came in a row. Now a
+stop followed by the note the village sends on opening again says "the
+village closed", and stops one straight after another with nothing between
+them fold into one. Driven in a dev instance: a long answer under way, the app
+killed, reopened, and the board said the village closed where it used to say
+you stopped it, and the session picked back up and finished.

@@ -197,7 +197,10 @@ it stands: "so far" in the fire's own orange while it is still going, "done"
 in the green of a finished lantern once it has, and "you stopped it" in a
 muted tan when you called it off, over whatever it had got out by then or
 on its own when that was nothing; a stop Claude's own transcript wrote down
-as if you had said it reads back the same way after a restart, and pressing
+as if you had said it reads back the same way after a restart, except one
+the village closing caused, which Claude writes down exactly the same and
+which says "the village closed" instead, several in a row folding into one,
+and pressing
 Escape turns the fire's line to "stopping" until it has. Pressing that word,
 or the
 column's own heading, opens the trail upward out of it and pressing either

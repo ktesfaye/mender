@@ -242,9 +242,10 @@ export const musedSchema = z.object({
    * Not an answer at all but the turn going wrong: a limit hit, a refusal, a
    * process that died. `wrong` stopped it; `warn` let it finish short;
    * `aside` is the adapter itself warning that something did not go as asked;
-   * `stopped` is you calling it off before it had said anything back.
+   * `stopped` is you calling it off before it had said anything back, and
+   * `closed` the village closing under it, which Claude writes down the same.
    */
-  trouble: z.enum(['wrong', 'warn', 'aside', 'stopped']).optional(),
+  trouble: z.enum(['wrong', 'warn', 'aside', 'stopped', 'closed']).optional(),
   /** Still going, and since when. */
   since: z.number().optional(),
   /** Which turn of the conversation it belongs to, so the board can tell an
@@ -391,7 +392,7 @@ export const toldSchema = z.object({
    * broken. Absent while it is still going, and for history read back off the
    * disk, which never says how it ended.
    */
-  ended: z.enum(['done', 'stopped', 'broke']).optional(),
+  ended: z.enum(['done', 'stopped', 'closed', 'broke']).optional(),
   /** Called off and not yet stopped, so the fire can say it heard. */
   stopping: z.boolean().optional(),
   /**

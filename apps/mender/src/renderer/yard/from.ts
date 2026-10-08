@@ -329,8 +329,8 @@ function thoughtsOf(told: Told | undefined, mood: Mood | undefined): Thought[] {
   const going = mood === 'working' || mood === 'arriving' || mood === 'asking';
   const ended: Thought['ended'] = going
     ? 'going'
-    : told?.ended === 'stopped'
-      ? 'stopped'
+    : told?.ended === 'stopped' || told?.ended === 'closed'
+      ? told.ended
       : told?.ended === 'broke'
         ? undefined
         : 'done';

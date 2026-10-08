@@ -2868,15 +2868,42 @@ function toldOf(
 function endedOf(
   outcome: TranscriptTurn['outcome'],
   last: Flat | undefined
-): { ended?: 'done' | 'stopped' | 'broke' } {
+): { ended?: 'done' | 'stopped' | 'closed' | 'broke' } {
   /* History read back never says how a turn ended, but a stop it wrote
      down as words still does. */
   if (!outcome)
-    return last?.kind === 'ended' && last.trouble === 'stopped' ? { ended: 'stopped' } : {};
+    return last?.kind === 'ended' && (last.trouble === 'stopped' || last.trouble === 'closed')
+      ? { ended: last.trouble }
+      : {};
   if (outcome.kind === 'done') return { ended: 'done' };
   if (outcome.kind === 'cancelled') return { ended: 'stopped' };
   if (outcome.kind === 'interrupted' && outcome.reason === 'replaced') return { ended: 'stopped' };
   return { ended: 'broke' };
+}
+
+/** What the note the village sends on opening again tells the agent, word for word. */
+const PICK_UP_ASIDE = 'the app was closed while you were in the middle of this';
+
+/**
+ * Whether the stop Claude wrote down at `id` was the village closing rather
+ * than you: the next thing anybody said after it is the note the village
+ * sends when it opens again on work it cut off.
+ */
+function closedUnder(turns: readonly TranscriptTurn[], from: number, id: string): boolean {
+  let past = false;
+  for (const turn of turns.slice(from)) {
+    for (const item of turn.items) {
+      if (!past) {
+        past = item.kind === 'message' && item.id === id;
+        continue;
+      }
+      if (item.kind !== 'message' || item.role !== 'user') continue;
+      const text = item.text.trim();
+      if (INTERRUPTED.test(text)) continue;
+      return text.startsWith(PICK_UP_SAID) || text.includes(PICK_UP_ASIDE);
+    }
+  }
+  return false;
 }
 
 /** One chronological item, flattened out of the turn/message/tool tree. */
@@ -2893,7 +2920,7 @@ type Flat = (
   | { kind: 'thinking'; item: TranscriptThinking }
   | { kind: 'tool'; node: ToolNode; hasOutcome: boolean }
   /** A turn that ended badly without the agent saying why, said for it. */
-  | { kind: 'ended'; id: string; said: string; trouble: 'wrong' | 'warn' | 'stopped' }
+  | { kind: 'ended'; id: string; said: string; trouble: 'wrong' | 'warn' | 'stopped' | 'closed' }
 ) & { turn: number };
 
 /** What a turn was asked: its words, and the pictures that went with them. */
@@ -3018,13 +3045,27 @@ function flatten(turns: readonly TranscriptTurn[]): Flat[] {
           const asked = flat[since - 1];
           const spoke =
             since <= flat.length && flat.slice(since).some((one) => one.kind === 'said');
+          /* The village closing kills the CLI, and Claude writes that down
+             the same as a stop; the note the village sends on opening again
+             is how it is told apart. */
+          const closed = closedUnder(turns, at, item.id);
+          /* Stops one straight after another with nothing between them are
+             one stop: the app opened and closed again before anything came. */
+          const before = flat.at(-1);
+          if (
+            before?.kind === 'ended' &&
+            (before.trouble === 'stopped' || before.trouble === 'closed')
+          ) {
+            if (closed) before.trouble = 'closed';
+            continue;
+          }
           flat.push({
             kind: 'ended',
             id: `${item.id}:stopped`,
             said: spoke
               ? 'Partway through what it was saying.'
               : 'Before it had said anything back.',
-            trouble: 'stopped',
+            trouble: closed ? 'closed' : 'stopped',
             turn: asked?.turn ?? at,
           });
           continue;
