@@ -3489,3 +3489,18 @@ card, its transcript gone and still gone after Claude's own exit writes,
 which on the first try had put the last prompt back. The keep switch
 flipped both ways in the settings window. Not driven: the keep path end to
 end, and a terminal-only session, whose hand-started Claude this cannot see.
+
+### A limit read back is dated by the transcript, and the wait moves (2026-10-07) — done
+
+A limit hit before the village was watching was dated "now" when read back,
+so a session that ran out at 8:41 and lifted at 11:20 said it would lift at
+11:20 tomorrow. It is now dated by its own line in Claude's transcript,
+matched on its words since a session read back can surface an older limit
+than its latest, a wrong date already kept is corrected, and one from the
+last twelve hours carries on by itself too, straight away if it has already
+lifted. The board moves: the count ticks in seconds to the moment it goes
+again, the front cell fills as the minutes pass and throws embers, the cells
+still to wait shimmer toward it, a gold post stands where it picks back up,
+and once it lifts the strip stands up green and the fire catches. Driven in
+a dev instance against the fake limit: ticking frames, a corrupted stored
+date corrected on restart, and the session carrying on unprompted after it.

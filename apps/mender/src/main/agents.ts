@@ -557,31 +557,40 @@ export function createAgents(
             : null;
         },
         () => recaps[task],
-        (failure, live) => {
+        (failure, live, written) => {
           const known = limitsHit[failure.id];
-          if (known !== undefined) return known;
           const now = Date.now();
-          /* Only once the store is read: before that, a limit already on
-             record would look new and be armed a second time. */
-          if (!hitLoaded) return now;
+          /* A limit read back before its transcript has been, or before the
+             store has, is not dated yet: saying now would stick. */
+          if (!hitLoaded || (!live && written === undefined)) return known ?? now;
+          /* Kept as the moment the village first saw it, before it read
+             transcripts; the transcript is the truer clock. */
+          if (known !== undefined && (written === undefined || written >= known - 60_000))
+            return known;
+          const at = written ?? now;
           limitsHit = Object.fromEntries(
-            [...Object.entries(limitsHit), [failure.id, now] as const].slice(-60)
+            [...Object.entries(limitsHit), [failure.id, at] as const].slice(-60)
           );
           void store.set(LIMITS_HIT_KEY, limitsHit as unknown as never);
           /* A limit that cut a turn off carries on by itself once it lifts,
              the way Claude Code's own "continuing automatically at 11:20"
-             does, without anybody having to ask for it. */
-          if (live && failure.category === 'limit' && failure.severity === 'error') {
-            const lifts = failure.resetAt ?? resetFrom(liftText(failure), now);
+             does, without anybody having to ask for it. One read back after
+             a restart does too, if it is from today rather than last week. */
+          const recent = live || now - at < 12 * 3_600_000;
+          if (recent && failure.category === 'limit' && failure.severity === 'error') {
+            const lifts = failure.resetAt ?? resetFrom(liftText(failure), at);
             if (lifts !== undefined) {
               setTimeout(() => {
                 /* A little past the minute it named, which is all Claude says. */
-                if (!carryOnTimers.has(task))
-                  armCarryOn(task, Math.max(lifts + 30_000, Date.now() + 60_000));
+                /* A correction replaces whatever the wrong date armed. */
+                const armed = carryOnTimers.get(task);
+                if (armed && known === undefined) return;
+                if (armed) clearTimeout(armed);
+                armCarryOn(task, Math.max(lifts + 30_000, Date.now() + 60_000));
               }, 0);
             }
           }
-          return now;
+          return at;
         }
       );
       houses.set(task, house);
@@ -1560,7 +1569,11 @@ class House {
     private readonly recapped: () => { said: string; after: string } | undefined = () => undefined,
     /** When a failure was first seen, which the first sighting of a live one
      *  also arms a carry-on from. */
-    private readonly banked: (failure: SessionFailure, live: boolean) => number = () => Date.now()
+    private readonly banked: (
+      failure: SessionFailure,
+      live: boolean,
+      written?: number
+    ) => number = () => Date.now()
   ) {
     this.state = cell<WorkingState>(EMPTY, { name: `agent:${task}` });
   }
@@ -1800,9 +1813,24 @@ class House {
   private failureNow(): (SessionFailure & { since: number }) | null {
     const failure = this.lifecycle?.failure;
     if (!failure) return null;
-    const since = this.banked(failure, this.lifecycle?.lifecycle !== 'replaying');
+    const live = this.lifecycle?.lifecycle !== 'replaying';
+    /* One read back rather than watched happening was hit whenever Claude
+       wrote it down, not whenever the village happened to open on it. */
+    const since = this.banked(failure, live, live ? undefined : this.limitWrittenAt(failure));
     const resetAt = failure.resetAt ?? resetFrom(liftText(failure), since);
     return { ...failure, since, ...(resetAt !== undefined ? { resetAt } : {}) };
+  }
+
+  /** When Claude's own transcript says this very limit was hit, matched on
+   *  its own words, since a session read back can surface an older limit
+   *  than the latest one. */
+  private limitWrittenAt(failure: SessionFailure): number | undefined {
+    const said = failure.title.replace(/\s+/g, ' ').trim().toLowerCase();
+    for (let i = this.dated.length - 1; i >= 0; i -= 1) {
+      const one = this.dated[i]!;
+      if (one.who === 'it' && LIMIT_KEY.test(one.key) && said.startsWith(one.key)) return one.at;
+    }
+    return undefined;
   }
 
   /** Called off, and waiting for the turn to say it has stopped. */
@@ -2239,6 +2267,9 @@ function doingOf(mood: Mood, live: TranscriptTurn | null): string {
 function bankable(category: SessionFailure['category']): boolean {
   return category === 'limit' || category === 'service' || category === 'connection';
 }
+
+/** How a limit begins in Claude's own transcript, folded to lower case. */
+const LIMIT_KEY = /^you(?:'ve| have) (?:hit|reached) your|^you're out of (?:usage|extra usage)|usage limit/;
 
 /** Everything Claude said about a failure, where a reset time might be. */
 function liftText(failure: SessionFailure): string {
