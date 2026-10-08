@@ -810,6 +810,9 @@ export function createAgents(
       await store.set(RECAPS_KEY, recaps as unknown as never);
     }
     if (!conversation) return;
+    /* Held to be put back up, by the empty hook or command-shift-T, so what
+       was said in it waits to be forgotten until it falls off that pile. */
+    const held = session ? tasks.holds(task, session) : false;
     /* Purging rather than only stopping it also takes the pictures dropped
        on it, which nothing could ever show again once it is gone. */
     await runtimes.acp.purgeConversationData({ conversationId: conversation });
@@ -819,7 +822,7 @@ export function createAgents(
     await store.set(KEY, lodgers as unknown as never);
     /* Once the agent's own process has been told to stop. Not waited on:
        it keeps looking for a while in case the CLI writes on its way out. */
-    if (forget && session) {
+    if (forget && session && !held) {
       await tasks.forgetPast(session);
       void forgetClaudeSession(session).then(
         () => log.info('agents: forgot what was said', { area: 'agents', task }),

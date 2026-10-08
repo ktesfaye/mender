@@ -70,6 +70,13 @@ export const DOINGS: Doing[] = [
     where: ['district', 'session'],
   },
   {
+    pick: 'do:revive',
+    name: 'bring back a closed session',
+    about: 'the last one taken down here, then the one before, conversation and all',
+    chord: 'T',
+    where: ['island', 'district', 'session', 'card'],
+  },
+  {
     pick: 'do:attend',
     name: 'go to whoever wants you',
     about: 'asking or hurt outrank merely working, oldest first, island-wide',
@@ -164,7 +171,8 @@ export function chordFor(
   hanging: number,
   bound: Keybindings = {}
 ): string | null {
-  const pressed = key.toLowerCase();
+  /* A capital is the letter held with shift as well, a chord of its own. */
+  const pressed = /^[A-Z]$/.test(key) ? key : key.toLowerCase();
   /* Command and a number is the nth thing along the rail, in the order it
      hangs there: a session when you are in a project, and a project when you
      are out on the island with nothing else hanging. Not itself rebindable —
@@ -177,7 +185,15 @@ export function chordFor(
   const doing = rebindableDoings().find(
     (each) => chordOf(each.pick, bound) === pressed && each.where.includes(where)
   );
+  if (!doing && pressed !== pressed.toLowerCase()) {
+    return chordFor(pressed.toLowerCase(), where, hanging, bound);
+  }
   return doing ? doing.pick : null;
+}
+
+/** How a chord is written for him: shift said as the Mac says it. */
+export function chordLabel(chord: string): string {
+  return /^[A-Z]$/.test(chord) ? `⇧⌘${chord}` : `⌘${chord.toUpperCase()}`;
 }
 
 interface Village {

@@ -22,8 +22,8 @@ import type {
   SessionUsage,
   TerminalSettings,
 } from '@shared/app-settings';
-import { chordOf, rebindableDoings } from '../board/finder';
 import { counted } from '../board/card';
+import { chordLabel, chordOf, rebindableDoings } from '../board/finder';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
  *  and whether anything still uses it. */
@@ -422,8 +422,13 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
         drawKeys();
         return;
       }
-      const letter = event.key.length === 1 ? event.key.toLowerCase() : '';
-      if (!/^[a-z[\],]$/.test(letter)) return; // not a chord this table speaks in — keep waiting.
+      const letter =
+        event.key.length === 1
+          ? event.shiftKey && /^[a-z]$/i.test(event.key)
+            ? event.key.toUpperCase()
+            : event.key.toLowerCase()
+          : '';
+      if (!/^[a-zA-Z[\],]$/.test(letter)) return; // not a chord this table speaks in — keep waiting.
       const bound = now.keybindings ?? {};
       const mine = rebindableDoings().find((each) => each.pick === pick);
       const conflict = rebindableDoings().find(
@@ -434,7 +439,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       );
       detach();
       if (conflict) {
-        armed = `⌘${letter.toUpperCase()} is already ${conflict.name}'s.`;
+        armed = `${chordLabel(letter)} is already ${conflict.name}'s.`;
         drawKeys();
         return;
       }
@@ -458,11 +463,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       const label = el('span', 'settings-hint');
       label.textContent = `${doing.name} — `;
       const said =
-        arming === doing.pick
-          ? (armed ?? 'press a key…')
-          : chord
-            ? `⌘${chord.toUpperCase()}`
-            : 'unset';
+        arming === doing.pick ? (armed ?? 'press a key…') : chord ? chordLabel(chord) : 'unset';
       const key = button(said, 'settings-link', () => arm(doing.pick));
       row.append(label, key);
       if (bound[doing.pick] !== undefined) {

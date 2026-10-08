@@ -3592,3 +3592,16 @@ couple of riders on the road, more on top for how busy the island is, sent
 out a second or two apart and mixed rather than all the wagons first. Driven
 in a dev instance at noon from the top: wagons and riders on most roads at
 once, none stacked.
+
+### Command-shift-T brings back a closed session (2026-10-07) — done
+
+The way a browser reopens a closed tab: the last session closed in the
+project you are in comes back on the same branch with its whole conversation,
+and pressed again the one before it. From the island it reaches into the
+project you last closed one in. Putting one back used to start a blank
+conversation in its place; now the agent picks up the very session it was in,
+and a project that forgets what was said holds that back until the session
+falls off the pile or the app restarts. Driven in a dev instance: told a
+session a word, closed it, pressed the chord from the island, and it came back
+with the conversation on the board and named the word when asked; pressed
+again it said there was nothing closed to bring back.

@@ -1166,6 +1166,9 @@ async function boot(): Promise<void> {
     /** The session Cmd+W has already warned about, and when: a second press
         inside the window takes it down regardless of what goes with it. */
     let closing: { task: string; at: number } | null = null;
+    /** The project a session was last taken down in, for command-shift-T
+        pressed from out on the island. */
+    let closedIn: string | null = null;
     /** What in a session's own worktree nobody has committed, said as words,
         or nothing when it is clean. */
     const uncommittedIn = async (task: { path: string }): Promise<string | null> => {
@@ -1351,6 +1354,7 @@ async function boot(): Promise<void> {
             const next =
               nextOf(tasksOn(aim.district), task.id) ?? nextOf(allOn(aim.district), task.id);
             await client.tasks.abandon({ id: task.id }, { timeoutMs: 0 });
+            closedIn = task.project;
             say(null);
             if (open !== aim) return;
             if (next) {
@@ -1370,6 +1374,11 @@ async function boot(): Promise<void> {
       }
       if (id === 'do:attend') {
         attendNext();
+        return;
+      }
+      if (id === 'do:revive') {
+        const here = open && projectOn(open.district);
+        void reopenClosed(here ? here.id : closedIn);
         return;
       }
       // Taking back something you said while it was busy. It never reached the
@@ -3490,6 +3499,7 @@ async function boot(): Promise<void> {
       shown.ask(false);
       say('sending everybody home…', 30000);
       await client.tasks.abandon({ id: task.id }, { timeoutMs: 0 });
+      closedIn = task.project;
       say('taken down.', 3000);
       if (aim) void openDistrict({ kind: 'district', district: aim.district });
     };
@@ -3958,7 +3968,47 @@ async function boot(): Promise<void> {
         flyOut(camera, drawn.island);
         return;
       }
-      await openTask(aim, made.data);
+      await standRevived(aim, made.data);
+    };
+
+    /** Into a session just put back up, picking its conversation back up
+        where it was rather than waking a blank one in its place. */
+    const standRevived = async (aim: Aim, made: { task: Task; session: string | null }) => {
+      if (made.session && (made.task.kind ?? 'chat') === 'chat') {
+        void client.agents.resume(
+          { task: made.task.id, providerSessionId: made.session },
+          { timeoutMs: 0 }
+        );
+      }
+      await openTask(aim, made.task);
+    };
+
+    /**
+     * Command-shift-T, the way a browser brings back a closed tab: the last
+     * session taken down in the project you are in, and pressed again the one
+     * before it. Out on the island it is the project you last closed one in.
+     */
+    const reopenClosed = async (project: string | null): Promise<void> => {
+      const found = projects.find((one) => one.id === project);
+      const district = found && drawn.districts.get(found.district ?? '');
+      if (!found || !district) {
+        say('nothing closed to bring back.', 3000);
+        return;
+      }
+      const made = await client.tasks.revive({ project: found.id }, { timeoutMs: 0 });
+      if (!made.success) {
+        say(
+          made.error.kind === 'no-such-project'
+            ? 'nothing closed here to bring back.'
+            : whyNot(made.error),
+          3000
+        );
+        return;
+      }
+      await standRevived(
+        open?.district === district ? open : { kind: 'district', district },
+        made.data
+      );
     };
 
     /** Calling a session something else. His name for it outranks the agent's. */
@@ -4150,7 +4200,7 @@ async function boot(): Promise<void> {
       const stale = replacing;
       replacing = null;
       if (stale && stale !== made.data.id)
-        void client.tasks.abandon({ id: stale }, { timeoutMs: 0 });
+        void client.tasks.abandon({ id: stale, unoffered: true }, { timeoutMs: 0 });
       if (aim) await openTask(aim, made.data);
     };
 
@@ -5468,7 +5518,11 @@ async function boot(): Promise<void> {
       /** A key held with command. One table says what it means. */
       ordered: (event) => {
         const hanging = open ? tasksOn(open.district).length : projects.length;
-        const meant = chordFor(event.key, standing(), hanging, keybindings);
+        /* A shifted letter is its own chord, the way command-shift-T is not
+           command-T; one nobody has bound still means the plain letter. */
+        const pressed =
+          event.shiftKey && /^[a-z]$/i.test(event.key) ? event.key.toUpperCase() : event.key;
+        const meant = chordFor(pressed, standing(), hanging, keybindings);
         if (!meant) return false;
         /* The chord is always a fresh session, straight away. Turning the
            hook over to the other ways of starting one is the hook's second

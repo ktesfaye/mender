@@ -228,20 +228,27 @@ export const tasksContract = defineContract({
   }),
   /** Turns a session nobody has spoken to yet into its own terminal. */
   retool: procedure({ input: z.object({ id: z.string() }), output: z.array(taskSchema) }),
-  abandon: procedure({ input: z.object({ id: z.string() }), output: z.array(taskSchema) }),
+  /** `unoffered` for a placeholder nobody said anything in, which is not
+      worth offering back. */
+  abandon: procedure({
+    input: z.object({ id: z.string(), unoffered: z.boolean().optional() }),
+    output: z.array(taskSchema),
+  }),
   /**
    * The last session taken down in this project this sitting, if putting it
-   * back up is still on offer. Gone once revived, once another is taken down
-   * in its place, or once the app restarts — it is not written down anywhere.
+   * back up is still on offer. The ones before it wait under it, the way a
+   * browser keeps closed tabs, and each is gone once revived or once the app
+   * restarts — none of it is written down anywhere.
    */
   revivable: procedure({
     input: z.object({ project: z.string() }),
     output: z.object({ title: z.string() }).nullable(),
   }),
-  /** Cuts a fresh worktree from the same branch and stands it back up. */
+  /** Stands the last one taken down here back up, on the same branch, with
+      the agent's own session to pick its conversation back up from. */
   revive: fallible({
     input: z.object({ project: z.string() }),
-    data: taskSchema,
+    data: z.object({ task: taskSchema, session: z.string().nullable() }),
     error: taskErrorSchema,
   }),
   /** Every session taken down in this project, newest first. */

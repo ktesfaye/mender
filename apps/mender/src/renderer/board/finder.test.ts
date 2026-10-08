@@ -15,4 +15,10 @@ describe('chordFor', () => {
     expect(chordFor('n', 'island', 0)).toBe('do:found');
     expect(chordFor('n', 'session', 0)).toBe('do:workspace');
   });
+
+  it('shift makes a chord of its own and falls back to the plain letter when unbound', () => {
+    expect(chordFor('T', 'session', 0)).toBe('do:revive');
+    expect(chordFor('t', 'session', 0)).toBe('new');
+    expect(chordFor('I', 'session', 0)).toBe('card');
+  });
 });

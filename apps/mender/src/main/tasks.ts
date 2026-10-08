@@ -18,6 +18,7 @@ import {
   claudeProjectDirName,
   listClaudeSessions,
   listClaudeSessionsElsewhere,
+  forgetClaudeSession,
   type ClaudeCliSession,
 } from './claude-cli-history';
 import { createPastSessions, type PastTold } from './past-sessions';
@@ -207,18 +208,28 @@ export interface Tasks {
   retool(id: string): Promise<Task[]>;
   /** What whoever is in here thinks with, next time they start. */
   remodel(id: string, model: string | null): Promise<Task[]>;
-  abandon(id: string): Promise<Task[]>;
+  abandon(id: string, unoffered?: boolean): Promise<Task[]>;
   /**
    * The one just taken down in this project, if putting it back up is still
    * on offer — kept for the rest of this sitting, on disk nowhere.
    */
   revivable(project: string): { title: string } | null;
+  /**
+   * Told the agent's own session id as a session comes down. Answers whether
+   * it is being held to be put back up, in which case what was said in it is
+   * not forgotten yet: that waits until it falls off the end of what can be
+   * put back, or the next time the app starts.
+   */
+  holds(task: string, session: string): boolean;
   /** Every session taken down in this project, newest first. */
   history(project: string): Promise<HistoryEntry[]>;
   /** Cuts a fresh worktree from that same branch and stands it back up. */
   revive(
     project: string
-  ): Promise<{ success: true; data: Task } | { success: false; error: TaskError }>;
+  ): Promise<
+    | { success: true; data: { task: Task; session: string | null } }
+    | { success: false; error: TaskError }
+  >;
   /**
    * A new session, its own worktree cut from the branch as it stands.
    *
@@ -239,6 +250,18 @@ export interface Tasks {
   /** Whether what was said in this session goes with it when it ends. */
   forgets(task: string): Promise<boolean>;
   dispose(): Promise<void>;
+}
+
+/** How many sessions taken down in one project can still be put back up. */
+const HELD = 10;
+
+/** A session taken down, held so it can be put back up. */
+interface Held {
+  task: Task;
+  /** Whether what was said in it is forgotten once it falls off. */
+  forget: boolean;
+  /** The agent's own session id, once the agent has said it. */
+  session?: string;
 }
 
 /** How many names a checkout offers up at once. */
@@ -274,10 +297,42 @@ export function createTasks(
   /* Which checkouts have had their contents read. Holding one of these open is
      what keeps that worktree's index alive and watched. */
   const indexed = new Map<string, ReplicaState<ActiveRootStatus>>();
-  /* The one session just taken down in each project, for the rest of this
-     sitting — not written to disk, so a restart forgets it the same way the
-     agent itself is not woken back up by a restart either. */
-  const lastTakenDown = new Map<string, Task>();
+  /* The sessions just taken down in each project, newest last, for the rest
+     of this sitting — not written to disk, so a restart forgets them the same
+     way the agent itself is not woken back up by a restart either. Each keeps
+     the agent's own session id once it is known, so putting it back up picks
+     its conversation back up rather than starting a blank one. */
+  const lastTakenDown = new Map<string, Held[]>();
+  /* Transcripts a project would have forgotten straight away, held back only
+     so a reopen can bring them back. Written down so that if the app goes
+     before they are let go, the next start forgets them instead. */
+  const pending = createJsonFileKeyValueStore({ path: join(userDataDir(), 'held.json') });
+  const PENDING_KEY = 'forget';
+  const pendingNow = (): string[] =>
+    [...lastTakenDown.values()]
+      .flat()
+      .filter((each) => each.forget && each.session)
+      .map((each) => each.session as string);
+  const notePending = (): void =>
+    void pending.set(PENDING_KEY, pendingNow() as unknown as never).catch(() => undefined);
+  /** Something held falls off without being put back: what it was holding
+      back from being forgotten goes now. */
+  const release = (held: Held): void => {
+    if (!held.forget || !held.session) return;
+    const session = held.session;
+    void past.forget(session);
+    void forgetClaudeSession(session).catch(() => undefined);
+  };
+  void (async () => {
+    const left = (await pending.get(PENDING_KEY).catch(() => null)) as unknown;
+    if (!Array.isArray(left) || !left.length) return;
+    await pending.set(PENDING_KEY, [] as unknown as never);
+    for (const session of left) {
+      if (typeof session !== 'string') continue;
+      void past.forget(session);
+      void forgetClaudeSession(session).catch(() => undefined);
+    }
+  })();
   /** Told once a session's building is gone, so its lodger can be let go too. */
   let gone: ((task: string, forget: boolean) => void) | undefined;
 
@@ -832,7 +887,7 @@ export function createTasks(
       return await save(tasks.map((task) => (task.id === id ? { ...task, model } : task)));
     },
 
-    async abandon(id) {
+    async abandon(id, unoffered = false) {
       const tasks = await all();
       const going = tasks.find((task) => task.id === id);
       if (going) {
@@ -857,14 +912,18 @@ export function createTasks(
             })
             .catch(() => undefined);
         }
-        // The empty hook remembers this one, in case letting go of it was a
-        // slip on the second press.
-        lastTakenDown.set(going.project, going);
       }
       // What was said goes with it, unless the project keeps it, and then
       // the ledger remembers it past the end of this sitting, since there is
       // still something to read back once it is off the hook.
       const forget = going ? await forgets(going.project) : false;
+      if (going && !unoffered) {
+        // The empty hook, and command-shift-T, remember this one, in case
+        // letting go of it was a slip.
+        const stack = [...(lastTakenDown.get(going.project) ?? []), { task: going, forget }];
+        while (stack.length > HELD) release(stack.shift() as Held);
+        lastTakenDown.set(going.project, stack);
+      }
       if (going && !forget) {
         await remember({
           id: going.id,
@@ -879,8 +938,16 @@ export function createTasks(
     },
 
     revivable(project) {
-      const held = lastTakenDown.get(project);
-      return held ? { title: held.title } : null;
+      const held = lastTakenDown.get(project)?.at(-1);
+      return held ? { title: held.task.title } : null;
+    },
+
+    holds(task, session) {
+      const held = [...lastTakenDown.values()].flat().find((each) => each.task.id === task);
+      if (!held) return false;
+      held.session = session;
+      notePending();
+      return true;
     },
 
     async history(project) {
@@ -889,8 +956,19 @@ export function createTasks(
     },
 
     async revive(project) {
-      const stash = lastTakenDown.get(project);
-      if (!stash) return fail({ kind: 'no-such-project' });
+      const top = lastTakenDown.get(project)?.at(-1);
+      if (!top) return fail({ kind: 'no-such-project' });
+      const stash = top.task;
+      const session = top.session ?? null;
+      /** Off the pile for good: it is standing again, so nothing it held
+          back is to be forgotten now. */
+      const taken = (): void => {
+        lastTakenDown.set(
+          project,
+          (lastTakenDown.get(project) ?? []).filter((each) => each !== top)
+        );
+        notePending();
+      };
       const found = (await projects.list()).find((candidate) => candidate.id === project);
       if (!found) return fail({ kind: 'no-such-project' });
       const rest = {
@@ -906,9 +984,9 @@ export function createTasks(
       if (stash.shared) {
         const task = await sharedIn(found, { project, ...rest });
         if (!task) return fail({ kind: 'refused', because: 'that checkout has moved.' });
-        lastTakenDown.delete(project);
+        taken();
         await save([...(await all()), task]);
-        return { success: true as const, data: task };
+        return { success: true as const, data: { task, session } };
       }
 
       /* Back into the workspace it came down out of, while that is still
@@ -928,10 +1006,17 @@ export function createTasks(
         if (!made.success) return made;
         workspace = made.data;
       }
-      lastTakenDown.delete(project);
+      taken();
       const task = into(workspace, rest);
+      /* Claude only looks for a session under the folder it runs in, and a
+         workspace cut again may not be the folder it was had in. */
+      if (session && task.path !== stash.path) {
+        await adoptClaudeSession(task.path, claudeProjectDirName(stash.path), session).catch(
+          () => undefined
+        );
+      }
       await save([...(await all()), task]);
-      return { success: true as const, data: task };
+      return { success: true as const, data: { task, session } };
     },
 
     async fork(id) {
@@ -995,7 +1080,9 @@ export function createTasks(
         );
       }
       await saveWorkspaces(standing.filter((one) => one.project !== project));
+      for (const held of lastTakenDown.get(project) ?? []) release(held);
       lastTakenDown.delete(project);
+      notePending();
     },
 
     onGone(hook) {

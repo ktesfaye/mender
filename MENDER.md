@@ -355,7 +355,12 @@ empty hook, an unlit lantern with a small plus in its glass, which is how a
 new session is started, and right-clicking it opens the other ways to start one — and, for the rest of that
 sitting, remembers the last one taken down here: it offers to put it straight
 back up, on the very same branch, before it ever offers to start something
-new. The projects moved to a rack
+new. Command-shift-T does the same without the hook, the way a browser brings
+back a closed tab: the last session closed in the project you are in, its
+conversation and all, and pressed again the one closed before that; out on
+the island it reaches into whichever project you last closed one in. What was
+said in one is only let go once it falls off the end of that pile, or the next
+time the app starts. The projects moved to a rack
 in the top right, over both the island and the yard, drawn rather than boxed:
 a log along the top of the window, sawn off at its left end, and each project
 a board of three planks hung off it on two chains, the way the kit's own shop
