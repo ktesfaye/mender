@@ -2134,7 +2134,7 @@ function thinking(
         const body = document.createElement('div');
         /* Set large, unless it is long enough that large is a wall: a whole
          report at the size of one sentence is read a word at a time. */
-        const size = one.said.length > 700 ? 19 : 21;
+        const size = one.said.length > 700 ? 22 : 24;
         body.style.cssText = one.quiet
           ? 'font-size:18px;line-height:1.4;font-style:italic;color:rgba(255,220,164,.78)'
           : `font-size:${size}px;line-height:1.6;letter-spacing:var(--said-tracking,.01em);color:${trouble?.ink ?? '#ebe3d3'}`;
