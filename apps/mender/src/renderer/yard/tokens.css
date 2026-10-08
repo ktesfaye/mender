@@ -1965,3 +1965,49 @@ body.gripping-row * {
   padding-left: 8px;
   border-left: 1px solid rgba(244, 227, 192, 0.12);
 }
+
+/* An edit's own lines: what went in on a faint green, what came out on a
+   faint red, and the lines it left alone either side in the quiet ink. */
+.yard .deed-diff-line {
+  font-family: var(--yard-face-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #8f7c5f;
+  padding: 0 4px;
+}
+.yard .deed-diff-in {
+  color: #b9d47a;
+  background: rgba(168, 196, 105, 0.1);
+}
+.yard .deed-diff-out {
+  color: #f48a7e;
+  background: rgba(242, 102, 90, 0.1);
+}
+.yard .deed-diff-more {
+  margin-top: 3px;
+  font-size: 11px;
+  align-self: flex-start;
+}
+
+/* What it did, laid into the open trail between what it said: the same
+   steps with their signs, closer together, every edit open in full. */
+.yard .trail-deed {
+  font-family: var(--yard-face-label);
+  opacity: 0.92;
+}
+.yard .trail-deed::before {
+  display: none;
+}
+.yard .trail-deed + .trail-deed {
+  margin-top: -12px;
+}
+.yard .trail-deed .deed-diff-line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.yard .trail-deed .deed-said {
+  -webkit-line-clamp: 3;
+}

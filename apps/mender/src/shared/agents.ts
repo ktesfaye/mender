@@ -250,6 +250,9 @@ export const musedSchema = z.object({
   /** Which turn of the conversation it belongs to, so the board can tell an
       answer to what you just said from the one before it. */
   turn: z.number().int().optional(),
+  /** Where it falls in the conversation, so what it did can be laid between
+      the things it said in the order they really happened. */
+  seq: z.number().int().optional(),
   /** Not something said but the conversation being packed down to make room. */
   pack: z
     .object({
@@ -305,6 +308,8 @@ export const deedSchema = z.object({
   diff: z.array(z.string()).optional(),
   /** How many more marked lines there were than `diff` carries. */
   diffMore: z.number().int().optional(),
+  /** Where it falls in the conversation, beside what was said around it. */
+  seq: z.number().int().optional(),
 });
 export type Deed = z.infer<typeof deedSchema>;
 

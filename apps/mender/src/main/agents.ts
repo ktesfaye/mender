@@ -2620,6 +2620,14 @@ function toldOf(
   };
 
   flat.forEach((item, i) => {
+    const before = thoughts.length;
+    const deedsBefore = deeds.length;
+    told(item, i);
+    for (let n = before; n < thoughts.length; n += 1) thoughts[n]!.seq = i;
+    for (let n = deedsBefore; n < deeds.length; n += 1) deeds[n]!.seq = i;
+  });
+
+  function told(item: Flat, i: number): void {
     /* What Claude carries across a packing is its own summary, handed back in
        as though you had said it. You did not, so it is where the packing was
        rather than a note on the post. */
@@ -2720,7 +2728,7 @@ function toldOf(
     } else {
       toldFrom(item.node, item.hasOutcome, root, stamp, earliest, deeds, errands, written);
     }
-  });
+  }
 
   return {
     notes: notes.reverse(),
@@ -3104,7 +3112,7 @@ const SPOKE = 40;
 /** A thought is long and is not the thing you came to read. */
 const MUSED = 60;
 /** As many marked lines of a file edit as belong right under the step itself. */
-const STEP_DIFF = 6;
+const STEP_DIFF = 80;
 
 function markFor(status: string): string {
   return status === 'running' ? '…' : status === 'error' ? '✗' : '·';
@@ -3189,8 +3197,20 @@ function changes(before: string, after: string): string[] {
   }
   const gone = was.slice(head, was.length - tail);
   const came = now.slice(head, now.length - tail);
-  return [...gone.map((line) => `-${line}`), ...came.map((line) => `+${line}`)];
+  /* A few of the lines it left alone either side, so the change is read
+     where it sits rather than as lines floating free of their code. */
+  const above = now.slice(Math.max(0, head - DIFF_AROUND), head);
+  const below = now.slice(now.length - tail, now.length - tail + DIFF_AROUND);
+  return [
+    ...above.map((line) => ` ${line}`),
+    ...gone.map((line) => `-${line}`),
+    ...came.map((line) => `+${line}`),
+    ...below.map((line) => ` ${line}`),
+  ];
 }
+
+/** How many unchanged lines stand either side of an edit. */
+const DIFF_AROUND = 2;
 
 /**
  * What it was thinking, which until now was thrown away entirely.

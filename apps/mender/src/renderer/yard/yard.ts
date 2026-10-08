@@ -2014,9 +2014,28 @@ function thinking(
     thoughts.forEach((one, i) => {
       if (one.live && !one.quiet) answer = i;
     });
+    /* With the trail open, what it did is laid between what it thought and
+       said, in the order it happened, each edit with its lines right there:
+       the whole of the way to the answer, not only the talking. */
+    const trail = open ? (yard.session?.steps ?? []).filter((step) => step.seq !== undefined) : [];
+    let next = 0;
+    const firstSeq = thoughts[start]?.seq;
+    if (start > 0 && firstSeq !== undefined)
+      while (next < trail.length && trail[next]!.seq! < firstSeq) next += 1;
+    const placeUpTo = (seq: number | undefined): void => {
+      while (next < trail.length && (seq === undefined || trail[next]!.seq! < seq)) {
+        const step = trail[next]!;
+        next += 1;
+        const it = keyed(did(step, does, true), `trail:${step.id}`);
+        it.classList.add('trail-deed');
+        keep.add(`trail:${step.id}`);
+        items.appendChild(it);
+      }
+    };
     thoughts.slice(start).forEach((one, si) => {
       const i = start + si;
       const far = thoughts.length - 1 - i;
+      if (open && one.seq !== undefined) placeUpTo(one.seq);
       if (!open && i !== answer && !one.answer) return;
       if (one.live) {
         keep.add(one.id);
@@ -2094,6 +2113,7 @@ function thinking(
         )
       );
     });
+    if (open) placeUpTo(undefined);
     forgetInk(keep);
   }
 
@@ -3072,7 +3092,7 @@ function planned(plan: Session['plan']): HTMLElement {
 }
 
 /** One thing it did, with the prop that stands for it in a fixed slot. */
-function did(one: Step, does: Doings): HTMLElement {
+function did(one: Step, does: Doings, whole = false): HTMLElement {
   const it = document.createElement('div');
   it.className = `deed${one.group ? ' deed-looked' : ''}${one.running ? ' deed-running' : ''}${one.tone === 'broken' ? ' deed-broken' : ''}`;
   if (one.group) {
@@ -3080,7 +3100,7 @@ function did(one: Step, does: Doings): HTMLElement {
     return it;
   }
   it.appendChild(deedLine(one));
-  if (one.diff?.length) it.appendChild(diffPreview(one, does));
+  if (one.diff?.length) it.appendChild(diffPreview(one, does, whole));
   return it;
 }
 
@@ -3243,31 +3263,54 @@ function noted(note: string): (string | HTMLElement)[] {
  * pressing it opens the file's whole change, the same board a checkout's own
  * changed files already open onto.
  */
-function diffPreview(one: Step, does: Doings): HTMLElement {
+function diffPreview(one: Step, does: Doings, whole = false): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'deed-under deed-diff';
-  for (const marked of one.diff ?? []) {
-    const line = document.createElement('span');
-    const kind = marked[0];
-    line.style.cssText =
-      "font-family:'Courier Prime',monospace;font-size:11px;line-height:1.4;white-space:pre;overflow:hidden;text-overflow:ellipsis";
-    line.style.color =
-      kind === '+' ? 'var(--yard-well)' : kind === '-' ? 'var(--yard-wrong)' : '#a89272';
-    line.textContent = marked;
-    wrap.appendChild(line);
-  }
-  if (one.diffMore && one.path) {
-    const more = pressing(`and ${one.diffMore} more lines`, () => does.press(`change:${one.path}`));
-    more.style.cssText += ';font-size:10.5px';
-    wrap.appendChild(more);
-  } else if (one.diffMore) {
-    const more = document.createElement('span');
-    more.style.cssText = "font-family:'Josefin Sans',sans-serif;font-size:10.5px;color:#8a7452";
-    more.textContent = `and ${one.diffMore} more lines`;
-    wrap.appendChild(more);
-  }
+  const lines = one.diff ?? [];
+  const fill = (): void => {
+    wrap.replaceChildren();
+    const open = whole || openDiffs.has(one.id);
+    for (const marked of open ? lines : lines.slice(0, DIFF_SHOWN)) {
+      const line = document.createElement('span');
+      const kind = marked[0];
+      line.className = `deed-diff-line${kind === '+' ? ' deed-diff-in' : kind === '-' ? ' deed-diff-out' : ''}`;
+      line.textContent = `${kind === '+' || kind === '-' ? kind : ' '} ${marked.slice(1)}`;
+      wrap.appendChild(line);
+    }
+    /* The rest of what was caught opens right here, under the step; only
+       past that does the whole change go to the checkout's own board. */
+    const unshown = open ? 0 : lines.length - DIFF_SHOWN;
+    if (unshown > 0) {
+      const more = pressing(`show all ${lines.length} lines`, () => {
+        openDiffs.add(one.id);
+        fill();
+      });
+      more.classList.add('deed-diff-more');
+      wrap.appendChild(more);
+    } else if (one.diffMore && one.path) {
+      const more = pressing(`and ${one.diffMore} more lines, on the change`, () =>
+        does.press(`change:${one.path}`)
+      );
+      more.classList.add('deed-diff-more');
+      wrap.appendChild(more);
+    } else if (open && openDiffs.has(one.id) && !whole) {
+      const less = pressing('fold it', () => {
+        openDiffs.delete(one.id);
+        fill();
+      });
+      less.classList.add('deed-diff-more');
+      wrap.appendChild(less);
+    }
+  };
+  fill();
   return wrap;
 }
+
+/** How many lines of an edit stand under its step before it is opened. */
+const DIFF_SHOWN = 8;
+
+/** Which steps' edits have been opened in full, across redraws. */
+const openDiffs = new Set<string>();
 
 /** A session nobody has started: everything a session has, none of it yet. */
 const BLANK: Session = {

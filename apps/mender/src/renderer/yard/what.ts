@@ -280,6 +280,8 @@ export interface Thought {
   ended?: 'going' | 'done' | 'stopped';
   /** The conversation being packed down to make room, drawn rather than said. */
   pack?: Pack;
+  /** Where it falls in the conversation, beside what it did. */
+  seq?: number;
 }
 
 /** Something it did: a tool call, with a prop from the kit standing for it. */
@@ -306,6 +308,8 @@ export interface Step {
   did: string;
   /** What sort of thing it was, for its sign. */
   kind?: StepKind;
+  /** Where it falls in the conversation, beside what it said. */
+  seq?: number;
   /** Which sprite sits in the fixed slot at the left of the line. */
   prop: string;
   running?: boolean;

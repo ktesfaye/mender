@@ -221,9 +221,13 @@ box for a build, an arrow into a tray for an install, a ring in the exact
 blue for a commit and an arrow up for a push, and the sore cross in place of
 any of them when it failed. A check that failed is said as what it was for,
 never as its raw command. A written or changed file's own step carries the lines it actually wrote
-right under it, capped, in the same warm and sore tones a change is read in
-anywhere else in the village; pressing the cap opens the whole change on the
-checkout's own board. Under all of that is the ground itself, with whoever it
+right under it, with a couple of the lines it left alone either side so the
+change reads in place, in the same warm and sore tones a change is read in
+anywhere else in the village; a long one is capped, "show all" opens the rest
+right there and folds it again, and past what was kept the cap opens the whole
+change on the checkout's own board. And opening the trail over an answer lays
+the same steps in it, each one between the thoughts it came between, every
+edit open in full, so what it thought and what it did read as one story. Under all of that is the ground itself, with whoever it
 sent out standing in the firelight with an answer or off in the dark still
 working.
 

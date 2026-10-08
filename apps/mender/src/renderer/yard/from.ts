@@ -363,6 +363,7 @@ function thoughtsOf(told: Told | undefined, mood: Mood | undefined): Thought[] {
     ...(one.quiet ? { quiet: true } : {}),
     ...(one.pack ? { pack: one.pack, said: packSaid(one.pack, one.said) } : {}),
     ...(one.trouble ? { trouble: one.trouble } : {}),
+    ...(one.seq !== undefined ? { seq: one.seq } : {}),
   }));
 }
 
@@ -463,6 +464,7 @@ function stepsOf(deeds: readonly DeedIn[]): Step[] {
       did: lookedAround(run.map((one) => one.plain.looked)),
       prop: KIT_NAMES.sign,
       kind: 'look',
+      ...(first.deed.seq !== undefined ? { seq: first.deed.seq } : {}),
       group: run.map((one) => ({ id: one.deed.id, did: one.deed.why ?? one.deed.did })),
     });
     run = [];
@@ -561,6 +563,7 @@ function stepOf(deed: {
   path?: string;
   diff?: string[];
   diffMore?: number;
+  seq?: number;
 }): Step {
   return {
     id: deed.id,
@@ -572,6 +575,7 @@ function stepOf(deed: {
     ...(deed.path ? { path: deed.path } : {}),
     ...(deed.diff ? { diff: deed.diff } : {}),
     ...(deed.diffMore ? { diffMore: deed.diffMore } : {}),
+    ...(deed.seq !== undefined ? { seq: deed.seq } : {}),
   };
 }
 
