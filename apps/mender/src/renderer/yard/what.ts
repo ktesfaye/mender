@@ -354,6 +354,8 @@ export interface Hand {
   call?: string;
   /** Working on their own while the session carries on without them. */
   background?: boolean;
+  /** Not somebody at all but a command left running, and the command itself. */
+  command?: string;
   /** Came back hurt, or was called back. */
   wrong?: boolean;
   /** What they were sent to do, in full. */

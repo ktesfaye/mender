@@ -3458,7 +3458,7 @@ function ground(
      to hold them, and once it is wider than the column it scrolls sideways
      under the heading and the wheel walks along it. */
   const scattered = scatter(
-    ordered.map((one) => one.id),
+    ordered.map((one) => ({ id: one.id, wide: one.command ? POT.wide : 28 })),
     Math.round(at.wide / 2) - 16
   );
   const sceneWide = Math.max(at.wide, scattered.half * 2 + 32);
@@ -3523,16 +3523,20 @@ function ground(
 
   for (const hand of hands) {
     const spot = scattered.spots.get(hand.id) ?? { dx: 0, top: 40 };
-    const one = standing(hand, { left: centre + spot.dx - 14, top: spot.top }, does, lit);
+    const half = hand.command ? POT.wide / 2 : 14;
+    const one = (hand.command ? simmering : standing)(
+      hand,
+      { left: centre + spot.dx - half, top: spot.top },
+      does,
+      lit
+    );
     figures.set(hand.id, one);
     scene.appendChild(one);
   }
   patch.appendChild(strip);
 
   const heading = box({ left: 14, top: 12 }, 'white-space:nowrap;pointer-events:none');
-  heading.appendChild(
-    exact(`${hands.length} ${hands.length === 1 ? 'hand' : 'hands'} at the fire`, 14, '#ffc98a')
-  );
+  heading.appendChild(exact(atTheFire(hands), 14, '#ffc98a'));
   patch.appendChild(heading);
   root.appendChild(patch);
   /* First sight is the fire in the middle of them. */
@@ -3615,14 +3619,14 @@ const FIRELIGHT: Record<Fire, number> = { lit: 0.34, banked: 0.2, embers: 0.12, 
  * room left the ground widens for them.
  */
 function scatter(
-  ids: readonly string[],
+  ids: readonly { id: string; wide: number }[],
   start: number
 ): { half: number; spots: Map<string, { dx: number; top: number }> } {
-  const spots = new Map<string, { dx: number; top: number }>();
+  const spots = new Map<string, { dx: number; top: number; wide: number }>();
   let half = Math.max(80, start);
   const low = 44;
   const high = GROUND.patch - 58;
-  for (const id of ids) {
+  for (const { id, wide } of ids) {
     let seed = 0;
     for (const c of id) seed = (Math.imul(seed, 31) + c.charCodeAt(0)) | 0;
     const random = (): number => {
@@ -3631,22 +3635,89 @@ function scatter(
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
-    let placed: { dx: number; top: number } | undefined;
+    let placed: { dx: number; top: number; wide: number } | undefined;
     while (!placed) {
       for (let tries = 0; tries < 60 && !placed; tries += 1) {
-        const dx = Math.round((random() * 2 - 1) * (half - 14));
+        const dx = Math.round((random() * 2 - 1) * (half - wide / 2));
         const top = Math.round(low + random() * (high - low));
-        const onFire = Math.abs(dx) < 42 && top > 50 && top < 150;
+        const onFire = Math.abs(dx) < 28 + wide / 2 && top > 50 && top < 150;
         const crowded = [...spots.values()].some(
-          (one) => Math.abs(one.dx - dx) < 30 && Math.abs(one.top - top) < 64
+          (one) => Math.abs(one.dx - dx) < (one.wide + wide) / 2 + 2 && Math.abs(one.top - top) < 64
         );
-        if (!onFire && !crowded) placed = { dx, top };
+        if (!onFire && !crowded) placed = { dx, top, wide };
       }
       if (!placed) half += 40;
     }
     spots.set(id, placed);
   }
   return { half, spots };
+}
+
+/** What the heading over the ground says: who is out there, and what is cooking. */
+function atTheFire(hands: readonly Hand[]): string {
+  const pots = hands.filter((one) => one.command).length;
+  const people = hands.length - pots;
+  const said = [
+    people ? `${people} ${people === 1 ? 'hand' : 'hands'}` : '',
+    pots ? `${pots} ${pots === 1 ? 'command' : 'commands'}` : '',
+  ].filter(Boolean);
+  return `${said.join(' and ')} at the fire`;
+}
+
+/** The pot a background command stands for, on its own fire. */
+const POT = { wide: 62, tall: 58 };
+
+/**
+ * A command left running in the background, as a pot on a fire of its own:
+ * lit and throwing sparks while it is going, cold once it has finished, and
+ * a sore red under the pot if it failed. Pressed, it is walked up to like
+ * anybody else out there.
+ */
+function simmering(
+  hand: Hand,
+  spot: { left: number; top: number },
+  does: Doings,
+  lit: (id: string, on: boolean) => void
+): HTMLElement {
+  const going = hand.where === 'out';
+  const it = box({ left: spot.left, top: spot.top - 4, width: POT.wide, height: POT.tall });
+  it.className = 'yard-hand';
+  it.style.cursor = 'pointer';
+  it.style.pointerEvents = 'auto';
+  it.addEventListener('mousedown', (event) => event.preventDefault());
+  it.addEventListener('click', () => does.press(`helper:${hand.id}`));
+  it.addEventListener('mouseenter', () => lit(hand.id, true));
+  it.addEventListener('mouseleave', () => lit(hand.id, false));
+
+  /* The first child is what lights when it is pointed at, so it is the pot. */
+  const pot = box({ left: 0, top: 0, width: POT.wide, height: POT.tall });
+  const fire = sprite(going ? KIT_NAMES.fire : KIT_NAMES.fireOut, 1);
+  fire.style.cssText += ';left:8px;top:26px';
+  if (going) fire.style.animation = 'yard-flicker 480ms steps(2,end) infinite alternate';
+  pot.appendChild(fire);
+  const hung = sprite(going ? KIT_NAMES.cauldronLit : KIT_NAMES.cauldron, 1);
+  hung.style.cssText += ';left:0;top:0';
+  pot.appendChild(hung);
+  pot.style.filter = going
+    ? 'brightness(.95)'
+    : hand.wrong
+      ? 'brightness(.6) sepia(.6) hue-rotate(-30deg) saturate(2.2)'
+      : 'brightness(.55) saturate(.2)';
+  it.appendChild(pot);
+  if (going) {
+    it.appendChild(
+      firelight({ left: -12, top: 14, width: POT.wide + 24, height: 50 }, 0.22, false)
+    );
+    for (let i = 0; i < 4; i += 1) {
+      it.appendChild(
+        box(
+          { left: 26 + ((i * 5) % 10), top: 30, width: 2, height: 2 },
+          `background:${i % 2 ? '#ffc98a' : '#ff8a4a'};animation:yard-spark ${1500 + i * 270}ms linear ${i * 380}ms infinite;opacity:0;pointer-events:none`
+        )
+      );
+    }
+  }
+  return it;
 }
 
 /** Where each session's strip of ground was left scrolled to. */
@@ -3756,7 +3827,8 @@ function handRow(
   const bar = document.createElement('div');
   bar.style.cssText = `display:flex;gap:${narrow ? 1 : 2}px;flex:none`;
   const filled = hand.tokenCount ? Math.max(1, Math.round((hand.tokenCount / most) * 10)) : 0;
-  for (let k = 0; k < 10; k += 1) {
+  /* A command spends no tokens of its own, so it has no bar to fill. */
+  for (let k = 0; k < (hand.command ? 0 : 10); k += 1) {
     const one = document.createElement('span');
     const on = k < filled;
     one.style.cssText = `width:${narrow ? 4 : 5}px;height:12px;background:${
@@ -3774,10 +3846,14 @@ function handRow(
   const cost = exact(
     narrow
       ? out
-        ? 'again to stop them'
+        ? hand.command
+          ? 'again to stop it'
+          : 'again to stop them'
         : 'again to send off'
       : out
-        ? 'press ✕ again to stop them'
+        ? hand.command
+          ? 'press ✕ again to stop it'
+          : 'press ✕ again to stop them'
         : 'press ✕ again to send off',
     11,
     '#f2665a'

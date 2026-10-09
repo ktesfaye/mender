@@ -958,6 +958,8 @@ async function boot(): Promise<void> {
     let sending: (Sent & { repository: string; number?: number }) | null = null;
     /** Somebody the session sent out, walked up to in the yard. */
     let walkedUp: Walked | null = null;
+    /** The next read of a background command's output, while its board is open. */
+    let tailing: number | undefined;
     let looked: {
       aim: Aim;
       checkout: string;
@@ -4557,19 +4559,27 @@ async function boot(): Promise<void> {
       const task = inside;
       const call = walked.hand.call;
       if (!task || !call) return;
-      const mine = { hand: walked.hand, recall: 'going' as const };
+      const mine: Walked = {
+        hand: walked.hand,
+        recall: 'going',
+        ...(walked.printed !== undefined ? { printed: walked.printed } : {}),
+      };
       walkedUp = mine;
       rewrite(helper(mine));
       const done = await client.agents.recall({ task: task.id, call }, { timeoutMs: 15000 });
       if (walkedUp?.hand.id !== walked.hand.id) return;
+      const printed = walkedUp.printed !== undefined ? { printed: walkedUp.printed } : {};
       walkedUp =
         done.success && done.data.stopped
-          ? { hand: walkedUp.hand, recall: 'done' }
+          ? { hand: walkedUp.hand, recall: 'done', ...printed }
           : {
+              ...printed,
               hand: walkedUp.hand,
               recall: 'refused',
               because: done.success
-                ? 'they had already come back'
+                ? walkedUp.hand.command !== undefined
+                  ? 'it had already finished'
+                  : 'they had already come back'
                 : done.error.kind === 'refused'
                   ? done.error.because
                   : 'nobody is in there',
@@ -4625,6 +4635,16 @@ async function boot(): Promise<void> {
     const readTrail = async (id: string): Promise<void> => {
       const task = inside;
       const call = walkedUp?.hand.call;
+      if (task && call && walkedUp?.hand.command !== undefined) {
+        window.clearTimeout(tailing);
+        const got = await client.agents.commandTail({ task: task.id, call }, { timeoutMs: 10000 });
+        if (walkedUp?.hand.id !== id) return;
+        walkedUp = { ...walkedUp, printed: got.success ? got.data : null };
+        rewrite(helper(walkedUp));
+        /* What it prints keeps coming for as long as it is going and you are looking. */
+        if (walkedUp.hand.where === 'out') tailing = window.setTimeout(() => void readTrail(id), 1500);
+        return;
+      }
       if (!task || !call) {
         if (walkedUp?.hand.id === id) walkedUp = { ...walkedUp, trail: null };
         return;
@@ -4695,7 +4715,7 @@ async function boot(): Promise<void> {
         return;
       }
       if (pick === 'recall' && walkedUp) {
-        walkedUp = { hand: walkedUp.hand, recall: 'armed' };
+        walkedUp = { ...walkedUp, recall: 'armed' };
         rewrite(helper(walkedUp));
         return;
       }

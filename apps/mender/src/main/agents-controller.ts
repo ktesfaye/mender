@@ -41,6 +41,7 @@ export function createAgentsController(
     hush: ({ task, untouched }) => agents.hush(task, untouched),
     recall: ({ task, call }) => agents.recall(task, call),
     helperTrail: ({ task, call }) => agents.helperTrail(task, call),
+    commandTail: ({ task, call }) => agents.commandTail(task, call),
     sendAway: ({ task, call }) => agents.sendAway(task, call),
     rest: ({ task }) => agents.rest(task),
     retryFailure: ({ task }) => agents.retryFailure(task),

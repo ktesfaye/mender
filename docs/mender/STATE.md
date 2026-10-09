@@ -3680,3 +3680,19 @@ a standing district has, the way it already kept clear of the islet. Driven in
 a dev instance on his own set of districts: the camp tucked in below that pier,
 the pier out over water again, a rowing boat tied up at it.
 
+
+### A background command stands at the fire (2026-10-08) — done
+
+A command left running in the background used to live only as a line under
+"what it did". It now stands in the yard beside whoever was sent out, as a pot
+on its own little fire: lit and throwing sparks while it is going, cold once it
+has finished, and counted in the heading ("1 hand and 2 commands at the fire")
+and on its own line in the table, without a token bar. Pressing it opens its
+board: what it was for, the command itself, whether it is still going, and the
+last of what it has printed, read off the file Claude writes its output to and
+following along while the board is open. "stop it" stops that command alone, in
+two presses, through the bridge's own stop for background tasks, and "take it
+off the yard" sends it away the same way a helper is. Driven in a dev instance:
+two backgrounded commands stood as one lit pot and one cold; pressing the lit
+one showed its ticks arriving live with the newest in view; two presses on stop
+it settled the pot, the step and the lantern.

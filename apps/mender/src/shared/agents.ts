@@ -304,6 +304,21 @@ export const deedSchema = z.object({
   running: z.boolean(),
   /** A command left running in the background, which can outlive its turn. */
   background: z.boolean().optional(),
+  /**
+   * What a background command needs to stand in the yard: the tool call that
+   * started it, Claude's own id for it, which is what stopping it names, the
+   * file its output is going to, and when it went.
+   */
+  job: z
+    .object({
+      call: z.string(),
+      id: z.string().optional(),
+      output: z.string().optional(),
+      since: z.number().optional(),
+      /** Sent away from the yard, so it is not drawn there again. */
+      away: z.boolean().optional(),
+    })
+    .optional(),
   wrong: z.boolean().optional(),
   /** The file this step touched, so the board knows what "open it" means. */
   path: z.string().optional(),
@@ -764,6 +779,12 @@ export const agentsContract = defineContract({
   sendAway: fallible({
     input: z.object({ task: z.string(), call: z.string() }),
     data: z.void(),
+    error: agentErrorSchema,
+  }),
+  /** The last of what a background command has printed. */
+  commandTail: fallible({
+    input: z.object({ task: z.string(), call: z.string() }),
+    data: z.string().nullable(),
     error: agentErrorSchema,
   }),
   /** Everything a helper did and said, off Claude's own record of them. */

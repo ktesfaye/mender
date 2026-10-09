@@ -295,6 +295,10 @@ export const KIT_NAMES = {
      Nothing in the margin is taller than the crate the designs already use. */
   pot: 'props/TX Village Props - Washtub 01.png',
   rack: 'props/TX Village Props - Weapon Rack 01.png',
+  /* A command left running in the background, in the yard: a pot of its own
+     on its own fire, lit while it is going. */
+  cauldron: 'props/TX Village Props - Campfire Cauldron 01.png',
+  cauldronLit: 'props/TX Village Props - Campfire Cauldron 01 Lit.png',
   /* Ours, not the kit's. See the note on loadCuts. */
   facingYou: 'folk/front-0',
   facingAway: 'folk/back-0',

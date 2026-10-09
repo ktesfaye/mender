@@ -27,10 +27,13 @@ export interface Walked {
   since?: string;
   /** What came back, as the session said it, and whether it is still coming. */
   reply?: { said: string; going: boolean };
+  /** For a command, the last of what it has printed: undefined until read, null when there is none. */
+  printed?: string | null;
 }
 
 export function helper(walked: Walked): Row[] {
   const { hand } = walked;
+  if (hand.command !== undefined) return command(walked, hand.command);
   const rows: Row[] = [{ kind: 'prose', text: hand.said }, { kind: 'gap' }];
   rows.push({
     kind: 'line',
@@ -100,6 +103,69 @@ export function helper(walked: Walked): Row[] {
   return rows;
 }
 
+/**
+ * A command left running in the background, walked up to: what it was for,
+ * the command itself, whether it is still going, and the last of what it has
+ * printed, which keeps coming while the board is open. Stopping it stops the
+ * command alone; the session carries on, and hears it was stopped.
+ */
+function command(walked: Walked, line: string): Row[] {
+  const { hand } = walked;
+  const going = hand.where === 'out';
+  const rows: Row[] = [{ kind: 'prose', text: hand.said }, { kind: 'gap' }];
+  rows.push({
+    kind: 'line',
+    text: going
+      ? hand.gone
+        ? `still going in the background, started ${hand.gone}`
+        : 'still going in the background'
+      : walked.recall === 'done'
+        ? 'you stopped it.'
+        : hand.wrong
+          ? 'it failed, or was stopped.'
+          : 'it finished.',
+    tone: hand.wrong ? 'sore' : 'faded',
+  });
+  rows.push({ kind: 'gap' }, ...saying(`\`\`\`sh\n${line}\n\`\`\``, undefined));
+  if (going || walked.recall) rows.push({ kind: 'gap' }, stopping(walked));
+  if (hand.call) rows.push(sendingAway(walked));
+  rows.push(
+    { kind: 'gap' },
+    { kind: 'heading', text: going ? 'what it is printing' : 'what it printed' }
+  );
+  if (walked.printed === undefined) rows.push({ kind: 'line', text: 'reading it…', tone: 'faded' });
+  else if (!walked.printed) rows.push({ kind: 'line', text: 'nothing yet.', tone: 'faded' });
+  else rows.push(...saying(`\`\`\`\n${walked.printed}\n\`\`\``, undefined));
+  return rows;
+}
+
+function stopping(walked: Walked): Row {
+  switch (walked.recall) {
+    case 'armed':
+      return {
+        kind: 'entry',
+        mark: '✗',
+        text: 'press again — the command stops where it is',
+        tone: 'sore',
+        pick: 'recall!',
+      };
+    case 'going':
+      return { kind: 'entry', mark: '✗', text: 'stopping it…', tone: 'faded' };
+    case 'done':
+      return { kind: 'entry', mark: '✗', text: 'stopped.', tone: 'faded' };
+    case 'refused':
+      return {
+        kind: 'entry',
+        mark: '✗',
+        text: `could not stop it${walked.because ? `: ${walked.because}` : '.'}`,
+        tone: 'sore',
+        pick: 'recall',
+      };
+    default:
+      return { kind: 'entry', mark: '✗', text: 'stop it', tone: 'faded', pick: 'recall' };
+  }
+}
+
 function standing(hand: Hand): string {
   if (hand.where === 'out') {
     const away = hand.background ? 'out on their own' : 'still out';
@@ -148,11 +214,21 @@ function sendingAway(walked: Walked): Row {
       kind: 'entry',
       mark: '✗',
       text:
-        walked.hand.where === 'out'
-          ? 'press again — they stop where they are and leave the yard for good'
-          : 'press again — they leave the yard for good',
+        walked.hand.command !== undefined
+          ? walked.hand.where === 'out'
+            ? 'press again — it stops and leaves the yard for good'
+            : 'press again — it leaves the yard for good'
+          : walked.hand.where === 'out'
+            ? 'press again — they stop where they are and leave the yard for good'
+            : 'press again — they leave the yard for good',
       tone: 'sore',
       pick: 'away!',
     };
-  return { kind: 'entry', mark: '✗', text: 'send them away', tone: 'faded', pick: 'away' };
+  return {
+    kind: 'entry',
+    mark: '✗',
+    text: walked.hand.command !== undefined ? 'take it off the yard' : 'send them away',
+    tone: 'faded',
+    pick: 'away',
+  };
 }

@@ -10,7 +10,7 @@
  * said and returns a value.
  */
 
-import type { Ask, Errand, Failure, Glance, Kit, Mood, Pack, Told } from '@shared/agents';
+import type { Ask, Deed, Errand, Failure, Glance, Kit, Mood, Pack, Told } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { answersFor } from '../board/work';
@@ -251,7 +251,10 @@ function sessionOf(
     plan: (from.plan ?? []).map((one) => ({ said: one.text, state: one.state })),
     steps: stepsOf(told?.deeds ?? []),
     made: madeOf(told),
-    agents: (told?.errands ?? []).map(handOf),
+    agents: [
+      ...(told?.errands ?? []).map(handOf),
+      ...(told?.deeds ?? []).filter((one) => one.job && !one.job.away).map(commandOf),
+    ],
     waiting: [
       ...[...unread].reverse().map((one) => ({ id: one.id, said: one.said, handed: true })),
       ...(from.waiting ?? []).map((one) => ({ id: one.id, said: one.text })),
@@ -568,6 +571,7 @@ function stepOf(deed: {
   diff?: string[];
   diffMore?: number;
   seq?: number;
+  job?: Deed['job'];
 }): Step {
   return {
     id: deed.id,
@@ -636,6 +640,32 @@ function handOf(errand: Errand): Hand {
     ...(errand.tokens ? { tokens: tokensSaid(errand.tokens), tokenCount: errand.tokens } : {}),
     ...(errand.since ? { since: errand.since } : {}),
     ...(errand.ran ? { ran: errand.ran } : {}),
+  };
+}
+
+/**
+ * A command it left running in the background, standing in the yard beside
+ * whoever it sent out: a pot of its own on a fire of its own, lit for as long
+ * as the command is going. Called by what it was for, the same words its step
+ * under "what it did" uses, and walked up to, stopped and sent away the same
+ * way a helper is.
+ */
+function commandOf(deed: DeedIn): Hand {
+  const job = deed.job!;
+  const plain = plainOf(deed);
+  const said = plain.said ?? deed.why ?? deed.did;
+  return {
+    id: `job:${job.call}`,
+    errand: said,
+    said,
+    where: deed.running ? 'out' : 'in-light',
+    ...(job.since ? { gone: agoOf(Date.now() - job.since), since: job.since } : {}),
+    tint: TINTS[hashOf(said) % TINTS.length] ?? TINTS[0]!,
+    call: job.call,
+    background: true,
+    ...(deed.wrong ? { wrong: true } : {}),
+    steps: [],
+    command: deed.did,
   };
 }
 

@@ -271,6 +271,12 @@ are standing in says what it is doing, the same as every other, since the
 light round it already says it is the one you are in. A village closed on one names it in the note
 the session gets when it opens again, so exactly that command is started
 again.
+And it stands in the yard as well, beside whoever was sent out: a pot of
+its own on its own little fire, lit and throwing sparks while the command is
+going and cold once it has finished. Pressing it lays its board over the
+yard the way a helper's does, what it was for, the command itself, and the
+last of what it has printed, following as it prints more, and "stop it"
+stops that command and nothing else in the same two presses.
 
 **Whoever it sent out can be walked up to, and called back.** Pressing one
 on the ground lays their own board over the yard: what they were sent for,

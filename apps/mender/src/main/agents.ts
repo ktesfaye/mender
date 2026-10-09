@@ -1,3 +1,4 @@
+import { open } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
@@ -204,6 +205,11 @@ export interface Agents {
     task: string,
     call: string
   ): Promise<{ success: true; data: void } | { success: false; error: TellError }>;
+  /** The last of what a background command has printed, read off its own output file. */
+  commandTail(
+    task: string,
+    call: string
+  ): Promise<{ success: true; data: string | null } | { success: false; error: TellError }>;
   /** What a helper did and said, read off Claude's own record of them. */
   helperTrail(
     task: string,
@@ -1497,7 +1503,7 @@ export function createAgents(
       if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
       const done = await runtimes.acp.stopSubagent({
         conversationId: conversation,
-        toolCallId: call,
+        toolCallId: jobOf(houses.get(task), call) ?? call,
       });
       log.info('agents: recall', {
         area: 'agents',
@@ -1513,16 +1519,31 @@ export function createAgents(
     async sendAway(task, call) {
       await loaded;
       const house = houses.get(task);
-      const out = house
-        ? peek(house.state).told.errands.find((one) => one.call === call && one.running)
-        : undefined;
+      const told = house ? peek(house.state).told : undefined;
+      const out =
+        told?.errands.find((one) => one.call === call && one.running) ??
+        told?.deeds.find((one) => one.job?.call === call && one.running);
       const conversation = lodgers[task];
       if (out && conversation)
-        await runtimes.acp.stopSubagent({ conversationId: conversation, toolCallId: call });
+        await runtimes.acp
+          .stopSubagent({
+            conversationId: conversation,
+            toolCallId: jobOf(house, call) ?? call,
+          })
+          .catch(() => undefined);
       sendAway(call);
       log.info('agents: sent a helper away', { area: 'agents', task, call, wasOut: !!out });
       house?.again();
       return { success: true, data: undefined };
+    },
+
+    async commandTail(task, call) {
+      await loaded;
+      const house = houses.get(task);
+      const output = house
+        ? peek(house.state).told.deeds.find((one) => one.job?.call === call)?.job?.output
+        : undefined;
+      return { success: true, data: output ? await tailOf(output) : null };
     },
 
     async helperTrail(task, call) {
@@ -3015,9 +3036,15 @@ function withoutStops(turn: TranscriptTurn): TranscriptTurn {
 const STEERED = /-steer-/;
 
 /** The helpers still on the yard, each with how many tokens they are working with. */
-function helpersIn<T extends { errands: Errand[] }>(told: T, session: string | null): T {
+function helpersIn<T extends { errands: Errand[]; deeds: Deed[] }>(
+  told: T,
+  session: string | null
+): T {
   return {
     ...told,
+    deeds: told.deeds.map((one) =>
+      one.job && isAway(one.job.call) ? { ...one, job: { ...one.job, away: true } } : one
+    ),
     errands: told.errands
       .filter((one) => !isAway(one.call))
       .map((one) => {
@@ -3292,7 +3319,9 @@ function toldFrom(
     note,
     tool: node.kind,
     running: node.status === 'running',
-    ...(node.kind === 'execute-tool-call' && node.background ? { background: true } : {}),
+    ...(node.kind === 'execute-tool-call' && node.background
+      ? { background: true, job: jobFrom(node.toolCallId, node.outputText, at) }
+      : {}),
     ...(node.status === 'error' ? { wrong: true } : {}),
     ...(path ? { path } : {}),
     ...(diff ? { diff } : {}),
@@ -3301,6 +3330,58 @@ function toldFrom(
 
   for (const child of node.children ?? []) {
     toldFrom(child, over, root, stamp, earliest, deeds, errands, written);
+  }
+}
+
+/**
+ * Claude's own id for a command it left running, and the file it is writing
+ * to, both read off what the command said back when it went: "Command running
+ * in background with ID: b1x2. Output is being written to: /tmp/…/b1x2.output".
+ */
+function jobFrom(call: string, said: string | undefined, at: number): NonNullable<Deed['job']> {
+  const id = said?.match(/in background with ID: ([\w-]+)/)?.[1];
+  const output = said?.match(/Output is being written to: (\S+?\.output)\b/)?.[1];
+  return {
+    call,
+    ...(id ? { id } : {}),
+    ...(output ? { output } : {}),
+    ...(at ? { since: at } : {}),
+  };
+}
+
+/** What stopping a background command names: Claude's id for it, when there is one. */
+function jobOf(house: House | undefined, call: string): string | undefined {
+  return house
+    ? peek(house.state).told.deeds.find((one) => one.job?.call === call)?.job?.id
+    : undefined;
+}
+
+/** How much of a command's output its board shows, so the newest is always in view. */
+const TAIL_LINES = 30;
+
+/** The last of a command's output, said plainly: no colour codes, no carriage-return redraws. */
+async function tailOf(file: string): Promise<string | null> {
+  try {
+    const handle = await open(file, 'r');
+    try {
+      const { size } = await handle.stat();
+      const length = Math.min(size, 16_000);
+      const buffer = Buffer.alloc(length);
+      await handle.read(buffer, 0, length, size - length);
+      return buffer
+        .toString('utf8')
+        .replace(/\u001b\[[0-9;?]*[A-Za-z]/g, '')
+        .split('\n')
+        .map((line) => line.split('\r').filter(Boolean).at(-1) ?? '')
+        .slice(size > length ? 1 : 0)
+        .slice(-TAIL_LINES)
+        .join('\n')
+        .trimEnd();
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return null;
   }
 }
 
