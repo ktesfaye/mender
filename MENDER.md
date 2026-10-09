@@ -1227,7 +1227,12 @@ hearth on a cold evening, and black smoke sputters out of one that has broken.
 Clouds pass over land and water alike. Rain comes down slanted by the wind, rings
 the sea and leaves the ground dark and shining for a good while after; a storm
 throws lightning; snow falls, lies on the grass and the roofs and leaves the
-trodden paths open, and melts slowly once it stops; mist lies in drifts. Stars
+trodden paths open, and melts slowly once it stops; and if it lies long enough
+the sea freezes the way it does at the bottom of the world, a shelf of ice out
+from the coast with a blue cliff along its edge, broken pack drifting off it
+into the open water and icebergs standing out beyond, until it thaws back
+slower still. Nothing sails in it; whatever was tied up is iced in at its
+pier. Mist lies in drifts. Stars
 show in a still sea on a clear night. Gulls cross the island by day with their
 shadows under them, butterflies work the bushes on a bright one, a fish jumps off
 the shore now and then, fireflies come out over the bushes after dark, and in

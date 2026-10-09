@@ -174,6 +174,9 @@ export class Fleet {
   private scale = 1;
   private sorted = 0;
   private view = { x: -Infinity, y: -Infinity, width: Infinity, height: Infinity };
+  /** How far the sea has iced over: past a little nobody sets out, and whoever
+      lies at anchor weighs it and goes before they are frozen in. */
+  frozen = 0;
 
   constructor(
     private readonly paths: Paths,
@@ -283,6 +286,14 @@ export class Fleet {
         if (one.dock?.taken === one) one.dock.taken = null;
         one.view.destroy({ children: true });
         this.vessels.splice(i, 1);
+        continue;
+      }
+      /* Frozen in, nothing makes way through the pack: whatever was under
+         sail when the ice came is lost to sight rather than seen ploughing
+         through it. What is tied up stays tied up, iced in at its pier. */
+      if (this.frozen > 0.5 && one.state === 'sailing') {
+        one.view.alpha -= seconds * 0.5;
+        if (one.view.alpha <= 0) one.gone = true;
         continue;
       }
       this.sail(one, now, seconds);
@@ -459,6 +470,7 @@ export class Fleet {
     this.nextSail -= seconds;
     if (this.nextSail > 0) return;
     this.nextSail = this.night ? 14 + Math.random() * 16 : 6 + Math.random() * 10;
+    if (this.frozen > 0.2) return;
     const count = (kind: Kind): number => this.vessels.filter((one) => one.kind === kind).length;
     const scale = this.night ? 0.5 : 1;
     const want: [Kind, number][] = [
@@ -620,7 +632,7 @@ export class Fleet {
       const berth = one.dock && this.berthFor(one.dock, one.kind);
       if (berth) this.steer(one, berth.heading, seconds);
       this.tied(one, now, seconds);
-    } else if (one.state === 'anchored' && now > one.waitUntil) {
+    } else if (one.state === 'anchored' && (now > one.waitUntil || this.frozen > 0.2)) {
       const to = this.edge(-1);
       one.path = this.route(one, to.at, CLEAR[one.kind]) ?? [to.at];
       one.outbound = true;
@@ -858,7 +870,7 @@ export class Fleet {
     if (this.nextFloat <= 0) {
       this.nextFloat = 20 + Math.random() * 30;
       const drifting = this.floaters.filter((one) => one.kind === 'barrel' || one.kind === 'drift');
-      if (drifting.length < 3) {
+      if (drifting.length < 3 && this.frozen < 0.2) {
         const at = this.someWater(3, 9);
         if (at) this.floater(Math.random() < 0.5 ? 'barrel' : 'drift', at);
       }

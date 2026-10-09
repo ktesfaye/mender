@@ -738,7 +738,14 @@ async function boot(): Promise<void> {
       /* The sea is told first, from the last frame's sky: the picture the
          grade is about to take has to have the sea already marked in it. */
       const was = drawn.atmosphere.sky.current;
-      drawn.water.weather(dimmed ? 0 : was.rain, was.stars, was.ambient, drawn.atmosphere.graded);
+      drawn.water.weather(
+        dimmed ? 0 : was.rain,
+        was.stars,
+        was.ice,
+        was.ambient,
+        drawn.atmosphere.graded
+      );
+      drawn.crowd.fleet.frozen = was.ice;
       drawn.atmosphere.tick(pixi.screen);
       const look = drawn.atmosphere.sky.current;
       drawn.walkers.tick(now, seconds, look.dark > 0.6);

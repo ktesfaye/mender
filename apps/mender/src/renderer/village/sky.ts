@@ -93,6 +93,9 @@ export interface SkyLook {
   cover: number;
   /** How wet the ground is, which lags the rain. */
   wet: number;
+  /** How far the sea has frozen, which lags the snow a good deal more than
+      the ground does and stays a good deal longer. */
+  ice: number;
   /** A lightning flash, nought to one, over in a moment. */
   flash: number;
   /** Stars on the water: dark and a clear sky. */
@@ -152,6 +155,7 @@ export class Sky {
     wind: 0,
     cover: 0,
     wet: 0,
+    ice: 0,
     flash: 0,
     stars: 0,
     hour: 12,
@@ -209,6 +213,7 @@ export class Sky {
     if (!this.settled) {
       look.cover = target.snow > 0.05 ? 1 : 0;
       look.wet = target.rain > 0.05 ? 1 : 0;
+      look.ice = target.snow > 0.05 ? 1 : 0;
     } else {
       look.cover =
         target.snow > 0.05
@@ -218,6 +223,10 @@ export class Sky {
         target.rain > 0.05
           ? Math.min(1, look.wet + seconds * target.rain * 0.06)
           : Math.max(0, look.wet - seconds * 0.003);
+      look.ice =
+        target.snow > 0.05
+          ? Math.min(1, look.ice + seconds * target.snow * 0.012)
+          : Math.max(0, look.ice - seconds * 0.0015);
     }
 
     /* Lightning: a sudden white-blue flash, a second fainter one on its heels,

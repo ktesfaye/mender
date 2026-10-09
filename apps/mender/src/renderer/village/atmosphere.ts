@@ -866,7 +866,7 @@ export class Atmosphere {
 
   private tickFish(look: SkyLook, seconds: number, view: Rect): void {
     this.nextFish -= seconds;
-    if (this.nextFish <= 0 && look.dark < 0.6 && look.cover < 0.5) {
+    if (this.nextFish <= 0 && look.dark < 0.6 && look.cover < 0.5 && look.ice < 0.3) {
       this.nextFish = 5 + Math.random() * 10;
       const spot = this.shoreIn(view);
       if (spot) {
