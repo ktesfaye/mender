@@ -3713,3 +3713,18 @@ all four with the whole village standing. Checked by composing his own set of
 districts, where only the islet's pier is left, and the full island, where all
 four are.
 
+### The boats are boats from every side, and keep off the cliffs (2026-10-09) — done
+
+The boats were cut-outs drawn side on and flipped, so anything heading up or
+down the screen read as a plank, and they steered by the map's idea of land, so
+one could tie up on a cliff face standing out over what the map called sea.
+Now each boat is a small model, hull, mast, sails, crew, drawn by
+`tools/boats.py` at sixteen headings in the kit's own lighting, wood and ink,
+the sloop's boom and the ship's yards carried round so a sail always shows its
+face; a boat comes about at its own pace towards where it is going. The water
+it keeps to is read off the same picture of the ground the foam uses, and a
+pier is only called at if a whole hull fits along its side on that water.
+Driven in a dev instance on his own set of districts at noon: a rowing boat and
+a sloop tied up along the islet's pier, sloops coming about and leaving wakes,
+the ship, the raft and the fishers out on open water, nothing on a cliff.
+

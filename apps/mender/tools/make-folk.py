@@ -47,6 +47,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from boats import fleet_frames
+
 HERE = Path(__file__).resolve().parent
 OUT = HERE.parent / "assets" / "folk"
 
@@ -1419,13 +1421,10 @@ def extra_frames() -> dict[str, Image.Image]:
 # The sea's own traffic
 # ---------------------------------------------------------------------------
 #
-# What sails past the island on its own, nobody's errand: a sloop with a
-# sailor at the tiller, a rowing boat, a log raft poled along under a patched
-# square sail, a fisher at anchor with a rod, and far out a two-masted ship.
-# Then what floats: a buoy, a barrel, a log, a duck swimming, and the lap of
-# water at a hull and the rings a wake leaves. All side on and facing right,
-# the renderer flips them, and anchored bottom-centre like everything else,
-# the bottom being the water.
+# What sails past the island on its own, nobody's errand, is modelled and drawn
+# from every heading in `boats.py`. Here is what floats: a buoy, a barrel, a
+# log, a duck swimming, and the rings a wake leaves, anchored bottom-centre
+# like everything else, the bottom being the water.
 
 SEA = {**ANI, "F": hx(0xEAF6F2), "Q": hx(0xBFE2E0), "v": hx(0x8FC4C6)}
 
@@ -1438,187 +1437,6 @@ def line(c: Cv, x0: int, y0: int, x1: int, y1: int, ch: str, every: int = 1) -> 
     steps = max(abs(x1 - x0), abs(y1 - y0), 1)
     for i in range(0, steps + 1, every):
         c.px(round(x0 + (x1 - x0) * i / steps), round(y0 + (y1 - y0) * i / steps), ch)
-
-
-def hull(c: Cv, x0: int, x1: int, top: int, bands: str, stern: float, bow: float,
-         seams: str = "j") -> None:
-    """A hull side on, stern at x0 and bow at x1, its rows coloured by `bands`
-    top down; the bow sweeps up a little, and planks show as dark seams."""
-    depth = len(bands)
-    for r in range(depth):
-        a = x0 + round(r * stern)
-        b = x1 - round(r * bow)
-        ch = bands[r]
-        for x in range(a, b + 1):
-            c.px(x, top + r, ch)
-        if ch in "L" and r % 3 == 2:
-            for x in range(a + 2, b - 1, 11):
-                c.px(x, top + r, seams)
-    for k in range(1, 4):
-        for x in range(x1 - 2 * (4 - k), x1 + 1):
-            c.px(x, top - k, bands[0] if k == 1 else bands[1])
-
-
-def sea_frame(width: int, height: int, layers: list) -> Image.Image:
-    """Stack a boat's layers, each ringed in the kit's ink on its own so a sail
-    reads in front of a mast and a hull in front of whoever sits in it."""
-    out = Image.new("RGBA", (width + 2, height + 2), (0, 0, 0, 0))
-    for layer in layers:
-        if isinstance(layer, Cv):
-            out.alpha_composite(draw(outlined(layer.rows()), ANI))
-        else:
-            image, x, y = layer
-            out.alpha_composite(image, (x + 1, y + 1))
-    return out
-
-
-def cropped(frames: dict[str, Image.Image]) -> dict[str, Image.Image]:
-    """Every frame of one boat cut to the same box, so the waterline stays put."""
-    boxes = [f.getbbox() for f in frames.values() if f.getbbox()]
-    x0 = min(b[0] for b in boxes)
-    y0 = min(b[1] for b in boxes)
-    x1 = max(b[2] for b in boxes)
-    y1 = max(b[3] for b in boxes)
-    return {k: f.crop((x0, y0, x1, y1)) for k, f in frames.items()}
-
-
-def seated(rows: list[str]) -> Image.Image:
-    return draw(rows)
-
-
-def rowboat(frame: int) -> Image.Image:
-    w, h = 66, 36
-    body = Cv(w, h)
-    hull(body, 2, 63, 24, "aLLLjLLjB", 0.6, 1.6)
-    oars = Cv(w, h)
-    bx, by = [(4, 33), (15, 34), (54, 32), (42, 27)][frame]
-    line(oars, 34, 22, bx, by, "a")
-    line(oars, 35, 22, bx + 1, by, "f")
-    oars.rect(bx - 2, by, bx + 2, by + 1, "L")
-    return sea_frame(w, h, [(seated(SIT), 27, 3), body, oars])
-
-
-def sloop(bob: int) -> Image.Image:
-    w, h = 100, 112
-    d = bob
-    rig = Cv(w, h)
-    line(rig, 47, 2 + d, 4, 92 + d, "j", 1)
-    for y in range(2 + d, 95 + d):
-        rig.px(47, y, "j")
-        rig.px(48, y, "B")
-    rig.rect(49, 2 + d, 60, 4 + d, "R")
-    rig.rect(49, 5 + d, 55, 6 + d, "R")
-    sail = Cv(w, h)
-    for y in range(8 + d, 85 + d):
-        t = (y - 8 - d) / 76
-        left = round(46 - 38 * t - 3 * (1 - (2 * t - 1) ** 2))
-        for x in range(left, 47):
-            seam = (y - 8 - d) % 10 == 9
-            edge = x <= left + 1
-            sail.px(x, y, "c" if seam or edge or x == 46 else "C")
-    sail.rect(5, 85 + d, 48, 86 + d, "j")
-    for y in range(12 + d, 87 + d):
-        right = 49 + round((y - 12 - d) * 41 / 80)
-        for x in range(50, right + 1):
-            sail.px(x, y, "w" if x >= right - 1 or (y - d) % 10 == 0 else "W")
-    body = Cv(w, h)
-    hull(body, 2, 96, 93 + d, "aLRRLLjLLjBB", 0.5, 2.6)
-    return sea_frame(w, h, [rig, sail, (seated(SIT), 12, 73 + d), body])
-
-
-def raft(frame: int) -> Image.Image:
-    w, h = 76, 70
-    lean = frame
-    rig = Cv(w, h)
-    for y in range(8, 56):
-        rig.px(29, y, "L")
-        rig.px(30, y, "j")
-    rig.rect(9, 9, 50, 10, "j")
-    for y in range(11, 42):
-        for x in range(10 + (y > 30) * lean, 50 - (y < 18) * lean):
-            rig.px(x, y, "C" if (x * 3 + y) % 13 else "c")
-    rig.rect(13, 15, 20, 22, "b")
-    rig.rect(36, 27, 44, 33, "a")
-    for x in range(10, 50, 3):
-        rig.px(x, 41, "c")
-    pole = Cv(w, h)
-    line(pole, 66 - lean, 14, 72 + lean, 69, "j")
-    deck = Cv(w, h)
-    deck.rect(3, 47, 13, 55, "L")
-    deck.rect(3, 50, 13, 51, "j")
-    deck.rect(1, 56, 72, 57, "L")
-    deck.rect(1, 58, 72, 62, "j")
-    for x in range(3, 72, 6):
-        deck.rect(x, 58, x + 3, 61, "B")
-        deck.rect(x + 1, 59, x + 2, 60, "a")
-    deck.rect(12, 56, 13, 62, "t")
-    deck.rect(56, 56, 57, 62, "t")
-    poler = TOWNSFOLK["g"]()["front-0"]
-    return sea_frame(w, h, [rig, (poler, 52, 29), pole, deck])
-
-
-def fisher(frame: int) -> Image.Image:
-    w, h = 74, 52
-    rod = Cv(w, h)
-    tip = (58, 3) if frame == 0 else (59, 9)
-    line(rod, 30, 30, tip[0], tip[1], "j")
-    end = (72, 50) if frame == 0 else (68, 50)
-    line(rod, tip[0], tip[1], end[0], end[1], "w", 2 - frame)
-    body = Cv(w, h)
-    body.rect(36, 34, 41, 39, "I")
-    body.rect(36, 34, 41, 35, "i")
-    hull(body, 2, 60, 40, "aSSsSsB", 0.6, 1.6, "s")
-    return sea_frame(w, h, [rod, (seated(SIT), 16, 18), body])
-
-
-def ship(bob: int) -> Image.Image:
-    w, h = 184, 170
-    d = bob
-    shrouds = Cv(w, h)
-    for m, top in ((70, 6), (116, 16)):
-        for foot in (m - 26, m + 26):
-            line(shrouds, m, top + d, foot, 126 + d, "j", 2)
-    line(shrouds, 70, 6 + d, 12, 112 + d, "j")
-    masts = Cv(w, h)
-    for m, top in ((70, 4), (116, 14)):
-        for y in range(top + d, 128 + d):
-            masts.px(m, y, "j")
-            masts.px(m + 1, y, "B")
-    masts.rect(72, 2 + d, 86, 6 + d, "R")
-    masts.rect(118, 12 + d, 130, 16 + d, "R")
-    sails = Cv(w, h)
-    tiers = [
-        (70, 12, 40, 20), (70, 46, 96, 30),
-        (116, 22, 48, 17), (116, 54, 98, 26),
-    ]
-    for i, (m, y0, y1, half) in enumerate(tiers):
-        sails.rect(m - half - 2, y0 + d - 2, m + half + 2, y0 + d - 1, "j")
-        for y in range(y0 + d, y1 + d):
-            t = (y - y0 - d) / max(1, y1 - y0)
-            belly = round(3 * (1 - (2 * t - 1) ** 2))
-            lo, hi = m - half - belly, m + half + belly
-            for x in range(lo, hi + 1):
-                band = i % 2 == 1 and abs(y - d - (y0 + y1) / 2) < 4
-                edge = x in (lo, hi) or (y - y0 - d) % 9 == 8
-                sails.px(x, y, "R" if band else ("c" if edge else "C"))
-    for y in range(24 + d, 104 + d):
-        right = 118 + round((y - 24 - d) * 0.62)
-        for x in range(146, min(right, 176) + 1):
-            sails.px(x, y, "w" if x >= right - 1 else "W")
-    crew = [(TOWNSFOLK["e"]()["front-0"], 18, 86 + d), (TOWNSFOLK["f"]()["back-0"], 132, 92 + d)]
-    body = Cv(w, h)
-    line(body, 158, 118 + d, 182, 100 + d, "j")
-    line(body, 158, 119 + d, 182, 101 + d, "B")
-    body.rect(4, 106 + d, 44, 124 + d, "L")
-    body.rect(4, 106 + d, 44, 107 + d, "a")
-    for x in range(8, 42, 7):
-        body.rect(x, 112 + d, x + 2, 114 + d, "x")
-    body.rect(126, 112 + d, 156, 124 + d, "L")
-    body.rect(126, 112 + d, 156, 113 + d, "a")
-    hull(body, 2, 166, 124 + d, "aaLLjLLCCCLLjLLjBBBjj", 0.3, 1.9)
-    for x in range(10, 150, 13):
-        body.rect(x, 132 + d, x + 3, 134 + d, "x")
-    return sea_frame(w, h, [shrouds, masts, sails, *crew, body])
 
 
 def buoy(tilt: int) -> list[str]:
@@ -1649,13 +1467,6 @@ DRIFT = [
 DUCK_SWIM = [["...GG.", "...GeY", "bbbbW.", "BbbbB."], ["......", "...GG.", "bbbGeY", "BbbbB."]]
 
 
-def lap(width: int, frame: int) -> list[str]:
-    """The water lapping at a hull: a row of foam with gaps that walk."""
-    row1 = "".join("F" if (x + frame * 2) % 5 else "." for x in range(width))
-    row2 = "".join("Q" if (x + frame * 3) % 4 == 0 else "." for x in range(width + 4))
-    return ["." * 2 + row1 + "." * 2, row2]
-
-
 def ring(radius: int) -> list[str]:
     """One ring of a wake, squashed because the sea is seen from above and south."""
     w, h = radius * 2 + 1, max(3, radius + 1)
@@ -1671,6 +1482,12 @@ def ring(radius: int) -> list[str]:
     return rows
 
 
+# Where in its frame a picture stands on the world, for the frames that do not
+# stand on their bottom-centre: the boats, drawn turning, stand on the water
+# under their middle.
+ANCHORS: dict[str, tuple[float, float]] = {}
+
+
 def seafarers() -> dict[str, Image.Image]:
     out: dict[str, Image.Image] = {}
 
@@ -1678,23 +1495,13 @@ def seafarers() -> dict[str, Image.Image]:
         for name, image in group(frames).items():
             out[f"{prefix}-{name}"] = image
 
-    def boat(prefix, frames):
-        for name, image in cropped(frames).items():
-            out[f"{prefix}-{name}"] = image
-
-    boat("sloop", {str(i): sloop(i) for i in range(2)})
-    boat("row", {str(i): rowboat(i) for i in range(4)})
-    boat("raft", {str(i): raft(i) for i in range(2)})
-    boat("fisher", {str(i): fisher(i) for i in range(2)})
-    boat("ship", {str(i): ship(i) for i in range(2)})
+    for name, (image, anchor) in fleet_frames(TOWNSFOLK).items():
+        out[name] = image
+        ANCHORS[name] = anchor
     add("buoy", {str(i): buoy(i) for i in range(2)})
     add("barrel", {str(i): rows for i, rows in enumerate(BARREL)})
     add("drift", {str(i): rows for i, rows in enumerate(DRIFT)})
     add("duck-swim", {str(i): rows for i, rows in enumerate(DUCK_SWIM)})
-    for kind in ("sloop", "row", "raft", "fisher", "ship"):
-        width = out[f"{kind}-0"].width - 4
-        for i in range(2):
-            out[f"lap-{kind}-{i}"] = sea(lap(width, i))
     for i, radius in enumerate((3, 5, 7, 9)):
         out[f"ring-{i}"] = sea(ring(radius))
     return out
@@ -1739,6 +1546,9 @@ def main() -> None:
             "rotated": False,
             "trimmed": False,
         }
+        if name in ANCHORS:
+            ax, ay = ANCHORS[name]
+            meta[name]["anchor"] = {"x": round(ax, 5), "y": round(ay, 5)}
 
     OUT.mkdir(parents=True, exist_ok=True)
     sheet.save(OUT / "folk.png")

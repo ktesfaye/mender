@@ -25,6 +25,12 @@ import type { Paths, Spot } from './walkers';
  * The way round the island is found on the sea's own grid, a cell a step,
  * keeping off the coast by however much water that boat draws, and pulled
  * straight wherever the water allows so a boat sails rather than staggers.
+ * The coast is the one the foam is measured against, the ground as it is
+ * drawn, so a cliff face standing out over the map's sea is land to a boat.
+ *
+ * Every boat is drawn at sixteen headings and comes about at its own pace
+ * towards wherever it is going, a ship slowly and a rowing boat quickly, and
+ * lies along a pier when it is tied up rather than across it.
  */
 
 type Kind = 'ship' | 'sloop' | 'row' | 'raft' | 'fisher';
@@ -34,6 +40,13 @@ type Facing = 'N' | 'E' | 'S' | 'W';
 const SPEED: Record<Kind, number> = { ship: 9, sloop: 15, row: 11, raft: 6, fisher: 9 };
 /** How many cells of water a boat keeps between itself and the coast. */
 const CLEAR: Record<Kind, number> = { ship: 7, sloop: 3, row: 2, raft: 2, fisher: 2 };
+/** How long each is and how broad, as it is modelled, in world pixels. */
+const LENGTH: Record<Kind, number> = { ship: 118, sloop: 58, row: 32, raft: 40, fisher: 34 };
+const BEAM: Record<Kind, number> = { ship: 34, sloop: 20, row: 13, raft: 27, fisher: 13 };
+/** How fast it comes about, radians a second. */
+const TURN: Record<Kind, number> = { ship: 0.3, sloop: 0.8, row: 1.4, raft: 0.5, fisher: 1.1 };
+/** How many headings each is drawn at, a turn divided evenly from east. */
+const HEADINGS = 16;
 /** How each one's frames go: how many, and how long each is held. */
 const FRAMES: Record<Kind, [number, number]> = {
   ship: [2, 900],
@@ -42,13 +55,13 @@ const FRAMES: Record<Kind, [number, number]> = {
   raft: [2, 800],
   fisher: [2, 1400],
 };
-/** Where its lantern hangs, from the foot of the sprite, facing right. */
+/** Where its lantern hangs: how far along the keel from the middle, and how high. */
 const LANTERN: Record<Kind, [number, number]> = {
-  ship: [-78, -44],
-  sloop: [-44, -22],
-  row: [-26, -10],
-  raft: [-30, -16],
-  fisher: [-22, -12],
+  ship: [-62, 28],
+  sloop: [-29, 12],
+  row: [-13, 6],
+  raft: [4, 22],
+  fisher: [-14, 6],
 };
 /** How far past the island the sea's grid runs, in cells. */
 const MARGIN = 14;
@@ -59,12 +72,12 @@ const TOWNSFOLK = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 interface Dock {
   district: string;
   facing: Facing;
+  /** The box the pier is drawn in. */
+  box: { x: number; y: number; width: number; height: number };
   /** The end of the pier on land, walkable. */
   shore: Spot;
   /** The end of the pier out over the water, where people step aboard. */
   tip: Spot;
-  /** Where a boat lies alongside. */
-  berth: Spot;
   /** Who is tied up here, if anybody. */
   taken: Vessel | null;
 }
@@ -73,11 +86,13 @@ interface Vessel {
   kind: Kind;
   view: Container;
   body: Sprite;
-  lap: Sprite;
+  /** Which texture it is showing, so it is only swapped when that changes. */
+  shown: string;
   x: number;
   y: number;
   path: Spot[];
-  flip: boolean;
+  /** Which way its bow points, radians clockwise from east. */
+  heading: number;
   frame: number;
   frameAt: number;
   /** Sailing somewhere, tied up at a dock, or lying at anchor. */
@@ -165,7 +180,7 @@ export class Fleet {
     private readonly laneAt: (y: number) => Container,
     layout: Layout,
     buildings: readonly Building[],
-    land: ReadonlySet<string>,
+    private readonly wet: (x: number, y: number) => boolean,
     extent: { x: number; y: number; width: number; height: number }
   ) {
     this.wakes.eventMode = 'none';
@@ -174,11 +189,20 @@ export class Fleet {
     this.cols = Math.ceil(extent.width / CELL) + MARGIN * 2;
     this.rows = Math.ceil(extent.height / CELL) + MARGIN * 2;
     const solid = new Uint8Array(this.cols * this.rows);
+    // A cell with any ground drawn in it at all is not sea.
+    const probe = CELL / 4;
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
-        const cx = this.x0 + c;
-        const cy = -(this.y0 + r) - 1;
-        if (land.has(`${cx},${cy}`)) solid[r * this.cols + c] = 1;
+        const left = (this.x0 + c) * CELL;
+        const top = (this.y0 + r) * CELL;
+        dry: for (let py = probe / 2; py < CELL; py += probe) {
+          for (let px = probe / 2; px < CELL; px += probe) {
+            if (!wet(left + px, top + py)) {
+              solid[r * this.cols + c] = 1;
+              break dry;
+            }
+          }
+        }
       }
     }
     for (const building of buildings) {
@@ -205,13 +229,17 @@ export class Fleet {
     }
     this.clear = clearance(solid, this.cols, this.rows);
     /* A pier the island has grown round, its end over grass now rather than
-       water, or one no boat can get to from the open sea, is not a dock. */
-    const usable = this.docks.filter(
-      (dock) =>
-        !land.has(`${Math.floor(dock.tip.x / CELL)},${Math.floor(-dock.tip.y / CELL)}`) &&
-        this.clearAt(dock.berth) >= 1 &&
-        [0, 1, 2, 3].some((side) => !!this.route(this.edge(side).at, dock.berth, 1))
-    );
+       water, one with no room alongside it for a boat, or one no boat can get
+       to from the open sea, is not a dock. */
+    const usable = this.docks.filter((dock) => {
+      if (!wet(dock.tip.x, dock.tip.y)) return false;
+      const berth = this.berthFor(dock, 'row');
+      return (
+        !!berth &&
+        this.clearAt(berth) >= 1 &&
+        [0, 1, 2, 3].some((side) => !!this.route(this.edge(side).at, berth, 1))
+      );
+    });
     this.docks.splice(0, this.docks.length, ...usable);
     this.seed();
   }
@@ -225,11 +253,12 @@ export class Fleet {
 
   /** Something was pushed: a sloop is loaded at that district's dock and sails. */
   depart(district: string): void {
+    const fits = (one: Dock): boolean => !one.taken && !!this.berthFor(one, 'sloop');
     const dock =
-      this.docks.find((one) => one.district === district && !one.taken) ??
-      this.docks.find((one) => !one.taken);
-    if (!dock) return;
-    const vessel = this.make('sloop', berthFor(dock, 'sloop'));
+      this.docks.find((one) => one.district === district && fits(one)) ?? this.docks.find(fits);
+    const berth = dock && this.berthFor(dock, 'sloop');
+    if (!dock || !berth) return;
+    const vessel = this.make('sloop', berth, berth.heading);
     vessel.view.alpha = 0;
     this.moor(vessel, dock, performance.now(), 0);
     this.board(vessel, dock, 1 + Math.floor(Math.random() * 2));
@@ -310,29 +339,69 @@ export class Fleet {
     const { x, y, width, height } = building;
     let shore: Spot;
     let tip: Spot;
-    let berth: Spot;
     if (facing === 'N') {
       shore = { x: px, y: y + height - 6 };
       tip = { x: px, y: y + 22 };
-      berth = { x: px + 44, y: tip.y + 30 };
     } else if (facing === 'S') {
       shore = { x: px, y: y + 6 };
       tip = { x: px, y: y + height - 24 };
-      berth = { x: px + 44, y: tip.y + 14 };
     } else if (facing === 'E') {
       const deck = y + height * 0.42;
       shore = { x: x + 4, y: deck };
       tip = { x: x + width - 26, y: deck };
-      berth = { x: tip.x + 4, y: y + height + 18 };
     } else {
       const deck = y + height * 0.42;
       shore = { x: x + width - 4, y: deck };
       tip = { x: x + 26, y: deck };
-      berth = { x: tip.x - 4, y: y + height + 18 };
     }
     const ashore = this.paths.walkableNear(shore, 8);
     if (!ashore) return null;
-    return { district: building.district, facing, shore: ashore, tip, berth, taken: null };
+    return {
+      district: building.district,
+      facing,
+      box: { x, y, width, height },
+      shore: ashore,
+      tip,
+      taken: null,
+    };
+  }
+
+  /**
+   * Where a boat of this kind lies tied up at a pier, and which way: along
+   * its side, bow out to sea, the side the picture shows, so the hull is seen
+   * against the timber. Slid further out along the pier until the whole hull
+   * is on water as it is drawn, or nowhere if it never is.
+   */
+  private berthFor(dock: Dock, kind: Kind): (Spot & { heading: number }) | null {
+    const { box, tip, facing } = dock;
+    const length = LENGTH[kind];
+    const beam = BEAM[kind];
+    for (let out = 0; out <= length * 1.5; out += 8) {
+      let at: Spot & { heading: number };
+      if (facing === 'N') {
+        at = { x: box.x + box.width + beam / 2 + 2, y: tip.y + length / 2 - 10 - out, heading: -Math.PI / 2 };
+      } else if (facing === 'S') {
+        at = { x: box.x + box.width + beam / 2 + 2, y: tip.y - length / 2 + 10 + out, heading: Math.PI / 2 };
+      } else if (facing === 'E') {
+        at = { x: tip.x - length / 2 + 14 + out, y: box.y + box.height + beam / 2 + 1, heading: 0 };
+      } else {
+        at = { x: tip.x + length / 2 - 14 - out, y: box.y + box.height + beam / 2 + 1, heading: Math.PI };
+      }
+      if (this.afloat(at, at.heading, length, beam)) return at;
+    }
+    return null;
+  }
+
+  /** Whether a hull this long and broad, lying this way, is on water all round. */
+  private afloat(at: Spot, heading: number, length: number, beam: number): boolean {
+    const c = Math.cos(heading);
+    const s = Math.sin(heading);
+    for (let u = -length / 2; u <= length / 2; u += 6) {
+      for (const v of [-beam / 2, 0, beam / 2]) {
+        if (!this.wet(at.x + u * c - v * s, at.y + u * s + v * c)) return false;
+      }
+    }
+    return true;
   }
 
   /* ── who is out ────────────────────────────────────────────────────── */
@@ -354,18 +423,21 @@ export class Fleet {
     for (let i = 0; i < 2; i++) this.anchor(true);
     const free = this.docks.filter((one) => !one.taken);
     const tied = free[Math.floor(Math.random() * free.length)];
-    if (tied) {
-      const kind: Kind = Math.random() < 0.5 ? 'row' : 'sloop';
-      const vessel = this.make(kind, berthFor(tied, kind));
+    const kind: Kind = Math.random() < 0.5 ? 'row' : 'sloop';
+    const berth = tied && this.berthFor(tied, kind);
+    if (tied && berth) {
+      const vessel = this.make(kind, berth, berth.heading);
       vessel.view.alpha = 1;
       this.moor(vessel, tied, performance.now(), 0);
     }
     for (const dock of this.docks) {
+      const berth = this.berthFor(dock, 'row');
+      if (!berth) continue;
       for (const side of [-1, 1]) {
         const at = this.waterNear(
           {
-            x: dock.berth.x + side * 70 + (dock.facing === 'E' ? 80 : dock.facing === 'W' ? -80 : 0),
-            y: dock.berth.y + (dock.facing === 'N' ? -60 : 50),
+            x: berth.x + side * 70 + (dock.facing === 'E' ? 80 : dock.facing === 'W' ? -80 : 0),
+            y: berth.y + (dock.facing === 'N' ? -60 : 50),
           },
           2
         );
@@ -429,11 +501,12 @@ export class Fleet {
 
   /** In from the open sea to tie up at a dock. */
   private callAt(kind: Kind): void {
-    const free = this.docks.filter((one) => !one.taken);
+    const free = this.docks.filter((one) => !one.taken && !!this.berthFor(one, kind));
     const dock = free[Math.floor(Math.random() * free.length)];
-    if (!dock) return;
+    const berth = dock && this.berthFor(dock, kind);
+    if (!dock || !berth) return;
     const from = this.edge(-1);
-    const path = this.route(from.at, berthFor(dock, kind), CLEAR[kind]);
+    const path = this.route(from.at, berth, CLEAR[kind]);
     if (!path) return;
     const vessel = this.make(kind, from.at);
     vessel.path = path;
@@ -446,13 +519,15 @@ export class Fleet {
   private row(): void {
     const free = this.docks.filter((one) => !one.taken);
     const to = free[Math.floor(Math.random() * free.length)];
-    if (!to) return;
+    const end = to && this.berthFor(to, 'row');
+    if (!to || !end) return;
     const others = this.docks.filter((one) => one !== to);
     const fromDock = others[Math.floor(Math.random() * others.length)];
-    const start = fromDock ? berthFor(fromDock, 'row') : this.edge(-1).at;
-    const path = this.route(start, berthFor(to, 'row'), CLEAR.row);
+    const leaving = fromDock ? this.berthFor(fromDock, 'row') : null;
+    const start = leaving ?? this.edge(-1).at;
+    const path = this.route(start, end, CLEAR.row);
     if (!path) return;
-    const vessel = this.make('row', start);
+    const vessel = leaving ? this.make('row', start, leaving.heading) : this.make('row', start);
     vessel.path = path;
     vessel.dock = to;
     vessel.aboard = 1 + Math.floor(Math.random() * 2);
@@ -479,26 +554,21 @@ export class Fleet {
 
   /* ── one boat ──────────────────────────────────────────────────────── */
 
-  private make(kind: Kind, at: Spot): Vessel {
+  private make(kind: Kind, at: Spot, heading = Math.random() * Math.PI * 2): Vessel {
     const view = new Container();
-    const body = new Sprite(folkTexture(`${kind}-0`));
-    body.anchor.set(0.5, 1);
-    const lap = new Sprite(folkTexture(`lap-${kind}-0`));
-    lap.anchor.set(0.5, 1);
-    lap.position.set(0, -1);
-    lap.alpha = 0.75;
-    view.addChild(body, lap);
+    const body = new Sprite();
+    view.addChild(body);
     view.position.set(Math.round(at.x), Math.round(at.y));
     view.alpha = 0;
     const vessel: Vessel = {
       kind,
       view,
       body,
-      lap,
+      shown: '',
       x: at.x,
       y: at.y,
       path: [],
-      flip: Math.random() < 0.5,
+      heading,
       frame: 0,
       frameAt: 0,
       state: 'sailing',
@@ -535,15 +605,20 @@ export class Fleet {
         one.x += (dx / far) * go;
         one.y += (dy / far) * go;
       }
-      if (Math.abs(dx) > 2) one.flip = dx < 0;
+      if (far > 1) this.steer(one, Math.atan2(dy, dx), seconds);
       if (now - one.ringAt > (one.kind === 'ship' ? 260 : 380)) {
         one.ringAt = now;
-        const stern = one.flip ? 1 : -1;
-        const length = one.body.width * one.view.scale.y;
-        this.ring(one.x + stern * length * 0.42, one.y - 1, one.kind === 'ship' ? 2.5 : 1.6);
+        const stern = (LENGTH[one.kind] * one.view.scale.y) / 2;
+        this.ring(
+          one.x - Math.cos(one.heading) * stern,
+          one.y - Math.sin(one.heading) * stern,
+          one.kind === 'ship' ? 2.5 : 1.6
+        );
       }
       if (!one.path.length) this.arrive(one, now);
     } else if (one.state === 'moored') {
+      const berth = one.dock && this.berthFor(one.dock, one.kind);
+      if (berth) this.steer(one, berth.heading, seconds);
       this.tied(one, now, seconds);
     } else if (one.state === 'anchored' && now > one.waitUntil) {
       const to = this.edge(-1);
@@ -563,24 +638,37 @@ export class Fleet {
     if (now - one.frameAt > hold) {
       one.frameAt = now;
       one.frame++;
-      const still = !moving && one.kind === 'row';
-      const texture = folkTexture(`${one.kind}-${still ? 0 : one.frame % frames}`);
-      if (texture) one.body.texture = texture;
-      const lap = folkTexture(`lap-${one.kind}-${one.frame % 2}`);
-      if (lap) one.lap.texture = lap;
+    }
+    const still = !moving && one.kind === 'row';
+    const turn = (Math.PI * 2) / HEADINGS;
+    const facing = (((Math.round(one.heading / turn) % HEADINGS) + HEADINGS) % HEADINGS) as number;
+    const name = `${one.kind}-${facing}-${still ? 0 : one.frame % frames}`;
+    if (name !== one.shown) {
+      const texture = folkTexture(name);
+      if (texture) {
+        one.body.texture = texture;
+        one.body.anchor.copyFrom(texture.defaultAnchor ?? { x: 0.5, y: 1 });
+        one.shown = name;
+      }
     }
     // Grown as the camera rises so it still reads, and itself again near a pier.
-    const berth = one.dock ? berthFor(one.dock, one.kind) : null;
-    const nearDock = berth ? Math.hypot(berth.x - one.x, berth.y - one.y) : 1e9;
-    const grow = Math.min(1, Math.max(0, (nearDock - 80) / 300));
+    const nearDock = one.dock ? Math.hypot(one.dock.tip.x - one.x, one.dock.tip.y - one.y) : 1e9;
+    const grow = Math.min(1, Math.max(0, (nearDock - 120) / 300));
     const size = 1 + (this.scale - 1) * grow;
-    const flip = one.flip ? -1 : 1;
-    one.view.scale.set(size * flip, size);
+    one.view.scale.set(size);
     const bob = Math.round(Math.sin(now / 900 + one.x) * 0.6);
     one.view.position.set(Math.round(one.x), Math.round(one.y) + bob);
-    const [lx, ly] = LANTERN[one.kind];
-    one.lamp.x = one.x + lx * size * flip;
-    one.lamp.y = one.y + ly * size;
+    const [lu, lw] = LANTERN[one.kind];
+    one.lamp.x = one.x + Math.cos(one.heading) * lu * size;
+    one.lamp.y = one.y + Math.sin(one.heading) * lu * size - lw * size;
+  }
+
+  /** Come about towards a heading, no faster than this boat can. */
+  private steer(one: Vessel, aim: number, seconds: number): void {
+    let delta = aim - one.heading;
+    delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+    const most = TURN[one.kind] * seconds;
+    one.heading += Math.max(-most, Math.min(most, delta));
   }
 
   /** How far a boat still has to go along its path. */
@@ -610,10 +698,11 @@ export class Fleet {
     one.state = 'moored';
     one.dock = dock;
     dock.taken = one;
-    const berth = berthFor(dock, one.kind);
-    one.x = berth.x;
-    one.y = berth.y;
-    one.flip = dock.facing === 'W' ? false : dock.facing === 'E' ? true : one.flip;
+    const berth = this.berthFor(dock, one.kind);
+    if (berth) {
+      one.x = berth.x;
+      one.y = berth.y;
+    }
     one.aboard = aboard;
     one.waitUntil = now + 14_000 + Math.random() * 20_000;
     one.giveUp = one.waitUntil + 60_000;
@@ -1016,17 +1105,6 @@ export class Fleet {
     }
     return true;
   }
-}
-
-/**
- * Where a boat of this kind lies tied up at a pier: off its side by half the
- * boat's own length, so the hull sits against the timber rather than in it.
- */
-function berthFor(dock: Dock, kind: Kind): Spot {
-  const half = (folkTexture(`${kind}-0`)?.width ?? 60) / 2;
-  if (dock.facing === 'E') return { x: dock.berth.x - half, y: dock.berth.y };
-  if (dock.facing === 'W') return { x: dock.berth.x + half, y: dock.berth.y };
-  return { x: dock.berth.x + half, y: dock.berth.y };
 }
 
 /** The steps along a pier, a few pixels apart so the walk is even. */

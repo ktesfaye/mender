@@ -1192,9 +1192,14 @@ written, a hammer to the forge for something run, and back. A commit wheels a
 handcart down the road; a push loads a sloop at the district's pier and townsfolk walk out to board it
 before it sails. The sea has its own traffic besides, nobody's errand: sloops
 round the island, a ship well out, a raft, fishers at anchor, a rowing boat,
-buoys, driftwood and ducks, leaving rings behind them and lit after dark. A
-boat ties up only at a pier the artist drew that still reaches water, and
-whoever came on it walks up into the village. Two
+buoys, driftwood and ducks, leaving rings behind them and lit after dark.
+Every boat is a small solid thing modelled once and drawn from all round, in
+the kit's own wood and ink, so it comes about towards where it is going rather
+than flipping, its boom carried out over the side so a sail is never seen only
+edge on; and the coast it keeps off is the one the foam is measured against,
+cliff faces and all. A boat ties up only at a pier the artist drew that still
+reaches water, along its side with room for the whole hull, and whoever came
+on it walks up into the village. Two
 busy districts send people along the road between them, and the roads carry
 covered wagons with a carter on the box and riders on horseback between any
 lived-in districts, more the busier the island is, drawn a little larger as

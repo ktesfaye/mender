@@ -323,6 +323,9 @@ void main() {
 
 export class Water {
   readonly mesh: Mesh<Geometry, Shader>;
+  /** The land as drawn, a byte a texel, and where that grid sits in the world. */
+  private readonly land: Uint8Array;
+  private readonly grid: { x: number; y: number; width: number; height: number };
   private readonly uniforms: {
     uniforms: {
       uTime: number;
@@ -351,6 +354,8 @@ export class Water {
     const width = Math.ceil((island.width + REACH * 2) / STEP);
     const height = Math.ceil((island.height + REACH * 2) / STEP);
     const land = maskOf(renderer, root, groundTop, originX, originY, width, height);
+    this.land = land;
+    this.grid = { x: originX, y: originY, width, height };
     const field = fieldOf(land, width, height);
 
     const source = new BufferImageSource({
@@ -426,6 +431,19 @@ export class Water {
       texture.destroy(true);
       deep.destroy(true);
     });
+  }
+
+  /**
+   * Whether a point in the world is open water: off the same picture of the
+   * ground the foam is measured against, so a cliff face, which stands out
+   * over cells the map calls sea, is land here too.
+   */
+  wet(x: number, y: number): boolean {
+    const g = this.grid;
+    const cx = Math.floor((x - g.x) / STEP);
+    const cy = Math.floor((y - g.y) / STEP);
+    if (cx < 0 || cy < 0 || cx >= g.width || cy >= g.height) return true;
+    return !this.land[cy * g.width + cx];
   }
 
   tick(_ticker: Ticker): void {

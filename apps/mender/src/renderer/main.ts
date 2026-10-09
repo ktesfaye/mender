@@ -6355,7 +6355,7 @@ async function draw(
     map.layout,
     map.districts,
     scene.buildings,
-    groundCells(map.layout),
+    (x, y) => water.wet(x, y),
     island
   );
   atmosphere.follow(

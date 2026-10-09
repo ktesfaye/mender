@@ -177,10 +177,10 @@ export class Crowd {
     layout: Layout,
     districts: readonly District[],
     buildings: readonly Building[],
-    land: ReadonlySet<string>,
+    wet: (x: number, y: number) => boolean,
     extent: { x: number; y: number; width: number; height: number }
   ) {
-    this.fleet = new Fleet(paths, laneAt, layout, buildings, land, extent);
+    this.fleet = new Fleet(paths, laneAt, layout, buildings, wet, extent);
     for (const district of districts) {
       if (district.kind === 'common') continue;
       this.places.set(district.id, {
