@@ -37,6 +37,9 @@ import { SHADOW_TINT, type Building } from './scene';
 const STEP = CELL / 2;
 /** World pixels a second. */
 const PACE: Record<string, number> = { amble: 13, work: 22, errand: 30, home: 26 };
+/** The kit's arched bridge is three rows of stone: the top two are its deck,
+    walked like a road, and the bottom one is the arch's face over the water. */
+const DECK = /Terrain_(679|68[0-6]|71[1-8])\.png$/;
 
 type Dir = 'down' | 'up' | 'side';
 
@@ -266,7 +269,7 @@ export class Paths {
       top.set(key, {
         order: tile.sorting_order,
         file: tile.file,
-        dirt: tile.layer === 'Dirt' || /Dirt/.test(tile.file),
+        dirt: tile.layer === 'Dirt' || /Dirt/.test(tile.file) || DECK.test(tile.file),
       });
     }
     const blocked = buildings.map((building) => ({
@@ -298,7 +301,7 @@ export class Paths {
       solid.add(keyOf(x, y - 2));
     }
     for (const [key, cell] of top) {
-      if (!/Grass|Dirt/.test(cell.file)) continue;
+      if (!/Grass|Dirt/.test(cell.file) && !DECK.test(cell.file)) continue;
       const [cx, cy] = key.split(',').map(Number) as [number, number];
       for (let sx = 0; sx < 2; sx++) {
         for (let sy = 0; sy < 2; sy++) {
