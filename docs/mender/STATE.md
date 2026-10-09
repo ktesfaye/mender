@@ -3703,3 +3703,13 @@ home. Driven in a dev instance on his own set of districts: one piece of land
 from the fire to the houses, a proper coast along the camp's north side, no
 stray terrace below it.
 
+### A pier left on dry land goes (2026-10-08) — done
+
+When the camp sails over and berths against the north-west houses it lands
+right where that district's pier met the water, and the pier was left standing
+in the middle of the grass. A pier whose every cell is now land is taken off
+the map; every pier that still reaches the sea stays exactly where he put it,
+all four with the whole village standing. Checked by composing his own set of
+districts, where only the islet's pier is left, and the full island, where all
+four are.
+

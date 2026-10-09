@@ -1220,6 +1220,31 @@ function compose(world: VillageWorld, index: Index, present: Iterable<string>): 
   layout.tiles = layout.tiles.filter((t: VTile) => !back.has(key(t.cell[0], t.cell[1])));
   layout.tiles.push(...kept);
 
+  /* A pier the land has closed round, its end on grass rather than over the
+     water, is not a pier: it goes. Every one that still reaches the sea stays
+     exactly where he put it. */
+  const dry = new Set<string>();
+  const groundLayers = new Set(['Dirt', 'Layer 01', 'Layer 02', 'Layer 03', 'Layer 04']);
+  for (const t of layout.tiles as VTile[]) {
+    if (t.file && groundLayers.has(t.layer)) dry.add(key(t.cell[0], t.cell[1]));
+  }
+  layout.objects = layout.objects.filter((o: VObject) => {
+    if (!/Dock/.test(o.prefab)) return true;
+    for (const part of o.sprites ?? []) {
+      if (part.blend === 'multiply' || !part.size_px) continue;
+      const w = part.size_px[0] / 32;
+      const h = part.size_px[1] / 32;
+      const left = o.pos[0] + part.offset[0] - part.pivot[0] * w;
+      const bottom = o.pos[1] + part.offset[1] - part.pivot[1] * h;
+      for (let x = Math.floor(left); x < Math.ceil(left + w); x++) {
+        for (let y = Math.floor(bottom); y < Math.ceil(bottom + h); y++) {
+          if (!dry.has(key(x, y))) return true;
+        }
+      }
+    }
+    return false;
+  });
+
   return {
     layout,
     on: [...on].sort(byHisOrder),
