@@ -169,35 +169,6 @@ float reachAt(vec2 w) {
   return sampleField((w - uBox.xy) / uBox.zw).y * uReach;
 }
 
-/* How far out the sea has frozen solid at a point along the coast: wider in
-   the bays and narrower off the points, ragged at its edge in blocks the way
-   a shelf breaks, and nothing at all until the freeze has set in. */
-float shelfEdge(vec2 w) {
-  float rag = noise(w / 90.0) * 0.65 + noise(w / 26.0) * 0.35;
-  return uIce * uIce * (30.0 + 120.0 * rag) - 6.0;
-}
-
-/* A field of broken ice: x is how far into its floe a point is, yz which
-   floe. Each floe's middle is jittered off its cell so they come out as
-   irregular slabs rather than a grid. */
-vec3 floes(vec2 q) {
-  vec2 cell = floor(q);
-  vec2 f = fract(q);
-  float d1 = 8.0;
-  float d2 = 8.0;
-  vec2 id = cell;
-  for (int y = -1; y <= 1; y++) {
-    for (int x = -1; x <= 1; x++) {
-      vec2 g = vec2(float(x), float(y));
-      vec2 o = 0.5 + 0.42 * (hash2(cell + g) - 0.5) * 2.0;
-      float d = length(g + o - f);
-      if (d < d1) { d2 = d1; d1 = d; id = cell + g; }
-      else if (d < d2) { d2 = d; }
-    }
-  }
-  return vec3(d2 - d1, id);
-}
-
 /* Whether a point falls inside an iceberg's outline: a slab broken off a
    shelf, so a few straight sides at odd angles rather than anything round,
    squashed the way everything is seen from above and a little south. */
@@ -210,6 +181,71 @@ float berg(vec2 d, vec2 r, float seed) {
     inside *= step(dot(q, vec2(cos(a), sin(a))), reach);
   }
   return inside;
+}
+
+/* One block of ice afloat, if its stretch of water has one. Ice, not snow:
+   the sea shows through the top of it as a pale clear green-blue, brighter
+   toward the edge the light comes from, with a streak of sheen across it and
+   a hard bright edge all round; a low face of deeper ice down to the water;
+   and the part of it under the surface showing as a lighter wash round its
+   foot. Kept well off the coast, so the shore is the sea's as it always was. */
+void piece(inout vec3 c, vec2 at, vec2 bin, vec2 drift, float salt, float chance,
+           float rMin, float rSpan) {
+  vec2 bq = at + drift;
+  vec2 slot = floor(bq / bin);
+  if (hash(slot + salt) >= chance) return;
+  float rx = rMin + floor(hash(slot + salt + 1.0) * rSpan);
+  vec2 r = vec2(rx, rx * (0.6 + 0.2 * hash(slot + salt + 2.0)));
+  float high = floor(2.0 + rx * 0.08);
+  vec2 margin = vec2(r.x + 16.0, r.y + high + 12.0);
+  vec2 centre = slot * bin + margin + floor(hash2(slot + salt + 5.0) * max(bin - margin * 2.0, vec2(1.0)));
+  vec2 d = floor(bq - centre);
+  if (abs(d.x) > r.x * 1.3 + 6.0 || abs(d.y + high * 0.5) > r.y * 1.3 + high + 6.0) return;
+  if (reachAt(centre - drift) < 90.0 + rx) return;
+  float seed = hash(slot + salt + 6.0) * 40.0;
+  vec3 water = c;
+  vec3 glass = vec3(0.70, 0.92, 0.95);
+  vec3 bright = vec3(0.93, 0.99, 1.0);
+  vec3 deeper = vec3(0.42, 0.72, 0.82);
+
+  if (berg(d + vec2(0.0, high), r, seed) > 0.5) {
+    vec2 q = (d + vec2(0.0, high)) / r;
+    /* Clearer in the middle, frostier toward the rim. */
+    float frost = smoothstep(0.35, 1.0, length(q));
+    vec3 top = mix(water, glass, 0.5 + 0.3 * frost);
+    top = mix(top, bright, step(0.0, -q.x - q.y) * 0.15);
+    /* A streak of sheen across it, in whole pixels. */
+    float tilt = 0.4 + hash(slot + salt + 8.0) * 1.2;
+    float band = q.x * tilt - q.y + (hash(slot + salt + 9.0) - 0.5) * 0.9;
+    top = mix(top, bright, step(abs(band), 0.09 * (1.0 + step(0.5, hash(slot + salt + 7.0)))) * 0.45);
+    /* Cracks frozen inside it. */
+    float inner = net(d / 13.0 + seed, 0.0) * 13.0;
+    top = mix(top, bright, (1.0 - step(0.7, inner)) * 0.18 * (1.0 - frost));
+    /* A hard bright edge round the top. */
+    float edge = 1.0 - berg(d + vec2(0.0, high) + vec2(1.0, 1.0), r, seed)
+      * berg(d + vec2(0.0, high) - vec2(1.0, 1.0), r, seed)
+      * berg(d + vec2(0.0, high) + vec2(-1.0, 1.0), r, seed)
+      * berg(d + vec2(0.0, high) + vec2(1.0, -1.0), r, seed);
+    c = mix(top, bright, edge * 0.85);
+    return;
+  }
+  for (int i = 0; i < 8; i++) {
+    float k = float(i);
+    if (k > high) break;
+    if (berg(d + vec2(0.0, k), r, seed) > 0.5) {
+      float lit = clamp(-d.x / r.x, -1.0, 1.0);
+      c = mix(water, deeper, 0.75) * (0.95 + 0.1 * lit);
+      c = mix(c, bright, step(k, 0.5) * 0.6);
+      return;
+    }
+  }
+  /* What is under the water: the rest of the block, seen through the sea,
+     and broken water lapping at it. */
+  if (berg(d, r * 1.18 + 2.0, seed) > 0.5) {
+    c = mix(water, glass, 0.22);
+    float lap = step(0.6, noise(d / 3.0 + vec2(uTime * 0.6, 0.0)));
+    c = mix(c, bright, lap * 0.25 * (1.0 - berg(d, r * 1.06 + 1.0, seed)));
+  }
 }
 
 /* The open water's own detail: a small wave that rises out of the flat,
@@ -360,162 +396,17 @@ void main() {
     c = mix(c, uLift * mix(0.75, 1.0, bright), star * shown * uStars);
   }
 
-  /* The sea freezes when the snow has lain long enough: a shelf out from the
-     coast with a cliff of blue ice along its edge, broken pack beyond it
-     drifting apart into the open water, and icebergs further out still, each
-     standing up out of the sea on a face of its own. All of it in whole
-     pixels on the same grid as the waves, and none of it costing anything
-     until there is ice. */
+  /* When the snow has lain long enough, blocks of clear ice come down into
+     the sea, big ones and smaller ones between them, all drifting so slowly
+     they only move if you watch. The coast is left alone.
+     In whole pixels on the same grid as the waves, and costing nothing until
+     there is ice. */
   if (uIce > 0.01) {
-    vec3 snowIce = vec3(0.89, 0.93, 0.98);
-    vec3 blueIce = vec3(0.70, 0.83, 0.93);
-    vec3 faceTop = vec3(0.74, 0.89, 0.95);
-    vec3 faceFoot = vec3(0.38, 0.64, 0.78);
-    vec3 rim = vec3(0.97, 0.99, 1.0);
-
-    /* The open water goes cold and dark between the ice. */
-    c = mix(c, c * vec3(0.78, 0.88, 0.98), uIce * 0.6);
-
+    c = mix(c, c * vec3(0.86, 0.93, 1.0), uIce * 0.4);
     vec2 at = (floor(vWorld / u) + 0.5) * u;
-    float edge = shelfEdge(at);
-    float face = max(10.0, 3.0 * u);
-    bool shelf = far < edge;
-    float hung = 0.0;
-    if (!shelf) {
-      for (int i = 1; i <= 10; i++) {
-        float k = face * float(i) / 10.0;
-        vec2 above = at - vec2(0.0, k);
-        if (reachAt(above) < shelfEdge(above)) { hung = k; break; }
-      }
-    }
-
-    /* The pack: floes, thick against the shelf and thinning out to nothing,
-       drifting slowly on the wind. */
-    float size = 26.0;
-    vec2 drift = vec2(t * 0.5, t * 0.16);
-    vec3 fl = floes((at + drift) / size);
-    vec3 flUp = floes((at - vec2(0.0, max(3.0, u)) + drift) / size);
-    vec2 middle = (fl.yz + 0.5) * size - drift;
-    float spread = 170.0 * uIce;
-    float thick = uIce * (1.0 - smoothstep(0.0, spread, reachAt(middle) - shelfEdge(middle)));
-    float gap = max(1.5, u) / size;
-    float floe = step(hash(fl.yz + 3.3), thick * 0.95) * step(gap, fl.x);
-    vec2 middleUp = (flUp.yz + 0.5) * size - drift;
-    float thickUp = uIce * (1.0 - smoothstep(0.0, spread, reachAt(middleUp) - shelfEdge(middleUp)));
-    float floeUp = step(hash(flUp.yz + 3.3), thickUp * 0.95) * step(gap, flUp.x);
-
-    if (shelf) {
-      /* The shelf's own face: snow on it in drifts, bare blue ice where the
-         wind has scoured it, old pressure cracks, and a tide crack right
-         against the rock. */
-      float scour = noise(at / 46.0) * 0.7 + noise(at / 14.0) * 0.3;
-      vec3 sheet = mix(snowIce, blueIce, step(0.64, scour) * 0.55 + step(0.72, scour) * 0.3);
-      float streak = step(0.9, hash(floor(at / vec2(11.0 * u, u)) + 2.0));
-      sheet = mix(sheet, rim, streak * 0.35);
-      float cracks = net(at / 44.0, 0.0) * 44.0;
-      sheet = mix(sheet, vec3(0.62, 0.77, 0.89), (1.0 - step(max(0.9, u), cracks)) * 0.6);
-      sheet = mix(sheet, rim, 1.0 - step(max(2.0, u * 1.5), edge - far));
-      sheet = mix(sheet, vec3(0.52, 0.66, 0.78), (1.0 - step(max(1.2, u), near)) * 0.7);
-      c = sheet;
-    } else if (hung > 0.0) {
-      /* The cliff of the shelf, fluted top to bottom, light at its lip and
-         deep blue down at the water, with a wash of foam at its foot. */
-      float down = hung / face;
-      vec3 cliff = mix(faceTop, faceFoot, down);
-      cliff *= 0.93 + 0.12 * step(0.5, hash(vec2(floor(at.x / max(2.0, u)), 7.0)));
-      cliff = mix(cliff, vec3(0.85, 0.95, 0.96), step(face - max(1.0, u), hung) * 0.8);
-      c = cliff;
-    } else if (floe > 0.5) {
-      vec3 slab = mix(vec3(0.86, 0.91, 0.97), blueIce, hash(fl.yz + 9.1) * 0.5);
-      slab = mix(slab, rim, step(fl.x, gap * 2.2) * 0.3);
-      c = slab;
-    } else if (floeUp > 0.5) {
-      /* The edge of a floe, standing a pixel or two out of the water. */
-      c = mix(faceTop, faceFoot, 0.55);
-    } else {
-      /* Under a cliff, the water lies in its shadow. */
-      for (int i = 1; i <= 4; i++) {
-        vec2 above = at - vec2(0.0, face + float(i) * max(1.0, u));
-        if (reachAt(above) < shelfEdge(above)) { c *= 0.78; break; }
-      }
-    }
-
-    /* Icebergs out in the open: a few to a stretch of sea, drifting so
-       slowly they only move if you watch, the big ones with a second peak
-       standing up off the first. */
-    vec2 bbin = vec2(440.0, 320.0);
-    vec2 bdrift = vec2(t * 0.35, t * 0.1);
-    vec2 bq = at + bdrift;
-    vec2 bslot = floor(bq / bbin);
-    float shows = step(hash(bslot + 61.0), 0.7 * smoothstep(0.25, 1.0, uIce));
-    if (shows > 0.5) {
-      float rx = 22.0 + floor(hash(bslot + 62.0) * 46.0);
-      vec2 r = vec2(rx, rx * (0.55 + 0.15 * hash(bslot + 63.0)));
-      float high = floor(8.0 + rx * 0.28);
-      float tall = step(0.45, hash(bslot + 64.0)) * step(34.0, rx);
-      vec2 ur = r * 0.5;
-      vec2 uoff = vec2(floor((hash(bslot + 65.0) - 0.5) * r.x * 0.6), floor(r.y * 0.1));
-      float uhigh = floor(high * 0.8);
-      vec2 margin = vec2(90.0, 50.0 + high + uhigh);
-      vec2 centre = bslot * bbin + margin + floor(hash2(bslot + 66.0) * (bbin - margin * 2.0));
-      vec2 d = floor(bq - centre);
-      float seed = hash(bslot + 67.0) * 40.0;
-      float clear = reachAt(centre - bdrift) - shelfEdge(centre - bdrift);
-      if (clear > 80.0 + rx && abs(d.x) < r.x + 10.0 && d.y > -(r.y + high + uhigh + 4.0) && d.y < r.y + 8.0) {
-        float lit = clamp(-d.x / r.x, -1.0, 1.0);
-        float flute = step(0.5, hash(vec2(floor(d.x / 2.0), seed)));
-        float drawn = 0.0;
-        vec3 bc = c;
-        /* The top: snow, with the far side of it a shade bluer and a bright
-           lip along the front edge. */
-        vec3 top = mix(rim, vec3(0.82, 0.90, 0.97), step(0.35, d.x / r.x) * 0.6);
-        if (tall > 0.5) {
-          vec2 ud = d - uoff;
-          if (berg(ud + vec2(0.0, high + uhigh), ur, seed + 5.0) > 0.5) {
-            bc = mix(rim, vec3(0.82, 0.90, 0.97), step(0.35, ud.x / ur.x) * 0.6);
-            drawn = 1.0;
-          } else {
-            for (int i = 0; i < 24; i++) {
-              float k = high + float(i);
-              if (k > high + uhigh) break;
-              if (berg(ud + vec2(0.0, k), ur, seed + 5.0) > 0.5) {
-                float down = 1.0 - (k - high) / uhigh;
-                bc = mix(faceTop, faceFoot, down * 0.7) * (0.93 + 0.12 * lit) * (0.95 + 0.08 * flute);
-                drawn = 1.0;
-                break;
-              }
-            }
-          }
-        }
-        if (drawn < 0.5 && berg(d + vec2(0.0, high), r, seed) > 0.5) {
-          bc = top;
-          if (berg(d + vec2(0.0, high + 2.0), r, seed) < 0.5) bc = rim;
-          drawn = 1.0;
-        }
-        if (drawn < 0.5) {
-          for (int i = 0; i < 32; i++) {
-            float k = float(i);
-            if (k > high) break;
-            if (berg(d + vec2(0.0, k), r, seed) > 0.5) {
-              float down = 1.0 - k / high;
-              bc = mix(faceTop, faceFoot, down) * (0.92 + 0.14 * lit) * (0.95 + 0.08 * flute);
-              bc = mix(bc, vec3(0.88, 0.96, 0.97), step(k, 1.5) * 0.85);
-              drawn = 1.0;
-              break;
-            }
-          }
-        }
-        if (drawn < 0.5) {
-          /* Its shadow on the water, and broken water lapping round its foot. */
-          if (berg(d - vec2(7.0, -3.0), r, seed) > 0.5) bc = c * 0.74;
-          if (berg(d, r * 1.1 + 2.0, seed) > 0.5) {
-            float lap = step(0.55, noise(d / 3.0 + vec2(t * 0.6, 0.0)));
-            bc = mix(bc, vec3(0.80, 0.92, 0.94), lap * 0.55);
-          }
-        }
-        c = bc;
-      }
-    }
+    float come = smoothstep(0.1, 1.0, uIce);
+    piece(c, at, vec2(260.0, 190.0), vec2(t * 0.5, t * 0.14), 11.0, 0.5 * come, 14.0, 14.0);
+    piece(c, at, vec2(460.0, 330.0), vec2(t * 0.36, t * 0.1), 61.0, 0.75 * come, 30.0, 30.0);
   }
 
   /* A breath of noise under everything, or a gradient this gentle breaks into

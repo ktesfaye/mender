@@ -1124,11 +1124,10 @@ the fire lights the ground round it, every house's window panes glow, warm in an
 empty one and in the session's colour where there is one, and people carry
 lanterns.
 Clouds, rain (slanted, ringing the sea, ground left wet), storms with lightning,
-snow that settles on grass and roofs and leaves the paths, and the sea
-freezing under it if it lies long enough (2026-10-09: a shelf out from the coast
-with a blue ice cliff along its edge, broken pack drifting off it, icebergs with
-faces of their own out in the open, boats off the water and the ones tied up
-iced in; driven at full and half freeze, day and night), fog, stars in a
+snow that settles on grass and roofs and leaves the paths, and clear ice
+blocks coming down into the open sea if it lies long enough (2026-10-09: glassy
+slabs drifting well off the coast, the shore left as it was, boats off the
+water; driven frozen and thawed), fog, stars in a
 still sea. Chimney and fire smoke, sparks, fireflies, gulls, butterflies,
 jumping fish, autumn leaves. Every open session is a villager walking its own
 patch by what it is doing, every helper it has out is a hooded one walking from
