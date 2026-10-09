@@ -3671,3 +3671,12 @@ beside the south pier, one passenger walked up into the village while a local
 came down the pier to it; from the top at noon sloops, the ship, two fishers
 and the ducks all on the water at once; at midnight the fishers' lanterns lit.
 
+### The camp keeps off the piers when it sails (2026-10-08) — done
+
+With the crop farm put away the camp sailed over and pitched itself on top of
+the pier on the north-west houses, leaving the pier lying on its grass behind a
+hard square seam. Where the camp comes alongside now keeps clear of every pier
+a standing district has, the way it already kept clear of the islet. Driven in
+a dev instance on his own set of districts: the camp tucked in below that pier,
+the pier out over water again, a rowing boat tied up at it.
+

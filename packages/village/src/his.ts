@@ -821,7 +821,12 @@ function moor(
  * beside the islet where he drew it, which it would otherwise carry off when
  * that sails.
  */
-function pitch(index: Index, main: Set<string>, hisOwn: Set<string>): Cell {
+function pitch(
+  index: Index,
+  main: Set<string>,
+  hisOwn: Set<string>,
+  piers: Set<string>
+): Cell {
   const camp = [...index.cellsOf(CAMP)].map(unkey);
   const own = index.cellsOf(CAMP);
   const sides: [number, number][] = [
@@ -861,7 +866,7 @@ function pitch(index: Index, main: Set<string>, hisOwn: Set<string>): Cell {
       }
       for (let ex = -1; ex <= 1 && !bad; ex++) {
         for (let ey = -1; ey <= 1; ey++) {
-          if (index.unit.has(key(cx + ex, cy + ey))) {
+          if (index.unit.has(key(cx + ex, cy + ey)) || piers.has(key(cx + ex, cy + ey))) {
             bad = true;
             break;
           }
@@ -1005,7 +1010,24 @@ function compose(world: VillageWorld, index: Index, present: Iterable<string>): 
   /* The camp sails first, when it has to, since the islet moors to whatever
      coast there is and the camp is part of that coast once it has landed. */
   const camp = cellsOf(CAMP);
-  const camped: Cell = home ? [0, 0] : pitch(index, main, hisOwn);
+  /* A pier reaches out over the water past the land it stands on, so the
+     camp coming alongside has to keep off it too, or it pitches on top of
+     one and leaves the pier lying on its grass. */
+  const piers = new Set<string>();
+  for (const o of layout.objects) {
+    if (!/Dock/.test(o.prefab)) continue;
+    for (const part of o.sprites ?? []) {
+      if (part.blend === 'multiply' || !part.size_px) continue;
+      const w = part.size_px[0] / 32;
+      const h = part.size_px[1] / 32;
+      const left = o.pos[0] + part.offset[0] - part.pivot[0] * w;
+      const bottom = o.pos[1] + part.offset[1] - part.pivot[1] * h;
+      for (let x = Math.floor(left); x <= Math.floor(left + w); x++) {
+        for (let y = Math.floor(bottom); y <= Math.floor(bottom + h); y++) piers.add(key(x, y));
+      }
+    }
+  }
+  const camped: Cell = home ? [0, 0] : pitch(index, main, hisOwn, piers);
   const campNow = new Set<string>();
   for (const k of camp) {
     const [x, y] = unkey(k);
