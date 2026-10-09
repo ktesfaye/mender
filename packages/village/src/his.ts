@@ -1031,24 +1031,6 @@ function compose(world: VillageWorld, index: Index, present: Iterable<string>): 
       if (object.pos_px) object.pos_px = [object.pos[0] * 32, object.pos[1] * 32];
     }
     for (const k of campNow) main.add(k);
-    /* A pier the camp has come alongside is taken away rather than left lying
-       on its grass: the districts that keep theirs are enough. */
-    layout.objects = layout.objects.filter((o: VObject) => {
-      if (!/Dock/.test(o.prefab)) return true;
-      for (const part of o.sprites ?? []) {
-        if (part.blend === 'multiply' || !part.size_px) continue;
-        const w = part.size_px[0] / 32;
-        const h = part.size_px[1] / 32;
-        const left = o.pos[0] + part.offset[0] - part.pivot[0] * w;
-        const bottom = o.pos[1] + part.offset[1] - part.pivot[1] * h;
-        for (let x = Math.floor(left) - 1; x <= Math.floor(left + w) + 1; x++) {
-          for (let y = Math.floor(bottom) - 1; y <= Math.floor(bottom + h) + 1; y++) {
-            if (campNow.has(key(x, y))) return false;
-          }
-        }
-      }
-      return true;
-    });
   }
 
   /* The islet sails to the shore that is actually there, and whatever of his

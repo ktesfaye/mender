@@ -3671,16 +3671,6 @@ beside the south pier, one passenger walked up into the village while a local
 came down the pier to it; from the top at noon sloops, the ship, two fishers
 and the ducks all on the water at once; at midnight the fishers' lanterns lit.
 
-### A pier the camp lands on is taken away (2026-10-08) — done
-
-With the crop farm put away the camp sails over and pitches beside the
-north-west houses, right where that district's pier reaches the water, and the
-pier was left lying on the camp's grass. Moving the camp off it put the fire
-somewhere strange instead, so the camp stays where it pitches and the pier it
-lands on goes; the districts that keep theirs are enough. Driven in a dev
-instance on his own set of districts: the camp where it was, no pier on it,
-boats only calling at the islet's.
-
 ### The boats are the villagers' size (2026-10-08) — done
 
 The boats were drawn smaller than the people who walked out to board them, so
@@ -3693,4 +3683,10 @@ driftwood grew with them. A boat ties up against the side of a pier rather
 than in it. Driven in a dev instance: a sloop tied up beside the islet's pier
 with townsfolk walking down to it, a raft and buoys plain to read close in,
 and the sloop, raft and ship each recognisable from the top of the island.
+
+### The map is back as it was (2026-10-08) — done
+
+The two changes to where the camp pitches and which piers stand are undone; the
+composer is exactly what it was before the boats came. The boats never needed
+it: a pier whose end is on grass is simply never called at.
 
