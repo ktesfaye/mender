@@ -25,8 +25,13 @@ type Local = (path: string, width: number) => Promise<string | null>;
 let local: Local | undefined;
 /** A picture on this machine, once read, by its path. */
 const read = new Map<string, Promise<string | null>>();
-/** Pictures already seen load, so writing the answer again as it streams does not blink them. */
-const loaded = new Set<string>();
+/**
+ * Pictures already loaded, kept whole. The board is written again every time
+ * anything on it changes, and a fresh `<img>` has no height until it has
+ * decoded, so everything under it would jump up and slide back down. The one
+ * already decoded is moved into the new writing instead.
+ */
+const loaded = new Map<string, HTMLImageElement>();
 
 /** How a picture on this machine is read, seeded once at boot. */
 export function seedLocalPictures(to: Local): void {
@@ -108,9 +113,24 @@ export function beside(writing: HTMLElement, pictures: readonly Picture[]): HTML
 function figure(one: Picture): HTMLElement {
   const it = document.createElement('figure');
   it.className = 'prose-picture';
-  const seen = loaded.has(one.url);
-  it.hidden = !seen;
-  if (!seen) it.classList.add('prose-picture-new');
+  const kept = loaded.get(one.url);
+  if (kept && !kept.isConnected) {
+    kept.alt = one.name;
+    it.appendChild(kept);
+  } else {
+    it.hidden = !kept;
+    if (!kept) it.classList.add('prose-picture-new');
+    it.appendChild(image(one, it));
+  }
+  if (one.name) {
+    const said = document.createElement('figcaption');
+    said.textContent = one.name;
+    it.appendChild(said);
+  }
+  return it;
+}
+
+function image(one: Picture, it: HTMLElement): HTMLImageElement {
   const picture = document.createElement('img');
   picture.alt = one.name;
   picture.draggable = false;
@@ -118,7 +138,7 @@ function figure(one: Picture): HTMLElement {
   picture.addEventListener(
     'load',
     () => {
-      loaded.add(one.url);
+      if (!loaded.get(one.url)?.isConnected) loaded.set(one.url, picture);
       it.hidden = false;
     },
     { once: true }
@@ -133,7 +153,7 @@ function figure(one: Picture): HTMLElement {
     if (event.button !== 0 || !picture.currentSrc) return;
     if (Math.hypot(event.clientX - from.x, event.clientY - from.y) > 4) return;
     event.stopPropagation();
-    holdUp(picture.currentSrc, one.name, larger(one.url));
+    holdUp(picture.currentSrc, picture.alt, larger(one.url));
   });
   if (/^https?:\/\//.test(one.url)) picture.src = one.url;
   else {
@@ -142,13 +162,7 @@ function figure(one: Picture): HTMLElement {
       else it.remove();
     });
   }
-  it.appendChild(picture);
-  if (one.name) {
-    const said = document.createElement('figcaption');
-    said.textContent = one.name;
-    it.appendChild(said);
-  }
-  return it;
+  return picture;
 }
 
 /** A picture on this machine, read once, as something an `<img>` can draw. */
