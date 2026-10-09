@@ -1040,6 +1040,9 @@ async function boot(): Promise<void> {
     /** Set while the trail is walking itself, so it does not record its own
         footsteps as new places. */
     let retracing = false;
+    /** The last place you were in rather than out on the water, however you
+        left it, so Escape on the island always has somewhere to go back to. */
+    let wasIn: Spot | null = lastly('mender.lastIn');
 
     /** Where you are standing, which decides what there is to do. */
     const standing = (): Where =>
@@ -1053,8 +1056,17 @@ async function boot(): Promise<void> {
           : { kind: 'island' };
 
     const arrived = (): void => {
-      if (retracing || looking) return;
+      if (looking) return;
       const now = spot();
+      if (now.kind !== 'island' && !same(wasIn ?? undefined, now)) {
+        wasIn = now;
+        try {
+          localStorage.setItem('mender.lastIn', JSON.stringify(now));
+        } catch {
+          // Then it is only remembered until the window closes.
+        }
+      }
+      if (retracing) return;
       if (same(trail[step], now)) return;
       trail = [...trail.slice(0, step + 1), now].slice(-40);
       step = trail.length - 1;
@@ -5605,11 +5617,12 @@ async function boot(): Promise<void> {
          * so stepping back onto it put you straight back in the session you
          * had just left, over and over, with no way out at all once the land
          * behind stopped taking clicks. */
-        /* Already out on the water, Escape goes back in to wherever you came
-           out of, so it swings between the island and the work. */
+        /* Already out on the water, Escape goes back in to wherever you were
+           last, however you came out of it, so it swings between the island
+           and the work. */
         if (!open && !inside) {
           if (rearrangeSlab) unslabIsland();
-          else if (trail[step]?.kind === 'island' && trail[step - 1]) void retrace(-1);
+          else if (wasIn) void visit(wasIn);
           return;
         }
         void picked(null);
@@ -6439,9 +6452,9 @@ function same(a: Spot | undefined, b: Spot): boolean {
 }
 
 /** Where the app was when it was last closed, if it wrote it down. */
-function lastly(): Spot | null {
+function lastly(key = 'mender.where'): Spot | null {
   try {
-    const kept = localStorage.getItem('mender.where');
+    const kept = localStorage.getItem(key);
     if (!kept) return null;
     const read = JSON.parse(kept) as Spot;
     return read.kind === 'island' || read.kind === 'project' || read.kind === 'task' ? read : null;
