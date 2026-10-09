@@ -140,6 +140,10 @@ type Weather = Omit<Target, 'ambient' | 'desat' | 'dark' | 'low'>;
 const DEFAULT_SUNRISE = 6.75;
 const DEFAULT_SUNSET = 19;
 
+/** Whether lying snow brings ice into the sea. Off for now: the ice is drawn
+    and the boats know to keep out of it, but it is held back until he wants it. */
+const SEA_FREEZES = false;
+
 export class Sky {
   private choice = keptChoice();
   private real: RealWeather | null = null;
@@ -213,7 +217,7 @@ export class Sky {
     if (!this.settled) {
       look.cover = target.snow > 0.05 ? 1 : 0;
       look.wet = target.rain > 0.05 ? 1 : 0;
-      look.ice = target.snow > 0.05 ? 1 : 0;
+      look.ice = SEA_FREEZES && target.snow > 0.05 ? 1 : 0;
     } else {
       look.cover =
         target.snow > 0.05
@@ -224,7 +228,7 @@ export class Sky {
           ? Math.min(1, look.wet + seconds * target.rain * 0.06)
           : Math.max(0, look.wet - seconds * 0.003);
       look.ice =
-        target.snow > 0.05
+        SEA_FREEZES && target.snow > 0.05
           ? Math.min(1, look.ice + seconds * target.snow * 0.012)
           : Math.max(0, look.ice - seconds * 0.0015);
     }
