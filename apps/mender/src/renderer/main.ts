@@ -1058,7 +1058,7 @@ async function boot(): Promise<void> {
 
     const spot = (): Spot =>
       inside
-        ? { kind: 'task', id: inside.id, card: Boolean(card) }
+        ? { kind: 'task', id: inside.id, card: Boolean(card), project: inside.project }
         : open
           ? { kind: 'project', id: projectOn(open.district)?.id ?? '' }
           : { kind: 'island' };
@@ -1553,8 +1553,12 @@ async function boot(): Promise<void> {
       const task = tasks.find((each) => each.id === going.id);
       const district =
         task && districtFor(projects.find((p) => p.id === task.project)?.district ?? '');
-      // Somewhere that is not there any more puts you back out on the water,
-      // rather than leaving you looking at whatever was already on the board.
+      // A session that is not there any more goes back to the district it
+      // stood in, and only somewhere wholly gone puts you back out on the water.
+      if (!task && going.project) {
+        await visit({ kind: 'project', id: going.project });
+        return;
+      }
       if (!task || !district) {
         await shut();
         flyOut(camera, drawn.island);
@@ -6450,7 +6454,9 @@ interface Pointing {
 type Spot =
   | { kind: 'island' }
   | { kind: 'project'; id: string }
-  | { kind: 'task'; id: string; card: boolean };
+  /** The project rides along so a session taken down since still leaves
+      somewhere to go back to: its district. */
+  | { kind: 'task'; id: string; card: boolean; project?: string };
 
 function same(a: Spot | undefined, b: Spot): boolean {
   if (!a || a.kind !== b.kind) return false;
