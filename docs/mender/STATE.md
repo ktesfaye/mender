@@ -3680,3 +3680,17 @@ somewhere strange instead, so the camp stays where it pitches and the pier it
 lands on goes; the districts that keep theirs are enough. Driven in a dev
 instance on his own set of districts: the camp where it was, no pier on it,
 boats only calling at the islet's.
+
+### The boats are the villagers' size (2026-10-08) — done
+
+The boats were drawn smaller than the people who walked out to board them, so
+from the water nobody could tell what they were. Every one is redrawn at the
+villagers' own scale with a real seated villager aboard: a sloop with a
+sailor at the tiller, a rowing boat with its rower, a raft with a fisher
+poling it, a fisher's dinghy with a rod out, and a ship twice that with two
+masts, square sails, a crew on deck and gunports; the buoys, barrels and
+driftwood grew with them. A boat ties up against the side of a pier rather
+than in it. Driven in a dev instance: a sloop tied up beside the islet's pier
+with townsfolk walking down to it, a raft and buoys plain to read close in,
+and the sloop, raft and ship each recognisable from the top of the island.
+
