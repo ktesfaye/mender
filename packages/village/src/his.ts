@@ -1056,6 +1056,50 @@ function compose(world: VillageWorld, index: Index, present: Iterable<string>): 
 
   const land = new Set<string>(main);
   for (const k of quay) land.add(k);
+
+  /* WHERE THE CAMP COMES ALONGSIDE, THE JOIN IS DRESSED AFRESH. Both sides of
+     it are his drawing, but not drawn against each other: the coast it parks
+     against still has his cliff and foam facing a sea that is now the camp,
+     and the side of the camp that used to run on into the crop farm is bare
+     meadow that now stops at the water. Left as they were the two show a
+     line of sea between them and a square tab with no edge. So those cells
+     are given back to the pass as ground to lay, and it dresses them the way
+     the brush dresses any coast it makes. */
+  const joint = new Set<string>();
+  if (!home) {
+    const sides: [number, number][] = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ];
+    /* Only where meadow meets meadow: the camp's cliff and the coast below it
+       are his faces already, and asking the pass to lay ground beside a face
+       grows a stray terrace in the water. */
+    const meadow = new Set<string>();
+    for (const t of layout.tiles as VTile[]) {
+      if (t.file && /Grass|Dirt/.test(t.file)) meadow.add(key(t.cell[0], t.cell[1]));
+    }
+    for (const k of land) {
+      if (campNow.has(k) || quay.has(k)) continue;
+      const [x, y] = unkey(k);
+      if (sides.some(([dx, dy]) => meadow.has(key(x + dx, y + dy)) && campNow.has(key(x + dx, y + dy))))
+        joint.add(k);
+    }
+    for (const k of campNow) {
+      const [x, y] = unkey(k);
+      const [hx, hy] = [x - camped[0], y - camped[1]];
+      for (const [dx, dy] of sides) {
+        const was = key(hx + dx, hy + dy);
+        if (camp.has(was) || !hisOwn.has(was)) continue;
+        if (!land.has(key(x + dx, y + dy))) joint.add(k);
+      }
+    }
+    const ground = new Set(['Layer 01', 'Layer 02', 'Layer 03', 'Layer 04']);
+    layout.tiles = layout.tiles.filter(
+      (t: VTile) => !(ground.has(t.layer) && joint.has(key(t.cell[0], t.cell[1])))
+    );
+  }
   for (const k of unit) {
     const [x, y] = unkey(k);
     land.add(key(x + off[0], y + off[1]));
@@ -1134,7 +1178,7 @@ function compose(world: VillageWorld, index: Index, present: Iterable<string>): 
 
   const shore = shorePass(layout, {
     land: [...wobbled.land].map(unkey),
-    newLand: [...quay].map(unkey),
+    newLand: [...quay, ...joint].map(unkey),
     wet,
     atlas: world.atlas,
     redressMode: 'none',

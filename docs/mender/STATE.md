@@ -3690,3 +3690,16 @@ The two changes to where the camp pitches and which piers stand are undone; the
 composer is exactly what it was before the boats came. The boats never needed
 it: a pier whose end is on grass is simply never called at.
 
+### Where the camp comes alongside, the land joins (2026-10-08) — done
+
+With the crop farm put away the camp sails over and berths against the
+north-west houses, and the join between them showed a line of sea and a square
+tab of meadow with no edge: both sides were his drawing, but never drawn
+against each other, so nothing redressed them. Now the cells either side of
+that join, where meadow meets meadow, and the camp's old cut side where it now
+faces the water, are handed back to the shore pass as ground to lay and dressed
+with the brush like any coast it makes. Nothing changes while the camp is at
+home. Driven in a dev instance on his own set of districts: one piece of land
+from the fire to the houses, a proper coast along the camp's north side, no
+stray terrace below it.
+
