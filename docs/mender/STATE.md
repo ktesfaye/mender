@@ -2954,6 +2954,11 @@ houses swapped with the hay farm's east half and both flags traded places, the
 crop farm refused off the map because everything hangs off it, and the crop
 farm's barn forgotten off the water.
 
+While it is on, the camera zooms out past the land to the whole of his map,
+every empty place in view, and "done" flies it back in to the island (2026-10-09,
+driven in a scratch data folder: one project on the hay farm, zoomed all the
+way out to every place, then back).
+
 ### A flag is moved by hand (2026-09-28) — done
 
 While editing districts a flag is picked up by its pole or its cloth, before

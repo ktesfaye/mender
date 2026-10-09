@@ -199,7 +199,9 @@ export function flyToDistrict(viewport: Viewport, district: DistrictBounds, padd
  * and panning stops before the island can leave it: past either, the view was
  * open water with nothing to look at and no way to tell where the land went.
  */
-export function holdToIsland(viewport: Viewport, island: Extent): void {
+export function holdToIsland(viewport: Viewport, island: Extent, snap = true): void {
+  held = island;
+  if (reach) island = union(island, reach);
   if (!island.width || !island.height) return;
   const fit = Math.min(
     viewport.screenWidth / (island.width * 1.15),
@@ -221,8 +223,35 @@ export function holdToIsland(viewport: Viewport, island: Extent): void {
        against one edge instead of centring it. */
     viewport.on('frame-end', () => keepOn(viewport));
   }
-  if (viewport.scale.x < floor) viewport.setZoom(floor, true);
+  if (snap && viewport.scale.x < floor) viewport.setZoom(floor, true);
 }
+
+/**
+ * Let the camera out over the whole of his map, not just the land standing on
+ * it: while districts are being rearranged the empty places are where things
+ * go, and they are out on the water past the coast. Null takes it back to the
+ * island, flying back in if the view is now further out than that allows.
+ */
+export function holdToMap(viewport: Viewport, map: Extent | null): void {
+  reach = map;
+  if (!held) return;
+  holdToIsland(viewport, held, map !== null);
+  if (!map && viewport.scale.x < floor) flyOut(viewport, held);
+}
+
+function union(a: Extent, b: Extent): Extent {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    width: Math.max(a.x + a.width, b.x + b.width) - x,
+    height: Math.max(a.y + a.height, b.y + b.height) - y,
+  };
+}
+
+let held: Extent | null = null;
+let reach: Extent | null = null;
 
 /** How much sea the camera may show past the island's edge, in world pixels. */
 const MARGIN = 160;

@@ -971,7 +971,8 @@ against `world/his.py` in the village repo, tile for tile, at every state.
 a little sea round it fit the window, and panning stops before the land can
 leave it. A two-finger double tap on the trackpad, the Mac's own smart zoom, goes
 in close wherever the fingers were and, tapped again, back out to the whole
-island.
+island. While districts are being edited it lets go further, out
+to the whole of his map, so every empty place is in view to carry one to.
 
 **A right-click on a district brings it into focus.** The camera flies in to
 frame that one district, as close as keeps all of it on screen, and nothing

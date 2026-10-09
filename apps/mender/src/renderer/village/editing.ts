@@ -49,6 +49,8 @@ export interface EditingHost {
   flags(): Flags;
   /** Stand a district's flag here from now on. */
   plant(district: string, foot: { x: number; y: number }): Promise<void>;
+  /** Let the camera out over the whole map, every empty place on it; null is back to the land. */
+  reach(map: { x: number; y: number; width: number; height: number } | null): void;
 }
 
 export interface Flags {
@@ -241,6 +243,7 @@ export class Editing {
     this.refresh();
     this.say();
     this.line.style.opacity = '1';
+    this.host.reach(boxOf(this.places.flatMap((place) => place.cells)));
     stir();
   }
 
@@ -255,6 +258,7 @@ export class Editing {
     this.line.replaceChildren();
     this.camera.plugins.resume('drag');
     this.pixi.canvas.style.cursor = 'default';
+    this.host.reach(null);
     stir();
   }
 

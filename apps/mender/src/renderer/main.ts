@@ -75,6 +75,7 @@ import {
   frame,
   holdStill,
   holdToIsland,
+  holdToMap,
   smartZoom,
   type Extent,
 } from './village/camera';
@@ -5871,6 +5872,7 @@ async function boot(): Promise<void> {
         },
         sessions: (id) => tasks.filter((task) => task.project === id).length,
         covered: (x, y) => yard.covers(x, y),
+        reach: (map) => holdToMap(camera, map),
         flags: () => drawn.pennants,
         plant: async (district, foot) => {
           plantFlag(district, foot, drawn.moored);
