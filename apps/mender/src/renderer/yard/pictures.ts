@@ -13,6 +13,8 @@
  * will not load is simply not there: a broken frame says less than nothing.
  */
 
+import { holdUp } from './picture-view';
+
 export interface Picture {
   name: string;
   url: string;
@@ -122,6 +124,17 @@ function figure(one: Picture): HTMLElement {
     { once: true }
   );
   picture.addEventListener('error', () => it.remove(), { once: true });
+  /* Pressed, it is held up big; dragged across, it is part of a selection. */
+  let from = { x: 0, y: 0 };
+  picture.addEventListener('pointerdown', (event) => {
+    from = { x: event.clientX, y: event.clientY };
+  });
+  picture.addEventListener('click', (event) => {
+    if (event.button !== 0 || !picture.currentSrc) return;
+    if (Math.hypot(event.clientX - from.x, event.clientY - from.y) > 4) return;
+    event.stopPropagation();
+    holdUp(picture.currentSrc, one.name, larger(one.url));
+  });
   if (/^https?:\/\//.test(one.url)) picture.src = one.url;
   else {
     void onThisMachine(one.url).then((src) => {
@@ -154,4 +167,18 @@ export function onThisMachine(url: string): Promise<string | null> {
     read.set(path, one);
   }
   return one;
+}
+
+/** A picture on this machine read again at a size worth holding up, or nothing for one on the web. */
+function larger(url: string): Promise<string | null> | undefined {
+  if (/^https?:\/\//.test(url) || !local) return undefined;
+  let path = url;
+  if (path.startsWith('file://')) {
+    try {
+      path = decodeURIComponent(new URL(path).pathname);
+    } catch {
+      return undefined;
+    }
+  }
+  return local(path, 3200).catch(() => null);
 }

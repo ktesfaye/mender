@@ -559,7 +559,9 @@ A picture written into a paragraph or a list entry, or on a line of its own
 right under one, stands beside that writing, the way a listing puts the
 photo next to what it is a photo of; more than two together, or anywhere
 else, stand where they were written, several in a row, each with its
-caption under it, and one that will not load is simply not there. Every
+caption under it, and one that will not load is simply not there.
+Pressing one holds it up over the whole window, as big as it fits, and the
+wheel goes in closer on it; Escape or a press puts it down. Every
 session is told only that pictures show here, to be visual wherever seeing
 a thing would help, and that a picture has to be one it actually found:
 where and how is left to it.

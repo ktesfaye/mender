@@ -2256,3 +2256,58 @@ body.gripping-row * {
 .yard .trail-deed .deed-said {
   -webkit-line-clamp: 3;
 }
+
+/* A picture from an answer held up over everything: the village sinks under
+   a dark wash and the picture stands at the largest size that fits. */
+.picture-view {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 4vh 4vw;
+  box-sizing: border-box;
+  background: rgba(8, 6, 4, 0.92);
+  animation: picture-view-in 180ms ease-out both;
+}
+.picture-view-going {
+  animation: picture-view-out 160ms ease-in both;
+}
+.picture-view-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: zoom-out;
+  touch-action: none;
+}
+.picture-view-stage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform-origin: 0 0;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+  user-select: none;
+}
+.picture-view-name {
+  font-family: var(--yard-face-label);
+  font-size: 16px;
+  letter-spacing: 0.03em;
+  color: rgba(244, 227, 192, 0.85);
+}
+@keyframes picture-view-in {
+  from { opacity: 0; }
+}
+@keyframes picture-view-out {
+  to { opacity: 0; }
+}
+.yard .prose-picture img {
+  cursor: zoom-in;
+}

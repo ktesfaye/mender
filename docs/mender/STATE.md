@@ -267,6 +267,12 @@ the first place to look, with Commons and Wikipedia after it, so one dry page
 is no longer the end of it. Driven: the same question came back with a real,
 loading photo beside each of five tours.
 
+Pressing a picture in an answer holds it up over the whole window at the
+largest size that fits, caption under it; the wheel goes in closer where the
+pointer is, a drag moves it, and Escape or a press puts it down. One on this
+machine is read again larger for it. Driven in a dev window: opened, zoomed,
+put down by Escape and by a press.
+
 A fenced ` ```mermaid ` block is now drawn — colored to the wood rather than
 left in whatever the diagram's own default is, via `beautiful-mermaid` (already
 in the lockfile, no DOM dependency of its own) — and panned and zoomed rather
