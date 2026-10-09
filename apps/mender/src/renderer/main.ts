@@ -5585,6 +5585,13 @@ async function boot(): Promise<void> {
          * so stepping back onto it put you straight back in the session you
          * had just left, over and over, with no way out at all once the land
          * behind stopped taking clicks. */
+        /* Already out on the water, Escape goes back in to wherever you came
+           out of, so it swings between the island and the work. */
+        if (!open && !inside) {
+          if (rearrangeSlab) unslabIsland();
+          else if (trail[step]?.kind === 'island' && trail[step - 1]) void retrace(-1);
+          return;
+        }
         void picked(null);
       },
       /* Every rung of Escape at once, minus the one that calls somebody off:

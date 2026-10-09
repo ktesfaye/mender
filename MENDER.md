@@ -496,7 +496,9 @@ read you can still see what you asked for and who else is working. The way home
 is written across the top, one gold step per level, and Escape walks the same
 steps one at a time. A click anywhere outside what is open closes it.
 Shift-Escape skips every step and goes straight out to the island, from
-anywhere, calling nobody off on the way.
+anywhere, calling nobody off on the way. Out on the island with nothing open,
+Escape goes back in to wherever you came out of, so it swings between the
+water and the work.
 
 **Gold is pressable and pressable is gold.** Nothing else anywhere is gold, and
 a pressable thing carries no underline, no arrow and no box. The result of
