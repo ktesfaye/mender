@@ -1411,6 +1411,218 @@ def extra_frames() -> dict[str, Image.Image]:
     out["cart-0"], out["cart-1"] = cart(0), cart(1)
     out["boat-0"], out["boat-1"] = boat(0), boat(1)
     out.update(steeds())
+    out.update(seafarers())
+    return out
+
+
+# ---------------------------------------------------------------------------
+# The sea's own traffic
+# ---------------------------------------------------------------------------
+#
+# What sails past the island on its own, nobody's errand: a sloop with a
+# sailor at the tiller, a rowing boat, a log raft poled along under a patched
+# square sail, a fisher at anchor with a rod, and far out a two-masted ship.
+# Then what floats: a buoy, a barrel, a log, a duck swimming, and the lap of
+# water at a hull and the rings a wake leaves. All side on and facing right,
+# the renderer flips them, and anchored bottom-centre like everything else,
+# the bottom being the water.
+
+SEA = {**ANI, "F": hx(0xEAF6F2), "Q": hx(0xBFE2E0), "v": hx(0x8FC4C6)}
+
+
+def sea(rows: list[str]) -> Image.Image:
+    return draw(rows, SEA)
+
+
+SAILOR = [".hhh.", "hhhhh", ".uux.", ".uu..", "SSSu.", "SSSS."]
+ROWER = [".NN..", "NNNN.", ".uu..", "RRRR.", "RRRRu", "RRRR."]
+POLER = [".hh..", "hhhh.", ".uu..", ".BB..", "BBBBu", ".BB..", ".BB..", ".j.j.", ".j.j."]
+
+
+def hull(c: Cv, x0: int, x1: int, top: int, depth: int, stern: float, bow: float,
+         bands: str) -> None:
+    """A hull from stern (x0) to bow (x1), its rows coloured by `bands` top down."""
+    for r in range(depth):
+        a = x0 + round(r * stern)
+        b = x1 - round(r * bow)
+        ch = bands[min(r, len(bands) - 1)]
+        for x in range(a, b + 1):
+            c.px(x, top + r, ch)
+    for x in range(x1 - 3, x1 + 1):
+        c.px(x, top - 1, bands[0])
+
+
+def sloop(bob: int) -> list[str]:
+    c = Cv(34, 34)
+    d = bob
+    for y in range(2 + d, 26 + d):
+        c.px(15, y, "j")
+    c.rect(16, 2 + d, 18, 2 + d, "R")
+    c.rect(16, 3 + d, 17, 3 + d, "R")
+    for y in range(4 + d, 22 + d):
+        t = (y - 4 - d) / 17
+        left = round(14 - 9.5 * t - 1.2 * (1 - (2 * t - 1) ** 2))
+        for x in range(left, 15):
+            seam = (y - 4 - d) % 5 == 4
+            c.px(x, y, "c" if seam or x == 14 else "C")
+    c.rect(4, 22 + d, 15, 22 + d, "j")
+    for y in range(6 + d, 24 + d):
+        right = 16 + round((y - 6 - d) * 0.62)
+        for x in range(16, right + 1):
+            c.px(x, y, "w" if x == right else "W")
+    paint(c, 4, 21 + d, SAILOR)
+    hull(c, 2, 31, 27 + d, 5, 0.5, 1.7, "aLRjj")
+    return c.rows()
+
+
+def rowboat(frame: int) -> list[str]:
+    c = Cv(28, 17)
+    paint(c, 11, 2, ROWER)
+    hull(c, 2, 25, 9, 4, 0.6, 1.4, "LLjj")
+    bx, by = [(1, 15), (6, 16), (19, 14), (11, 11)][frame]
+    ox, oy = 13, 8
+    steps = max(abs(bx - ox), abs(by - oy))
+    for i in range(steps + 1):
+        c.px(round(ox + (bx - ox) * i / steps), round(oy + (by - oy) * i / steps), "a")
+    c.rect(bx - 1, by, bx + 1, by, "L")
+    c.px(ox, oy, "j")
+    return c.rows()
+
+
+def raft(frame: int) -> list[str]:
+    c = Cv(28, 26)
+    lean = frame
+    for y in range(4, 20):
+        c.px(10, y, "L")
+    c.rect(4, 4, 16, 4, "j")
+    for y in range(5, 15):
+        for x in range(4 + (y > 10) * lean, 17 - (y < 8) * lean):
+            c.px(x, y, "c" if (x + y) % 7 else "C")
+    c.rect(5, 6, 7, 8, "b")
+    c.rect(12, 10, 14, 12, "C")
+    c.rect(4, 15, 16, 15, "j")
+    paint(c, 17, 9, POLER)
+    px0, py0, px1, py1 = (22 - lean, 4, 25 + lean, 23)
+    steps = py1 - py0
+    for i in range(steps + 1):
+        c.px(round(px0 + (px1 - px0) * i / steps), py0 + i, "j")
+    c.rect(3, 15, 6, 17, "L")
+    c.rect(3, 16, 6, 16, "j")
+    c.rect(1, 18, 25, 18, "L")
+    c.rect(1, 19, 25, 20, "j")
+    for x in range(1, 26, 3):
+        c.px(x, 19, "a")
+    c.rect(4, 18, 4, 20, "B")
+    c.rect(20, 18, 20, 20, "B")
+    return c.rows()
+
+
+def fisher(frame: int) -> list[str]:
+    c = Cv(30, 22)
+    paint(c, 7, 9, SAILOR)
+    tip = (23, 2) if frame == 0 else (24, 5)
+    ox, oy = 11, 13
+    steps = max(abs(tip[0] - ox), abs(tip[1] - oy))
+    for i in range(steps + 1):
+        c.px(round(ox + (tip[0] - ox) * i / steps), round(oy + (tip[1] - oy) * i / steps), "j")
+    end = (28, 20) if frame == 0 else (26, 20)
+    steps = end[1] - tip[1]
+    for i in range(1, steps + 1, 2 - frame):
+        c.px(round(tip[0] + (end[0] - tip[0]) * i / steps), tip[1] + i, "w")
+    c.rect(15, 14, 17, 15, "I")
+    c.rect(15, 14, 17, 14, "i")
+    hull(c, 2, 21, 16, 4, 0.6, 1.4, "aSss")
+    return c.rows()
+
+
+def ship(bob: int) -> list[str]:
+    c = Cv(64, 58)
+    d = bob
+    masts = (24, 41)
+    for m in masts:
+        for y in range(3 + d, 42 + d):
+            c.px(m, y, "j")
+    c.rect(25, 1 + d, 28, 2 + d, "R")
+    c.rect(42, 4 + d, 45, 5 + d, "R")
+    for m, top, h, w in ((24, 6, 30, 9), (41, 9, 26, 8)):
+        for tier, (y0, y1, half) in enumerate(((top, top + 7, w - 3), (top + 9, top + h, w))):
+            c.rect(m - half - 1, y0 + d - 1, m + half + 1, y0 + d - 1, "j")
+            for y in range(y0 + d, y1 + d):
+                t = (y - y0 - d) / max(1, y1 - y0)
+                belly = round(1.5 * (1 - (2 * t - 1) ** 2))
+                for x in range(m - half - belly + 1, m + half + belly):
+                    band = tier == 1 and abs(y - (y0 + y1) / 2 - d) < 2
+                    c.px(x, y, "R" if band else ("c" if x in (m - half - belly + 1, m) else "C"))
+    for y in range(12 + d, 38 + d):
+        right = 42 + round((y - 12 - d) * 0.66)
+        for x in range(43, min(right, 60) + 1):
+            c.px(x, y, "w" if x == right else "W")
+    for i in range(8):
+        c.px(55 + i, 40 + d - i // 2 * 1 - (i % 2), "j")
+    c.rect(2, 36 + d, 15, 41 + d, "L")
+    c.rect(2, 36 + d, 15, 36 + d, "a")
+    for x in range(4, 15, 3):
+        c.px(x, 38 + d, "x")
+    c.rect(48, 38 + d, 57, 41 + d, "L")
+    c.rect(48, 38 + d, 57, 38 + d, "a")
+    hull(c, 1, 59, 42 + d, 12, 0.35, 1.9, "aLLCLjjBBjjj")
+    for x in range(6, 52, 5):
+        c.px(x, 45 + d, "x")
+    return c.rows()
+
+
+BUOY = [
+    ["..i..", ".i.i.", ".iYi.", ".RRR.", ".RRR.", "WWWWW", "WWWWW", "RRRRR", "RRRRR", "jjjjj"],
+    ["...i.", "..i.i", "..iYi", ".RRR.", ".RRR.", "WWWWW", "WWWWW", "RRRRR", "RRRRR", "jjjjj"],
+]
+BARREL = [["LjLLLjL", "LjLLLjL", "jjjjjjj"], [".LjLLLj", "LLjLLLj", "jjjjjjj"]]
+DRIFT = [["..B.........", ".BbBBBBBBBb.", "BBBBBBBBBBBB"], [".B..........", "BbBBBBBBBBb.", "BBBBBBBBBBBB"]]
+DUCK_SWIM = [["...GG.", "...GeY", "bbbbW.", "BbbbB."], ["......", "...GG.", "bbbGeY", "BbbbB."]]
+
+
+def lap(width: int, frame: int) -> list[str]:
+    """The water lapping at a hull: a row of foam with gaps that walk."""
+    row1 = "".join("F" if (x + frame * 2) % 5 else "." for x in range(width))
+    row2 = "".join("Q" if (x + frame * 3) % 4 == 0 else "." for x in range(width + 4))
+    return ["." * 2 + row1 + "." * 2, row2]
+
+
+def ring(radius: int) -> list[str]:
+    """One ring of a wake, squashed because the sea is seen from above and south."""
+    w, h = radius * 2 + 1, max(3, radius + 1)
+    rows = []
+    for y in range(h):
+        line = ""
+        for x in range(w):
+            dx = (x - radius) / radius
+            dy = (y - (h - 1) / 2) / ((h - 1) / 2)
+            r = (dx * dx + dy * dy) ** 0.5
+            line += "F" if abs(r - 1) < 0.28 and (x + y) % 3 else "."
+        rows.append(line)
+    return rows
+
+
+def seafarers() -> dict[str, Image.Image]:
+    out: dict[str, Image.Image] = {}
+
+    def add(prefix, frames):
+        for name, image in group(frames).items():
+            out[f"{prefix}-{name}"] = image
+
+    add("sloop", {str(i): sloop(i) for i in range(2)})
+    add("row", {str(i): rowboat(i) for i in range(4)})
+    add("raft", {str(i): raft(i) for i in range(2)})
+    add("fisher", {str(i): fisher(i) for i in range(2)})
+    add("ship", {str(i): ship(i) for i in range(2)})
+    add("buoy", {str(i): rows for i, rows in enumerate(BUOY)})
+    add("barrel", {str(i): rows for i, rows in enumerate(BARREL)})
+    add("drift", {str(i): rows for i, rows in enumerate(DRIFT)})
+    add("duck-swim", {str(i): rows for i, rows in enumerate(DUCK_SWIM)})
+    for size, width in (("s", 20), ("m", 28), ("l", 56)):
+        for i in range(2):
+            out[f"lap-{size}-{i}"] = sea(lap(width, i))
+    for i, radius in enumerate((3, 5, 7, 9)):
+        out[f"ring-{i}"] = sea(ring(radius))
     return out
 
 

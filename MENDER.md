@@ -1183,7 +1183,12 @@ sheep, pigs, cows, a dog and a cat about the farms and yards. Every single thing
 an agent does sends a runner out of its session's door carrying it: a scroll to
 the signpost for something read, a crate to the storehouse for something
 written, a hammer to the forge for something run, and back. A commit wheels a
-handcart down the road; a push sails a boat off from the district's dock. Two
+handcart down the road; a push loads a sloop at the district's pier and townsfolk walk out to board it
+before it sails. The sea has its own traffic besides, nobody's errand: sloops
+round the island, a ship well out, a raft, fishers at anchor, a rowing boat,
+buoys, driftwood and ducks, leaving rings behind them and lit after dark. A
+boat ties up only at a pier the artist drew that still reaches water, and
+whoever came on it walks up into the village. Two
 busy districts send people along the road between them, and the roads carry
 covered wagons with a carter on the box and riders on horseback between any
 lived-in districts, more the busier the island is, drawn a little larger as

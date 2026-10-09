@@ -3652,3 +3652,22 @@ anywhere else it stays on the rack. A pull that starts sideways still turns
 into one once it heads well down. Driven in a dev instance: delta dragged
 onto the empty watchtower and stood there, echo dragged onto charlie's south
 houses, echo took them and charlie went back to the rack.
+
+### There is traffic on the sea, and it lands at the piers (2026-10-08) — done
+
+The water is no longer empty round the island. Sloops come in past the coast
+and go out the other side, a two-masted ship goes by well out, a log raft is
+poled along under a patched sail, fishers row out and sit at anchor with a rod
+over the side, and a rowing boat pulls in to a pier. Buoys bob off the piers,
+a barrel or a log drifts past, ducks paddle along the shore, and everything
+that moves leaves rings and has the water lapping at its hull. After dark the
+boats carry a lantern and the buoys blink. A boat only ever ties up at a pier
+the artist drew, and only one whose end is still over water and can be sailed
+to; tied up, whoever came on it walks up the pier into the village and
+townsfolk come down from their doors and walk out to board before it casts
+off. A push now loads a sloop at that district's pier rather than a boat
+setting off from a beach. Driven in a dev instance: a rowing boat berthed
+beside the south pier, one passenger walked up into the village while a local
+came down the pier to it; from the top at noon sloops, the ship, two fishers
+and the ducks all on the water at once; at midnight the fishers' lanterns lit.
+

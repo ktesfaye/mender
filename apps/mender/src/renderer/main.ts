@@ -6316,15 +6316,20 @@ async function draw(
   const paths = new Paths(map.layout, scene.buildings);
   const walkers = new Walkers(paths, scene.laneAt, fire);
   was?.crowd.destroy();
-  const crowd = new Crowd(paths, scene.laneAt, map.layout, map.districts, scene.buildings, {
-    x: island.x + island.width / 2,
-    y: island.y + island.height / 2,
-  });
+  const crowd = new Crowd(
+    paths,
+    scene.laneAt,
+    map.layout,
+    map.districts,
+    scene.buildings,
+    groundCells(map.layout),
+    island
+  );
   atmosphere.follow(
     () => walkers.positions(),
     () => crowd.lit()
   );
-  world.addChild(water.mesh, scene.root, atmosphere.air);
+  world.addChild(water.mesh, crowd.fleet.wakes, scene.root, atmosphere.air);
   // The island may have grown or shrunk: the camera's limits follow it.
   holdToIsland(camera, island);
   say(null);

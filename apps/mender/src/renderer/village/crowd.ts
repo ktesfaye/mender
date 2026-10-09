@@ -1,5 +1,6 @@
 import { CELL, type District, type Layout } from '@mender/village';
 import { Container, Sprite, type Texture } from 'pixi.js';
+import { Fleet } from './fleet';
 import { folkTexture } from './folk';
 import { SHADOW_TINT, type Building } from './scene';
 import type { Paths, Spot } from './walkers';
@@ -16,7 +17,8 @@ import type { Paths, Spot } from './walkers';
  * thing its agent does, a scroll to the signpost for something read, a crate
  * to the storehouse for something written, a hammer to the forge for something
  * run. A commit wheels a cart down to the storehouse; a push loads a boat at
- * the dock and it sails. Two busy districts send people along the road between
+ * the dock and it sails, which is the fleet's to do, along with everything
+ * else out on the water. Two busy districts send people along the road between
  * them. A quiet one has somebody about, and that is all. A forgotten one
  * empties out and gets crows.
  *
@@ -38,7 +40,6 @@ type Kind =
   | 'animal'
   | 'crow'
   | 'cart'
-  | 'boat'
   | 'wagon'
   | 'rider';
 type Dir = 'down' | 'up' | 'side';
@@ -66,7 +67,6 @@ const PACE: Record<Kind, number> = {
   animal: 9,
   crow: 14,
   cart: 16,
-  boat: 14,
   wagon: 15,
   rider: 26,
 };
@@ -117,9 +117,6 @@ interface Mover {
   /** For runners and travellers: where it is going, then whether it is coming back. */
   target: Spot | null;
   back: boolean;
-  /** A boat sails straight rather than walking. */
-  heading: Spot | null;
-  life: number;
   lane: Container | null;
   /** When a wagon or rider last turned, so a diagonal road does not flicker it. */
   turnedAt: number;
@@ -154,6 +151,8 @@ export interface Life {
 }
 
 export class Crowd {
+  /** Everything out on the water. */
+  readonly fleet: Fleet;
   private readonly movers: Mover[] = [];
   private readonly places = new Map<string, Place>();
   private readonly want = new Map<string, { town: number; animals: number; crows: number }>();
@@ -178,8 +177,10 @@ export class Crowd {
     layout: Layout,
     districts: readonly District[],
     buildings: readonly Building[],
-    private readonly centre: Spot
+    land: ReadonlySet<string>,
+    extent: { x: number; y: number; width: number; height: number }
   ) {
+    this.fleet = new Fleet(paths, laneAt, layout, buildings, land, extent);
     for (const district of districts) {
       if (district.kind === 'common') continue;
       this.places.set(district.id, {
@@ -278,17 +279,9 @@ export class Crowd {
     mover.pusher = pusher;
   }
 
-  /** Something was pushed: a boat leaves the district's dock. */
+  /** Something was pushed: a boat is loaded at the district's dock and sails. */
   boat(districtId: string): void {
-    const place = this.places.get(districtId);
-    const dock = place && (pick(place.docks) ?? this.nearestShore(place));
-    if (!dock) return;
-    const mover = this.make('boat', 'boat', dock, districtId);
-    const dx = dock.x - this.centre.x;
-    const dy = dock.y - this.centre.y;
-    const far = Math.hypot(dx, dy) || 1;
-    mover.heading = { x: dx / far, y: dy / far };
-    mover.life = 18;
+    this.fleet.depart(districtId);
   }
 
   /**
@@ -318,6 +311,7 @@ export class Crowd {
   *lit(): IterableIterator<Spot> {
     // The wagons' lanterns first, so the cap on lights never leaves a wagon dark.
     for (const one of this.movers) if (one.kind === 'wagon') yield* one.lamps;
+    yield* this.fleet.lit();
     for (const one of this.movers) if (isPerson(one.kind) || one.kind === 'rider') yield one;
   }
 
@@ -345,6 +339,7 @@ export class Crowd {
     }
     this.travel(seconds);
     this.roadTraffic(seconds);
+    this.fleet.tick(now, seconds, night, this.view);
     const resort = now - this.sorted > 400;
     if (resort) this.sorted = now;
     for (let i = this.movers.length - 1; i >= 0; i--) {
@@ -370,6 +365,7 @@ export class Crowd {
   }
 
   destroy(): void {
+    this.fleet.destroy();
     for (const mover of this.movers) mover.view.destroy({ children: true });
     this.movers.length = 0;
   }
@@ -512,7 +508,6 @@ export class Crowd {
     const body = new Sprite();
     body.anchor.set(0.5, 1);
     if (kind === 'animal' || kind === 'crow') shade.scale.set(0.6);
-    if (kind === 'boat') shade.visible = false;
     if (kind === 'wagon') shade.scale.set(3, 1.6);
     if (kind === 'rider') shade.scale.set(1.8, 1.1);
     view.addChild(shade, body);
@@ -538,8 +533,6 @@ export class Crowd {
       gone: false,
       target: null,
       back: false,
-      heading: null,
-      life: 0,
       lane: null,
       turnedAt: 0,
       lamps:
@@ -570,10 +563,6 @@ export class Crowd {
   private step(mover: Mover, now: number, seconds: number): void {
     if (mover.view.alpha < 1 && !mover.leaving) {
       mover.view.alpha = Math.min(1, mover.view.alpha + seconds * 2);
-    }
-    if (mover.kind === 'boat') {
-      this.sail(mover, now, seconds);
-      return;
     }
     let walking = false;
     if (mover.path.length && this.blocked(mover)) {
@@ -755,31 +744,6 @@ export class Crowd {
     mover.turnedAt = now;
   }
 
-  private sail(mover: Mover, now: number, seconds: number): void {
-    const heading = mover.heading!;
-    mover.life -= seconds;
-    const go = PACE.boat * seconds;
-    mover.x += heading.x * go;
-    mover.y += heading.y * go + Math.sin(now / 700) * 0.04;
-    mover.flip = heading.x < 0;
-    if (now - mover.frameAt > 600) {
-      mover.frameAt = now;
-      mover.frame++;
-    }
-    if (mover.life < 3) mover.view.alpha = Math.max(0, mover.life / 3);
-    if (mover.life <= 0) mover.gone = true;
-    this.draw(mover, true);
-  }
-
-  private nearestShore(place: Place): Spot | null {
-    const door = place.doors[0];
-    if (!door) return null;
-    const dx = door.x - this.centre.x;
-    const dy = door.y - this.centre.y;
-    const far = Math.hypot(dx, dy) || 1;
-    return { x: door.x + (dx / far) * 120, y: door.y + (dy / far) * 120 };
-  }
-
   private draw(mover: Mover, walking: boolean): void {
     const name = this.frameName(mover, walking);
     const texture: Texture | undefined =
@@ -824,8 +788,6 @@ export class Crowd {
         return walking ? `crow-hop-${f % 2}` : 'crow-hop-0';
       case 'cart':
         return `cart-${f % 2}`;
-      case 'boat':
-        return `boat-${f % 2}`;
       case 'wagon':
       case 'rider':
         return `${mover.look}-${mover.dir}-${walking ? f % 4 : 1}`;
