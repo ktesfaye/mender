@@ -68,9 +68,9 @@ export interface OnShelf {
   here: boolean;
   /** Put away: on the rack and off the island. Its board hangs weathered. */
   away?: boolean;
-  /** Whether somebody in this project is asking or hurt, worst first. */
-  /** Asking or hurt, or only out of usage, which glows low rather than calling. */
-  wants?: 'asking' | 'hurt' | 'limited';
+  /** What the loudest session in it is doing, said by a stud on the board;
+      nothing when nobody is doing anything worth a light. */
+  wants?: Want;
 }
 
 /** A put-away board carried down off the rack onto the island. */
@@ -89,12 +89,13 @@ export interface Shelf {
   close(): void;
 }
 
-type Want = 'asking' | 'hurt' | 'limited' | undefined;
+/** Worst first: hurt, asking, out of usage, finished and unseen, working. */
+export type Want = 'hurt' | 'asking' | 'limited' | 'done' | 'working' | undefined;
 
-/* The same two colours a lit house's window uses (`village/folk.ts`'s own
-   `LIGHT` table): amber for somebody asking, red for somebody hurt. It is a
-   glow round the board's own outline rather than round a box, so the board
-   stays the shape it was drawn. */
+/* The same colours a lit house's window uses (`village/folk.ts`'s own
+   `LIGHT` table): amber for somebody asking, red for somebody hurt. The
+   boards themselves carry a stud now; this glow is left to the beam, which
+   has no room for one when the rack is folded. */
 const GLOW: Record<'asking' | 'hurt' | 'limited' | 'none', string> = {
   limited: 'drop-shadow(0 0 2px #d0583e) drop-shadow(0 0 7px #d0583e88)',
   none: 'drop-shadow(0 0 0 rgba(0,0,0,0)) drop-shadow(0 0 0 rgba(0,0,0,0))',
@@ -122,6 +123,119 @@ function chain(left: number, top: number, long: boolean): HTMLDivElement {
   return link;
 }
 
+/* A stud nailed into the board's top-right corner, lit in the colour of the
+   loudest thing happening in that project: the same palette and the same
+   rhythm as the house windows and the lanterns on the rail. Lamplight
+   breathing slowly for somebody working, the fire's orange pulsing quick for
+   somebody asking, a steady green for something finished you have not seen,
+   a dull slow ember for a limit being waited out, and red throbbing for
+   broken. Idle is no stud at all, because a light is a reason to look. */
+const STUD: Record<Exclude<Want, undefined>, { color: string; bright: string; beat: string }> = {
+  working: {
+    color: '#ffdf9e',
+    bright: '#fff6dc',
+    beat: 'yard-breathe 3.4s ease-in-out infinite alternate',
+  },
+  asking: { color: '#ff691e', bright: '#ffb27a', beat: 'yard-wants 1.5s ease-in-out infinite' },
+  done: { color: '#84dc68', bright: '#d2f5c4', beat: 'none' },
+  limited: {
+    color: '#8a3a28',
+    bright: '#b0533a',
+    beat: 'yard-breathe 5.3s ease-in-out infinite alternate',
+  },
+  hurt: { color: '#ff5a46', bright: '#ffb3a6', beat: 'yard-wants 4.4s ease-in-out infinite' },
+};
+const INK = '#261810';
+const pixels = (at: [number, number][], color: string): string =>
+  at.map(([x, y]) => `${x * X}px ${y * X}px 0 0 ${color}`).join(',');
+/* Where the stud's own pixels fall, round the one at (1,1): the iron is a
+   three-square plate with an arm off each side, the light a diamond in it,
+   and the glow a ring of half-lit pixels round the plate's corners, since a
+   blur is the one thing the kit forbids everywhere. */
+const IRON_AT: [number, number][] = [
+  [0, 0],
+  [1, 0],
+  [2, 0],
+  [0, 1],
+  [1, 1],
+  [2, 1],
+  [0, 2],
+  [1, 2],
+  [2, 2],
+  [1, -1],
+  [-1, 1],
+  [3, 1],
+  [1, 3],
+];
+const LIT_AT: [number, number][] = [
+  [1, 0],
+  [0, 1],
+  [2, 1],
+  [1, 2],
+];
+const HALO_AT: [number, number][] = [
+  [0, -1],
+  [2, -1],
+  [-1, 0],
+  [3, 0],
+  [-1, 2],
+  [3, 2],
+  [0, 3],
+  [2, 3],
+];
+
+function studOn(swing: HTMLDivElement): HTMLDivElement {
+  const stud = document.createElement('div');
+  stud.className = 'stud';
+  /* Its plate sits on the board's top-right corner, clear of the chain. */
+  stud.style.cssText = [
+    'position:absolute',
+    `left:${20 * X}px`,
+    `top:0`,
+    `width:${X}px`,
+    `height:${X}px`,
+    'pointer-events:none',
+    'display:none',
+  ].join(';');
+  const halo = document.createElement('div');
+  halo.className = 'halo';
+  const iron = document.createElement('div');
+  iron.style.cssText = `position:absolute;width:${X}px;height:${X}px;box-shadow:${pixels(IRON_AT, INK)}`;
+  const lit = document.createElement('div');
+  lit.className = 'lit';
+  const eye = document.createElement('div');
+  eye.className = 'eye';
+  for (const each of [halo, lit, eye]) {
+    each.style.cssText = `position:absolute;width:${X}px;height:${X}px`;
+  }
+  eye.style.left = `${X}px`;
+  eye.style.top = `${X}px`;
+  stud.append(halo, iron, lit, eye);
+  swing.appendChild(stud);
+  return stud;
+}
+
+function paintStud(hang: HTMLDivElement, want: Want): void {
+  const stud = hang.querySelector<HTMLDivElement>('.stud');
+  if (!stud || stud.dataset.want === (want ?? '')) return;
+  stud.dataset.want = want ?? '';
+  if (!want) {
+    stud.style.display = 'none';
+    return;
+  }
+  const { color, bright, beat } = STUD[want];
+  stud.style.display = 'block';
+  const halo = stud.querySelector<HTMLDivElement>('.halo');
+  const lit = stud.querySelector<HTMLDivElement>('.lit');
+  const eye = stud.querySelector<HTMLDivElement>('.eye');
+  if (!halo || !lit || !eye) return;
+  halo.style.boxShadow = pixels(HALO_AT, `${color}66`);
+  lit.style.boxShadow = pixels(LIT_AT, color);
+  eye.style.background = bright;
+  /* The beat is in the light, not the iron: a nail head does not breathe. */
+  for (const each of [halo, lit, eye]) each.style.animation = beat;
+}
+
 /**
  * A board hung off the beam on two chains, with a project's face on it.
  *
@@ -143,6 +257,7 @@ function hangBoard(): HTMLDivElement {
   face.className = 'face-on';
   face.style.cssText = FACE;
   swing.appendChild(face);
+  studOn(swing);
   hang.appendChild(swing);
   tug(hang, swing);
   return hang;
@@ -158,7 +273,7 @@ function paintBoard(hang: HTMLDivElement, project: OnShelf): void {
     const cut = cutOf(`rack/${want}`);
     if (cut) plank.style.backgroundPosition = `${-cut.x * X}px ${-cut.y * X}px`;
   }
-  hang.style.filter = GLOW[project.wants ?? 'none'];
+  paintStud(hang, project.wants);
   /* One put away has been out in the weather: the paint gone grey and the
      wood paler, still there to press but never mistaken for a district. */
   const swing = hang.querySelector<HTMLDivElement>('.swing');
@@ -434,7 +549,7 @@ export function makeShelf(
     node.style.pointerEvents = on ? 'auto' : 'none';
   };
 
-  const worstWant = (projects: OnShelf[]): Want =>
+  const worstWant = (projects: OnShelf[]): 'hurt' | 'asking' | 'limited' | undefined =>
     projects.some((project) => project.wants === 'hurt')
       ? 'hurt'
       : projects.some((project) => project.wants === 'asking')

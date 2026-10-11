@@ -1902,20 +1902,29 @@ Driven against a real Claude in a real worktree, twice: said something, watched
 the note go up on the post in handwriting, the answer come back in the serif,
 and the command it ran appear in the margin with its prop beside it.
 
-A slot on the rack now says whether its project wants him, even while he is
-standing somewhere else entirely: the same worst-mood-per-project fold the
-island's own house lights already read off `seen`, hurt outranking asking,
-applied as the same warm or red wash a lit house's window gets on the slot
-itself, eased in and out the same way. Folded shut, the same wash plays across
-the "projects" handle label, so the collapsed rack still answers "does
-anywhere else want me." No badge, no dot, no count: the rack was already the
-one exception to gold-only-pressable, and this stays inside that exception
-rather than adding a second one. `yard/face.ts`'s `slot()`, `yard/shelf.ts`.
-Driven with fake `wants` values rendered straight through the real `slot()`
-export over the debug port (asking read amber, hurt read red, a plain slot
-stayed plain); the project-mood fold itself (`wantsOf` in `main.ts`) is a
-handful of lines reading the same `seen` map `paintRail` already had, so it
-was checked by reading rather than by faking a whole agent session for it.
+A board on the rack carries a stud that says what the loudest session in
+its project is doing, even while he is standing somewhere else entirely: an
+iron plate nailed into the board's top-right corner with a diamond of light
+in it, drawn in whole pixels with a ring of half-lit pixels for its glow
+rather than a blur, in the same colours and to the same rhythm the house
+windows and the rail's lanterns keep. Lamplight breathing slowly for somebody
+working, the fire's orange pulsing quick for somebody asking, a steady green
+for something finished he has not been in to see, a dull slow ember for a
+limit being waited out, red throbbing for broken, and no stud at all for
+idle, because a light is a reason to look. It took over from the warm or red
+wash the whole board used to get, which only ever knew asking and hurt and
+smeared round the planks; the folded beam still carries that wash, since it
+has no corner for a stud. The fold is `wantsOf` in `main.ts`, the same
+`seen` and `unseen` the island's own house lights read, worst first; the
+drawing is `studOn` and `paintStud` in `yard/shelf.ts`. Driven over the debug
+port against a real Claude in a scratch data folder: said something slow,
+stepped out to the island, the stud lit lamplight and read `working` off the
+board; the answer landed while out on the water and it went steady green,
+`done`; the breathing was confirmed running on the lit pixels, paused by the
+same `html.still` rule that freezes everything else while the window is not
+his. Asking, limited and hurt were not driven, since none of them can be made
+to happen on purpose from outside; they share the one code path and differ
+only in the colour and the beat read off a table.
 
 And a chord goes straight to whoever wants him, island-wide: `Cmd/Ctrl+U`
 ("go to whoever wants you," in the finder's own "held with command" list from

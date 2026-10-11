@@ -103,7 +103,7 @@ import { seedLocalPictures } from './yard/pictures';
 import { pressing } from './yard/press';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
-import { makeShelf } from './yard/shelf';
+import { makeShelf, type Want } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
 import {
   keepsBranch,
@@ -1198,24 +1198,37 @@ async function boot(): Promise<void> {
     };
 
     /**
-     * The worst thing anybody in a project wants, if anything does.
+     * The loudest thing happening in a project, for the stud on its board.
      *
      * The same mood map that lights every lantern and every house window,
-     * folded down to one project: hurt outranks asking, and everything else —
-     * working, resting, arriving — is not a reason to light the rack, which
-     * only ever answers "does somebody want me," not "is anybody home."
+     * folded down to one project, worst first: hurt, asking, a limit being
+     * waited out, something finished you have not seen, somebody working.
+     * Idle is nothing, because a light is a reason to look.
      */
-    const wantsOf = (project: string): 'asking' | 'hurt' | 'limited' | undefined => {
-      let worst: 'asking' | 'hurt' | 'limited' | undefined;
+    const wantsOf = (project: string): Want => {
+      const rank: Record<Exclude<Want, undefined>, number> = {
+        hurt: 5,
+        asking: 4,
+        limited: 3,
+        done: 2,
+        working: 1,
+      };
+      let worst: Want;
+      const raise = (to: Exclude<Want, undefined>): void => {
+        if (!worst || rank[to] > rank[worst]) worst = to;
+      };
       for (const task of tasks) {
         if (task.project !== project) continue;
         const mood = seen[task.id];
         if (mood === 'hurt') return 'hurt';
-        if (mood === 'asking') worst = 'asking';
-        /* Out of usage only glows low: nothing to do but wait, yet a project
-           whose work has stopped should not look like one at rest. */
-        else if (!worst && mood === 'resting' && glances[task.id]?.waiting?.kind === 'limit')
-          worst = 'limited';
+        if (mood === 'asking') raise('asking');
+        else if (mood === 'working' || mood === 'arriving') raise('working');
+        else if (mood === 'resting') {
+          /* Out of usage only glows low: nothing to do but wait, yet a project
+             whose work has stopped should not look like one at rest. */
+          if (glances[task.id]?.waiting?.kind === 'limit') raise('limited');
+          else if (unseen.has(task.id)) raise('done');
+        }
       }
       return worst;
     };
