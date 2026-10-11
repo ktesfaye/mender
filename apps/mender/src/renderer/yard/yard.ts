@@ -359,18 +359,28 @@ export function makeYard(layer: Layer, does: Doings): Standing {
        while the line is empty: you are answering it, not writing. */
     if (menu.root.style.display === 'none' && askKey(last?.asking, line.written(), event, does))
       return true;
-    /* Shift-Tab turns the session to its next mode, as it does in Claude
-       Code, whatever is on the line and whether or not a list is open. */
-    if (event.key === 'Tab' && event.shiftKey && !event.metaKey && !event.ctrlKey) {
-      does.press('mode:next');
-      return true;
+    /* Tab and shift-Tab step along the rail to the next session and the one
+       before, whatever is half written, unless a list is open under the line
+       and Tab is how it is picked. The line is where your hands are, so the
+       step is taken here rather than letting the key fall through to the
+       browser's own idea of Tab, which is to move the focus off the line. */
+    const tabbed = event.key === 'Tab' && !event.metaKey && !event.ctrlKey && !event.altKey;
+    if (menu.root.style.display === 'none') {
+      if (tabbed) {
+        does.press(event.shiftKey ? 'rail:back' : 'rail:forward');
+        return true;
+      }
+      return recall(event);
     }
-    if (menu.root.style.display === 'none') return recall(event);
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       walk.step(event.key === 'ArrowDown' ? 1 : -1);
       return true;
     }
-    if (event.key === 'Tab' && !event.shiftKey) return walk.press();
+    if (tabbed && !event.shiftKey && walk.press()) return true;
+    if (tabbed) {
+      does.press(event.shiftKey ? 'rail:back' : 'rail:forward');
+      return true;
+    }
     if (event.key === 'Escape') {
       dismissedAt = line.written();
       menu.write([]);

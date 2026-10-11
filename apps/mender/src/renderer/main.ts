@@ -1478,6 +1478,10 @@ async function boot(): Promise<void> {
         if (task && aim) void (card ? openTask(aim, task) : showCard(aim, task));
         return;
       }
+      if (id === 'rail:back' || id === 'rail:forward') {
+        stepRail(id === 'rail:back' ? -1 : 1);
+        return;
+      }
       if (id.startsWith('rail:')) {
         /* The rail carries the sessions of whatever project you are in, so a
            number walks into one of those. Out on the island there is no rail
@@ -1508,6 +1512,21 @@ async function boot(): Promise<void> {
         projects.find((project) => project.id === task.project)?.district ?? ''
       );
       if (district) void openTask({ kind: 'district', district }, task);
+    };
+
+    /** Tab along the rail: the next lantern forward, the one before back,
+        going round at either end, the way tab moves along a row of tabs. From
+        the project's own yard, with nobody stood in, forward is the first
+        lantern and back the last. Nothing happens out on the island. */
+    const stepRail = (by: number): void => {
+      if (!open) return;
+      const here = tasksOn(open.district);
+      if (!here.length) return;
+      const at = inside ? here.findIndex((task) => task.id === inside?.id) : -1;
+      const to = at < 0 ? (by > 0 ? 0 : here.length - 1) : (at + by + here.length) % here.length;
+      const task = here[to];
+      if (!task || task.id === inside?.id) return;
+      go(`task:${task.id}`);
     };
 
     /** Open the finder over whatever you were looking at. */
@@ -5067,20 +5086,8 @@ async function boot(): Promise<void> {
         if (line !== null && line !== undefined) said(line);
         return;
       }
-      if (pick === 'mode:next') {
-        const task = inside;
-        const next = watching?.slash.nextMode();
-        if (!task || !next) return;
-        void client.agents
-          .choose({ task: task.id, what: 'mode', id: next.id }, { timeoutMs: 0 })
-          .then((done) => {
-            if (!done.success)
-              say(
-                done.error.kind === 'refused' ? done.error.because : 'that would not take.',
-                6000
-              );
-            else say(`${next.name.toLowerCase()}.`, 2000);
-          });
+      if (pick === 'rail:back' || pick === 'rail:forward') {
+        stepRail(pick === 'rail:back' ? -1 : 1);
         return;
       }
       if (pick.startsWith('slash:')) {
@@ -5689,6 +5696,23 @@ async function boot(): Promise<void> {
       scrolled: (key) => yard.scrolled(key),
       strayed: (event) => void yard.line.catches(event),
       typed: (event) => {
+        /* Tab steps along the rail from anywhere in a project the line is not
+           holding the keyboard: the yard with nothing written, a board laid
+           over it, the project's own yard before any session is stood in. */
+        if (
+          event.key === 'Tab' &&
+          !event.altKey &&
+          open &&
+          !looking &&
+          !talking &&
+          !(sending?.written !== undefined) &&
+          !amending &&
+          !hunt &&
+          !browsingAt
+        ) {
+          stepRail(event.shiftKey ? -1 : 1);
+          return true;
+        }
         /* The finder is a board you type into and walk at the same time, which
            is the whole point of it: the letters narrow it and the arrows pick
            out of what is left. */

@@ -3449,13 +3449,12 @@ Escape kept it; alpha's land dropped on the water asked, naming that beta
 moves in closer, and removing it left beta standing on alpha's district with
 the fire in reach.
 
-### Shift-Tab turns the mode (2026-09-30) — done
+### Shift-Tab turns the mode (2026-09-30) — superseded 2026-10-11
 
-Shift-Tab on the line steps the session to its next mode, going round the
-same list `/mode` offers, the way it does in Claude Code. Whatever is half
-written stays on the line, and the new mode is said at the foot and stands in
-the corner over the board. Driven in a dev instance: auto went to bypass
-permissions and then manual, with "half a thought" still on the line.
+Shift-Tab on the line stepped the session to its next mode, going round the
+same list `/mode` offers, the way it does in Claude Code. Taken back on
+2026-10-11: Tab and shift-Tab walk the rail instead, and the mode is set from
+`/mode` alone.
 
 ### A lone project can live anywhere, and the camp goes with it (2026-09-30) — done
 
@@ -3848,3 +3847,19 @@ passes through, on top of upstream's list rather than in place of it, and a
 secret that is not one of them still does not. Checked by test on the
 allowlist; not yet driven on a machine that signs in one of those ways, which
 is what his work machine is for.
+
+### Tab walks the rail (2026-10-11) — done
+
+Tab stands you in the next session along the rail and shift-Tab in the one
+before, going round at either end, from anywhere in a project: the line with
+something half written on it, which stays with the session it was written
+in, the yard with the line not holding the keyboard, or the project's own
+yard before any session is stood in, where forward is the first lantern and
+back the last. A slash list open under the line keeps Tab for picking, and a
+question at the gate keeps it for sending, as they did. Out on the island
+Tab does nothing. Shift-Tab no longer turns the mode. Driven in a dev
+instance on three sessions: Tab from the third wrapped to the first,
+shift-Tab twice went back to the third and then the second, "hi" written on
+the second stayed there across a step away and back, Tab after a click off
+the line still stepped, and Tab on an open `/` list picked `/model` without
+moving.
