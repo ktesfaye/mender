@@ -2166,9 +2166,12 @@ you say lifts off the line as parchment and pins itself to the post while the
 notes under it slide down. The answer inks in a piece at a time as it arrives.
 The last reply turns to history the moment you say the next thing, and the live
 edge of the middle column is a small fire throwing sparks with what it is doing
-in the present tense (waking up, thinking, running something, reading,
-writing back) and a count of how long it has been at it. Only the verb: which
-command or which file is already the live line in what it did, right beside it. Anything laid over the
+in the present tense and a count of how long it has been at it. It names the
+thing as well as the verb: the file being read or changed, the page being read,
+what a command is for in the agent's own words ("running the yard tests",
+"committing the fix"), and "deciding what next" between one step and the next
+rather than the "writing back" it used to claim while nothing was being written.
+Driven on a real session: each step read out on the fire as it ran. Anything laid over the
 yard comes up rather than cutting in, and the world behind dims smoothly.
 
 Words move smoothly and sprites still step, which is a deliberate break from the

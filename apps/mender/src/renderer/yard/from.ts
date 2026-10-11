@@ -14,7 +14,7 @@ import type { Ask, Deed, Errand, Failure, Glance, Kit, Mood, Pack, Told } from '
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { answersFor } from '../board/work';
-import { lookedAround, plainCommand, plainRead, type Plain } from './deeds';
+import { doingNow, lookedAround, plainCommand, plainRead, type Plain } from './deeds';
 import { KIT_NAMES } from './sprite';
 import type {
   Fire,
@@ -403,6 +403,11 @@ function liveOf(from: Standing, told: Told | undefined): Session['live'] {
     last && !last.quiet && (turn === undefined || last.turn === undefined || last.turn >= turn)
   );
   const reasoning = thoughts.some((one) => one.since);
+  /* A step that finished after the last thing it said means nothing is being
+     written now: it is between one step and the next, working out which. */
+  const lastDeed = told?.deeds.at(-1);
+  const between =
+    lastDeed?.seq !== undefined && last?.seq !== undefined && lastDeed.seq > last.seq;
   const doing = told?.stopping
     ? 'stopping'
     : from.mood === 'arriving'
@@ -410,12 +415,14 @@ function liveOf(from: Standing, told: Told | undefined): Session['live'] {
       : last?.pack?.state === 'packing'
         ? 'packing it down'
         : running
-          ? doingOf(running)
+          ? doingNow(running)
           : reasoning
             ? 'thinking'
-            : answering
-              ? 'writing back'
-              : 'thinking';
+            : between
+              ? 'deciding what next'
+              : answering
+                ? 'writing back'
+                : 'thinking';
   return {
     doing,
     /* Counted from when you said it, when the village saw you say it. A note
@@ -424,35 +431,6 @@ function liveOf(from: Standing, told: Told | undefined): Session['live'] {
     ...(newest?.at && Date.now() - newest.at < 1000 * 60 * 60 ? { since: newest.at } : {}),
     answering,
   };
-}
-
-/**
- * A step it is in the middle of, said in the present tense and no more than
- * that. Which file or which command is already the live line in what it did,
- * right beside it, so naming it here as well was saying everything twice.
- */
-function doingOf(deed: { tool: string }): string {
-  switch (deed.tool) {
-    case 'execute-tool-call':
-      return 'running something';
-    case 'read-tool-call':
-    case 'web-fetch-tool-call':
-      return 'reading';
-    case 'create-file-tool-call':
-      return 'writing';
-    case 'modify-file-tool-call':
-      return 'changing things';
-    case 'delete-file-tool-call':
-      return 'clearing something away';
-    case 'search-tool-call':
-      return 'looking around';
-    case 'spawn-subagent-tool-call':
-      return 'sending somebody out';
-    case 'create-plan-tool-call':
-      return 'making a plan';
-    default:
-      return 'working';
-  }
 }
 
 type DeedIn = Parameters<typeof stepOf>[0];
@@ -494,7 +472,7 @@ function stepsOf(deeds: readonly DeedIn[]): Step[] {
       step.did = plain.said ?? looked ?? deed.did;
       step.note = 'still going in the background';
     } else if (deed.tool === 'execute-tool-call') {
-      step.did = plain.said ?? (deed.running ? 'looking around' : (looked ?? deed.did));
+      step.did = plain.said ?? (deed.running ? (deed.why ?? 'looking around') : (looked ?? deed.did));
       if (plain.said === 'ran the tests' && !deed.running)
         step.note = deed.wrong ? 'failed' : 'passed';
       else if (deed.wrong) step.note = 'failed';
