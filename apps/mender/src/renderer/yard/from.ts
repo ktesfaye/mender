@@ -228,7 +228,7 @@ function sessionOf(
   if (told && unread.length) told = { ...told, notes: told.notes.filter((one) => !one.unread) };
   const notes = (told?.notes ?? []).map(noteOf);
   if (going && !from.asking && notes[0]) notes[0].on = true;
-  const thoughts = thoughtsOf(told, from.mood);
+  const thoughts = thoughtsOf(told, from.mood, Boolean(from.asking));
   const live = liveOf(from, told);
   return {
     id: task.id,
@@ -324,12 +324,14 @@ function noteOf(
  * The plan it posted is a different thing and lives above this: the first thing
  * an agent says is not a plan, however much it reads like one.
  */
-function thoughtsOf(told: Told | undefined, mood: Mood | undefined): Thought[] {
+function thoughtsOf(told: Told | undefined, mood: Mood | undefined, prompted = false): Thought[] {
   const all = told?.thoughts ?? [];
   /* Whether the newest answer is the last word or only the latest so far,
      said over it, because the fire going out is too quiet a way to say
-     that it has finished, and nothing at all said that you had stopped it. */
-  const going = mood === 'working' || mood === 'arriving' || mood === 'asking';
+     that it has finished, and nothing at all said that you had stopped it.
+     A prompt mid-turn is still going; an answer that ended on a question
+     for you is done, and asking is how the lantern says so. */
+  const going = mood === 'working' || mood === 'arriving' || (mood === 'asking' && prompted);
   const ended: Thought['ended'] = going
     ? 'going'
     : told?.ended === 'stopped' || told?.ended === 'closed'
@@ -800,7 +802,11 @@ function stateOf(
       };
     }
     case 'asking':
-      return { posture: 'wants-you', saying: 'wants you', lit: true };
+      return {
+        posture: 'wants-you',
+        saying: glance?.asked ? 'asked you something' : 'wants you',
+        lit: true,
+      };
     case 'hurt':
       return {
         posture: 'broken',

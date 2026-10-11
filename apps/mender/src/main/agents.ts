@@ -47,6 +47,7 @@ import { carried, packExpect, piecesOf, USUAL_PACK } from '@shared/packing';
 import { forgetClaudeSession } from './claude-cli-history';
 import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
 import { goingIn, pickUpNote, PICK_UP_SAID, type CutOff } from './cut-off';
+import { wantsAnswer } from './asked-you';
 import { questionsOf, type FormQuestion, type FormValue } from './form';
 import {
   helperTrail,
@@ -492,7 +493,7 @@ export function createAgents(
        the turn counts as having done something. */
     if (state.mood === 'working' && !recappedDeeds.has(task))
       recappedDeeds.set(task, state.told.deeds.at(-1)?.id ?? '');
-    if (state.mood !== 'resting' || state.told.ended !== 'done' || !worked.has(task)) return;
+    if (!settled(state) || state.told.ended !== 'done' || !worked.has(task)) return;
     const answer = state.told.thoughts.filter((one) => !one.quiet).at(-1);
     if (!answer || recaps[task]?.after === answer.id || recapping.has(task)) return;
     /* Whether it did anything since the last one was looked at, which a
@@ -1860,7 +1861,7 @@ class House {
   idle(): boolean {
     const state = peek(this.state);
     return (
-      state.mood === 'resting' &&
+      settled(state) &&
       !this.lifecycle?.failure &&
       this.carryOnAt === null &&
       !this.lifecycle?.queuedPrompts?.length &&
@@ -2087,6 +2088,7 @@ class House {
       };
     }
     if (failure && state.mood === 'hurt' && failure.category === 'access') glance.signIn = true;
+    if (state.mood === 'asking' && !state.asking) glance.asked = true;
     const out = state.told.errands.filter((one) => one.running).length;
     if (out) glance.helpers = out;
     const behind = state.told.deeds.filter((one) => one.background && one.running).length;
@@ -2316,13 +2318,13 @@ class House {
         this.marked
       );
     const failure = this.failureNow();
-    const mood = moodOf(this.lifecycle, asking, this.trouble, failure);
     const told = helpersIn(
       this.sized(
         toldOf(turns, this.where(), (id, over) => this.time(id, over), clockOf(this.dated))
       ),
       this.claude()
     );
+    const mood = moodOf(this.lifecycle, asking, this.trouble, failure, wantsAnswer(told));
     const packing = mood === 'working' && told.thoughts.at(-1)?.pack?.state === 'packing';
     return {
       mood,
@@ -2383,7 +2385,9 @@ function moodOf(
   lifecycle: SessionState | undefined,
   asking: Ask | null,
   trouble: string | undefined,
-  failure: SessionFailure | null
+  failure: SessionFailure | null,
+  /** Its last word, with the turn over, was a question for him. */
+  asked = false
 ): Mood {
   if (trouble) return 'hurt';
   if (!lifecycle) return 'arriving';
@@ -2400,12 +2404,22 @@ function moodOf(
   if (lifecycle.lifecycle === 'starting' || lifecycle.lifecycle === 'replaying') return 'arriving';
   if (lifecycle.isGenerating) return 'working';
   if (lifecycle.lastTurnErrored) return 'hurt';
+  /* An answer that ends by asking him something is somebody standing at the
+     gate waiting for his word, whatever the protocol calls the turn: finished
+     reads as idle from across the room, and he closed one on exactly that. */
+  if (asked) return 'asking';
   /* A closed or suspended session is somebody who is not at work this second,
      not an empty building: the village was shut and everyone went home, and
      saying a word in there brings them back to the same conversation. Only a
      building nobody has ever been told to work in is empty, and that one never
      reaches here. */
   return 'resting';
+}
+
+/** Nobody working in here this second: finished, or finished on a question
+ *  for him, which is the same turn over as far as the process goes. */
+function settled(state: WorkingState): boolean {
+  return state.mood === 'resting' || (state.mood === 'asking' && !state.asking);
 }
 
 /** The one line at the top of the board, in the village's words. */

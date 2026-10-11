@@ -1248,6 +1248,23 @@ mood the island already reads, constructed the notification with the fire's
 own line as its body, and the click hands off to the same `go()` a rail press
 or a finder pick already uses. `apps/mender/src/main/attend.ts`.
 
+And an answer that ends by asking him something now counts as asking, not as
+finished. The asking mood only ever came from a permission prompt or Claude's
+own pick-a-choice form, so a session whose last line was "that ok to build?"
+settled to finished, and standing in it, finished reads as idle: he closed one
+on exactly that (2026-10-11). Now a finished turn whose last line asks for his
+word is the asking mood, and everything that already reads that mood reads
+it: the lantern says "asked you something" in the orange, the house glows
+orange with the villager turned to the door, the rack's stud, the dock dot,
+the banner, the missed line and ⌘U all pick it up, and it holds until he
+says something back, across a restart too. A question mid-answer does not
+count, only the foot of it, and a turn he stopped or that broke never does.
+The recap still writes over it, it still goes home on its own, and closing
+the village on one does not tell it to carry on, since nothing was cut off.
+Driven in a dev instance with a real Claude turn: asked, the rail went orange
+and the house lit; answered, it went back to idle.
+`apps/mender/src/main/asked-you.ts`.
+
 And quitting on top of a lit fire says so before it happens, rather than
 cutting every running turn with no notice. `Cmd+Q`, the app menu's own Quit,
 and the window's close box all fall through one gate in the main process

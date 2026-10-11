@@ -204,6 +204,8 @@ export const glanceSchema = z.object({
     .optional(),
   /** It cannot go on until somebody signs it in. */
   signIn: z.boolean().optional(),
+  /** Its answer ended on a question for him, rather than a prompt wanting him. */
+  asked: z.boolean().optional(),
   /** How many helpers it has out right now, who walk the island while they are. */
   helpers: z.number().int().optional(),
   /** How many commands it left running in the background are still going. */

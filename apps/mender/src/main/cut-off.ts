@@ -27,7 +27,10 @@ export function goingIn(state: WorkingState): CutOff | null {
   const commands = state.told.deeds
     .filter((one) => one.background && one.running)
     .map((one) => one.did);
-  const busy = state.mood === 'working' || state.mood === 'asking';
+  /* A question for him at the foot of a finished answer is the asking mood
+     too, but nothing is cut off by closing on it: the answer is on disk and
+     the question keeps. Only a prompt mid-turn is lost. */
+  const busy = state.mood === 'working' || (state.mood === 'asking' && Boolean(state.asking));
   if (!busy && !helpers.length && !commands.length) return null;
   return {
     mood: state.mood,
