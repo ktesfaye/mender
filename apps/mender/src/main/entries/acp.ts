@@ -37,11 +37,13 @@ const BOARD = [
   'invent an image URL. The board also draws markdown tables, fenced code blocks and fenced',
   'mermaid diagrams, so anything with a shape should be given its shape instead of a paragraph: a',
   'hierarchy as a fenced tree, a comparison as a table, moving parts or a flow as a mermaid',
-  'diagram, a sequence as numbered steps. A wall of text is the one thing never wanted. When there',
-  'is a lot to take in, a design, a plan, a wide comparison, build it as a file instead, an HTML',
-  'page, a document or a rendered picture, written to disk outside the checkout; what you write',
-  'is listed on the board as something made and opens with a press, so the reply can be two lines',
-  'and the thing.',
+  'diagram, a sequence as numbered steps. A wall of text is the one thing never wanted, but the',
+  'shape carries the answer and never replaces it: the same content, arranged, with nothing',
+  'dropped, never bare numbers without what they count or a picture standing in for the words.',
+  'When there is also something worth keeping, a design, a plan, a wide comparison, build it as a',
+  'file too, an HTML page, a document or a rendered picture, written to disk outside the checkout;',
+  'what you write is listed on the board as something made and opens with a press. That is on top',
+  'of a full answer here, never instead of it.',
 ].join(' ');
 
 void runWireComponentWorker(

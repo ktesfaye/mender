@@ -273,6 +273,12 @@ keeps its lines whole and slides sideways under the wheel when one is wider
 than the slate, the way a table already does. Driven: the same question again,
 the tree stood as drawn.
 
+The first answer under that note threw the content away: asked what state the
+app was in, the session built a page and left three lines, a decorative
+picture and a table of four bare counts on the board. The note now says the
+shape carries the answer and never replaces it, the same content arranged with
+nothing dropped, and a built file is on top of a full answer, never instead.
+
 Left that loose, it was skipped: asked to rank New Orleans swamp tours, a
 session looked once for an img tag on a script-built site, found none and
 answered in plain text. Recommending or comparing real things is now a rule,
