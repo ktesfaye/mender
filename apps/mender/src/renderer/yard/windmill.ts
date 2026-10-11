@@ -22,6 +22,18 @@ import type {
   SessionUsage,
   TerminalSettings,
 } from '@shared/app-settings';
+import {
+  clockOf,
+  FIVE_HOURS_MS,
+  runsOut,
+  SEVEN_DAYS_MS,
+  spanOf,
+  tokensOf,
+  windowLine,
+  type FiveHours,
+  type SessionShare,
+  type UsageWindow,
+} from '@shared/five-hours';
 import { counted } from '../board/card';
 import { chordLabel, chordOf, rebindableDoings } from '../board/finder';
 
@@ -63,6 +75,9 @@ export interface WindmillState {
   /** Each open session's own share of this machine, resampled alongside it.
       null until the first sample answers. */
   sessions: SessionUsage[] | null;
+  /** The subscription's five-hour window and who is spending it. Null until
+      the first answer. */
+  fiveHours: FiveHours | null;
   /** What this machine hands each agent's own CLI beyond its ordinary
       command, keyed by agent id. Filled in as each one is asked about. */
   providers: Record<string, ProviderConfig>;
@@ -660,6 +675,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       `disk — ${sized(one.diskUsedBytes)} of ${sized(one.diskTotalBytes)}`,
     ];
     const rows: HTMLElement[] = lines.map((text) => hintLine(text));
+    if (now.fiveHours) rows.push(...drawFiveHours(now.fiveHours));
     if (now.sessions?.length) {
       const heading = el('p', 'settings-hint');
       heading.textContent = 'each session’s own share:';
@@ -669,6 +685,113 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       }
     }
     machine.fill(rows);
+  }
+
+  /* The five hours: the subscription's own window, drawn as the strip of
+     cells a limit's wait already is, with where its pace lands said beside
+     it, the week under that, and then who spent it, dearest first, each as
+     a bar against the hungriest. */
+  function drawFiveHours(five: FiveHours): HTMLElement[] {
+    const out: HTMLElement[] = [];
+    const heading = el('p', 'settings-hint');
+    heading.textContent = 'the five hours:';
+    out.push(heading);
+    const window = five.reading?.fiveHour;
+    if (!window) {
+      out.push(hintLine('not read yet — nobody has heard back from Claude this sitting.'));
+      return out;
+    }
+    const now = Date.now();
+    out.push(drawWindow(window, now, FIVE_HOURS_MS, five.lately));
+    const line = windowLine(five, now);
+    if (line) {
+      const said = hintLine(line.said.replace(/^five hours: /, ''));
+      if (line.tone !== 'quiet') said.classList.add(`windmill-five-${line.tone}`);
+      out.push(said);
+    }
+    if (five.lately !== null && (five.lately > 1.5 || five.lately < 0.5)) {
+      out.push(
+        hintLine(
+          five.lately > 1.5
+            ? `the last twenty minutes have run ${five.lately.toFixed(1)}× the window's own pace.`
+            : 'the last twenty minutes have been quieter than the window as a whole.'
+        )
+      );
+    }
+    const week = five.reading?.sevenDay;
+    if (week) {
+      const weekly = drawWindow(week, now, SEVEN_DAYS_MS, null);
+      weekly.classList.add('windmill-five-week');
+      out.push(weekly);
+      out.push(
+        hintLine(
+          `the week: ${Math.round(week.utilization * 100)}% used · resets ${clockOf(week.resetsAt, now)}`
+        )
+      );
+    }
+    if (five.reading && now - five.reading.at > 10 * 60_000) {
+      out.push(hintLine(`last read ${spanOf(now - five.reading.at)} ago.`));
+    }
+    if (five.sessions.length) {
+      const who = el('p', 'settings-hint');
+      who.textContent = 'who spent it, this window:';
+      out.push(who);
+      const most = Math.max(...five.sessions.map((one) => one.share));
+      for (const session of five.sessions.slice(0, 12)) out.push(drawShare(session, most, now));
+    }
+    return out;
+  }
+
+  function drawWindow(
+    window: UsageWindow,
+    now: number,
+    span: number,
+    lately: number | null
+  ): HTMLElement {
+    const strip = el('div', 'windmill-five-strip');
+    const cells = 40;
+    const start = window.resetsAt - span;
+    const at = Math.min(1, Math.max(0, (now - start) / span));
+    const { at: out } = runsOut(window, now, span, lately);
+    const spent = Math.min(1, Math.max(0, window.utilization));
+    const outAt = out === null ? null : Math.min(1, Math.max(0, (out - start) / span));
+    for (let i = 0; i < cells; i += 1) {
+      const cell = el('div', 'windmill-five-cell');
+      const from = i / cells;
+      if (from < spent) cell.classList.add('spent');
+      if (from < at && from + 1 / cells >= at) cell.classList.add('now');
+      if (outAt !== null && outAt < 1 && from < outAt && from + 1 / cells >= outAt)
+        cell.classList.add('out');
+      strip.appendChild(cell);
+    }
+    strip.title = `${Math.round(spent * 100)}% spent, ${Math.round(at * 100)}% of the way through`;
+    return strip;
+  }
+
+  function drawShare(session: SessionShare, most: number, now: number): HTMLElement {
+    const row = el('div', 'windmill-session-usage windmill-five-share');
+    const title = el('div', 'windmill-agent-name');
+    title.textContent = session.where ? `${session.title} — ${session.where}` : session.title;
+    row.append(title);
+    const bar = el('div', 'windmill-five-bar');
+    const fill = el('div', 'windmill-five-fill');
+    fill.style.width = `${Math.round((most > 0 ? session.share / most : 0) * 100)}%`;
+    bar.append(fill);
+    row.append(bar);
+    const heavy = session.context >= 150_000;
+    const parts = [
+      `${Math.round(session.share * 100)}% of it`,
+      `${counted(session.calls, 'call')}`,
+      `${tokensOf(session.context)} re-read each call`,
+      ...(session.screenshots ? [`${counted(session.screenshots, 'picture')}`] : []),
+      `last ${spanOf(now - session.lastAt)} ago`,
+    ];
+    row.append(hintLine(parts.join(' · ')));
+    if (heavy)
+      row.append(
+        hintLine('heavy: every call re-reads the whole conversation, and this one is long.')
+      );
+    return row;
   }
 
   function drawSessionUsage(session: SessionUsage): HTMLElement {

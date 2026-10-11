@@ -27,6 +27,7 @@ import type {
   SessionUsage,
   TerminalSettings,
 } from '@shared/app-settings';
+import type { FiveHours } from '@shared/five-hours';
 import type { At, Change } from '@shared/changes';
 import { parseEnvLines } from '@shared/env-lines';
 import type { FoundFrom, Project } from '@shared/projects';
@@ -1662,6 +1663,7 @@ async function boot(): Promise<void> {
         worktrees: null as WorktreeRow[] | null,
         machine: null as MachineSample | null,
         sessions: null as SessionUsage[] | null,
+        fiveHours: null as FiveHours | null,
         providers: {} as Record<string, ProviderConfig>,
         installs: {} as Record<string, HostDependencyView>,
         checkout: null as CheckoutSettings | null,
@@ -1782,6 +1784,10 @@ async function boot(): Promise<void> {
         });
         void client.appSettings.sessionUsage({}, { timeoutMs: 0 }).then((sessions) => {
           state.sessions = sessions;
+          ui.update(state);
+        });
+        void client.appSettings.fiveHours({}, { timeoutMs: 0 }).then((five) => {
+          state.fiveHours = five;
           ui.update(state);
         });
       };

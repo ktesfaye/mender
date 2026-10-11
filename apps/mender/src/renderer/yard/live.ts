@@ -20,6 +20,7 @@ import { ReplicaState } from '@emdash/wire/live';
 import type { Ask, Carried, Glance, Kit, Mood, WorkingState } from '@shared/agents';
 import { onThisMachine } from './pictures';
 import type { BoardVersion } from '@shared/board';
+import type { FiveHours } from '@shared/five-hours';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { Naming } from '../board/naming';
@@ -120,6 +121,9 @@ export interface Opening {
  */
 const WAKE_GIVES_UP_MS = 20_000;
 
+/** How often a standing yard asks after the five hours between turns. */
+const WINDOW_EVERY_MS = 90_000;
+
 /** The last history read off each checkout, to stand in while it is read again. */
 const readBefore = new Map<string, BoardVersion[]>();
 
@@ -140,6 +144,11 @@ export async function openYard(
   /* The checkout's history by version, read again whenever where it stands
      moves, since that is what a new commit looks like from here. */
   let versions: BoardVersion[] | undefined;
+  /* The subscription's five-hour window, one meter for the whole account.
+     Read when the yard opens, again whenever a turn here finishes, since that
+     is when it moves, and every so often besides so a yard left standing
+     still says the truth. */
+  let fiveHours: FiveHours | undefined;
 
   const shut: (() => Promise<void>)[] = [];
   /* A sleeping session comes back by reading its whole history in, a piece at
@@ -181,6 +190,25 @@ export async function openYard(
   let pinned: readonly PinnedNote[] = [];
 
   const again = (): void => changed(build());
+
+  let readingWindow = false;
+  const readWindow = (): void => {
+    if (readingWindow) return;
+    readingWindow = true;
+    void client.appSettings.fiveHours({}, { timeoutMs: 0 }).then(
+      (read) => {
+        readingWindow = false;
+        fiveHours = read;
+        again();
+      },
+      () => {
+        readingWindow = false;
+      }
+    );
+  };
+  readWindow();
+  const rereading = window.setInterval(readWindow, WINDOW_EVERY_MS);
+  shut.push(async () => window.clearInterval(rereading));
 
   /* The slash and the @ live here rather than on the board, because what they
      offer is a fact about this session: the agent's own commands and skills,
@@ -227,6 +255,7 @@ export async function openYard(
       on: standing(from.project, head),
       health,
       ...(versions ? { versions } : {}),
+      ...(fiveHours ? { fiveHours } : {}),
       ...(waking() ? { waking: true } : {}),
     });
   }
@@ -235,7 +264,11 @@ export async function openYard(
   if (here) {
     const work = new ReplicaState(client.agents.work.state({ task: here.id }, 'state'), {
       onChange: (value) => {
+        /* A turn coming to rest is when the window has moved. */
+        const rested =
+          value?.told?.ended && (working?.told?.ended !== value.told.ended || working?.mood === 'working');
         working = value;
+        if (rested && value.mood !== 'working') readWindow();
         again();
       },
     });

@@ -10,10 +10,14 @@ export type AttachmentRef = {
   mimeType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp';
 };
 
+export type UsageWindow = { utilization: number; resetsAt: number };
+
 export type SessionUsage = {
   contextSize: number;
   contextUsed: number;
   cost: { amount: number; currency: string } | null;
+  /** The subscription's rolling windows, when the provider attaches them. */
+  rateLimit?: { fiveHour: UsageWindow | null; sevenDay: UsageWindow | null } | null;
 };
 
 export type PlanEntryInput = {

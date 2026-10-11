@@ -11,6 +11,7 @@
  */
 
 import type { Ask, Deed, Errand, Failure, Glance, Kit, Mood, Pack, Told } from '@shared/agents';
+import type { FiveHours } from '@shared/five-hours';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { answersFor } from '../board/work';
@@ -128,6 +129,8 @@ export interface Standing {
   carryOn?: number | null;
   /** The checkout's history by version, newest first. */
   versions?: readonly { version: string | null; lines: readonly string[] }[];
+  /** The subscription's five-hour window, when it has been read. */
+  fiveHours?: FiveHours;
   /** Whether the session is still being woken and reading its history back. */
   waking?: boolean;
   /** The project's workspaces, when it has any besides its own folder. */
@@ -175,6 +178,7 @@ export function yardOf(from: Standing): Yard {
         }
       : {}),
     ...(here ? { session: sessionOf(here, told, kit, from) } : {}),
+    ...(from.fiveHours ? { fiveHours: from.fiveHours } : {}),
     ...(from.versions
       ? { versions: from.versions.map((one) => ({ version: one.version, lines: [...one.lines] })) }
       : {}),

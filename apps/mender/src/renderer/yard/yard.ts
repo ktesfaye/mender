@@ -36,6 +36,7 @@ import {
 import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
 import { waitOut } from './limit';
+import { windowLine } from '@shared/five-hours';
 import { makeLine, preview, unpreview, type Asking as Prompting, type Line } from './line';
 import { makeMenu } from './menu';
 import {
@@ -1316,6 +1317,18 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
     it.appendChild(exact(yard.session.model, 12));
   }
   if (it.childElementCount) root.appendChild(it);
+
+  /* The five hours: the subscription's own window, one meter for the whole
+     account, said once over the board with where its pace lands. Nothing
+     warns anybody it is running out either; it simply stops. */
+  const five = yard.fiveHours ? windowLine(yard.fiveHours, Date.now(), true) : null;
+  if (five) {
+    const ink =
+      five.tone === 'wrong' ? 'var(--yard-wrong)' : five.tone === 'warn' ? 'var(--yard-warn)' : undefined;
+    const line = box({ right: edge, top: HEAD.meta }, 'display:flex;align-items:baseline');
+    line.appendChild(exact(five.said, 12, ink ?? '#8f7d5c'));
+    root.appendChild(line);
+  }
 
   /* And if the ground under all of it has moved, that is said before anything
      else, because nothing else on the board means a thing until it is put

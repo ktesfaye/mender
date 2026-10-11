@@ -1,12 +1,14 @@
 import { createController, type Controller } from '@emdash/wire/rpc';
 import { appSettingsContract } from '@shared/app-settings';
 import type { AppSettings } from './app-settings';
+import type { FiveHoursReader } from './five-hours';
 import type { SessionUsageReader } from './session-usage';
 
 /** The windmill, as the village asks about it. */
 export function createAppSettingsController(
   settings: AppSettings,
-  usage: SessionUsageReader
+  usage: SessionUsageReader,
+  fiveHours: FiveHoursReader
 ): Controller {
   return createController(appSettingsContract, {
     defaultHand: () => settings.defaultHand(),
@@ -18,6 +20,7 @@ export function createAppSettingsController(
     setEnvVar: ({ agent, key, value }) => settings.setEnvVar(agent, key, value),
     removeEnvVar: ({ agent, key }) => settings.removeEnvVar(agent, key),
     sessionUsage: () => usage.sample(),
+    fiveHours: () => fiveHours.read(),
     checkoutSettings: () => settings.checkoutSettings(),
     setBranchPrefix: ({ prefix }) => settings.setBranchPrefix(prefix),
     setRandomSuffix: ({ on }) => settings.setRandomSuffix(on),

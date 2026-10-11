@@ -5,6 +5,7 @@ import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import type {
   AcpPermissionRequest,
   PlanState,
+  RateLimit,
   SessionFailure,
   SessionState,
   SessionUsage,
@@ -232,6 +233,8 @@ export interface Agents {
   evict(task: string, forget?: boolean): Promise<void>;
   /** Sends them home for the night: the process stops, everything else stays. */
   rest(task: string): Promise<Told>;
+  /** Every building with a Claude in it, by Claude's own id for the conversation. */
+  claudeSessions(): { task: string; session: string }[];
   /** What was half-written on this session's line, so it survives a restart. */
   draft(task: string): Promise<string>;
   setDraft(task: string, text: string): Promise<void>;
@@ -290,7 +293,9 @@ export function createAgents(
   runtimes: MenderRuntimes,
   tasks: Tasks,
   /** The windmill's own memory: who starts fresh, and what they last thought with. */
-  settings: AppSettings
+  settings: AppSettings,
+  /** Where the subscription's meter goes when a session hears it in its answer. */
+  windows: { report(limit: RateLimit): void } = { report: () => {} }
 ): Agents {
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'agents.json') });
   /** Which conversation lives in which building. */
@@ -633,7 +638,8 @@ export function createAgents(
           }
           return at;
         },
-        () => takenBack[task] ?? []
+        () => takenBack[task] ?? [],
+        (limit) => windows.report(limit)
       );
       houses.set(task, house);
       void loaded.then(async () => {
@@ -1560,6 +1566,16 @@ export function createAgents(
     evict,
     rest,
 
+    claudeSessions() {
+      const out: { task: string; session: string }[] = [];
+      for (const [task, conversation] of Object.entries(lodgers)) {
+        if (records[conversation]?.provider !== 'claude') continue;
+        const session = sessionFor(task, conversation);
+        if (session) out.push({ task, session });
+      }
+      return out;
+    },
+
     async draft(task) {
       await loaded;
       return drafts[task] ?? '';
@@ -1683,7 +1699,9 @@ class House {
       written?: number
     ) => number = () => Date.now(),
     /** What was asked here and handed back to the line before anything came of it. */
-    private readonly takenBack: () => readonly string[] = () => []
+    private readonly takenBack: () => readonly string[] = () => [],
+    /** The subscription's meter, heard in its own answer. */
+    private readonly limited: (limit: RateLimit) => void = () => {}
   ) {
     this.state = cell<WorkingState>(EMPTY, { name: `agent:${task}` });
   }
@@ -1732,6 +1750,7 @@ class House {
         onChange: (value) => {
           this.usage = value;
           this.widest = Math.max(this.widest, value?.contextSize ?? 0);
+          if (value?.rateLimit) this.limited(value.rateLimit);
           this.publish();
         },
       }

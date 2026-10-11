@@ -99,6 +99,22 @@ export const initialSessionConfigState: SessionConfigState = {
   availableCommands: [],
 };
 
+/** One of a subscription's rolling usage windows: how much of it is spent,
+    nought to one, and when it rolls over, in epoch milliseconds. */
+export const usageWindowSchema = z.object({
+  utilization: z.number(),
+  resetsAt: z.number(),
+});
+export type UsageWindow = z.infer<typeof usageWindowSchema>;
+
+/** A subscription's rate-limit standing, as the provider reports it alongside
+    usage. Claude's bridge attaches it to every usage update under `_meta`. */
+export const rateLimitSchema = z.object({
+  fiveHour: usageWindowSchema.nullable(),
+  sevenDay: usageWindowSchema.nullable(),
+});
+export type RateLimit = z.infer<typeof rateLimitSchema>;
+
 export const sessionUsageSchema = z.object({
   /** Total context window capacity reported by the provider. */
   contextSize: z.number().int(),
@@ -106,5 +122,7 @@ export const sessionUsageSchema = z.object({
   contextUsed: z.number().int(),
   /** Cumulative provider-reported cost, or null when the provider omits cost. */
   cost: z.object({ amount: z.number(), currency: z.string() }).nullable(),
+  /** The subscription's rate-limit windows, when the provider says. */
+  rateLimit: rateLimitSchema.nullable().optional(),
 });
 export type SessionUsage = z.infer<typeof sessionUsageSchema>;

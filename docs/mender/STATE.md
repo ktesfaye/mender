@@ -3863,3 +3863,25 @@ shift-Tab twice went back to the third and then the second, "hi" written on
 the second stayed there across a step away and back, Tab after a click off
 the line still stepped, and Tab on an open `/` list picked `/model` without
 moving.
+
+### The five hours is said over the board, and who spent it is in the windmill (2026-10-11) — done
+
+Claude's subscription is one meter for the whole account, and nothing warned
+anybody it was running low: a turn was simply cut off and the village waited
+it out. Now every session's board carries one quiet line under its context
+line with how full the window is, how far in it is, and where its pace lands
+against the reset, orange when it falls short and red when it is nearly
+spent. The meter comes off the headers every answer comes back with, which
+Claude's bridge was already handing on under `_meta` and the shared runtime
+was dropping; the core usage model carries it now, and between turns and at
+startup the village asks for it itself with one one-token call to the
+cheapest model, at most once in a few minutes. The windmill's "this machine"
+page draws the window as the limit wait's own strip of cells with the
+run-out cell in red, the week under it, and then who spent it, every Claude
+session on the machine, read incrementally off Claude's own transcripts
+since the window began, as a bar against the hungriest with its share, its
+calls, what each call re-reads and how many pictures it carries. Driven in a
+dev instance on an isolated data dir: the board's line read the real meter
+off the probe before anybody had said anything, and the windmill named this
+afternoon's sessions in the order the transcripts put them.
+

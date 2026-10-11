@@ -680,6 +680,48 @@ html.still *::after {
   padding: 6px 0 6px 10px;
   border-left: 2px solid var(--yard-rule-soft);
 }
+.windmill-five-strip {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  align-items: flex-end;
+  max-width: 560px;
+  margin: 6px 0;
+}
+.windmill-five-strip.windmill-five-week {
+  height: 8px;
+}
+.windmill-five-cell {
+  flex: 1;
+  height: 100%;
+  background: rgba(150, 160, 190, 0.26);
+}
+.windmill-five-cell.spent {
+  background: #6a3a1c;
+}
+.windmill-five-cell.now {
+  background: #ff8a5a;
+  box-shadow: 0 0 6px rgba(255, 138, 90, 0.7);
+}
+.windmill-five-cell.out {
+  background: var(--yard-wrong);
+}
+.windmill-five-warn {
+  color: var(--yard-warn);
+}
+.windmill-five-wrong {
+  color: var(--yard-wrong);
+}
+.windmill-five-bar {
+  height: 6px;
+  max-width: 420px;
+  background: rgba(150, 160, 190, 0.2);
+  margin: 4px 0;
+}
+.windmill-five-fill {
+  height: 100%;
+  background: #ff8a5a;
+}
 .windmill-agent {
   display: flex;
   flex-direction: column;

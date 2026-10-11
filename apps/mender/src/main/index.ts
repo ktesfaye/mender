@@ -14,9 +14,11 @@ import { createBoard } from './board';
 import { createBoardController } from './board-controller';
 import { createChanges } from './changes';
 import { createChangesController } from './changes-controller';
+import { createClaudeUsage } from './claude-usage';
 import { installDragOut } from './drag';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
+import { createFiveHours } from './five-hours';
 import { createGitHubStatus } from './github';
 import { installGrip } from './grip';
 import { logWindow } from './logging';
@@ -65,7 +67,20 @@ export async function main(): Promise<void> {
   /* Forgetting a project sends everybody in it home, which means the projects
      have to be able to reach the tasks and the tasks already reach back. */
   projects.sweeps((project) => tasks.sweep(project));
-  const agents = createAgents(runtimes, tasks, appSettings);
+  /* The five hours is one meter for the whole account: every session hears
+     it in its own answers and hands it here, and the windmill asks here. The
+     two reach for each other, but only ever after both exist. */
+  const fiveHours = createFiveHours(runtimes.env, createClaudeUsage(), () => {
+    const titles = new Map(peek(tasks.watch()).map((task) => [task.id, task.title]));
+    return agents.claudeSessions().map((one) => ({
+      task: one.task,
+      title: titles.get(one.task) ?? one.task,
+      session: one.session,
+    }));
+  });
+  const agents = createAgents(runtimes, tasks, appSettings, {
+    report: (limit) => fiveHours.report(limit, 'session'),
+  });
   // Same reason as `projects.sweeps` just above: the two need each other, so
   // one has to be told about the other after both exist.
   tasks.onGone((task, forget) => void agents.evict(task, forget));
@@ -91,7 +106,7 @@ export async function main(): Promise<void> {
   installWire(scope, {
     ...runtimes.controllers,
     agents: createAgentsController(agents, moods, tuiSessions),
-    appSettings: createAppSettingsController(appSettings, sessionUsage),
+    appSettings: createAppSettingsController(appSettings, sessionUsage, fiveHours),
     board: createBoardController(createBoard(runtimes)),
     changes: createChangesController(changes),
     finding: createFindingController(finding),

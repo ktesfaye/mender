@@ -1,5 +1,6 @@
 import { defineContract, procedure } from '@emdash/wire/rpc';
 import { z } from 'zod';
+import { fiveHoursSchema } from './five-hours';
 
 /** The app's own settings — the windmill. Not any one project's. */
 export const handSchema = z.object({ id: z.string(), name: z.string(), here: z.boolean() });
@@ -122,6 +123,8 @@ export const appSettingsContract = defineContract({
     output: providerConfigSchema,
   }),
   sessionUsage: procedure({ input: z.object({}), output: z.array(sessionUsageSchema) }),
+  /** The subscription's five-hour window, and which sessions are spending it. */
+  fiveHours: procedure({ input: z.object({}), output: fiveHoursSchema }),
   terminalSettings: procedure({ input: z.object({}), output: terminalSettingsSchema }),
   setTerminalFontSize: procedure({
     input: z.object({ fontSize: z.number().int() }),

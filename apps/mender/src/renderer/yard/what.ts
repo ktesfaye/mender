@@ -1,4 +1,5 @@
 import type { Pack } from '@shared/agents';
+import type { FiveHours } from '@shared/five-hours';
 /**
  * What a yard is, as a value.
  *
@@ -43,6 +44,8 @@ export interface Yard {
   workspaces?: Signboard[];
   /** What went into each version of this checkout, newest first. */
   versions?: Version[];
+  /** The subscription's five-hour window, said in one line over the board. */
+  fiveHours?: FiveHours;
 }
 
 /** One version and what went into it. Null is what has not gone into one yet. */

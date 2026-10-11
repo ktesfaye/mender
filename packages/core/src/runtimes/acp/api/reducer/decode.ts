@@ -21,6 +21,7 @@ import type {
   NormalizedToolLocation,
   NormalizedToolStatus,
 } from './normalized-event';
+import type { SessionUsage } from '#primitives/acp-transcript/api';
 
 function extractDiffs(
   content: ReadonlyArray<ToolCallContent> | null | undefined
@@ -238,6 +239,7 @@ export function decodeSessionUpdate(update: SessionUpdate): NormalizedEvent {
         used?: number;
         size?: number;
         cost?: { amount?: number; currency?: string } | null;
+        _meta?: Record<string, unknown>;
       };
       const contextUsed = raw.used ?? 0;
       const contextSize = raw.size ?? 0;
@@ -245,7 +247,11 @@ export function decodeSessionUpdate(update: SessionUpdate): NormalizedEvent {
         raw.cost && typeof raw.cost.amount === 'number' && raw.cost.currency
           ? { amount: raw.cost.amount, currency: raw.cost.currency }
           : null;
-      return { kind: 'usage', usage: { contextUsed, contextSize, cost } };
+      const rateLimit = rateLimitOf(raw._meta?.['_claude/rateLimit']);
+      return {
+        kind: 'usage',
+        usage: { contextUsed, contextSize, cost, ...(rateLimit ? { rateLimit } : {}) },
+      };
     }
 
     case 'session_info_update': {
@@ -259,4 +265,26 @@ export function decodeSessionUpdate(update: SessionUpdate): NormalizedEvent {
     default:
       return { kind: 'ignored' };
   }
+}
+
+/**
+ * Claude's bridge forwards the SDK's `rate_limit_event` on the next usage
+ * update as `_meta["_claude/rateLimit"]`, whose `unifiedWindows` carry each
+ * rolling window's utilization (nought to one) and reset as epoch seconds.
+ */
+function rateLimitOf(meta: unknown): SessionUsage['rateLimit'] | undefined {
+  if (!meta || typeof meta !== 'object') return undefined;
+  const windows = (meta as { unifiedWindows?: unknown }).unifiedWindows;
+  if (!windows || typeof windows !== 'object') return undefined;
+  const read = (key: string): { utilization: number; resetsAt: number } | null => {
+    const one = (windows as Record<string, unknown>)[key];
+    if (!one || typeof one !== 'object') return null;
+    const { utilization, resetsAt } = one as { utilization?: unknown; resetsAt?: unknown };
+    if (typeof utilization !== 'number' || typeof resetsAt !== 'number') return null;
+    return { utilization, resetsAt: resetsAt * 1000 };
+  };
+  const fiveHour = read('five_hour');
+  const sevenDay = read('seven_day');
+  if (!fiveHour && !sevenDay) return undefined;
+  return { fiveHour, sevenDay };
 }
