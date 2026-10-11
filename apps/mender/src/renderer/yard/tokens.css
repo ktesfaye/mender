@@ -2323,3 +2323,24 @@ body.gripping-row * {
 .yard .prose-picture img {
   cursor: zoom-in;
 }
+
+/* A sign on the rack knocked: it jumps on its chains and settles, for a
+   project where somebody has just started asking, finished, or broken. */
+@keyframes rack-knock {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  18% {
+    transform: translateY(-6px);
+  }
+  40% {
+    transform: translateY(2px);
+  }
+  62% {
+    transform: translateY(-3px);
+  }
+  80% {
+    transform: translateY(1px);
+  }
+}

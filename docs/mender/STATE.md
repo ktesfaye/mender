@@ -1943,6 +1943,30 @@ his. Asking, limited and hurt were not driven, since none of them can be made
 to happen on purpose from outside; they share the one code path and differ
 only in the colour and the beat read off a table.
 
+The rack reads as alive now, not a row of the same grey sign. The board you
+are standing in is let down on its chains, hanging lower than the row as
+well as painted gold, so where you are is said by where it is. A board with
+somebody at work, asking, finished, waiting out a limit or broken behind it
+is painted in full; one with nobody home goes dull, its wood a shade darker
+and its face gone grey, so the live projects read from across the room
+before any stud is made out. News knocks the sign: a project where somebody
+has just started asking, finished or broken jumps on its chains and settles,
+twice, the moment it happens; working and waiting are not news and do not.
+And folding the rack no longer puts the live ones away: whatever has
+somebody at work, asking, finished or broken stays pinned up beside the one
+you are standing in, and only the quiet boards go behind the beam, which is
+why the beam's own wash went, since what it used to stand in for is hanging
+right there. `pinned`, `paintBoard` and `paintStud` in `yard/shelf.ts`,
+`rack-knock` in `yard/tokens.css`. Driven over the debug port against two
+projects in a scratch data folder: walking in dropped the gold board on
+longer chains and the other boards went dull; a session started in the
+second project and the first walked back into, the second stayed up on the
+folded rack, lamplight, in full colour, while the quiet one would have gone;
+the scratch account then hit a real usage limit, which read as the dull
+ember and stayed pinned too; and once it lifted and the turn finished the
+board went green and was caught mid-knock, several frames of its own swing
+rising and settling.
+
 And a chord goes straight to whoever wants him, island-wide: `Cmd/Ctrl+U`
 ("go to whoever wants you," in the finder's own "held with command" list from
 anywhere) stands him in the yard of whichever session is asking or hurt,

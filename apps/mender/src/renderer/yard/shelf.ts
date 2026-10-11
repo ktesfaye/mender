@@ -55,7 +55,9 @@ const BOARD = 24 * X;
 const TOKEN = 15 * X;
 const BOARD_AT = CHAIN_AT + 6 * X;
 const TOKEN_AT = CHAIN_AT + 10 * X;
-const TALL = BOARD_AT + BOARD + 3 * X;
+/* The board you are standing in hangs this much lower than the rest. */
+const DROP = 4 * X;
+const TALL = BOARD_AT + DROP + BOARD + 3 * X;
 const EASE = 'cubic-bezier(.2,.8,.2,1)';
 
 export interface OnShelf {
@@ -92,17 +94,6 @@ export interface Shelf {
 /** Worst first: hurt, asking, out of usage, finished and unseen, working. */
 export type Want = 'hurt' | 'asking' | 'limited' | 'done' | 'working' | undefined;
 
-/* The same colours a lit house's window uses (`village/folk.ts`'s own
-   `LIGHT` table): amber for somebody asking, red for somebody hurt. The
-   boards themselves carry a stud now; this glow is left to the beam, which
-   has no room for one when the rack is folded. */
-const GLOW: Record<'asking' | 'hurt' | 'limited' | 'none', string> = {
-  limited: 'drop-shadow(0 0 2px #d0583e) drop-shadow(0 0 7px #d0583e88)',
-  none: 'drop-shadow(0 0 0 rgba(0,0,0,0)) drop-shadow(0 0 0 rgba(0,0,0,0))',
-  asking: 'drop-shadow(0 0 3px #ffc46a) drop-shadow(0 0 9px #ffc46acc)',
-  hurt: 'drop-shadow(0 0 3px #ff7a52) drop-shadow(0 0 9px #ff7a52cc)',
-};
-
 /* Pointed at, what hangs off the chains drops a pixel as if tugged; pressed,
    it drops another. */
 function tug(hang: HTMLDivElement, swing: HTMLDivElement): void {
@@ -115,12 +106,25 @@ function tug(hang: HTMLDivElement, swing: HTMLDivElement): void {
   hang.addEventListener('pointerup', () => to(1));
 }
 
-/** One length of chain, its top at `top`. */
+/** One length of chain, its top at `top`. A short one can be let out
+    later, to `chain-long`'s length, by changing its `height`. */
 function chain(left: number, top: number, long: boolean): HTMLDivElement {
-  const link = sprite(long ? 'rack/chain-long' : 'rack/chain', X);
-  link.style.left = `${left}px`;
-  link.style.top = `${top}px`;
-  return link;
+  const links = document.createElement('div');
+  links.className = 'chain';
+  links.style.cssText = [
+    'position:absolute',
+    `left:${left}px`,
+    `top:${top}px`,
+    `width:${3 * X}px`,
+    `height:${(long ? 10 : 6) * X}px`,
+    'overflow:hidden',
+    `transition:height 300ms ${EASE}`,
+  ].join(';');
+  const link = sprite('rack/chain-long', X);
+  link.style.left = '0';
+  link.style.top = '0';
+  links.appendChild(link);
+  return links;
 }
 
 /* A stud nailed into the board's top-right corner, lit in the colour of the
@@ -215,10 +219,24 @@ function studOn(swing: HTMLDivElement): HTMLDivElement {
   return stud;
 }
 
+/* Something new to look at makes the board jump on its chains for a
+   moment, the way a sign does when somebody knocks it: a session that has
+   started asking, finished, or broken. Working and waiting are not news. */
+const KNOCKS: ReadonlySet<Want> = new Set<Want>(['asking', 'done', 'hurt']);
+
 function paintStud(hang: HTMLDivElement, want: Want): void {
   const stud = hang.querySelector<HTMLDivElement>('.stud');
   if (!stud || stud.dataset.want === (want ?? '')) return;
+  const was = stud.dataset.want;
   stud.dataset.want = want ?? '';
+  if (KNOCKS.has(want) && was !== undefined && was !== want) {
+    const swing = hang.querySelector<HTMLDivElement>('.swing');
+    if (swing) {
+      swing.style.animation = 'none';
+      void swing.offsetWidth;
+      swing.style.animation = `rack-knock 1100ms ${EASE} 2`;
+    }
+  }
   if (!want) {
     stud.style.display = 'none';
     return;
@@ -274,12 +292,24 @@ function paintBoard(hang: HTMLDivElement, project: OnShelf): void {
     if (cut) plank.style.backgroundPosition = `${-cut.x * X}px ${-cut.y * X}px`;
   }
   paintStud(hang, project.wants);
-  /* One put away has been out in the weather: the paint gone grey and the
-     wood paler, still there to press but never mistaken for a district. */
+  /* The one you are standing in hangs lower than the rest, let down on its
+     chains, so it stands out of the row by where it is and not only by its
+     gold. */
   const swing = hang.querySelector<HTMLDivElement>('.swing');
-  if (swing) {
-    swing.style.filter = project.away && !project.here ? WEATHERED : '';
+  if (swing) swing.style.top = `${BOARD_AT + (project.here ? DROP : 0)}px`;
+  for (const links of hang.querySelectorAll<HTMLDivElement>(':scope > .chain')) {
+    links.style.height = `${(project.here ? 10 : 6) * X}px`;
   }
+  /* A board with somebody at work behind it is painted in full; one with
+     nobody home is left to go dull, so the live projects read from across
+     the room before any stud is made out. One put away has been out in the
+     weather besides: the paint gone grey and the wood paler, still there to
+     press but never mistaken for a district. */
+  const lively = project.here || project.wants !== undefined;
+  if (swing) {
+    swing.style.filter = project.away && !project.here ? WEATHERED : lively ? '' : DULL;
+  }
+  face.style.filter = lively ? '' : FADED;
 
   const key = project.icon ?? toolFor(project.at);
   if (face.dataset.face === key) return;
@@ -384,7 +414,6 @@ export function makeShelf(
   end.style.left = '0px';
   end.style.top = '0px';
   end.style.zIndex = '2';
-  end.style.transition = `filter 520ms ${EASE}`;
   root.appendChild(end);
 
   /* No word on it: the whole beam is the handle, and a press anywhere along
@@ -549,24 +578,13 @@ export function makeShelf(
     node.style.pointerEvents = on ? 'auto' : 'none';
   };
 
-  const worstWant = (projects: OnShelf[]): 'hurt' | 'asking' | 'limited' | undefined =>
-    projects.some((project) => project.wants === 'hurt')
-      ? 'hurt'
-      : projects.some((project) => project.wants === 'asking')
-        ? 'asking'
-        : projects.some((project) => project.wants === 'limited')
-          ? 'limited'
-          : undefined;
-
-  /* Folded shut, every other project is behind the beam, so the beam carries
-     the question the open boards would answer: does anywhere else want him.
-     It takes the same warm or red light a board would, worst first, the way
-     a house's own light would read it. */
-  const settle = (): void => {
-    const want = away ? worstWant(last) : undefined;
-    const glow = want ? GLOW[want] : GLOW.none;
-    for (const each of [beam, end]) each.style.filter = glow;
-  };
+  /* Folded shut, the rack still keeps up whatever is worth a look: the
+     project you are standing in, and any with somebody at work, asking,
+     finished or broken behind it. Only the quiet ones go behind the beam, so
+     the folded rack still answers "does anywhere else want me" by what is
+     left hanging on it. */
+  const pinned = (project: OnShelf): boolean =>
+    !away || project.here || project.wants !== undefined;
 
   /* Puts each where it belongs along the strip, touching only the ones
      that are not already there. Taking an element out of the page and
@@ -600,8 +618,6 @@ export function makeShelf(
     if (inside !== was) away = inside;
     if (away) hideTag(true);
 
-    settle();
-
     const wanted = new Set(projects.map((project) => project.id));
     for (const [id, node] of nodes) {
       if (wanted.has(id)) continue;
@@ -616,7 +632,7 @@ export function makeShelf(
        outward, folding draws them up from the far end back toward it. */
     const going = projects.filter((project) => {
       const node = nodes.get(project.id);
-      return node && node.dataset.hung !== (!away || project.here ? 'up' : 'away');
+      return node && node.dataset.hung !== (pinned(project) ? 'up' : 'away');
     });
     const turnOf = (id: string): number => {
       const at = going.findIndex((project) => project.id === id);
@@ -624,7 +640,7 @@ export function makeShelf(
     };
 
     for (const project of projects) {
-      const on = !away || project.here;
+      const on = pinned(project);
       let node = nodes.get(project.id);
       if (!node) {
         node = hangBoard();
@@ -658,7 +674,8 @@ export function makeShelf(
            nothing. */
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            if (!node || !(!away || held.get(project.id)?.here)) return;
+            const now = held.get(project.id);
+            if (!node || !now || !pinned(now)) return;
             node.style.opacity = '1';
             node.style.transform = 'translateY(0)';
           });
@@ -668,7 +685,7 @@ export function makeShelf(
       }
       paintBoard(node, project);
     }
-    const anyUp = projects.some((project) => !away || project.here);
+    const anyUp = projects.some(pinned);
     band.style.display = anyUp ? '' : 'none';
     tail();
   }
@@ -842,6 +859,9 @@ export function makeShelf(
 }
 
 const WEATHERED = 'saturate(.3) brightness(.82) sepia(.25) opacity(.78)';
+/* Nobody home: the wood a shade darker, the face gone grey. */
+const DULL = 'brightness(.86) saturate(.85)';
+const FADED = 'grayscale(.7) brightness(.78)';
 
 const RACK = [
   'display:flex',
@@ -946,7 +966,7 @@ const SWING = (top: number, size: number): string =>
     `top:${top}px`,
     `width:${size}px`,
     `height:${size}px`,
-    `transition:transform 160ms ${EASE}`,
+    `transition:transform 160ms ${EASE},top 300ms ${EASE},filter 520ms ${EASE}`,
   ].join(';');
 
 const FACE = [
@@ -958,4 +978,5 @@ const FACE = [
   'display:flex',
   'align-items:center',
   'justify-content:center',
+  `transition:filter 520ms ${EASE}`,
 ].join(';');
