@@ -267,7 +267,11 @@ HTML page, a document or a picture outside the checkout, which the board already
 lists as something made. His own Hoid style carries the same rule, so a village
 session hears it from both sides. Driven: asked a fresh session in the installed
 app how the renderer is put together, and it answered with a fenced tree and
-one line rather than four paragraphs.
+one line rather than four paragraphs. That tree folded on the slate, every
+comment past the column's edge dropping onto its own line, so a code block now
+keeps its lines whole and slides sideways under the wheel when one is wider
+than the slate, the way a table already does. Driven: the same question again,
+the tree stood as drawn.
 
 Left that loose, it was skipped: asked to rank New Orleans swamp tours, a
 session looked once for an img tag on a script-built site, found none and

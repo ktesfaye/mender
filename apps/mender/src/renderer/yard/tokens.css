@@ -1437,8 +1437,12 @@ button.settings-row:hover .settings-row-main {
 .yard .prose-block {
   margin: 0;
   padding: 10px 14px 11px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  /* A line of code keeps its length: a tree or an aligned comment folded
+     onto the next line is no longer a tree. What is wider than the slate
+     slides sideways under the wheel instead. */
+  white-space: pre;
+  overflow-x: auto;
+  scrollbar-width: none;
   font-family: var(--yard-face-mono);
   font-size: max(13px, 0.66em);
   line-height: 1.5;
