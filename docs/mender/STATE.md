@@ -284,6 +284,11 @@ line, so a row of real sentences pushed the whole table out to be scrolled to.
 Cells now wrap inside their own column and the table fits the column it is in;
 only a right-leaning figure holds to one line.
 
+And the note overshot: every answer came back as a table. It now says plain
+sentences are the default, a tree, numbered steps or a diagram only when the
+thing really has that shape, and a table rarely, for several things compared on
+a few short points, never a column of sentences.
+
 Left that loose, it was skipped: asked to rank New Orleans swamp tours, a
 session looked once for an img tag on a script-built site, found none and
 answered in plain text. Recommending or comparing real things is now a rule,

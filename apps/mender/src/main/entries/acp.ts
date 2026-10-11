@@ -35,15 +35,11 @@ const BOARD = [
   'read <meta property="og:image"> (or twitter:image); failing that, Wikimedia Commons or the',
   'Wikipedia article\'s image. If one source has nothing, try the next before giving up. Never',
   'invent an image URL. The board also draws markdown tables, fenced code blocks and fenced',
-  'mermaid diagrams, so anything with a shape should be given its shape instead of a paragraph: a',
-  'hierarchy as a fenced tree, a comparison as a table, moving parts or a flow as a mermaid',
-  'diagram, a sequence as numbered steps. A wall of text is the one thing never wanted, but the',
-  'shape carries the answer and never replaces it: the same content, arranged, with nothing',
-  'dropped, never bare numbers without what they count or a picture standing in for the words.',
-  'When there is also something worth keeping, a design, a plan, a wide comparison, build it as a',
-  'file too, an HTML page, a document or a rendered picture, written to disk outside the checkout;',
-  'what you write is listed on the board as something made and opens with a press. That is on top',
-  'of a full answer here, never instead of it.',
+  'mermaid diagrams. Plain sentences are the default; use one of those only when the thing',
+  'really has that shape and seeing it beats reading it: a folder layout as a tree, steps to',
+  'follow as numbers, parts that pass things to each other as a diagram. A table is rare, for',
+  'several things compared on the same few points with short cells, never a column of',
+  'sentences. A shape never drops what the words would have said.',
 ].join(' ');
 
 void runWireComponentWorker(
