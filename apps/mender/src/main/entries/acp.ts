@@ -34,12 +34,7 @@ const BOARD = [
   'almost any business or product is its page\'s share image: curl -sL -A "Mozilla/5.0" the page and',
   'read <meta property="og:image"> (or twitter:image); failing that, Wikimedia Commons or the',
   'Wikipedia article\'s image. If one source has nothing, try the next before giving up. Never',
-  'invent an image URL. The board also draws markdown tables, fenced code blocks and fenced',
-  'mermaid diagrams. Plain sentences are the default; use one of those only when the thing',
-  'really has that shape and seeing it beats reading it: a folder layout as a tree, steps to',
-  'follow as numbers, parts that pass things to each other as a diagram. A table is rare, for',
-  'several things compared on the same few points with short cells, never a column of',
-  'sentences. A shape never drops what the words would have said.',
+  'invent an image URL.',
 ].join(' ');
 
 void runWireComponentWorker(

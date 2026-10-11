@@ -289,6 +289,11 @@ sentences are the default, a tree, numbered steps or a diagram only when the
 thing really has that shape, and a table rarely, for several things compared on
 a few short points, never a column of sentences.
 
+All of that wording was then taken back out, at his word: the note to every
+session is the pictures note it was this morning, nothing about trees, tables
+or diagrams. Code slates keeping their lines and tables wrapping in the column
+stay, since those are the board drawing what it is given properly.
+
 Left that loose, it was skipped: asked to rank New Orleans swamp tours, a
 session looked once for an img tag on a script-built site, found none and
 answered in plain text. Recommending or comparing real things is now a rule,
