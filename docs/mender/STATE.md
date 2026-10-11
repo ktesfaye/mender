@@ -1263,6 +1263,10 @@ The recap still writes over it, it still goes home on its own, and closing
 the village on one does not tell it to carry on, since nothing was cut off.
 Driven in a dev instance with a real Claude turn: asked, the rail went orange
 and the house lit; answered, it went back to idle.
+Only the last sentence of that last line counts, and never one hanging off
+an "if": the check read the whole closing paragraph, so "if that bugged you,
+say so. I left it alone." lit the lantern orange over nothing to answer
+(2026-10-11).
 `apps/mender/src/main/asked-you.ts`.
 
 And quitting on top of a lit fire says so before it happens, rather than

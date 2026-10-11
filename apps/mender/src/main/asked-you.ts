@@ -35,7 +35,12 @@ export function asksYou(said: string): boolean {
     .replace(/[)\]"'”’]+$/g, '')
     .trim();
   if (bare.endsWith('?')) return true;
-  return ASKS.test(bare);
+  /* Only the last sentence is the one left for him: a "say so" earlier in
+     the paragraph was followed by it carrying on, and one that hangs off an
+     "if" is an invitation to object to what it already did, not a question. */
+  const sentence = bare.split(/(?<=[.!?])\s+/).at(-1) ?? '';
+  if (/^(?:if|unless)\b/i.test(sentence)) return false;
+  return ASKS.test(sentence);
 }
 
 /**
