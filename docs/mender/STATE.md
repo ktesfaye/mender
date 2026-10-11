@@ -259,6 +259,16 @@ that writing, and pictures can be files on this machine too. Driven: "the top
 5 brunch spots near me and their top foods" came back with each place's dish
 beside its own entry.
 
+The same note now says what else the board draws, tables, fenced blocks and
+mermaid, and that anything with a shape gets its shape rather than a paragraph,
+a tree, a table, a diagram, numbered steps, with a wall of text named as the
+one thing never wanted; and that a lot to take in is better built as a file, an
+HTML page, a document or a picture outside the checkout, which the board already
+lists as something made. His own Hoid style carries the same rule, so a village
+session hears it from both sides. Driven: asked a fresh session in the installed
+app how the renderer is put together, and it answered with a fenced tree and
+one line rather than four paragraphs.
+
 Left that loose, it was skipped: asked to rank New Orleans swamp tours, a
 session looked once for an img tag on a script-built site, found none and
 answered in plain text. Recommending or comparing real things is now a rule,

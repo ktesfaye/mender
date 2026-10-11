@@ -34,7 +34,14 @@ const BOARD = [
   'almost any business or product is its page\'s share image: curl -sL -A "Mozilla/5.0" the page and',
   'read <meta property="og:image"> (or twitter:image); failing that, Wikimedia Commons or the',
   'Wikipedia article\'s image. If one source has nothing, try the next before giving up. Never',
-  'invent an image URL.',
+  'invent an image URL. The board also draws markdown tables, fenced code blocks and fenced',
+  'mermaid diagrams, so anything with a shape should be given its shape instead of a paragraph: a',
+  'hierarchy as a fenced tree, a comparison as a table, moving parts or a flow as a mermaid',
+  'diagram, a sequence as numbered steps. A wall of text is the one thing never wanted. When there',
+  'is a lot to take in, a design, a plan, a wide comparison, build it as a file instead, an HTML',
+  'page, a document or a rendered picture, written to disk outside the checkout; what you write',
+  'is listed on the board as something made and opens with a press, so the reply can be two lines',
+  'and the thing.',
 ].join(' ');
 
 void runWireComponentWorker(
