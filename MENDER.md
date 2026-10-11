@@ -1304,4 +1304,7 @@ about is not something anybody looks at a rail to learn.
 - Look at it without taking his screen. `MENDER_DEBUG_PORT=9222 pnpm run dev`
   opens the window's debug port; clicks, keys, wheels and screenshots go
   through it while the window sits in the background and he carries on working.
+  Driven that way the window counts as the one he is looking at, so the
+  island keeps moving; otherwise it freezes as it would behind another window
+  and every screenshot is of a stopped village.
 - A change is not delivered until the app Kirubel opens is running it.

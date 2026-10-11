@@ -167,3 +167,26 @@ describe('mergeAgentEnvLayers', () => {
     });
   });
 });
+
+describe('Claude Code access settings', () => {
+  it('reach the agent so a profile-exported sign-in works the way it does in a terminal', () => {
+    const env = buildAllowlistedAgentEnv(
+      {
+        PATH: '/bin',
+        CLAUDE_CODE_OAUTH_TOKEN: 'sk-ant-oat',
+        ANTHROPIC_VERTEX_PROJECT_ID: 'proj',
+        NODE_EXTRA_CA_CERTS: '/corp.pem',
+        https_proxy: 'http://proxy:8080',
+        SOME_SECRET: 'no',
+      },
+      { platform: 'posix' }
+    );
+    expect(env).toMatchObject({
+      CLAUDE_CODE_OAUTH_TOKEN: 'sk-ant-oat',
+      ANTHROPIC_VERTEX_PROJECT_ID: 'proj',
+      NODE_EXTRA_CA_CERTS: '/corp.pem',
+      https_proxy: 'http://proxy:8080',
+    });
+    expect(env.SOME_SECRET).toBeUndefined();
+  });
+});

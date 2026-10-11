@@ -228,6 +228,10 @@ function tellItWhoIsLooking(window: BrowserWindow): void {
     window.webContents.send(MENDER_WATCH_CHANNEL, now);
   };
   const look = (): void => {
+    /* Driven over the debug port it is drawn at nothing and never focused, so
+       it would freeze as though he were looking elsewhere, and every screenshot
+       would be of a stopped island. */
+    if (process.env.MENDER_DEBUG_PORT) return say('front');
     if (!window.isVisible() || window.isMinimized()) return say('gone');
     say(window.isFocused() ? 'front' : 'behind');
   };

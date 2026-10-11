@@ -3829,3 +3829,18 @@ Driven in a dev instance on his own set of districts at noon: a rowing boat and
 a sloop tied up along the islet's pier, sloops coming about and leaving wakes,
 the ship, the raft and the fishers out on open water, nothing on a cliff.
 
+
+### Claude's own sign-in reaches a bridged session (2026-10-11) — done
+
+A session here is Claude Code spawned by the village with an environment cut
+down to a list, and the list was upstream's: it carried an API key, Bedrock and
+Vertex switches and the uppercase proxy variables, and nothing else. On a
+machine that signs in any other way, a long-lived token exported from a shell
+profile, a named Anthropic profile, Foundry, a company gateway, a company
+certificate bundle, mTLS, or the lowercase proxy spellings git and curl read,
+a terminal Claude worked and a session in the village could not sign in. Every
+sign-in and network variable Claude Code's own documentation names now
+passes through, on top of upstream's list rather than in place of it, and a
+secret that is not one of them still does not. Checked by test on the
+allowlist; not yet driven on a machine that signs in one of those ways, which
+is what his work machine is for.

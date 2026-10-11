@@ -125,6 +125,69 @@ export const AGENT_ENV_VARS = [
   'ZAI_API_KEY',
 ] as const;
 
+/**
+ * How Claude Code signs in and reaches the model on a machine that is not set up the plain way:
+ * a long-lived token exported from a shell profile, Bedrock, Vertex, Foundry, a company gateway,
+ * company certificates or mTLS. Kept apart from `AGENT_ENV_VARS` so upstream's list merges
+ * cleanly. Names are from https://code.claude.com/docs/en/env-vars. A terminal Claude sees all of
+ * these, so a bridged one has to as well or it fails to sign in where a terminal one works.
+ */
+export const CLAUDE_CODE_ACCESS_ENV_VARS = [
+  'ANTHROPIC_AWS_API_KEY',
+  'ANTHROPIC_AWS_BASE_URL',
+  'ANTHROPIC_AWS_WORKSPACE_ID',
+  'ANTHROPIC_BEDROCK_BASE_URL',
+  'ANTHROPIC_BEDROCK_MANTLE_BASE_URL',
+  'ANTHROPIC_BEDROCK_REGION_PREFIX',
+  'ANTHROPIC_BEDROCK_SERVICE_TIER',
+  'ANTHROPIC_BETAS',
+  'ANTHROPIC_CUSTOM_HEADERS',
+  'ANTHROPIC_DEFAULT_MODEL',
+  'ANTHROPIC_FEDERATION_RULE_ID',
+  'ANTHROPIC_FOUNDRY_API_KEY',
+  'ANTHROPIC_FOUNDRY_AUTH_TOKEN',
+  'ANTHROPIC_FOUNDRY_BASE_URL',
+  'ANTHROPIC_FOUNDRY_RESOURCE',
+  'ANTHROPIC_ORGANIZATION_ID',
+  'ANTHROPIC_PROFILE',
+  'ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION',
+  'ANTHROPIC_VERTEX_BASE_URL',
+  'ANTHROPIC_VERTEX_PROJECT_ID',
+  'ANTHROPIC_WORKSPACE_ID',
+  'API_TIMEOUT_MS',
+  'AWS_BEARER_TOKEN_BEDROCK',
+  'AWS_CONFIG_FILE',
+  'AWS_SHARED_CREDENTIALS_FILE',
+  'CLAUDE_CODE_API_KEY_HELPER_TTL_MS',
+  'CLAUDE_CODE_CERT_STORE',
+  'CLAUDE_CODE_CLIENT_CERT',
+  'CLAUDE_CODE_CLIENT_KEY',
+  'CLAUDE_CODE_CLIENT_KEY_PASSPHRASE',
+  'CLAUDE_CODE_OAUTH_REFRESH_TOKEN',
+  'CLAUDE_CODE_OAUTH_SCOPES',
+  'CLAUDE_CODE_OAUTH_TOKEN',
+  'CLAUDE_CODE_PROXY_RESOLVES_HOSTS',
+  'CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH',
+  'CLAUDE_CODE_SKIP_BEDROCK_AUTH',
+  'CLAUDE_CODE_SKIP_FOUNDRY_AUTH',
+  'CLAUDE_CODE_SKIP_MANTLE_AUTH',
+  'CLAUDE_CODE_SKIP_VERTEX_AUTH',
+  'CLAUDE_CODE_USE_ANTHROPIC_AWS',
+  'CLAUDE_CODE_USE_FOUNDRY',
+  'CLAUDE_CODE_USE_MANTLE',
+  'CLOUDSDK_CONFIG',
+  'CLOUD_ML_REGION',
+  'GH_ENTERPRISE_TOKEN',
+  'GH_HOST',
+  'GITHUB_ENTERPRISE_TOKEN',
+  'NODE_EXTRA_CA_CERTS',
+  'SSL_CERT_DIR',
+  'SSL_CERT_FILE',
+] as const;
+
+/** curl's lowercase spellings, which git and most CLIs read too. Only distinct off Windows. */
+const POSIX_LOWERCASE_PROXY_VARS = ['all_proxy', 'http_proxy', 'https_proxy', 'no_proxy'] as const;
+
 const WINDOWS_AGENT_ENV_VARS = [
   'TEMP',
   'TMP',
@@ -159,6 +222,7 @@ const CANONICAL_WINDOWS_ENV_NAMES = new Map(
     ...GLOBAL_AGENT_ENV_VARS,
     ...DISPLAY_ENV_VARS,
     ...AGENT_ENV_VARS,
+    ...CLAUDE_CODE_ACCESS_ENV_VARS,
     ...WINDOWS_AGENT_ENV_VARS,
     'TMPDIR',
     'SSH_AUTH_SOCK',
@@ -194,10 +258,13 @@ export function buildAllowlistedAgentEnv(
     ...getAllowlistedEnv(sourceEnv, GLOBAL_AGENT_ENV_VARS, platform),
     ...getAllowlistedEnv(sourceEnv, DISPLAY_ENV_VARS, platform),
     ...getAllowlistedEnv(sourceEnv, AGENT_ENV_VARS, platform),
+    ...getAllowlistedEnv(sourceEnv, CLAUDE_CODE_ACCESS_ENV_VARS, platform),
   };
 
   if (platform === 'windows') {
     Object.assign(env, getAllowlistedEnv(sourceEnv, WINDOWS_AGENT_ENV_VARS, platform));
+  } else {
+    Object.assign(env, getAllowlistedEnv(sourceEnv, POSIX_LOWERCASE_PROXY_VARS, platform));
   }
 
   const tmpDir = getValue('TMPDIR');

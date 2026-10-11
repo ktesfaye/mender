@@ -5953,6 +5953,9 @@ async function boot(): Promise<void> {
       slab.className = 'menu slab';
       const offer = isAway(project)
         ? pressing('put it back on the island', () => {
+    if (import.meta.env.DEV) {
+      Object.assign((window as unknown as Record<string, object>).__village ?? {}, { editing });
+    }
             unslabIsland();
             void putBack(id);
           })
