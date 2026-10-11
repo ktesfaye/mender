@@ -1066,7 +1066,12 @@ async function boot(): Promise<void> {
     const arrived = (): void => {
       if (looking) return;
       const now = spot();
-      if (now.kind !== 'island' && !same(wasIn ?? undefined, now)) {
+      /* A spot remembered before sessions carried their project is the same
+         spot, but once that session is gone it has nowhere to fall back to,
+         so it is written again the moment it is stood in. */
+      const stale =
+        wasIn?.kind === 'task' && now.kind === 'task' && wasIn.project !== now.project;
+      if (now.kind !== 'island' && (stale || !same(wasIn ?? undefined, now))) {
         wasIn = now;
         try {
           localStorage.setItem('mender.lastIn', JSON.stringify(now));
