@@ -1491,6 +1491,14 @@ button.settings-row:hover .settings-row-main {
   padding: 7px 18px 6px 14px;
   vertical-align: baseline;
   text-align: left;
+  /* A table fits the column it is in. A long cell wraps inside its own
+     column rather than pushing the whole table off the edge to be scrolled
+     to; only a figure, which is short and lines up on the right, holds. */
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+.yard .prose-table td[style*='right'],
+.yard .prose-table th[style*='right'] {
   white-space: nowrap;
 }
 .yard .prose-table th {

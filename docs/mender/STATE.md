@@ -279,6 +279,11 @@ picture and a table of four bare counts on the board. The note now says the
 shape carries the answer and never replaces it, the same content arranged with
 nothing dropped, and a built file is on top of a full answer, never instead.
 
+A table on the board then ran off its right edge: every cell was held to one
+line, so a row of real sentences pushed the whole table out to be scrolled to.
+Cells now wrap inside their own column and the table fits the column it is in;
+only a right-leaning figure holds to one line.
+
 Left that loose, it was skipped: asked to rank New Orleans swamp tours, a
 session looked once for an img tag on a script-built site, found none and
 answered in plain text. Recommending or comparing real things is now a rule,
