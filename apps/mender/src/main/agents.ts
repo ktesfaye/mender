@@ -44,10 +44,10 @@ import type {
   Wrote,
 } from '@shared/agents';
 import { carried, packExpect, piecesOf, USUAL_PACK } from '@shared/packing';
+import { wantsAnswer } from './asked-you';
 import { forgetClaudeSession } from './claude-cli-history';
 import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
 import { goingIn, pickUpNote, PICK_UP_SAID, type CutOff } from './cut-off';
-import { wantsAnswer } from './asked-you';
 import { questionsOf, type FormQuestion, type FormValue } from './form';
 import {
   helperTrail,
@@ -58,6 +58,7 @@ import {
   tokensOf,
   type HelperTrail,
 } from './helper-trail';
+import { keptFailure } from './kept-failure';
 import { resetFrom } from './limit-clock';
 import { kept, madeIn, stillThere } from './made';
 
@@ -1601,6 +1602,8 @@ class House {
 
   private conversation: string | undefined;
   private lifecycle: SessionState | undefined;
+  /** What it last stopped on, held through the runtime suspending it. */
+  private kept: SessionFailure | null = null;
   private plan: PlanState | null = null;
   /** The turn that was called off, until it says it has stopped. */
   private hushed: string | undefined;
@@ -1695,7 +1698,7 @@ class House {
       model.state({ conversationId: conversation }, 'state'),
       {
         onChange: (value) => {
-          this.lifecycle = value;
+          this.take(value);
           this.publish();
           if (this.started()) for (const hear of [...this.past]) hear();
         },
@@ -1741,7 +1744,7 @@ class House {
     ];
 
     await Promise.all([lifecycle.ready, turn.ready, plan.ready, usage.ready]);
-    this.lifecycle = lifecycle.current();
+    this.take(lifecycle.current());
     this.turned(turn.current());
     this.plan = plan.current() ?? null;
     this.usage = usage.current() ?? null;
@@ -1862,7 +1865,7 @@ class House {
     const state = peek(this.state);
     return (
       settled(state) &&
-      !this.lifecycle?.failure &&
+      !this.standing() &&
       this.carryOnAt === null &&
       !this.lifecycle?.queuedPrompts?.length &&
       !state.told.errands.some((one) => one.running) &&
@@ -1921,7 +1924,7 @@ class House {
   /** Whether the last turn stopped before it was done: broken off, called
    *  off, or settled on a limit that only says so beside an ordinary finish. */
   cutShort(): boolean {
-    if (this.lifecycle?.failure) return true;
+    if (this.standing()) return true;
     const last = this.live ?? this.before.at(-1);
     const outcome = last?.outcome;
     if (!outcome) return false;
@@ -1929,7 +1932,25 @@ class House {
   }
 
   failing(): boolean {
-    return !!this.lifecycle?.failure;
+    return !!this.standing();
+  }
+
+  /**
+   * The failure that still stands, through the runtime putting the session
+   * to sleep.
+   *
+   * A session that has sat quiet a while is suspended by the runtime, and a
+   * suspended session reports no failure at all, so a limit being waited out
+   * vanished with it and the lantern fell back to "done". What it stopped on
+   * is kept until the session is awake again and says otherwise.
+   */
+  private standing(): SessionFailure | null {
+    return this.lifecycle?.failure ?? this.kept;
+  }
+
+  private take(value: SessionState | undefined): void {
+    this.lifecycle = value;
+    this.kept = keptFailure(this.kept, value);
   }
 
   currentResetAt(): number | undefined {
@@ -1939,7 +1960,7 @@ class House {
   /** The failure standing, with when it was hit, and when it lifts where
    *  Claude only said so in its headline. */
   private failureNow(): (SessionFailure & { since: number }) | null {
-    const failure = this.lifecycle?.failure;
+    const failure = this.standing();
     if (!failure) return null;
     const live = this.lifecycle?.lifecycle !== 'replaying';
     /* One read back rather than watched happening was hit whenever Claude
