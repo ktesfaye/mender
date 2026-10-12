@@ -3963,4 +3963,7 @@ folded column also counts its window in what it shows, so a turn with a lot
 of reasoning no longer pushes earlier answers out of it. Driven in a dev
 instance: a turn with four steps showed each line as it came with the newest
 large under them, and on finishing folded to the one answer under the last
-turn's, dimmed.
+turn's, dimmed. Something said to it mid-turn, or the village closing on it
+and picking back up, opens a new turn underneath, and those no longer fold
+away what it had told you before them: driven by sending a message halfway
+through a three-step job, every step line stayed up across it.

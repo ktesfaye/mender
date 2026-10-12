@@ -2913,6 +2913,7 @@ function toldOf(
         ...(item.pictures ? { pictures: item.pictures } : {}),
         ...(item.seen.length ? { seen: item.seen } : {}),
         ...(unread[i] ? { unread: true } : {}),
+        ...(STEERED.test(item.id) ? { steered: true } : {}),
       });
     } else if (item.kind === 'said') {
       const known = dated('it', item.text);

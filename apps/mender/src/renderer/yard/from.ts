@@ -372,6 +372,29 @@ function thoughtsOf(told: Told | undefined, mood: Mood | undefined, prompted = f
   const answers = new Map<number | undefined, string>();
   for (const one of all) if (!one.quiet && one.trouble !== 'aside') answers.set(one.turn, one.id);
   const answered = new Set(answers.values());
+  /* One stretch of work can be several turns underneath: something said
+     while it worked opens a turn of its own, and so does the note the
+     village sends on opening again after closing on it. What it told you
+     before either is still part of what it is doing now. */
+  const current = new Set<number>();
+  if (now !== undefined) {
+    current.add(now);
+    const steered = new Set(
+      (told?.notes ?? []).filter((one) => one.steered).map((one) => one.turn)
+    );
+    const turns = [
+      ...new Set([...all.map((one) => one.turn), ...(told?.notes ?? []).map((one) => one.turn)]),
+    ]
+      .filter((turn): turn is number => turn !== undefined && turn < now)
+      .sort((a, b) => b - a);
+    let after = now;
+    for (const turn of turns) {
+      const closed = all.some((one) => one.turn === turn && one.trouble === 'closed');
+      if (!closed && !steered.has(after)) break;
+      current.add(turn);
+      after = turn;
+    }
+  }
   return all.map((one, at) => ({
     id: one.id,
     said: one.said,
@@ -390,7 +413,7 @@ function thoughtsOf(told: Told | undefined, mood: Mood | undefined, prompted = f
     /* While a turn is still going, what it tells you on the way is how you
        follow a long one from across the room, so it stays out until the turn
        ends and only the last word of it is kept. */
-    ...(going && now !== undefined && one.turn === now && !one.quiet && !one.trouble
+    ...(going && one.turn !== undefined && current.has(one.turn) && !one.quiet && !one.trouble
       ? { progress: true }
       : {}),
     ...(one.pack ? { pack: one.pack, said: packSaid(one.pack, one.said) } : {}),

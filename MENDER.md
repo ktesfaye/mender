@@ -229,7 +229,7 @@ there is more than fits, following the answer down as it inks in unless you
 scroll up to read, and going back down to the foot the moment it is done
 wherever you had got to. While it is still going, every line it says to you
 on the way stays out above the newest, a little dimmer, so a long turn reads
-as the steps it is taking; the moment it is done they fold away under the
+as the steps it is taking, even across something you said to it on the way or the village closing on it and picking back up; the moment it is done they fold away under the
 last word with everything it thought, out of sight. Once an answer has finished
 something, the foot of that column, right over the line you write on, however
 short the answer above it, is the recap, a sentence or two in a quieter italic saying what the

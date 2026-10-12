@@ -235,6 +235,8 @@ export const notedSchema = z.object({
    * back since it went in, so it is still what is coming, not what was asked.
    */
   unread: z.boolean().optional(),
+  /** Handed into a turn that was already running, rather than opening one. */
+  steered: z.boolean().optional(),
 });
 export type Noted = z.infer<typeof notedSchema>;
 
