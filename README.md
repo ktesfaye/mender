@@ -10,7 +10,6 @@
 
 [![Download for macOS](https://img.shields.io/badge/Download-macOS%20(Apple%20Silicon)-c8a04a?style=for-the-badge&logo=apple&logoColor=white&labelColor=2b2118)](https://github.com/ktesfaye/mender/releases/latest)
 
-![Version](https://img.shields.io/github/v/release/ktesfaye/mender?label=version&labelColor=2b2118&color=c8a04a)
 ![Platform](https://img.shields.io/badge/platform-macOS%20arm64-c8a04a?labelColor=2b2118)
 ![Agents](https://img.shields.io/badge/agents-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20more-c8a04a?labelColor=2b2118)
 [![License](https://img.shields.io/badge/license-Apache--2.0-c8a04a?labelColor=2b2118)](LICENSE.md)
