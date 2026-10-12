@@ -2911,6 +2911,19 @@ then every third. Only sessions seen working since launch are named, so waking
 old ones leaves their names alone; a name given by hand still wins. The top of
 the yard follows the rename rather than keeping the name it walked in with.
 
+A restart used to rename everything anyway: where each session was last
+named lived only in memory, so the "carry on" every cut-off session gets on
+reopening counted as its first turn and the namer, which seldom says the same
+thing twice, called it something new. Now where it was last named is kept
+across a restart, and a session from before that was kept is taken to have
+been named wherever it stands when it next works. (2026-10-12)
+
+The name at the top of the yard is also written over by a double press: it
+turns into a line in place, return keeps it, Escape puts the old one back,
+and a name given that way is never touched by the namer. Driven over the debug
+port: double press, typed, return, the header and the rail both took it and
+it was saved as his; Escape left it alone. (2026-10-12)
+
 Driven over the debug port: a fresh session read "claude", then "Yard
 staleness logic" seconds after the question, then "How yards become cold"
 once it had answered; the header changed with it.

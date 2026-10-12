@@ -310,6 +310,11 @@ function moves<T extends HTMLElement>(el: T): T {
   return el;
 }
 
+/** The session whose name at the top is being written over, and what is
+    written so far. Held out here because the yard is drawn afresh on every
+    change, and a rename has to survive the agent saying something meanwhile. */
+let renaming: { id: string; written: string; caret: number } | null = null;
+
 /** How long a switch waits on a waking session before showing it waking. */
 const WAKE_HELD_MS = 320;
 
@@ -1262,6 +1267,79 @@ function scrims(root: HTMLElement): void {
   );
 }
 
+/** The session's name as a line you write on, standing where the name was.
+    Return keeps it, Escape or an empty line puts the old one back. */
+function renamer(shown: HTMLElement, named: string, does: Doings): HTMLInputElement {
+  const at = renaming;
+  const input = document.createElement('input');
+  input.value = at?.written ?? named;
+  input.spellcheck = false;
+  input.setAttribute('aria-label', 'Session name');
+  input.style.cssText = [
+    "font-family:'Courier Prime',monospace",
+    'font-size:20px',
+    'font-weight:700',
+    'color:#ffffff',
+    'text-shadow:1px 1px 0 #120d07',
+    'caret-color:#e8b84a',
+    'background:transparent',
+    'border:none',
+    'border-bottom:1px solid #6b5a40',
+    'outline:none',
+    'padding:0',
+    'margin:0',
+    'pointer-events:auto',
+    'vertical-align:bottom',
+    'max-width:44vw',
+  ].join(';');
+  const fit = (): void => {
+    input.style.width = `${Math.max(input.value.length, 6) + 1}ch`;
+  };
+  fit();
+  let done = false;
+  const finish = (keep: boolean): void => {
+    if (done) return;
+    done = true;
+    const written = input.value.trim();
+    renaming = null;
+    if (keep && written && written !== named) {
+      shown.textContent = written;
+      does.press(`session-name:${written}`);
+    }
+    if (input.isConnected) input.replaceWith(shown);
+  };
+  input.addEventListener('input', () => {
+    if (renaming) renaming = { ...renaming, written: input.value, caret: input.selectionStart ?? 0 };
+    fit();
+  });
+  input.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      finish(true);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      finish(false);
+    } else if (renaming) {
+      queueMicrotask(() => {
+        if (renaming) renaming = { ...renaming, caret: input.selectionStart ?? 0 };
+      });
+    }
+  });
+  /* Pressing anywhere else keeps it, the way a name in settings is kept. A
+     blur from the yard being drawn again is not that: the new one carries on. */
+  input.addEventListener('blur', () => {
+    if (input.isConnected) finish(true);
+  });
+  requestAnimationFrame(() => {
+    if (!input.isConnected) return;
+    input.focus();
+    if (at && at.written !== named) input.setSelectionRange(at.caret, at.caret);
+    else input.select();
+  });
+  return input;
+}
+
 /* ── who and where ─────────────────────────────────────────────────────────
    The project's name, and under it the one line that says everything about
    the session you are standing in: its checkout, its agent, how long it has
@@ -1291,7 +1369,18 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
     here.style.cssText +=
       ';letter-spacing:0;text-transform:none;font-weight:700;max-width:44vw;' +
       'overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom';
-    title.append(slash, here);
+    /* A double press writes over it, and a name given that way is his: the
+       namer never touches it again. */
+    const id = yard.session.id;
+    here.style.pointerEvents = 'auto';
+    here.style.cursor = 'text';
+    here.addEventListener('dblclick', (event) => {
+      event.preventDefault();
+      window.getSelection()?.removeAllRanges();
+      renaming = { id, written: named, caret: named.length };
+      here.replaceWith(renamer(here, named, does));
+    });
+    title.append(slash, renaming?.id === id ? renamer(here, named, does) : here);
     if (yard.session.dear) title.appendChild(dearTag());
   }
   root.appendChild(title);

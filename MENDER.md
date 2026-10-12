@@ -88,8 +88,9 @@ agent waking and its columns up. The name is worked out, not taken from the
 first line: a small model reads what was asked, what came back and what was
 touched, names it within seconds of the first thing said, again as the first
 few turns settle and then every third, so a session that has wandered onto
-something else is called what it is now. A name you gave it yourself is
-never touched. Pressing the hook or command-T always starts another plain one;
+something else is called what it is now. A name you gave it yourself, by
+pressing twice on it at the top of the yard and writing over it there, is
+never touched, and a restart is no reason to name it again either. Pressing the hook or command-T always starts another plain one;
 only right-clicking the hook, or command-N, turns over the board of other ways
 to start one, and if nothing has been said in the one you are standing in yet,
 whichever is taken replaces it. A copy of its

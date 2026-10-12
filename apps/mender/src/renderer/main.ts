@@ -4852,6 +4852,16 @@ async function boot(): Promise<void> {
         if (task) void failed(task.id, pick.slice(8));
         return;
       }
+      if (pick.startsWith('session-name:')) {
+        const task = inside;
+        if (!task) return;
+        void client.tasks.rename({ id: task.id, title: pick.slice(13) }).then((now) => {
+          tasks = now;
+          if (inside?.id === task.id) inside = now.find((each) => each.id === task.id) ?? inside;
+          people();
+        });
+        return;
+      }
       if (pick === 'tend') {
         const project = open ? projectOn(open.district) : undefined;
         if (project) configure(project);

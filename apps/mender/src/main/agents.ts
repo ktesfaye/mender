@@ -288,6 +288,7 @@ const KEY = 'agents';
 const DRAFTS_KEY = 'drafts';
 const MADE_KEY = 'made';
 const RECAPS_KEY = 'recaps';
+const TITLED_KEY = 'titledAt';
 const AWAY_KEY = 'helpersAway';
 const CUT_OFF_KEY = 'cutOff';
 const CARRY_ON_KEY = 'carryOn';
@@ -314,6 +315,18 @@ export function createAgents(
   let madeLoaded = false;
   /** The last recap each session was given, and the answer it was written under. */
   let recaps: Record<string, { said: string; after: string }> = {};
+  /** Where each session stood when it was last named: how much had been
+      said, and whether that turn had settled.
+      Kept across a restart: forgotten, every session woken by the next
+      sitting would be named afresh the moment it did anything, and the namer
+      seldom says the same thing twice. */
+  const titledAt = new Map<string, { said: number; settled: boolean }>();
+  /** Woken with a name from a sitting before where it was named was kept:
+      wherever it stands when it next works is taken as where it was named,
+      so waking it is not on its own a reason to name it again. */
+  const namedBefore = new Set<string>();
+  const keepTitled = (): void =>
+    void store.set(TITLED_KEY, Object.fromEntries(titledAt) as unknown as never);
   /** What was still going in each session when the last sitting ended. */
   let leftGoing: Record<string, CutOff> = {};
   /** Continues armed to send themselves once a limit lifts, so a restart
@@ -463,9 +476,6 @@ export function createAgents(
      off into something else is renamed for what it is now. His own name for it
      wins; `retitle` is the one that knows that. */
   const titler = createTitler(runtimes.env);
-  /** Where each session stood when it was last named: how much had been
-      said, and whether that turn had settled. */
-  const titledAt = new Map<string, { said: number; settled: boolean }>();
   /** Sessions seen at work since the app opened. Only those are named: one
       that has merely woken up with its history is not news, and its history
       arrives after it first reports resting, so it would read as brand new. */
@@ -478,6 +488,11 @@ export function createAgents(
     const said = state.told.notes.length;
     if (state.mood === 'working') worked.add(task);
     if (!worked.has(task) || !said) return;
+    if (namedBefore.delete(task) && !titledAt.has(task)) {
+      titledAt.set(task, { said, settled: state.mood === 'resting' });
+      keepTitled();
+      return;
+    }
     if (titling.has(task)) {
       again.add(task);
       return;
@@ -489,6 +504,7 @@ export function createAgents(
       : !last;
     if (!due) return;
     titledAt.set(task, { said, settled });
+    keepTitled();
     titling.add(task);
     void titler
       .title(state.told)
@@ -836,6 +852,7 @@ export function createAgents(
       drafts = draftsLeft;
       madeBy = madeLeft;
       recaps = recapsLeft;
+      if (titledAt.delete(task)) keepTitled();
       await store.set(DRAFTS_KEY, drafts as unknown as never);
       await store.set(MADE_KEY, madeBy as unknown as never);
       await store.set(RECAPS_KEY, recaps as unknown as never);
@@ -1161,6 +1178,7 @@ export function createAgents(
          a name: the namer's are short enough to need no cutting. One picked
          up before anything named it is named now, off what it holds. */
       if (!record.named && record.title.endsWith('…')) nameFromHistory(task);
+      else if (sleeping && !fresh && !titledAt.has(task)) namedBefore.add(task);
       return { success: true, data: undefined };
     } finally {
       if (sleeping) house.waking(false);
