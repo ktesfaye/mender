@@ -18,6 +18,7 @@
  * writes it down.
  */
 
+import { sessionLine } from '@shared/five-hours';
 import type { Offer } from '../board/offer';
 import {
   arrange,
@@ -36,7 +37,6 @@ import {
 import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
 import { waitOut } from './limit';
-import { sessionLine } from '@shared/five-hours';
 import { makeLine, preview, unpreview, type Asking as Prompting, type Line } from './line';
 import { makeMenu } from './menu';
 import {
@@ -635,7 +635,13 @@ export function makeYard(layer: Layer, does: Doings): Standing {
         undefined,
         columns.asked.wide > 0
       );
-      wakingUp(covered, columns.thinking, floor, wakingSinceOf(yard.session.id));
+      wakingUp(
+        covered,
+        columns.thinking,
+        floor,
+        wakingSinceOf(yard.session.id),
+        yard.session.settingUp
+      );
       stillAt.replaceChildren();
       stillAt.style.display = 'none';
     } else if (yard.session) {
@@ -1334,7 +1340,11 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
   const five = yard.fiveHours && yard.session ? sessionLine(yard.fiveHours, yard.session.id) : null;
   if (five && it.childElementCount) {
     const ink =
-      five.tone === 'wrong' ? 'var(--yard-wrong)' : five.tone === 'warn' ? 'var(--yard-warn)' : undefined;
+      five.tone === 'wrong'
+        ? 'var(--yard-wrong)'
+        : five.tone === 'warn'
+          ? 'var(--yard-warn)'
+          : undefined;
     const line = exact(five.said, 12, ink ?? '#bfa476');
     line.className = 'yard-five';
     it.appendChild(line);
@@ -2546,7 +2556,8 @@ function wakingUp(
   root: HTMLElement,
   at: { x: number; wide: number },
   floor: number,
-  since: number
+  since: number,
+  doing = 'waking up'
 ): void {
   const it = box(
     { left: at.x, top: HEAD.top, width: at.wide, height: Math.max(0, floor - HEAD.top) },
@@ -2555,7 +2566,7 @@ function wakingUp(
   /* It keeps its own pause before it shows, so a wake too quick to notice
      says nothing; a switch sweeping it in would show it straight away. */
   it.dataset.ownMotion = '';
-  it.appendChild(ember({ doing: 'waking up', answering: false }, since));
+  it.appendChild(ember({ doing, answering: false }, since));
   root.appendChild(it);
 }
 
@@ -4300,7 +4311,9 @@ function dearGem(size: number): HTMLElement {
   const art = ['..###..', '.#####.', '#######', '.#####.', '..###..', '...#...'];
   const it = document.createElement('span');
   const cells = art.flatMap((row, y) =>
-    row.split("").flatMap((c, x) => (c === "#" ? [`<rect x="${x}" y="${y}" width="1" height="1"/>`] : []))
+    row
+      .split('')
+      .flatMap((c, x) => (c === '#' ? [`<rect x="${x}" y="${y}" width="1" height="1"/>`] : []))
   );
   it.innerHTML = `<svg viewBox="0 0 7 6" width="${size + 2}" height="${size}" shape-rendering="crispEdges" fill="${DEAR}">${cells.join('')}</svg>`;
   it.style.cssText = `display:inline-block;margin:0 0 0 6px;filter:drop-shadow(0 0 4px rgba(196,155,255,.7));vertical-align:middle`;
@@ -4330,7 +4343,8 @@ function dearTag(): HTMLElement {
   const gem = dearGem(10);
   gem.style.margin = '0';
   it.append(gem, document.createTextNode('fable'));
-  it.title = 'Thinking with Fable, the dearest model. It spends your five hours several times faster.';
+  it.title =
+    'Thinking with Fable, the dearest model. It spends your five hours several times faster.';
   return it;
 }
 
@@ -4346,4 +4360,3 @@ function dearModel(model: string): HTMLElement {
   wrap.append(gem, it);
   return wrap;
 }
-

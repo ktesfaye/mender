@@ -1931,7 +1931,12 @@ async function boot(): Promise<void> {
      * rail dark. Either way the village behind stays visible and dims, rather
      * than a board sliding over it.
      */
-    const showYard = async (aim: Aim, project: Project, here?: Task): Promise<void> => {
+    const showYard = async (
+      aim: Aim,
+      project: Project,
+      here?: Task,
+      settingUp?: string
+    ): Promise<void> => {
       const was = live;
       live = null;
       reading = null;
@@ -1939,7 +1944,7 @@ async function boot(): Promise<void> {
       looked = null;
       branchLooked = null;
       /* A different checkout is a different tree, so the one being held goes. */
-      if (kept && kept.path !== (here?.path ?? project.path)) letGoOfTree();
+      if (kept && kept.path !== (here?.path || project.path)) letGoOfTree();
       else stopWalking();
       stopTalking();
       sending = null;
@@ -1948,7 +1953,7 @@ async function boot(): Promise<void> {
          another leaves that one's half-written line with it, not on this. */
       if (inside?.id !== here?.id) yard.line.write('');
       inside = here ?? null;
-      if (here) {
+      if (here && !settingUp) {
         workspaceIn.set(project.id, here.workspace ?? '');
         lastInWorkspace.set(`${project.id}|${here.workspace ?? ''}`, here.id);
       }
@@ -1982,6 +1987,7 @@ async function boot(): Promise<void> {
           servers: servingCheckouts(),
           ...(cutting.size ? { cutting: new Set(cutting.keys()) } : {}),
           waking: Boolean(here && !here.kind?.match(/terminal|shell/)),
+          ...(settingUp ? { settingUp } : {}),
         },
         (now) => {
           if (walkedUp) {
@@ -4275,17 +4281,8 @@ async function boot(): Promise<void> {
       const said = naming.said ?? written;
       const aim = open;
       naming = null;
-      rewrite([
-        { kind: 'title', text: written },
-        { kind: 'gap' },
-        {
-          kind: 'line',
-          text: isolated ? 'making its own copy of the project…' : 'starting…',
-          tone: 'faded',
-        },
-      ]);
       const draftId = `cutting:${crypto.randomUUID()}`;
-      cutting.set(draftId, {
+      const draft: Task = {
         id: draftId,
         project: project.id,
         name: written,
@@ -4294,8 +4291,21 @@ async function boot(): Promise<void> {
         slot,
         path: '',
         startedAt: new Date().toISOString(),
-      });
-      syncCutting(project.id);
+      };
+      cutting.set(draftId, draft);
+      /* Standing in it at once, the fire saying what is being made, the way
+         a session that is waking says so: a copy of a big project and its
+         setup take long enough that a sign which just went away read as
+         nothing having happened. */
+      if (aim) {
+        flyToYard(camera, aim.district);
+        await showYard(
+          aim,
+          project,
+          draft,
+          isolated ? 'making its own copy' : terminal ? 'opening a shell' : 'setting up'
+        );
+      } else syncCutting(project.id);
       // No deadline: a worktree on a big repository is minutes of copying, plus
       // whatever that project runs to make a checkout usable.
       let made: Awaited<ReturnType<typeof client.tasks.begin>>;
@@ -4484,7 +4494,7 @@ async function boot(): Promise<void> {
     const tell = async (said: string): Promise<void> => {
       const task = inside;
       const saying = watching;
-      if (!task || !saying) return;
+      if (!task || !saying || cutting.has(task.id)) return;
       const carrying = [...saying.carrying()];
       const notes = [...saying.notes()];
       /* Every pinned note rides in with what is actually said, file and line

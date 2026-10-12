@@ -89,6 +89,8 @@ export interface Standing {
   moods: Record<string, Mood>;
   /** The one you are standing in, if you are standing in one. */
   here?: Task;
+  /** What the fire says while the one you are standing in is still being made. */
+  settingUp?: string;
   /** What that session has been up to, when it has been asked. */
   told?: Told;
   kit?: Kit;
@@ -239,7 +241,9 @@ function sessionOf(
     id: task.id,
     name: task.title,
     branch: task.branch,
-    agent: kit?.hands.find((one) => one.id === kit.hand)?.name ?? task.agent ?? 'nobody',
+    agent: from.settingUp
+      ? ''
+      : (kit?.hands.find((one) => one.id === kit.hand)?.name ?? task.agent ?? 'nobody'),
     ...(kit && modelOf(kit) ? { model: modelOf(kit) } : {}),
     ...(kit && isDear(kit) ? { dear: true } : {}),
     ...(kit?.mode
@@ -247,7 +251,8 @@ function sessionOf(
       : {}),
     fire: fireOf(from.mood, Boolean(from.asking)),
     ...(live ? { live } : {}),
-    ...(from.waking ? { waking: true } : {}),
+    ...(from.waking || from.settingUp ? { waking: true } : {}),
+    ...(from.settingUp ? { settingUp: from.settingUp } : {}),
     ...(from.room === undefined ? {} : { room: from.room }),
     ...(from.cost === undefined ? {} : { cost: from.cost }),
     ...(coldFor(told) ? { cold: coldFor(told) } : {}),
@@ -412,8 +417,7 @@ function liveOf(from: Standing, told: Told | undefined): Session['live'] {
   /* A step that finished after the last thing it said means nothing is being
      written now: it is between one step and the next, working out which. */
   const lastDeed = told?.deeds.at(-1);
-  const between =
-    lastDeed?.seq !== undefined && last?.seq !== undefined && lastDeed.seq > last.seq;
+  const between = lastDeed?.seq !== undefined && last?.seq !== undefined && lastDeed.seq > last.seq;
   const doing = told?.stopping
     ? 'stopping'
     : from.mood === 'arriving'
@@ -478,7 +482,8 @@ function stepsOf(deeds: readonly DeedIn[]): Step[] {
       step.did = plain.said ?? looked ?? deed.did;
       step.note = 'still going in the background';
     } else if (deed.tool === 'execute-tool-call') {
-      step.did = plain.said ?? (deed.running ? (deed.why ?? 'looking around') : (looked ?? deed.did));
+      step.did =
+        plain.said ?? (deed.running ? (deed.why ?? 'looking around') : (looked ?? deed.did));
       if (plain.said === 'ran the tests' && !deed.running)
         step.note = deed.wrong ? 'failed' : 'passed';
       else if (deed.wrong) step.note = 'failed';

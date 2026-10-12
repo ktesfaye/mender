@@ -18,7 +18,6 @@ import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { shortName, type CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import type { Ask, Carried, Glance, Kit, Mood, WorkingState } from '@shared/agents';
-import { onThisMachine } from './pictures';
 import type { BoardVersion } from '@shared/board';
 import type { FiveHours } from '@shared/five-hours';
 import type { Project } from '@shared/projects';
@@ -27,6 +26,7 @@ import { Naming } from '../board/naming';
 import { Palette } from '../board/palette';
 import type { MenderClient } from '../wire';
 import { yardOf } from './from';
+import { onThisMachine } from './pictures';
 import type { Health, Signboard, Yard } from './what';
 
 export interface Watching {
@@ -111,6 +111,9 @@ export interface Opening {
   unread?: ReadonlyMap<string, number>;
   /** Whether walking in is about to wake whoever lives there. */
   waking?: boolean;
+  /** The one you are standing in is still being made, and this is how. Until
+      it is, there is nobody in there to ask anything of. */
+  settingUp?: string;
   /** The project's workspaces; an empty list is its own folder alone. */
   workspaces?: readonly Signboard[];
 }
@@ -226,6 +229,7 @@ export async function openYard(
       tasks: from.tasks,
       moods: from.moods,
       ...(from.here ? { here: from.here } : {}),
+      ...(from.settingUp ? { settingUp: from.settingUp } : {}),
       ...(from.servers ? { servers: from.servers } : {}),
       ...(from.cutting ? { cutting: from.cutting } : {}),
       ...(from.glances ? { glances: from.glances } : {}),
@@ -260,13 +264,14 @@ export async function openYard(
     });
   }
 
-  const here = from.here;
+  const here = from.settingUp ? undefined : from.here;
   if (here) {
     const work = new ReplicaState(client.agents.work.state({ task: here.id }, 'state'), {
       onChange: (value) => {
         /* A turn coming to rest is when the window has moved. */
         const rested =
-          value?.told?.ended && (working?.told?.ended !== value.told.ended || working?.mood === 'working');
+          value?.told?.ended &&
+          (working?.told?.ended !== value.told.ended || working?.mood === 'working');
         working = value;
         if (rested && value.mood !== 'working') readWindow();
         again();
@@ -292,7 +297,7 @@ export async function openYard(
   /* Where the checkout stands is the session's own worktree when you are in
      one and the project's own folder when you are not, because a project board
      with nobody in it is still standing on a branch. */
-  const where = here?.path ?? from.project.path;
+  const where = here?.path || from.project.path;
   /* What was last read here, or in the project's own folder, stands until the
      read comes back: the changelog is the place's, and a switch between two
      sessions that took it down and put it back up was the place blinking. */

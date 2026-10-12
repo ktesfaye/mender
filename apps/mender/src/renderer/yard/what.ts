@@ -158,6 +158,9 @@ export interface Session {
   /** Still being woken and reading back everything said in here, so there is
       nothing yet worth drawing but the fire. */
   waking?: boolean;
+  /** Not woken but still being made, its worktree being cut, said by the
+      fire in place of "waking up". */
+  settingUp?: string;
   /** How long since anything happened in here, when that is a long time. */
   cold?: string;
   /** Newest first. */

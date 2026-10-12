@@ -110,8 +110,11 @@ and the rail along the bottom carries that workspace's sessions and nobody
 else's. Command-N in a project hangs the new-session sign with its own
 isolated workspace already on, and whatever is written in the box names the
 workspace, and so does the dashed board at the end of the beam; out on the island it still founds a project, since there is nothing
-there to copy. A new session starts in whichever workspace you are standing
-in. Right-clicking a board offers to delete it, and deleting means all of it:
+there to copy. The moment it is asked for you are standing in it, the fire
+in the middle saying it is making its own copy and counting, because cutting
+a copy and running its setup is long enough that a sign which simply went
+away read as nothing having happened. A new session starts in whichever
+workspace you are standing in. Right-clicking a board offers to delete it, and deleting means all of it:
 its folder, its branch and every session in it. The first press only looks
 inside and says, in the sore ink, what would go, anybody still working in
 there, files nobody committed, commits never pushed anywhere, and only the
