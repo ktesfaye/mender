@@ -4060,7 +4060,11 @@ async function boot(): Promise<void> {
       const project = projectOn(aim.district);
       if (!project) return;
       sign?.close();
-      open = aim;
+      /* The yard standing behind the sign only listens to its session while
+         `open` is the very aim it was opened with, so asking over the
+         district already open keeps it; a new one there froze the yard for
+         good once the sign was put away. */
+      if (open?.district !== aim.district) open = aim;
       titling = null;
       naming = blankNaming(aim.district, project, slot, written);
       const asked = naming;
