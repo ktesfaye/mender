@@ -2109,6 +2109,8 @@ function thinking(
           start = i + 1;
           break;
         }
+      }
+    }
     /* Everything on the way to an answer is folded away, and only the
        answers themselves stay out, the older ones dimmed above the newest:
        most of the time what it said back is all anybody came for, and saying
