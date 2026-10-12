@@ -1598,22 +1598,20 @@ function asked(
     `note:${newest.id}`
   );
   root.appendChild(pickable(card, newest.said, pick));
-  /* A note is a note. Something long enough to fill the post on its own is
-     not one, and it is usually not yours either: a resumed session hands back
-     whatever was said to start it, summaries and instructions and all. So the
-     parchment is only ever a few lines of it and says how many it is holding
-     back, which is the same bargain the rest of this column already makes.
-     The cut lands on a whole line, because half a line of handwriting sliced
-     through the middle reads as the card being broken rather than trimmed. */
+  /* The newest note is all there, as tall as what was said, pushing what
+     came before it further down the post. Only one longer than the whole post
+     is cut, on a whole line and fading out, since nothing scrolls inside a
+     piece of parchment: that is a resumed session handing back the
+     instructions it was started with, never something anybody wrote. */
   const body = card.querySelector<HTMLElement>('[data-note="said"]');
   if (body) {
     const line = Math.max(1, Math.round(NOTE_LINE));
-    const lines = Math.round(body.scrollHeight / line);
-    if (lines > NOTE_LINES) {
-      /* All of it is still there, it scrolls inside the parchment. */
-      body.style.height = `${NOTE_LINES * line}px`;
-      body.style.overflowY = 'auto';
-      body.style.pointerEvents = 'auto';
+    const chrome = card.offsetHeight - body.offsetHeight;
+    const fits = Math.max(1, Math.floor((under - 44 - top - chrome) / line));
+    if (Math.round(body.scrollHeight / line) > fits) {
+      body.style.height = `${fits * line}px`;
+      body.style.overflow = 'hidden';
+      body.style.webkitMaskImage = `linear-gradient(180deg,#000 calc(100% - ${line}px),transparent)`;
     }
   }
   post.style.height = `${Math.min(room, top - HEAD.top + card.offsetHeight + 60)}px`;
@@ -1653,8 +1651,6 @@ function pickable<T extends HTMLElement>(el: T, said: string, pick: (said: strin
 /** Where the post was left scrolled to, per session, across redraws. */
 const postScrolled = new Map<string, number>();
 
-/** How many lines of one note the parchment holds, however long it was. */
-const NOTE_LINES = 7;
 /** What one of those lines is, at the card's own size and leading. */
 const NOTE_LINE = 19 * 1.25;
 
