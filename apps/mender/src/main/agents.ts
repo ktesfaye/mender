@@ -362,6 +362,11 @@ export function createAgents(
     if (heldRecaps.success && heldRecaps.data && typeof heldRecaps.data === 'object') {
       recaps = heldRecaps.data as unknown as Record<string, { said: string; after: string }>;
     }
+    const heldTitled = await store.get(TITLED_KEY);
+    if (heldTitled.success && heldTitled.data && typeof heldTitled.data === 'object') {
+      const each = heldTitled.data as unknown as Record<string, { said: number; settled: boolean }>;
+      for (const [task, at] of Object.entries(each)) if (!titledAt.has(task)) titledAt.set(task, at);
+    }
     const heldCut = await store.get(CUT_OFF_KEY);
     if (heldCut.success && heldCut.data && typeof heldCut.data === 'object') {
       leftGoing = heldCut.data as unknown as Record<string, CutOff>;
