@@ -1137,8 +1137,9 @@ There is still no parchment, no frame, no icon.
 **The windmill is the app's own settings, and it is real now, if small.**
 There is no sprite for it yet, so it is reached the way any other doing is:
 ⌘, or "settings" in the finder, over everything, closing the same three ways
-a project's settings do. One page so far, General, and one real switch on
-it — who a fresh session starts with, the same "who works here" names the
+a project's settings do, and laid out the same way: pages down a rail on its
+left, each saying under its name what is set there. The first, General, has
+one real switch on it — who a fresh session starts with, the same "who works here" names the
 card already knows. Picking one is remembered and a fresh session actually
 starts that agent, not always Claude Code. A second page, Checkouts, says
 how a fresh checkout gets made from here on: the prefix a session's branch

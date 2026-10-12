@@ -7,9 +7,10 @@
  * opens the same kind of window a project's own settings already use, over
  * everything, closing the same three ways.
  *
- * Small on purpose, and meant to grow the way the project window did: one
- * real, working thing today — who a fresh session starts with — rather than
- * a page of switches that do nothing yet.
+ * Laid out the way a project's own settings are: pages down a rail on the
+ * left, each saying under its name what is set there, so it never becomes one
+ * long scroll of everything, and whatever is written says "saved" beside its
+ * heading once it is.
  */
 
 import type { HostDependencyView } from '@emdash/core/primitives/host-dependencies/api';
@@ -36,6 +37,7 @@ import {
 } from '@shared/five-hours';
 import { counted } from '../board/card';
 import { chordLabel, chordOf, rebindableDoings } from '../board/finder';
+import { chip, formRow, hintLine, input, intro, pageOf, section } from './settings';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
  *  and whether anything still uses it. */
@@ -130,11 +132,34 @@ export interface Windmill {
   close(): void;
 }
 
+/** The pages down the window's left side, in the order they hang there. */
+type Page = 'general' | 'checkouts' | 'terminal' | 'keys' | 'agents' | 'disk' | 'machine';
+
+const PAGES: { page: Page; said: string }[] = [
+  { page: 'general', said: 'General' },
+  { page: 'checkouts', said: 'Checkouts' },
+  { page: 'terminal', said: 'Terminal' },
+  { page: 'keys', said: 'Keys' },
+  { page: 'agents', said: 'Agents' },
+  { page: 'disk', said: 'On disk' },
+  { page: 'machine', said: 'This machine' },
+];
+
+/** Whichever page was open last, so coming back to the windmill lands there. */
+let lastPage: Page = 'general';
+
+/** Whichever agent the Agents page was last showing. */
+let lastAgent: string | null = null;
+
+/** How long an armed second press stands before it withdraws. */
+const STANDS_MS = 4000;
+
 export function openWindmill(state: WindmillState, does: WindmillDoings): Windmill {
   let now = state;
+  let page: Page = lastPage;
 
   const back = el('div', 'settings-back');
-  const panel = el('div', 'settings windmill');
+  const panel = el('div', 'settings paged windmill');
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-modal', 'true');
   back.appendChild(panel);
@@ -148,262 +173,281 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     downOutside = false;
   });
 
+  // ── the head ─────────────────────────────────────────────────────────────
   const head = el('div', 'settings-head');
   const who = el('div', 'settings-who');
-  const heading = el('div', 'settings-name founding-heading');
+  const heading = el('div', 'settings-name windmill-title');
   heading.textContent = 'The windmill';
-  who.appendChild(heading);
+  const where = el('div', 'settings-where');
+  where.textContent = 'How Mender itself behaves on this machine, in every project.';
+  who.append(heading, where);
   const shut = button('×', 'settings-close', () => close());
   shut.setAttribute('aria-label', 'Close');
   head.append(who, shut);
 
+  // ── the pages ────────────────────────────────────────────────────────────
+  const middle = el('div', 'settings-middle');
+  const rail = el('nav', 'settings-rail');
   const body = el('div', 'settings-body');
-  const general = section('General');
-  const checkouts = section('Checkouts');
-  const terminal = section('Terminal');
-  const notifications = section('Notifications');
-  const keys = section('Keys');
-  const agentsSection = section('Agents');
-  const worktrees = section('What is on disk');
-  const machine = section('This machine');
-  body.append(
-    general.root,
-    checkouts.root,
-    terminal.root,
-    notifications.root,
-    keys.root,
-    agentsSection.root,
-    worktrees.root,
-    machine.root
-  );
-  panel.append(head, body);
+  middle.append(rail, body);
+  panel.append(head, middle);
 
-  /** The worktree armed for a second press to clear it, if any. */
-  let clearing: string | null = null;
-  /** Clearing every stale worktree at once, armed for a second press. */
-  let clearingAll = false;
+  const starts = section('A fresh session starts with');
+  const notify = section('Notifications');
+  const branches = section('Branches');
+  const landing = section('Where new things land');
+  const shellLook = section('How a shell looks');
+  const shellIs = section('What a shell starts as');
+  const keys = section('Chords');
+  const agentPick = section('Agent');
+  const agentArgs = section('Extra arguments');
+  const agentEnv = section('Environment');
+  const agentInstall = section('Which install');
+  const worktrees = section('Worktrees Mender has cut');
+  const spend = section('Right now');
+  const five = section('The five hours');
+  const shares = section('Each session’s share');
 
-  document.body.appendChild(back);
-  back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
-  panel.animate(
-    [
-      { opacity: 0, transform: 'translateY(8px)' },
-      { opacity: 1, transform: 'translateY(0)' },
-    ],
-    { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' }
-  );
+  const pageRoots: Record<Page, HTMLElement> = {
+    general: pageOf([starts.root, notify.root]),
+    checkouts: pageOf([intro(CHECKOUTS), branches.root, landing.root]),
+    terminal: pageOf([intro(TERMINAL), shellLook.root, shellIs.root]),
+    keys: pageOf([intro(KEYS), keys.root]),
+    agents: pageOf([
+      intro(AGENTS),
+      agentPick.root,
+      agentArgs.root,
+      agentEnv.root,
+      agentInstall.root,
+    ]),
+    disk: pageOf([intro(DISK), worktrees.root]),
+    machine: pageOf([spend.root, five.root, shares.root]),
+  };
+  body.append(...Object.values(pageRoots));
 
-  function drawGeneral(): void {
-    const hint = el('p', 'settings-hint');
-    hint.textContent = 'Who a fresh session starts with, until you say otherwise.';
+  const tabs = new Map<Page, { root: HTMLButtonElement; sub: HTMLElement }>();
+  for (const one of PAGES) {
+    const tab = el('button', 'settings-tab');
+    tab.type = 'button';
+    const said = el('span', 'settings-tab-name');
+    said.textContent = one.said;
+    const sub = el('span', 'settings-tab-sub');
+    tab.append(said, sub);
+    tab.addEventListener('click', () => go(one.page));
+    rail.appendChild(tab);
+    tabs.set(one.page, { root: tab, sub });
+  }
+  rail.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    const at = PAGES.findIndex((one) => one.page === page);
+    const next = PAGES[(at + (event.key === 'ArrowDown' ? 1 : PAGES.length - 1)) % PAGES.length];
+    if (!next) return;
+    go(next.page);
+    tabs.get(next.page)?.root.focus();
+  });
+
+  function go(to: Page): void {
+    if (to !== 'keys') stopArming();
+    page = to;
+    lastPage = to;
+    showPage();
+    draw();
+  }
+
+  function showPage(): void {
+    for (const [one, root] of Object.entries(pageRoots) as [Page, HTMLElement][]) {
+      root.style.display = one === page ? '' : 'none';
+    }
+    for (const [one, tab] of tabs) {
+      tab.root.classList.toggle('here', one === page);
+      tab.root.setAttribute('aria-current', String(one === page));
+    }
+    body.scrollTop = 0;
+  }
+
+  function drawRail(): void {
+    const sub = (one: Page, text: string): void => {
+      const tab = tabs.get(one);
+      if (tab) tab.sub.textContent = text;
+    };
+    const hand = now.hands?.find((one) => one.id === now.hand)?.name;
+    const told = now.notifications ? (now.notifications.enabled ? 'notifies' : 'quiet') : '';
+    sub('general', [hand, told].filter(Boolean).join(' · '));
+    const checkout = now.checkout;
+    sub(
+      'checkouts',
+      checkout ? `${checkout.branchPrefix || 'mender'}/…${checkout.randomSuffix ? ' + a tail' : ''}` : ''
+    );
+    const term = now.terminal;
+    sub(
+      'terminal',
+      term
+        ? `${term.fontSize || 13}px · ${(term.defaultShell || '$SHELL').split('/').at(-1)}`
+        : ''
+    );
+    const rebound = now.keybindings ? Object.keys(now.keybindings).length : null;
+    sub('keys', rebound === null ? '' : rebound ? `${rebound} rebound` : 'as they come');
+    const installed = now.hands?.filter((one) => one.here).length;
+    sub('agents', installed === undefined ? '' : `${installed} on this machine`);
+    const trees = now.worktrees;
+    const stale = trees?.filter((one) => one.stale).length ?? 0;
+    sub(
+      'disk',
+      trees
+        ? trees.length
+          ? `${counted(trees.length, 'worktree')}${stale ? ` · ${stale} stale` : ''}`
+          : 'nothing left over'
+        : ''
+    );
+    const machine = now.machine;
+    sub(
+      'machine',
+      machine
+        ? `cpu ${Math.round(machine.cpuPercent)}% · ${sized(machine.memUsedBytes)} in use`
+        : ''
+    );
+  }
+
+  // ── general ──────────────────────────────────────────────────────────────
+  function drawStarts(): void {
     if (!now.hands) {
-      const reading = el('p', 'settings-hint');
-      reading.textContent = 'Reading it…';
-      general.fill([hint, reading]);
+      starts.fill([hintLine('Reading it…')]);
       return;
     }
-    const list = el('div', 'settings-grid');
-    for (const hand of now.hands) {
-      const one = el('div', 'windmill-hand');
-      one.tabIndex = 0;
-      one.setAttribute('role', 'button');
-      const picked = hand.id === now.hand;
-      one.setAttribute('aria-pressed', String(picked));
-      if (picked) one.classList.add('picked');
-      if (!hand.here) one.classList.add('away');
-      one.textContent = hand.name;
-      one.title = hand.here ? hand.name : `${hand.name} — not installed`;
-      const pick = (): void => {
-        if (picked) return;
-        void does.choose(hand.id).then(() => draw());
-      };
-      one.addEventListener('click', pick);
-      one.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          pick();
-        }
-      });
-      list.appendChild(one);
+    const here = now.hands.filter((one) => one.here);
+    const away = now.hands.length - here.length;
+    const choices = el('div', 'settings-choices');
+    for (const hand of here) {
+      choices.appendChild(
+        chip(hand.name, hand.id === now.hand, () => {
+          void does.choose(hand.id).then(() => took(starts));
+        })
+      );
     }
-    general.fill([hint, list]);
+    const children: HTMLElement[] = [
+      hintLine('Whoever a new session starts with, until you say otherwise on the board.'),
+    ];
+    if (here.length) children.push(choices);
+    else children.push(hintLine('No agent is installed on this machine yet.'));
+    if (away) {
+      children.push(
+        hintLine(
+          `${counted(away, 'other agent')} could work here once installed. A session’s /agent card brings them in.`
+        )
+      );
+    }
+    starts.fill(children);
   }
 
-  function drawCheckouts(): void {
-    if (!now.checkout) {
-      checkouts.fill([hintLine('Reading it…')]);
-      return;
-    }
-    const held = now.checkout;
-    const rows: HTMLElement[] = [];
-
-    const prefixLine = el('div', 'windmill-agent-line');
-    const prefixLabel = el('span', 'settings-hint');
-    prefixLabel.textContent = 'branch prefix — ';
-    const prefixInput = document.createElement('input');
-    prefixInput.type = 'text';
-    prefixInput.className = 'windmill-agent-input';
-    prefixInput.placeholder = 'mender';
-    prefixInput.value = held.branchPrefix;
-    prefixInput.addEventListener('blur', () => {
-      void does.setBranchPrefix(prefixInput.value).then(() => draw());
-    });
-    prefixInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        prefixInput.blur();
-      }
-    });
-    prefixLine.append(prefixLabel, prefixInput);
-    rows.push(prefixLine);
-
-    const suffixRow = el('div', 'windmill-hand');
-    suffixRow.tabIndex = 0;
-    suffixRow.setAttribute('role', 'button');
-    suffixRow.setAttribute('aria-pressed', String(held.randomSuffix));
-    if (held.randomSuffix) suffixRow.classList.add('picked');
-    suffixRow.textContent = held.randomSuffix
-      ? 'a random tail on every branch — on'
-      : 'a random tail on every branch — off';
-    const toggleSuffix = (): void => {
-      void does.setRandomSuffix(!held.randomSuffix).then(() => draw());
-    };
-    suffixRow.addEventListener('click', toggleSuffix);
-    suffixRow.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        toggleSuffix();
-      }
-    });
-    rows.push(suffixRow);
-
-    const projectsLine = el('div', 'windmill-agent-line');
-    const projectsLabel = el('span', 'settings-hint');
-    projectsLabel.textContent = 'new projects land in — ';
-    const projectsInput = document.createElement('input');
-    projectsInput.type = 'text';
-    projectsInput.className = 'windmill-agent-input';
-    projectsInput.placeholder = '~/mender/projects';
-    projectsInput.value = held.projectsDir;
-    projectsInput.addEventListener('blur', () => {
-      void does.setProjectsDir(projectsInput.value).then(() => draw());
-    });
-    projectsInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        projectsInput.blur();
-      }
-    });
-    projectsLine.append(projectsLabel, projectsInput);
-    rows.push(projectsLine);
-
-    const worktreeLine = el('div', 'windmill-agent-line');
-    const worktreeLabel = el('span', 'settings-hint');
-    worktreeLabel.textContent = 'new worktrees land in — ';
-    const worktreeInput = document.createElement('input');
-    worktreeInput.type = 'text';
-    worktreeInput.className = 'windmill-agent-input';
-    worktreeInput.placeholder = '~/mender/worktrees';
-    worktreeInput.value = held.worktreeDir;
-    worktreeInput.addEventListener('blur', () => {
-      void does.setWorktreeDir(worktreeInput.value).then(() => draw());
-    });
-    worktreeInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        worktreeInput.blur();
-      }
-    });
-    worktreeLine.append(worktreeLabel, worktreeInput);
-    rows.push(worktreeLine);
-
-    checkouts.fill(rows);
-  }
-
-  function drawTerminal(): void {
-    if (!now.terminal) {
-      terminal.fill([hintLine('Reading it…')]);
-      return;
-    }
-    const held = now.terminal;
-    const rows: HTMLElement[] = [];
-
-    const fontLine = el('div', 'windmill-agent-line');
-    const fontLabel = el('span', 'settings-hint');
-    fontLabel.textContent = 'font size — ';
-    const fontInput = document.createElement('input');
-    fontInput.type = 'text';
-    fontInput.inputMode = 'numeric';
-    fontInput.className = 'windmill-agent-input';
-    fontInput.placeholder = '13';
-    fontInput.value = held.fontSize ? String(held.fontSize) : '';
-    const keepFont = (): void => {
-      const parsed = Number.parseInt(fontInput.value, 10);
-      void does
-        .setTerminalFontSize(Number.isFinite(parsed) && parsed > 0 ? parsed : 0)
-        .then(() => draw());
-    };
-    fontInput.addEventListener('blur', keepFont);
-    fontInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        fontInput.blur();
-      }
-    });
-    fontLine.append(fontLabel, fontInput);
-    rows.push(fontLine);
-
-    const shellLine = el('div', 'windmill-agent-line');
-    const shellLabel = el('span', 'settings-hint');
-    shellLabel.textContent = 'default shell — ';
-    const shellInput = document.createElement('input');
-    shellInput.type = 'text';
-    shellInput.className = 'windmill-agent-input';
-    shellInput.placeholder = '/bin/zsh';
-    shellInput.spellcheck = false;
-    shellInput.value = held.defaultShell;
-    shellInput.addEventListener('blur', () => {
-      void does.setDefaultShell(shellInput.value).then(() => draw());
-    });
-    shellInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        shellInput.blur();
-      }
-    });
-    shellLine.append(shellLabel, shellInput);
-    rows.push(shellLine);
-
-    terminal.fill(rows);
-  }
-
-  function drawNotifications(): void {
-    if (!now.notifications) {
-      notifications.fill([hintLine('Reading it…')]);
-      return;
-    }
+  function drawNotify(): void {
     const held = now.notifications;
-    const row = el('div', 'windmill-hand');
-    row.tabIndex = 0;
-    row.setAttribute('role', 'button');
-    row.setAttribute('aria-pressed', String(held.enabled));
-    if (held.enabled) row.classList.add('picked');
-    row.textContent = held.enabled
-      ? 'a villager who wants you, while you are looking elsewhere — on'
-      : 'a villager who wants you, while you are looking elsewhere — off';
-    const toggle = (): void => {
-      void does.setNotificationsEnabled(!held.enabled).then(() => draw());
-    };
-    row.addEventListener('click', toggle);
-    row.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        toggle();
-      }
-    });
-    notifications.fill([row]);
+    if (!held) {
+      notify.fill([hintLine('Reading it…')]);
+      return;
+    }
+    const choices = el('div', 'settings-choices');
+    const set = (on: boolean) => () =>
+      void does.setNotificationsEnabled(on).then(() => took(notify));
+    choices.append(
+      chip('Tell me', held.enabled, set(true)),
+      chip('Stay quiet', !held.enabled, set(false))
+    );
+    notify.fill([
+      hintLine(
+        'When somebody asks you something, finishes or breaks while Mender is not the window in front.'
+      ),
+      choices,
+    ]);
   }
 
+  // ── checkouts ────────────────────────────────────────────────────────────
+  function drawBranches(): void {
+    const held = now.checkout;
+    if (!held) {
+      branches.fill([hintLine('Reading it…')]);
+      return;
+    }
+    const prefix = input(held.branchPrefix, 'mender', async (value) => {
+      await does.setBranchPrefix(value.trim());
+      took(branches);
+    });
+    const tail = el('div', 'settings-choices');
+    const set = (on: boolean) => () =>
+      void does.setRandomSuffix(on).then(() => took(branches));
+    tail.append(
+      chip('Just the name', !held.randomSuffix, set(false)),
+      chip('A short random tail', held.randomSuffix, set(true))
+    );
+    const example = `${held.branchPrefix || 'mender'}/fix-the-login${held.randomSuffix ? '-k3q9' : ''}`;
+    branches.fill([
+      formRow('Prefix', prefix),
+      formRow('After the name', tail),
+      hintLine(`A session called “fix the login” gets ${example}.`),
+    ]);
+  }
+
+  function drawLanding(): void {
+    const held = now.checkout;
+    if (!held) {
+      landing.fill([hintLine('Reading it…')]);
+      return;
+    }
+    const projects = input(held.projectsDir, '~/mender/projects', async (value) => {
+      await does.setProjectsDir(value.trim());
+      took(landing);
+    });
+    const trees = input(held.worktreeDir, '~/mender/worktrees', async (value) => {
+      await does.setWorktreeDir(value.trim());
+      took(landing);
+    });
+    landing.fill([
+      formRow('New projects', projects),
+      formRow('Own copies', trees),
+      hintLine(
+        'A cloned or freshly started project, and a session’s own copy, go here.'
+      ),
+    ]);
+  }
+
+  // ── terminal ─────────────────────────────────────────────────────────────
+  function drawShellLook(): void {
+    const held = now.terminal;
+    if (!held) {
+      shellLook.fill([hintLine('Reading it…')]);
+      return;
+    }
+    const size = input(held.fontSize ? String(held.fontSize) : '', '13', async (value) => {
+      const parsed = Number.parseInt(value, 10);
+      await does.setTerminalFontSize(Number.isFinite(parsed) && parsed > 0 ? parsed : 0);
+      took(shellLook);
+    });
+    size.inputMode = 'numeric';
+    size.classList.add('settings-small-field');
+    const px = el('span', 'settings-hint-inline');
+    px.textContent = 'pixels';
+    const line = el('div', 'settings-when-detail');
+    line.append(size, px);
+    shellLook.fill([formRow('Font size', line)]);
+  }
+
+  function drawShellIs(): void {
+    const held = now.terminal;
+    if (!held) {
+      shellIs.fill([hintLine('Reading it…')]);
+      return;
+    }
+    const shell = input(held.defaultShell, '/bin/zsh', async (value) => {
+      await does.setDefaultShell(value.trim());
+      took(shellIs);
+    });
+    shellIs.fill([
+      formRow('Default shell', shell),
+      hintLine('Blank starts whatever $SHELL already says.'),
+    ]);
+  }
+
+  // ── keys ─────────────────────────────────────────────────────────────────
   /** The doing armed for a key press, if any, and what came of the last one
       tried — a conflict is said right where the key would have gone, not as
       a toast, since that is the one line anyone rebinding a key is actually
@@ -422,12 +466,12 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   function stopArming(): void {
     detach();
     arming = null;
+    armed = null;
   }
 
   function arm(pick: string): void {
     stopArming();
     arming = pick;
-    armed = null;
     drawKeys();
     const onKey = (event: KeyboardEvent): void => {
       event.preventDefault();
@@ -454,12 +498,15 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       );
       detach();
       if (conflict) {
-        armed = `${chordLabel(letter)} is already ${conflict.name}'s.`;
+        armed = `${chordLabel(letter)} is already ${conflict.name}'s`;
         drawKeys();
         return;
       }
       arming = null;
-      void does.rebind(pick, letter).then(() => draw());
+      void does.rebind(pick, letter).then(() => {
+        drawKeys();
+        keys.saved();
+      });
     };
     armKey = onKey;
     document.addEventListener('keydown', onKey, true);
@@ -471,220 +518,350 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       return;
     }
     const bound = now.keybindings;
-    const rows: HTMLElement[] = [];
+    const list = el('div', 'settings-rows');
     for (const doing of rebindableDoings()) {
       const chord = chordOf(doing.pick, bound) ?? '';
-      const row = el('div', 'windmill-agent-line');
-      const label = el('span', 'settings-hint');
-      label.textContent = `${doing.name} — `;
-      const said =
-        arming === doing.pick ? (armed ?? 'press a key…') : chord ? chordLabel(chord) : 'unset';
-      const key = button(said, 'settings-link', () => arm(doing.pick));
-      row.append(label, key);
-      if (bound[doing.pick] !== undefined) {
-        const reset = button(
-          'default',
-          'settings-link',
-          () => void does.unbind(doing.pick).then(() => draw())
+      const row = el('div', 'settings-row settings-row-still');
+      const name = el('span', 'settings-row-main');
+      const title = el('span', 'settings-row-title');
+      title.textContent = doing.name;
+      name.append(title);
+      row.append(name);
+      if (bound[doing.pick] !== undefined && arming !== doing.pick) {
+        row.append(
+          button('default', 'settings-link windmill-key-reset', () => {
+            void does.unbind(doing.pick).then(() => {
+              drawKeys();
+              keys.saved();
+            });
+          })
         );
-        row.append(reset);
       }
-      rows.push(row);
+      const waiting = arming === doing.pick;
+      const said = waiting ? (armed ?? 'press a key…') : chord ? chordLabel(chord) : 'unset';
+      const key = button(said, 'windmill-key', () => arm(doing.pick));
+      if (waiting) key.classList.add(armed ? 'sore' : 'waiting');
+      row.append(key);
+      list.appendChild(row);
     }
-    keys.fill(rows);
+    keys.fill([list]);
   }
 
-  function drawAgents(): void {
+  // ── agents ───────────────────────────────────────────────────────────────
+  function agentHere(): Hand | null {
+    const here = now.hands?.filter((one) => one.here) ?? [];
+    const kept = here.find((one) => one.id === lastAgent);
+    const picked = kept ?? here.find((one) => one.id === now.hand) ?? here[0] ?? null;
+    lastAgent = picked?.id ?? null;
+    return picked;
+  }
+
+  function drawAgentPick(): void {
     if (!now.hands) {
-      agentsSection.fill([hintLine('reading it…')]);
+      agentPick.fill([hintLine('Reading it…')]);
       return;
     }
-    const here = now.hands.filter((hand) => hand.here);
+    const here = now.hands.filter((one) => one.here);
     if (!here.length) {
-      agentsSection.fill([hintLine('nothing on this machine yet.')]);
+      agentPick.fill([hintLine('No agent is installed on this machine yet.')]);
       return;
     }
-    const rows: HTMLElement[] = [];
+    const picked = agentHere();
+    const choices = el('div', 'settings-choices');
     for (const hand of here) {
-      rows.push(drawAgentRow(hand));
+      choices.appendChild(
+        chip(hand.name, hand.id === picked?.id, () => {
+          lastAgent = hand.id;
+          drawAgents(true);
+        })
+      );
     }
-    agentsSection.fill(rows);
+    agentPick.fill([choices]);
   }
 
-  function drawAgentRow(hand: Hand): HTMLElement {
-    const row = el('div', 'windmill-agent');
-    const title = el('div', 'windmill-agent-name');
-    title.textContent = hand.name;
-    row.append(title);
-
+  function drawAgentArgs(hand: Hand): void {
     const config = now.providers[hand.id];
-    const argsLine = el('div', 'windmill-agent-line');
-    const argsLabel = el('span', 'settings-hint');
-    argsLabel.textContent = 'extra arguments — ';
-    const argsInput = document.createElement('input');
-    argsInput.type = 'text';
-    argsInput.className = 'windmill-agent-input';
-    argsInput.placeholder = 'none';
-    argsInput.value = config ? config.extraArgs.join(' ') : '';
-    argsInput.disabled = !config;
-    const commit = (): void => {
-      void does.setExtraArgs(hand.id, argsInput.value).then(() => draw());
-    };
-    argsInput.addEventListener('blur', commit);
-    argsInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        argsInput.blur();
-      }
+    if (!config) {
+      agentArgs.fill([hintLine('Reading it…')]);
+      return;
+    }
+    const field = input(config.extraArgs.join(' '), 'none', async (value) => {
+      await does.setExtraArgs(hand.id, value);
+      took(agentArgs);
     });
-    argsLine.append(argsLabel, argsInput);
-    row.append(argsLine);
+    agentArgs.fill([
+      hintLine(`Put after ${hand.name}’s own command every time it is started.`),
+      field,
+    ]);
+  }
 
-    const envHeading = el('div', 'settings-hint');
-    envHeading.textContent = 'environment';
-    row.append(envHeading);
-    if (config) {
-      for (const [key, value] of Object.entries(config.env)) {
-        const line = el('div', 'windmill-agent-line');
-        const text = el('span', 'windmill-agent-env');
-        text.textContent = `${key}=${value}`;
-        const remove = button('remove', 'windmill-agent-remove', () => {
-          void does.removeEnvVar(hand.id, key).then(() => draw());
+  let envKey = '';
+  let envValue = '';
+
+  function drawAgentEnv(hand: Hand): void {
+    const config = now.providers[hand.id];
+    if (!config) {
+      agentEnv.fill([hintLine('Reading it…')]);
+      return;
+    }
+    const children: HTMLElement[] = [
+      hintLine(`Set for ${hand.name} in every project, under whatever a project sets itself.`),
+    ];
+    const set = Object.entries(config.env);
+    if (set.length) {
+      const list = el('div', 'settings-rows');
+      for (const [key, value] of set) {
+        const row = el('div', 'settings-row settings-row-still');
+        const main = el('span', 'settings-row-main windmill-env');
+        main.textContent = `${key}=${value}`;
+        main.title = `${key}=${value}`;
+        const remove = button('remove', 'settings-link', () => {
+          void does.removeEnvVar(hand.id, key).then(() => {
+            drawAgentEnv(hand);
+            agentEnv.saved('removed');
+          });
         });
-        line.append(text, remove);
-        row.append(line);
+        row.append(main, remove);
+        list.appendChild(row);
       }
+      children.push(list);
     }
-    const addLine = el('div', 'windmill-agent-line');
-    const keyInput = document.createElement('input');
-    keyInput.type = 'text';
-    keyInput.placeholder = 'KEY';
-    keyInput.className = 'windmill-agent-input windmill-agent-input-key';
-    const valueInput = document.createElement('input');
-    valueInput.type = 'text';
-    valueInput.placeholder = 'value';
-    valueInput.className = 'windmill-agent-input';
-    const add = button('add', 'windmill-agent-add', () => {
-      const key = keyInput.value.trim();
-      if (!key) return;
-      void does.setEnvVar(hand.id, key, valueInput.value).then(() => draw());
-    });
-    addLine.append(keyInput, valueInput, add);
-    row.append(addLine);
+    const name = document.createElement('input');
+    name.className = 'settings-identity-field windmill-env-key';
+    name.placeholder = 'NAME';
+    name.spellcheck = false;
+    name.value = envKey;
+    name.addEventListener('input', () => (envKey = name.value));
+    const value = document.createElement('input');
+    value.className = 'settings-identity-field';
+    value.placeholder = 'value';
+    value.spellcheck = false;
+    value.value = envValue;
+    value.addEventListener('input', () => (envValue = value.value));
+    const add = (): void => {
+      const key = envKey.trim();
+      if (!key) {
+        name.focus();
+        return;
+      }
+      void does.setEnvVar(hand.id, key, envValue).then(() => {
+        envKey = '';
+        envValue = '';
+        drawAgentEnv(hand);
+        agentEnv.saved('added');
+      });
+    };
+    for (const field of [name, value]) {
+      field.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          add();
+        }
+      });
+    }
+    const line = el('div', 'settings-identity-row windmill-env-add');
+    line.append(name, value, button('Add', 'settings-button', add));
+    children.push(line);
+    agentEnv.fill(children);
+  }
 
+  function drawAgentInstall(hand: Hand): void {
     const install = now.installs[hand.id];
-    if (install && install.candidates.length > 1) {
-      const installHeading = el('div', 'settings-hint');
-      installHeading.textContent = 'which install';
-      row.append(installHeading);
-      for (const candidate of install.candidates) {
-        const picked =
-          install.selection?.kind === 'path'
-            ? install.selection.path === candidate.path
-            : install.resolved?.path === candidate.path && !install.selection;
-        const line = button(
-          picked ? `● ${candidate.path}` : `· ${candidate.path}`,
-          'windmill-agent-install',
-          () => {
-            if (picked) return;
-            void does.selectInstall(hand.id, candidate.path).then(() => draw());
-          }
-        );
-        row.append(line);
-      }
+    if (!install || install.candidates.length < 2) {
+      agentInstall.root.style.display = 'none';
+      return;
     }
-    return row;
+    agentInstall.root.style.display = '';
+    const list = el('div', 'settings-rows');
+    for (const candidate of install.candidates) {
+      const picked =
+        install.selection?.kind === 'path'
+          ? install.selection.path === candidate.path
+          : install.resolved?.path === candidate.path && !install.selection;
+      const row = el('button', 'settings-row windmill-install');
+      row.type = 'button';
+      const main = el('span', 'settings-row-main');
+      main.textContent = candidate.path;
+      row.append(main);
+      if (picked) {
+        row.classList.add('picked');
+        const side = el('span', 'settings-row-side');
+        side.textContent = 'in use';
+        row.append(side);
+      }
+      row.addEventListener('click', () => {
+        if (picked) return;
+        void does.selectInstall(hand.id, candidate.path).then(() => {
+          drawAgentInstall(hand);
+          agentInstall.saved();
+        });
+      });
+      list.appendChild(row);
+    }
+    agentInstall.fill([
+      hintLine(`This machine has more than one ${hand.name}. Pick which one runs.`),
+      list,
+    ]);
+  }
+
+  function drawAgents(switched = false): void {
+    if (switched) {
+      envKey = '';
+      envValue = '';
+    }
+    drawAgentPick();
+    const hand = agentHere();
+    for (const part of [agentArgs, agentEnv, agentInstall]) {
+      part.root.style.display = hand ? '' : 'none';
+    }
+    if (!hand) return;
+    if (switched || !busy(agentArgs)) drawAgentArgs(hand);
+    if (switched || !busy(agentEnv)) drawAgentEnv(hand);
+    drawAgentInstall(hand);
+  }
+
+  // ── on disk ──────────────────────────────────────────────────────────────
+  /** The worktree armed for a second press to clear it, if any. */
+  let clearing: string | null = null;
+  let clearingTimer: number | undefined;
+  /** Clearing every stale worktree at once, armed for a second press. */
+  let clearingAll = false;
+
+  function armClear(id: string | 'all' | null): void {
+    window.clearTimeout(clearingTimer);
+    clearing = id === 'all' ? null : id;
+    clearingAll = id === 'all';
+    if (id) {
+      clearingTimer = window.setTimeout(() => {
+        clearing = null;
+        clearingAll = false;
+        if (back.isConnected) drawWorktrees();
+      }, STANDS_MS);
+    }
+    drawWorktrees();
   }
 
   function drawWorktrees(): void {
     if (!now.worktrees) {
-      worktrees.fill([hintLine('reading it…')]);
+      worktrees.fill([hintLine('Reading it…')]);
       return;
     }
     if (!now.worktrees.length) {
-      worktrees.fill([
-        hintLine('every worktree Mender ever cut is either in use or already gone.'),
-      ]);
+      worktrees.fill([hintLine('Every worktree Mender ever cut is either in use or already gone.')]);
       return;
     }
-    const rows: HTMLElement[] = [];
+    const children: HTMLElement[] = [];
     const stale = now.worktrees.filter((one) => one.stale);
-    if (stale.length >= 2) {
-      const said = clearingAll
-        ? `click again and all ${stale.length} are gone`
-        : `clear every stale one (${stale.length})`;
-      const bulk = button(said, 'windmill-worktree-clear-all', () => {
-        if (!clearingAll) {
-          clearingAll = true;
-          drawWorktrees();
+    const list = el('div', 'settings-rows');
+    for (const one of now.worktrees) {
+      const row = el('div', 'settings-row settings-row-still windmill-tree');
+      const main = el('span', 'settings-row-main');
+      const title = el('span', 'settings-row-title');
+      title.textContent = one.branch ?? one.path.split('/').at(-1) ?? one.path;
+      const meta = el('span', 'settings-row-meta');
+      meta.textContent = one.path.replace(/^\/Users\/[^/]+/, '~');
+      meta.title = one.path;
+      main.append(title, meta);
+      if (clearing === one.id) {
+        const cost = el('span', 'windmill-tree-cost');
+        cost.textContent = costOf(one);
+        main.append(cost);
+      }
+      const side = el('span', 'windmill-tree-side');
+      const size = el('span', 'settings-row-side');
+      size.textContent = one.bytes === null ? 'measuring' : sized(one.bytes);
+      side.append(size);
+      if (one.stale) {
+        const tag = el('span', 'windmill-tree-stale');
+        tag.textContent = 'stale';
+        side.append(tag);
+      }
+      const armedHere = clearing === one.id;
+      const clear = button(armedHere ? 'press again' : 'clear', 'settings-link', () => {
+        if (!armedHere) {
+          armClear(one.id);
           return;
         }
-        clearingAll = false;
-        void (async () => {
-          for (const one of stale) await does.clear(one);
-          drawWorktrees();
-        })();
+        armClear(null);
+        void does.clear(one).then(() => drawWorktrees());
       });
-      rows.push(bulk);
+      if (armedHere) clear.classList.add('settings-link-sore');
+      side.append(clear);
+      row.append(main, side);
+      list.appendChild(row);
     }
-    for (const one of now.worktrees) {
-      const row = el('div', 'windmill-worktree');
-      const head = el('div', 'windmill-worktree-head');
-      const name = el('span', 'windmill-worktree-branch');
-      name.textContent = one.branch ?? one.path;
-      const size = el('span', 'windmill-worktree-size');
-      size.textContent = one.bytes === null ? 'measuring…' : sized(one.bytes);
-      head.append(name, size);
-      if (one.stale) {
-        const stale = el('span', 'windmill-worktree-stale');
-        stale.textContent = 'stale';
-        head.append(stale);
-      }
-      row.append(head);
-      const path = el('div', 'windmill-worktree-path');
-      path.textContent = one.path;
-      row.append(path);
-      const clear = button(
-        clearing === one.id ? costOf(one) : 'clear this one',
-        'windmill-worktree-clear',
+    children.push(list);
+    if (stale.length >= 2) {
+      const all = button(
+        clearingAll
+          ? `Press again and all ${stale.length} stale ones go`
+          : `Clear every stale one (${stale.length})`,
+        'settings-button',
         () => {
-          if (clearing === one.id) {
-            clearing = null;
-            void does.clear(one).then(() => drawWorktrees());
+          if (!clearingAll) {
+            armClear('all');
             return;
           }
-          clearing = one.id;
-          drawWorktrees();
+          armClear(null);
+          void (async () => {
+            for (const one of stale) await does.clear(one);
+            drawWorktrees();
+          })();
         }
       );
-      row.append(clear);
-      rows.push(row);
+      if (clearingAll) all.classList.add('settings-remove', 'armed');
+      const actions = el('div', 'settings-actions');
+      actions.appendChild(all);
+      children.push(actions);
     }
-    worktrees.fill(rows);
+    worktrees.fill(children);
   }
 
-  function drawMachine(): void {
+  // ── this machine ─────────────────────────────────────────────────────────
+  function drawSpend(): void {
     if (!now.machine) {
-      machine.fill([hintLine('reading it…')]);
+      spend.fill([hintLine('Reading it…')]);
       return;
     }
     const one = now.machine;
-    const lines = [
-      `cpu — ${Math.round(one.cpuPercent)}%`,
-      `memory — ${sized(one.memUsedBytes)} of ${sized(one.memTotalBytes)}`,
-      `disk — ${sized(one.diskUsedBytes)} of ${sized(one.diskTotalBytes)}`,
-    ];
-    const rows: HTMLElement[] = lines.map((text) => hintLine(text));
-    if (now.fiveHours) rows.push(...drawFiveHours(now.fiveHours));
-    if (now.sessions?.length) {
-      const heading = el('p', 'settings-hint');
-      heading.textContent = 'each session’s own share:';
-      rows.push(heading);
-      for (const session of now.sessions) {
-        rows.push(drawSessionUsage(session));
-      }
+    const meters = el('div', 'windmill-meters');
+    meters.append(
+      meter('CPU', one.cpuPercent / 100, `${Math.round(one.cpuPercent)}%`),
+      meter(
+        'Memory',
+        one.memTotalBytes ? one.memUsedBytes / one.memTotalBytes : 0,
+        `${sized(one.memUsedBytes)} of ${sized(one.memTotalBytes)}`,
+        false
+      ),
+      meter(
+        'Disk',
+        one.diskTotalBytes ? one.diskUsedBytes / one.diskTotalBytes : 0,
+        `${sized(one.diskUsedBytes)} of ${sized(one.diskTotalBytes)}`
+      )
+    );
+    spend.fill([meters]);
+  }
+
+  function drawFive(): void {
+    if (!now.fiveHours) {
+      five.fill([hintLine('Reading it…')]);
+      return;
     }
-    machine.fill(rows);
+    five.fill(drawFiveHours(now.fiveHours));
+  }
+
+  function drawShares(): void {
+    if (!now.sessions) {
+      shares.fill([hintLine('Reading it…')]);
+      return;
+    }
+    if (!now.sessions.length) {
+      shares.fill([hintLine('No session is open.')]);
+      return;
+    }
+    const list = el('div', 'settings-rows');
+    for (const session of now.sessions) list.appendChild(drawSessionUsage(session));
+    shares.fill([list]);
   }
 
   /* The five hours: the subscription's own window, drawn as the strip of
@@ -693,17 +870,14 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
      a bar against the hungriest. */
   function drawFiveHours(five: FiveHours): HTMLElement[] {
     const out: HTMLElement[] = [];
-    const heading = el('p', 'settings-hint');
-    heading.textContent = 'the five hours:';
-    out.push(heading);
     const window = five.reading?.fiveHour;
     if (!window) {
-      out.push(hintLine('not read yet — nobody has heard back from Claude this sitting.'));
+      out.push(hintLine('Not read yet. Nobody has heard back from Claude this sitting.'));
       return out;
     }
-    const now = Date.now();
-    out.push(drawWindow(window, now, FIVE_HOURS_MS, five.lately));
-    const line = windowLine(five, now);
+    const at = Date.now();
+    out.push(drawWindow(window, at, FIVE_HOURS_MS, five.lately));
+    const line = windowLine(five, at);
     if (line) {
       const said = hintLine(line.said.replace(/^five hours: /, ''));
       if (line.tone !== 'quiet') said.classList.add(`windmill-five-${line.tone}`);
@@ -713,133 +887,164 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       out.push(
         hintLine(
           five.lately > 1.5
-            ? `the last twenty minutes have run ${five.lately.toFixed(1)}× the window's own pace.`
-            : 'the last twenty minutes have been quieter than the window as a whole.'
+            ? `The last twenty minutes have run ${five.lately.toFixed(1)}× the window's own pace.`
+            : 'The last twenty minutes have been quieter than the window as a whole.'
         )
       );
     }
     const week = five.reading?.sevenDay;
     if (week) {
-      const weekly = drawWindow(week, now, SEVEN_DAYS_MS, null);
+      const weekly = drawWindow(week, at, SEVEN_DAYS_MS, null);
       weekly.classList.add('windmill-five-week');
       out.push(weekly);
       out.push(
         hintLine(
-          `the week: ${Math.round(week.utilization * 100)}% used · resets ${clockOf(week.resetsAt, now)}`
+          `The week: ${Math.round(week.utilization * 100)}% used, resets ${clockOf(week.resetsAt, at)}.`
         )
       );
     }
-    if (five.reading && now - five.reading.at > 10 * 60_000) {
-      out.push(hintLine(`last read ${spanOf(now - five.reading.at)} ago.`));
+    if (five.reading && at - five.reading.at > 10 * 60_000) {
+      out.push(hintLine(`Last read ${spanOf(at - five.reading.at)} ago.`));
     }
     if (five.sessions.length) {
-      const who = el('p', 'settings-hint');
-      who.textContent = 'who spent it, this window:';
-      out.push(who);
+      out.push(hintLine('Who spent it, this window:'));
       const most = Math.max(...five.sessions.map((one) => one.share));
-      for (const session of five.sessions.slice(0, 12)) out.push(drawShare(session, most, now));
+      const list = el('div', 'settings-rows');
+      for (const session of five.sessions.slice(0, 12)) {
+        list.appendChild(drawShare(session, most, at));
+      }
+      out.push(list);
     }
     return out;
   }
 
   function drawWindow(
     window: UsageWindow,
-    now: number,
+    at: number,
     span: number,
     lately: number | null
   ): HTMLElement {
     const strip = el('div', 'windmill-five-strip');
     const cells = 40;
     const start = window.resetsAt - span;
-    const at = Math.min(1, Math.max(0, (now - start) / span));
-    const { at: out } = runsOut(window, now, span, lately);
+    const through = Math.min(1, Math.max(0, (at - start) / span));
+    const { at: out } = runsOut(window, at, span, lately);
     const spent = Math.min(1, Math.max(0, window.utilization));
     const outAt = out === null ? null : Math.min(1, Math.max(0, (out - start) / span));
     for (let i = 0; i < cells; i += 1) {
       const cell = el('div', 'windmill-five-cell');
       const from = i / cells;
       if (from < spent) cell.classList.add('spent');
-      if (from < at && from + 1 / cells >= at) cell.classList.add('now');
+      if (from < through && from + 1 / cells >= through) cell.classList.add('now');
       if (outAt !== null && outAt < 1 && from < outAt && from + 1 / cells >= outAt)
         cell.classList.add('out');
       strip.appendChild(cell);
     }
-    strip.title = `${Math.round(spent * 100)}% spent, ${Math.round(at * 100)}% of the way through`;
+    strip.title = `${Math.round(spent * 100)}% spent, ${Math.round(through * 100)}% of the way through`;
     return strip;
   }
 
-  function drawShare(session: SessionShare, most: number, now: number): HTMLElement {
-    const row = el('div', 'windmill-session-usage windmill-five-share');
-    const title = el('div', 'windmill-agent-name');
-    title.textContent = session.where ? `${session.title} — ${session.where}` : session.title;
-    row.append(title);
+  function drawShare(session: SessionShare, most: number, at: number): HTMLElement {
+    const row = el('div', 'settings-row settings-row-still windmill-share');
+    const main = el('span', 'settings-row-main');
+    const title = el('span', 'settings-row-title');
+    title.textContent = session.where ? `${session.title} · ${session.where}` : session.title;
     const bar = el('div', 'windmill-five-bar');
     const fill = el('div', 'windmill-five-fill');
     fill.style.width = `${Math.round((most > 0 ? session.share / most : 0) * 100)}%`;
     bar.append(fill);
-    row.append(bar);
-    const heavy = session.context >= 150_000;
-    const parts = [
-      `${Math.round(session.share * 100)}% of it`,
+    const meta = el('span', 'settings-row-meta');
+    meta.textContent = [
       `${counted(session.calls, 'call')}`,
       `${tokensOf(session.context)} re-read each call`,
       ...(session.screenshots ? [`${counted(session.screenshots, 'picture')}`] : []),
-      `last ${spanOf(now - session.lastAt)} ago`,
-    ];
-    row.append(hintLine(parts.join(' · ')));
-    if (heavy)
-      row.append(
-        hintLine('heavy: every call re-reads the whole conversation, and this one is long.')
-      );
+      `last ${spanOf(at - session.lastAt)} ago`,
+    ].join(' · ');
+    main.append(title, bar, meta);
+    if (session.context >= 150_000) {
+      const heavy = el('span', 'settings-row-meta windmill-five-warn');
+      heavy.textContent = 'Heavy: every call re-reads the whole conversation, and this one is long.';
+      main.append(heavy);
+    }
+    const side = el('span', 'settings-row-side');
+    side.textContent = `${Math.round(session.share * 100)}%`;
+    row.append(main, side);
     return row;
   }
 
   function drawSessionUsage(session: SessionUsage): HTMLElement {
-    const row = el('div', 'windmill-session-usage');
-    const title = el('div', 'windmill-agent-name');
+    const row = el('div', 'settings-row settings-row-still');
+    const main = el('span', 'settings-row-main');
+    const title = el('span', 'settings-row-title');
     title.textContent = session.title;
-    row.append(title);
-    if (!session.shares.length && !session.devServers) {
-      const nothing = el('p', 'settings-hint');
-      nothing.textContent = 'nothing this machine could measure.';
-      row.append(nothing);
-      return row;
-    }
-    for (const share of session.shares) {
-      const line = hintLine(
-        `${share.label} — cpu ${Math.round(share.cpuPercent)}%, memory ${sized(share.memBytes)}`
-      );
-      row.append(line);
-    }
-    if (session.devServers) {
-      row.append(hintLine(`${counted(session.devServers, 'dev server')} listening`));
-    }
+    main.append(title);
+    const parts = session.shares.map(
+      (share) =>
+        `${share.label}: cpu ${Math.round(share.cpuPercent)}%, ${sized(share.memBytes)}`
+    );
+    if (session.devServers) parts.push(`${counted(session.devServers, 'dev server')} listening`);
+    const meta = el('span', 'settings-row-meta');
+    meta.textContent = parts.length ? parts.join(' · ') : 'nothing this machine could measure';
+    main.append(meta);
+    row.append(main);
     return row;
   }
 
-  function draw(): void {
-    drawGeneral();
-    drawCheckouts();
-    drawTerminal();
-    drawNotifications();
-    drawKeys();
-    drawAgents();
-    drawWorktrees();
-    drawMachine();
+  // ── drawing ──────────────────────────────────────────────────────────────
+  /** Says it took beside the heading, after drawing what it now is. */
+  function took(part: { saved(said?: string): void }, said?: string): void {
+    draw();
+    part.saved(said);
   }
 
+  /** Whether someone is writing in it, in which case it is left alone. */
+  const busy = (part: { root: HTMLElement }): boolean => part.root.contains(document.activeElement);
+
+  function draw(): void {
+    drawRail();
+    if (page === 'general') {
+      drawStarts();
+      drawNotify();
+    } else if (page === 'checkouts') {
+      if (!busy(branches)) drawBranches();
+      if (!busy(landing)) drawLanding();
+    } else if (page === 'terminal') {
+      if (!busy(shellLook)) drawShellLook();
+      if (!busy(shellIs)) drawShellIs();
+    } else if (page === 'keys') {
+      drawKeys();
+    } else if (page === 'agents') {
+      drawAgents();
+    } else if (page === 'disk') {
+      drawWorktrees();
+    } else {
+      drawSpend();
+      drawFive();
+      drawShares();
+    }
+  }
+
+  document.body.appendChild(back);
+  back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
+  panel.animate(
+    [
+      { opacity: 0, transform: 'translateY(8px)' },
+      { opacity: 1, transform: 'translateY(0)' },
+    ],
+    { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' }
+  );
+
   draw();
-  shut.focus({ preventScroll: true });
-  /* Always opens on General, at the top of the scroll, never wherever a
-     stray reflow happens to land it — landing mid-page here once looked
-     enough like an empty window that it read as no settings at all. */
-  body.scrollTop = 0;
+  showPage();
+  panel.tabIndex = -1;
+  panel.focus({ preventScroll: true });
 
   let open = true;
   function close(): void {
     if (!open) return;
     open = false;
     stopArming();
+    window.clearTimeout(clearingTimer);
     back.remove();
     does.closed();
   }
@@ -849,10 +1054,52 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       now = next;
       draw();
     },
-    escaped: () => close(),
+    escaped() {
+      if (clearing || clearingAll) {
+        armClear(null);
+        return;
+      }
+      const active = document.activeElement;
+      if (active instanceof HTMLInputElement && panel.contains(active)) {
+        active.blur();
+        return;
+      }
+      close();
+    },
     holds: (event) => open && (panel.contains(event.target as Node) || event.target === back),
     close,
   };
+}
+
+const CHECKOUTS = 'How a session’s own copy is named and where new things are put.';
+
+const TERMINAL = 'Every real shell the board opens next, in any project.';
+
+const KEYS =
+  'Every doing held with command. Press a chord, then press the key it should be instead.';
+
+const AGENTS =
+  'What this machine hands each agent’s own CLI beyond its ordinary command, in every project.';
+
+const DISK =
+  'Every own copy Mender has cut on this machine that no session is standing in. Stale means its branch is already upstream, or nothing points at it any more.';
+
+/** One of this machine's figures as a bar, so how full it is reads at a look.
+    Memory never warns: macOS keeps it nearly full with cache on purpose. */
+function meter(label: string, full: number, said: string, warns = true): HTMLElement {
+  const row = el('div', 'windmill-meter');
+  const name = el('span', 'windmill-meter-name');
+  name.textContent = label;
+  const bar = el('div', 'windmill-meter-bar');
+  const fill = el('div', 'windmill-meter-fill');
+  const part = Math.min(1, Math.max(0, full));
+  fill.style.width = `${Math.round(part * 100)}%`;
+  if (warns && part > 0.9) fill.classList.add('sore');
+  bar.append(fill);
+  const value = el('span', 'windmill-meter-said');
+  value.textContent = said;
+  row.append(name, bar, value);
+  return row;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -869,21 +1116,6 @@ function button(said: string, className: string, does: () => void): HTMLButtonEl
   made.type = 'button';
   made.textContent = said;
   made.addEventListener('click', does);
-  return made;
-}
-
-function section(title: string): { root: HTMLElement; fill(children: HTMLElement[]): void } {
-  const root = el('section', 'settings-section');
-  const label = el('h3', 'settings-label');
-  label.textContent = title;
-  const inner = el('div', 'settings-inner');
-  root.append(label, inner);
-  return { root, fill: (children) => inner.replaceChildren(...children) };
-}
-
-function hintLine(text: string): HTMLElement {
-  const made = el('p', 'settings-hint');
-  made.textContent = text;
   return made;
 }
 

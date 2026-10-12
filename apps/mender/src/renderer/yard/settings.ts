@@ -956,32 +956,32 @@ const SCRIPT_ROWS: { which: ScriptKind; said: string; hint: string; example: str
   },
 ];
 
-function pageOf(children: HTMLElement[]): HTMLElement {
+export function pageOf(children: HTMLElement[]): HTMLElement {
   const root = el('div', 'settings-page');
   root.append(...children);
   return root;
 }
 
-function intro(text: string): HTMLElement {
+export function intro(text: string): HTMLElement {
   const said = el('p', 'settings-intro');
   said.textContent = text;
   return said;
 }
 
-function hintLine(text: string): HTMLElement {
+export function hintLine(text: string): HTMLElement {
   const said = el('p', 'settings-hint');
   said.textContent = text;
   return said;
 }
 
-function troubleLine(text: string): HTMLElement {
+export function troubleLine(text: string): HTMLElement {
   const said = el('p', 'settings-trouble');
   said.textContent = text;
   return said;
 }
 
 /** One of a few answers, the picked one framed in gold. */
-function chip(said: string, picked: boolean, does: () => void): HTMLButtonElement {
+export function chip(said: string, picked: boolean, does: () => void): HTMLButtonElement {
   const made = button(said, 'settings-chip', () => {
     if (!picked) does();
   });
@@ -990,7 +990,7 @@ function chip(said: string, picked: boolean, does: () => void): HTMLButtonElemen
   return made;
 }
 
-function formRow(label: string, ...fields: HTMLElement[]): HTMLElement {
+export function formRow(label: string, ...fields: HTMLElement[]): HTMLElement {
   const row = el('div', 'settings-form-row');
   const said = el('span', 'settings-form-label');
   said.textContent = label;
@@ -1001,7 +1001,7 @@ function formRow(label: string, ...fields: HTMLElement[]): HTMLElement {
 }
 
 /** A one-line field that writes itself on return or on leaving it. */
-function input(value: string, placeholder: string, save: (value: string) => Promise<void>) {
+export function input(value: string, placeholder: string, save: (value: string) => Promise<void>) {
   const field = document.createElement('input');
   field.className = 'settings-identity-field';
   field.placeholder = placeholder;
@@ -1020,7 +1020,7 @@ function input(value: string, placeholder: string, save: (value: string) => Prom
 }
 
 /** A several-line field that writes itself on leaving it. */
-function area(
+export function area(
   value: string,
   placeholder: string,
   rows: number,
@@ -1055,7 +1055,7 @@ function button(said: string, className: string, does: () => void): HTMLButtonEl
   return made;
 }
 
-function section(title: string): {
+export function section(title: string): {
   root: HTMLElement;
   fill(children: HTMLElement[]): void;
   /** Says it took, beside the heading, for a moment. */

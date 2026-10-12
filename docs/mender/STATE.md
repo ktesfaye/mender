@@ -1125,6 +1125,17 @@ now). Everything else the windmill wants to hold — updating and
 authenticating agents, MCP, skills, accounts, task defaults — is still not
 here.
 
+**done (driven, 0.65.1):** the windmill is laid out like a project's own
+settings now rather than one long scroll: pages down a rail on the left
+(General, Checkouts, Terminal, Keys, Agents, On disk, This machine), each
+saying under its name what is set there, choices as chips, fields with labels
+in a column, and "saved" beside a heading once something took. General only
+offers agents actually installed, with a line saying how many more could be;
+Agents picks one agent at a time instead of stacking every one; chords are
+key caps; the machine's cpu, memory and disk are bars. Clicked through every
+page in a dev instance, toggled notifications both ways and rebound a chord
+and put it back.
+
 Riding alongside it, two more session defaults, both driven: an agent's model
 and mode are now remembered against the agent itself the moment you change
 either on a live session, and a fresh session with that same agent starts on
