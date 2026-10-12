@@ -387,6 +387,12 @@ function thoughtsOf(told: Told | undefined, mood: Mood | undefined, prompted = f
       : {}),
     ...(earlier(one.turn) ? { earlier: true } : {}),
     ...(one.quiet ? { quiet: true } : {}),
+    /* While a turn is still going, what it tells you on the way is how you
+       follow a long one from across the room, so it stays out until the turn
+       ends and only the last word of it is kept. */
+    ...(going && now !== undefined && one.turn === now && !one.quiet && !one.trouble
+      ? { progress: true }
+      : {}),
     ...(one.pack ? { pack: one.pack, said: packSaid(one.pack, one.said) } : {}),
     ...(one.trouble ? { trouble: one.trouble } : {}),
     ...(one.seq !== undefined ? { seq: one.seq } : {}),

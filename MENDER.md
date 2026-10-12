@@ -226,8 +226,10 @@ before dimmed at the top and the newest set large under them, the column
 starting under its heading and only scrolling to keep the newest in view once
 there is more than fits, following the answer down as it inks in unless you
 scroll up to read, and going back down to the foot the moment it is done
-wherever you had got to, and everything it thought
-and said on the way there folded out of sight. Once an answer has finished
+wherever you had got to. While it is still going, every line it says to you
+on the way stays out above the newest, a little dimmer, so a long turn reads
+as the steps it is taking; the moment it is done they fold away under the
+last word with everything it thought, out of sight. Once an answer has finished
 something, the foot of that column, right over the line you write on, however
 short the answer above it, is the recap, a sentence or two in a quieter italic saying what the
 whole session is for, what just got done and what is next, for whoever is

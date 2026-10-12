@@ -2091,8 +2091,24 @@ function thinking(
     laidOne();
   }
   function laidOne(): void {
-    const start = windowStart(wholeSize, shown);
     const open = thinkingOpen();
+    /* Folded, the stretch drawn is counted in what actually shows, or a long
+       turn's reasoning would push every answer before it out of the window. */
+    let start = windowStart(wholeSize, shown);
+    if (!open) {
+      let last = -1;
+      thoughts.forEach((one, i) => {
+        if (one.live && !one.quiet) last = i;
+      });
+      let left = shown;
+      start = 0;
+      for (let i = thoughts.length - 1; i >= 0; i -= 1) {
+        const one = thoughts[i]!;
+        if (i === last || one.answer || one.progress) left -= 1;
+        if (left < 0) {
+          start = i + 1;
+          break;
+        }
     /* Everything on the way to an answer is folded away, and only the
        answers themselves stay out, the older ones dimmed above the newest:
        most of the time what it said back is all anybody came for, and saying
@@ -2138,9 +2154,10 @@ function thinking(
       const far = thoughts.length - 1 - i;
       marked();
       if (open && one.seq !== undefined) placeUpTo(one.seq);
-      if (!open && i !== answer && !one.answer) return;
+      const out = i === answer || one.answer || one.progress;
+      if (!open && !out) return;
       markFrom = items.children.length;
-      marking = open && i !== answer && !one.answer;
+      marking = open && !out;
       if (one.live) {
         keep.add(one.id);
         const it = keyed(document.createElement('div'), `thought:${one.id}`);
@@ -2200,12 +2217,12 @@ function thinking(
       /* Trouble keeps its colour as it goes into the history, dimmed with the
        rest, so scrolling back you can still see where it went wrong. */
       const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
-      const fade = far > 2 ? 0.5 : 0.6;
+      const fade = one.progress ? 0.74 : far > 2 ? 0.5 : 0.6;
       items.appendChild(
         keyed(
           thought(
             one,
-            far > 2 ? 15 : 16,
+            one.progress ? 17 : far > 2 ? 15 : 16,
             trouble
               ? `color-mix(in srgb, ${trouble.ink} ${Math.round(fade * 100)}%, transparent)`
               : `rgba(244,227,192,${fade})`,

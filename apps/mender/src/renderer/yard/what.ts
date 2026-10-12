@@ -284,6 +284,9 @@ export interface Thought {
   /** The last thing it said back to one of your notes, which stays out when
       the trail between them is folded away. */
   answer?: boolean;
+  /** Told you on the way while its turn is still going, which stays out
+      until the turn ends. */
+  progress?: boolean;
   /** Reasoning rather than an answer. */
   quiet?: boolean;
   /** The turn going wrong rather than an answer: `wrong` stopped it, `warn` cut it short. */

@@ -3940,3 +3940,14 @@ a point between the page and the island goes through `page-zoom.ts`. Driven
 in a dev instance: three presses and the island stayed pixel for pixel the
 same while the rack, the yard and its columns grew and rewrapped, a hover lit
 the right district and a flag's name still came off its own flag.
+
+### A long turn says its steps as it goes (2026-10-12) — done
+
+While a turn is going, every line the agent says to you in it stays out in
+"what it said" above the newest, a little dimmer, so a long turn reads as its
+steps; once the turn is done they fold under the final answer as before. The
+folded column also counts its window in what it shows, so a turn with a lot
+of reasoning no longer pushes earlier answers out of it. Driven in a dev
+instance: a turn with four steps showed each line as it came with the newest
+large under them, and on finishing folded to the one answer under the last
+turn's, dimmed.
