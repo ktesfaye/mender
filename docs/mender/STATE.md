@@ -3904,3 +3904,15 @@ would have stopped the Fable session taking a fifth of the window every
 quarter hour, about five times normal. Still says "you stopped it" over the
 cut turn rather than naming the watchdog.
 
+### Fable is plain on sight, and the five hours waits under a hover (2026-10-11) — done
+
+A session thinking with Fable wears a violet "fable" tag with a gem by its
+name, its model is violet with the gem, its rail lantern says "fable" in
+violet, and `/model` marks every Fable violet and "dearest". The lantern's
+mark follows a change of model as it happens. The five-hours line no longer
+stands at the top of the board: it comes up under the model line while the
+pointer is on it. Driven in a dev instance: switched a session from Sonnet
+to Fable 5.1 through `/model` and the tag, the violet model, the rail mark
+and the list marking all showed; hovering the model line showed the session's
+share of the window and leaving it hid it.
+

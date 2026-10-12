@@ -20,7 +20,9 @@ import { pluginRegistry } from '@emdash/plugins/agents';
 import { log } from '@emdash/shared/logger';
 import { createLiveJobReplicaCache, LiveJobFailedError, ReplicaState } from '@emdash/wire/live';
 import type { WireFile } from '@emdash/wire/rpc';
-import { cell, peek, type Cell } from '@emdash/wire/state';
+import { cell, observe, peek, type Cell } from '@emdash/wire/state';
+import { createScope } from '@emdash/shared/concurrency';
+import { isDear } from '@shared/hungry';
 import { app } from 'electron';
 import type {
   Ask,
@@ -417,6 +419,10 @@ export function createAgents(
   const reglance = (): void => {
     noteGoing();
     const next = glancesOf(houses);
+    for (const task of houses.keys()) {
+      if (!isDear(peek(kits.kit(task)))) continue;
+      next[task] = { ...next[task], dear: true };
+    }
     const said = JSON.stringify(next);
     if (said === glanced) return;
     glanced = said;
@@ -430,6 +436,8 @@ export function createAgents(
     async (task) => evict(task, await tasks.forgets(task)),
     settings
   );
+  const kitScope = createScope();
+  const kitWatched = new Set<string>();
 
   /* The host's conversation index, held open for the life of the app. It is
      where the provider's own session id lands when a session starts, which is
@@ -558,6 +566,12 @@ export function createAgents(
   };
 
   const houseOf = (task: string): House => {
+    /* What it thinks with is on its lantern, so a change of model is a
+       change of glance. */
+    if (!kitWatched.has(task)) {
+      kitWatched.add(task);
+      observe(kits.kit(task), () => reglance(), { scope: kitScope });
+    }
     let house = houses.get(task);
     const sleeping = house ? undefined : asleep.get(task);
     if (sleeping) {
@@ -1600,6 +1614,7 @@ export function createAgents(
 
     async dispose() {
       recording = false;
+      await kitScope.dispose();
       clearInterval(sweep);
       await Promise.all([...houses.values()].map((house) => house.dispose()));
       houses.clear();

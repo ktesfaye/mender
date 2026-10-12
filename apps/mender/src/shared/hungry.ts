@@ -43,6 +43,21 @@ export const hungryChoiceSchema = z.discriminatedUnion('kind', [
 ]);
 export type HungryChoice = z.infer<typeof hungryChoiceSchema>;
 
+/**
+ * Whether what a session is thinking with is Fable, the dearest model there
+ * is, which spends a window far faster than anything else and so has to be
+ * plain on sight. The chosen model's name says so, or for the agent's own
+ * default, what it says the default currently is.
+ */
+export function isDear(kit: {
+  model: string | null;
+  models: readonly { id: string; name: string; about?: string | undefined }[];
+}): boolean {
+  const chosen = kit.models.find((one) => one.id === kit.model);
+  const said = chosen ? `${chosen.id} ${chosen.name} ${chosen.about ?? ''}` : (kit.model ?? '');
+  return /fable|mythos/i.test(said);
+}
+
 /** A stretch is this long. */
 export const STRETCH_MS = 15 * 60_000;
 

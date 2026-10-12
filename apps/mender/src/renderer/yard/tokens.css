@@ -2386,3 +2386,33 @@ body.gripping-row * {
     transform: translateY(1px);
   }
 }
+
+/* The five hours only shows while the pointer is on the model line. */
+.yard-model-line .yard-five {
+  position: absolute;
+  right: 0;
+  top: 18px;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+  pointer-events: none;
+}
+.yard-model-line:hover .yard-five {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Fable in the model list: its own violet, the dearest thing you can pick. */
+.menu-row.dear .menu-name,
+.menu-row.dear .menu-about {
+  color: #c49bff;
+}
+.menu-row.dear .menu-name::after {
+  content: '  dearest';
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #9a74d6;
+}
+

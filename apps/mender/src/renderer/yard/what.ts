@@ -122,6 +122,8 @@ export interface Lantern {
   /** The one you are standing in hangs lowest and says so. */
   here: boolean;
   unread: boolean;
+  /** Thinking with Fable, the dearest model, so it is marked on sight. */
+  dear?: boolean;
   ground: Ground;
 }
 
@@ -141,6 +143,8 @@ export interface Session {
   branch: string;
   agent: string;
   model?: string;
+  /** Thinking with Fable, the dearest model, so the board says so loudly. */
+  dear?: boolean;
   /** How much room it has left to think in, nought to one. */
   room?: number;
   /** What it has cost so far, when the agent reports it. */

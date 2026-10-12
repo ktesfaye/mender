@@ -98,7 +98,7 @@ function line(
   hover: (pick: string) => void
 ): HTMLElement {
   const row = document.createElement('div');
-  row.className = offer.sore ? 'menu-row sore' : 'menu-row';
+  row.className = offer.sore ? 'menu-row sore' : offer.dear ? 'menu-row dear' : 'menu-row';
 
   const mark = document.createElement('span');
   mark.className = 'menu-mark';

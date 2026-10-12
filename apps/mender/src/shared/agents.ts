@@ -211,6 +211,8 @@ export const glanceSchema = z.object({
   helpers: z.number().int().optional(),
   /** How many commands it left running in the background are still going. */
   background: z.number().int().optional(),
+  /** Thinking with Fable, the dearest model, which has to be plain on sight. */
+  dear: z.boolean().optional(),
 });
 export type Glance = z.infer<typeof glanceSchema>;
 

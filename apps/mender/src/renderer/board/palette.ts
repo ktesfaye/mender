@@ -179,6 +179,9 @@ export class Palette {
           ...(choice.about ? { about: choice.about } : {}),
           on: choice.id === on,
           section: ours.about,
+          ...(ours.what === 'model' && /fable|mythos/i.test(`${choice.id} ${choice.name}`)
+            ? { dear: true }
+            : {}),
         })),
         open.asked,
         { keepOrder: true }

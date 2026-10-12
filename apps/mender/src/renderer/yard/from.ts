@@ -12,6 +12,7 @@
 
 import type { Ask, Deed, Errand, Failure, Glance, Kit, Mood, Pack, Told } from '@shared/agents';
 import type { FiveHours } from '@shared/five-hours';
+import { isDear } from '@shared/hungry';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { answersFor } from '../board/work';
@@ -240,6 +241,7 @@ function sessionOf(
     branch: task.branch,
     agent: kit?.hands.find((one) => one.id === kit.hand)?.name ?? task.agent ?? 'nobody',
     ...(kit && modelOf(kit) ? { model: modelOf(kit) } : {}),
+    ...(kit && isDear(kit) ? { dear: true } : {}),
     ...(kit?.mode
       ? { permissions: kit.modes.find((one) => one.id === kit.mode)?.name?.toLowerCase() }
       : {}),
@@ -749,6 +751,7 @@ function lanternOf(
     ...(posture === 'waiting' ? { ember: emberOf(at.glance) } : {}),
     unread: posture === 'done',
     ground: 'ready',
+    ...(at.glance?.dear ? { dear: true } : {}),
   };
 }
 

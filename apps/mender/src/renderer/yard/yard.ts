@@ -1246,6 +1246,7 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
       ';letter-spacing:0;text-transform:none;font-weight:700;max-width:44vw;' +
       'overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom';
     title.append(slash, here);
+    if (yard.session.dear) title.appendChild(dearTag());
   }
   root.appendChild(title);
 
@@ -1295,7 +1296,11 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
      nearly out. */
   const room = yard.session?.room;
   const cost = yard.session?.cost;
-  const it = box({ right: edge, top: HEAD.under }, 'display:flex;gap:6px;align-items:baseline');
+  const it = box(
+    { right: edge, top: HEAD.under },
+    'display:flex;gap:6px;align-items:baseline;pointer-events:auto'
+  );
+  it.className = 'yard-model-line';
   if (room !== undefined) {
     const ink = room < TIGHT ? 'var(--yard-wrong)' : room < LOW ? 'var(--yard-warn)' : undefined;
     it.appendChild(exact(`context ${Math.round((1 - room) * 100)}% used`, 12, ink));
@@ -1314,20 +1319,25 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
       dot.style.position = 'relative';
       it.appendChild(dot);
     }
-    it.appendChild(exact(yard.session.model, 12));
+    it.appendChild(
+      yard.session.dear ? dearModel(yard.session.model) : exact(yard.session.model, 12)
+    );
   }
   if (it.childElementCount) root.appendChild(it);
 
   /* The five hours, said as this session's own part of it: the window is one
      meter for the whole account, and the meter alone never says who to stop.
      Orange once this one has had a big piece, red once it has had most. */
+  /* Only while the pointer is on the line it belongs to, the one saying
+     what it thinks with and how full its head is: it is a question asked,
+     not a thing to read every time the board is looked at. */
   const five = yard.fiveHours && yard.session ? sessionLine(yard.fiveHours, yard.session.id) : null;
-  if (five) {
+  if (five && it.childElementCount) {
     const ink =
       five.tone === 'wrong' ? 'var(--yard-wrong)' : five.tone === 'warn' ? 'var(--yard-warn)' : undefined;
-    const line = box({ right: edge, top: HEAD.meta }, 'display:flex;align-items:baseline');
-    line.appendChild(exact(five.said, 12, ink ?? '#8f7d5c'));
-    root.appendChild(line);
+    const line = exact(five.said, 12, ink ?? '#bfa476');
+    line.className = 'yard-five';
+    it.appendChild(line);
   }
 
   /* And if the ground under all of it has moved, that is said before anything
@@ -4140,6 +4150,18 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
         saying.style.opacity = '.6';
       }
       clipped(saying, one.saying);
+      /* Thinking with Fable says so under the name, in its own violet,
+         before whatever it is doing. */
+      if (one.dear) {
+        const dear = exact('fable ·', 11, DEAR);
+        dear.style.position = 'relative';
+        dear.style.marginRight = '6px';
+        const gem = dearGem(8);
+        gem.style.margin = '0 4px 0 0';
+        under.style.display = 'flex';
+        under.style.alignItems = 'center';
+        under.append(gem, dear);
+      }
       under.appendChild(saying);
       hung.appendChild(under);
       /* A new kind of doing comes up into the line rather than snapping over
@@ -4269,3 +4291,63 @@ function twoPress(said: string, cost: string, go: () => void): HTMLSpanElement {
   });
   return line;
 }
+
+/* ── the dear model ─────────────────────────────────────────────────────────
+   Fable spends a window several times faster than anything else, so a session
+   thinking with it says so on sight: a violet gem and the word on its own tag
+   by the session's name, the model itself in violet with the gem, and the gem
+   beside its name on the rail. Violet is used for nothing else in the
+   village, so it is never mistaken for anything pressable or for a mood. */
+const DEAR = '#c49bff';
+
+function dearGem(size: number): HTMLElement {
+  const art = ['..###..', '.#####.', '#######', '.#####.', '..###..', '...#...'];
+  const it = document.createElement('span');
+  const cells = art.flatMap((row, y) =>
+    row.split("").flatMap((c, x) => (c === "#" ? [`<rect x="${x}" y="${y}" width="1" height="1"/>`] : []))
+  );
+  it.innerHTML = `<svg viewBox="0 0 7 6" width="${size + 2}" height="${size}" shape-rendering="crispEdges" fill="${DEAR}">${cells.join('')}</svg>`;
+  it.style.cssText = `display:inline-block;margin:0 0 0 6px;filter:drop-shadow(0 0 4px rgba(196,155,255,.7));vertical-align:middle`;
+  return it;
+}
+
+function dearTag(): HTMLElement {
+  const it = document.createElement('span');
+  it.style.cssText = [
+    'display:inline-flex',
+    'align-items:center',
+    'gap:6px',
+    'margin-left:16px',
+    'padding:3px 9px 2px 5px',
+    'vertical-align:middle',
+    "font-family:'Josefin Sans',sans-serif",
+    'font-size:12px',
+    'font-weight:600',
+    'letter-spacing:.2em',
+    'text-transform:uppercase',
+    'color:#f3e8ff',
+    'background:rgba(110,60,190,.55)',
+    'border:2px solid ' + DEAR,
+    'box-shadow:0 0 14px rgba(160,110,255,.45)',
+    'text-shadow:1px 1px 0 #120d07',
+  ].join(';');
+  const gem = dearGem(10);
+  gem.style.margin = '0';
+  it.append(gem, document.createTextNode('fable'));
+  it.title = 'Thinking with Fable, the dearest model. It spends your five hours several times faster.';
+  return it;
+}
+
+function dearModel(model: string): HTMLElement {
+  const it = exact(model, 12, DEAR);
+  it.style.textShadow = '1px 1px 0 #120d07,0 0 8px rgba(196,155,255,.6)';
+  it.style.position = 'relative';
+  const wrap = document.createElement('span');
+  wrap.style.cssText = 'display:inline-flex;align-items:baseline;gap:4px;position:relative';
+  const gem = dearGem(9);
+  gem.style.margin = '0';
+  gem.style.alignSelf = 'center';
+  wrap.append(gem, it);
+  return wrap;
+}
+

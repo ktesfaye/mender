@@ -158,11 +158,20 @@ Carry on picks it up exactly where it was; carry on with a cheaper model
 switches it, Fable to Opus to Sonnet to Haiku, one of each family the agent
 offers, and picks it up the same; leave it stopped leaves it; walk in and
 look first stands him in it with the question still waiting. Once answered
-it is only asked about again after taking another tenth of the window. The
-board's top line says this session's own part of the five hours, against
-how full the window is and when it resets; the windmill's "this machine"
+it is only asked about again after taking another tenth of the window. Pointing at
+the line that says what a session thinks with and how full its head is
+brings up, under it, its own part of the five hours against how full the
+window is and when it resets, and takes it away again; the windmill's "this machine"
 page still draws the window, the week, and every Claude session on the
 machine, terminal ones included, as a bar against the hungriest.
+
+**Fable is plain on sight.** It spends a window several times faster than
+anything else, so a session thinking with it wears a violet tag with a pixel
+gem and the word "fable" beside its name at the top of the board, its model
+is written in violet with the gem, its lantern on the rail says "fable"
+under its name in the same violet, and in `/model` every Fable is violet and
+marked "dearest" before it is picked. Violet is used for nothing else in the
+village.
 
 **Making room is drawn, not stammered.** When Claude packs a long conversation
 down to make room, the middle column shows it happening rather than the
