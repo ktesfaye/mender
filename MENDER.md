@@ -103,7 +103,8 @@ is a stand-in.
 worktree on its own branch is not one session's but a place several can work
 in, or nobody, and it stands until it is taken down on purpose. Once a project
 has one, the rule under its name becomes a timber beam and each workspace hangs
-from it on two cords as a signboard, the project's own folder first, the one
+from it on two cords as a signboard, the project's own folder first, painted moss green with a
+little house before its name so it never reads as one more copy, the one
 you are standing in painted gold. Pressing another walks into it, back into
 whichever session you were last in there or into a fresh one if it is empty,
 and the rail along the bottom carries that workspace's sessions and nobody
