@@ -1447,17 +1447,23 @@ async function boot(): Promise<void> {
                 return;
               }
             }
-            /* The next one along in the same workspace, and once that is
-               empty, the next anywhere in the project: the workspace itself
-               stays on its signboard with nobody in it. */
+            /* The next one along in the same workspace. Once an isolated
+               workspace is empty you stay in it, on a fresh session, rather
+               than being carried off somewhere else in the project; only the
+               project's own folder falls through to the next anywhere. */
             const next =
-              nextOf(tasksOn(aim.district), task.id) ?? nextOf(allOn(aim.district), task.id);
+              nextOf(tasksOn(aim.district), task.id) ??
+              (task.workspace ? undefined : nextOf(allOn(aim.district), task.id));
             await client.tasks.abandon({ id: task.id }, { timeoutMs: 0 });
             closedIn = task.project;
             say(null);
             if (open !== aim) return;
             if (next) {
               await openTask(aim, next);
+              return;
+            }
+            if (task.workspace && workspaces.some((each) => each.id === task.workspace)) {
+              await enterWorkspace(aim, task.workspace);
               return;
             }
           }
@@ -3679,7 +3685,10 @@ async function boot(): Promise<void> {
       await client.tasks.abandon({ id: task.id }, { timeoutMs: 0 });
       closedIn = task.project;
       say('taken down.', 3000);
-      if (aim) void openDistrict({ kind: 'district', district: aim.district });
+      if (!aim) return;
+      if (task.workspace && workspaces.some((each) => each.id === task.workspace))
+        void enterWorkspace(aim, task.workspace);
+      else void openDistrict({ kind: 'district', district: aim.district });
     };
 
     /**
@@ -4363,6 +4372,9 @@ async function boot(): Promise<void> {
         const first = resume ? `claude --resume ${resume.id}` : isolated ? '' : said;
         if (first) firstRun.set(made.data.id, first);
       } else {
+        /* Same in a conversation: in its own workspace what was written names
+           the workspace, and the session opens with nothing said. */
+        const told = isolated ? '' : said;
         if (resume) {
           // A resumed conversation must actually run on Claude: the picked
           // session id is a Claude Code CLI session id, and only that
@@ -4375,10 +4387,10 @@ async function boot(): Promise<void> {
           void client.agents
             .resume({ task, providerSessionId: resume.id }, { timeoutMs: 0 })
             .then(() => {
-              if (said) void client.agents.tell({ task, text: said }, { timeoutMs: 0 });
+              if (told) void client.agents.tell({ task, text: told }, { timeoutMs: 0 });
             });
-        } else if (said) {
-          void client.agents.tell({ task: made.data.id, text: said }, { timeoutMs: 0 });
+        } else if (told) {
+          void client.agents.tell({ task: made.data.id, text: told }, { timeoutMs: 0 });
         }
       }
       /* The untouched session this board was opened over was only ever a

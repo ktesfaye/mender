@@ -857,7 +857,10 @@ turns into a beam with a signboard hanging on two cords for each, the
 project's own folder first, the one you are standing in painted gold; pressing
 another walks into whichever session you were last in there, or starts a fresh
 one if nobody is, and the rail carries only that workspace's lanterns. Command-N
-inside a project asks its name and then cuts it and stands you in it, and so
+inside a project asks its name and then cuts it and stands you in it, on a
+session with nothing said to it yet (the name is the workspace's, never sent),
+and closing the last session in a workspace starts a fresh one there instead
+of walking you to another; both driven in a dev copy on a scratch repository. And so
 does the dashed board at the end; on the island it still founds a project.
 Command-T, and the naming board, start the next session in whichever workspace
 you are in. Right-clicking a board offers to delete it outright, worktree,

@@ -282,18 +282,18 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
         ? 'a plain terminal in its own isolated workspace. say what to call the workspace.'
         : `a plain terminal in ${home}. type a command, or leave it empty.`
       : isolated
-        ? "say what you want doing. it works in its own isolated workspace, out of everyone's way."
+        ? 'say what to call the workspace. the session in it starts empty.'
         : `say what you want doing. it works right in ${folder}, alongside anyone else in there.`;
     if (revivable && !terminal && !isolated) {
       label.textContent = `put ${revivable} back up?`;
       label.style.color = '#e0b56a';
       label.style.cursor = 'pointer';
     } else {
-      label.textContent = terminal
-        ? isolated
-          ? 'what to call it?'
-          : 'what to run first?'
-        : 'what is it for?';
+      label.textContent = isolated
+        ? 'what to call it?'
+        : terminal
+          ? 'what to run first?'
+          : 'what is it for?';
       label.style.color = '#d9c49a';
       label.style.cursor = 'default';
     }

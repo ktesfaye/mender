@@ -108,9 +108,10 @@ little house before its name so it never reads as one more copy, the one
 you are standing in painted gold. Pressing another walks into it, back into
 whichever session you were last in there or into a fresh one if it is empty,
 and the rail along the bottom carries that workspace's sessions and nobody
-else's. Command-N in a project hangs the new-session sign with its own
+else's. Closing the last session in one leaves you standing in it on a fresh
+one rather than carrying you off to another. Command-N in a project hangs the new-session sign with its own
 isolated workspace already on, and whatever is written in the box names the
-workspace, and so does the dashed board at the end of the beam; out on the island it still founds a project, since there is nothing
+workspace and nothing more, the session in it opening with nothing said, and so does the dashed board at the end of the beam; out on the island it still founds a project, since there is nothing
 there to copy. The moment it is asked for you are standing in it, the fire
 in the middle saying it is making its own copy and counting, because cutting
 a copy and running its setup is long enough that a sign which simply went
