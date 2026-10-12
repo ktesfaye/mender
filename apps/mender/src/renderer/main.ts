@@ -28,6 +28,7 @@ import type {
   TerminalSettings,
 } from '@shared/app-settings';
 import type { FiveHours } from '@shared/five-hours';
+import type { Hungry } from '@shared/hungry';
 import type { At, Change } from '@shared/changes';
 import { parseEnvLines } from '@shared/env-lines';
 import type { FoundFrom, Project } from '@shared/projects';
@@ -102,6 +103,7 @@ import { showMissed } from './yard/missed';
 import { openNewSession, type NewSessionSign } from './yard/new-session';
 import { seedLocalPictures } from './yard/pictures';
 import { pressing } from './yard/press';
+import { openHungry, type HungryBoard } from './yard/hungry';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf, type Want } from './yard/shelf';
@@ -6057,6 +6059,49 @@ async function boot(): Promise<void> {
        rail or in the finder does: one path in, `go` decides the rest. */
     window.mender?.attend?.((task) => go(`task:${task}`));
     window.mender?.quitCost?.((n) => showQuitCost(n));
+
+    /* A session caught eating the five hours is put to him over everything,
+       wherever he is standing: one at a time, each only once. */
+    const askedHungry = new Set<string>();
+    let hungryBoard: HungryBoard | null = null;
+    let hungryNow: Record<string, Hungry> = {};
+    const nextHungry = (): void => {
+      if (hungryBoard) {
+        if (hungryNow[hungryBoard.task]) return;
+        hungryBoard.close();
+        hungryBoard = null;
+      }
+      const waiting = Object.values(hungryNow)
+        .filter((one) => !askedHungry.has(`${one.task}:${one.at}`))
+        .sort((a, b) => a.at - b.at)[0];
+      if (!waiting) return;
+      askedHungry.add(`${waiting.task}:${waiting.at}`);
+      hungryBoard = openHungry(waiting, {
+        answer: (choice) => {
+          hungryBoard = null;
+          void client.agents.answerHungry({ task: waiting.task, choice }, { timeoutMs: 0 });
+          window.setTimeout(nextHungry, 0);
+        },
+        look: () => {
+          hungryBoard = null;
+          askedHungry.delete(`${waiting.task}:${waiting.at}`);
+          go(`task:${waiting.task}`);
+        },
+      });
+    };
+    const hungering = new ReplicaState<Record<string, Hungry>>(
+      client.agents.island.state(undefined, 'hungry'),
+      {
+        onChange: (value) => {
+          hungryNow = value ?? {};
+          nextHungry();
+        },
+      }
+    );
+    void hungering.ready.then(() => {
+      hungryNow = hungering.current() ?? {};
+      nextHungry();
+    });
     /* The native menu can only ask for things the page can do; "settings" is
        the one item it carries, so it lands on the same doing the chord does. */
     window.mender?.menu?.((command) => {

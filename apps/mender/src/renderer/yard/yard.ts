@@ -36,7 +36,7 @@ import {
 import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
 import { waitOut } from './limit';
-import { windowLine } from '@shared/five-hours';
+import { sessionLine } from '@shared/five-hours';
 import { makeLine, preview, unpreview, type Asking as Prompting, type Line } from './line';
 import { makeMenu } from './menu';
 import {
@@ -1318,10 +1318,10 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
   }
   if (it.childElementCount) root.appendChild(it);
 
-  /* The five hours: the subscription's own window, one meter for the whole
-     account, said once over the board with where its pace lands. Nothing
-     warns anybody it is running out either; it simply stops. */
-  const five = yard.fiveHours ? windowLine(yard.fiveHours, Date.now(), true) : null;
+  /* The five hours, said as this session's own part of it: the window is one
+     meter for the whole account, and the meter alone never says who to stop.
+     Orange once this one has had a big piece, red once it has had most. */
+  const five = yard.fiveHours && yard.session ? sessionLine(yard.fiveHours, yard.session.id) : null;
   if (five) {
     const ink =
       five.tone === 'wrong' ? 'var(--yard-wrong)' : five.tone === 'warn' ? 'var(--yard-warn)' : undefined;

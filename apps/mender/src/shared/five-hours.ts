@@ -156,3 +156,28 @@ export function windowLine(
   if (short) return { said: `${head} · lasts to the reset at ${reset}`, tone: 'quiet' };
   return { said: `${head} · at this pace it lasts to the reset at ${reset}`, tone: 'quiet' };
 }
+
+/**
+ * The board's one line about the five hours: how much of it this session has
+ * had, against how full the window is and when it resets.
+ */
+export function sessionLine(
+  five: FiveHours,
+  task: string,
+  now = Date.now()
+): { said: string; tone: 'quiet' | 'warn' | 'wrong' } | null {
+  const window = five.reading?.fiveHour;
+  if (!window) return null;
+  const used = Math.round(window.utilization * 100);
+  const reset = clockOf(window.resetsAt, now);
+  const mine = five.sessions.find((one) => one.task === task);
+  const had = mine ? mine.share * window.utilization : 0;
+  const tail = `of your five hours · ${used}% used, resets ${reset}`;
+  if (!mine) return { said: `this session: none ${tail}`, tone: 'quiet' };
+  if (had < 0.01) return { said: `this session: under 1% ${tail}`, tone: 'quiet' };
+  return {
+    said: `this session: ${Math.round(had * 100)}% ${tail}`,
+    tone: had >= 0.4 ? 'wrong' : had >= 0.2 ? 'warn' : 'quiet',
+  };
+}
+

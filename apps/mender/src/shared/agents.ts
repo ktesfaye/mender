@@ -7,6 +7,7 @@ import {
   uploadFile,
 } from '@emdash/wire/rpc';
 import { z } from 'zod';
+import { hungryChoiceSchema, hungrySchema } from './hungry';
 
 /**
  * The agents, which are the villagers.
@@ -847,6 +848,11 @@ export const agentsContract = defineContract({
     error: agentErrorSchema,
   }),
   /** What was half-written on this session's line, so a restart does not lose it. */
+  /** What to do about a session caught eating the five hours. */
+  answerHungry: procedure({
+    input: z.object({ task: z.string(), choice: hungryChoiceSchema }),
+    output: z.void(),
+  }),
   draft: procedure({ input: z.object({ task: z.string() }), output: z.string() }),
   setDraft: procedure({
     input: z.object({ task: z.string(), text: z.string() }),
@@ -864,6 +870,8 @@ export const agentsContract = defineContract({
     states: {
       moods: liveState({ data: z.record(z.string(), moodSchema) }),
       glances: liveState({ data: z.record(z.string(), glanceSchema) }),
+      /** Sessions caught eating the five hours, and whether they were stopped to ask. */
+      hungry: liveState({ data: z.record(z.string(), hungrySchema) }),
     },
   }),
 });

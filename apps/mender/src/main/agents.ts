@@ -193,7 +193,10 @@ export interface Agents {
    *  and otherwise leaves it working and says so with `going`. */
   hush(
     task: string,
-    untouched?: boolean
+    untouched?: boolean,
+    /** Stop it without handing what it was asked back to the line, so it can
+     *  be told to carry on with the same thing. */
+    keep?: boolean
   ): Promise<
     | { success: true; data: { back?: string; pictures?: Returned[]; going?: boolean } }
     | { success: false; error: TellError }
@@ -1469,7 +1472,7 @@ export function createAgents(
       return done.success ? { success: true, data: undefined } : refused(whatItSaid(done.error));
     },
 
-    async hush(task, untouched) {
+    async hush(task, untouched, keep) {
       await loaded;
       const conversation = lodgers[task];
       if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
@@ -1478,7 +1481,7 @@ export function createAgents(
       /* Called off before anything came of it, the way Claude Code's own
          Escape does it: what was asked goes back on the line to be said
          again, rather than sitting on the post as one more thing stopped. */
-      const asked = house?.untouched();
+      const asked = keep ? undefined : house?.untouched();
       house?.hushing(true);
       const done = await runtimes.acp.cancelTurn({ conversationId: conversation });
       if (!done.success) {

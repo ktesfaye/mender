@@ -19,6 +19,7 @@ import { installDragOut } from './drag';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
 import { createFiveHours } from './five-hours';
+import { watchHungry } from './hungry';
 import { createGitHubStatus } from './github';
 import { installGrip } from './grip';
 import { logWindow } from './logging';
@@ -70,7 +71,8 @@ export async function main(): Promise<void> {
   /* The five hours is one meter for the whole account: every session hears
      it in its own answers and hands it here, and the windmill asks here. The
      two reach for each other, but only ever after both exist. */
-  const fiveHours = createFiveHours(runtimes.env, createClaudeUsage(), () => {
+  const claudeUsage = createClaudeUsage();
+  const fiveHours = createFiveHours(runtimes.env, claudeUsage, () => {
     const titles = new Map(peek(tasks.watch()).map((task) => [task.id, task.title]));
     return agents.claudeSessions().map((one) => ({
       task: one.task,
@@ -105,7 +107,12 @@ export async function main(): Promise<void> {
   scope.add(() => schedules.dispose());
   installWire(scope, {
     ...runtimes.controllers,
-    agents: createAgentsController(agents, moods, tuiSessions),
+    agents: createAgentsController(
+      agents,
+      moods,
+      tuiSessions,
+      watchHungry({ scope, agents, tasks, usage: claudeUsage, fiveHours })
+    ),
     appSettings: createAppSettingsController(appSettings, sessionUsage, fiveHours),
     board: createBoardController(createBoard(runtimes)),
     changes: createChangesController(changes),

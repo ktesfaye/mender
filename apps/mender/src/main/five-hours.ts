@@ -32,6 +32,8 @@ export interface FiveHoursReader {
   /** A session heard the meter in its own answer. */
   report(limit: RateLimit, from: string): void;
   read(): Promise<FiveHours>;
+  /** The meter as last heard, asked for again first if it has gone stale. */
+  reading(): Promise<WindowReading | null>;
 }
 
 /** A reading older than this is asked for again before it is handed over. */
@@ -122,6 +124,11 @@ export function createFiveHours(
     const since = latest?.fiveHour ? latest.fiveHour.resetsAt - FIVE_HOURS_MS : now - FIVE_HOURS_MS;
     const spends = await usage.since(since, now);
     const own = new Map(mine().map((one) => [one.session, one]));
+    log.debug('five hours: shares', {
+      area: 'five-hours',
+      own: [...own.keys()],
+      spent: spends.map((one) => one.session),
+    });
     const total = spends.reduce((sum, one) => sum + one.weighted, 0);
     const sessions: SessionShare[] = spends
       .filter((one) => one.calls > 0)
@@ -148,7 +155,17 @@ export function createFiveHours(
     return { reading: latest, since, sessions, lately };
   }
 
-  return { report, read };
+  async function reading(): Promise<WindowReading | null> {
+    if (!latest || Date.now() - latest.at > FRESH_MS) {
+      probing ??= probe().finally(() => {
+        probing = null;
+      });
+      await probing;
+    }
+    return latest;
+  }
+
+  return { report, read, reading };
 }
 
 /** Claude folds a checkout's path into a directory name, `/` to `-`; the

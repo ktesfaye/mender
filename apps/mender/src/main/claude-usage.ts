@@ -48,6 +48,8 @@ export interface SessionSpend {
   images: number;
   firstAt: number;
   lastAt: number;
+  /** The model its newest call went to, as Claude names it. */
+  model: string;
   /** Roughly what it cost, in the units the window is likeliest spent in:
       output dearest, a fresh read of context next, a cached read cheapest. */
   weighted: number;
@@ -193,6 +195,7 @@ export function spendOf(
         images: 0,
         firstAt: one.at,
         lastAt: one.at,
+        model: '',
         weighted: 0,
         recent: 0,
       };
@@ -208,6 +211,7 @@ export function spendOf(
     spend.cacheWrite += one.cacheWrite;
     spend.cacheRead += one.cacheRead;
     spend.firstAt = Math.min(spend.firstAt, one.at);
+    if (one.at >= spend.lastAt && one.model && !one.model.startsWith('<')) spend.model = one.model;
     spend.lastAt = Math.max(spend.lastAt, one.at);
     const cost = weigh(one);
     spend.weighted += cost;
@@ -224,6 +228,31 @@ interface Cursor {
 export interface ClaudeUsage {
   /** Everything spent between the two moments, by session. */
   since(start: number, end?: number): Promise<SessionSpend[]>;
+  /** What one session normally spends in a stretch this long while it is
+      actually working, read off the last week: the middle of every stretch
+      any session spent anything real in. Null with too little to go on. */
+  usualStretch(ms: number): Promise<number | null>;
+}
+
+/** The middle of what sessions spent per stretch, counting only stretches
+    with real work in them, so a session idling at the gate does not drag
+    what is normal down to nothing. */
+export function usualOf(events: readonly UsageEvent[], ms: number): number | null {
+  const buckets = new Map<string, { cost: number; calls: number }>();
+  for (const one of events) {
+    if (one.images) continue;
+    const key = `${one.session}:${Math.floor(one.at / ms)}`;
+    const bucket = buckets.get(key) ?? { cost: 0, calls: 0 };
+    bucket.cost += weigh(one);
+    bucket.calls += 1;
+    buckets.set(key, bucket);
+  }
+  const costs = [...buckets.values()]
+    .filter((one) => one.calls >= 3)
+    .map((one) => one.cost)
+    .sort((a, b) => a - b);
+  if (costs.length < 12) return null;
+  return costs[Math.floor(costs.length / 2)] ?? null;
 }
 
 /** Past this a transcript is left alone; what is in it cannot be in any window asked about. */
@@ -334,6 +363,13 @@ export function createClaudeUsage(root = join(homedir(), '.claude', 'projects'))
       });
       await reading;
       return spendOf(events, meta, start, end);
+    },
+    async usualStretch(ms) {
+      reading ??= refresh().finally(() => {
+        reading = null;
+      });
+      await reading;
+      return usualOf(events, ms);
     },
   };
 }

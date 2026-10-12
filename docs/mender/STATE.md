@@ -3885,3 +3885,22 @@ dev instance on an isolated data dir: the board's line read the real meter
 off the probe before anybody had said anything, and the windmill named this
 afternoon's sessions in the order the transcripts put them.
 
+### A session eating the five hours is stopped and put to him (2026-10-11) — done
+
+The meter alone said nothing about who to stop. Now a watchdog reads each
+working Claude session's last quarter hour off its transcript, prices it
+against the window from the meter, and compares it with what a session here
+normally takes in one, from the last week. One well out of the ordinary is
+stopped where it stands, note kept on the post, and a window over
+everything says what it took, how that compares, when it alone would run
+the window out and what it is thinking with, offering carry on, carry on
+with a cheaper model, leave it stopped, or walk in first. The board's top
+line now says the session's own share. Driven in a dev instance with the
+threshold forced tiny: a session running a minute-long command was stopped
+mid-command, the window came up with Sonnet 5.5 and Haiku 4.5 offered under
+Opus 5.5, and picking Sonnet switched the session and it carried straight on
+with the same command. Against today's real transcripts the same rule
+would have stopped the Fable session taking a fifth of the window every
+quarter hour, about five times normal. Still says "you stopped it" over the
+cut turn rather than naming the watchdog.
+

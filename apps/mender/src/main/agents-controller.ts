@@ -2,6 +2,7 @@ import { createController, type Controller } from '@emdash/wire/rpc';
 import { expose, type Cell } from '@emdash/wire/state';
 import { agentsContract, type Mood } from '@shared/agents';
 import type { Agents } from './agents';
+import type { HungryWatch } from './hungry';
 import type { TuiSessions } from './tui-sessions';
 
 /**
@@ -15,12 +16,18 @@ import type { TuiSessions } from './tui-sessions';
 export function createAgentsController(
   agents: Agents,
   moods: Cell<Record<string, Mood>>,
-  tuiSessions: TuiSessions
+  tuiSessions: TuiSessions,
+  hungry: HungryWatch
 ): Controller {
   return createController(agentsContract, {
     work: expose(agentsContract.work, { state: (key) => agents.working(key.task) }),
     kit: expose(agentsContract.kit, { state: (key) => agents.kit(key.task) }),
-    island: expose(agentsContract.island, { moods: () => moods, glances: () => agents.glances() }),
+    island: expose(agentsContract.island, {
+      moods: () => moods,
+      glances: () => agents.glances(),
+      hungry: () => hungry.all(),
+    }),
+    answerHungry: ({ task, choice }) => hungry.answer(task, choice),
     wake: ({ task }) => agents.wake(task),
     wakeTerminal: async ({ task }) => {
       const started = await tuiSessions.open(task);

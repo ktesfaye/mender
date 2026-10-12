@@ -140,28 +140,29 @@ happened, and above the line you write on, is how much of its room to think in i
 far when the agent says, in plain words rather than a currency badge. Nothing warns an agent that it is running out of room; it simply starts
 losing the beginning of the conversation, so the village says it instead.
 
-**The five hours is said over the board, and who spent it is in the
-windmill.** Claude's subscription is one meter for the whole account, not
-one per session, and nothing warns anybody it is running low: a turn is
-simply cut off. So under the context line at the top of every session's
-board is one quiet line with how full the window is, how far in it is, and
-where its pace lands — "at this pace it runs out around 4:14pm, 2h06 before
-it resets at 6:20pm", in the warning orange when it will, in the sore red
-when it is nearly there, and only "lasts to the reset" in the quiet ink when
-it will. The meter is read off the headers every answer comes back with,
-which Claude's bridge hands on after each turn, and between turns and at
-startup it is asked for directly with one one-token call to the cheapest
-model, never more than once in a few minutes. The windmill's "this machine"
-page draws the window as the same strip of cells a limit's wait already is,
-the spent cells dark, the one where now is glowing, and the cell where the
-pace runs out in red when it falls short of the reset; the week under it as
-a thinner strip; and then who spent it, every Claude session on this
-machine, the village's and terminal ones alike, read off Claude's own
-transcripts since the window began: each a bar against the hungriest, its
-share, how many calls, how much it re-reads on every call and how many
-pictures it is carrying, and "heavy" against one whose whole long
-conversation goes back out with every call, since that, not what was said,
-is what eats a window.
+**A session eating the five hours is stopped and put to him.** Claude's
+subscription is one meter for the whole account, and the meter alone never
+says who to stop, so the village watches the sessions instead. Every half
+minute, while anybody is working, each working Claude session's last
+quarter hour is read off its own transcript and put against the window: how
+much of the five hours that stretch took, worked out from how full the meter
+is against everything spent in it, and how many times what a session here
+normally takes in a quarter hour, read off the last week. One well out of
+the ordinary, several times normal and a real piece of the window, or a
+fifth of it whatever is normal, is stopped where it is without its note
+coming off the post, and a window comes up over everything wherever he is
+standing, with a banner if he is looking elsewhere: what it took and how
+that compares, the window as a strip with its part in the sore red, when it
+alone would run the window out, what it is thinking with, and the ways on.
+Carry on picks it up exactly where it was; carry on with a cheaper model
+switches it, Fable to Opus to Sonnet to Haiku, one of each family the agent
+offers, and picks it up the same; leave it stopped leaves it; walk in and
+look first stands him in it with the question still waiting. Once answered
+it is only asked about again after taking another tenth of the window. The
+board's top line says this session's own part of the five hours, against
+how full the window is and when it resets; the windmill's "this machine"
+page still draws the window, the week, and every Claude session on the
+machine, terminal ones included, as a bar against the hungriest.
 
 **Making room is drawn, not stammered.** When Claude packs a long conversation
 down to make room, the middle column shows it happening rather than the
