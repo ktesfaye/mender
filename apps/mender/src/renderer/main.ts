@@ -1382,8 +1382,14 @@ async function boot(): Promise<void> {
       if (id === 'new:ways') {
         const district = open?.district;
         if (!district || !projectOn(district) || naming) return;
-        replacing = inside && untouched() ? inside.id : null;
-        askName({ kind: 'district', district }, freeSlot(district));
+        askName(
+          { kind: 'district', district },
+          freeSlot(district),
+          '',
+          false,
+          false,
+          inside && untouched() ? inside.id : null
+        );
         return;
       }
       if (id === FIND) {
@@ -4064,20 +4070,25 @@ async function boot(): Promise<void> {
       slot: number | null,
       written = '',
       past = false,
-      isolated = false
+      isolated = false,
+      replace: string | null = null
     ): void => {
       const project = projectOn(aim.district);
       if (!project) return;
       sign?.close();
-      /* The yard standing behind the sign only listens to its session while
-         `open` is the very aim it was opened with, so asking over the
-         district already open keeps it; a new one there froze the yard for
-         good once the sign was put away. */
-      if (open?.district !== aim.district) open = aim;
-      titling = null;
-      naming = blankNaming(aim.district, project, slot, written);
-      const asked = naming;
-      if (!yard.showing) flyToYard(camera, aim.district);
+      /* Nothing here changes until go is pressed. The sign's question is
+         kept to itself, and only taken up as the app's own once it is
+         answered: the yard behind keeps listening to its session while it
+         hangs there, and Escape leaves everything exactly as it was. */
+      let asked = blankNaming(aim.district, project, slot, written);
+      const takeUp = (): void => {
+        /* The yard behind only listens to its session while `open` is the
+           very aim it was opened with, so the one already open is kept. */
+        if (open?.district !== aim.district) open = aim;
+        titling = null;
+        replacing = replace;
+        naming = asked;
+      };
       sign = openNewSession({
         where: `on the ${aim.district.name.toLowerCase()}`,
         hand: defaultHand,
@@ -4109,10 +4120,10 @@ async function boot(): Promise<void> {
             : Promise.resolve(),
         submit: (ask) => {
           sign = null;
-          if (!naming) return;
+          takeUp();
           const hand = ask.past && !ask.terminal ? 'claude' : defaultHand;
           naming = {
-            ...naming,
+            ...asked,
             written: ask.text || ask.past?.title || (ask.terminal ? 'terminal' : hand),
             terminal: ask.terminal,
             isolated: ask.isolated,
@@ -4123,21 +4134,21 @@ async function boot(): Promise<void> {
         },
         cancel: () => {
           sign = null;
-          naming = null;
-          replacing = null;
         },
         revive: () => {
           sign = null;
-          if (naming) void reviveSession();
+          takeUp();
+          void reviveSession();
         },
       });
       // Whether the last one taken down in this project is still on offer —
       // asked after the sign is already up, since it never blocks a fresh
       // one from being written straight away.
+      const hung = sign;
       void client.tasks.revivable({ project: project.id }, { timeoutMs: 5000 }).then((held) => {
-        if (!naming || naming.project !== asked.project || !held) return;
-        naming = { ...naming, revivable: held };
-        sign?.revivable(held.title);
+        if (!held || sign !== hung) return;
+        asked = { ...asked, revivable: held };
+        hung.revivable(held.title);
       });
     };
 
