@@ -578,9 +578,13 @@ still under it. The light round the lantern you left goes back into it, and
 the one you took catches and its light swells up round it. Going over to another workspace
 on the beam is the same step, taken along the beam instead: the gold goes to
 the board the moment it is pressed, and the lanterns go with the session,
-since they are that workspace's and not the project's. A session that took
-long enough waking to be drawn waking only comes up where it stands once it
-is up, rather than stepping in a second time. A session still waking keeps
+since they are that workspace's and not the project's. Nothing is drawn
+until the session gone to has answered, so a switch never lands on a board
+half filled in. One that had gone home for the night reads exactly as it was
+the moment you step in, its conversation kept while it slept, and wakes
+underneath without a fire saying so; only one with nothing kept, the first
+time it is opened after the app starts, is drawn waking, and once it is up
+it only comes up where it stands rather than stepping in a second time. A session still waking keeps
 the place standing round it and only the middle waits.
 
 **A slash on the line is how a session is worked.** Writing one opens

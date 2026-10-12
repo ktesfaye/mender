@@ -1701,6 +1701,13 @@ class House {
   private watching = false;
   /* Whether a wake is reading this session's history back in right now. */
   private wakingUp = false;
+  /* What the yard was showing when a wake began, held while the agent reads
+     its past back in. That replay goes by in pieces and every piece is a
+     rewrite, but this house already kept the whole conversation while it
+     slept, so whoever walks in reads it straight away instead of a fire
+     saying it is waking, and the real state takes over once the wake is
+     done. Only held when there was something to hold. */
+  private held: WorkingState | null = null;
   /* Whoever is waiting to hear the session has got past starting. */
   private past = new Set<() => void>();
   /** When a continue is scheduled to send itself, or null. */
@@ -1937,6 +1944,8 @@ class House {
   waking(on: boolean): void {
     if (this.wakingUp === on) return;
     this.wakingUp = on;
+    const now = peek(this.state);
+    this.held = on && now.told.notes.length ? now : null;
     this.publish();
   }
 
@@ -2123,7 +2132,7 @@ class House {
 
   private publish(): void {
     const was = peek(this.state);
-    const next = this.read();
+    const next = this.held ? { ...this.held, waking: true as const } : this.read();
     this.state.set(next);
     if (was.mood !== next.mood) {
       log.info('agents: mood', {

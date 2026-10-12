@@ -167,8 +167,14 @@ export async function openYard(
     again();
   }, WAKE_GIVES_UP_MS);
   shut.push(async () => window.clearTimeout(giving));
+  /* Only a session with nothing to show yet is drawn waking. One that went
+     home is woken with everything it said still held, and reads straight
+     away while the agent comes back underneath. */
   const waking = (): boolean =>
-    !gaveUp && working?.mood !== 'hurt' && (assumed || Boolean(working?.waking));
+    !gaveUp &&
+    working?.mood !== 'hurt' &&
+    (assumed || Boolean(working?.waking)) &&
+    !working?.told?.notes.length;
   let held: readonly Carried[] = [];
   /* The picture itself, kept here while it is carried so pointing at it on
      the line can show it. */
@@ -192,7 +198,14 @@ export async function openYard(
   shut.push(async () => letAsideGo());
   let pinned: readonly PinnedNote[] = [];
 
-  const again = (): void => changed(build());
+  /* Nothing is drawn until everything the yard is made of has answered
+     once. Drawn as each one came in, a switch landed on a board with no
+     session on it, then one with no checkout, then the real one, and every
+     one of those was a redraw that read as the place reloading. */
+  let ready = false;
+  const again = (): void => {
+    if (ready) changed(build());
+  };
 
   let readingWindow = false;
   const readWindow = (): void => {
@@ -342,6 +355,7 @@ export async function openYard(
     readVersions();
   }
 
+  ready = true;
   return {
     moved: (now) => {
       from = { ...from, ...now };
