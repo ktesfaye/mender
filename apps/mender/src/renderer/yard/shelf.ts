@@ -127,7 +127,7 @@ function chain(left: number, top: number, long: boolean): HTMLDivElement {
   return links;
 }
 
-/* A stud nailed into the board's bottom-right corner, lit in the colour of the
+/* A stud nailed into the board's top-right corner, lit in the colour of the
    loudest thing happening in that project: the same palette and the same
    rhythm as the house windows and the lanterns on the rail. Lamplight
    breathing slowly for somebody working, the fire's orange pulsing quick for
@@ -191,12 +191,12 @@ const HALO_AT: [number, number][] = [
 function studOn(swing: HTMLDivElement): HTMLDivElement {
   const stud = document.createElement('div');
   stud.className = 'stud';
-  /* Nailed into the board's bottom-right corner, where the carved square's
-     lip meets the frame: the top corners are where the chains go through. */
+  /* Nailed into the frame at the board's top-right, just under the eyelet
+     the right-hand chain goes through, so it never sits on the chain. */
   stud.style.cssText = [
     'position:absolute',
-    `left:${19 * X}px`,
-    `top:${19 * X}px`,
+    `left:${20 * X}px`,
+    `top:${3 * X}px`,
     `width:${X}px`,
     `height:${X}px`,
     'pointer-events:none',

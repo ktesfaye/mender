@@ -1925,7 +1925,7 @@ and the command it ran appear in the margin with its prop beside it.
 
 A board on the rack carries a stud that says what the loudest session in
 its project is doing, even while he is standing somewhere else entirely: an
-iron plate nailed into the board's bottom-right corner, clear of the chains, with a diamond of light
+iron plate nailed into the board's top-right corner, just under the right-hand chain, with a diamond of light
 in it, drawn in whole pixels with a ring of half-lit pixels for its glow
 rather than a blur, in the same colours and to the same rhythm the house
 windows and the rail's lanterns keep. Lamplight breathing slowly for somebody
