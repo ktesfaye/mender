@@ -267,6 +267,37 @@ function wayAlong(before: Yard, yard: Yard): number {
   return Math.sign(at(yard) - at(before));
 }
 
+/** The workspace a yard is standing in, when the project has any. */
+function boardOf(yard: Yard | undefined): string | undefined {
+  return yard?.workspaces?.find((one) => one.here)?.id;
+}
+
+/**
+ * Over to another workspace rather than along to a neighbour: a different
+ * rail of lanterns altogether, so which way is read off the beam above.
+ */
+function crossedBoards(before: Yard, yard: Yard): boolean {
+  return (
+    Boolean(before.workspaces?.length && yard.workspaces?.length) &&
+    boardOf(before) !== boardOf(yard)
+  );
+}
+
+function wayAcross(before: Yard, yard: Yard): number {
+  const boards = yard.workspaces ?? [];
+  const from = boards.findIndex((one) => one.id === boardOf(before));
+  const to = boards.findIndex((one) => one.here);
+  return from < 0 || to < 0 ? 1 : Math.sign(to - from) || 1;
+}
+
+/** In another workspace the lanterns are somebody else's, so they go with
+    the session rather than standing on the rail. */
+function lanternsMove(root: HTMLElement): void {
+  for (const el of root.querySelectorAll<HTMLElement>('[data-key^="lantern:"]')) {
+    if (el.dataset.key !== 'lantern:+') el.dataset.moves = '';
+  }
+}
+
 /** Part of the place rather than the session, so a switch leaves it standing. */
 function stays<T extends HTMLElement>(el: T, name: string): T {
   el.dataset.stays = name;
@@ -565,7 +596,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       before !== undefined &&
       before.project.id === yard.project.id &&
       before.session?.id !== yard.session?.id;
-    if (switched) lastWay = wayAlong(before, yard);
+    const crossed = switched && crossedBoards(before, yard);
+    if (switched) lastWay = crossed ? wayAcross(before, yard) : wayAlong(before, yard);
     else if (walkedIn) lastWay = 0;
     /* A session being woken reads its whole history back in a piece at a
        time, and every piece is a rewrite. Drawing each one is the board
@@ -581,6 +613,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
        notice gets a board of its own. */
     if (switched && waking && holding !== -1) {
       if (!holding) {
+        if (crossed) lanternsMove(root);
         leavingInPlace([...movers(root), ...movers(stillAt)], lastWay);
         gone = true;
         holding = window.setTimeout(() => {
@@ -598,6 +631,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const woke = wasWaking && !waking;
     entering = false;
     const was = moving && (!walkedIn || switched) ? measure(stage) : new Map();
+    if (crossed && !gone) lanternsMove(root);
     const off = (switched && !gone) || (woke && moving) ? stepOff() : null;
     const wentAlready = switched && gone;
     gone = false;
@@ -692,6 +726,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     said_line(root, layer.edge(), grown);
     rail(root, yard, layer.cramped(), layer.edge(), does);
     if (yard.session) grips(columns, floor);
+    if (crossed) lanternsMove(root);
     /* What the line asks for follows what the yard is: somebody at the gate
        wants an answer, an empty project wants to know what to build, and
        anything else is the next thing you have to say. Not while something is
@@ -724,12 +759,17 @@ export function makeYard(layer: Layer, does: Doings): Standing {
           el.scrollTop = top;
           el.scrollLeft = left;
         }
-        steppingOff(off.ghost, lastWay);
+        steppingOff(off.ghost, lastWay, woke && !switched);
       }
       play(stage, was, {
         only: (el) => Boolean(el.closest('[data-stays]')) && !el.closest('[data-moves]'),
       });
-      sweepingIn([...movers(root), ...movers(stillAt)], lastWay, wentAlready);
+      sweepingIn(
+        [...movers(root), ...movers(stillAt)],
+        lastWay,
+        wentAlready,
+        woke && !switched
+      );
       if (switched) relit(before, yard);
       if (woke) lastWay = 0;
       return;
@@ -1395,11 +1435,15 @@ function signboards(
       astop(hung_, `workspace:${board.id}`);
       hung_.title = board.id ? 'walk in · right-click to delete it' : 'walk in';
       hung_.addEventListener('mousedown', (event) => event.preventDefault());
-      hung_.addEventListener('click', () => does.press(`workspace:${board.id}`));
+      const take = (): void => {
+        handGold(hanging, hung_, board.id);
+        does.press(`workspace:${board.id}`);
+      };
+      hung_.addEventListener('click', take);
       hung_.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
-        does.press(`workspace:${board.id}`);
+        take();
       });
     }
     if (board.id) {
@@ -1428,6 +1472,13 @@ function signboards(
   });
   hanging.appendChild(more);
   root.appendChild(stays(hanging, 'signs'));
+  /* Gold that moved without a press on the beam, Command-U or a session
+     closing, still catches where it lands rather than simply being there. */
+  const gold = boards.find((one) => one.here)?.id;
+  if (goldWas !== undefined && gold !== undefined && gold !== goldWas) {
+    catchGold(hanging.querySelector<HTMLElement>('.sign.here .board'));
+  }
+  goldWas = gold;
   /* However many there are, the one you are standing in is on the beam. */
   requestAnimationFrame(() => {
     const here = hanging.querySelector<HTMLElement>('.sign.here');
@@ -1442,6 +1493,36 @@ function signboards(
 const BEAM =
   'box-sizing:border-box;background:#5a3a1c;border-top:2px solid #3a2712;' +
   'border-bottom:2px solid #3a2712';
+/** Which board was gold last time the beam was drawn. */
+let goldWas: string | undefined;
+
+function reducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/**
+ * The gold goes to the board you pressed the moment you press it, rather than
+ * waiting for the yard behind to be drawn again. It flips, the way a painted
+ * board would, and catches the light for a beat: easing between two paints
+ * passes through the colour of its own lettering and the name goes.
+ */
+function handGold(hanging: HTMLElement, to: HTMLElement, id: string): void {
+  const from = hanging.querySelector<HTMLElement>('.sign.here');
+  if (from === to) return;
+  from?.classList.remove('here');
+  to.classList.add('here');
+  goldWas = id;
+  catchGold(to.querySelector<HTMLElement>('.board'));
+}
+
+function catchGold(face: HTMLElement | null): void {
+  if (!face || reducedMotion()) return;
+  face.animate([{ filter: 'brightness(1.35)' }, { filter: 'brightness(1)' }], {
+    duration: 260,
+    easing: 'steps(4, end)',
+  });
+}
+
 const SIGN_ROW =
   'display:flex;align-items:flex-start;gap:18px;overflow-x:auto;overflow-y:hidden;' +
   'scrollbar-width:none;padding:0 6px 6px 0;pointer-events:none';
@@ -4227,13 +4308,17 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
    * the pointer. */
   const spare = GLOW_ROOM + spans.reduce((a, b) => a + b, 0);
   const cord = 3 + LANTERN.cord;
-  beam.appendChild(box({ left: spare + 10, top: 3, width: 3, height: LANTERN.cord }, HOOK));
+  /* Its cord, lamp and plus are one thing on one hook, so when the lanterns
+     before it change it slides along to where it hangs now. */
+  const end = keyed(box({ left: spare, top: 0, width: 22, height: cord + 38 }), 'lantern:+');
+  end.style.pointerEvents = 'none';
+  end.appendChild(box({ left: 10, top: 3, width: 3, height: LANTERN.cord }, HOOK));
 
   const lamp = sprite(KIT_NAMES.lanternOff, 2);
-  lamp.style.cssText += `;left:${spare}px;top:${cord}px;filter:brightness(.7)`;
-  beam.appendChild(lamp);
+  lamp.style.cssText += `;left:0px;top:${cord}px;filter:brightness(.7)`;
+  end.appendChild(lamp);
 
-  const hook = box({ left: spare, top: cord, width: 22, height: 38 });
+  const hook = box({ left: 0, top: cord, width: 22, height: 38 });
   hook.style.pointerEvents = 'auto';
   hook.style.cursor = 'default';
   hook.title = 'a new session · right-click for other ways';
@@ -4260,7 +4345,8 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     lamp.style.filter = 'brightness(.7)';
     for (const bar of plus) bar.style.background = PLUS_BANKED;
   });
-  beam.appendChild(hook);
+  end.appendChild(hook);
+  beam.appendChild(end);
   root.appendChild(beam);
   stays(beam, 'rail');
   beam.scrollLeft = railScrolled;

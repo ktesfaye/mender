@@ -574,7 +574,12 @@ there now sweeps in from the side its lantern hangs on, the column nearest
 that side first, and everything that is the project's rather than the
 session's, the headings, the rules, the changelog and the rail itself, stands
 still under it. The light round the lantern you left goes back into it, and
-the one you took catches and its light swells up round it. A session still waking keeps
+the one you took catches and its light swells up round it. Going over to another workspace
+on the beam is the same step, taken along the beam instead: the gold goes to
+the board the moment it is pressed, and the lanterns go with the session,
+since they are that workspace's and not the project's. A session that took
+long enough waking to be drawn waking only comes up where it stands once it
+is up, rather than stepping in a second time. A session still waking keeps
 the place standing round it and only the middle waits.
 
 **A slash on the line is how a session is worked.** Writing one opens

@@ -177,7 +177,7 @@ const SWITCH_IN_MS = 520;
 const SWITCH_TRAVEL = 72;
 
 /** The session you left, stepping off. Removes it when it has gone. */
-export function steppingOff(ghost: HTMLElement, way: number): void {
+export function steppingOff(ghost: HTMLElement, way: number, still = false): void {
   if (reduced()) {
     ghost.remove();
     return;
@@ -187,7 +187,13 @@ export function steppingOff(ghost: HTMLElement, way: number): void {
   ghost.animate(
     [
       { transform: 'translate(0,0)' },
-      { transform: way ? `translateX(${-way * SWITCH_TRAVEL * 0.6}px)` : 'translateY(-6px)' },
+      {
+        transform: still
+          ? 'translate(0,0)'
+          : way
+            ? `translateX(${-way * SWITCH_TRAVEL * 0.6}px)`
+            : 'translateY(-6px)',
+      },
     ],
     { duration: SWITCH_OUT_MS, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }
   );
@@ -231,8 +237,14 @@ export function leavingInPlace(movers: readonly HTMLElement[], way: number): voi
   }
 }
 
-/** The session you went to, sweeping in from the side it hangs on. */
-export function sweepingIn(movers: readonly HTMLElement[], way: number, gone = false): void {
+/** The session you went to, sweeping in from the side it hangs on. Still,
+    it only comes up where it stands: the same session, finished waking. */
+export function sweepingIn(
+  movers: readonly HTMLElement[],
+  way: number,
+  gone = false,
+  still = false
+): void {
   if (reduced()) return;
   const wide = window.innerWidth || 1;
   for (const el of movers) {
@@ -242,6 +254,10 @@ export function sweepingIn(movers: readonly HTMLElement[], way: number, gone = f
     /* The column nearest the side it comes from lands first, so the board
        reads as one thing arriving from over there rather than all at once. */
     const lead = way > 0 ? 1 - middle : middle;
+    if (still) {
+      fade(el, 0, SWITCH_IN_MS * 0.6, gone ? 0 : SWITCH_OUT_MS * 0.4);
+      continue;
+    }
     const delay = Math.round((gone ? 0 : SWITCH_OUT_MS * 0.55) + lead * 140);
     slide(
       el,
