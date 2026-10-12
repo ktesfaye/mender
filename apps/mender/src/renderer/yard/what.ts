@@ -52,6 +52,8 @@ export interface Yard {
 export interface Version {
   version: string | null;
   lines: string[];
+  /** How many more went in than are written out. */
+  more: number;
 }
 
 export interface Asking {

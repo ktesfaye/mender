@@ -1910,6 +1910,16 @@ function changelog(
       block.appendChild(line);
       lines.push(line);
     }
+    /* A shared repository puts hundreds in a release; the few above say what
+       it was, and the rest is only how many. */
+    if (one.more > 0) {
+      const line = document.createElement('div');
+      line.style.cssText =
+        'padding-left:35px;font-size:12px;line-height:1.35;color:#a89272;font-style:italic';
+      line.textContent = `and ${one.more} more`;
+      block.appendChild(line);
+      lines.push(line);
+    }
     list.appendChild(block);
   }
   root.appendChild(keyed(stays(list, 'log'), 'log'));

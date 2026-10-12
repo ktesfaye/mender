@@ -131,7 +131,7 @@ export interface Standing {
   /** When set, a continue is scheduled to send itself at this epoch ms. */
   carryOn?: number | null;
   /** The checkout's history by version, newest first. */
-  versions?: readonly { version: string | null; lines: readonly string[] }[];
+  versions?: readonly { version: string | null; lines: readonly string[]; more?: number }[];
   /** The subscription's five-hour window, when it has been read. */
   fiveHours?: FiveHours;
   /** Whether the session is still being woken and reading its history back. */
@@ -183,7 +183,13 @@ export function yardOf(from: Standing): Yard {
     ...(here ? { session: sessionOf(here, told, kit, from) } : {}),
     ...(from.fiveHours ? { fiveHours: from.fiveHours } : {}),
     ...(from.versions
-      ? { versions: from.versions.map((one) => ({ version: one.version, lines: [...one.lines] })) }
+      ? {
+          versions: from.versions.map((one) => ({
+            version: one.version,
+            lines: [...one.lines],
+            more: one.more ?? 0,
+          })),
+        }
       : {}),
     ...(from.workspaces?.length ? { workspaces: [...from.workspaces] } : {}),
     rail: tasks.map((task) =>

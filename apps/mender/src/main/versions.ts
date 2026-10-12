@@ -14,15 +14,25 @@ const ran = promisify(execFile);
  * the commits between two bumps are what went into the later one. A commit
  * newer than the last bump has not gone into any version yet, and says so.
  *
- * Tags are not asked. Most of these apps have never been tagged, and a version
- * that moved in the manifest without one is still the version.
+ * Where the manifest never moves on this branch, a big shared repository that
+ * bumps on release branches, the release tags say it instead. Those often carry
+ * the platform they shipped to, `1.4.0-android` beside `1.4.0-ios`, so the
+ * platform comes off and the two are one version, and each version holds what
+ * it has that the one before it did not.
  */
 export interface Version {
   /** Null for the commits since the last bump. */
   version: string | null;
   /** Newest first: each commit's subject, as somebody wrote it. */
   lines: string[];
+  /** How many more went in than are written out. */
+  more: number;
 }
+
+/** A busy repository puts hundreds of commits in a release; a few say enough. */
+const SHOWN = 3;
+/** And nobody reads back past this many versions in a corner this small. */
+const VERSIONS = 12;
 
 /** Where each kind of project keeps its version, and how that line reads. */
 const MANIFESTS: { file: string; line: RegExp }[] = [
@@ -55,7 +65,74 @@ export async function versionsOf(checkout: string): Promise<Version[]> {
     const [hash = '', subject = ''] = one.split('\x1f');
     return { hash: hash.trim(), subject: subject.trim() };
   });
-  return byVersion(commits, manifest ? bumpsIn(bumps, manifest.line) : new Map());
+  const moved = manifest ? bumpsIn(bumps, manifest.line) : new Map<string, string>();
+  if (!commits.some((one) => moved.has(one.hash))) {
+    const tagged = await byTags(git);
+    if (tagged.length) return tagged;
+  }
+  return byVersion(commits, moved);
+}
+
+/**
+ * The release tags, platform taken off, as versions newest first, each the
+ * commits it has that the version under it has not, and the commits on this
+ * branch since the newest at the top.
+ */
+async function byTags(git: (args: string[]) => Promise<string>): Promise<Version[]> {
+  const versions = releases((await git(['tag', '--list'])).split('\n')).slice(0, VERSIONS + 1);
+  if (!versions.length) return [];
+  const between = async (version: string | null, from: string[], not: string[]) => {
+    const range = [...from, ...(not.length ? ['--not', ...not] : [])];
+    const [log, count] = await Promise.all([
+      git(['log', '--no-merges', `-n${SHOWN}`, '--format=%s', ...range]),
+      git(['rev-list', '--no-merges', '--count', ...range]),
+    ]);
+    const lines = log
+      .split('\n')
+      .map((one) => one.trim())
+      .filter(Boolean)
+      .map(saying);
+    return { version, lines, more: Math.max(0, (Number(count.trim()) || 0) - lines.length) };
+  };
+  const all = await Promise.all([
+    between(null, ['HEAD'], versions[0]!.tags),
+    ...versions
+      .slice(0, VERSIONS)
+      .map((one, at) => between(one.version, one.tags, versions[at + 1]?.tags ?? [])),
+  ]);
+  return all.filter((one) => one.lines.length);
+}
+
+/** Which tags name a release, grouped by version, newest version first. */
+export function releases(tags: string[]): { version: string; tags: string[] }[] {
+  const found = new Map<string, string[]>();
+  for (const tag of tags.map((one) => one.trim())) {
+    const version = RELEASE.exec(tag)?.[1];
+    if (!version) continue;
+    found.set(version, [...(found.get(version) ?? []), tag]);
+  }
+  return [...found]
+    .map(([version, tags]) => ({ version, tags }))
+    .sort((a, b) => newer(b.version, a.version));
+}
+
+/* `v1.4.0`, `1.4.0-android`, `ios/1.4.0`, `release-1.4.0+212`: the version is
+   the numbers, and a platform either side or a build after a `+` is where and
+   how it shipped. A `-beta.2` is not a platform, so it is not a release. */
+const PLATFORM = '(?:android|ios|ipados|macos|mac|web|windows|linux|desktop|mobile|play|appstore)';
+const RELEASE = new RegExp(
+  `^(?:(?:release|${PLATFORM})[-_/@])?v?(\\d+(?:\\.\\d+){1,3})(?:\\+[\\w.]+)?(?:[-_/@]${PLATFORM})?$`,
+  'i'
+);
+
+function newer(a: string, b: string): number {
+  const x = a.split('.').map(Number);
+  const y = b.split('.').map(Number);
+  for (let at = 0; at < Math.max(x.length, y.length); at++) {
+    const d = (x[at] ?? 0) - (y[at] ?? 0);
+    if (d) return d;
+  }
+  return 0;
 }
 
 /**
@@ -70,17 +147,19 @@ export function byVersion(
   bumps: ReadonlyMap<string, string>
 ): Version[] {
   const out: Version[] = [];
-  let open: Version = { version: null, lines: [] };
+  let open: Version = { version: null, lines: [], more: 0 };
   for (const one of commits) {
     const bumped = bumps.get(one.hash);
     if (bumped !== undefined && bumped !== open.version) {
       if (open.lines.length) out.push(open);
-      open = { version: bumped, lines: [] };
+      open = { version: bumped, lines: [], more: 0 };
     }
-    if (one.subject) open.lines.push(saying(one.subject));
+    if (!one.subject) continue;
+    if (open.lines.length < SHOWN) open.lines.push(saying(one.subject));
+    else open.more++;
   }
   if (open.lines.length) out.push(open);
-  return out;
+  return out.slice(0, VERSIONS + 1);
 }
 
 /** Which commits set the version, and what to. */

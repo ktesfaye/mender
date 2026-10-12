@@ -25,6 +25,8 @@ export type BoardPicture = z.infer<typeof boardPictureSchema>;
 export const boardVersionSchema = z.object({
   version: z.string().nullable(),
   lines: z.array(z.string()),
+  /** How many more went in than are written out. */
+  more: z.number().default(0),
 });
 
 export type BoardVersion = z.infer<typeof boardVersionSchema>;

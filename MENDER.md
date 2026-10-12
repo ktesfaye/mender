@@ -215,7 +215,11 @@ then it says "waiting its turn" and is still yours to take back. And at the foot
 project's changelog, in the same small squares and cream lines the glance at
 the other sessions used to be written in: each version on its own line and
 what went into it bulleted and indented under it, newest first and scrolling, read straight off whichever commits moved
-the version in the project's own manifest rather than kept anywhere. What it
+the version in the project's own manifest rather than kept anywhere, or off
+its release tags where the manifest never moves on that branch, `1.4.0-android`
+and `1.4.0-ios` one version between them. Only the newest few lines of each
+are written out and the rest is a count, since a shared repository can put
+hundreds into one release. What it
 said is in the middle, read top to bottom the way a conversation is: the answers
 before dimmed at the top and the newest set large under them, the column
 starting under its heading and only scrolling to keep the newest in view once
