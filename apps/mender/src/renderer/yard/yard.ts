@@ -1639,11 +1639,13 @@ function asked(
   const coming = yard.session?.waiting ?? [];
   const bare = !yard.session?.notes.length && !coming.length;
   /* The changelog sits at the foot of the column, so the post and the notes
-     on it get everything above that and no more. Either can be put away, and
-     then the other has the column. */
+     on it get everything above that and no more. An empty post still leaves
+     it where it will be once something is said, rather than it dropping down
+     the column under the first note. Either can be put away, and then the
+     other has the column. */
   const under = hidden('changelog')
     ? floor
-    : changelog(root, at, yard, floor, hidden('asked') || bare, hidden('asked') || bare);
+    : changelog(root, at, yard, floor, hidden('asked') || bare, hidden('asked'));
   if (hidden('asked') || bare) return;
   region('asked', at, HEAD.label, under - 20);
   /* Clear air between the last of the post and the changelog's rule, rather
