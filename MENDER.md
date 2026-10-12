@@ -1128,7 +1128,11 @@ what macOS actually needs and nothing it doesn't: About Mender, Settings on
 ⌘, — the one door in from outside the wood — Hide and Quit, plain Edit roles
 for the write line's cut and copy and paste, and Window. No Reload sitting
 where a stray press could drop him out of whatever board was open, no raw
-developer tools, no File or View or Help standing over nothing.
+developer tools, no File or Help standing over nothing. View holds the one
+thing it should: ⌘+ and ⌘− make everything written bigger and smaller the
+way a browser does, ⌘0 puts it back, and it is kept across a restart. The
+island does not grow with it, since its art only reads at the scale it was
+drawn; the writing over it grows and rewraps to the window.
 
 The board's timber is the dock, widened by `tools/make-board.py` out of the
 artist's own planks, and the writing is a handful of faces, all vendored in

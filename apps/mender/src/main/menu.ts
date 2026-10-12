@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron';
 import { MENDER_MENU_CHANNEL } from '@shared/channels';
+import { changeTextSize } from './text-size';
 
 /**
  * The native menu bar, cut down to what Mender actually does.
@@ -12,8 +13,8 @@ import { MENDER_MENU_CHANNEL } from '@shared/channels';
  * with the two or three items macOS actually requires: About, Settings
  * (which only the page can open, so it is asked for over
  * `MENDER_MENU_CHANNEL`), Quit, and the standard Edit roles the write line
- * needs for cut/copy/paste. No File, View, or Help menu — there is nothing
- * under any of them.
+ * needs for cut/copy/paste, and View for the size of the writing. No File or
+ * Help menu — there is nothing under either.
  */
 export function installAppMenu(): void {
   if (process.platform === 'darwin') {
@@ -57,6 +58,23 @@ export function installAppMenu(): void {
     ],
   };
 
+  const viewMenu: MenuItemConstructorOptions = {
+    label: 'View',
+    submenu: [
+      { label: 'Bigger', accelerator: 'CmdOrCtrl+=', click: () => changeTextSize(1) },
+      // ⌘+ on the keyboard is ⌘⇧=; this catches it without showing twice.
+      {
+        label: 'Bigger',
+        accelerator: 'CmdOrCtrl+Plus',
+        click: () => changeTextSize(1),
+        visible: false,
+        acceleratorWorksWhenHidden: true,
+      },
+      { label: 'Smaller', accelerator: 'CmdOrCtrl+-', click: () => changeTextSize(-1) },
+      { label: 'Actual Size', accelerator: 'CmdOrCtrl+0', click: () => changeTextSize(0) },
+    ],
+  };
+
   const windowMenu: MenuItemConstructorOptions = {
     label: 'Window',
     // Close keeps its place but not its key: ⌘W is the village's, and closes
@@ -69,7 +87,9 @@ export function installAppMenu(): void {
   };
 
   const template: MenuItemConstructorOptions[] =
-    process.platform === 'darwin' ? [appMenu, editMenu, windowMenu] : [editMenu, windowMenu];
+    process.platform === 'darwin'
+      ? [appMenu, editMenu, viewMenu, windowMenu]
+      : [editMenu, viewMenu, windowMenu];
 
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }

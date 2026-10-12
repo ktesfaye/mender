@@ -1,8 +1,9 @@
 import { CELL, type Layout } from '@mender/village';
 import { Container, Sprite, type Texture } from 'pixi.js';
+import { pageZoom } from '../page-zoom';
+import type { Lamp } from './crowd';
 import { folkTexture } from './folk';
 import { SHADOW_TINT, type Building } from './scene';
-import type { Lamp } from './crowd';
 import type { Paths, Spot } from './walkers';
 
 /**
@@ -251,7 +252,8 @@ export class Fleet {
   *lit(): IterableIterator<Lamp> {
     if (!this.night) return;
     for (const one of this.vessels) if (one.view.alpha > 0.3) yield one.lamp;
-    for (const one of this.floaters) if (one.lamp && Math.sin(one.phase * 2.2) > 0.6) yield one.lamp;
+    for (const one of this.floaters)
+      if (one.lamp && Math.sin(one.phase * 2.2) > 0.6) yield one.lamp;
   }
 
   /** Something was pushed: a sloop is loaded at that district's dock and sails. */
@@ -275,7 +277,7 @@ export class Fleet {
   ): void {
     this.night = night;
     this.view = view;
-    const zoom = window.innerWidth / view.width;
+    const zoom = (window.innerWidth * pageZoom()) / view.width;
     this.scale = Math.min(1.5, Math.max(1, 0.45 / zoom));
     this.traffic(seconds);
     const resort = now - this.sorted > 400;
@@ -390,13 +392,25 @@ export class Fleet {
     for (let out = 0; out <= length * 1.5; out += 8) {
       let at: Spot & { heading: number };
       if (facing === 'N') {
-        at = { x: box.x + box.width + beam / 2 + 2, y: tip.y + length / 2 - 10 - out, heading: -Math.PI / 2 };
+        at = {
+          x: box.x + box.width + beam / 2 + 2,
+          y: tip.y + length / 2 - 10 - out,
+          heading: -Math.PI / 2,
+        };
       } else if (facing === 'S') {
-        at = { x: box.x + box.width + beam / 2 + 2, y: tip.y - length / 2 + 10 + out, heading: Math.PI / 2 };
+        at = {
+          x: box.x + box.width + beam / 2 + 2,
+          y: tip.y - length / 2 + 10 + out,
+          heading: Math.PI / 2,
+        };
       } else if (facing === 'E') {
         at = { x: tip.x - length / 2 + 14 + out, y: box.y + box.height + beam / 2 + 1, heading: 0 };
       } else {
-        at = { x: tip.x + length / 2 - 14 - out, y: box.y + box.height + beam / 2 + 1, heading: Math.PI };
+        at = {
+          x: tip.x + length / 2 - 14 - out,
+          y: box.y + box.height + beam / 2 + 1,
+          heading: Math.PI,
+        };
       }
       if (this.afloat(at, at.heading, length, beam)) return at;
     }
@@ -457,7 +471,9 @@ export class Fleet {
     }
     for (let i = 0; i < 2; i++) {
       const at = this.someWater(1, 2);
-      if (at) for (let d = 0; d < 3; d++) this.floater('duck', { x: at.x + d * 10, y: at.y + (d % 2) * 6 });
+      if (at)
+        for (let d = 0; d < 3; d++)
+          this.floater('duck', { x: at.x + d * 10, y: at.y + (d % 2) * 6 });
     }
     for (let i = 0; i < 2; i++) {
       const at = this.someWater(3, 9);
@@ -915,7 +931,10 @@ export class Fleet {
   /** Ducks paddle along the shore a little way at a time, leaving rings. */
   private paddle(one: Floater, now: number, seconds: number): void {
     if (!one.target || Math.random() < 0.002) {
-      const spot = { x: one.x + (Math.random() * 2 - 1) * 60, y: one.y + (Math.random() * 2 - 1) * 30 };
+      const spot = {
+        x: one.x + (Math.random() * 2 - 1) * 60,
+        y: one.y + (Math.random() * 2 - 1) * 30,
+      };
       const clear = this.clearAt(spot);
       one.target = clear >= 1 && clear <= 3 ? spot : null;
       return;
@@ -1010,7 +1029,10 @@ export class Fleet {
       const clear = this.clear[i] ?? 0;
       if (clear >= low && clear <= high) {
         const at = this.centre(i);
-        return { x: at.x + (Math.random() - 0.5) * CELL * 0.6, y: at.y + (Math.random() - 0.5) * CELL * 0.6 };
+        return {
+          x: at.x + (Math.random() - 0.5) * CELL * 0.6,
+          y: at.y + (Math.random() - 0.5) * CELL * 0.6,
+        };
       }
     }
     return null;
@@ -1125,7 +1147,10 @@ function pier(from: Spot, to: Spot): Spot[] {
   const steps = Math.max(1, Math.ceil(length / 8));
   const out: Spot[] = [];
   for (let s = 1; s <= steps; s++) {
-    out.push({ x: from.x + ((to.x - from.x) * s) / steps, y: from.y + ((to.y - from.y) * s) / steps });
+    out.push({
+      x: from.x + ((to.x - from.x) * s) / steps,
+      y: from.y + ((to.y - from.y) * s) / steps,
+    });
   }
   return out;
 }

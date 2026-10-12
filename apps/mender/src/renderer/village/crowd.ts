@@ -1,5 +1,6 @@
 import { CELL, type District, type Layout } from '@mender/village';
 import { Container, Sprite, type Texture } from 'pixi.js';
+import { pageZoom } from '../page-zoom';
 import { Fleet } from './fleet';
 import { folkTexture } from './folk';
 import { SHADOW_TINT, type Building } from './scene';
@@ -33,15 +34,7 @@ import type { Paths, Spot } from './walkers';
  * whole crowd is capped well under what would ever be felt.
  */
 
-type Kind =
-  | 'town'
-  | 'runner'
-  | 'traveller'
-  | 'animal'
-  | 'crow'
-  | 'cart'
-  | 'wagon'
-  | 'rider';
+type Kind = 'town' | 'runner' | 'traveller' | 'animal' | 'crow' | 'cart' | 'wagon' | 'rider';
 type Dir = 'down' | 'up' | 'side';
 
 const TOWNSFOLK = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -329,7 +322,7 @@ export class Crowd {
     this.routes = 0;
     if (view) {
       this.view = view;
-      const zoom = window.innerWidth / view.width;
+      const zoom = (window.innerWidth * pageZoom()) / view.width;
       this.roadScale = Math.min(1.8, Math.max(1, 0.5 / zoom));
     }
     // Counting heads is a once-a-second job, not a once-a-frame one.
@@ -597,7 +590,7 @@ export class Crowd {
       mover.view.alpha -= seconds * 2.5;
       if (mover.view.alpha <= 0) mover.gone = true;
     }
-    const pace = walking ? WALK_FRAME[mover.kind] ?? 160 : 700;
+    const pace = walking ? (WALK_FRAME[mover.kind] ?? 160) : 700;
     let changed = walking;
     if (now - mover.frameAt > pace) {
       mover.frameAt = now;

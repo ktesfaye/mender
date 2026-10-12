@@ -32,8 +32,8 @@ const SETTLE_MS = 220;
 
 export function createCamera(pixi: Application): Viewport {
   const viewport = new Viewport({
-    screenWidth: window.innerWidth,
-    screenHeight: window.innerHeight,
+    screenWidth: pixi.screen.width,
+    screenHeight: pixi.screen.height,
     worldWidth: 6000,
     worldHeight: 4000,
     events: pixi.renderer.events,
@@ -55,7 +55,7 @@ export function createCamera(pixi: Application): Viewport {
     settle = setTimeout(() => snapToRung(viewport), SETTLE_MS);
   });
 
-  window.addEventListener('resize', () => viewport.resize(window.innerWidth, window.innerHeight));
+  window.addEventListener('resize', () => viewport.resize(pixi.screen.width, pixi.screen.height));
   return viewport;
 }
 

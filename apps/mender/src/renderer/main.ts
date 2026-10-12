@@ -67,6 +67,7 @@ import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
 import { answerFor, SEND_ALL } from './board/work';
 import { watchGrip } from './grip';
 import { ran } from './job';
+import { pageZoom } from './page-zoom';
 import { drawingNow, nudge, setPace, setScenery, watched } from './pace';
 import { Atmosphere, loadEmitters, type Lit } from './village/atmosphere';
 import {
@@ -145,7 +146,8 @@ function stamp(): string {
 async function boot(): Promise<void> {
   const pixi = new Application();
   await pixi.init({
-    resizeTo: window,
+    width: Math.round(window.innerWidth * pageZoom()),
+    height: Math.round(window.innerHeight * pageZoom()),
     background: '#2d5d6b',
     antialias: false,
     roundPixels: true,
@@ -159,6 +161,19 @@ async function boot(): Promise<void> {
   setPace(pixi);
   pixi.renderer.canvas.style.imageRendering = 'pixelated';
   document.body.appendChild(pixi.canvas);
+  /* The canvas fills the page but is counted in the screen's pixels, so ⌘+
+     makes the writing bigger and leaves the art at the scale it was drawn. */
+  const fitCanvas = (): void => {
+    const zoom = pageZoom();
+    pixi.renderer.resize(
+      Math.round(window.innerWidth * zoom),
+      Math.round(window.innerHeight * zoom)
+    );
+    pixi.canvas.style.width = `${window.innerWidth}px`;
+    pixi.canvas.style.height = `${window.innerHeight}px`;
+  };
+  fitCanvas();
+  window.addEventListener('resize', fitCanvas);
 
   const camera = createCamera(pixi);
   /* The camera stands in a frame that sits exactly on the screen and never
@@ -222,8 +237,8 @@ async function boot(): Promise<void> {
           drawn.pennants.show(null);
           editing.arrive(project);
         },
-        over: (x, y) => editing?.arriveOver({ x, y }),
-        drop: (x, y) => void editing?.arriveAt({ x, y }),
+        over: (x, y) => editing?.arriveOver({ x: x * pageZoom(), y: y * pageZoom() }),
+        drop: (x, y) => void editing?.arriveAt({ x: x * pageZoom(), y: y * pageZoom() }),
       }
     );
     /* The rack's sky slot wears what the sky is doing, kept up to date. */
@@ -720,7 +735,10 @@ async function boot(): Promise<void> {
         const now = performance.now();
         if (now - tappedAt < 400) return;
         tappedAt = now;
-        smartZoom(camera, drawn.island, { x: event.clientX, y: event.clientY });
+        smartZoom(camera, drawn.island, {
+          x: event.clientX * pageZoom(),
+          y: event.clientY * pageZoom(),
+        });
       },
       { capture: true, passive: false }
     );
@@ -5942,7 +5960,7 @@ async function boot(): Promise<void> {
           await putAway(id);
         },
         sessions: (id) => tasks.filter((task) => task.project === id).length,
-        covered: (x, y) => yard.covers(x, y),
+        covered: (x, y) => yard.covers(x / pageZoom(), y / pageZoom()),
         reach: (map) => holdToMap(camera, map),
         flags: () => drawn.pennants,
         plant: async (district, foot) => {
@@ -6026,7 +6044,7 @@ async function boot(): Promise<void> {
       event.preventDefault();
       /* On land, a right-click brings that district into focus: the camera
          flies to frame it, nothing opens. The water keeps the menu. */
-      const point = camera.toWorld(event.clientX, event.clientY);
+      const point = camera.toWorld(event.clientX * pageZoom(), event.clientY * pageZoom());
       const aim = drawn.ground.at(point.x, point.y);
       if (aim && aim.district.id !== CAMP) {
         flyToDistrict(camera, districtBounds(aim.district));

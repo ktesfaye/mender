@@ -3927,3 +3927,13 @@ to Fable 5.1 through `/model` and the tag, the violet model, the rail mark
 and the list marking all showed; hovering the model line showed the session's
 share of the window and leaving it hid it.
 
+### ⌘+ and ⌘− size the writing (2026-10-12) — done
+
+A View menu with Bigger (⌘+), Smaller (⌘−) and Actual Size (⌘0) zooms the
+page a tenth a press, kept in `text-size.json` across a restart. The island's
+canvas is counted in screen pixels rather than the page's, so the art stays
+at the scale it was drawn and only the writing grows; everything that carries
+a point between the page and the island goes through `page-zoom.ts`. Driven
+in a dev instance: three presses and the island stayed pixel for pixel the
+same while the rack, the yard and its columns grew and rewrapped, a hover lit
+the right district and a flag's name still came off its own flag.

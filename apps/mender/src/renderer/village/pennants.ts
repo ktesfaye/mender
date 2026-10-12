@@ -1,5 +1,6 @@
 import type { Viewport } from 'pixi-viewport';
 import { Container, Sprite, Texture } from 'pixi.js';
+import { pageZoom } from '../page-zoom';
 import { SHADOW_TINT, type Foot } from './scene';
 
 /**
@@ -377,8 +378,10 @@ export class Pennants {
       x: post.foot.x + (post.reach + GAP) * across,
       y: post.foot.y + (FLAG.y + FLAG.h / 2) * across,
     });
-    this.tag.style.transform = `translate(${Math.round(tail.x)}px, ${Math.round(
-      tail.y - (TAG * scale) / 2
+    /* The tag is the page's and the post is the island's, which ⌘+ sets apart. */
+    const zoom = pageZoom();
+    this.tag.style.transform = `translate(${Math.round(tail.x / zoom)}px, ${Math.round(
+      tail.y / zoom - (TAG * scale) / 2
     )}px) scale(${scale})`;
   };
 }

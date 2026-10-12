@@ -19,9 +19,9 @@ import { installDragOut } from './drag';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
 import { createFiveHours } from './five-hours';
-import { watchHungry } from './hungry';
 import { createGitHubStatus } from './github';
 import { installGrip } from './grip';
+import { watchHungry } from './hungry';
 import { logWindow } from './logging';
 import { installAppMenu } from './menu';
 import { watchMissed } from './missed';
@@ -36,6 +36,7 @@ import { createSessionUsageReader } from './session-usage';
 import { createSkyController } from './sky';
 import { createTasks } from './tasks';
 import { createTasksController } from './tasks-controller';
+import { restoreTextSize } from './text-size';
 import { createTuiSessions, mergedMoods } from './tui-sessions';
 import { createVillageController } from './village';
 import { restoredBounds, watchWindowBounds } from './window-state';
@@ -181,6 +182,7 @@ async function openVillageWindow(): Promise<BrowserWindow> {
     },
   });
   watchWindowBounds(window);
+  await restoreTextSize(window);
 
   window.once('ready-to-show', () => {
     /* WITH THE DEBUG PORT OPEN THE WINDOW IS NEVER ON HIS SCREEN AT ALL.

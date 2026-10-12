@@ -13,6 +13,8 @@ declare global {
   interface Window {
     mender: {
       requestWirePort: () => Promise<void>;
+      /** How many of the screen's pixels one of the page's is, ⌘+ and ⌘− having moved it. */
+      zoom: () => number;
       /** Where a dropped file came from on this machine, or '' if nowhere. */
       pathOf: (file: File) => string;
       /** Put something on this machine's clipboard. */

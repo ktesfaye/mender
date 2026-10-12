@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { requestWirePort, type WindowLike } from '@emdash/wire/rpc';
-import { clipboard, contextBridge, ipcRenderer, shell, webUtils } from 'electron';
+import { clipboard, contextBridge, ipcRenderer, shell, webFrame, webUtils } from 'electron';
 import {
   MENDER_ATTEND_CHANNEL,
   MENDER_CONFIRM_QUIT_CHANNEL,
@@ -118,6 +118,8 @@ ipcRenderer.on(MENDER_MISSED_CHANNEL, (_event, lines: string[]) => {
 
 contextBridge.exposeInMainWorld('mender', {
   requestWirePort: () => requestWirePort({ ipcRenderer, window }, { channel: MENDER_WIRE_CHANNEL }),
+  /* How many screen points one of the page's pixels is, ⌘+ and ⌘− having moved it. */
+  zoom: () => webFrame.getZoomFactor(),
   /* Where a dropped file came from. The browser hands the renderer bytes and a
      name and deliberately not a path; a file on this machine that somebody
      dragged in from the Finder has one, and it is the only thing worth saying
