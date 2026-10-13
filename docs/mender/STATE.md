@@ -883,7 +883,11 @@ and let go everything eases into place and the order is kept on this machine;
 the project's own folder stays first and the dashed board last, and a press
 that never moved still walks in. Driven in a dev copy with four workspaces:
 dragged right and left, kept across a reload, a plain press still walked in,
-and a redraw mid-drag left the board in hand.
+and a redraw mid-drag left the board in hand. Control and a number walks into
+the nth board along the beam, in the order it hangs, the way command and a
+number walks the rail. Driven in a dev copy with five boards: control-4 stood
+in the fourth, control-1 went back to the folder, command-1 still took the
+first lantern.
 
 A project can be forgotten too, from the bottom of its own page, which is
 what pressing its name opens, because forgetting a place is not something you

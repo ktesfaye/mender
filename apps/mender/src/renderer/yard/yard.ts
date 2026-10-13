@@ -1686,7 +1686,7 @@ const BEAM_ORDER_KEY = 'mender.beam-order';
 
 /** The workspaces in the order they were last left on the beam, any new one
     after them in the order it came, the project's own folder first. */
-function inBeamOrder<T extends { id: string }>(boards: readonly T[]): T[] {
+export function inBeamOrder<T extends { id: string }>(boards: readonly T[]): T[] {
   const saved = beamOrder();
   if (!saved.length) return [...boards];
   const rank = (one: T, at: number): number => {

@@ -116,7 +116,7 @@ import {
   type WorktreeRow,
   type Windmill,
 } from './yard/windmill';
-import { makeYard } from './yard/yard';
+import { inBeamOrder, makeYard } from './yard/yard';
 
 /** The kinds of picture an agent can actually be shown. */
 const CARRIED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -5757,6 +5757,15 @@ async function boot(): Promise<void> {
       },
       /** A key held with command. One table says what it means. */
       ordered: (event) => {
+        /* Control and a number is the nth board along the beam, the way
+           command and a number is the nth lantern along the rail. */
+        if (event.ctrlKey && !event.metaKey && /^[1-9]$/.test(event.key)) {
+          const project = open ? projectOn(open.district) : undefined;
+          const board = project ? inBeamOrder(boardsFor(project))[Number(event.key) - 1] : null;
+          if (!board) return false;
+          if (!board.here) go(`workspace:${board.id}`);
+          return true;
+        }
         const hanging = open ? tasksOn(open.district).length : projects.length;
         /* A shifted letter is its own chord, the way command-shift-T is not
            command-T; one nobody has bound still means the plain letter. */
