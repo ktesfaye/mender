@@ -166,6 +166,8 @@ export interface Tasks {
   /** Deletes a workspace entirely: its worktree, its branch, and every
       session in it. */
   dropWorkspace(id: string): Promise<void>;
+  /** Writes something else on its signboard. Its branch keeps its name. */
+  renameWorkspace(id: string, name: string): Promise<void>;
   /** The branches this project's checkout already knows about, for the
       naming step to offer alongside a fresh one. */
   branches(project: string): Promise<string[]>;
@@ -677,6 +679,14 @@ export function createTasks(
       }
       await save(tasks.filter((task) => task.workspace !== id));
       await saveWorkspaces((await rawWorkspaces()).filter((each) => each.id !== id));
+    },
+
+    async renameWorkspace(id, name) {
+      const written = name.trim();
+      if (!written) return;
+      await saveWorkspaces(
+        (await rawWorkspaces()).map((each) => (each.id === id ? { ...each, name: written } : each))
+      );
     },
 
     async list(project) {

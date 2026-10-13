@@ -1411,6 +1411,13 @@ async function boot(): Promise<void> {
         return;
       }
       if (id.startsWith('workspace-drop:')) {
+      if (id.startsWith('workspace-name:')) {
+        const [which = '', name = ''] = id.slice(15).split('\t');
+        workspaces = workspaces.map((each) => (each.id === which ? { ...each, name } : each));
+        redrawBoards();
+        void client.tasks.renameWorkspace({ id: which, name });
+        return;
+      }
         void dropWorkspace(id.slice(15));
         return;
       }

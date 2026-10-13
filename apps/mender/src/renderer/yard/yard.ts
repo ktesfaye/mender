@@ -317,6 +317,9 @@ function moves<T extends HTMLElement>(el: T): T {
     change, and a rename has to survive the agent saying something meanwhile. */
 let renaming: { id: string; written: string; caret: number } | null = null;
 
+/** The same for a workspace's signboard, which the beam redraws as often. */
+let renamingBoard: { id: string; written: string } | null = null;
+
 /** How long a switch waits on a waking session before showing it waking. */
 const WAKE_HELD_MS = 320;
 
@@ -1264,6 +1267,71 @@ function scrims(root: HTMLElement): void {
         { left: 0, right: 0, bottom: 0, height: 160 },
         'background:linear-gradient(0deg,rgba(18,13,7,.92),rgba(18,13,7,0))'
       ),
+/** A workspace's signboard as a line you write on, painted on the board.
+    Return keeps it, Escape or an empty line puts the old one back. */
+function boardRenamer(
+  face: HTMLElement,
+  id: string,
+  named: string,
+  does: Doings
+): HTMLInputElement {
+  const input = document.createElement('input');
+  input.value = renamingBoard?.written ?? named;
+  input.spellcheck = false;
+  input.setAttribute('aria-label', 'Workspace name');
+  input.style.cssText = [
+    'font:inherit',
+    'color:inherit',
+    'caret-color:#482510',
+    'background:transparent',
+    'border:none',
+    'border-bottom:1px solid #482510',
+    'outline:none',
+    'padding:0',
+    'margin:0',
+  ].join(';');
+  const fit = (): void => {
+    input.style.width = `${Math.max(input.value.length, 4) + 1}ch`;
+  };
+  fit();
+  let done = false;
+  const finish = (keep: boolean): void => {
+    if (done) return;
+    done = true;
+    const written = input.value.trim();
+    renamingBoard = null;
+    const keeping = keep && written && written !== named;
+    face.textContent = keeping ? written : named;
+    if (keeping) does.press(`workspace-name:${id}\t${written}`);
+  };
+  input.addEventListener('input', () => {
+    if (renamingBoard) renamingBoard = { ...renamingBoard, written: input.value };
+    fit();
+  });
+  input.addEventListener('mousedown', (event) => event.stopPropagation());
+  input.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      finish(true);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      finish(false);
+    }
+  });
+  input.addEventListener('blur', () => {
+    if (input.isConnected) finish(true);
+  });
+  requestAnimationFrame(() => {
+    if (!input.isConnected) return;
+    input.focus();
+    const at = input.value.length;
+    if (input.value === named) input.select();
+    else input.setSelectionRange(at, at);
+  });
+  return input;
+}
+
       'scrim:down'
     )
   );
@@ -1517,6 +1585,21 @@ function signboards(
     const cords = document.createElement('div');
     cords.className = 'cords';
     cords.append(document.createElement('span'), document.createElement('span'));
+    /* The one you are standing in is written over with a double press, the
+       same as a session's name at the top. Its branch keeps its old name. */
+    if (board.here && board.id) {
+      hung_.title = 'double-click to rename it';
+      const write = (): void => {
+        renamingBoard ??= { id: board.id, written: board.name };
+        face.replaceChildren(boardRenamer(face, board.id, board.name, does));
+      };
+      face.addEventListener('dblclick', (event) => {
+        event.preventDefault();
+        window.getSelection()?.removeAllRanges();
+        write();
+      });
+      if (renamingBoard?.id === board.id) write();
+    }
     const face = document.createElement('span');
     face.className = 'board';
     face.textContent = board.name;

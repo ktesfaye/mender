@@ -873,7 +873,10 @@ a workspace of its own the first time the app opens. Driven in a dev copy on a
 scratch repository: an old isolated session came up as its own board, a press
 switched the rail across, command-N cut a real worktree and woke a session in
 it, a second session joined it, everything came back after a restart, and two
-right-clicks took the worktree down.
+right-clicks took the worktree down. The one you are standing in is renamed by double-pressing it
+and writing over it on the board itself, return keeping it and Escape putting
+it back; only the signboard changes, the branch keeps its name. Driven in a dev
+copy on a scratch repository: renamed, kept across the store, and Escape left it.
 
 A project can be forgotten too, from the bottom of its own page, which is
 what pressing its name opens, because forgetting a place is not something you

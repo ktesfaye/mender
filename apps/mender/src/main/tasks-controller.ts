@@ -14,6 +14,7 @@ export function createTasksController(tasks: Tasks): Controller {
     cutWorkspace: ({ project, name }) => tasks.cutWorkspace(project, name),
     dropCost: ({ id }) => tasks.dropCost(id),
     dropWorkspace: ({ id }) => tasks.dropWorkspace(id),
+    renameWorkspace: ({ id, name }) => tasks.renameWorkspace(id, name),
     branches: ({ project }) => tasks.branches(project),
     claudeHistory: ({ project }) => tasks.claudeHistory(project),
     claudeTold: ({ project, id, mtimeMs, dir }) => tasks.claudeTold(project, id, mtimeMs, dir),

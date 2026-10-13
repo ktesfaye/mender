@@ -137,6 +137,11 @@ export const tasksContract = defineContract({
   /** Deletes a workspace entirely: its worktree, its branch and every
       session in it. */
   dropWorkspace: procedure({ input: z.object({ id: z.string() }), output: z.void() }),
+  /** Writes something else on its signboard. Its branch keeps its name. */
+  renameWorkspace: procedure({
+    input: z.object({ id: z.string(), name: z.string() }),
+    output: z.void(),
+  }),
   /** Start a session, in the project's own folder or a worktree cut for it. */
   begin: fallible({
     input: z.object({
