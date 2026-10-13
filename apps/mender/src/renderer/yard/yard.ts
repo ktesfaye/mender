@@ -3776,8 +3776,10 @@ function ground(
   }
   patch.appendChild(strip);
 
-  const heading = box({ left: 14, top: 12 }, 'white-space:nowrap;pointer-events:none');
-  heading.appendChild(exact(atTheFire(hands), 14, '#ffc98a'));
+  const heading = box({ left: 14, right: 14, top: 12 }, 'pointer-events:none');
+  const said = exact(atTheFire(hands), 14, '#ffc98a');
+  said.style.whiteSpace = 'normal';
+  heading.appendChild(said);
   patch.appendChild(heading);
   root.appendChild(patch);
   /* First sight is the fire in the middle of them. */
@@ -3791,12 +3793,15 @@ function ground(
     'display:flex;flex-direction:column'
   );
   table.style.pointerEvents = 'auto';
-  table.appendChild(handRow(null, 0, at.wide, does, lit));
+  /* Commands spend no tokens, so a table of nothing but commands has no
+     tokens column at all and the names take its room. */
+  const counted = hands.some((one) => !one.command);
+  table.appendChild(handRow(null, 0, at.wide, counted, does, lit));
   const list = document.createElement('div');
   list.style.cssText = `display:flex;flex-direction:column;max-height:${GROUND.row * GROUND.rows}px;overflow-y:auto;scrollbar-width:none`;
   const most = Math.max(1, ...hands.map((one) => one.tokenCount ?? 0));
   ordered.forEach((hand) => {
-    const one = handRow(hand, most, at.wide, does, lit);
+    const one = handRow(hand, most, at.wide, counted, does, lit);
     rows.set(hand.id, one);
     list.appendChild(one);
   });
@@ -4011,6 +4016,7 @@ function handRow(
   hand: Hand | null,
   most: number,
   wide: number,
+  counted: boolean,
   does: Doings,
   lit: (id: string, on: boolean, from?: 'row') => void
 ): HTMLElement {
@@ -4018,13 +4024,18 @@ function handRow(
   line.className = hand ? 'yard-hand-row' : '';
   line.style.cssText = `position:relative;display:flex;align-items:center;flex:none;height:${GROUND.row}px;border-bottom:1px solid rgba(244,227,192,.1)`;
   const narrow = wide < 340;
-  const W = narrow ? { run: 62, tok: 98, x: 18 } : { run: 80, tok: 124, x: 20 };
+  /* Under a roomy width the tokens are only their figure: a bar there is
+     taken out of the names, which are what the line is read for. */
+  const barred = wide >= 440;
+  const W = narrow ? { run: 62, tok: 50 } : { run: 80, tok: barred ? 124 : 56 };
+  if (!counted) W.tok = 0;
   const size = narrow ? 12 : 13;
   const lead = 18;
-  const nameWide = Math.max(60, wide - lead - W.run - W.tok - W.x);
-  const cell = (width: number, child: HTMLElement, pad = 0): HTMLElement => {
+  /* The name takes whatever the clock and the tokens leave. The cross holds
+     no room of its own: it is laid over the end of the line when pointed at. */
+  const cell = (width: number | 'rest', child: HTMLElement, pad = 0): HTMLElement => {
     const it = document.createElement('div');
-    it.style.cssText = `flex:none;width:${width}px;box-sizing:border-box;padding-right:${pad}px;overflow:hidden;display:flex;align-items:center;gap:6px`;
+    it.style.cssText = `${width === 'rest' ? 'flex:1 1 0;min-width:0' : `flex:none;width:${width}px`};box-sizing:border-box;padding-right:${pad}px;overflow:hidden;display:flex;align-items:center;gap:6px`;
     it.appendChild(child);
     return it;
   };
@@ -4036,9 +4047,9 @@ function handRow(
       return it;
     };
     line.appendChild(cell(lead, document.createElement('span')));
-    line.appendChild(cell(nameWide, head('HAND'), 12));
+    line.appendChild(cell('rest', head('HAND'), 12));
     line.appendChild(cell(W.run, head('RUNNING'), 8));
-    line.appendChild(cell(W.tok, head('TOKENS')));
+    if (counted) line.appendChild(cell(W.tok, head('TOKENS')));
     return line;
   }
 
@@ -4054,10 +4065,11 @@ function handRow(
   const name = exact(hand.errand, size, ink);
   name.style.cssText += ';overflow:hidden;text-overflow:ellipsis;min-width:0';
   name.title = hand.said;
-  line.appendChild(cell(nameWide, name, 12));
+  const named = cell('rest', name, 12);
+  line.appendChild(named);
 
   const costs = document.createElement('div');
-  costs.style.cssText = 'display:flex;align-items:center';
+  costs.style.cssText = 'display:flex;align-items:center;flex:none';
   const clock = exact(
     out && hand.since ? longFor(Date.now() - hand.since) : hand.ran ? longFor(hand.ran) : '',
     13,
@@ -4069,7 +4081,7 @@ function handRow(
   bar.style.cssText = `display:flex;gap:${narrow ? 1 : 2}px;flex:none`;
   const filled = hand.tokenCount ? Math.max(1, Math.round((hand.tokenCount / most) * 10)) : 0;
   /* A command spends no tokens of its own, so it has no bar to fill. */
-  for (let k = 0; k < (hand.command ? 0 : 10); k += 1) {
+  for (let k = 0; k < (hand.command || !barred ? 0 : 10); k += 1) {
     const one = document.createElement('span');
     const on = k < filled;
     one.style.cssText = `width:${narrow ? 4 : 5}px;height:12px;background:${
@@ -4077,9 +4089,11 @@ function handRow(
     }`;
     bar.appendChild(one);
   }
-  const tokens = cell(W.tok, bar);
-  tokens.appendChild(exact(hand.tokenCount ? tokensShort(hand.tokenCount) : '', size, ink));
-  costs.appendChild(tokens);
+  if (counted) {
+    const tokens = cell(W.tok, bar);
+    tokens.appendChild(exact(hand.tokenCount ? tokensShort(hand.tokenCount) : '', size, ink));
+    costs.appendChild(tokens);
+  }
   line.appendChild(costs);
 
   /* What the first press on the cross costs, standing where the clock and the
@@ -4099,7 +4113,10 @@ function handRow(
     11,
     '#f2665a'
   );
-  cost.style.cssText += `;display:none;flex:none;width:${W.run + W.tok}px;justify-content:flex-end`;
+  /* Without a tokens column the clock alone is too narrow to say it in, so
+     the name gives up what it needs while it is said. Its right end leaves
+     room for the cross laid over the line. */
+  cost.style.cssText += `;display:none;flex:none;width:${Math.max(W.run + W.tok, narrow ? 120 : 190)}px;justify-content:flex-end;padding-right:22px;box-sizing:border-box`;
   line.appendChild(cost);
 
   let armed: number | undefined;
@@ -4123,7 +4140,7 @@ function handRow(
   });
   cross.className += ' yard-hand-cross';
   cross.style.cssText +=
-    ";font-family:'Courier Prime',monospace;font-size:14px;margin-left:auto;padding:0 4px";
+    ";font-family:'Courier Prime',monospace;font-size:14px;position:absolute;right:0;top:0;bottom:0;display:flex;align-items:center;padding:0 4px 0 18px;background:linear-gradient(to right,transparent,rgba(24,18,12,.92) 14px)";
   cross.addEventListener('click', (event) => event.stopPropagation());
   line.appendChild(cross);
   return line;
