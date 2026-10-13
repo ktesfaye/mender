@@ -286,7 +286,7 @@ function crossedBoards(before: Yard, yard: Yard): boolean {
 }
 
 function wayAcross(before: Yard, yard: Yard): number {
-  const boards = yard.workspaces ?? [];
+  const boards = inBeamOrder(yard.workspaces ?? []);
   const from = boards.findIndex((one) => one.id === boardOf(before));
   const to = boards.findIndex((one) => one.here);
   return from < 0 || to < 0 ? 1 : Math.sign(to - from) || 1;
@@ -774,12 +774,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       play(stage, was, {
         only: (el) => Boolean(el.closest('[data-stays]')) && !el.closest('[data-moves]'),
       });
-      sweepingIn(
-        [...movers(root), ...movers(stillAt)],
-        lastWay,
-        wentAlready,
-        woke && !switched
-      );
+      sweepingIn([...movers(root), ...movers(stillAt)], lastWay, wentAlready, woke && !switched);
       if (switched) relit(before, yard);
       if (woke) lastWay = 0;
       return;
@@ -1267,6 +1262,11 @@ function scrims(root: HTMLElement): void {
         { left: 0, right: 0, bottom: 0, height: 160 },
         'background:linear-gradient(0deg,rgba(18,13,7,.92),rgba(18,13,7,0))'
       ),
+      'scrim:down'
+    )
+  );
+}
+
 /** A workspace's signboard as a line you write on, painted on the board.
     Return keeps it, Escape or an empty line puts the old one back. */
 function boardRenamer(
@@ -1332,11 +1332,6 @@ function boardRenamer(
   return input;
 }
 
-      'scrim:down'
-    )
-  );
-}
-
 /** The session's name as a line you write on, standing where the name was.
     Return keeps it, Escape or an empty line puts the old one back. */
 function renamer(shown: HTMLElement, named: string, does: Doings): HTMLInputElement {
@@ -1379,7 +1374,8 @@ function renamer(shown: HTMLElement, named: string, does: Doings): HTMLInputElem
     if (input.isConnected) input.replaceWith(shown);
   };
   input.addEventListener('input', () => {
-    if (renaming) renaming = { ...renaming, written: input.value, caret: input.selectionStart ?? 0 };
+    if (renaming)
+      renaming = { ...renaming, written: input.value, caret: input.selectionStart ?? 0 };
     fit();
   });
   input.addEventListener('keydown', (event) => {
@@ -1559,7 +1555,7 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
     root.appendChild(said);
   }
 
-  if (yard.workspaces?.length) signboards(root, yard.workspaces, edge, does);
+  if (yard.workspaces?.length) signboards(root, inBeamOrder(yard.workspaces), edge, does);
   else
     root.appendChild(stays(rule({ left: edge, right: edge, top: HEAD.rule }, true), 'rule:head'));
 }
@@ -1585,6 +1581,10 @@ function signboards(
     const cords = document.createElement('div');
     cords.className = 'cords';
     cords.append(document.createElement('span'), document.createElement('span'));
+    const face = document.createElement('span');
+    face.className = 'board';
+    face.textContent = board.name;
+    hung_.append(cords, face);
     /* The one you are standing in is written over with a double press, the
        same as a session's name at the top. Its branch keeps its old name. */
     if (board.here && board.id) {
@@ -1600,10 +1600,6 @@ function signboards(
       });
       if (renamingBoard?.id === board.id) write();
     }
-    const face = document.createElement('span');
-    face.className = 'board';
-    face.textContent = board.name;
-    hung_.append(cords, face);
     if (!board.here) {
       hung_.tabIndex = 0;
       astop(hung_, `workspace:${board.id}`);
@@ -1623,6 +1619,14 @@ function signboards(
     if (board.id) {
       hung_.dataset.workspace = board.id;
       hung_.dataset.name = board.name;
+      hung_.addEventListener('pointerdown', (event) => liftBoard(board.id, event));
+      hung_.addEventListener(
+        'click',
+        (event) => {
+          if (justCarried) event.stopImmediatePropagation();
+        },
+        true
+      );
     }
     hanging.appendChild(hung_);
   }
@@ -1646,6 +1650,10 @@ function signboards(
   });
   hanging.appendChild(more);
   root.appendChild(stays(hanging, 'signs'));
+  if (carrying) {
+    hanging.scrollLeft = carrying.scrolled;
+    placeCarried(hanging);
+  }
   /* Gold that moved without a press on the beam, Command-U or a session
      closing, still catches where it lands rather than simply being there. */
   const gold = boards.find((one) => one.here)?.id;
@@ -1656,12 +1664,251 @@ function signboards(
   /* However many there are, the one you are standing in is on the beam. */
   requestAnimationFrame(() => {
     const here = hanging.querySelector<HTMLElement>('.sign.here');
-    if (!here) return;
+    if (!here || carrying) return;
     const over = here.offsetLeft + here.offsetWidth - hanging.clientWidth;
     if (over > 0 || here.offsetLeft < hanging.scrollLeft) {
       hanging.scrollLeft = Math.max(0, over + 12);
     }
   });
+}
+
+/* ── moving them along the beam ────────────────────────────────────────────
+   A workspace's board held and slid along the beam comes with the pointer,
+   swinging a little on its cords the way it is pulled, and the boards it
+   passes step aside to open its gap. Let go, everything eases into place and
+   the beam keeps that order from then on, on this machine. The project's own
+   folder stays first and the dashed board stays last. A press that never
+   really moved is still just a press. The yard is drawn afresh on every
+   change, so what is being carried is held out here and put back on whatever
+   boards are drawn next. */
+
+const BEAM_ORDER_KEY = 'mender.beam-order';
+
+/** The workspaces in the order they were last left on the beam, any new one
+    after them in the order it came, the project's own folder first. */
+function inBeamOrder<T extends { id: string }>(boards: readonly T[]): T[] {
+  const saved = beamOrder();
+  if (!saved.length) return [...boards];
+  const rank = (one: T, at: number): number => {
+    if (!one.id) return -1;
+    const kept = saved.indexOf(one.id);
+    return kept === -1 ? saved.length + at : kept;
+  };
+  return boards
+    .map((one, at) => ({ one, at: rank(one, at) }))
+    .sort((a, b) => a.at - b.at)
+    .map((each) => each.one);
+}
+
+function beamOrder(): string[] {
+  try {
+    const kept = JSON.parse(localStorage.getItem(BEAM_ORDER_KEY) ?? '[]') as unknown;
+    return Array.isArray(kept) ? kept.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function keepBeamOrder(ids: string[]): void {
+  const next = [...beamOrder().filter((id) => !ids.includes(id)), ...ids].slice(-400);
+  localStorage.setItem(BEAM_ORDER_KEY, JSON.stringify(next));
+}
+
+/** The board being carried, where the pointer took hold of it, and how far
+    the beam had scrolled by then. */
+let carrying: {
+  id: string;
+  startX: number;
+  x: number;
+  scrolled: number;
+  startScrolled: number;
+  swing: number;
+  lastX: number;
+  to: number;
+} | null = null;
+/** A carry just ended on this press, so the click it ends in is not a press. */
+let justCarried = false;
+
+function liftBoard(id: string, down: PointerEvent): void {
+  if (down.button !== 0 || carrying) return;
+  if ((down.target as HTMLElement).closest('input')) return;
+  const startX = down.clientX;
+  const startY = down.clientY;
+  let lifted = false;
+  let settle = 0;
+
+  const signs = (): HTMLElement | null => document.querySelector<HTMLElement>('.yard .signs');
+
+  const move = (event: PointerEvent): void => {
+    if (!lifted) {
+      const dx = event.clientX - startX;
+      if (Math.abs(dx) < 5 || Math.abs(dx) < Math.abs(event.clientY - startY)) {
+        if (Math.hypot(dx, event.clientY - startY) > 12) let_();
+        return;
+      }
+      const row = signs();
+      if (!row) return let_();
+      lifted = true;
+      const scrolled = row.scrollLeft;
+      carrying = {
+        id,
+        startX,
+        x: event.clientX,
+        scrolled,
+        startScrolled: scrolled,
+        swing: 0,
+        lastX: event.clientX,
+        to: -1,
+      };
+      document.body.classList.add('carrying-board');
+      window.getSelection()?.removeAllRanges();
+    }
+    if (!carrying) return;
+    event.preventDefault();
+    const row = signs();
+    if (!row) return;
+    /* Near either end of a beam too long for the window, it runs on under
+       the board rather than the board stopping at the edge. */
+    const box_ = row.getBoundingClientRect();
+    const near = 40;
+    if (event.clientX < box_.left + near)
+      row.scrollLeft -= Math.ceil((box_.left + near - event.clientX) / 3);
+    else if (event.clientX > box_.right - near)
+      row.scrollLeft += Math.ceil((event.clientX - box_.right + near) / 3);
+    carrying.scrolled = row.scrollLeft;
+    /* It swings back against the way it is pulled, and settles once it stops. */
+    const pull = event.clientX - carrying.lastX;
+    carrying.swing = clamp(carrying.swing * 0.6 - pull * 0.4, -5, 5);
+    carrying.lastX = event.clientX;
+    carrying.x = event.clientX;
+    placeCarried(row);
+    window.clearTimeout(settle);
+    settle = window.setTimeout(() => {
+      if (!carrying) return;
+      carrying.swing = 0;
+      const now = signs();
+      if (now) placeCarried(now);
+    }, 90);
+  };
+
+  const let_ = (): void => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', let_);
+    window.removeEventListener('pointercancel', let_);
+    window.clearTimeout(settle);
+    if (!lifted || !carrying) return;
+    justCarried = true;
+    window.setTimeout(() => (justCarried = false), 0);
+    document.body.classList.remove('carrying-board');
+    const row = signs();
+    const to = carrying.to;
+    carrying = null;
+    if (!row) return;
+    dropCarried(row, id, to);
+  };
+
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', let_);
+  window.addEventListener('pointercancel', let_);
+}
+
+/** The workspace boards on the beam, in the order they are laid out. */
+function workspaceBoards(row: HTMLElement): HTMLElement[] {
+  return [...row.querySelectorAll<HTMLElement>(':scope > .sign[data-workspace]')];
+}
+
+/** Puts the carried board under the pointer and the rest where its gap leaves them. */
+function placeCarried(row: HTMLElement): void {
+  if (!carrying) return;
+  const boards = workspaceBoards(row);
+  const from = boards.findIndex((one) => one.dataset.workspace === carrying?.id);
+  if (from === -1) return;
+  const held = boards[from];
+  const gap =
+    boards.length > 1 ? boards[1].offsetLeft - boards[0].offsetLeft - boards[0].offsetWidth : 18;
+  const step = held.offsetWidth + gap;
+  const first = boards[0].offsetLeft;
+  const last = boards.at(-1)!;
+  const end = last.offsetLeft + last.offsetWidth;
+  /* Held to the stretch of beam the workspaces hang along. */
+  const wanted = carrying.x - carrying.startX + (carrying.scrolled - carrying.startScrolled);
+  const dx = clamp(wanted, first - held.offsetLeft, end - held.offsetWidth - held.offsetLeft);
+  const middle = held.offsetLeft + dx + held.offsetWidth / 2;
+  let to = from;
+  for (let at = 0; at < boards.length; at++) {
+    if (at === from) continue;
+    const other = boards[at];
+    const theirs = other.offsetLeft + other.offsetWidth / 2;
+    if (at < from && middle < theirs) to = Math.min(to, at);
+    if (at > from && middle > theirs) to = Math.max(to, at);
+  }
+  carrying.to = to;
+  held.classList.add('carried');
+  held.style.transition = 'none';
+  held.style.zIndex = '2';
+  held.style.position = 'relative';
+  held.style.transform = `translateX(${dx}px)`;
+  const face = held.querySelector<HTMLElement>('.board');
+  if (face) {
+    face.style.transformOrigin = '50% -12px';
+    face.style.transition = 'transform 140ms ease-out';
+    face.style.transform = reducedMotion() ? '' : `rotate(${carrying.swing}deg)`;
+  }
+  boards.forEach((other, at) => {
+    if (at === from) return;
+    const shift = from < at && at <= to ? -step : to <= at && at < from ? step : 0;
+    other.style.transition = reducedMotion() ? 'none' : 'transform 180ms cubic-bezier(.2,.8,.2,1)';
+    other.style.transform = shift ? `translateX(${shift}px)` : '';
+  });
+}
+
+/** Let go: the boards are put in their new order and each eases there from
+    wherever it was showing, the carried one swinging straight again. */
+function dropCarried(row: HTMLElement, id: string, to: number): void {
+  const boards = workspaceBoards(row);
+  const from = boards.findIndex((one) => one.dataset.workspace === id);
+  if (from === -1) return;
+  const was = new Map(boards.map((one) => [one, one.getBoundingClientRect().left]));
+  const held = boards[from];
+  const face = held.querySelector<HTMLElement>('.board');
+  const swung = face?.style.transform ?? '';
+  for (const one of boards) {
+    one.style.transition = 'none';
+    one.style.transform = '';
+  }
+  if (face) {
+    face.style.transition = 'none';
+    face.style.transform = '';
+  }
+  if (to !== -1 && to !== from) {
+    const order = [...boards];
+    order.splice(from, 1);
+    order.splice(to, 0, held);
+    const after = order[to + 1] ?? row.querySelector<HTMLElement>(':scope > .sign.more');
+    row.insertBefore(held, after);
+    keepBeamOrder(order.map((one) => one.dataset.workspace ?? ''));
+  }
+  const still = reducedMotion();
+  for (const one of boards) {
+    const by = (was.get(one) ?? 0) - one.getBoundingClientRect().left;
+    if (!still && by) {
+      one.animate([{ transform: `translateX(${by}px)` }, { transform: 'translateX(0)' }], {
+        duration: one === held ? 220 : 180,
+        easing: 'cubic-bezier(.2,.8,.2,1)',
+      });
+    }
+  }
+  if (face && swung && !still) {
+    face.animate([{ transform: swung }, { transform: 'rotate(0deg)' }], {
+      duration: 420,
+      easing: 'cubic-bezier(.3,1.6,.5,1)',
+    });
+  }
+  window.setTimeout(() => {
+    held.classList.remove('carried');
+    held.style.zIndex = '';
+    held.style.position = '';
+  }, 220);
 }
 
 const BEAM =
@@ -3277,7 +3524,8 @@ function made(
   const top = HEAD.label;
   if (goal) region('now', at, top, top + (parts[0]?.offsetHeight ?? 0));
   const madePart = parts.find((one) => one.dataset.key === 'story:made');
-  if (madePart) region('made', at, top + madePart.offsetTop, top + madePart.offsetTop + madePart.offsetHeight);
+  if (madePart)
+    region('made', at, top + madePart.offsetTop, top + madePart.offsetTop + madePart.offsetHeight);
   const wentPart = parts.find((one) => one.dataset.key === 'story:went');
   if (wentPart) region('did', at, top + wentPart.offsetTop, floor);
 
@@ -3412,7 +3660,9 @@ function chaptered(session: Session, chapter: Chapter, does: Doings): HTMLElemen
   if (folded) {
     toggle = document.createElement('span');
     toggle.className = 'chapter-fold';
-    const many = live ? `${folded} earlier ${folded === 1 ? 'step' : 'steps'}` : `${folded} ${folded === 1 ? 'step' : 'steps'}`;
+    const many = live
+      ? `${folded} earlier ${folded === 1 ? 'step' : 'steps'}`
+      : `${folded} ${folded === 1 ? 'step' : 'steps'}`;
     toggle.textContent = `${many} ${open ? '\u25be' : '\u25b8'}`;
     toggle.addEventListener('mousedown', (event) => event.preventDefault());
     facts.push(toggle);
@@ -3521,7 +3771,9 @@ function chapterSign(state: Chapter['state'] | 'you'): HTMLElement {
   slot.style.color = CHAPTER_INK[state];
   const wide = Math.max(...art.map((one) => one.length));
   const cells = art.flatMap((one, y) =>
-    [...one].flatMap((c, x) => (c === '#' ? [`<rect x="${x}" y="${y}" width="1" height="1"/>`] : []))
+    [...one].flatMap((c, x) =>
+      c === '#' ? [`<rect x="${x}" y="${y}" width="1" height="1"/>`] : []
+    )
   );
   slot.innerHTML = `<svg viewBox="0 0 ${wide} ${art.length}" width="${wide * 2}" height="${art.length * 2}" shape-rendering="crispEdges" fill="currentColor">${cells.join('')}</svg>`;
   return slot;

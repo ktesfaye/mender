@@ -876,7 +876,14 @@ it, a second session joined it, everything came back after a restart, and two
 right-clicks took the worktree down. The one you are standing in is renamed by double-pressing it
 and writing over it on the board itself, return keeping it and Escape putting
 it back; only the signboard changes, the branch keeps its name. Driven in a dev
-copy on a scratch repository: renamed, kept across the store, and Escape left it.
+copy on a scratch repository: renamed, kept across the store, and Escape left it. Any
+workspace's board can be taken hold of and slid along the beam: it comes with
+the pointer, swinging a little on its cords, the boards it passes step aside,
+and let go everything eases into place and the order is kept on this machine;
+the project's own folder stays first and the dashed board last, and a press
+that never moved still walks in. Driven in a dev copy with four workspaces:
+dragged right and left, kept across a reload, a plain press still walked in,
+and a redraw mid-drag left the board in hand.
 
 A project can be forgotten too, from the bottom of its own page, which is
 what pressing its name opens, because forgetting a place is not something you
