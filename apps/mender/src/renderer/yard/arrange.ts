@@ -18,8 +18,8 @@ export const PART_NAME: Record<Part, string> = {
   asked: 'what you asked',
   changelog: 'the changelog',
   made: 'what it made',
-  now: 'the plan',
-  did: 'what it did',
+  now: "what it's after",
+  did: 'how it went',
 };
 
 export interface Arrangement {

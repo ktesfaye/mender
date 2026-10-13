@@ -173,6 +173,9 @@ export interface Session {
   recap?: string;
   /** What it says it is going to do, when it has actually said. */
   plan: { said: string; state: 'done' | 'doing' | 'ahead' }[];
+  /** The session told as a story: what it is after, the pieces of work it
+      has been through with what it did in each, and what was left hanging. */
+  story?: Story;
   /** Oldest first, the running one last. */
   steps: Step[];
   made: Made[];
@@ -195,6 +198,30 @@ export interface Session {
    * a lost connection — with what there is to do about it.
    */
   failure?: FailureView;
+}
+
+export interface Story {
+  /** What the whole session is after, once a small model has said. */
+  goal?: string;
+  /** Where it stands right now, in a word or two. */
+  state?: { said: string; tone: 'going' | 'done' | 'stopped' | 'asking' | 'broken' };
+  chapters: Chapter[];
+  ends: string[];
+}
+
+/** One piece of work, from the note that began it to the next. */
+export interface Chapter {
+  id: string;
+  title: string;
+  how?: string;
+  state: 'done' | 'partial' | 'dropped' | 'going';
+  /** It began with him putting the agent right, and this is what he said. */
+  pushback?: string;
+  /** Everything it did in this piece of work, oldest first. */
+  steps: Step[];
+  /** For the piece it is on, how many of those steps came since the newest
+      note, which is what "just now" is. */
+  latest?: number;
 }
 
 export interface FailureView {

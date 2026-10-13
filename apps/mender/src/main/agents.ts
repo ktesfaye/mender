@@ -38,6 +38,7 @@ import type {
   Mused,
   Noted,
   Step,
+  Story,
   // Renamed on the way in: this file already has its own `Told`, the yes/no
   // result of an RPC, and the shared `Told` is the yard's whole conversation.
   // Same word, unrelated shapes.
@@ -50,7 +51,8 @@ import { carried, packExpect, piecesOf, USUAL_PACK } from '@shared/packing';
 import { wantsAnswer } from './asked-you';
 import { forgetClaudeSession } from './claude-cli-history';
 import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
-import { goingIn, pickUpNote, PICK_UP_SAID, type CutOff } from './cut-off';
+import { goingIn, pickUpNote, type CutOff } from './cut-off';
+import { PICK_UP_SAID } from '@shared/pick-up';
 import { questionsOf, type FormQuestion, type FormValue } from './form';
 import {
   helperTrail,
@@ -288,6 +290,7 @@ const KEY = 'agents';
 const DRAFTS_KEY = 'drafts';
 const MADE_KEY = 'made';
 const RECAPS_KEY = 'recaps';
+const STORIES_KEY = 'stories';
 const TITLED_KEY = 'titledAt';
 const AWAY_KEY = 'helpersAway';
 const CUT_OFF_KEY = 'cutOff';
@@ -315,6 +318,8 @@ export function createAgents(
   let madeLoaded = false;
   /** The last recap each session was given, and the answer it was written under. */
   let recaps: Record<string, { said: string; after: string }> = {};
+  /** Each session told as a story, and where the conversation stood when it was. */
+  let stories: Record<string, Story> = {};
   /** Where each session stood when it was last named: how much had been
       said, and whether that turn had settled.
       Kept across a restart: forgotten, every session woken by the next
@@ -361,6 +366,10 @@ export function createAgents(
     const heldRecaps = await store.get(RECAPS_KEY);
     if (heldRecaps.success && heldRecaps.data && typeof heldRecaps.data === 'object') {
       recaps = heldRecaps.data as unknown as Record<string, { said: string; after: string }>;
+    }
+    const heldStories = await store.get(STORIES_KEY);
+    if (heldStories.success && heldStories.data && typeof heldStories.data === 'object') {
+      stories = heldStories.data as unknown as Record<string, Story>;
     }
     const heldTitled = await store.get(TITLED_KEY);
     if (heldTitled.success && heldTitled.data && typeof heldTitled.data === 'object') {
@@ -553,6 +562,53 @@ export function createAgents(
       .finally(() => recapping.delete(task));
   };
 
+  /* The session as a story, for the right of the board: told again whenever
+     something new is asked, so the chapter it opens has a name within
+     seconds, and again once each turn has come to rest, which is when how it
+     went and what was left are known. Waited on a moment, because a turn's
+     history arrives in pieces and a wake reads it all back at once. */
+  const storying = new Set<string>();
+  /** What each was last told at, kept so one that came back empty is not
+      asked again until something has actually moved. */
+  const storyTried = new Map<string, string>();
+  const storyTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const storyFromWork = (task: string): void => {
+    clearTimeout(storyTimers.get(task));
+    storyTimers.set(
+      task,
+      setTimeout(() => {
+        storyTimers.delete(task);
+        const here = houses.get(task);
+        if (!here || storying.has(task)) return;
+        const state = peek(here.state);
+        if (state.waking) return;
+        const told = state.told;
+        const note = told.notes[0];
+        if (!note) return;
+        const going = state.mood === 'working';
+        const answer = told.thoughts.filter((one) => !one.quiet).at(-1);
+        const after = `${note.id}|${going ? 'going' : (answer?.id ?? '')}`;
+        if (stories[task]?.after === after || storyTried.get(task) === after) return;
+        storyTried.set(task, after);
+        storying.add(task);
+        void titler
+          .story(told, after, going)
+          .then((story) => {
+            if (!story) return log.warn('agents: story came back empty', { area: 'agents', task });
+            log.info('agents: story', { area: 'agents', task, chapters: story.chapters.length });
+            stories = { ...stories, [task]: story };
+            void store.set(STORIES_KEY, stories as unknown as never);
+            houses.get(task)?.refresh();
+          })
+          .finally(() => {
+            storying.delete(task);
+            /* Something new may have been said while it was being told. */
+            if (houses.has(task)) storyFromWork(task);
+          });
+      }, 2500)
+    );
+  };
+
   /** Named off the history it already has, for a session picked up from a
       conversation started elsewhere: nothing new is going to be said to
       prompt it, and until then it is called by its first line, cut short.
@@ -633,6 +689,7 @@ export function createAgents(
           reglance();
           const here = houses.get(task);
           if (here) recapFromWork(task, here);
+          storyFromWork(task);
         },
         () => {
           const conversation = lodgers[task];
@@ -677,7 +734,8 @@ export function createAgents(
           return at;
         },
         () => takenBack[task] ?? [],
-        (limit) => windows.report(limit)
+        (limit) => windows.report(limit),
+        () => stories[task]
       );
       houses.set(task, house);
       void loaded.then(async () => {
@@ -851,6 +909,9 @@ export function createAgents(
       const { [task]: _draft, ...draftsLeft } = drafts;
       const { [task]: _made, ...madeLeft } = madeBy;
       const { [task]: _recap, ...recapsLeft } = recaps;
+      const { [task]: _story, ...storiesLeft } = stories;
+      stories = storiesLeft;
+      await store.set(STORIES_KEY, stories as unknown as never);
       const { [task]: _back, ...backLeft } = takenBack;
       takenBack = backLeft;
       await store.set(TAKEN_BACK_KEY, takenBack as unknown as never);
@@ -1751,7 +1812,9 @@ class House {
     /** What was asked here and handed back to the line before anything came of it. */
     private readonly takenBack: () => readonly string[] = () => [],
     /** The subscription's meter, heard in its own answer. */
-    private readonly limited: (limit: RateLimit) => void = () => {}
+    private readonly limited: (limit: RateLimit) => void = () => {},
+    /** The session told as a story, whenever it was last told. */
+    private readonly storied: () => Story | undefined = () => undefined
   ) {
     this.state = cell<WorkingState>(EMPTY, { name: `agent:${task}` });
   }
@@ -2438,6 +2501,7 @@ class House {
           this.where()
         ),
         ...(this.recapped() ? { recap: this.recapped() } : {}),
+        ...(this.storied() ? { story: this.storied() } : {}),
       },
       asking,
       plan: stepsOf(this.plan),
@@ -2881,9 +2945,11 @@ function toldOf(
   flat.forEach((item, i) => {
     const before = thoughts.length;
     const deedsBefore = deeds.length;
+    const notesBefore = notes.length;
     told(item, i);
     for (let n = before; n < thoughts.length; n += 1) thoughts[n]!.seq = i;
     for (let n = deedsBefore; n < deeds.length; n += 1) deeds[n]!.seq = i;
+    for (let n = notesBefore; n < notes.length; n += 1) notes[n]!.seq = i;
   });
 
   function told(item: Flat, i: number): void {

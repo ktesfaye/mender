@@ -2039,6 +2039,145 @@ body.gripping-row * {
   padding: 6px 0 4px;
 }
 
+/* ── the story: what it is after, how it went, what is left ───────────── */
+.yard .story-part {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+}
+.yard .story-rule {
+  flex: none;
+  height: 1px;
+  margin: 20px 0;
+  background: var(--yard-rule-soft);
+}
+.yard .story-goal {
+  margin-top: 12px;
+  font-family: var(--yard-face-thought);
+  font-style: italic;
+  font-size: 21px;
+  line-height: 1.18;
+  color: var(--yard-ink-bright);
+}
+.yard .story-state {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.yard .story-state-going {
+  color: #ffa54f;
+}
+.yard .story-state-done {
+  color: var(--yard-done);
+}
+.yard .story-state-stopped {
+  color: var(--yard-ink-dim);
+}
+.yard .story-state-asking {
+  color: var(--yard-wants-you);
+}
+.yard .story-state-broken {
+  color: var(--yard-wrong);
+}
+.yard .chapters {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.yard .chapter {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+/* The same thread the steps hang on, from each piece of work to the next. */
+.yard .chapter::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 21px;
+  bottom: -13px;
+  width: 1px;
+  background: rgba(244, 227, 192, 0.13);
+}
+.yard .chapter:last-child::before {
+  display: none;
+}
+.yard .chapter-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.yard .chapter-title {
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--yard-ink-bright);
+  padding-top: 1px;
+}
+.yard .chapter-you .chapter-title {
+  color: #d8b47c;
+}
+.yard .chapter-going .chapter-title {
+  color: #ffc98a;
+}
+.yard .chapter-dropped .chapter-title {
+  color: var(--yard-ink-dim);
+}
+.yard .chapter-how {
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #a89272;
+}
+.yard .chapter-fold {
+  color: #8f7c5f;
+  cursor: pointer;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+.yard .chapter-fold:hover {
+  color: #a89272;
+}
+.yard .chapter-now {
+  display: block;
+  margin: 2px 0 2px;
+}
+.yard .chapter-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.yard .chapter-steps:empty {
+  display: none;
+}
+.yard .story-ends {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.yard .story-end {
+  position: relative;
+  padding-left: 18px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--yard-ink-body);
+}
+.yard .story-end::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 6px;
+  width: 6px;
+  height: 6px;
+  background: #ffa54f;
+}
+
 /* ── what it did: one thread down the column, a sign on it for each step ── */
 .yard .deed {
   position: relative;

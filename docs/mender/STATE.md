@@ -3967,3 +3967,22 @@ turn's, dimmed. Something said to it mid-turn, or the village closing on it
 and picking back up, opens a new turn underneath, and those no longer fold
 away what it had told you before them: driven by sending a message halfway
 through a three-step job, every step line stayed up across it.
+
+### The right column tells the session as a story (2026-10-12) — done
+
+The right of a session's board is no longer the plan stacked on a flat log of
+every tool call. From the top: what it is after, a sentence worked out by the
+small model from everything said rather than the first line, with where it
+stands under it; what it made, as before; how it went, each piece of work it
+has been through named for what came of it, with a tick, a half ring, a dash
+or the ember for the one it is on, "committed", "pushed" or "built" read off
+what it actually did, and his putting it right standing between two pieces in
+the post's ink; and loose ends, what it said it left undone or could not
+check. The piece it is on carries the plan and "just now", what it did since
+the newest note; a finished piece folds its steps under a count that opens
+them. The yard's ground only stands while a helper is still out. The story is
+told again a moment after each new note and once each turn comes to rest, and
+kept per session in `agents.json`. Driven in a dev instance across five asks
+on a scratch repo: the goal followed the newest ask, a correction showed as
+"you said", the live piece lit with only that ask's steps under "just now",
+and an unrelated ask opened its own chapter.

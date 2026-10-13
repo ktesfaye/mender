@@ -67,6 +67,7 @@ import { KIT_NAMES, emberLantern, greenLantern, sprite } from './sprite';
 import { astop, walking, type Walking } from './walk';
 import type {
   Asking as Ask,
+  Chapter,
   Fire,
   Hand,
   Live,
@@ -75,6 +76,7 @@ import type {
   Session,
   Step,
   StepKind,
+  Story,
   Thought,
   Yard,
 } from './what';
@@ -2682,9 +2684,6 @@ const revealedThoughts = new Map<string, number>();
 const REVEAL_INITIAL = 60;
 const REVEAL_CHUNK = 80;
 
-/** The same, for the "what it did" column's own steps. */
-const revealedSteps = new Map<string, number>();
-
 /**
  * The live edge: a small fire with sparks going up off it, what it is doing,
  * and how long it has been at it.
@@ -3112,9 +3111,10 @@ function rightEmpty(yard: Yard | undefined): boolean {
   const session = yard.session;
   if (!session || session.waking) return true;
   return (
-    (hidden('now') || !session.plan?.length) &&
+    (hidden('now') || !session.story?.goal) &&
     (hidden('made') || !session.made?.length) &&
-    (hidden('did') || (!session.steps?.length && !session.agents?.length))
+    (hidden('did') ||
+      (!session.story?.chapters.length && !session.agents?.some((one) => one.where === 'out')))
   );
 }
 
@@ -3127,21 +3127,24 @@ function made(
 ): void {
   if (!at.wide) return;
   const session = yard.session;
-  const plan = hidden('now') ? [] : (session?.plan ?? []);
+  const story = session?.story;
+  const goal = hidden('now') ? undefined : story?.goal;
   const output = hidden('made') ? [] : (session?.made ?? []);
-  const steps_ = hidden('did') ? [] : (session?.steps ?? []);
+  const chapters = hidden('did') ? [] : (story?.chapters ?? []);
+  const ends = hidden('did') ? [] : (story?.ends ?? []);
+  /* The ground is only stood on while somebody is still out there: once they
+     are all home, the piece of work that sent them says so in a line. */
   const hands = hidden('did') ? [] : (session?.agents ?? []);
+  const out = hands.some((one) => one.where === 'out');
 
   /* NOTHING IS WRITTEN OVER NOTHING.
    *
    * A heading with an empty column under it does not say "this has not
    * happened yet", it says the screen is broken. So a section that has nothing
-   * in it is not drawn at all: no question unless one is asked, no plan until
-   * it has posted one, no list of what it did until it has done something, no
-   * yard until it has sent somebody out. The column's own rule goes with them,
+   * in it is not drawn at all, and the column's own rule goes with them,
    * because a line down an empty third of the screen is the same lie in
    * thinner form. */
-  if (!output.length && !plan.length && !steps_.length && !hands.length) return;
+  if (!goal && !output.length && !chapters.length && !out) return;
 
   root.appendChild(
     stays(
@@ -3156,197 +3159,287 @@ function made(
   );
 
   /* The ground is the foot of this column whatever happened above it, so
-     everything else in here gets the room between the header and the yard and
-     not one pixel more. */
-  const patch = hands.length ? groundTop(hands.length, floor) : floor;
-  const room = Math.max(0, patch - (hands.length ? 14 : 44) - HEAD.top);
-  const above = box({
-    left: at.x,
-    top: HEAD.label,
-    width: at.wide,
-    height: room + HEAD.top - HEAD.label,
-  });
-  root.appendChild(above);
-
-  /* What it made goes first, above whatever it is in the middle of, because
-     it is the thing you came back to find. Past a third of the column it
-     scrolls inside itself rather than pushing the rest off the wood. */
-  let lead = 0;
-  if (output.length) {
-    const cart = carted(at.wide, output, does);
-    above.appendChild(cart);
-    const most = Math.round(above.offsetHeight * 0.34);
-    if (cart.offsetHeight > most) {
-      const list = cart.querySelector<HTMLElement>('[data-rest]');
-      if (list) {
-        list.style.maxHeight = `${Math.max(0, list.offsetHeight - (cart.offsetHeight - most))}px`;
-        list.style.overflowY = 'auto';
-        list.style.pointerEvents = 'auto';
-        list.style.scrollbarWidth = 'none';
-      }
-    }
-    region('made', at, HEAD.label, HEAD.label + cart.offsetHeight + 18);
-    lead = cart.offsetHeight + 18;
-    if (plan.length || steps_.length) {
-      above.appendChild(rule({ left: 0, top: lead - 2, width: at.wide }));
-      lead += 18;
-    }
-    /* Whatever flows in under it starts where the rule says it does. */
-    const gap = document.createElement('div');
-    gap.style.cssText = `position:relative;height:${lead - cart.offsetHeight}px`;
-    above.appendChild(gap);
-  }
-
-  let y = lead;
-  const now = plan.length ? planned(plan) : null;
-  if (now) {
-    above.appendChild(now);
-    /* A plan longer than half the column scrolls inside itself, because the
-       steps under it are the other half of what this column is for. */
-    const dragged = arrangement().now;
-    const tall = above.offsetHeight - lead;
-    const most =
-      dragged === undefined
-        ? Math.round(tall * 0.42)
-        : clamp(dragged, 60, Math.max(60, tall - 120));
-    if (dragged !== undefined) now.style.height = `${most}px`;
-    if (now.offsetHeight > most || dragged !== undefined) {
-      now.style.height = `${most}px`;
-      now.style.overflowY = 'auto';
-      now.style.pointerEvents = 'auto';
-      now.style.scrollbarWidth = 'none';
-      const doing = now.querySelector<HTMLElement>('[data-doing]');
-      if (doing) now.scrollTop = Math.max(0, doing.offsetTop - now.clientHeight / 3);
-    }
-    y = lead + now.offsetHeight + 18;
-    region('now', at, HEAD.label + lead, HEAD.label + y);
-  }
-  if (steps_.length || hands.length) region('did', at, HEAD.label + y, floor);
-
-  if (!steps_.length) {
-    if (hands.length) ground(root, at, yard, floor, does);
-    return;
-  }
-  if (now) {
-    const line = rule({ left: 0, top: y, width: at.wide });
-    line.dataset.grip = 'now';
-    line.dataset.value = String(now.offsetHeight);
-    above.appendChild(line);
-  }
-  const labelAt = now ? y + 20 : y;
-  above.appendChild(label('what it did', { left: 0, top: labelAt }));
-
-  const top = labelAt + (HEAD.top - HEAD.label);
-  const steps = stack(
-    { left: 0, top, width: at.wide, height: Math.max(0, above.offsetHeight - top) },
-    9
+     everything else in here gets the room between the header and the yard
+     and not one pixel more. */
+  const patch = out ? groundTop(hands.length, floor) : floor;
+  const tall = Math.max(0, patch - (out ? 14 : 24) - HEAD.label);
+  /* One column read top to bottom, scrolling as one: what it is after, what
+     it made, how it went and what is left, so the story is never in two
+     boxes scrolling against each other. */
+  const it = box(
+    { left: at.x, top: HEAD.label, width: at.wide, height: tall },
+    [
+      'display:flex',
+      'flex-direction:column',
+      "font-family:'Josefin Sans',sans-serif",
+      'overflow-y:auto',
+      'overflow-x:hidden',
+      'pointer-events:auto',
+      'scrollbar-width:none',
+    ].join(';')
   );
-  /* A glance down the side, not a second thing to read: small, quiet type
-     and the props shrunk to match, so the answer in the middle stays the one
-     thing on this screen that is loud. */
-  steps.style.cssText += [
-    '',
-    'font-size:12px',
-    'line-height:1.3',
-    "font-family:'Josefin Sans',sans-serif",
-    'overflow-y:auto',
-    'overflow-x:hidden',
-    'pointer-events:auto',
-    'scrollbar-width:none',
-  ].join(';');
-  /* A long session is hundreds of tool calls, and laying every one of them on
-     the wood at once is this column's whole cost paid on every redraw, the
-     same problem "what it said" already solved. So only the most recent
-     stretch is actually drawn; the rest stays a number above it, and
-     pressing it draws the next stretch back. */
+  it.className = 'story';
+  root.appendChild(it);
+
+  const parts: HTMLElement[] = [];
+  if (goal && story) parts.push(keyed(after(goal, story.state), 'story:goal'));
+  if (output.length) parts.push(keyed(carted(at.wide, output, does), 'story:made'));
+  if (chapters.length && session) parts.push(keyed(went(session, chapters, does), 'story:went'));
+  if (ends.length) parts.push(keyed(loose(ends), 'story:ends'));
+  parts.forEach((part, i) => {
+    if (i) it.appendChild(storyRule());
+    it.appendChild(part);
+  });
+
+  const top = HEAD.label;
+  if (goal) region('now', at, top, top + (parts[0]?.offsetHeight ?? 0));
+  const madePart = parts.find((one) => one.dataset.key === 'story:made');
+  if (madePart) region('made', at, top + madePart.offsetTop, top + madePart.offsetTop + madePart.offsetHeight);
+  const wentPart = parts.find((one) => one.dataset.key === 'story:went');
+  if (wentPart) region('did', at, top + wentPart.offsetTop, floor);
+
+  /* While it works the column follows the live end, the piece of work it is
+     on; once it has stopped it opens on what it is after, at the top. Either
+     way it stays where it was left once somebody has scrolled it. */
   const id = session?.id ?? '';
-  const wholeSteps = steps_.length;
-  let shownSteps = Math.min(wholeSteps, revealedSteps.get(id) ?? REVEAL_INITIAL);
-  const fromServer = session?.olderSteps?.many ?? 0;
-
-  const older = document.createElement('div');
-  steps.appendChild(older);
-
-  function laidOlderSteps(): void {
-    const hidden = hiddenCount(wholeSteps, shownSteps, fromServer);
-    older.replaceChildren();
-    if (!hidden) return;
-    const line = exact(`\u25b8 ${hidden} earlier steps`, 11, '#8a7452');
-    line.style.cssText += ';position:relative;flex:none;padding-top:6px';
-    if (windowStart(wholeSteps, shownSteps) > 0) {
-      line.style.cursor = 'pointer';
-      line.style.pointerEvents = 'auto';
-      line.addEventListener('mousedown', (event) => event.preventDefault());
-      line.addEventListener('click', () => {
-        shownSteps = revealMore(wholeSteps, shownSteps, REVEAL_CHUNK);
-        revealedSteps.set(id, shownSteps);
-        laidOlderSteps();
-        laidStepItems();
-      });
-    }
-    older.appendChild(line);
-  }
-
-  function laidStepItems(): void {
-    for (const child of [...steps.children]) if (child !== older) child.remove();
-    const start = windowStart(wholeSteps, shownSteps);
-    for (const one of steps_.slice(start)) {
-      const it = keyed(did(one, does), `step:${one.id}`);
-      it.style.flex = 'none';
-      steps.appendChild(it);
-    }
-  }
-
-  laidOlderSteps();
-  laidStepItems();
-  above.appendChild(steps);
-
-  /* It follows the live end while you are at it, and stays where you left it
-     once you have scrolled up to read something, the same as the answer. */
-  const kept = stepsFollowed.get(id);
-  const baseTop = top;
-  const baseTall = Math.max(0, above.offsetHeight - top);
-  /* Following the live end, the list starts on a whole step rather than one
-     sliced in half under the heading: the window is shortened from the top by
-     however much of the first visible step would have been cut. Only a sliver,
-     though: a step carrying a long edit can be most of the window, and
-     trimming all of that left a tall empty stretch under the heading. */
+  const going = story?.state?.tone === 'going';
+  const kept = storyFollowed.get(id);
   const settle = (): void => {
-    if (stepsFollowed.has(id)) return;
-    steps.style.top = `${baseTop}px`;
-    steps.style.height = `${baseTall}px`;
-    steps.scrollTop = steps.scrollHeight;
-    const at = steps.scrollTop;
-    const first = [...steps.children].find((one) => (one as HTMLElement).offsetTop >= at) as
-      | HTMLElement
-      | undefined;
-    const cut = first ? first.offsetTop - at : 0;
-    if (cut > 0 && cut <= STEP_SLIVER) {
-      steps.style.top = `${baseTop + cut}px`;
-      steps.style.height = `${baseTall - cut}px`;
-      steps.scrollTop = steps.scrollHeight;
-    }
+    if (storyFollowed.has(id)) return;
+    it.scrollTop = going ? it.scrollHeight : 0;
   };
   if (kept === undefined) {
     settle();
-    /* The props are pictures, and a picture has no height until it arrives, so
-       the live end is found again once they have. */
     for (const wait of [60, 250, 700]) window.setTimeout(settle, wait);
-  } else steps.scrollTop = kept;
-  heldWhereLeft(steps, stepsFollowed, id);
+  } else it.scrollTop = kept;
+  heldWhereLeft(it, storyFollowed, id);
+  /* Scrolled to the foot while it is not working is not "following": it
+     opens at the top again next time unless it was left somewhere. */
+  if (!going) it.addEventListener('scroll', () => storyFollowed.set(id, it.scrollTop));
 
-  /* And the ground only once there is somebody standing on it. The fire is
-     already said by the light of the whole screen and by the lantern on the
-     rail, so a framed patch of dirt with nobody in it is a box for its own
-     sake. */
-  if (hands.length) ground(root, at, yard, floor, does);
+  if (out) ground(root, at, yard, floor, does);
 }
 
-/** The most of a sliced step trimmed off the top rather than shown cut. */
-const STEP_SLIVER = 36;
+/** Where the story column was left scrolled to, by session. */
+const storyFollowed = new Map<string, number>();
 
-/** Where the steps were left scrolled to, for a session somebody scrolled up in. */
-const stepsFollowed = new Map<string, number>();
+/** A rule between two parts of the story, with room either side of it. */
+function storyRule(): HTMLElement {
+  const line = document.createElement('div');
+  line.className = 'story-rule';
+  return line;
+}
+
+/** What the whole session is after, and where it stands in a word or two. */
+function after(goal: string, state: Story['state']): HTMLElement {
+  const it = document.createElement('div');
+  it.className = 'story-part';
+  it.appendChild(label("what it's after", {}));
+  const said = document.createElement('div');
+  said.className = 'story-goal';
+  said.textContent = goal;
+  it.appendChild(said);
+  if (state) {
+    const where = document.createElement('div');
+    where.className = `story-state story-state-${state.tone}`;
+    where.textContent = state.said;
+    it.appendChild(where);
+  }
+  return it;
+}
+
+/** Which finished pieces of work have had their steps opened, across redraws. */
+const openChapters = new Set<string>();
+/** And which live ones have had everything before "just now" opened. */
+const openLive = new Set<string>();
+
+/** How many of a live piece's most recent steps stand under it. */
+const JUST_NOW = 6;
+
+/**
+ * How it went: every piece of work it has been through, oldest first, each
+ * with how it came out. The one it is on carries the plan it is working
+ * through and the last few things it did; a finished one folds what it did
+ * away under a line that opens it.
+ */
+function went(session: Session, chapters: Chapter[], does: Doings): HTMLElement {
+  const it = document.createElement('div');
+  it.className = 'story-part';
+  it.appendChild(label('how it went', {}));
+  const list = document.createElement('div');
+  list.className = 'chapters';
+  for (const chapter of chapters) {
+    if (chapter.pushback) list.appendChild(pushedBack(chapter.pushback));
+    list.appendChild(chaptered(session, chapter, does));
+  }
+  it.appendChild(list);
+  return it;
+}
+
+/** Him putting it right, as its own step in the story, in the post's colour. */
+function pushedBack(said: string): HTMLElement {
+  const it = document.createElement('div');
+  it.className = 'chapter chapter-you';
+  it.appendChild(chapterSign('you'));
+  const body = document.createElement('div');
+  body.className = 'chapter-body';
+  const title = document.createElement('div');
+  title.className = 'chapter-title';
+  title.textContent = `you said: ${said}`;
+  body.appendChild(title);
+  it.appendChild(body);
+  return it;
+}
+
+function chaptered(session: Session, chapter: Chapter, does: Doings): HTMLElement {
+  const live = chapter.state === 'going';
+  const it = document.createElement('div');
+  it.className = `chapter chapter-${chapter.state}`;
+  it.appendChild(chapterSign(chapter.state));
+  const body = document.createElement('div');
+  body.className = 'chapter-body';
+  const title = document.createElement('div');
+  title.className = 'chapter-title';
+  title.textContent = chapter.title;
+  body.appendChild(title);
+
+  /* What came of it, then the facts nobody has to work out: whether it went
+     into a commit, a build, a push, and how many it sent out. */
+  const steps = chapter.steps;
+  const kinds = new Set(steps.map((one) => one.kind));
+  const sent = steps.filter((one) => one.kind === 'send').length;
+  const facts: (string | HTMLElement)[] = [];
+  if (chapter.how) facts.push(chapter.how.replace(/[.\s]+$/, ''));
+  if (!live && sent) facts.push(`sent ${sent === 1 ? 'one helper' : `${sent} helpers`} out`);
+  /* Unless the line already says so, which the model is fond of doing. */
+  const says = (word: RegExp): boolean => word.test(chapter.how ?? '');
+  if (kinds.has('commit') && !says(/\bcommit/i))
+    facts.push(tinted('committed', 'var(--yard-quoted)'));
+  if (kinds.has('push') && !says(/\bpush/i)) facts.push(tinted('pushed', 'var(--yard-quoted)'));
+  if (kinds.has('build') && !says(/\bbuil[td]/i)) facts.push('built');
+  const open = live ? openLive.has(chapter.id) : openChapters.has(chapter.id);
+  /* "Just now" is what it has done since the newest note, and no more than a
+     handful of that; everything before it in this piece folds. */
+  const recent = live ? Math.min(chapter.latest ?? steps.length, JUST_NOW) : 0;
+  const folded = live ? steps.length - recent : steps.length;
+  let toggle: HTMLElement | undefined;
+  if (folded) {
+    toggle = document.createElement('span');
+    toggle.className = 'chapter-fold';
+    const many = live ? `${folded} earlier ${folded === 1 ? 'step' : 'steps'}` : `${folded} ${folded === 1 ? 'step' : 'steps'}`;
+    toggle.textContent = `${many} ${open ? '\u25be' : '\u25b8'}`;
+    toggle.addEventListener('mousedown', (event) => event.preventDefault());
+    facts.push(toggle);
+  }
+  if (facts.length) {
+    const line = document.createElement('div');
+    line.className = 'chapter-how';
+    facts.forEach((one, i) => {
+      if (i) line.append(' \u00b7 ');
+      line.append(one);
+    });
+    body.appendChild(line);
+  }
+
+  if (live && session.plan.length) body.appendChild(planned(session.plan, false));
+
+  const under = document.createElement('div');
+  under.className = 'chapter-steps';
+  const fill = (): void => {
+    under.replaceChildren();
+    const shown = live
+      ? openLive.has(chapter.id)
+        ? steps
+        : recent
+          ? steps.slice(-recent)
+          : []
+      : openChapters.has(chapter.id)
+        ? steps
+        : [];
+    if (live && shown.length) {
+      const now = said(openLive.has(chapter.id) ? 'what it did' : 'just now', '#8f7c5f');
+      now.className = 'chapter-now';
+      under.appendChild(now);
+    }
+    for (const one of shown) {
+      const step = keyed(did(one, does), `step:${one.id}`);
+      step.style.flex = 'none';
+      under.appendChild(step);
+    }
+  };
+  toggle?.addEventListener('click', () => {
+    const set = live ? openLive : openChapters;
+    if (set.has(chapter.id)) set.delete(chapter.id);
+    else set.add(chapter.id);
+    const many = toggle!.textContent!.replace(/\s[\u25b8\u25be]$/, '');
+    toggle!.textContent = `${many} ${set.has(chapter.id) ? '\u25be' : '\u25b8'}`;
+    fill();
+  });
+  fill();
+  body.appendChild(under);
+  it.appendChild(body);
+  return it;
+}
+
+function tinted(text: string, ink: string): HTMLElement {
+  const it = document.createElement('span');
+  it.style.color = ink;
+  it.textContent = text;
+  return it;
+}
+
+/** What was left unfinished, unchecked, or waiting on him. */
+function loose(ends: string[]): HTMLElement {
+  const it = document.createElement('div');
+  it.className = 'story-part';
+  it.appendChild(label('loose ends', {}));
+  const list = document.createElement('div');
+  list.className = 'story-ends';
+  for (const end of ends) {
+    const line = document.createElement('div');
+    line.className = 'story-end';
+    line.textContent = end;
+    list.appendChild(line);
+  }
+  it.appendChild(list);
+  return it;
+}
+
+/* Each way a piece of work can stand has a sign of its own, in whole pixels
+   like the steps': a tick for done, a half-filled ring for done in part, a
+   dash for put down, the post's own speech mark for him putting it right,
+   and the fire's ember for the one it is on now. */
+const CHAPTER_ART: Record<'done' | 'partial' | 'dropped' | 'you', string[]> = {
+  done: ['......#', '.....##', '#...##.', '##.##..', '.###...', '..#....'],
+  partial: ['..###..', '.#..##.', '#...###', '#...###', '.#..##.', '..###..'],
+  dropped: ['.......', '.......', '#######', '.......', '.......', '.......'],
+  you: ['#####..', '#...#..', '#...#..', '#####..', '...##..', '....#..'],
+};
+const CHAPTER_INK: Record<'done' | 'partial' | 'dropped' | 'you', string> = {
+  done: 'var(--yard-well)',
+  partial: 'var(--yard-warn)',
+  dropped: '#8f7c5f',
+  you: '#d8b47c',
+};
+
+function chapterSign(state: Chapter['state'] | 'you'): HTMLElement {
+  const slot = document.createElement('span');
+  slot.className = 'deed-sign chapter-sign';
+  if (state === 'going') {
+    const ember = document.createElement('span');
+    ember.className = 'deed-ember';
+    slot.appendChild(ember);
+    return slot;
+  }
+  const art = CHAPTER_ART[state];
+  slot.style.color = CHAPTER_INK[state];
+  const wide = Math.max(...art.map((one) => one.length));
+  const cells = art.flatMap((one, y) =>
+    [...one].flatMap((c, x) => (c === '#' ? [`<rect x="${x}" y="${y}" width="1" height="1"/>`] : []))
+  );
+  slot.innerHTML = `<svg viewBox="0 0 ${wide} ${art.length}" width="${wide * 2}" height="${art.length * 2}" shape-rendering="crispEdges" fill="currentColor">${cells.join('')}</svg>`;
+  return slot;
+}
 
 /**
  * What it made, on the board it is nailed to.
@@ -3399,12 +3492,12 @@ function carted(wide: number, made: Session['made'], does: Doings): HTMLElement 
 }
 
 /** The plan it posted, done steps inked out and the one it is on lit. */
-function planned(plan: Session['plan']): HTMLElement {
+function planned(plan: Session['plan'], headed = true): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = "position:relative;font-family:'Josefin Sans',sans-serif";
-  it.appendChild(label('the plan', {}));
+  if (headed) it.appendChild(label('the plan', {}));
   const list = document.createElement('div');
-  list.style.cssText = 'display:flex;flex-direction:column;gap:7px;margin-top:14px';
+  list.style.cssText = `display:flex;flex-direction:column;gap:${headed ? 7 : 5}px;margin-top:${headed ? 14 : 10}px`;
   for (const step of plan) {
     const line = document.createElement('div');
     line.style.cssText = `font-size:14px;line-height:1.3;color:${STEP[step.state]}`;

@@ -237,6 +237,9 @@ export const notedSchema = z.object({
   unread: z.boolean().optional(),
   /** Handed into a turn that was already running, rather than opening one. */
   steered: z.boolean().optional(),
+  /** Where it falls in the conversation, so what was done after it can be
+      told apart from what was done before. */
+  seq: z.number().int().optional(),
 });
 export type Noted = z.infer<typeof notedSchema>;
 
@@ -395,6 +398,33 @@ export const madeSchema = z.object({
 });
 export type Made = z.infer<typeof madeSchema>;
 
+/**
+ * The session told as a story rather than as a list: what it is after, the
+ * pieces of work it has been through on the way, and what was left undone.
+ * Worked out by a small model off everything said, and only still true while
+ * `after` is where the conversation stands.
+ */
+export const storySchema = z.object({
+  /** What the whole session is trying to get done, as it stands now. */
+  goal: z.string(),
+  chapters: z.array(
+    z.object({
+      /** The note this piece of work began with. */
+      from: z.string(),
+      title: z.string(),
+      /** How it went, or where it stands. */
+      how: z.string().optional(),
+      state: z.enum(['done', 'partial', 'dropped', 'going']),
+      /** When it began with him putting the agent right, what he said. */
+      pushback: z.string().optional(),
+    })
+  ),
+  /** What was left unfinished, unchecked, or waiting on him. */
+  ends: z.array(z.string()),
+  after: z.string(),
+});
+export type Story = z.infer<typeof storySchema>;
+
 export const toldSchema = z.object({
   /** Newest first. */
   notes: z.array(notedSchema),
@@ -425,6 +455,7 @@ export const toldSchema = z.object({
    * still true while `after`, the answer it was written under, is the newest.
    */
   recap: z.object({ said: z.string(), after: z.string() }).optional(),
+  story: storySchema.optional(),
 });
 export type Told = z.infer<typeof toldSchema>;
 

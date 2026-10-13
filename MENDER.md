@@ -252,7 +252,12 @@ column's own heading, opens the trail upward out of it and pressing either
 again folds it, the trail rising up out of the answer and sinking back
 into it rather than snapping, and it stays however you left it. They look no different for
 being pressable, the one place the gold rule gives way, because a gold word
-over every answer was one more thing to read. At the top of the right column
+over every answer was one more thing to read. The right column is the
+session told as a story rather than as a log, so a session can be picked up
+without rereading what you asked it. At the top is what it is after, a
+sentence in the answer's own italic, worked out by the same small model that
+names it from everything said rather than the first line, and under it where
+it stands in a word or two: working on it, waiting on you, done. Under that
 is what it made, nailed to a billboard: not the source it changed on the way,
 but what you'd go and look at afterwards — a page it published, a document or
 a picture it wrote, an app or a package it built. The newest is on the board
@@ -261,10 +266,21 @@ board reads what the board reads well, a page opens where the web is read,
 and a build is shown where it landed. The village keeps that list itself,
 per session, so closing and resuming a session never loses it, even when
 the conversation it comes back with has forgotten some of its own history;
-only a file that's actually gone from disk drops off. Under that is whatever the session is
-in the middle of: the plan it is working through, done steps inked out and
-the one it is on lit, and nothing when there is none. Under that is
-everything it did, scrolling and following the live end, said in plain words
+only a file that's actually gone from disk drops off. Under that is how it
+went: each piece of work it has been through, oldest first, named for what
+came of it rather than for what was asked, a "huh" or a nudge folded into the
+piece it was about, with a tick when it landed, a half ring when only part
+did, a dash when it was put down, and how it came out in a quieter line with
+"committed", "pushed" or "built" read off what it actually did. When a piece
+began with you putting it right, what you said stands between the two in the
+post's own ink. The piece it is on carries the fire's ember, the plan it is
+working through with done steps inked out and the one it is on lit, and the
+last few things it did since you last spoke, "just now"; a finished piece
+folds what it did away under a count that opens it. And at the foot, only
+once there are any, the loose ends: what it said it left unfinished, could
+not check, or is waiting on you for. The column scrolls as one, following
+the piece it is on while it works and opening on what it is after once it
+has stopped. What it did, under each piece, is said in plain words
 worked out from the command itself rather than the command: what changed
 something gets its own line, built, installed, tested and whether it passed,
 committed with its message, pushed, a file written or changed, and every run
@@ -284,9 +300,10 @@ anywhere else in the village; a long one is capped, "show all" opens the rest
 right there and folds it again, and past what was kept the cap opens the whole
 change on the checkout's own board. And opening the trail over an answer lays
 the same steps in it, each one between the thoughts it came between, every
-edit open in full, so what it thought and what it did read as one story. Under all of that is the ground itself, with whoever it
-sent out standing in the firelight with an answer or off in the dark still
-working.
+edit open in full, so what it thought and what it did read as one story. Under all of that, while anybody it
+sent out is still out, is the ground itself, with them standing in the
+firelight with an answer or off in the dark still working; once they are all
+home the ground goes and the piece of work that sent them says so.
 
 **What happens to a turn is drawn, and what is said in it is set.** The
 answers stay on the wood with no box round them. What happened to a turn,

@@ -40,8 +40,6 @@ export function goingIn(state: WorkingState): CutOff | null {
   };
 }
 
-/** What the session is told when it is picked back up: the part on the gatepost. */
-export const PICK_UP_SAID = 'carry on from where you were when the village closed.';
 
 /** And the part only the agent reads, saying exactly what was cut off. */
 export function pickUpNote(cut: CutOff): string {

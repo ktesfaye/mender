@@ -13,6 +13,7 @@
 import type { Ask, Deed, Errand, Failure, Glance, Kit, Mood, Pack, Told } from '@shared/agents';
 import type { FiveHours } from '@shared/five-hours';
 import { isDear } from '@shared/hungry';
+import { PICK_UP_SAID } from '@shared/pick-up';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { answersFor } from '../board/work';
@@ -25,8 +26,10 @@ import type {
   Lantern,
   Note,
   Posture,
+  Chapter,
   Session,
   Signboard,
+  Story,
   Step,
   StepKind,
   Thought,
@@ -266,6 +269,9 @@ function sessionOf(
     thoughts,
     ...(recapOf(told, going) ? { recap: recapOf(told, going) } : {}),
     plan: (from.plan ?? []).map((one) => ({ said: one.text, state: one.state })),
+    ...(told?.notes.length
+      ? { story: storyOf(told, going, Boolean(from.asking), from.mood === 'arriving') }
+      : {}),
     steps: stepsOf(told?.deeds ?? []),
     made: madeOf(told),
     agents: [
@@ -420,6 +426,79 @@ function thoughtsOf(told: Told | undefined, mood: Mood | undefined, prompted = f
     ...(one.trouble ? { trouble: one.trouble } : {}),
     ...(one.seq !== undefined ? { seq: one.seq } : {}),
   }));
+}
+
+/**
+ * The session as a story: the pieces of work the small model saw in it, each
+ * holding what was done between the note that began it and the next one.
+ *
+ * Until it has said, every note is its own piece, called what was asked; and
+ * anything asked since it last said rides in the last piece, rather than
+ * standing as one more called "huh" until it has been told again.
+ */
+function storyOf(told: Told, going: boolean, asking: boolean, arriving: boolean): Story {
+  const notes = [...told.notes].reverse().filter((one) => !one.said.startsWith(PICK_UP_SAID));
+  const told_ = told.story;
+  const seqOf = new Map(notes.map((one) => [one.id, one.seq ?? -1]));
+  const heads = told_
+    ? told_.chapters
+        .filter((one) => seqOf.has(one.from))
+        .map((one) => ({ ...one, seq: seqOf.get(one.from)! }))
+    : notes.map((one) => ({
+        from: one.id,
+        title: clipped(one.said),
+        state: 'done' as const,
+        seq: one.seq ?? -1,
+      }));
+  if (!heads.length && notes[0])
+    heads.push({ from: notes[0].id, title: clipped(notes[0].said), state: 'done', seq: -1 });
+  heads[0] = { ...heads[0]!, seq: -1 };
+  const steps = stepsOf(told.deeds);
+  const newest = told.notes[0];
+  const chapters = heads.map((head, i) => {
+    const to = heads[i + 1]?.seq ?? Infinity;
+    const last = i === heads.length - 1;
+    const state: Chapter['state'] =
+      last && going ? 'going' : head.state === 'going' ? 'partial' : head.state;
+    return {
+      id: head.from,
+      title: head.title,
+      state,
+      ...('how' in head && head.how && !(last && going) ? { how: head.how } : {}),
+      ...('pushback' in head && head.pushback ? { pushback: head.pushback } : {}),
+      steps: steps.filter((one) => (one.seq ?? -1) >= head.seq && (one.seq ?? -1) < to),
+      ...(last && going
+        ? { latest: steps.filter((one) => (one.seq ?? -1) >= (newest?.seq ?? -1)).length }
+        : {}),
+    };
+  });
+  const background = told.deeds.some((one) => one.background && one.running);
+  const state: Story['state'] =
+    going || arriving
+      ? { said: 'working on it', tone: 'going' }
+      : asking
+        ? { said: 'waiting on you', tone: 'asking' }
+        : told.ended === 'stopped'
+          ? { said: 'you stopped it', tone: 'stopped' }
+          : told.ended === 'closed'
+            ? { said: 'the village closed on it', tone: 'stopped' }
+            : told.ended === 'broke'
+              ? { said: 'it stopped', tone: 'broken' }
+              : background
+                ? { said: 'still running in the background', tone: 'going' }
+                : { said: 'done', tone: 'done' };
+  return {
+    ...(told_?.goal ? { goal: told_.goal } : {}),
+    state,
+    chapters,
+    ends: going ? [] : (told_?.ends ?? []),
+  };
+}
+
+/** What was asked, short enough to stand as the name of a piece of work. */
+function clipped(said: string): string {
+  const flat = said.replace(/\s+/g, ' ').trim();
+  return flat.length > 70 ? `${flat.slice(0, 68).replace(/\s+\S*$/, '')}…` : flat;
 }
 
 /** The recap, while the answer it was written under is still the last word. */
