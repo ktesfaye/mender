@@ -1706,7 +1706,9 @@ class House {
      rewrite, but this house already kept the whole conversation while it
      slept, so whoever walks in reads it straight away instead of a fire
      saying it is waking, and the real state takes over once the wake is
-     done. Only held when there was something to hold. */
+     done. Held even when it kept nothing, which is the first wake after a
+     restart: the yard draws that as a fire until the whole of it is in,
+     rather than every half-read piece of the history in turn. */
   private held: WorkingState | null = null;
   /* Whoever is waiting to hear the session has got past starting. */
   private past = new Set<() => void>();
@@ -1945,7 +1947,7 @@ class House {
     if (this.wakingUp === on) return;
     this.wakingUp = on;
     const now = peek(this.state);
-    this.held = on && now.told.notes.length ? now : null;
+    this.held = on ? now : null;
     this.publish();
   }
 
