@@ -38,6 +38,7 @@ import { createTasks } from './tasks';
 import { createTasksController } from './tasks-controller';
 import { restoreTextSize } from './text-size';
 import { createTuiSessions, mergedMoods } from './tui-sessions';
+import { createUpdates } from './updates';
 import { createVillageController } from './village';
 import { restoredBounds, watchWindowBounds } from './window-state';
 import { installWire } from './wire';
@@ -106,6 +107,8 @@ export async function main(): Promise<void> {
   scope.add(() => tasks.dispose());
   scope.add(() => tuiSessions.dispose());
   scope.add(() => schedules.dispose());
+  const updates = createUpdates(runtimes.env);
+  scope.add(() => updates.dispose());
   installWire(scope, {
     ...runtimes.controllers,
     agents: createAgentsController(
@@ -124,6 +127,7 @@ export async function main(): Promise<void> {
     schedules: createSchedulesController(schedules, appSettings),
     sky: createSkyController(projects, tasks),
     tasks: createTasksController(tasks),
+    updates: updates.controller,
     village: createVillageController({ state: () => projects.standing() }),
   });
 
@@ -145,6 +149,7 @@ export async function main(): Promise<void> {
     workingCount: () =>
       Object.values(peek(agents.moods())).filter((mood) => mood === 'working').length,
     dispose: () => {
+      updates.quitting();
       agents.closing();
       return scope.dispose();
     },

@@ -1095,8 +1095,16 @@ off it rolls it back up.
 **It is an app you install.** `pnpm run package` makes a Mender.app and a dmg;
 what comes out of the Applications folder is the whole village with everything
 running behind it. The icon is a square cut out of the island as the app itself
-draws it, because that is what the app is. No publishing, no update channel and
-no notarisation: there is nobody to release to yet.
+draws it, because that is what the app is. No notarisation, and no update
+channel anybody else could follow.
+
+**And it keeps itself up to date, from releases he calls.** A version is only
+ever published because he said so, by `apps/mender/tools/publish.sh`, never on
+a commit. Every installed Mender asks GitHub, through the `gh` already signed
+in on that machine, whether there is one newer than itself, when it opens and
+every few hours after, fetches it quietly and swaps it in the next time it is
+quit. The foot of the windmill's rail says which Mender this is and "check for
+updates"; once a newer one is waiting it says "restart into" it instead.
 
 **It reaches him even when he has looked away.** A villager who asks him
 something, finishes what it was doing, or breaks, while the window is not the

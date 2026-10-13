@@ -35,6 +35,7 @@ import {
   type SessionShare,
   type UsageWindow,
 } from '@shared/five-hours';
+import type { UpdateState } from '@shared/updates';
 import { counted } from '../board/card';
 import { chordLabel, chordOf, rebindableDoings } from '../board/finder';
 import { chip, formRow, hintLine, input, intro, pageOf, section } from './settings';
@@ -98,6 +99,9 @@ export interface WindmillState {
   /** Every chord rebound away from the table's own default. Null while the
       first answer hasn't arrived yet. */
   keybindings: Keybindings | null;
+  /** Where this copy of Mender stands against the newest published one.
+      Null while the first answer hasn't arrived yet. */
+  update: UpdateState | null;
 }
 
 export interface WindmillDoings {
@@ -122,6 +126,10 @@ export interface WindmillDoings {
   rebind(pick: string, chord: string): Promise<void>;
   /** Back to the table's own default for that one doing. */
   unbind(pick: string): Promise<void>;
+  /** Ask GitHub now rather than waiting for the next look. */
+  checkUpdate(): Promise<void>;
+  /** Quit, swap the waiting one in, open it again. */
+  restartToUpdate(): Promise<void>;
   closed(): void;
 }
 
@@ -237,6 +245,63 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     rail.appendChild(tab);
     tabs.set(one.page, { root: tab, sub });
   }
+  // Which Mender this is, and the way to a newer one, at the foot of the rail.
+  const version = el('div', 'windmill-version');
+  rail.appendChild(version);
+  let upToDateTimer = 0;
+  let sayUpToDate = false;
+
+  function drawVersion(): void {
+    const up = now.update;
+    const name = el('span', 'windmill-version-name');
+    name.textContent = up ? `Mender ${up.version}` : 'Mender';
+    const parts: HTMLElement[] = [name];
+    const quiet = (text: string, sore = false): void => {
+      const line = el('span', sore ? 'windmill-version-said sore' : 'windmill-version-said');
+      line.textContent = text;
+      parts.push(line);
+    };
+    const check = (said: string): void => {
+      parts.push(
+        button(said, 'settings-link windmill-version-act', () => {
+          sayUpToDate = true;
+          void does.checkUpdate();
+        })
+      );
+    };
+    if (!up) {
+      // nothing yet
+    } else if (up.phase === 'cannot') {
+      quiet(up.said ?? '');
+    } else if (up.phase === 'checking') {
+      quiet('looking…');
+    } else if (up.phase === 'fetching') {
+      quiet(`fetching ${up.latest ?? 'the new one'}…`);
+    } else if (up.phase === 'ready') {
+      parts.push(
+        button(`restart into ${up.latest}`, 'settings-link windmill-version-act', () => {
+          void does.restartToUpdate();
+        })
+      );
+      quiet('or it swaps itself in next time you quit');
+    } else if (up.phase === 'failed') {
+      quiet(up.said ?? 'could not look', true);
+      check('try again');
+    } else if (up.phase === 'none' && sayUpToDate) {
+      quiet('up to date');
+      if (!upToDateTimer) {
+        upToDateTimer = window.setTimeout(() => {
+          sayUpToDate = false;
+          upToDateTimer = 0;
+          if (back.isConnected) drawVersion();
+        }, 3000);
+      }
+    } else {
+      check('check for updates');
+    }
+    version.replaceChildren(...parts);
+  }
+
   rail.addEventListener('keydown', (event) => {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
     event.preventDefault();
@@ -277,14 +342,14 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     const checkout = now.checkout;
     sub(
       'checkouts',
-      checkout ? `${checkout.branchPrefix || 'mender'}/…${checkout.randomSuffix ? ' + a tail' : ''}` : ''
+      checkout
+        ? `${checkout.branchPrefix || 'mender'}/…${checkout.randomSuffix ? ' + a tail' : ''}`
+        : ''
     );
     const term = now.terminal;
     sub(
       'terminal',
-      term
-        ? `${term.fontSize || 13}px · ${(term.defaultShell || '$SHELL').split('/').at(-1)}`
-        : ''
+      term ? `${term.fontSize || 13}px · ${(term.defaultShell || '$SHELL').split('/').at(-1)}` : ''
     );
     const rebound = now.keybindings ? Object.keys(now.keybindings).length : null;
     sub('keys', rebound === null ? '' : rebound ? `${rebound} rebound` : 'as they come');
@@ -373,8 +438,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       took(branches);
     });
     const tail = el('div', 'settings-choices');
-    const set = (on: boolean) => () =>
-      void does.setRandomSuffix(on).then(() => took(branches));
+    const set = (on: boolean) => () => void does.setRandomSuffix(on).then(() => took(branches));
     tail.append(
       chip('Just the name', !held.randomSuffix, set(false)),
       chip('A short random tail', held.randomSuffix, set(true))
@@ -404,9 +468,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     landing.fill([
       formRow('New projects', projects),
       formRow('Own copies', trees),
-      hintLine(
-        'A cloned or freshly started project, and a session’s own copy, go here.'
-      ),
+      hintLine('A cloned or freshly started project, and a session’s own copy, go here.'),
     ]);
   }
 
@@ -747,7 +809,9 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       return;
     }
     if (!now.worktrees.length) {
-      worktrees.fill([hintLine('Every worktree Mender ever cut is either in use or already gone.')]);
+      worktrees.fill([
+        hintLine('Every worktree Mender ever cut is either in use or already gone.'),
+      ]);
       return;
     }
     const children: HTMLElement[] = [];
@@ -963,7 +1027,8 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     main.append(title, bar, meta);
     if (session.context >= 150_000) {
       const heavy = el('span', 'settings-row-meta windmill-five-warn');
-      heavy.textContent = 'Heavy: every call re-reads the whole conversation, and this one is long.';
+      heavy.textContent =
+        'Heavy: every call re-reads the whole conversation, and this one is long.';
       main.append(heavy);
     }
     const side = el('span', 'settings-row-side');
@@ -979,8 +1044,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     title.textContent = session.title;
     main.append(title);
     const parts = session.shares.map(
-      (share) =>
-        `${share.label}: cpu ${Math.round(share.cpuPercent)}%, ${sized(share.memBytes)}`
+      (share) => `${share.label}: cpu ${Math.round(share.cpuPercent)}%, ${sized(share.memBytes)}`
     );
     if (session.devServers) parts.push(`${counted(session.devServers, 'dev server')} listening`);
     const meta = el('span', 'settings-row-meta');
@@ -1002,6 +1066,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
 
   function draw(): void {
     drawRail();
+    drawVersion();
     if (page === 'general') {
       drawStarts();
       drawNotify();
@@ -1045,6 +1110,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     open = false;
     stopArming();
     window.clearTimeout(clearingTimer);
+    window.clearTimeout(upToDateTimer);
     back.remove();
     does.closed();
   }

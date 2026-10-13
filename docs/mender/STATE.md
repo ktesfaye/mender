@@ -1817,7 +1817,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-31 | Other issue-tracker integrations (12 providers) | cut |  |
 | ST-32 | SSH machine connections (form + validation) | cut |  |
 | ST-33 | Full keybinding catalog & conflict model | done | W1 |
-| ST-34 | App self-update flow | cut |  |
+| ST-34 | App self-update flow: published by hand, fetched and swapped in on its own, "check for updates" at the foot of the windmill's rail | done | W10 |
 | ST-35 | Telemetry consent | cut |  |
 | ST-36 | `.emdash.json` (the one per-repo config file) | kept |  |
 | UI-01 | Boot splash | cut |  |

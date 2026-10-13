@@ -18,6 +18,7 @@ import { promptsContract } from './prompts';
 import { schedulesContract } from './schedules';
 import { skyContract } from './sky';
 import { tasksContract } from './tasks';
+import { updatesContract } from './updates';
 import { villageContract } from './village';
 
 /**
@@ -47,6 +48,7 @@ export const menderDomainContracts = {
   tasks: tasksContract,
   terminals: terminalsContract,
   tuiAgents: tuiAgentsContract,
+  updates: updatesContract,
   village: villageContract,
   workspaces: workspaceRegistryContract,
 } as const;

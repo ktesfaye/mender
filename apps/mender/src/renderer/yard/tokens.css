@@ -738,6 +738,33 @@ html.still *::after {
 .settings-tab.here .settings-tab-name {
   color: var(--yard-ink-bright);
 }
+.windmill-version {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 12px 4px;
+  font:
+    13px/1.35 'Josefin Sans',
+    sans-serif;
+}
+.windmill-version-name {
+  font:
+    11px/1.35 'Courier Prime',
+    monospace;
+  color: var(--yard-ink-dim);
+}
+.windmill-version-said {
+  font-size: 12px;
+  color: var(--yard-ink-dim);
+}
+.windmill-version-said.sore {
+  color: var(--yard-broken);
+}
+.windmill-version-act {
+  align-self: flex-start;
+  text-align: left;
+}
 .settings-tab:focus-visible {
   outline: 2px solid var(--yard-gold);
   outline-offset: -2px;

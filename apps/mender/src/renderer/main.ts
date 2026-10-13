@@ -28,6 +28,7 @@ import type {
   TerminalSettings,
 } from '@shared/app-settings';
 import type { FiveHours } from '@shared/five-hours';
+import type { UpdateState } from '@shared/updates';
 import type { Hungry } from '@shared/hungry';
 import type { At, Change } from '@shared/changes';
 import { parseEnvLines } from '@shared/env-lines';
@@ -1709,6 +1710,7 @@ async function boot(): Promise<void> {
         terminal: null as TerminalSettings | null,
         notifications: null as NotificationSettings | null,
         keybindings: null as Keybindings | null,
+        update: null as UpdateState | null,
       };
       let records: ReplicaState<Record<string, WorkspaceRecord>> | null = null;
       const readProviders = (hands: Hand[]): void => {
@@ -1799,6 +1801,23 @@ async function boot(): Promise<void> {
           state.keybindings = await client.appSettings.clearKeybinding({ pick }, { timeoutMs: 0 });
           keybindings = state.keybindings;
         },
+        checkUpdate: async () => {
+          state.update = { ...(state.update ?? (await client.updates.state({}))), phase: 'checking' };
+          ui.update(state);
+          // It moves through fetching on its own; look in on it until it settles.
+          const asked = client.updates.check({}, { timeoutMs: 0 });
+          const peek = window.setInterval(() => {
+            void client.updates.state({}).then((now) => {
+              state.update = now;
+              ui.update(state);
+            });
+          }, 1000);
+          state.update = await asked.finally(() => window.clearInterval(peek));
+          ui.update(state);
+        },
+        restartToUpdate: async () => {
+          await client.updates.restart({});
+        },
         closed: () => {
           if (windmill === ui) windmill = null;
           void records?.dispose();
@@ -1827,6 +1846,11 @@ async function boot(): Promise<void> {
         });
         void client.appSettings.fiveHours({}, { timeoutMs: 0 }).then((five) => {
           state.fiveHours = five;
+          ui.update(state);
+        });
+        void client.updates.state({}).then((up) => {
+          if (state.update?.phase === 'checking' && up.phase !== 'checking') return;
+          state.update = up;
           ui.update(state);
         });
       };
