@@ -961,8 +961,8 @@ box, is pinned to the foot of what it said, right over the line it is
 answered on, the same place a permission question is, ruled off above and
 below so it never reads as more of the answer, which scrolls in the room
 left over it. It is put to you the way a game puts a choice: what it calls
-it and which of how many in pixel capitals, the question in a large warm
-italic, each answer's name in pixel type with a number beside it and what
+it and which of how many in pixel capitals, the question in the same pixel
+type a little larger, never a big display face, each answer's name in pixel type with a number beside it and what
 it would mean written quietly under it, and the one the agent favours
 marked "recommended" after its name rather than inside it. The answers are rows, each with
 a ring, or a box when several can be ticked, and the keyboard works it

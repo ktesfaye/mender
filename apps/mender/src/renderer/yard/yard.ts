@@ -3358,12 +3358,10 @@ const ASKING_BLOCK = [
 ].join(';');
 
 const ASKED = [
-  "font-family:'Fraunces',serif",
-  'font-style:italic',
-  "font-variation-settings:'SOFT' 100,'WONK' 1",
-  'font-weight:420',
-  'font-size:27px',
-  'line-height:1.3',
+  'font-family:Silkscreen,monospace',
+  'font-size:15px',
+  'letter-spacing:.03em',
+  'line-height:1.6',
   'color:#ffdca4',
   'text-shadow:0 2px 10px rgba(0,0,0,.9)',
 ].join(';');
