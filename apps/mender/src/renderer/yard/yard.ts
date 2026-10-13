@@ -3308,7 +3308,9 @@ function made(
   const baseTall = Math.max(0, above.offsetHeight - top);
   /* Following the live end, the list starts on a whole step rather than one
      sliced in half under the heading: the window is shortened from the top by
-     however much of the first visible step would have been cut. */
+     however much of the first visible step would have been cut. Only a sliver,
+     though: a step carrying a long edit can be most of the window, and
+     trimming all of that left a tall empty stretch under the heading. */
   const settle = (): void => {
     if (stepsFollowed.has(id)) return;
     steps.style.top = `${baseTop}px`;
@@ -3319,7 +3321,7 @@ function made(
       | HTMLElement
       | undefined;
     const cut = first ? first.offsetTop - at : 0;
-    if (cut > 0 && cut < baseTall) {
+    if (cut > 0 && cut <= STEP_SLIVER) {
       steps.style.top = `${baseTop + cut}px`;
       steps.style.height = `${baseTall - cut}px`;
       steps.scrollTop = steps.scrollHeight;
@@ -3339,6 +3341,9 @@ function made(
      sake. */
   if (hands.length) ground(root, at, yard, floor, does);
 }
+
+/** The most of a sliced step trimmed off the top rather than shown cut. */
+const STEP_SLIVER = 36;
 
 /** Where the steps were left scrolled to, for a session somebody scrolled up in. */
 const stepsFollowed = new Map<string, number>();
