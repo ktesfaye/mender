@@ -3294,14 +3294,17 @@ function pushedBack(said: string): HTMLElement {
 function chaptered(session: Session, chapter: Chapter, does: Doings): HTMLElement {
   const live = chapter.state === 'going';
   const it = document.createElement('div');
-  it.className = `chapter chapter-${chapter.state}`;
-  it.appendChild(chapterSign(chapter.state));
+  it.className = `chapter chapter-${chapter.state}${chapter.title ? '' : ' chapter-unnamed'}`;
+  /* One not named yet is only what it did, with no sign or heading of its own. */
+  if (chapter.title) it.appendChild(chapterSign(chapter.state));
   const body = document.createElement('div');
   body.className = 'chapter-body';
-  const title = document.createElement('div');
-  title.className = 'chapter-title';
-  title.textContent = chapter.title;
-  body.appendChild(title);
+  if (chapter.title) {
+    const title = document.createElement('div');
+    title.className = 'chapter-title';
+    title.textContent = chapter.title;
+    body.appendChild(title);
+  }
 
   /* What came of it, then the facts nobody has to work out: whether it went
      into a commit, a build, a push, and how many it sent out. */

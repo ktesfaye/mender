@@ -2144,6 +2144,12 @@ body.gripping-row * {
   display: block;
   margin: 2px 0 2px;
 }
+.yard .chapter-unnamed .chapter-how {
+  margin-top: 0;
+}
+.yard .chapter-unnamed .chapter-steps:first-child {
+  margin-top: 0;
+}
 .yard .chapter-steps {
   display: flex;
   flex-direction: column;

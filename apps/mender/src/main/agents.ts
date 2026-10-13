@@ -580,8 +580,10 @@ export function createAgents(
         storyTimers.delete(task);
         const here = houses.get(task);
         if (!here || storying.has(task)) return;
+        /* A session that went home is held exactly as it was while it wakes
+           underneath, and can stay that way until something new happens, so
+           waking is no reason to wait: what it holds is the whole story. */
         const state = peek(here.state);
-        if (state.waking) return;
         const told = state.told;
         const note = told.notes[0];
         if (!note) return;

@@ -444,14 +444,12 @@ function storyOf(told: Told, going: boolean, asking: boolean, arriving: boolean)
     ? told_.chapters
         .filter((one) => seqOf.has(one.from))
         .map((one) => ({ ...one, seq: seqOf.get(one.from)! }))
-    : notes.map((one) => ({
-        from: one.id,
-        title: clipped(one.said),
-        state: 'done' as const,
-        seq: one.seq ?? -1,
-      }));
+    : [];
+  /* Until the small model has said what the pieces of work were, there is
+     one piece with no name: what was asked is on the post already, and
+     standing it here again as a heading only reads as the post leaking. */
   if (!heads.length && notes[0])
-    heads.push({ from: notes[0].id, title: clipped(notes[0].said), state: 'done', seq: -1 });
+    heads.push({ from: notes[0].id, title: '', state: 'done', seq: -1 });
   heads[0] = { ...heads[0]!, seq: -1 };
   const steps = stepsOf(told.deeds);
   const newest = told.notes[0];
@@ -493,12 +491,6 @@ function storyOf(told: Told, going: boolean, asking: boolean, arriving: boolean)
     chapters,
     ends: going ? [] : (told_?.ends ?? []),
   };
-}
-
-/** What was asked, short enough to stand as the name of a piece of work. */
-function clipped(said: string): string {
-  const flat = said.replace(/\s+/g, ' ').trim();
-  return flat.length > 70 ? `${flat.slice(0, 68).replace(/\s+\S*$/, '')}…` : flat;
 }
 
 /** The recap, while the answer it was written under is still the last word. */
