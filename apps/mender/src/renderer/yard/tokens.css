@@ -1303,6 +1303,8 @@ button.settings-row:hover .settings-row-main {
   background: rgba(10, 22, 28, 0.55);
   border: 1px solid rgba(140, 196, 214, 0.22);
   white-space: nowrap;
+  letter-spacing: 0;
+  word-spacing: normal;
 }
 /* Stressed is said by weight and brightness, the way it was written. */
 .yard .prose-heavy {
@@ -1344,7 +1346,14 @@ button.settings-row:hover .settings-row-main {
   font-family: var(--yard-face-mono);
   font-size: max(13px, 0.66em);
   line-height: 1.5;
+  /* The answer's own face is tracked out; a fixed-pitch face never is. */
+  letter-spacing: 0;
+  word-spacing: normal;
   color: #d4e2e5;
+}
+.yard .prose-block-wraps {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 /* The bare fenced block a diagram falls back to, outside a card. */
 .yard .prose > .prose-block {

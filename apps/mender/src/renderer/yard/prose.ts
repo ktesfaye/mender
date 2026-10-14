@@ -263,19 +263,31 @@ export function prose(
   });
 }
 
-/** Code, on a slate of its own with what language it is in over it. */
+/**
+ * Code, on a slate of its own with what language it is in over it, when it
+ * says. A fence with no language that holds no drawing, nothing lined up in
+ * columns, is a passage someone wants copied whole, a prompt or a message,
+ * so its lines wrap rather than running off the slate.
+ */
 function codeCard(text: string, lang: string): HTMLElement {
   const card = document.createElement('div');
   card.className = 'prose-code-card';
-  const head = document.createElement('div');
-  head.className = 'prose-code-head';
-  head.textContent = lang || 'code';
+  if (lang) {
+    const head = document.createElement('div');
+    head.className = 'prose-code-head';
+    head.textContent = lang;
+    card.appendChild(head);
+  }
   const code = document.createElement('pre');
   code.className = 'prose-block';
+  if (!lang && !DRAWN.test(text)) code.classList.add('prose-block-wraps');
   code.textContent = text;
-  card.append(head, code);
+  card.appendChild(code);
   return card;
 }
+
+/** Box drawing, or a gap of spaces inside a line holding something in a column. */
+const DRAWN = /[\u2500-\u257f\u2580-\u259f]|\S {2,}\S/;
 
 /** A diagram, drawn — or, when it will not parse, its own fenced text back. */
 function mermaidBlock(text: string): HTMLElement {
