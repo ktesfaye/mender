@@ -36,19 +36,40 @@ const STANDALONE_COLORS = {
 /** The SVG for one mermaid diagram, or null when it will not parse.
     Colored with CSS variables — for drawing straight into this page. */
 export function mermaidSVG(text: string): string | null {
-  try {
-    return renderMermaidSVG(text, COLORS);
-  } catch {
-    return null;
-  }
+  return drawnOnce(laidOut, text, () => renderMermaidSVG(text, COLORS));
 }
 
 /** The same, colored in plain hex for an SVG that will live on its own —
     a data URI, which never sees this page's CSS. */
 export function mermaidSVGStandalone(text: string): string | null {
-  try {
-    return renderMermaidSVG(text, STANDALONE_COLORS);
-  } catch {
-    return null;
+  return drawnOnce(laidOutAlone, text, () => renderMermaidSVG(text, STANDALONE_COLORS));
+}
+
+/* Laying a diagram out is the slowest thing the board does, and the board is
+   written again every time the answer moves, so each diagram is laid out once
+   and kept: the newest few hundred, the oldest let go first. */
+const KEPT = 200;
+const laidOut = new Map<string, string | null>();
+const laidOutAlone = new Map<string, string | null>();
+
+function drawnOnce(
+  kept: Map<string, string | null>,
+  text: string,
+  draw: () => string
+): string | null {
+  if (kept.has(text)) {
+    const svg = kept.get(text) ?? null;
+    kept.delete(text);
+    kept.set(text, svg);
+    return svg;
   }
+  let svg: string | null;
+  try {
+    svg = draw();
+  } catch {
+    svg = null;
+  }
+  kept.set(text, svg);
+  if (kept.size > KEPT) kept.delete(kept.keys().next().value as string);
+  return svg;
 }

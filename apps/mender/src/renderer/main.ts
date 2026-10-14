@@ -6345,6 +6345,9 @@ async function boot(): Promise<void> {
       const lit: Lit[] = standing.map((one) => ({ building: one.building, look: one.look }));
       drawn.atmosphere.setHouses(lit, new Set(projects.map((project) => project.district)));
     };
+    /* What the open yard was last handed by people(), and which yard that was. */
+    let handed = '';
+    let handedTo: Watching | null = null;
     const people = (): void => {
       lightHouses();
       sendRunners();
@@ -6355,14 +6358,32 @@ async function boot(): Promise<void> {
          whole life of the session because nothing ever told the rail. */
       const inside = open ? projectOn(open.district) : undefined;
       if (watching && inside) {
-        watching.moved({
-          project: inside,
-          workspaces: boardsFor(inside),
-          tasks: tasksFor(inside.id),
-          moods: seen,
-          glances,
-          unread: new Map(unseen),
-        });
+        /* Only when something this yard draws has actually moved. Every tool
+           call in every session anywhere lands here, and handing each one on
+           redrew the whole board, so eight busy workspaces were the board
+           being torn down and built again many times a second. The minute is
+           in it because the rail counts in minutes. */
+        const workspaces = boardsFor(inside);
+        const here = tasksFor(inside.id);
+        const handing = JSON.stringify([
+          inside,
+          workspaces,
+          here,
+          here.map((task) => [seen[task.id], glances[task.id], unseen.get(task.id)]),
+          Math.floor(Date.now() / 60_000),
+        ]);
+        if (watching !== handedTo || handing !== handed) {
+          handedTo = watching;
+          handed = handing;
+          watching.moved({
+            project: inside,
+            workspaces,
+            tasks: here,
+            moods: seen,
+            glances,
+            unread: new Map(unseen),
+          });
+        }
       }
       // The roster is a live thing: a session that starts working changes its
       // mark on the board you are looking at, without you touching anything.
