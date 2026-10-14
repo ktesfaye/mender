@@ -1118,8 +1118,9 @@ channel anybody else could follow.
 
 **And it keeps itself up to date, from releases he calls.** A version is only
 ever published because he said so, by `apps/mender/tools/publish.sh`, never on
-a commit. Every installed Mender asks GitHub, through the `gh` already signed
-in on that machine, whether there is one newer than itself, when it opens and
+a commit. Every installed Mender asks github.com itself, signed in to
+nothing, since the repository is public and the work laptop has no `gh` and
+never will, whether there is one newer than itself, when it opens and
 every few hours after, fetches it quietly and swaps it in the next time it is
 quit. The foot of the windmill's rail says which Mender this is and "check for
 updates"; once a newer one is waiting it says "restart into" it instead.

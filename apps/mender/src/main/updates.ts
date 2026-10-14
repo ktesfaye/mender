@@ -1,13 +1,16 @@
 import { execFile, spawn } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { createWriteStream, writeFileSync } from 'node:fs';
 import { access, constants, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import type { ReadableStream as WebStream } from 'node:stream/web';
 import { promisify } from 'node:util';
 import type { ShellEnvManager } from '@emdash/core/services/shell-env/node';
 import { log } from '@emdash/shared/logger';
 import { createController, type Controller } from '@emdash/wire/rpc';
-import { app } from 'electron';
+import { app, net } from 'electron';
 import { newer, updatesContract, type UpdateState } from '@shared/updates';
 
 const ran = promisify(execFile);
@@ -16,9 +19,12 @@ const ran = promisify(execFile);
  * Mender keeping itself up to date, on a machine nobody codes it on.
  *
  * Published versions are GitHub releases on Mender's own repository, made by
- * hand when he says so (`tools/publish.sh`), never on every commit. This asks
- * `gh`, which is already signed in on any machine Mender runs on, whether
- * there is one newer than itself: when it opens, every few hours after, and
+ * hand when he says so (`tools/publish.sh`), never on every commit. The
+ * repository is public, so this asks github.com itself, with no `gh` and no
+ * sign-in, since the work laptop has neither: where "latest" points and the
+ * one dmg every release carries under the same name. Drafts are only seen
+ * signed in, so a Mender run with MENDER_UPDATE_DRAFTS=1 still asks `gh`.
+ * It asks when it opens, every few hours after, and
  * whenever "check for updates" is pressed on the windmill. A newer one is
  * fetched straight away and waits beside the app until the next quit, when a
  * small shell left behind swaps the bundle over once this process is gone.
@@ -28,6 +34,8 @@ const ran = promisify(execFile);
  */
 
 const REPO = 'ktesfaye/mender';
+const SITE = `https://github.com/${REPO}/releases`;
+const DMG = 'Mender-arm64.dmg';
 const TAG = /^mender-v(\d+\.\d+\.\d+)$/;
 const EVERY_MS = 3 * 60 * 60 * 1000;
 
@@ -76,7 +84,28 @@ export function createUpdates(env: EnvSource): Updates {
     return stdout;
   };
 
+  /**
+   * Where github.com's own "latest" release points, read off the redirect
+   * rather than asked of its API, which rate-limits a whole office's address.
+   * `net.request` because it goes through this Mac's proxy, and because
+   * `net.fetch` neither reports a redirect's target nor lets one be stopped.
+   */
+  const latestPublished = (): Promise<string | null> =>
+    new Promise((resolve, reject) => {
+      const req = net.request({ url: `${SITE}/latest`, method: 'HEAD', redirect: 'manual' });
+      req.on('redirect', (_status, _method, to) => {
+        resolve(TAG.exec(to.split('/').pop() ?? '')?.[1] ?? null);
+        req.abort();
+      });
+      req.on('response', (res) => {
+        reject(new Error(`github said ${res.statusCode} when asked for the latest Mender`));
+      });
+      req.on('error', reject);
+      req.end();
+    });
+
   const latestTag = async (): Promise<string | null> => {
+    if (!drafts) return latestPublished();
     const out = await gh([
       'release',
       'list',
@@ -106,20 +135,29 @@ export function createUpdates(env: EnvSource): Updates {
     const work = await mkdtemp(join(tmpdir(), 'mender-update-'));
     const mount = join(work, 'mnt');
     try {
-      await gh(
-        [
-          'release',
-          'download',
-          `mender-v${latest}`,
-          '--repo',
-          REPO,
-          '--pattern',
-          '*.dmg',
-          '--dir',
-          work,
-        ],
-        10 * 60 * 1000
-      );
+      if (drafts)
+        await gh(
+          [
+            'release',
+            'download',
+            `mender-v${latest}`,
+            '--repo',
+            REPO,
+            '--pattern',
+            '*.dmg',
+            '--dir',
+            work,
+          ],
+          10 * 60 * 1000
+        );
+      else {
+        const res = await net.fetch(`${SITE}/download/mender-v${latest}/${DMG}`);
+        if (!res.ok || !res.body) throw new Error(`github said ${res.status} for the download`);
+        await pipeline(
+          Readable.fromWeb(res.body as unknown as WebStream),
+          createWriteStream(join(work, DMG))
+        );
+      }
       const dmg = (await ran('/bin/ls', [work])).stdout.split('\n').find((f) => f.endsWith('.dmg'));
       if (!dmg) throw new Error('the release had no dmg on it');
       await mkdir(mount);
@@ -172,11 +210,12 @@ export function createUpdates(env: EnvSource): Updates {
         log.info('update ready', { from: version, to: latest });
       } catch (error) {
         const said = error instanceof Error ? error.message : String(error);
-        const plain = /ENOENT/.test(said)
-          ? 'gh is not on this machine'
-          : /auth|401|403|404|Could not resolve/i.test(said)
-            ? 'gh on this machine cannot see Mender’s releases'
-            : (said.split('\n')[0] ?? said);
+        const plain =
+          /ENOENT/.test(said) && drafts
+            ? 'gh is not on this machine'
+            : /ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED|ENOTFOUND/.test(said)
+              ? 'this mac can’t reach github right now'
+              : (said.split('\n')[0] ?? said);
         state = { ...state, phase: 'failed', said: plain };
         log.warn('update check failed', { said });
       }
