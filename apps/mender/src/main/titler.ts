@@ -71,10 +71,14 @@ export function createTitler(env: EnvSource): {
 
 const PROMPT = [
   'You name coding sessions for a list of open sessions.',
-  'Name it for what the person is trying to get done, judged mainly from what they asked;',
-  'when the asks have moved on to something else, name what they are on now.',
-  "Use the agent's replies and the files changed only to make that more specific, never to",
-  'pick up a side remark, and do not turn a question into a fix unless they asked for a change.',
+  'Name it for the work actually going on in it, as it stands now.',
+  'What the person asked says what they want, but an ask is often no clue on its own:',
+  'a reaction ("huh??", "that\'s broken"), a pasted picture, a one-word nudge, or a first line',
+  'that the work has since moved away from. Whenever the asks are vague or have been overtaken,',
+  "name it from what the agent found and is doing: its replies, what it ran, what it changed.",
+  'When the work has moved on to something else, name what it is on now, not where it began.',
+  'Never name it for being confused, a question or a reaction; name the thing being fixed or built.',
+  'If they only asked a question and nothing was changed, name the question.',
   '2 to 5 words, sentence case, like "Why CI fails on main", "Offline drafts sync"',
   'or "Fix login redirect loop". Reply with only the name: no quotes, no trailing period.',
 ].join(' ');
@@ -85,15 +89,19 @@ export function digest(told: Told): string {
   if (!asked.length) return '';
   const answered = told.thoughts
     .filter((thought) => !thought.quiet)
-    .slice(-4)
+    .slice(-6)
     .map((thought) => `agent: ${clip(thought.said, 500)}`);
+  const did = [...new Set(told.deeds.map((one) => one.why ?? one.did))]
+    .slice(-10)
+    .map((one) => clip(one, 160));
   const touched = [...new Set(told.wrote.map((one) => one.path))].slice(0, 12);
   const parts = [
     asked.slice(-8).join('\n'),
     answered.join('\n'),
+    did.length ? `what it did, last of all:\n${did.join('\n')}` : '',
     touched.length ? `files it changed: ${touched.join(', ')}` : '',
   ];
-  return clip(parts.filter(Boolean).join('\n\n'), 6000);
+  return clip(parts.filter(Boolean).join('\n\n'), 7000);
 }
 
 const RECAP_PROMPT = [

@@ -292,6 +292,15 @@ const MADE_KEY = 'made';
 const RECAPS_KEY = 'recaps';
 const STORIES_KEY = 'stories';
 const TITLED_KEY = 'titledAt';
+/** Where a session stood when it was last named: how much had been said,
+    whether that turn had settled, how much it had done and when. */
+type Titled = { said: number; settled: boolean; deeds?: number; at?: number };
+/** Named again mid-turn once it has done this much since the first guess... */
+const FIRST_DEEDS = 4;
+const FIRST_MS = 20_000;
+/** ...and then again every so often for as long as it keeps working. */
+const MID_TURN_DEEDS = 10;
+const MID_TURN_MS = 3 * 60_000;
 const AWAY_KEY = 'helpersAway';
 const CUT_OFF_KEY = 'cutOff';
 const CARRY_ON_KEY = 'carryOn';
@@ -325,7 +334,7 @@ export function createAgents(
       Kept across a restart: forgotten, every session woken by the next
       sitting would be named afresh the moment it did anything, and the namer
       seldom says the same thing twice. */
-  const titledAt = new Map<string, { said: number; settled: boolean }>();
+  const titledAt = new Map<string, Titled>();
   /** Woken with a name from a sitting before where it was named was kept:
       wherever it stands when it next works is taken as where it was named,
       so waking it is not on its own a reason to name it again. */
@@ -373,7 +382,7 @@ export function createAgents(
     }
     const heldTitled = await store.get(TITLED_KEY);
     if (heldTitled.success && heldTitled.data && typeof heldTitled.data === 'object') {
-      const each = heldTitled.data as unknown as Record<string, { said: number; settled: boolean }>;
+      const each = heldTitled.data as unknown as Record<string, Titled>;
       for (const [task, at] of Object.entries(each)) if (!titledAt.has(task)) titledAt.set(task, at);
     }
     const heldCut = await store.get(CUT_OFF_KEY);
@@ -513,11 +522,22 @@ export function createAgents(
     }
     const settled = state.mood === 'resting';
     const last = titledAt.get(task);
+    const deeds = state.told.deeds.length;
+    const now = Date.now();
+    /* A first line is often no clue to the work ("huh??", a picture), and a
+       single turn can run for many minutes, so while it works it is named
+       again once there is real work to name it by: a little after it starts
+       doing things, and then every few minutes it keeps at it. */
+    const guessed = !!last && !last.settled && !last.deeds;
+    const midTurn =
+      !!last &&
+      deeds - (last.deeds ?? 0) >= (guessed ? FIRST_DEEDS : MID_TURN_DEEDS) &&
+      now - (last.at ?? 0) >= (guessed ? FIRST_MS : MID_TURN_MS);
     const due = settled
       ? !last || ((last.said !== said || !last.settled) && (said <= 3 || said - last.said >= 3))
-      : !last;
+      : !last || midTurn;
     if (!due) return;
-    titledAt.set(task, { said, settled });
+    titledAt.set(task, { said, settled, deeds, at: now });
     keepTitled();
     titling.add(task);
     void titler
@@ -691,6 +711,7 @@ export function createAgents(
           reglance();
           const here = houses.get(task);
           if (here) recapFromWork(task, here);
+          if (here) retitleFromWork(task, here);
           storyFromWork(task);
         },
         () => {

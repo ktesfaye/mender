@@ -85,10 +85,13 @@ out of each other's way. A new session is just a session: the empty hook,
 or walking into a project nobody has worked in yet, starts a real one on the
 spot, called claude until it has a name, and stands you in it with the
 agent waking and its columns up. The name is worked out, not taken from the
-first line: a small model reads what was asked, what came back and what was
-touched, names it within seconds of the first thing said, again as the first
-few turns settle and then every third, so a session that has wandered onto
-something else is called what it is now. A name you gave it yourself, by
+first line: a small model reads what was asked, what came back, what it ran
+and what was touched, names it within seconds of the first thing said, again
+once it has got going on something, every few minutes for as long as a turn
+keeps working, as the first few turns settle and then every third, so a
+session that has wandered onto something else is called what it is now. A
+first line that is no clue to the work, a "huh??" or a picture, is named for
+what the agent turns out to be doing, never for being confused. A name you gave it yourself, by
 pressing twice on it at the top of the yard and writing over it there, is
 never touched, and a restart is no reason to name it again either. Pressing the hook or command-T always starts another plain one;
 only right-clicking the hook, or command-N, turns over the board of other ways
