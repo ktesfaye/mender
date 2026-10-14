@@ -797,9 +797,14 @@ export const agentsContract = defineContract({
     error: agentErrorSchema,
   }),
   /** Tell it to stop what it is doing. Called off before anything came of
-   *  what it was asked, that is handed back to go on the line again. */
+   *  what it was asked, that is handed back to go on the line again, unless
+   *  `keep` says it stays with the agent. */
   hush: fallible({
-    input: z.object({ task: z.string(), untouched: z.boolean().optional() }),
+    input: z.object({
+      task: z.string(),
+      untouched: z.boolean().optional(),
+      keep: z.boolean().optional(),
+    }),
     data: z.object({
       back: z.string().optional(),
       pictures: z.array(carriedSchema.extend({ path: z.string().optional() })).optional(),

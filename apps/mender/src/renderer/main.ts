@@ -4552,8 +4552,12 @@ async function boot(): Promise<void> {
     /* Calling it off before anything came of what it was asked hands that
        back, and it goes on the line to be said again, ahead of whatever was
        written there since. */
-    const hush = async (task: Task, untouched = false): Promise<boolean> => {
-      const done = await client.agents.hush({ task: task.id, ...(untouched ? { untouched } : {}) });
+    const hush = async (task: Task, untouched = false, keep = false): Promise<boolean> => {
+      const done = await client.agents.hush({
+        task: task.id,
+        ...(untouched ? { untouched } : {}),
+        ...(keep ? { keep } : {}),
+      });
       if (!done.success || done.data.going) return false;
       if (inside?.id !== task.id) return true;
       const { back, pictures } = done.data;
@@ -4577,9 +4581,13 @@ async function boot(): Promise<void> {
          first, the same way Emdash folds a diff-line comment into the prompt. */
       const text = [said.trim(), ...notes.map((one) => one.text)].filter(Boolean).join('\n\n');
       /* An empty line while somebody is working calls them off. It is the only
-         thing in this app that means something by being nothing. */
+         thing in this app that means something by being nothing. With things
+         still waiting their turn it is "read these now": the turn is called
+         off without handing anything back to the line, and everything waiting
+         goes to the agent together as the next thing it reads. */
       if (!text && !carrying.length) {
-        if (saying.working()) await hush(task);
+        const waiting = (saying.yard().session?.waiting ?? []).some((one) => !one.handed);
+        if (saying.working()) await hush(task, false, waiting);
         return;
       }
       saying.handed();

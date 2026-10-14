@@ -45,7 +45,7 @@ export function createAgentsController(
     answer: ({ task, requestId, optionId }) => agents.answer(task, requestId, optionId),
     finishAsking: ({ task }) => agents.finishAsking(task),
     unsay: ({ task, id }) => agents.unsay(task, id),
-    hush: ({ task, untouched }) => agents.hush(task, untouched),
+    hush: ({ task, untouched, keep }) => agents.hush(task, untouched, keep),
     recall: ({ task, call }) => agents.recall(task, call),
     helperTrail: ({ task, call }) => agents.helperTrail(task, call),
     commandTail: ({ task, call }) => agents.commandTail(task, call),
