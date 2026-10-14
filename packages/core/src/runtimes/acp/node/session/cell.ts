@@ -42,6 +42,7 @@ import {
   type Command,
   type DomainEvent,
   type Effect,
+  mergeQueuedPrompts,
   SessionMachine,
   type SessionMachineContext,
 } from '#runtimes/acp/node/machine/machine';
@@ -763,15 +764,23 @@ export class SessionCell {
     return event.status === 'completed' || event.status === 'failed';
   }
 
-  /** Hand over whatever was held for the agent's next pause and is still queued. */
+  /** Hand over whatever was held for the agent's next pause and is still
+   *  queued, all of it as one message so it is read together. */
   private steerHeld(): void {
     if (!this.heldForPause.size) return;
     const held = [...this.heldForPause];
     this.heldForPause.clear();
-    for (const [id, acceptance] of held) {
-      const prompt = this.machine.queuedPrompts.find((queued) => queued.id === id);
-      if (prompt) void this.steer(prompt, acceptance);
-    }
+    const prompts = held.flatMap(([id]) =>
+      this.machine.queuedPrompts.filter((queued) => queued.id === id)
+    );
+    const merged = mergeQueuedPrompts(prompts);
+    if (!merged) return;
+    const acceptance = prompts.length === 1 ? held.find(([id]) => id === merged.id)?.[1] : undefined;
+    void this.steer(
+      merged,
+      prompts.map((prompt) => prompt.id),
+      acceptance
+    );
   }
 
   /**
@@ -783,10 +792,15 @@ export class SessionCell {
    * leaves the queue once the agent says it was injected, and if it has already
    * left (taken back, or dequeued at a turn's end) nothing is sent at all.
    */
-  private async steer(prompt: QueuedPrompt, acceptance?: PromptAcceptance): Promise<void> {
+  private async steer(
+    prompt: QueuedPrompt,
+    ids: readonly string[],
+    acceptance?: PromptAcceptance
+  ): Promise<void> {
     const extMethod = this.deps.agent.extMethod;
     if (!extMethod) return;
-    const still = () => this.machine.queuedPrompts.some((queued) => queued.id === prompt.id);
+    const still = () =>
+      ids.every((id) => this.machine.queuedPrompts.some((queued) => queued.id === id));
     try {
       const attachments =
         acceptance?.resolvedAttachments ??
@@ -795,7 +809,14 @@ export class SessionCell {
             this.deps.resolveAttachment(this.deps.conversationId, attachment)
           )
         ));
-      if (!still()) return;
+      if (!still()) {
+        /* One of them was taken back while the pictures were read: the rest
+           still go, together. */
+        const left = this.machine.queuedPrompts.filter((queued) => ids.includes(queued.id));
+        const again = mergeQueuedPrompts(left);
+        if (again) void this.steer(again, left.map((queued) => queued.id));
+        return;
+      }
       const content = [
         ...attachments.map((attachment) => ({
           type: 'image' as const,
@@ -808,7 +829,7 @@ export class SessionCell {
       if (!content.length) return;
       /* Taken off the queue before the request goes, in the same synchronous
          section as the check, so the end of the turn can't also send it. */
-      this.applyEvent({ type: 'QueuedPromptRemoved', id: prompt.id });
+      for (const id of ids) this.applyEvent({ type: 'QueuedPromptRemoved', id });
       const response = await extMethod.call(this.deps.agent, '_session/steering', {
         sessionId: this.acpSessionId,
         prompt: content,

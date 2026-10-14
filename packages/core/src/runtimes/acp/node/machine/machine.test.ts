@@ -278,16 +278,19 @@ describe('permissions and config validation', () => {
     expect(state.queuedPrompts[1]).toMatchObject({ text: 'edited', updatedAt: 200 });
   });
 
-  it('drains the selected prompt when reordering a legacy idle queue', () => {
+  it('drains the whole queue as one prompt in its order', () => {
     const queuedA = { id: 'a', text: 'a', createdAt: 100, updatedAt: 100 };
-    const queuedB = { id: 'b', text: 'b', createdAt: 100, updatedAt: 100 };
+    const queuedB = { id: 'b', text: 'b', createdAt: 100, updatedAt: 150 };
     let state = evolve(makeReady(), { type: 'PromptQueued', prompt: queuedA }).state;
     state = evolve(state, { type: 'PromptQueued', prompt: queuedB }).state;
 
     const result = evolve(state, { type: 'QueueReordered', ids: ['b', 'a'] });
 
-    expect(result.state.queuedPrompts.map((entry) => entry.id)).toEqual(['a']);
-    expect(result.effects).toContainEqual({ type: 'sendPrompt', prompt: queuedB });
+    expect(result.state.queuedPrompts).toEqual([]);
+    expect(result.effects).toContainEqual({
+      type: 'sendPrompt',
+      prompt: { id: 'b', text: 'b\n\na', createdAt: 100, updatedAt: 150 },
+    });
   });
 });
 

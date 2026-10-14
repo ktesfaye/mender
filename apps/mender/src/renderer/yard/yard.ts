@@ -455,7 +455,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const queued = (last?.session?.waiting ?? []).filter((one) => !one.handed);
     if (event.key === 'ArrowUp' && recalled < 0 && written === '' && queued.length) {
       for (const one of queued) does.press(`unsay:${one.id}`);
-      fill(queued.map((one) => one.said).join('\n\n'));
+      fill(queued.map((one) => one.said).join('\n'));
       return true;
     }
     /* Up on a turn that has not come to anything yet is "not yet": it is

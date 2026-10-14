@@ -217,7 +217,9 @@ while it works goes up above the parchment in the post's own weathered ink,
 picked it up, so the note it is answering is never pushed down by one it has
 not seen. It is handed over the next time the agent pauses between one thing
 it does and the next, which is when Claude Code folds one in too, and until
-then it says "waiting its turn" and is still yours to take back. And at the foot of that column is the
+then it says "waiting its turn" and is still yours to take back. However many
+are waiting, they go together as one, at that pause or once the turn ends,
+so three things said on the way are read and answered as one. And at the foot of that column is the
 project's changelog, in the same small squares and cream lines the glance at
 the other sessions used to be written in: each version on its own line and
 what went into it bulleted and indented under it, newest first and scrolling, read straight off whichever commits moved

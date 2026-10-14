@@ -402,14 +402,35 @@ function makeTurn(s: SessionMachineState): ControlTurn {
   return { id: makeTurnId(s.conversationId, s.nextTurnIndex) };
 }
 
+/**
+ * Everything waiting goes out together as one turn, the way it reads to whoever
+ * wrote it: several lines said while the agent was busy are one thing to answer,
+ * not a run of turns each answering a fraction of it.
+ */
 function dequeuePromptEffects(queuedPrompts: readonly QueuedPrompt[]): {
   queuedPrompts: readonly QueuedPrompt[];
   effects: Effect[];
 } {
-  const [next, ...rest] = queuedPrompts;
-  return next
-    ? { queuedPrompts: rest, effects: [{ type: 'sendPrompt', prompt: next }] }
+  const merged = mergeQueuedPrompts(queuedPrompts);
+  return merged
+    ? { queuedPrompts: [], effects: [{ type: 'sendPrompt', prompt: merged }] }
     : { queuedPrompts, effects: [] };
+}
+
+export function mergeQueuedPrompts(prompts: readonly QueuedPrompt[]): QueuedPrompt | undefined {
+  const [first, ...rest] = prompts;
+  if (!first || !rest.length) return first;
+  const texts = prompts.map((prompt) => prompt.text).filter((text) => text.trim());
+  const hidden = prompts.flatMap((prompt) => (prompt.hiddenContext ? [prompt.hiddenContext] : []));
+  const attachments = prompts.flatMap((prompt) => prompt.attachments ?? []);
+  return {
+    id: first.id,
+    text: texts.join('\n\n'),
+    ...(hidden.length ? { hiddenContext: hidden.join('\n\n') } : {}),
+    ...(attachments.length ? { attachments } : {}),
+    createdAt: first.createdAt,
+    updatedAt: Math.max(...prompts.map((prompt) => prompt.updatedAt)),
+  };
 }
 
 export function isPromptReady(lifecycle: SessionLifecycle): boolean {
