@@ -110,7 +110,8 @@ export function beside(writing: HTMLElement, pictures: readonly Picture[]): HTML
   return it;
 }
 
-function figure(one: Picture): HTMLElement {
+/** One picture with what it was called under it, for wherever it is to stand. */
+export function figure(one: Picture): HTMLElement {
   const it = document.createElement('figure');
   it.className = 'prose-picture';
   const kept = loaded.get(one.url);

@@ -17,7 +17,7 @@
 import { mermaidSVG } from '../diagram';
 import { makeDiagramView } from '../diagram-view';
 import { inkRuns, type InkRun } from './motion';
-import { beside, hangPictures, pictured } from './pictures';
+import { beside, figure, hangPictures, pictured } from './pictures';
 
 const FENCE = /^\s*(```|~~~)(\s*\S*)?/;
 const HEADING = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
@@ -316,7 +316,9 @@ function table(block: Extract<Block, { kind: 'table' }>): HTMLElement {
     for (let c = 0; c < across; c++) {
       const cell = document.createElement(r === 0 ? 'th' : 'td');
       if (block.right[c]) cell.style.textAlign = 'right';
-      for (const run of runsOf(cells[c] ?? '')) {
+      const { text, pictures } = pictured(cells[c] ?? '');
+      for (const one of pictures) cell.appendChild(figure(one));
+      for (const run of runsOf(text)) {
         if (run.className) {
           const span = document.createElement('span');
           span.className = run.className;

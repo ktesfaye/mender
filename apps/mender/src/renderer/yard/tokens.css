@@ -1419,6 +1419,22 @@ button.settings-row:hover .settings-row-main {
   font-family: var(--yard-face-mono);
   color: #f4e3c0;
 }
+/* A picture in a table is the row's own look at the thing, shown whole and
+   small, with the row's writing hung from its top rather than its foot. */
+.yard .prose-table tr:has(.prose-picture) > * {
+  vertical-align: top;
+}
+.yard .prose-table .prose-picture {
+  width: 96px;
+}
+.yard .prose-table .prose-picture + .prose-picture {
+  margin-top: 8px;
+}
+.yard .prose-table .prose-picture img {
+  aspect-ratio: auto;
+  max-height: 144px;
+  object-fit: contain;
+}
 
 .yard .prose-pictures {
   display: grid;
