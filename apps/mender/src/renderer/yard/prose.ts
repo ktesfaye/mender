@@ -319,7 +319,15 @@ function table(block: Extract<Block, { kind: 'table' }>): HTMLElement {
       const { text, pictures } = pictured(cells[c] ?? '');
       for (const one of pictures) cell.appendChild(figure(one));
       for (const run of runsOf(text)) {
-        if (run.className) {
+        if (run.href) {
+          const anchor = Object.assign(document.createElement('a'), {
+            className: 'press',
+            href: run.href,
+            textContent: run.text,
+          });
+          anchor.addEventListener('click', (event) => event.preventDefault());
+          cell.appendChild(anchor);
+        } else if (run.className) {
           const span = document.createElement('span');
           span.className = run.className;
           span.textContent = run.text;

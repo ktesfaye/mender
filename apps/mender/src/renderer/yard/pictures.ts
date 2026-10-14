@@ -18,6 +18,8 @@ import { holdUp } from './picture-view';
 export interface Picture {
   name: string;
   url: string;
+  /** Where pressing it goes, when the agent wrapped it in a link: a cover that opens its book's page. */
+  href?: string;
 }
 
 type Local = (path: string, width: number) => Promise<string | null>;
@@ -38,18 +40,32 @@ export function seedLocalPictures(to: Local): void {
   local = to;
 }
 
+/** `![name](url)`, or the same wrapped in a link as `[![name](url)](href)`. */
 const IMAGE =
-  /!\[([^\]]*)\]\(\s*(?:<([^>]+)>|((?:https?:\/\/|file:\/\/|\/)[^)\s]+))(?:\s+"[^"]*")?\s*\)/g;
+  /(\[\s*)?!\[([^\]]*)\]\(\s*(?:<([^>]+)>|((?:https?:\/\/|file:\/\/|\/)[^)\s]+))(?:\s+"[^"]*")?\s*\)(?:\s*\]\(\s*(https?:\/\/[^)\s]+)(?:\s+"[^"]*")?\s*\))?/g;
 
 /** The writing with its pictures lifted out of it, and the pictures. */
 export function pictured(text: string): { text: string; pictures: Picture[] } {
   const pictures: Picture[] = [];
-  const rest = text.replace(IMAGE, (_, name: string, bracketed?: string, bare?: string) => {
-    const url = (bracketed ?? bare ?? '').trim();
-    if (!/^(https?:\/\/|file:\/\/|\/)/.test(url)) return _;
-    pictures.push({ name: name.replace(/[*_`]/g, '').trim(), url });
-    return '';
-  });
+  const rest = text.replace(
+    IMAGE,
+    (
+      whole: string,
+      opened: string | undefined,
+      name: string,
+      bracketed?: string,
+      bare?: string,
+      href?: string
+    ) => {
+      const url = (bracketed ?? bare ?? '').trim();
+      if (!/^(https?:\/\/|file:\/\/|\/)/.test(url)) return whole;
+      const one: Picture = { name: name.replace(/[*_`]/g, '').trim(), url };
+      if (opened && href) one.href = href;
+      pictures.push(one);
+      /* A `[` with no link after it was never the picture's, so it stays. */
+      return opened && !href ? opened : '';
+    }
+  );
   return pictures.length
     ? { text: rest.replace(/\s{2,}/g, ' ').trim(), pictures }
     : { text, pictures };
@@ -114,14 +130,23 @@ export function beside(writing: HTMLElement, pictures: readonly Picture[]): HTML
 export function figure(one: Picture): HTMLElement {
   const it = document.createElement('figure');
   it.className = 'prose-picture';
+  /* A linked one is an anchor round the picture, so pressing it is the same
+     press any link in the answer is, heard one level up. */
+  const holder = one.href
+    ? Object.assign(document.createElement('a'), { className: 'prose-picture-link', href: one.href })
+    : it;
+  if (holder !== it) {
+    holder.addEventListener('click', (event) => event.preventDefault());
+    it.appendChild(holder);
+  }
   const kept = loaded.get(one.url);
   if (kept && !kept.isConnected) {
     kept.alt = one.name;
-    it.appendChild(kept);
+    holder.appendChild(kept);
   } else {
     it.hidden = !kept;
     if (!kept) it.classList.add('prose-picture-new');
-    it.appendChild(image(one, it));
+    holder.appendChild(image(one, it));
   }
   if (one.name) {
     const said = document.createElement('figcaption');
@@ -151,7 +176,7 @@ function image(one: Picture, it: HTMLElement): HTMLImageElement {
     from = { x: event.clientX, y: event.clientY };
   });
   picture.addEventListener('click', (event) => {
-    if (event.button !== 0 || !picture.currentSrc) return;
+    if (event.button !== 0 || !picture.currentSrc || picture.closest('a')) return;
     if (Math.hypot(event.clientX - from.x, event.clientY - from.y) > 4) return;
     event.stopPropagation();
     holdUp(picture.currentSrc, picture.alt, larger(one.url));

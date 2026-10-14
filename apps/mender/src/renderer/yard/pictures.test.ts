@@ -13,4 +13,11 @@ describe('pictured', () => {
       ],
     });
   });
+
+  it('keeps the link a picture was wrapped in', () => {
+    expect(pictured('[![](https://x.com/c.jpg)](https://g.com/b/1) An Echo [x]')).toEqual({
+      text: 'An Echo [x]',
+      pictures: [{ name: '', url: 'https://x.com/c.jpg', href: 'https://g.com/b/1' }],
+    });
+  });
 });
