@@ -3785,53 +3785,61 @@ function chapterSign(state: Chapter['state'] | 'you'): HTMLElement {
 }
 
 /**
- * What it made, on the board it is nailed to.
+ * What it made, a line apiece.
  *
- * The newest is on the billboard in the hand, since it is the one you came
- * back for; everything before it is a line under the board, newest first.
- * Every one of them is pressed to go and look at it.
+ * Each is its kind's own small sign, its name to press and how long ago, the
+ * newest on top and set a little larger since it is the one you came back
+ * for. A billboard in the hand was a big prop nobody ever pressed, holding
+ * one name the size of a heading.
  */
 function carted(wide: number, made: Session['made'], does: Doings): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = "position:relative;font-family:'Josefin Sans',sans-serif";
   it.appendChild(label('what it made', {}));
 
-  const [newest, ...rest] = made;
-  const top = document.createElement('div');
-  top.style.cssText = 'position:relative;height:88px;margin-top:12px';
-  const board = sprite(KIT_NAMES.billboard, 2);
-  board.style.cssText += ';left:0;top:0;transform:scale(.75);transform-origin:0 0';
-  top.appendChild(board);
-  const beside = document.createElement('div');
-  beside.style.cssText = `position:absolute;left:112px;top:6px;width:${Math.max(0, wide - 112)}px;display:flex;flex-direction:column;gap:4px`;
-  if (newest) {
-    const name = pressing(newest.what, () => does.press(newest.pick));
-    name.style.cssText +=
-      ";font-family:'Caveat',cursive;font-size:22px;line-height:1.1;overflow-wrap:anywhere";
-    beside.appendChild(name);
-    const when = said(newest.when, '#a8c469');
-    when.style.cssText += ';font-size:12px;letter-spacing:.14em';
-    beside.appendChild(when);
-  }
-  top.appendChild(beside);
-  it.appendChild(top);
-
-  if (rest.length) {
-    const list = document.createElement('div');
-    list.dataset.rest = '';
-    list.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:10px';
-    for (const one of rest) {
-      const line = document.createElement('div');
-      line.style.cssText = 'font-size:13px;line-height:1.35;color:#8a7452';
-      const name = pressing(one.what, () => does.press(one.pick));
-      name.style.overflowWrap = 'anywhere';
-      line.appendChild(name);
-      line.appendChild(document.createTextNode(` \u00b7 ${one.when}`));
-      list.appendChild(line);
-    }
-    it.appendChild(list);
-  }
+  const list = document.createElement('div');
+  list.style.cssText = `display:flex;flex-direction:column;gap:7px;margin-top:12px;max-width:${wide}px`;
+  made.forEach((one, i) => {
+    const line = document.createElement('div');
+    line.style.cssText = 'display:flex;align-items:baseline;gap:9px;min-width:0';
+    line.appendChild(madeSign(one.kind, i === 0));
+    const name = pressing(one.what, () => does.press(one.pick));
+    name.style.cssText += `;font-size:${i ? 13 : 15}px;line-height:1.3;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`;
+    line.appendChild(name);
+    const when = said(one.when, i ? '#7d6b4f' : '#a8c469');
+    when.style.cssText += ';margin-left:auto;padding-left:8px;flex:none;white-space:nowrap';
+    line.appendChild(when);
+    list.appendChild(line);
+  });
+  it.appendChild(list);
   return it;
+}
+
+/* A page is a little globe, a file the same page "read" is drawn with, a
+   build the same box a build step carries, in the colour of that step. */
+const MADE_ART: Record<Session['made'][number]['kind'], string[]> = {
+  page: ['..###..', '.#.#.#.', '#######', '#..#..#', '#######', '.#.#.#.', '..###..'],
+  file: ['#####..', '#...##.', '#.....#', '#.###.#', '#.....#', '#.###.#', '#######'],
+  build: ['.#####.', '#.....#', '#######', '#..#..#', '#..#..#', '#..#..#', '#######'],
+};
+const MADE_INK: Record<Session['made'][number]['kind'], string> = {
+  page: '#8cc4d6',
+  file: '#b39a74',
+  build: '#ffa54f',
+};
+
+function madeSign(kind: Session['made'][number]['kind'], newest: boolean): HTMLElement {
+  const slot = document.createElement('span');
+  const art = MADE_ART[kind];
+  const wide = Math.max(...art.map((one) => one.length));
+  slot.style.cssText = `flex:none;align-self:center;display:inline-flex;color:${MADE_INK[kind]};opacity:${newest ? 1 : 0.7}`;
+  const cells = art.flatMap((one, y) =>
+    [...one].flatMap((c, x) =>
+      c === '#' ? [`<rect x="${x}" y="${y}" width="1" height="1"/>`] : []
+    )
+  );
+  slot.innerHTML = `<svg viewBox="0 0 ${wide} ${art.length}" width="${wide * 2}" height="${art.length * 2}" shape-rendering="crispEdges" fill="currentColor">${cells.join('')}</svg>`;
+  return slot;
 }
 
 /** The plan it posted, done steps inked out and the one it is on lit. */

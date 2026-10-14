@@ -266,10 +266,11 @@ without rereading what you asked it. At the top is what it is after, a
 sentence in the answer's own italic, worked out by the same small model that
 names it from everything said rather than the first line, and under it where
 it stands in a word or two: working on it, waiting on you, done. Under that
-is what it made, nailed to a billboard: not the source it changed on the way,
+is what it made, a line apiece: not the source it changed on the way,
 but what you'd go and look at afterwards — a page it published, a document or
-a picture it wrote, an app or a package it built. The newest is on the board
-and everything before it is a line underneath, each pressed to go to it: the
+a picture it wrote, an app or a package it built, each led by a small pixel
+sign for which it is and how long ago after it. The newest is on top and set
+a little larger, and every one is pressed to go to it: the
 board reads what the board reads well, a page opens where the web is read,
 and a build is shown where it landed. The village keeps that list itself,
 per session, so closing and resuming a session never loses it, even when

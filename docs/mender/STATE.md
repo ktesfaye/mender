@@ -3234,6 +3234,14 @@ on the original 24-row list was looked at and either already covered by
 something built under a different name, or cut outright with the reason
 recorded above it — nothing was left blank because it ran out of time.
 
+### What it made is a short list, not a billboard (2026-10-13) — done
+
+The billboard prop is gone from the top of the right column. Each thing a
+session made is one line: a small pixel sign for a build, a published page
+or a written file, its name to press, and how long ago. The newest is on top
+and a little larger. Looked at in the yard harness with a build, a page and
+a file on it.
+
 ### What it made is back, and it outlives a resume (2026-09-29) — done
 
 The top of the right column is a billboard again with what the session made
