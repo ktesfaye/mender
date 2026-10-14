@@ -171,13 +171,23 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
       if (goal) goal.style.background = done ? LIFTED : '#e8c070';
       big.style.color = done ? LIFTED : FRONT;
       big.textContent =
-        goes !== undefined && goes > now ? leftFor(goes - now) : done ? 'now' : leftFor(reset - now);
+        goes !== undefined && goes > now
+          ? leftFor(goes - now)
+          : done
+            ? 'now'
+            : leftFor(reset - now);
     }
 
     const parts: string[] = [];
-    if (failure.since !== undefined) parts.push(`hit ${clockOf(failure.since)}`);
+    const limit = failure.kind === 'limit';
+    if (failure.since !== undefined)
+      parts.push(`${limit ? 'hit' : 'since'} ${clockOf(failure.since)}`);
     if (going) parts.push('carrying on');
-    else if (failure.carryOnAt !== undefined) parts.push(`carries on by itself ${clockOf(failure.carryOnAt)}`);
+    else if (failure.untilOnline) parts.push("carries on by itself once you're back online");
+    else if (failure.carryOnAt !== undefined)
+      parts.push(
+        `${limit ? 'carries on' : 'tries again'} by itself at ${clockOf(failure.carryOnAt)}`
+      );
     else if (reset !== undefined) parts.push(`${done ? 'lifted' : 'lifts'} ${clockOf(reset)}`);
     else if (failure.kind === 'limit') parts.push("Claude didn't say when it lifts");
     meta.textContent = parts.join(' · ');
@@ -191,7 +201,7 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
 
   function lay(done: boolean): void {
     actions.replaceChildren();
-    const armed = failure.carryOnAt !== undefined;
+    const armed = failure.carryOnAt !== undefined || !!failure.untilOnline;
     if (armed) {
       actions.appendChild(
         astop(
@@ -202,9 +212,7 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
     } else if (failure.canCarryOn && !done) {
       actions.appendChild(
         astop(
-          pressing(`carry on by itself at ${clockOf(reset!)}`, () =>
-            does.press('failure:carryon')
-          ),
+          pressing(`carry on by itself at ${clockOf(reset!)}`, () => does.press('failure:carryon')),
           'failure:carryon'
         )
       );
@@ -239,17 +247,20 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
 
 function headline(failure: FailureView, done: boolean): string {
   if (failure.kind === 'service') {
-    return done ? 'The other end should be back' : 'The other end is having a rough patch';
+    return done ? "Claude's servers should be back" : "Claude's servers are having a rough patch";
   }
-  if (failure.kind === 'connection') return 'Lost the line to the agent';
-  if (done) return failure.carryOnAt !== undefined ? 'The limit lifted, carrying on' : 'The limit has lifted';
+  if (failure.kind === 'connection') return "Can't reach Claude. The internet looks to be down";
+  if (done)
+    return failure.carryOnAt !== undefined
+      ? 'The limit lifted, carrying on'
+      : 'The limit has lifted';
   return 'Out of usage';
 }
 
 /** The banked hearth: the fire, low and red, with the odd spark still going up. */
 function hearth(): HTMLElement {
   const it = document.createElement('div');
-  it.style.cssText = 'position:relative;width:64px;height:64px;flex:none;margin-top:4px';
+  it.style.cssText = 'position:relative;width:80px;height:64px;flex:none;margin-top:4px';
   const glow = document.createElement('div');
   glow.style.cssText =
     'position:absolute;left:-28px;top:-30px;width:120px;height:120px;pointer-events:none;background:radial-gradient(circle at 50% 50%,rgba(242,102,90,.42),rgba(0,0,0,0) 60%);animation:yard-banked 3.2s ease-in-out infinite';

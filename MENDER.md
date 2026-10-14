@@ -419,8 +419,14 @@ immediate retry is worth it; carry on when it lifts, which is Claude Code's own
 tells it to carry on, on its own, once the time comes, cancelled by
 pressing that same line again or by Escape, which reaches for an armed wait
 before it reaches for anything else; and starting over, two presses, the first
-naming that the conversation is what it costs. A refusal or a turn that ran out
-of room stays sore, because there is nothing to wait out.
+naming that the conversation is what it costs. A dropped internet is called
+that, never trouble at the other end, and it carries on by itself the moment
+this machine can reach Claude again; trouble that really is at the other end
+tries again by itself on a widening clock, a few times, before it leaves it to
+you. Either way the answer it cut off says "cut off", never "done", and Claude
+Code's own "API Error" line is never shown as though the agent had said it. A
+refusal or a turn that ran out of room stays sore, because there is nothing to
+wait out.
 
 **The rail is the sessions, and the projects are a rack on the wall.** A plank
 along the bottom hangs one lantern per session in the project you are in, all

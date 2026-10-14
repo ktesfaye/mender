@@ -177,6 +177,8 @@ export const failureSchema = z.object({
   since: z.number().optional(),
   /** Which kind of wait, so the board can draw it rather than say it. */
   kind: z.enum(['limit', 'service', 'connection']).optional(),
+  /** It goes again by itself the moment this machine can reach the agent. */
+  untilOnline: z.boolean().optional(),
 });
 export type Failure = z.infer<typeof failureSchema>;
 
@@ -201,6 +203,8 @@ export const glanceSchema = z.object({
       since: z.number().optional(),
       /** When it will carry on by itself, if that is armed. */
       carryOn: z.number().optional(),
+      /** It carries on by itself once this machine is back online. */
+      untilOnline: z.boolean().optional(),
     })
     .optional(),
   /** It cannot go on until somebody signs it in. */
@@ -450,10 +454,11 @@ export const toldSchema = z.object({
   began: z.number().nullable(),
   /**
    * How the newest turn came to rest, once it has: finished, called off, or
-   * broken. Absent while it is still going, and for history read back off the
-   * disk, which never says how it ended.
+   * broken, or cut off by something it will carry on from once it lifts.
+   * Absent while it is still going, and for history read back off the disk,
+   * which never says how it ended.
    */
-  ended: z.enum(['done', 'stopped', 'closed', 'broke']).optional(),
+  ended: z.enum(['done', 'stopped', 'closed', 'broke', 'cut']).optional(),
   /** Called off and not yet stopped, so the fire can say it heard. */
   stopping: z.boolean().optional(),
   /**

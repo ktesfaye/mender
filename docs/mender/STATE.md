@@ -4031,3 +4031,16 @@ How each one came to rest is kept, so a session nobody has opened since the
 app started says it too rather than "idle" until pressed; driven with one
 answered session left asleep across a restart beside a fresh one, which read
 "done · 26m ago" and "idle".
+
+### A dropped internet is said as one, and carries on by itself (2026-10-14) — done
+
+A lost Wi-Fi used to read as "the other end is having a rough patch", under a
+green "done", and sat there until pressed; once Claude Code gave up retrying,
+its raw "API Error: ... (ENOTFOUND)" line was also shown as the answer. Now it
+reads "can't reach Claude, the internet looks to be down", the turn says "cut
+off", the raw line goes, and the session goes again by itself once the API
+answers. A real service error tries again at 2, 5, 10, 20 and 30 minutes and
+then stops. Driven in a dev instance with Claude pointed at a host that does
+not exist: Claude's own ten retries ran out, the board drew the new wait with
+"don't carry on by itself", the rail said "offline · back when it is", and it
+carried on by itself ten seconds later. Not driven: a real service outage.

@@ -5573,7 +5573,8 @@ async function boot(): Promise<void> {
            app Escape reaches for directly, the same as pressing its own line
            again — it's the thing Claude Code's own "esc to interrupt" means,
            and nothing else on the board is more worth backing out of first. */
-        if (inside && watching?.yard().session?.failure?.carryOnAt !== undefined) {
+        const waits = watching?.yard().session?.failure;
+        if (inside && (waits?.carryOnAt !== undefined || waits?.untilOnline)) {
           void failed(inside.id, 'cancel');
           return;
         }

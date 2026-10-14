@@ -302,6 +302,7 @@ function sessionOf(
             canCarryOn: from.failure.resetAt !== undefined,
             ...(from.carryOn ? { carryOnAt: from.carryOn } : {}),
             ...(from.failure.kind ? { kind: from.failure.kind } : {}),
+            ...(from.failure.untilOnline ? { untilOnline: true } : {}),
             ...(from.failure.since !== undefined ? { since: from.failure.since } : {}),
             ...(from.failure.resetAt !== undefined ? { resetAt: from.failure.resetAt } : {}),
           },
@@ -357,7 +358,7 @@ function thoughtsOf(told: Told | undefined, mood: Mood | undefined, prompted = f
   const going = mood === 'working' || mood === 'arriving' || (mood === 'asking' && prompted);
   const ended: Thought['ended'] = going
     ? 'going'
-    : told?.ended === 'stopped' || told?.ended === 'closed'
+    : told?.ended === 'stopped' || told?.ended === 'closed' || told?.ended === 'cut'
       ? told.ended
       : told?.ended === 'broke'
         ? undefined
@@ -482,9 +483,11 @@ function storyOf(told: Told, going: boolean, asking: boolean, arriving: boolean)
             ? { said: 'the village closed on it', tone: 'stopped' }
             : told.ended === 'broke'
               ? { said: 'it stopped', tone: 'broken' }
-              : background
-                ? { said: 'still running in the background', tone: 'going' }
-                : { said: 'done', tone: 'done' };
+              : told.ended === 'cut'
+                ? { said: 'cut off', tone: 'stopped' }
+                : background
+                  ? { said: 'still running in the background', tone: 'going' }
+                  : { said: 'done', tone: 'done' };
   return {
     ...(told_?.goal ? { goal: told_.goal } : {}),
     state,
@@ -911,7 +914,7 @@ function stateOf(
       };
     case 'resting': {
       if (glance?.waiting) {
-        const { kind, resetAt, carryOn } = glance.waiting;
+        const { kind, resetAt, carryOn, untilOnline } = glance.waiting;
         if (kind === 'limit') {
           const saying = carryOn
             ? `limit · back ${clockOf(carryOn)}`
@@ -922,8 +925,15 @@ function stateOf(
                 : 'out of usage';
           return { posture: 'waiting', saying, lit: false };
         }
-        const what = kind === 'service' ? 'trouble at the other end' : 'lost the connection';
-        const back = resetAt && resetAt > now ? ` · back at ${clockOf(resetAt)}` : '';
+        if (kind === 'connection')
+          return {
+            posture: 'waiting',
+            saying: untilOnline ? 'offline · back when it is' : "can't reach claude",
+            lit: false,
+          };
+        const what = 'trouble at the other end';
+        const at = carryOn ?? resetAt;
+        const back = at && at > now ? ` · ${carryOn ? 'again' : 'back'} at ${clockOf(at)}` : '';
         return { posture: 'waiting', saying: what + back, lit: false };
       }
       /* Stopped talking with a command still going in the background is

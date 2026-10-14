@@ -1,4 +1,5 @@
 import { open } from 'node:fs/promises';
+import { connect } from 'node:net';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
@@ -17,12 +18,11 @@ import type {
 import type { ConversationRecords } from '@emdash/core/runtimes/conversations/api';
 import { hostDependenciesContract } from '@emdash/core/services/host-dependencies/api';
 import { pluginRegistry } from '@emdash/plugins/agents';
+import { createScope } from '@emdash/shared/concurrency';
 import { log } from '@emdash/shared/logger';
 import { createLiveJobReplicaCache, LiveJobFailedError, ReplicaState } from '@emdash/wire/live';
 import type { WireFile } from '@emdash/wire/rpc';
 import { cell, observe, peek, type Cell } from '@emdash/wire/state';
-import { createScope } from '@emdash/shared/concurrency';
-import { isDear } from '@shared/hungry';
 import { app } from 'electron';
 import type {
   Ask,
@@ -47,12 +47,14 @@ import type {
   WorkingState,
   Wrote,
 } from '@shared/agents';
+import { isDear } from '@shared/hungry';
 import { carried, packExpect, piecesOf, USUAL_PACK } from '@shared/packing';
+import { PICK_UP_SAID } from '@shared/pick-up';
+import { apiError, reread } from './api-error';
 import { wantsAnswer } from './asked-you';
 import { forgetClaudeSession } from './claude-cli-history';
 import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
 import { goingIn, pickUpNote, type CutOff } from './cut-off';
-import { PICK_UP_SAID } from '@shared/pick-up';
 import { questionsOf, type FormQuestion, type FormValue } from './form';
 import {
   helperTrail,
@@ -397,7 +399,8 @@ export function createAgents(
     const heldTitled = await store.get(TITLED_KEY);
     if (heldTitled.success && heldTitled.data && typeof heldTitled.data === 'object') {
       const each = heldTitled.data as unknown as Record<string, Titled>;
-      for (const [task, at] of Object.entries(each)) if (!titledAt.has(task)) titledAt.set(task, at);
+      for (const [task, at] of Object.entries(each))
+        if (!titledAt.has(task)) titledAt.set(task, at);
     }
     const heldCut = await store.get(CUT_OFF_KEY);
     if (heldCut.success && heldCut.data && typeof heldCut.data === 'object') {
@@ -796,6 +799,14 @@ export function createAgents(
               }, 0);
             }
           }
+          /* Cut off by the line out going down, it carries on the moment it
+             is back; by the other end having trouble, it tries again on a
+             widening clock, the way anybody would, rather than sitting there
+             for hours waiting to be told. */
+          if (recent && failure.severity === 'error' && failure.category === 'connection')
+            setTimeout(() => watchOnline(task), 0);
+          if (recent && failure.severity === 'error' && failure.category === 'service')
+            setTimeout(() => retryLater(task), 0);
           return at;
         },
         () => takenBack[task] ?? [],
@@ -1072,6 +1083,58 @@ export function createAgents(
     carryOnTimers.delete(task);
     houses.get(task)?.carryOn(null);
     forgetCarryOn(task);
+    const watch = onlineWatches.get(task);
+    if (watch) clearInterval(watch);
+    onlineWatches.delete(task);
+    houses.get(task)?.waitOnline(false);
+  };
+
+  /** How many times in a row it has gone again by itself, so a line that
+   *  looks up from here but still fails for Claude cannot go round forever. */
+  const retried = new Map<string, { n: number; at: number }>();
+  const tryCount = (task: string, now: number): number => {
+    const had = retried.get(task);
+    return had && now - had.at < 2 * 3_600_000 ? had.n : 0;
+  };
+
+  /** Sessions cut off by the line out, each looking for it to come back. */
+  const onlineWatches = new Map<string, ReturnType<typeof setInterval>>();
+  const watchOnline = (task: string): void => {
+    if (onlineWatches.has(task) || !houses.get(task)?.failing()) return;
+    if (tryCount(task, Date.now()) >= SERVICE_RETRIES_MIN.length) return;
+    houseOf(task).waitOnline(true);
+    let looking = false;
+    const watch = setInterval(() => {
+      if (looking) return;
+      if (!houses.get(task)?.failing()) {
+        stopWaiting(task);
+        return;
+      }
+      looking = true;
+      void online()
+        .then((up) => {
+          if (!up || onlineWatches.get(task) !== watch) return;
+          log.info('agents: back online, carrying on', { area: 'agents', task });
+          stopWaiting(task);
+          retried.set(task, { n: tryCount(task, Date.now()) + 1, at: Date.now() });
+          void goAgain(task);
+        })
+        .finally(() => {
+          looking = false;
+        });
+    }, ONLINE_EVERY_MS);
+    watch.unref?.();
+    onlineWatches.set(task, watch);
+  };
+
+  const retryLater = (task: string): void => {
+    if (carryOnTimers.has(task) || !houses.get(task)?.failing()) return;
+    const now = Date.now();
+    const n = tryCount(task, now);
+    const wait = SERVICE_RETRIES_MIN[n];
+    if (wait === undefined) return;
+    retried.set(task, { n: n + 1, at: now });
+    armCarryOn(task, now + wait * 60_000);
   };
 
   /** Goes again on its own at `at`, and keeps it armed across a restart. */
@@ -1867,6 +1930,8 @@ class House {
   private past = new Set<() => void>();
   /** When a continue is scheduled to send itself, or null. */
   private carryOnAt: number | null = null;
+  /** Whether it goes again by itself the moment this machine is back online. */
+  private untilOnline = false;
   private carryOnTimer: ReturnType<typeof setTimeout> | undefined;
   /** Marks on a multi-select question, one pick per pending request, kept
    *  until `finishAsking` sends them or the question itself moves on. */
@@ -2171,7 +2236,8 @@ class House {
    * is kept until the session is awake again and says otherwise.
    */
   private standing(): SessionFailure | null {
-    return this.lifecycle?.failure ?? this.kept;
+    const failure = this.lifecycle?.failure ?? this.kept;
+    return failure ? reread(failure) : null;
   }
 
   private take(value: SessionState | undefined): void {
@@ -2249,6 +2315,13 @@ class House {
   carryOn(at: number | null): void {
     if (this.carryOnAt === at) return;
     this.carryOnAt = at;
+    this.publish();
+  }
+
+  /** Arms or disarms going again once this machine can reach the agent. */
+  waitOnline(on: boolean): void {
+    if (this.untilOnline === on) return;
+    this.untilOnline = on;
     this.publish();
   }
 
@@ -2332,6 +2405,7 @@ class House {
         ...(failure.resetAt !== undefined ? { resetAt: failure.resetAt } : {}),
         since: failure.since,
         ...(this.carryOnAt !== null ? { carryOn: this.carryOnAt } : {}),
+        ...(this.untilOnline ? { untilOnline: true } : {}),
       };
     }
     if (failure && state.mood === 'hurt' && failure.category === 'access') glance.signIn = true;
@@ -2340,7 +2414,12 @@ class House {
     if (out) glance.helpers = out;
     const behind = state.told.deeds.filter((one) => one.background && one.running).length;
     if (behind) glance.background = behind;
-    if (state.mood === 'resting' && state.told.turns > 0 && state.told.ended !== 'broke') {
+    if (
+      state.mood === 'resting' &&
+      state.told.turns > 0 &&
+      state.told.ended !== 'broke' &&
+      state.told.ended !== 'cut'
+    ) {
       /* History read back never says how it ended, and a turn read back
          that was not stopped in words finished. */
       const how = state.told.ended ?? 'done';
@@ -2579,13 +2658,22 @@ class House {
       this.claude()
     );
     const mood = moodOf(this.lifecycle, asking, this.trouble, failure, wantsAnswer(told));
+    /* A turn a failure cut off is not done, and the board under it already
+       says what went wrong, so the line saying it a second time goes. */
+    if (failure && mood !== 'working' && !this.trouble) {
+      const said = apiError(failure.title);
+      const last = told.thoughts.at(-1);
+      if (said && last?.trouble === 'warn' && last.said === said)
+        told.thoughts = told.thoughts.slice(0, -1);
+      if (bankable(failure.category) && (!told.ended || told.ended === 'done')) told.ended = 'cut';
+    }
     const packing = mood === 'working' && told.thoughts.at(-1)?.pack?.state === 'packing';
     return {
       mood,
       doing:
         this.trouble ??
         (failure
-          ? failureDoing(failure, this.carryOnAt)
+          ? failureDoing(failure, this.carryOnAt, this.untilOnline)
           : packing
             ? 'packing the conversation down.'
             : doingOf(mood, this.live)),
@@ -2610,7 +2698,10 @@ class House {
       /* Mid-retry it is a line on the fire, not a board of ways out of it. */
       failure:
         !this.trouble && failure && mood !== 'working'
-          ? failureViewOf(failure, bankable(failure.category))
+          ? {
+              ...failureViewOf(failure, bankable(failure.category)),
+              ...(this.untilOnline ? { untilOnline: true } : {}),
+            }
           : null,
       carryOn: this.carryOnAt,
       ...(this.wakingUp ? { waking: true as const } : {}),
@@ -2694,6 +2785,25 @@ function bankable(category: SessionFailure['category']): boolean {
   return category === 'limit' || category === 'service' || category === 'connection';
 }
 
+/** How often a session cut off by the line out looks for it again. */
+const ONLINE_EVERY_MS = 10_000;
+/** Minutes before each try again at the other end's trouble, then it stops. */
+const SERVICE_RETRIES_MIN = [2, 5, 10, 20, 30];
+
+/** Whether this machine can open a connection to Claude's API right now. */
+function online(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = connect({ host: 'api.anthropic.com', port: 443 });
+    const done = (up: boolean): void => {
+      socket.destroy();
+      resolve(up);
+    };
+    socket.setTimeout(5000, () => done(false));
+    socket.once('connect', () => done(true));
+    socket.once('error', () => done(false));
+  });
+}
+
 /** How a limit begins in Claude's own transcript, folded to lower case. */
 const LIMIT_KEY =
   /^you(?:'ve| have) (?:hit|reached) your|^you're out of (?:usage|extra usage)|usage limit/;
@@ -2705,7 +2815,7 @@ function liftText(failure: SessionFailure): string {
 
 /** The doing-line for a typed session failure, said the way the fire itself
  *  would say it — what kind of wait it is, and when it lifts, in local time. */
-function failureDoing(failure: SessionFailure, carryOn?: number | null): string {
+function failureDoing(failure: SessionFailure, carryOn?: number | null, online = false): string {
   if (failure.category === 'limit' && failure.severity !== 'warning') {
     if (carryOn) return `out of usage, carrying on by itself at ${localClock(carryOn)}.`;
     if (failure.resetAt && failure.resetAt <= Date.now()) return 'the limit has lifted.';
@@ -2714,16 +2824,20 @@ function failureDoing(failure: SessionFailure, carryOn?: number | null): string 
   }
   const resets = failure.resetAt ? ` · resets ${localClock(failure.resetAt)}` : '';
   if (failure.severity === 'warning' && failure.category === 'connection')
-    return 'the line to the agent dropped, and it is trying again.';
+    return "can't reach the agent, and it is trying again.";
   if (failure.severity === 'warning' && failure.category === 'service')
     return `a rough patch at the other end, and it is trying again${resets}`;
   switch (failure.category) {
     case 'limit':
       return `waiting out a limit${resets}`;
     case 'service':
-      return `waiting out a rough patch at the other end${resets}`;
+      return carryOn
+        ? `trouble at the other end, trying again at ${localClock(carryOn)}.`
+        : `waiting out a rough patch at the other end${resets}`;
     case 'connection':
-      return `lost its way back to the agent${resets}`;
+      return online
+        ? "offline, and it carries on by itself once it's back."
+        : `can't reach the agent${resets}`;
     case 'access':
       return 'it cannot go on until you sign it in.';
     default:
@@ -3118,15 +3232,19 @@ function toldOf(
           });
           return;
         }
-        const trouble =
-          limited(piece.text) || (last && item.broke)
+        /* Claude Code's own "API Error: ..." is the turn being cut off, not
+           something the agent said, so it reads as that, in plain words. */
+        const failed = apiError(piece.text);
+        const trouble = failed
+          ? 'warn'
+          : limited(piece.text) || (last && item.broke)
             ? 'wrong'
             : aside(piece.text.trim())
               ? 'aside'
               : undefined;
         thoughts.push({
           id,
-          said: piece.text,
+          said: failed ?? piece.text,
           at,
           turn: item.turn,
           ...(trouble ? { trouble } : {}),

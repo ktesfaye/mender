@@ -241,6 +241,8 @@ export interface FailureView {
   carryOnAt?: number;
   /** Which kind of wait, so it is drawn rather than said. */
   kind?: 'limit' | 'service' | 'connection';
+  /** It goes again by itself once this machine is back online. */
+  untilOnline?: boolean;
   /** When it was hit, and when it lifts, where those are known. */
   since?: number;
   resetAt?: number;
@@ -324,7 +326,7 @@ export interface Thought {
   /** The turn going wrong rather than an answer: `wrong` stopped it, `warn` cut it short. */
   trouble?: 'wrong' | 'warn' | 'aside' | 'stopped' | 'closed';
   /** Over the newest answer, whether its turn is still going or how it came to rest. */
-  ended?: 'going' | 'running' | 'done' | 'stopped' | 'closed';
+  ended?: 'going' | 'running' | 'done' | 'stopped' | 'closed' | 'cut';
   /** The conversation being packed down to make room, drawn rather than said. */
   pack?: Pack;
   /** Where it falls in the conversation, beside what it did. */

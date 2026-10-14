@@ -186,6 +186,7 @@ const ENDED = {
   done: { head: 'done', ink: '#a8c469' },
   stopped: { head: 'you stopped it', ink: STOPPED },
   closed: { head: 'the village closed', ink: STOPPED },
+  cut: { head: 'cut off', ink: '#e0866a' },
 } as const;
 
 export interface Doings {
@@ -2687,7 +2688,7 @@ function thinking(
             ? 'trouble'
             : one.ended === 'done' || one.pack?.state === 'packed'
               ? 'done'
-              : one.ended === 'stopped' || one.ended === 'closed'
+              : one.ended === 'stopped' || one.ended === 'closed' || one.ended === 'cut'
                 ? 'stopped'
                 : 'going';
         if (trouble && one.trouble && !pack) {
