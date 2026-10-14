@@ -1100,8 +1100,10 @@ off it rolls it back up.
 
 **It is an app you install.** `pnpm run package` makes a Mender.app and a dmg;
 what comes out of the Applications folder is the whole village with everything
-running behind it. The icon is a square cut out of the island as the app itself
-draws it, because that is what the app is. No notarisation, and no update
+running behind it. The icon is the campfire, lit at night, the kit's own
+stones and logs with the flame and its light drawn round them: the one thing
+on the island before anything else is, and a shape that still reads in a dock,
+which a square cut out of the island never did. No notarisation, and no update
 channel anybody else could follow.
 
 **And it keeps itself up to date, from releases he calls.** A version is only
