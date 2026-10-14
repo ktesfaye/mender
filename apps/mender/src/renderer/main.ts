@@ -4422,7 +4422,7 @@ async function boot(): Promise<void> {
           aim,
           project,
           draft,
-          isolated ? 'making its own copy' : terminal ? 'opening a shell' : 'setting up'
+          isolated ? 'setting up workspace' : terminal ? 'opening a shell' : 'setting up'
         );
       } else syncCutting(project.id);
       // No deadline: a worktree on a big repository is minutes of copying, plus

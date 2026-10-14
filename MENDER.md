@@ -118,7 +118,7 @@ one rather than carrying you off to another. Command-N in a project hangs the ne
 isolated workspace already on, and whatever is written in the box names the
 workspace and nothing more, the session in it opening with nothing said, and so does the dashed board at the end of the beam; out on the island it still founds a project, since there is nothing
 there to copy. The moment it is asked for you are standing in it, the fire
-in the middle saying it is making its own copy and counting, because cutting
+in the middle saying it is setting up the workspace and counting, because cutting
 a copy and running its setup is long enough that a sign which simply went
 away read as nothing having happened. A new session starts in whichever
 workspace you are standing in. Right-clicking a board offers to delete it, and deleting means all of it:
