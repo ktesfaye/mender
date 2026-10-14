@@ -99,7 +99,7 @@ import { Water } from './village/water';
 import { wire, type MenderClient } from './wire';
 import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
-import { stepsFromTrail } from './yard/from';
+import { stateOf, stepsFromTrail } from './yard/from';
 import { openYard, type Watching } from './yard/live';
 import { showMissed } from './yard/missed';
 import { openNewSession, type NewSessionSign } from './yard/new-session';
@@ -707,15 +707,39 @@ async function boot(): Promise<void> {
       const here = workspaceOf(project.id);
       const folder = project.path.replace(/\/+$/, '').split('/').at(-1) ?? project.name;
       return [
-        { id: '', name: folder, here: here === '', ...lightIn(project.id, '') },
+        {
+          id: '',
+          name: folder,
+          here: here === '',
+          ...lightIn(project.id, ''),
+          sessions: whoIsIn(project.id, ''),
+        },
         ...cut.map((each) => ({
           id: each.id,
           name: each.name,
           here: here === each.id,
           ...lightIn(project.id, each.id),
+          branch: each.branch,
+          sessions: whoIsIn(project.id, each.id),
         })),
       ];
     };
+    /** Everybody in a workspace and what each is up to, in the words their
+        lanterns would use, for when its board is pointed at. */
+    const whoIsIn = (projectId: string, workspace: string): Signboard['sessions'] =>
+      tasks
+        .filter((task) => task.project === projectId && (task.workspace ?? '') === workspace)
+        .map((task) => ({
+          id: task.id,
+          name: task.title,
+          /* The branch is said once at the head of the card, not on every line. */
+          ...stateOf(
+            { ...task, shared: true },
+            seen[task.id],
+            glances[task.id],
+            unseen.get(task.id)
+          ),
+        }));
     /** The light under a board is its loudest session, said the way its
         lantern would say it: asking over broken over working over done over
         waiting out a limit, and nothing at all when they are all idle. */
@@ -1457,7 +1481,6 @@ async function boot(): Promise<void> {
         if (open) void enterWorkspace({ kind: 'district', district: open.district }, id.slice(10));
         return;
       }
-      if (id.startsWith('workspace-drop:')) {
       if (id.startsWith('workspace-name:')) {
         const [which = '', name = ''] = id.slice(15).split('\t');
         workspaces = workspaces.map((each) => (each.id === which ? { ...each, name } : each));
@@ -1465,6 +1488,7 @@ async function boot(): Promise<void> {
         void client.tasks.renameWorkspace({ id: which, name });
         return;
       }
+      if (id.startsWith('workspace-drop:')) {
         void dropWorkspace(id.slice(15));
         return;
       }

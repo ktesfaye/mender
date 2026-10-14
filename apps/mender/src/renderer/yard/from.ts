@@ -881,7 +881,7 @@ function emberOf(glance: Glance | undefined): number {
   return Math.max(0.08, Math.min(1, (Date.now() - wait.since) / (end - wait.since)));
 }
 
-function stateOf(
+export function stateOf(
   task: Task,
   mood: Mood | undefined,
   glance: Glance | undefined,
@@ -976,7 +976,7 @@ function idleOf(
       : rested.how === 'closed'
         ? 'cut off'
         : 'stopped';
-  const when = rested?.at !== undefined ? ` · ${agoFor(now - rested.at)}` : '';
+  const when = rested?.at ? ` · ${agoFor(now - rested.at)}` : '';
   const said = word + when;
   return { posture: 'resting', saying: worth ? `${said} · ${branch}` : said, lit: false };
 }

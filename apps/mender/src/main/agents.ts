@@ -2423,8 +2423,10 @@ class House {
       /* History read back never says how it ended, and a turn read back
          that was not stopped in words finished. */
       const how = state.told.ended ?? 'done';
-      const at = state.told.thoughts.at(-1)?.at ?? state.told.notes[0]?.at;
-      glance.rested = at !== undefined ? { how, at } : { how };
+      /* A thought read back from history can carry no time at all, written
+         as nought, which is not when anything happened. */
+      const at = state.told.thoughts.at(-1)?.at || state.told.notes[0]?.at;
+      glance.rested = at ? { how, at } : { how };
     }
     return glance;
   }

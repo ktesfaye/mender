@@ -898,6 +898,17 @@ idle. Done goes once you have stood in it. Driven in a dev copy: a fresh
 workspace given a slow command lit warm under its board while home was
 stood in, went green when it finished, and went dark after walking in.
 
+**And says who is in there when it is pointed at.** Resting the pointer on a
+board a moment brings a slab down under it: the workspace's name and branch,
+then everybody in there, the ones wanting a look first, each in their
+lantern's tone saying what their lantern says. Any board is renamed by a
+double press, the one you are not in too, or from its right-click, which now
+offers rename above delete. Rename had stopped saving altogether: its handler
+had ended up inside delete's, so the board repainted and nothing was kept.
+Driven in a dev copy: a slow double press on another workspace walked in and
+kept the name, the right-click rename kept it without walking in, and the
+slab listed both sessions with their states.
+
 A project can be forgotten too, from the bottom of its own page, which is
 what pressing its name opens, because forgetting a place is not something you
 should meet on the way to the work in it. Two presses again, and the line in between says

@@ -112,6 +112,10 @@ export interface Signboard {
   light?: Exclude<Posture, 'resting'>;
   /** Waiting out a limit, how much of the wait is behind it, nought to one. */
   ember?: number;
+  /** What it is checked out on, said when it is pointed at. */
+  branch?: string;
+  /** Who is in there and what each is up to, said when it is pointed at. */
+  sessions?: readonly { id: string; name: string; posture: Posture; saying: string }[];
 }
 
 /** One session on the rail, which is all the rail needs to know about it. */

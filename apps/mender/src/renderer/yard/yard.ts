@@ -320,7 +320,7 @@ function moves<T extends HTMLElement>(el: T): T {
 let renaming: { id: string; written: string; caret: number } | null = null;
 
 /** The same for a workspace's signboard, which the beam redraws as often. */
-let renamingBoard: { id: string; written: string } | null = null;
+let renamingBoard: { id: string; written: string; since?: number } | null = null;
 
 /** How long a switch waits on a waking session before showing it waking. */
 const WAKE_HELD_MS = 320;
@@ -1090,7 +1090,15 @@ export function makeYard(layer: Layer, does: Doings): Standing {
         line.textContent = `press again to delete it. ${cost}`;
       });
     });
-    it.appendChild(line);
+    const rename = document.createElement('span');
+    rename.className = 'press slab-line';
+    rename.textContent = `rename ${sign.dataset.name ?? 'this workspace'}`;
+    rename.addEventListener('mousedown', (down) => down.preventDefault());
+    rename.addEventListener('click', () => {
+      unslab();
+      renamers.get(sign)?.();
+    });
+    it.append(rename, line);
     stage.appendChild(it);
     it.style.left = `${Math.min(event.clientX, window.innerWidth - it.offsetWidth - 12)}px`;
     it.style.top = `${Math.min(event.clientY, window.innerHeight - it.offsetHeight - 12)}px`;
@@ -1311,6 +1319,7 @@ function boardRenamer(
     fit();
   });
   input.addEventListener('mousedown', (event) => event.stopPropagation());
+  input.addEventListener('click', (event) => event.stopPropagation());
   input.addEventListener('keydown', (event) => {
     event.stopPropagation();
     if (event.key === 'Enter') {
@@ -1322,7 +1331,15 @@ function boardRenamer(
     }
   });
   input.addEventListener('blur', () => {
-    if (input.isConnected) finish(true);
+    if (!input.isConnected) return;
+    /* A double press on a board you are not in walks into it as well, and
+       walking in hands the keyboard to the line a moment later. That is not
+       him leaving the name, so it is taken straight back. */
+    if (renamingBoard && Date.now() - (renamingBoard.since ?? 0) < 1500) {
+      requestAnimationFrame(() => input.isConnected && input.focus());
+      return;
+    }
+    finish(true);
   });
   requestAnimationFrame(() => {
     if (!input.isConnected) return;
@@ -1562,6 +1579,120 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
     root.appendChild(stays(rule({ left: edge, right: edge, top: HEAD.rule }, true), 'rule:head'));
 }
 
+/** How each board on the beam is written over, by the board drawn now. */
+const renamers = new WeakMap<HTMLElement, () => void>();
+
+/* A second press anywhere on a workspace's board writes over its name. */
+window.addEventListener(
+  'mousedown',
+  (event) => {
+    if (event.button !== 0 || event.detail < 2) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('input')) return;
+    const sign = target?.closest<HTMLElement>('.yard .sign[data-workspace]');
+    const write = sign && renamers.get(sign);
+    if (!write) return;
+    event.preventDefault();
+    window.getSelection()?.removeAllRanges();
+    hideSignCard();
+    write();
+  },
+  true
+);
+
+/* ── who is in a workspace, said when its board is pointed at ──────────────
+   Pointing at a board on the beam a moment brings a slab down under it with
+   everybody in there, each in the tone their lantern burns and saying what
+   their lantern says, so the beam can be read without walking along it. The
+   beam is drawn afresh on every change, so the slab is held out here by which
+   board it is for and written again onto whatever board is drawn next. */
+let cardOn: { key: string; el: HTMLElement } | null = null;
+let cardTimer = 0;
+
+function hideSignCard(): void {
+  window.clearTimeout(cardTimer);
+  cardOn?.el.remove();
+  cardOn = null;
+}
+
+function signCard(sign: HTMLElement, board: Signboard, root: HTMLElement): void {
+  const key = board.id || '~folder';
+  const show = (): void => {
+    const stage = root.parentElement;
+    if (!stage || !sign.isConnected || renamingBoard || carrying) return;
+    cardOn?.el.remove();
+    const it = cardOf(board);
+    stage.appendChild(it);
+    const at = sign.getBoundingClientRect();
+    const left = Math.max(12, Math.min(at.left, window.innerWidth - it.offsetWidth - 12));
+    it.style.left = `${left}px`;
+    it.style.top = `${at.bottom + 8}px`;
+    cardOn = { key, el: it };
+  };
+  sign.addEventListener('pointerenter', () => {
+    window.clearTimeout(cardTimer);
+    if (cardOn && cardOn.key !== key) cardOn.el.remove();
+    cardTimer = window.setTimeout(show, cardOn ? 0 : 260);
+  });
+  sign.addEventListener('pointerleave', hideSignCard);
+  sign.addEventListener('pointerdown', hideSignCard);
+  sign.addEventListener('contextmenu', hideSignCard);
+  if (cardOn?.key === key)
+    requestAnimationFrame(() => (sign.matches(':hover') ? show() : hideSignCard()));
+}
+
+function cardOf(board: Signboard): HTMLElement {
+  const it = document.createElement('div');
+  it.className = 'menu sign-card';
+  const head = document.createElement('div');
+  head.className = 'sign-card-head';
+  const name = document.createElement('span');
+  name.textContent = board.name;
+  head.appendChild(name);
+  if (board.branch && board.branch !== board.name) {
+    const branch = document.createElement('span');
+    branch.className = 'sign-card-branch';
+    branch.textContent = board.branch;
+    head.appendChild(branch);
+  }
+  it.appendChild(head);
+  const sessions = board.sessions ?? [];
+  if (!sessions.length) {
+    const empty = document.createElement('div');
+    empty.className = 'sign-card-empty';
+    empty.textContent = 'nobody in here yet';
+    it.appendChild(empty);
+  }
+  const order: Posture[] = ['wants-you', 'broken', 'working', 'done', 'waiting', 'resting'];
+  const ranked = [...sessions].sort((a, b) => order.indexOf(a.posture) - order.indexOf(b.posture));
+  for (const one of ranked) {
+    const line = document.createElement('div');
+    line.className = 'sign-card-line';
+    const mark = document.createElement('span');
+    mark.className = 'sign-card-mark';
+    mark.dataset.posture = one.posture;
+    const who = document.createElement('span');
+    who.className = 'sign-card-who';
+    who.style.color = TONE[one.posture];
+    who.textContent = one.name;
+    const says = document.createElement('span');
+    says.className = 'sign-card-says';
+    says.style.color = SAYS[one.posture];
+    says.textContent = one.saying;
+    line.append(mark, who, says);
+    it.appendChild(line);
+  }
+  if (board.id) {
+    const foot = document.createElement('div');
+    foot.className = 'sign-card-foot';
+    foot.textContent = board.here
+      ? 'double-click to rename · right-click to delete'
+      : 'press to walk in · double-click to rename · right-click to delete';
+    it.appendChild(foot);
+  }
+  return it;
+}
+
 /* ── the workspaces ────────────────────────────────────────────────────────
    Once a project has a workspace besides its own folder, the rule under the
    head is a beam, and every workspace hangs from it on two cords as a
@@ -1593,25 +1724,23 @@ function signboards(
       if (board.ember !== undefined) hung_.style.setProperty('--ember', String(board.ember));
     }
     hung_.append(cords, face);
-    /* The one you are standing in is written over with a double press, the
-       same as a session's name at the top. Its branch keeps its old name. */
-    if (board.here && board.id) {
-      hung_.title = 'double-click to rename it';
+    /* Any workspace is written over with a double press, the same as a
+       session's name at the top. Its branch keeps its old name. The press
+       that walks into one redraws the beam under the pointer, so the second
+       press lands on a new board and is never a double-click to the browser;
+       the press's own count is, which is what `beamPresses` reads. */
+    if (board.id) {
       const write = (): void => {
-        renamingBoard ??= { id: board.id, written: board.name };
+        renamingBoard ??= { id: board.id, written: board.name, since: Date.now() };
         face.replaceChildren(boardRenamer(face, board.id, board.name, does));
       };
-      face.addEventListener('dblclick', (event) => {
-        event.preventDefault();
-        window.getSelection()?.removeAllRanges();
-        write();
-      });
+      renamers.set(hung_, write);
       if (renamingBoard?.id === board.id) write();
     }
+    signCard(hung_, board, root);
     if (!board.here) {
       hung_.tabIndex = 0;
       astop(hung_, `workspace:${board.id}`);
-      hung_.title = board.id ? 'walk in · right-click to delete it' : 'walk in';
       hung_.addEventListener('mousedown', (event) => event.preventDefault());
       const take = (): void => {
         handGold(hanging, hung_, board.id);

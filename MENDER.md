@@ -121,7 +121,7 @@ there to copy. The moment it is asked for you are standing in it, the fire
 in the middle saying it is setting up the workspace and counting, because cutting
 a copy and running its setup is long enough that a sign which simply went
 away read as nothing having happened. A new session starts in whichever
-workspace you are standing in. Right-clicking a board offers to delete it, and deleting means all of it:
+workspace you are standing in. Resting the pointer on a board brings down a slab under it with everybody in there and what each is up to, in their lanterns' own words, the ones wanting you first. Right-clicking a board offers to rename it or delete it, and deleting means all of it:
 its folder, its branch and every session in it. The first press only looks
 inside and says, in the sore ink, what would go, anybody still working in
 there, files nobody committed, commits never pushed anywhere, and only the
