@@ -107,6 +107,11 @@ export interface Signboard {
   name: string;
   /** The one you are standing in, painted gold. */
   here: boolean;
+  /** What the light under it says about the sessions in there, the loudest
+      of them: absent when nobody in there is doing anything worth a look. */
+  light?: Exclude<Posture, 'resting'>;
+  /** Waiting out a limit, how much of the wait is behind it, nought to one. */
+  ember?: number;
 }
 
 /** One session on the rail, which is all the rail needs to know about it. */

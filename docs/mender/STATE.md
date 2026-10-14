@@ -889,6 +889,15 @@ number walks the rail. Driven in a dev copy with five boards: control-4 stood
 in the fourth, control-1 went back to the folder, command-1 still took the
 first lantern.
 
+**A workspace says how it is from the beam.** Light spills out under each
+board the way it does under a door, in the colour of its loudest session's
+lantern: asking over broken over working over done over waiting out a limit,
+breathing while somebody works and flickering while somebody asks, a red strip
+filling as a limit runs out, and nothing at all while everybody in there is
+idle. Done goes once you have stood in it. Driven in a dev copy: a fresh
+workspace given a slow command lit warm under its board while home was
+stood in, went green when it finished, and went dark after walking in.
+
 A project can be forgotten too, from the bottom of its own page, which is
 what pressing its name opens, because forgetting a place is not something you
 should meet on the way to the work in it. Two presses again, and the line in between says

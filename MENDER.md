@@ -110,7 +110,7 @@ has one, the rule under its name becomes a timber beam and each workspace hangs
 from it on two cords as a signboard, the project's own folder first, painted moss green with a
 little house before its name so it never reads as one more copy, the one
 you are standing in painted gold, and double-pressed it is written over
-where it hangs, a new name for the board and never for its branch. Any but the folder can be held and slid along the beam to another place on it, the others stepping aside, and it stays there. Pressing another, or control and its number along the beam, walks into it, back into
+where it hangs, a new name for the board and never for its branch. Light spills out under each board the way it does under a door, the colour its loudest session's lantern burns, breathing, flickering or steady the same, and none while everybody in there is idle, so the beam says where anybody wants you without walking along it. Any but the folder can be held and slid along the beam to another place on it, the others stepping aside, and it stays there. Pressing another, or control and its number along the beam, walks into it, back into
 whichever session you were last in there or into a fresh one if it is empty,
 and the rail along the bottom carries that workspace's sessions and nobody
 else's. Closing the last session in one leaves you standing in it on a fresh

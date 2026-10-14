@@ -117,6 +117,7 @@ import {
   type WorktreeRow,
   type Windmill,
 } from './yard/windmill';
+import type { Signboard } from './yard/what';
 import { inBeamOrder, makeYard } from './yard/yard';
 
 /** The kinds of picture an agent can actually be shown. */
@@ -700,15 +701,60 @@ async function boot(): Promise<void> {
     /** What hangs from the beam: nothing until the project has a workspace
         besides its own folder, then its own folder first and every one of
         them after it. */
-    const boardsFor = (project: Project): { id: string; name: string; here: boolean }[] => {
+    const boardsFor = (project: Project): Signboard[] => {
       const cut = workspaces.filter((each) => each.project === project.id);
       if (!cut.length) return [];
       const here = workspaceOf(project.id);
       const folder = project.path.replace(/\/+$/, '').split('/').at(-1) ?? project.name;
       return [
-        { id: '', name: folder, here: here === '' },
-        ...cut.map((each) => ({ id: each.id, name: each.name, here: here === each.id })),
+        { id: '', name: folder, here: here === '', ...lightIn(project.id, '') },
+        ...cut.map((each) => ({
+          id: each.id,
+          name: each.name,
+          here: here === each.id,
+          ...lightIn(project.id, each.id),
+        })),
       ];
+    };
+    /** The light under a board is its loudest session, said the way its
+        lantern would say it: asking over broken over working over done over
+        waiting out a limit, and nothing at all when they are all idle. */
+    const LOUDEST = ['wants-you', 'broken', 'working', 'done', 'waiting'] as const;
+    const lightIn = (
+      projectId: string,
+      workspace: string
+    ): Pick<Signboard, 'light' | 'ember'> => {
+      let light: (typeof LOUDEST)[number] | undefined;
+      let ember: number | undefined;
+      for (const task of tasks) {
+        if (task.project !== projectId || (task.workspace ?? '') !== workspace) continue;
+        const glance = glances[task.id];
+        const mood = seen[task.id];
+        const says =
+          mood === 'asking'
+            ? 'wants-you'
+            : mood === 'hurt'
+              ? 'broken'
+              : mood === 'working' || mood === 'arriving' || glance?.background
+                ? 'working'
+                : unseen.has(task.id)
+                  ? 'done'
+                  : glance?.waiting
+                    ? 'waiting'
+                    : undefined;
+        if (!says) continue;
+        if (says === 'waiting') {
+          const wait = glance?.waiting;
+          const end = wait?.carryOn ?? wait?.resetAt;
+          const behind =
+            wait?.since !== undefined && end !== undefined && end > wait.since
+              ? Math.max(0.08, Math.min(1, (Date.now() - wait.since) / (end - wait.since)))
+              : 0.15;
+          ember = Math.max(ember ?? 0, behind);
+        }
+        if (!light || LOUDEST.indexOf(says) < LOUDEST.indexOf(light)) light = says;
+      }
+      return light ? { light, ...(light === 'waiting' ? { ember } : {}) } : {};
     };
     frame(camera, drawn.island);
     /* The window is not its real size when the renderer starts — it is

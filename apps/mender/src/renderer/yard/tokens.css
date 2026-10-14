@@ -1683,6 +1683,52 @@ body.gripping-row * {
   text-shadow: none;
 }
 
+/* Light under the board, the way it spills under a door: the colour of the
+   loudest session in there, breathing, flickering or steady the way that
+   session's lantern does. Nothing at all while everybody in there is idle. */
+.yard .sign .board {
+  position: relative;
+}
+.yard .sign[data-light] .board::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: -2px;
+  height: 3px;
+  pointer-events: none;
+}
+.yard .sign[data-light='working'] .board::after {
+  background: #ffd88a;
+  box-shadow: 0 2px 10px 2px rgba(255, 168, 60, 0.6);
+  animation: yard-breathe 2.4s ease-in-out infinite;
+}
+.yard .sign[data-light='wants-you'] .board::after {
+  background: var(--yard-wants-you);
+  box-shadow: 0 2px 12px 3px rgba(255, 120, 60, 0.8);
+  animation: yard-wants 0.9s ease-in-out infinite;
+}
+.yard .sign[data-light='done'] .board::after {
+  background: var(--yard-done);
+  box-shadow: 0 2px 8px 1px rgba(168, 196, 105, 0.5);
+}
+.yard .sign[data-light='broken'] .board::after {
+  background: var(--yard-broken);
+  box-shadow: 0 2px 8px 1px rgba(242, 102, 90, 0.5);
+}
+.yard .sign[data-light='waiting'] .board::after {
+  background: linear-gradient(
+    to right,
+    #c2432c calc(var(--ember, 0.15) * 100%),
+    #3a2712 calc(var(--ember, 0.15) * 100%)
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .yard .sign[data-light] .board::after {
+    animation: none;
+  }
+}
+
 /* The project's own folder is home, not one more copy: the only board without
    a workspace id, painted moss green rather than bare timber, with a little
    house in front of its name that stays whether or not it is the gold one. */

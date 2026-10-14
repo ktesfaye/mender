@@ -74,6 +74,7 @@ import type {
   Note,
   Posture,
   Session,
+  Signboard,
   Step,
   StepKind,
   Story,
@@ -1568,7 +1569,7 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
    cuts another. Right-clicking one takes it down, in two. */
 function signboards(
   root: HTMLElement,
-  boards: readonly { id: string; name: string; here: boolean }[],
+  boards: readonly Signboard[],
   edge: number,
   does: Doings
 ): void {
@@ -1584,6 +1585,12 @@ function signboards(
     const face = document.createElement('span');
     face.className = 'board';
     face.textContent = board.name;
+    /* Light spills out under a board the way it does under a door, in the
+       colour its loudest session's lantern burns: nothing when all idle. */
+    if (board.light) {
+      hung_.dataset.light = board.light;
+      if (board.ember !== undefined) hung_.style.setProperty('--ember', String(board.ember));
+    }
     hung_.append(cords, face);
     /* The one you are standing in is written over with a double press, the
        same as a session's name at the top. Its branch keeps its old name. */
