@@ -292,7 +292,9 @@ function paintBoard(hang: HTMLDivElement, project: OnShelf): void {
     const cut = cutOf(`rack/${want}`);
     if (cut) plank.style.backgroundPosition = `${-cut.x * X}px ${-cut.y * X}px`;
   }
-  paintStud(hang, project.wants);
+  /* The one you are standing in says nothing: its own lanterns are right
+     there on the rail, and a stud over them only repeats it. */
+  paintStud(hang, project.here ? undefined : project.wants);
   /* The one you are standing in hangs lower than the rest, let down on its
      chains, so it stands out of the row by where it is and not only by its
      gold. */
