@@ -70,5 +70,7 @@ export function createAgentsController(
     remove: ({ hand }) => agents.remove(hand),
     draft: ({ task }) => agents.draft(task),
     setDraft: ({ task, text }) => agents.setDraft(task, text),
+    draftPictures: ({ task }) => agents.draftPictures(task),
+    setDraftPictures: ({ task, pictures }) => agents.setDraftPictures(task, pictures),
   });
 }

@@ -245,6 +245,8 @@ export interface Agents {
   /** What was half-written on this session's line, so it survives a restart. */
   draft(task: string): Promise<string>;
   setDraft(task: string, text: string): Promise<void>;
+  draftPictures(task: string): Promise<Returned[]>;
+  setDraftPictures(task: string, pictures: readonly Carried[]): Promise<void>;
   /** The app is going: what is still going stays written down as it stands
       now, for the next sitting to pick back up, rather than as the shutdown
       leaves it. */
@@ -288,6 +290,7 @@ const EMPTY: WorkingState = {
 
 const KEY = 'agents';
 const DRAFTS_KEY = 'drafts';
+const DRAFT_PICTURES_KEY = 'draftPictures';
 const MADE_KEY = 'made';
 const RECAPS_KEY = 'recaps';
 const STORIES_KEY = 'stories';
@@ -322,6 +325,9 @@ export function createAgents(
   /** What was half-written on a session's line, keyed by task, so it is
       still there after the app itself restarts. */
   let drafts: Record<string, string> = {};
+  /* The pictures on that line, with where each is kept, so they come back
+     onto it the same as its words. */
+  let draftPictures: Record<string, Returned[]> = {};
   /** Everything each session has made, keyed by task, because a resumed
       conversation does not always bring its own history back whole. */
   let madeBy: Record<string, Made[]> = {};
@@ -370,6 +376,10 @@ export function createAgents(
     const heldDrafts = await store.get(DRAFTS_KEY);
     if (heldDrafts.success && heldDrafts.data && typeof heldDrafts.data === 'object') {
       drafts = heldDrafts.data as unknown as Record<string, string>;
+    }
+    const heldPictures = await store.get(DRAFT_PICTURES_KEY);
+    if (heldPictures.success && heldPictures.data && typeof heldPictures.data === 'object') {
+      draftPictures = heldPictures.data as unknown as Record<string, Returned[]>;
     }
     const heldMade = await store.get(MADE_KEY);
     if (heldMade.success && heldMade.data && typeof heldMade.data === 'object') {
@@ -974,6 +984,9 @@ export function createAgents(
       takenBack = backLeft;
       await store.set(TAKEN_BACK_KEY, takenBack as unknown as never);
       drafts = draftsLeft;
+      const { [task]: _pictures, ...picturesLeft } = draftPictures;
+      draftPictures = picturesLeft;
+      await store.set(DRAFT_PICTURES_KEY, draftPictures as unknown as never);
       madeBy = madeLeft;
       recaps = recapsLeft;
       if (titledAt.delete(task)) keepTitled();
@@ -1748,6 +1761,27 @@ export function createAgents(
         delete drafts[task];
       }
       await store.set(DRAFTS_KEY, drafts as unknown as never);
+    },
+
+    async draftPictures(task) {
+      await loaded;
+      return draftPictures[task] ?? [];
+    },
+
+    async setDraftPictures(task, pictures) {
+      await loaded;
+      const before = draftPictures[task] ?? [];
+      const kept = pictures.map((one): Returned => {
+        const path = carriedTo.get(one.id) ?? before.find((each) => each.id === one.id)?.path;
+        return { id: one.id, name: one.name, mime: one.mime, ...(path ? { path } : {}) };
+      });
+      if (kept.length) draftPictures = { ...draftPictures, [task]: kept };
+      else {
+        if (!before.length) return;
+        draftPictures = { ...draftPictures };
+        delete draftPictures[task];
+      }
+      await store.set(DRAFT_PICTURES_KEY, draftPictures as unknown as never);
     },
 
     closing() {

@@ -176,6 +176,11 @@ export async function openYard(
     (assumed || Boolean(working?.waking)) &&
     !working?.told?.notes.length;
   let held: readonly Carried[] = [];
+  /* Kept against the session the way its half-written words are, so walking
+     out and back in, or a restart, finds them still on the line. */
+  const keepHeld = (): void => {
+    if (from.here) void client.agents.setDraftPictures({ task: from.here.id, pictures: [...held] });
+  };
   /* The picture itself, kept here while it is carried so pointing at it on
      the line can show it. */
   const previews = new Map<string, string>();
@@ -206,6 +211,33 @@ export async function openYard(
   const again = (): void => {
     if (ready) changed(build());
   };
+
+  /* Pictures coming back onto the line, either off a turn called off before
+     anything came of it or left there when the yard was last walked out of. */
+  const carryBack = (pictures: readonly (Carried & { path?: string })[]): void => {
+    const fresh = pictures.filter((one) => !held.some((each) => each.id === one.id));
+    if (!fresh.length) return;
+    held = [...held, ...fresh.map(({ id, name, mime }) => ({ id, name, mime }))];
+    keepHeld();
+    for (const one of fresh) {
+      if (!one.path) continue;
+      void onThisMachine(one.path).then((url) => {
+        if (!url || !held.some((each) => each.id === one.id)) return;
+        previews.set(one.id, url);
+        again();
+      });
+    }
+    again();
+  };
+  if (opening.here && opening.here.kind !== 'terminal' && opening.here.kind !== 'shell') {
+    const task = opening.here.id;
+    void client.agents.draftPictures({ task }).then(
+      (pictures) => {
+        if (from.here?.id === task) carryBack(pictures);
+      },
+      () => {}
+    );
+  }
 
   let readingWindow = false;
   const readWindow = (): void => {
@@ -396,6 +428,7 @@ export async function openYard(
       }
       previews.set(picked.data.id, URL.createObjectURL(file));
       held = [...held, picked.data];
+      keepHeld();
       again();
       return null;
     },
@@ -404,6 +437,7 @@ export async function openYard(
       if (!one) return;
       held = held.filter((each) => each !== one);
       aside.set(id, one);
+      keepHeld();
       again();
     },
     pickBack: (id) => {
@@ -411,20 +445,10 @@ export async function openYard(
       if (!one) return;
       aside.delete(id);
       held = [...held, one];
+      keepHeld();
       again();
     },
-    carryBack: (pictures) => {
-      held = [...held, ...pictures.map(({ id, name, mime }) => ({ id, name, mime }))];
-      for (const one of pictures) {
-        if (!one.path) continue;
-        void onThisMachine(one.path).then((url) => {
-          if (!url || !held.some((each) => each.id === one.id)) return;
-          previews.set(one.id, url);
-          again();
-        });
-      }
-      again();
-    },
+    carryBack: (pictures) => carryBack(pictures),
     notes: () => pinned,
     noteIt: (note) => {
       pinned = [...pinned, note];
@@ -437,6 +461,7 @@ export async function openYard(
     handed: () => {
       for (const one of held) letGo(one.id);
       held = [];
+      keepHeld();
       letAsideGo();
       pinned = [];
       again();

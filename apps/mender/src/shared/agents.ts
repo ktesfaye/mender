@@ -905,6 +905,15 @@ export const agentsContract = defineContract({
     input: z.object({ task: z.string(), text: z.string() }),
     output: z.void(),
   }),
+  /** The pictures standing on that half-written line, kept the same way. */
+  draftPictures: procedure({
+    input: z.object({ task: z.string() }),
+    output: z.array(carriedSchema.extend({ path: z.string().optional() })),
+  }),
+  setDraftPictures: procedure({
+    input: z.object({ task: z.string(), pictures: z.array(carriedSchema) }),
+    output: z.void(),
+  }),
   /**
    * The mood of every building with somebody in it.
    *
