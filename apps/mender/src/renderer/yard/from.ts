@@ -942,7 +942,7 @@ function stateOf(
       return idleOf(task, glance?.rested, now);
     }
     default:
-      return idleOf(task);
+      return idleOf(task, glance?.rested, now);
   }
 }
 

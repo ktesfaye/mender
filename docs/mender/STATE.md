@@ -4027,3 +4027,7 @@ dark like any other resting lantern; "idle" is only for one nobody has asked
 anything yet. Driven in a dev instance: a fresh session read "idle", after one
 answer it read "done · just now", ticked to "1m ago", and read "done · 3m ago"
 after the app was restarted.
+How each one came to rest is kept, so a session nobody has opened since the
+app started says it too rather than "idle" until pressed; driven with one
+answered session left asleep across a restart beside a fresh one, which read
+"done · 26m ago" and "idle".

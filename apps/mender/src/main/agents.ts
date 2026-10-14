@@ -306,6 +306,7 @@ const CUT_OFF_KEY = 'cutOff';
 const CARRY_ON_KEY = 'carryOn';
 const LIMITS_HIT_KEY = 'limitsHit';
 const TAKEN_BACK_KEY = 'takenBack';
+const RESTED_KEY = 'rested';
 
 export function createAgents(
   runtimes: MenderRuntimes,
@@ -353,6 +354,9 @@ export function createAgents(
   /** What was said and called off before anything came of it, by task. It
       went back on the line, so the post never shows it, restart included. */
   let takenBack: Record<string, string[]> = {};
+  /** How each session's last turn came to rest, so one nobody has woken
+      since the app started still says done rather than idle. */
+  let rests: Record<string, NonNullable<Glance['rested']>> = {};
   const loaded = (async () => {
     const held = await store.get(KEY);
     if (held.success && held.data && typeof held.data === 'object') {
@@ -388,6 +392,10 @@ export function createAgents(
     const heldCut = await store.get(CUT_OFF_KEY);
     if (heldCut.success && heldCut.data && typeof heldCut.data === 'object') {
       leftGoing = heldCut.data as unknown as Record<string, CutOff>;
+    }
+    const heldRested = await store.get(RESTED_KEY);
+    if (heldRested.success && heldRested.data && typeof heldRested.data === 'object') {
+      rests = heldRested.data as unknown as typeof rests;
     }
     const heldBack = await store.get(TAKEN_BACK_KEY);
     if (heldBack.success && heldBack.data && typeof heldBack.data === 'object') {
@@ -452,6 +460,28 @@ export function createAgents(
     noted = said;
     void store.set(CUT_OFF_KEY, going as unknown as never);
   };
+  /* A woken session says how it came to rest and that is kept; one asleep,
+     or awake with nothing read back yet, says what was kept. One from before
+     anything was kept, that has a recap or a story, has answered something. */
+  const restOf = (next: Record<string, Glance>): void => {
+    let moved = false;
+    for (const [task, glance] of Object.entries(next)) {
+      if (!glance.rested || JSON.stringify(glance.rested) === JSON.stringify(rests[task])) continue;
+      rests = { ...rests, [task]: glance.rested };
+      moved = true;
+    }
+    if (moved) void store.set(RESTED_KEY, rests as unknown as never);
+    const known = new Set([...Object.keys(rests), ...Object.keys(recaps), ...Object.keys(stories)]);
+    for (const task of known) {
+      const glance = next[task];
+      if (glance?.rested) continue;
+      const house = houses.get(task);
+      const mood = house ? peek(house.state).mood : undefined;
+      if (mood && mood !== 'resting' && mood !== 'empty') continue;
+      if (glance?.waiting || glance?.background) continue;
+      next[task] = { ...glance, rested: rests[task] ?? { how: 'done' } };
+    }
+  };
   const reglance = (): void => {
     noteGoing();
     const next = glancesOf(houses);
@@ -459,11 +489,13 @@ export function createAgents(
       if (!isDear(peek(kits.kit(task)))) continue;
       next[task] = { ...next[task], dear: true };
     }
+    restOf(next);
     const said = JSON.stringify(next);
     if (said === glanced) return;
     glanced = said;
     glances.set(next);
   };
+  void loaded.then(() => reglance());
   /* Changing who works in a building empties it: a different agent is a
      different villager, not the same one with a new hat. */
   const kits = createKits(
@@ -935,6 +967,9 @@ export function createAgents(
       const { [task]: _story, ...storiesLeft } = stories;
       stories = storiesLeft;
       await store.set(STORIES_KEY, stories as unknown as never);
+      const { [task]: _rested, ...restsLeft } = rests;
+      rests = restsLeft;
+      await store.set(RESTED_KEY, rests as unknown as never);
       const { [task]: _back, ...backLeft } = takenBack;
       takenBack = backLeft;
       await store.set(TAKEN_BACK_KEY, takenBack as unknown as never);
