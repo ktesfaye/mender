@@ -5784,10 +5784,6 @@ async function boot(): Promise<void> {
           unname();
           return;
         }
-        if (yard.line.written()) {
-          said('');
-          return;
-        }
         /* The checkout board is laid over the yard it belongs to, so backing
            out of it drops it and reveals that yard rather than flying all the
            way to the island. Without this rung a file's Escape ladder ran

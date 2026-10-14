@@ -324,20 +324,9 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       return;
     }
     if (event.key === 'Escape') {
-      /* One thing at a time: a half-written line goes first and the board
-         behind it only when there is nothing left to throw away. */
-      if (said.textContent) {
-        event.preventDefault();
-        event.stopPropagation();
-        said.textContent = '';
-        const gone = carried;
-        carried = [];
-        for (const one of gone) putDown(one.id);
-        unpreview();
-        showing();
-        typed('');
-        return;
-      }
+      /* Escape never touches what is written here. It stops whoever is
+         working or backs out of the board, and the half-written line rides
+         along untouched; throwing it away is backspace's job. */
       /* The line has the keyboard, so its listener sees Escape before the one
          window listener does. Backing out is the window listener's job, and
          `empty` reaches it, so the event must stop here: letting it bubble on
