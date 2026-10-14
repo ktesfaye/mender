@@ -19,7 +19,7 @@ import {
   type DistrictSpec,
   type Move,
 } from '@mender/village';
-import { app, dialog } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import type { AppSettings } from './app-settings';
 import { keep, picturesIn, shown, type Picture } from './pictures';
 import type { MenderRuntimes } from './runtimes';
@@ -691,12 +691,18 @@ type Landed = { success: true; data: string } | { success: false; error: FoundEr
 
 /** The native folder picker: the one path here that was always a dialog. */
 async function pickFolder(): Promise<Landed> {
-  const chosen = await dialog.showOpenDialog({
+  /* Hung off the village's own window as a sheet, so it comes up in front of
+     the press that asked for it rather than somewhere it can be lost. */
+  const over = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  const options: Electron.OpenDialogOptions = {
     title: 'Found a project',
     message: 'Which checkout is moving in?',
     properties: ['openDirectory', 'createDirectory'],
     buttonLabel: 'Found',
-  });
+  };
+  const chosen = over
+    ? await dialog.showOpenDialog(over, options)
+    : await dialog.showOpenDialog(options);
   const path = chosen.filePaths[0];
   if (chosen.canceled || !path) return { success: false, error: { kind: 'cancelled' } };
   return { success: true, data: path };

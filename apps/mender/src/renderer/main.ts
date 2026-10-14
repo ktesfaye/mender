@@ -2193,7 +2193,7 @@ async function boot(): Promise<void> {
          already opens; founding never targets a particular spot, so it opens
          onto the same three ways in as anywhere else. */
       if (!project) {
-        await settle();
+        openFound();
         return;
       }
       flyToYard(camera, aim.district);
@@ -4543,7 +4543,7 @@ async function boot(): Promise<void> {
       // The camp is where the island grows from: its fire is the only thing on
       // an empty island, and founding a project is what it is for.
       if (aim.district.id === CAMP) {
-        await settle();
+        openFound();
         return;
       }
       if (open && sameAim(aim, open)) {
