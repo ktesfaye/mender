@@ -939,7 +939,7 @@ function stateOf(
       if (finished !== undefined) {
         return { posture: 'done', saying: `done · ${agoFor(now - finished)}`, lit: true };
       }
-      return idleOf(task);
+      return idleOf(task, glance?.rested, now);
     }
     default:
       return idleOf(task);
@@ -950,10 +950,25 @@ function stateOf(
    is on, which every other shared session is on too, so naming it says
    nothing. One in a copy of its own names its branch, because that is the
    one thing telling it apart. */
-function idleOf(task: Task): { posture: Posture; saying: string; lit: boolean } {
+function idleOf(
+  task: Task,
+  rested?: Glance['rested'],
+  now = Date.now()
+): { posture: Posture; saying: string; lit: boolean } {
   const branch = task.shared ? '' : shortOf(task.branch);
   const worth = branch && branch !== slugOf(task.title);
-  return { posture: 'resting', saying: worth ? `idle · ${branch}` : 'idle', lit: false };
+  /* Idle is only true of one nobody has asked anything yet; one that has
+     answered says how it left off, dark all the same once it has been seen. */
+  const word = !rested
+    ? 'idle'
+    : rested.how === 'done'
+      ? 'done'
+      : rested.how === 'closed'
+        ? 'cut off'
+        : 'stopped';
+  const when = rested?.at !== undefined ? ` · ${agoFor(now - rested.at)}` : '';
+  const said = word + when;
+  return { posture: 'resting', saying: worth ? `${said} · ${branch}` : said, lit: false };
 }
 
 /** The kind of work, in a word or two, which is all a lantern has room for. */

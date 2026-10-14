@@ -2271,6 +2271,13 @@ class House {
     if (out) glance.helpers = out;
     const behind = state.told.deeds.filter((one) => one.background && one.running).length;
     if (behind) glance.background = behind;
+    if (state.mood === 'resting' && state.told.turns > 0 && state.told.ended !== 'broke') {
+      /* History read back never says how it ended, and a turn read back
+         that was not stopped in words finished. */
+      const how = state.told.ended ?? 'done';
+      const at = state.told.thoughts.at(-1)?.at ?? state.told.notes[0]?.at;
+      glance.rested = at !== undefined ? { how, at } : { how };
+    }
     return glance;
   }
 

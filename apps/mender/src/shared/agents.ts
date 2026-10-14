@@ -213,6 +213,13 @@ export const glanceSchema = z.object({
   background: z.number().int().optional(),
   /** Thinking with Fable, the dearest model, which has to be plain on sight. */
   dear: z.boolean().optional(),
+  /**
+   * How its last turn came to rest and when, so a session that finished
+   * reads as done rather than as one nobody has asked anything yet.
+   */
+  rested: z
+    .object({ how: z.enum(['done', 'stopped', 'closed']), at: z.number().optional() })
+    .optional(),
 });
 export type Glance = z.infer<typeof glanceSchema>;
 

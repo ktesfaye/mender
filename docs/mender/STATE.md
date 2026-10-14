@@ -4000,3 +4000,13 @@ kept per session in `agents.json`. Driven in a dev instance across five asks
 on a scratch repo: the goal followed the newest ask, a correction showed as
 "you said", the live piece lit with only that ask's steps under "just now",
 and an unrelated ask opened its own chapter.
+
+### A lantern that has answered says done, not idle (2026-10-13) — done
+
+Once the green "done" has been seen, a session's lantern used to fall back to
+"idle", which read as if nothing had ever been asked of it. It now keeps
+saying how its last turn came to rest and how long ago, "done" or "stopped",
+dark like any other resting lantern; "idle" is only for one nobody has asked
+anything yet. Driven in a dev instance: a fresh session read "idle", after one
+answer it read "done · just now", ticked to "1m ago", and read "done · 3m ago"
+after the app was restarted.
