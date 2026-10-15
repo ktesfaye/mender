@@ -2957,3 +2957,21 @@ body.carrying-board * {
   letter-spacing: 0.06em;
   padding-left: 14px;
 }
+
+.settings-jira-site {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 0 14px;
+  border-bottom: 1px solid rgba(232, 214, 172, 0.12);
+  margin-bottom: 10px;
+}
+.settings-jira-site > .settings-link {
+  align-self: flex-start;
+}
+.settings-jira-value {
+  display: block;
+  padding-top: 6px;
+  font-size: 15px;
+  color: var(--yard-ink-body);
+}

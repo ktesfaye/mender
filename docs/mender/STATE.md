@@ -4082,3 +4082,18 @@ two weeks done; a project with no board at all (a service desk) gets one column
 per status. Driven in a dev instance against a real personal site: connect,
 link, read, move both ways, pin and take on (on Haiku). Not driven: the work
 site and its on-call board, which need his work token on that laptop.
+
+### A Jira board is found on a big site, by search or by its link (2026-10-14) — done
+
+A work site has hundreds of boards, and a big project has one per team, so a
+project is now tied to a board rather than to a Jira project. Picking one opens
+on the boards your own tickets are on, the one holding most of yours first;
+writing on the line searches every board by name, project or key, and pasting
+a board's link from the address bar (new or old form) goes straight to it. The
+board's header names it, and "tie it to a different board" swaps it. The
+windmill's Jira page shows each connected site filled in, site, email, token
+saved and who it signed in as, rather than clearing the form as though nothing
+had been kept, and folds the empty form behind "connect another site". Driven
+in a dev instance on the personal site: the opening list, a typed link, a real
+paste, return linking it, and the windmill page. Not driven: a site with
+hundreds of boards.

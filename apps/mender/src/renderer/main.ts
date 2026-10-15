@@ -339,6 +339,15 @@ async function boot(): Promise<void> {
         }
         if (quest?.written !== undefined) {
           quest = { ...quest, written: text };
+          if (quest.phase === 'linking') {
+            const first = quest.searching ? undefined : quest.picks?.[0];
+            if (first) linkBoard(`jira-link:${first.site} ${first.key} ${first.board}`);
+            else {
+              window.clearTimeout(boardWait);
+              void findBoards();
+            }
+            return;
+          }
           void pinTicket();
           return;
         }
@@ -3610,6 +3619,7 @@ async function boot(): Promise<void> {
     };
     openTheBoard = () => {
       if (quest) {
+        if (quest.written !== undefined) giveLineBack();
         quest = null;
         home();
         return;
@@ -3630,14 +3640,12 @@ async function boot(): Promise<void> {
       const link = await client.jira.linkOf({ project: project.id });
       if (!quest) return;
       if (!link) {
-        quest = { ...quest, phase: 'linking' };
-        paintQuest();
-        const got = await client.jira.projects({}, { timeoutMs: 30_000 });
-        if (!quest || quest.phase !== 'linking') return;
-        quest = got.success
-          ? { ...quest, picks: got.data.projects }
-          : { ...quest, phase: 'failed', said: jiraSaid(got.error) };
-        paintQuest();
+        /* A work site has hundreds of boards, so the line is a search from
+           the moment this opens: empty, it offers yours. */
+        quest = { ...quest, phase: 'linking', written: '' };
+        yard.line.write('');
+        yard.line.take();
+        await findBoards();
         return;
       }
       const [got, lit] = await Promise.all([
@@ -3658,6 +3666,49 @@ async function boot(): Promise<void> {
          minute's look does not make the whole board blink. */
       if (JSON.stringify(next) !== questPainted) paintQuest();
     };
+    /** Asks for the boards matching what is on the line; only the newest answer lands. */
+    let boardAsk = 0;
+    let boardWait: number | undefined;
+    const findBoards = async (): Promise<void> => {
+      if (!quest || quest.phase !== 'linking') return;
+      const asked = ++boardAsk;
+      quest = { ...quest, searching: true };
+      paintQuest();
+      const got = await client.jira.boards(
+        { query: quest.written?.trim() ?? '' },
+        { timeoutMs: 60_000 }
+      );
+      if (asked !== boardAsk || !quest || quest.phase !== 'linking') return;
+      const next: Quest = got.success
+        ? { ...quest, picks: got.data.boards }
+        : { ...quest, phase: 'failed', said: jiraSaid(got.error) };
+      delete next.searching;
+      if (!got.success) {
+        delete next.written;
+        giveLineBack();
+      }
+      quest = next;
+      paintQuest();
+    };
+    const linkBoard = (pick: string): void => {
+      const q = quest;
+      const project = questProject;
+      const [site, key, board] = pick.slice('jira-link:'.length).split(' ');
+      if (!q || !project || !site || !key) return;
+      const next: Quest = { ...q, phase: 'reading' };
+      delete next.written;
+      delete next.picks;
+      quest = next;
+      giveLineBack();
+      paintQuest();
+      void client.jira
+        .link({
+          project: project.id,
+          to: { site, key, ...(board ? { board: Number(board) } : {}) },
+        })
+        .then(() => loadQuest());
+    };
+
     window.setInterval(() => {
       if (quest && quest.phase === 'board' && quest.written === undefined && !quest.waiting)
         void loadQuest();
@@ -3778,13 +3829,8 @@ async function boot(): Promise<void> {
         void loadQuest();
       } else if (pick === 'jira-relink' && project) {
         void client.jira.link({ project: project.id, to: null }).then(() => loadQuest());
-      } else if (pick.startsWith('jira-link:') && project && q) {
-        const [site, key] = pick.slice('jira-link:'.length).split(' ');
-        if (site && key) {
-          quest = { ...q, phase: 'reading' };
-          paintQuest();
-          void client.jira.link({ project: project.id, to: { site, key } }).then(() => loadQuest());
-        }
+      } else if (pick.startsWith('jira-link:')) {
+        linkBoard(pick);
       } else if (pick === 'jira-new' && q) {
         quest = { ...q, written: '' };
         yard.line.write('');
@@ -4716,6 +4762,11 @@ async function boot(): Promise<void> {
       }
       if (quest?.written !== undefined) {
         quest = { ...quest, written };
+        if (quest.phase === 'linking') {
+          window.clearTimeout(boardWait);
+          boardWait = window.setTimeout(() => void findBoards(), 350);
+          return;
+        }
         paintQuest();
         return;
       }
@@ -5966,6 +6017,12 @@ async function boot(): Promise<void> {
           return;
         }
         if (quest) {
+          if (quest.phase === 'linking') {
+            quest = null;
+            giveLineBack();
+            home();
+            return;
+          }
           if (quest.written !== undefined) {
             const next = { ...quest };
             delete next.written;

@@ -21,8 +21,28 @@ export const jiraSiteSchema = z.object({
 });
 export type JiraSite = z.infer<typeof jiraSiteSchema>;
 
-export const jiraLinkSchema = z.object({ site: z.string(), key: z.string() });
+export const jiraLinkSchema = z.object({
+  site: z.string(),
+  /** The Jira project's key. */
+  key: z.string(),
+  /** Which of that project's boards, since a big project has one per team. */
+  board: z.number().optional(),
+});
 export type JiraLink = z.infer<typeof jiraLinkSchema>;
+
+/** A board somebody could tie a project to. */
+export const jiraBoardPickSchema = z.object({
+  site: z.string(),
+  key: z.string(),
+  board: z.number(),
+  /** The board's own name. */
+  name: z.string(),
+  /** The project it reads from. */
+  project: z.string(),
+  /** Whether tickets of yours are on its project. */
+  yours: z.boolean(),
+});
+export type JiraBoardPick = z.infer<typeof jiraBoardPickSchema>;
 
 /** Where a status sits in Jira's own three-way split, whatever it is called. */
 export const jiraCategorySchema = z.enum(['new', 'indeterminate', 'done']);
@@ -56,6 +76,8 @@ export const jiraBoardSchema = z.object({
   key: z.string(),
   /** The project's own name. */
   name: z.string(),
+  /** The board's own name, when it is one board of several. */
+  board: z.string().optional(),
   /** The running sprint, on a board that has sprints. */
   sprint: z.string().optional(),
   columns: z.array(jiraColumnSchema),
@@ -113,12 +135,14 @@ export const jiraContract = defineContract({
   }),
   forget: procedure({ input: z.object({ site: z.string() }), output: z.object({}) }),
   setRecipe: procedure({ input: z.object({ recipe: z.string() }), output: z.object({}) }),
-  /** Every Jira project on every connected site, for tying one to a district. */
-  projects: fallible({
-    input: z.object({}),
-    data: z.object({
-      projects: z.array(z.object({ site: z.string(), key: z.string(), name: z.string() })),
-    }),
+  /**
+   * Boards to tie a district to: with nothing written, the ones on projects
+   * where tickets of yours are; otherwise every board whose name, project
+   * name or key has what was written in it.
+   */
+  boards: fallible({
+    input: z.object({ query: z.string() }),
+    data: z.object({ boards: z.array(jiraBoardPickSchema) }),
     error: jiraErrorSchema,
   }),
   linkOf: procedure({
@@ -130,10 +154,10 @@ export const jiraContract = defineContract({
     output: z.object({}),
   }),
   board: fallible({ input: jiraLinkSchema, data: jiraBoardSchema, error: jiraErrorSchema }),
-  ticket: fallible({ input: jiraLinkSchema, data: jiraTicketSchema, error: jiraErrorSchema }),
+  ticket: fallible({ input: z.object({ site: z.string(), key: z.string() }), data: jiraTicketSchema, error: jiraErrorSchema }),
   /** Moves it into whichever of these statuses Jira will let it reach. */
   move: fallible({
-    input: jiraLinkSchema.extend({ statuses: z.array(z.string()) }),
+    input: z.object({ site: z.string(), key: z.string(), statuses: z.array(z.string()) }),
     data: z.object({}),
     error: jiraErrorSchema,
   }),

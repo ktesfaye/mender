@@ -1,4 +1,4 @@
-import type { JiraBoard, JiraIssue, JiraLink, JiraTicket } from '@shared/jira';
+import type { JiraBoard, JiraBoardPick, JiraIssue, JiraLink, JiraTicket } from '@shared/jira';
 import type { Row } from './row';
 import { saying } from './writing';
 
@@ -41,7 +41,9 @@ export interface Quest {
   link: JiraLink | null;
   phase: 'reading' | 'not-connected' | 'linking' | 'board' | 'ticket' | 'failed';
   said?: string;
-  picks?: { site: string; key: string; name: string }[];
+  picks?: JiraBoardPick[];
+  /** Set while Jira is being asked for boards matching what is written. */
+  searching?: boolean;
   board?: JiraBoard;
   ticket?: JiraTicket;
   /** A new ticket's summary, being written. */
@@ -76,21 +78,41 @@ export function questRows(q: Quest): Row[] {
       { kind: 'entry', mark: '⇄', text: 'tie it to a different board', pick: 'jira-relink' },
     ];
   if (q.phase === 'linking') {
+    const looking = q.written?.trim() ?? '';
     const rows: Row[] = [
       { kind: 'title', text: `which board is ${q.project}'s?` },
-      { kind: 'line', text: 'picking one ties it to this project.', tone: 'faded' },
+      {
+        kind: 'line',
+        text: /^https?:\/\//i.test(looking)
+          ? 'the board that link is to. return ties it to this project.'
+          : looking
+            ? 'every board with that in its name or project.'
+          : "the boards your tickets are on. write a name on the line, or paste a board's link.",
+        tone: 'faded',
+      },
       { kind: 'gap' },
     ];
-    if (!q.picks) rows.push({ kind: 'line', text: 'asking Jira…', tone: 'faded' });
+    if (q.searching || !q.picks)
+      rows.push({
+        kind: 'line',
+        text: looking ? `looking for "${looking}"…` : 'asking Jira…',
+        tone: 'faded',
+      });
     else if (!q.picks.length)
-      rows.push({ kind: 'line', text: 'no projects on the connected sites.', tone: 'faded' });
-    for (const one of q.picks ?? [])
+      rows.push({
+        kind: 'line',
+        text: looking
+          ? `no board has "${looking}" in its name or project.`
+          : 'none of your tickets are on a board yet. write its name, or paste its link.',
+        tone: 'faded',
+      });
+    for (const one of q.searching ? [] : (q.picks ?? []))
       rows.push({
         kind: 'entry',
         mark: '→',
-        text: `${one.name}   ${one.key} · ${one.site.replace('.atlassian.net', '')}`,
+        text: `${one.name}, in ${one.project} · ${one.site.replace(".atlassian.net", "")}`,
         keep: 'tail',
-        pick: `jira-link:${one.site} ${one.key}`,
+        pick: `jira-link:${one.site} ${one.key} ${one.board}`,
       });
     rows.push(
       { kind: 'gap' },
@@ -115,6 +137,7 @@ function boardRows(q: Quest): Row[] {
       kind: 'line',
       tone: 'faded',
       text: [
+        board.board,
         `${board.key} on ${board.site.replace('.atlassian.net', '')}`,
         board.sprint,
         `${open} open`,
@@ -134,7 +157,8 @@ function boardRows(q: Quest): Row[] {
   else
     rows.push(
       { kind: 'entry', mark: '+', text: 'pin a new one', pick: 'jira-new' },
-      { kind: 'entry', mark: '↗', text: 'open it in jira', pick: 'jira-open' }
+      { kind: 'entry', mark: '↗', text: 'open it in jira', pick: 'jira-open' },
+      { kind: 'entry', mark: '⇄', text: 'tie it to a different board', pick: 'jira-relink' }
     );
   return rows;
 }

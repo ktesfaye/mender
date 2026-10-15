@@ -6,6 +6,7 @@ import {
   DEFAULT_RECIPE,
   jiraContract,
   type JiraBoard,
+  type JiraBoardPick,
   type JiraCategory,
   type JiraColumn,
   type JiraError,
@@ -15,6 +16,7 @@ import {
   type JiraTaken,
 } from '../shared/jira';
 import { adfToMarkdown } from './jira-adf';
+import { boardLinkOf, hostOf } from './jira-link';
 
 /**
  * Jira, spoken to directly over its own REST API with an API token.
@@ -136,17 +138,26 @@ export function createJiraController(): Controller {
     return got.success ? got.data.accountId : undefined;
   };
 
-  const board = async ({ site, key }: JiraLink): Promise<Got<JiraBoard>> => {
+  const board = async ({ site, key, board: id }: JiraLink): Promise<Got<JiraBoard>> => {
     const project = await call<{ name: string }>(site, `/rest/api/3/project/${enc(key)}`);
     if (!project.success) return project;
     const [kinds, mine] = await Promise.all([categories(site), me(site)]);
-    const boards = await call<{ values: { id: number; type: string }[] }>(
-      site,
-      `/rest/agile/1.0/board?projectKeyOrId=${enc(key)}`
-    );
-    const url = `https://${site}/browse/${key}`;
-    const found = boards.success ? boards.data.values : [];
-    const chosen = found.find((each) => each.type === 'scrum') ?? found[0];
+    let chosen: RawBoard | undefined;
+    if (id !== undefined) {
+      const one = await call<RawBoard>(site, `/rest/agile/1.0/board/${id}`);
+      if (!one.success) return one;
+      chosen = one.data;
+    } else {
+      const boards = await call<{ values: RawBoard[] }>(
+        site,
+        `/rest/agile/1.0/board?projectKeyOrId=${enc(key)}`
+      );
+      const found = boards.success ? boards.data.values : [];
+      chosen = found.find((each) => each.type === 'scrum') ?? found[0];
+    }
+    const url = chosen
+      ? `https://${site}/secure/RapidBoard.jspa?rapidView=${chosen.id}`
+      : `https://${site}/browse/${key}`;
 
     if (!chosen) {
       /* No board at all, a service desk queue or a business project: its
@@ -219,6 +230,7 @@ export function createJiraController(): Controller {
         site,
         key,
         name: project.data.name,
+        board: chosen.name,
         ...(sprint ? { sprint } : {}),
         columns,
         issues,
@@ -248,6 +260,149 @@ export function createJiraController(): Controller {
       body: { jql, fields: FIELDS.split(','), maxResults: 100 },
     });
     return got.success ? { success: true, data: got.data.issues } : got;
+  };
+
+  /** Projects with tickets of yours on them, the most recently touched first. */
+  const yourProjects = async (site: string): Promise<string[]> => {
+    const got = await call<{ issues: { fields?: { project?: { key?: string } } }[] }>(
+      site,
+      '/rest/api/3/search/jql',
+      {
+        method: 'POST',
+        body: {
+          jql: 'assignee = currentUser() OR reporter = currentUser() ORDER BY updated DESC',
+          fields: ['project'],
+          maxResults: 100,
+        },
+      }
+    );
+    const keys: string[] = [];
+    if (got.success)
+      for (const issue of got.data.issues) {
+        const key = issue.fields?.project?.key;
+        if (key && !keys.includes(key)) keys.push(key);
+      }
+    return keys;
+  };
+
+  /**
+   * Boards to pick from on one site. A big site has hundreds, so with nothing
+   * written only the ones on your own projects are offered, the ones holding
+   * the most tickets of yours first, which is almost always your team's.
+   */
+  const boardsOn = async (site: string, query: string): Promise<Got<JiraBoardPick[]>> => {
+    const yours = await yourProjects(site);
+    const found: RawBoard[] = [];
+    const add = (boards: RawBoard[]): void => {
+      for (const one of boards) if (!found.some((each) => each.id === one.id)) found.push(one);
+    };
+    if (query) {
+      const named = await call<{ values: RawBoard[] }>(
+        site,
+        `/rest/agile/1.0/board?name=${enc(query)}&maxResults=50`
+      );
+      if (!named.success) return named;
+      add(named.data.values);
+      if (/^[A-Za-z][A-Za-z0-9_]{0,9}$/.test(query)) {
+        const keyed = await call<{ values: RawBoard[] }>(
+          site,
+          `/rest/agile/1.0/board?projectKeyOrId=${enc(query.toUpperCase())}&maxResults=50`
+        );
+        if (keyed.success) add(keyed.data.values);
+      }
+    } else {
+      const lists = await Promise.all(
+        yours
+          .slice(0, 6)
+          .map((key) =>
+            call<{ values: RawBoard[] }>(
+              site,
+              `/rest/agile/1.0/board?projectKeyOrId=${enc(key)}&maxResults=50`
+            )
+          )
+      );
+      for (const list of lists) if (list.success) add(list.data.values);
+    }
+    const picks = found
+      .filter((one) => one.location?.projectKey)
+      .slice(0, 40)
+      .map(
+        (one): JiraBoardPick => ({
+          site,
+          key: one.location?.projectKey ?? '',
+          board: one.id,
+          name: one.name,
+          project: one.location?.projectName ?? one.location?.projectKey ?? '',
+          yours: yours.includes(one.location?.projectKey ?? ''),
+        })
+      );
+    /* How many tickets of yours each board actually shows, so your team's
+       board comes before every other team's on the same project. */
+    const counts = await Promise.all(
+      picks.map(async (pick) => {
+        if (!pick.yours) return 0;
+        const got = await call<{ total?: number }>(
+          site,
+          `/rest/agile/1.0/board/${pick.board}/issue?maxResults=0&fields=key&jql=${enc('assignee = currentUser()')}`
+        );
+        return got.success ? (got.data.total ?? 0) : 0;
+      })
+    );
+    const ranked = picks
+      .map((pick, at) => ({ pick, mine: counts[at] ?? 0 }))
+      .filter(({ mine, pick }) => query || mine > 0 || pick.yours);
+    ranked.sort(
+      (a, b) =>
+        b.mine - a.mine ||
+        Number(b.pick.yours) - Number(a.pick.yours) ||
+        yours.indexOf(a.pick.key) - yours.indexOf(b.pick.key)
+    );
+    return { success: true, data: ranked.map(({ pick }) => pick) };
+  };
+
+  /** The board a pasted Jira link points at, whichever form of link it is. */
+  const linkedBoard = async (
+    pasted: NonNullable<ReturnType<typeof boardLinkOf>>
+  ): Promise<Got<{ boards: JiraBoardPick[] }>> => {
+    const { site } = pasted;
+    if (!(await siteOf(site)))
+      return {
+        success: false,
+        error: {
+          kind: 'refused',
+          said: `${site} is not connected on this Mac yet. connect it in the windmill first.`,
+        },
+      };
+    if (pasted.board === undefined) {
+      const got = pasted.key ? await boardsOn(site, pasted.key) : null;
+      if (!got) return { success: true, data: { boards: [] } };
+      return got.success ? { success: true, data: { boards: got.data } } : got;
+    }
+    const one = await call<RawBoard>(site, `/rest/agile/1.0/board/${pasted.board}`);
+    if (!one.success) return one;
+    let key = one.data.location?.projectKey ?? pasted.key;
+    let project = one.data.location?.projectName ?? key;
+    if (!key) {
+      const on = await call<{ values: { key: string; name: string }[] }>(
+        site,
+        `/rest/agile/1.0/board/${pasted.board}/project`
+      );
+      key = on.success ? on.data.values[0]?.key : undefined;
+      project = on.success ? on.data.values[0]?.name : undefined;
+    }
+    if (!key)
+      return {
+        success: false,
+        error: { kind: 'refused', said: 'that board does not read from any project Mender can see.' },
+      };
+    return {
+      success: true,
+      data: {
+        boards: [
+          { site, key, board: one.data.id, name: one.data.name, project: project ?? key, yours: true },
+        ],
+      },
+    };
   };
 
   return createController(jiraContract, {
@@ -293,18 +448,16 @@ export function createJiraController(): Controller {
       await mutate((now) => ({ ...now, recipe }));
       return {};
     },
-    projects: async () => {
-      const out: { site: string; key: string; name: string }[] = [];
+    boards: async ({ query }) => {
+      const pasted = boardLinkOf(query);
+      if (pasted) return linkedBoard(pasted);
+      const out: JiraBoardPick[] = [];
       for (const known of (await stored()).sites ?? []) {
-        const got = await call<{ values: { key: string; name: string }[] }>(
-          known.site,
-          '/rest/api/3/project/search?maxResults=100&orderBy=name'
-        );
+        const got = await boardsOn(known.site, query.trim());
         if (!got.success) return got;
-        for (const project of got.data.values)
-          out.push({ site: known.site, key: project.key, name: project.name });
+        out.push(...got.data);
       }
-      return { success: true, data: { projects: out } };
+      return { success: true, data: { boards: out } };
     },
     linkOf: async ({ project }) => (await stored()).links?.[project] ?? null,
     link: async ({ project, to }) => {
@@ -394,6 +547,13 @@ export function createJiraController(): Controller {
   });
 }
 
+interface RawBoard {
+  id: number;
+  name: string;
+  type: string;
+  location?: { projectKey?: string; projectName?: string };
+}
+
 interface RawIssue {
   key: string;
   fields: {
@@ -435,16 +595,6 @@ function categoryOf(key: string | undefined): JiraCategory {
 
 function order(category: JiraCategory): number {
   return category === 'new' ? 0 : category === 'indeterminate' ? 1 : 2;
-}
-
-/** `https://x.atlassian.net/jira/...` and `x` both mean `x.atlassian.net`. */
-export function hostOf(written: string): string {
-  const bare =
-    written
-      .trim()
-      .replace(/^https?:\/\//, '')
-      .split('/')[0] ?? '';
-  return bare.includes('.') ? bare.toLowerCase() : `${bare.toLowerCase()}.atlassian.net`;
 }
 
 function why(response: Response, text: string): string {

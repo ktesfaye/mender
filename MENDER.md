@@ -1268,7 +1268,10 @@ named after the ticket and starts a session in it told whatever the windmill's
 Jira page says to tell it, and moves the ticket out of to-do. "Pin a new one"
 is written on the line like everything else. The windmill holds the sites,
 several at once, a work one and a personal one, each an email and an API token
-kept with the machine's own safe storage; each project picks its board once.
+kept with the machine's own safe storage, and shown filled in once
+connected. Each project picks its board once, and since a work site has
+hundreds, the list opens on the boards your own tickets are on, the line
+searches the rest, and a board's link pasted on the line goes straight to it.
 A sprint board shows the running sprint, a plain one its open work, and a
 project with no board at all, the way a service desk is, one column per
 status. It is read again every half minute while it is open, since Jira can

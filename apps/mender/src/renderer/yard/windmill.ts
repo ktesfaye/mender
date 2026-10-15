@@ -497,6 +497,8 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   let jiraTrying = false;
   let jiraForgetting: string | null = null;
   let jiraDrawn = false;
+  /** The empty form for one more site, folded away once one is connected. */
+  let jiraAdding = false;
   async function drawJira(): Promise<void> {
     if (!jiraDrawn) jiraSites.fill([hintLine('Reading it…')]);
     const held = await does.jira.status();
@@ -507,36 +509,53 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
         ? held.sites.map((one) => one.site.replace('.atlassian.net', '')).join(' · ')
         : 'not connected';
     if (busy(jiraAdd) || busy(jiraRecipe)) return;
+    const value = (text: string): HTMLElement => {
+      const said = el('span', 'settings-jira-value');
+      said.textContent = text;
+      return said;
+    };
+    const another = button('connect another site', 'settings-link', () => {
+      jiraAdding = true;
+      void drawJira();
+    });
     jiraSites.fill(
       held.sites.length
-        ? held.sites.map((one) => {
-            const line = el('div', 'settings-when-detail');
-            const said = el('span', 'settings-hint-inline');
-            said.textContent = `${one.site}, as ${one.who}`;
-            const armed = jiraForgetting === one.site;
-            const forget = button(
-              armed ? 'forget it: press again' : 'forget',
-              'settings-link',
-              () => {
-                if (!armed) {
-                  jiraForgetting = one.site;
-                  void drawJira();
-                  window.setTimeout(() => {
-                    if (jiraForgetting !== one.site) return;
-                    jiraForgetting = null;
+        ? [
+            ...held.sites.map((one) => {
+              const card = el('div', 'settings-jira-site');
+              const armed = jiraForgetting === one.site;
+              const forget = button(
+                armed ? 'forget it: press again' : 'forget this site',
+                'settings-link',
+                () => {
+                  if (!armed) {
+                    jiraForgetting = one.site;
                     void drawJira();
-                  }, STANDS_MS);
-                  return;
+                    window.setTimeout(() => {
+                      if (jiraForgetting !== one.site) return;
+                      jiraForgetting = null;
+                      void drawJira();
+                    }, STANDS_MS);
+                    return;
+                  }
+                  jiraForgetting = null;
+                  void does.jira.forget(one.site).then(() => drawJira());
                 }
-                jiraForgetting = null;
-                void does.jira.forget(one.site).then(() => drawJira());
-              }
-            );
-            line.append(said, forget);
-            return line;
-          })
+              );
+              card.append(
+                formRow('Site', value(one.site)),
+                formRow('Email', value(one.email)),
+                formRow('API token', value('saved, kept sealed on this Mac')),
+                formRow('Signed in as', value(one.who)),
+                forget
+              );
+              return card;
+            }),
+            ...(jiraAdding ? [] : [another]),
+          ]
         : [hintLine('Nothing on this Mac is connected to Jira yet.')]
     );
+    jiraAdd.root.style.display = !held.sites.length || jiraAdding ? '' : 'none';
 
     const site = input('', 'yourteam.atlassian.net', async () => undefined);
     const email = input('', 'you@example.com', async () => undefined);
@@ -552,6 +571,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
         jiraFailed = said ?? '';
         took(jiraAdd, said ? undefined : 'connected');
         if (!said) {
+          jiraAdding = false;
           site.value = '';
           email.value = '';
           token.value = '';
