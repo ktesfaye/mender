@@ -4097,3 +4097,12 @@ had been kept, and folds the empty form behind "connect another site". Driven
 in a dev instance on the personal site: the opening list, a typed link, a real
 paste, return linking it, and the windmill page. Not driven: a site with
 hundreds of boards.
+
+### The board can always be swapped, by pressing or by pasting its link (2026-10-14) — done
+
+A board tied by mistake had no way off it while it was still loading, and a
+slow one could hang there for good. "Tie it to a different board" now shows
+the whole time, a load that takes too long says so instead of hanging, and a
+board's link pasted on the line with the board open, whatever it is showing,
+swaps straight to that board. Driven in a dev instance: a pasted link with a
+board open swapped it.

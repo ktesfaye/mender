@@ -337,6 +337,12 @@ async function boot(): Promise<void> {
           void commit();
           return;
         }
+        /* A board's link said with the board open, whatever it is showing,
+           is that board: the one way to it that never needs finding. */
+        if (quest && quest.phase !== 'linking' && isBoardLink(text)) {
+          void switchBoard(text.trim());
+          return;
+        }
         if (quest?.written !== undefined) {
           quest = { ...quest, written: text };
           if (quest.phase === 'linking') {
@@ -3627,18 +3633,21 @@ async function boot(): Promise<void> {
       void openQuest();
     };
 
+    /** Bumped by every load, so an answer for a board since swapped is dropped. */
+    let questLoad = 0;
     const loadQuest = async (): Promise<void> => {
       const project = questProject;
       if (!quest || !project) return;
+      const load = ++questLoad;
       const status = await client.jira.status({});
-      if (!quest) return;
+      if (!quest || load !== questLoad) return;
       if (!status.sites.length) {
         quest = { ...quest, phase: 'not-connected' };
         paintQuest();
         return;
       }
       const link = await client.jira.linkOf({ project: project.id });
-      if (!quest) return;
+      if (!quest || load !== questLoad) return;
       if (!link) {
         /* A work site has hundreds of boards, so the line is a search from
            the moment this opens: empty, it offers yours. */
@@ -3648,11 +3657,29 @@ async function boot(): Promise<void> {
         await findBoards();
         return;
       }
-      const [got, lit] = await Promise.all([
-        client.jira.board(link, { timeoutMs: 60_000 }),
-        litTickets(),
-      ]);
-      if (!quest) return;
+      if (!quest.link) {
+        quest = { ...quest, link };
+        if (quest.phase === 'reading') paintQuest();
+      }
+      let got: Awaited<ReturnType<typeof client.jira.board>>;
+      let lit: Record<string, OnTicket>;
+      try {
+        [got, lit] = await Promise.all([
+          client.jira.board(link, { timeoutMs: 90_000 }),
+          litTickets(),
+        ]);
+      } catch {
+        if (!quest || load !== questLoad) return;
+        quest = {
+          ...quest,
+          link,
+          phase: 'failed',
+          said: 'Jira took too long to hand that board over.',
+        };
+        paintQuest();
+        return;
+      }
+      if (!quest || load !== questLoad) return;
       if (!got.success) {
         quest = { ...quest, link, phase: 'failed', said: jiraSaid(got.error) };
         paintQuest();
@@ -3674,10 +3701,12 @@ async function boot(): Promise<void> {
       const asked = ++boardAsk;
       quest = { ...quest, searching: true };
       paintQuest();
-      const got = await client.jira.boards(
-        { query: quest.written?.trim() ?? '' },
-        { timeoutMs: 60_000 }
-      );
+      const got = await client.jira
+        .boards({ query: quest.written?.trim() ?? '' }, { timeoutMs: 60_000 })
+        .catch(() => ({
+          success: false as const,
+          error: { kind: 'unreachable' as const, said: 'Jira took too long to answer.' },
+        }));
       if (asked !== boardAsk || !quest || quest.phase !== 'linking') return;
       const next: Quest = got.success
         ? { ...quest, picks: got.data.boards }
@@ -3689,6 +3718,45 @@ async function boot(): Promise<void> {
       }
       quest = next;
       paintQuest();
+    };
+    const isBoardLink = (text: string): boolean =>
+      /^https?:\/\/\S+$/i.test(text.trim()) &&
+      /atlassian\.net|\/boards\/\d+|[?&]rapidView=\d+/i.test(text);
+    const switchBoard = async (text: string): Promise<void> => {
+      const project = questProject;
+      if (!quest || !project) return;
+      questLoad += 1;
+      const next: Quest = { ...quest, link: null, phase: 'reading' };
+      delete next.board;
+      delete next.said;
+      delete next.ticket;
+      delete next.written;
+      quest = next;
+      yard.line.write('');
+      if (inside) saveDraft(inside.id, '');
+      paintQuest(true);
+      const got = await client.jira
+        .boards({ query: text }, { timeoutMs: 60_000 })
+        .catch(() => ({
+          success: false as const,
+          error: { kind: 'unreachable' as const, said: 'Jira took too long to answer.' },
+        }));
+      if (!quest) return;
+      const found = got.success ? got.data.boards[0] : undefined;
+      if (!found) {
+        quest = {
+          ...quest,
+          phase: 'failed',
+          said: got.success ? 'that link is not to a board Jira would show this account.' : jiraSaid(got.error),
+        };
+        paintQuest(true);
+        return;
+      }
+      await client.jira.link({
+        project: project.id,
+        to: { site: found.site, key: found.key, board: found.board },
+      });
+      await loadQuest();
     };
     const linkBoard = (pick: string): void => {
       const q = quest;
@@ -3827,7 +3895,13 @@ async function boot(): Promise<void> {
         openTheWindmill();
       } else if (pick === 'jira-again') {
         void loadQuest();
-      } else if (pick === 'jira-relink' && project) {
+      } else if (pick === 'jira-relink' && project && q) {
+        questLoad += 1;
+        const next: Quest = { ...q, link: null, phase: 'reading' };
+        delete next.board;
+        delete next.said;
+        quest = next;
+        paintQuest(true);
         void client.jira.link({ project: project.id, to: null }).then(() => loadQuest());
       } else if (pick.startsWith('jira-link:')) {
         linkBoard(pick);

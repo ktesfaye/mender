@@ -60,7 +60,20 @@ export function questRows(q: Quest): Row[] {
   if (q.phase === 'reading')
     return [
       { kind: 'title', text: `${q.project}'s board` },
-      { kind: 'line', text: 'reading it off Jira…', tone: 'faded' },
+      {
+        kind: 'line',
+        text: q.link ? `reading ${q.link.key} off Jira…` : 'reading it off Jira…',
+        tone: 'faded',
+      },
+      /* A big board can take a while, and the wrong one should never be
+         something you have to wait out before you can leave it. */
+      ...(q.link
+        ? ([
+            { kind: 'gap' },
+            { kind: 'entry', mark: '⇄', text: 'tie it to a different board', pick: 'jira-relink' },
+            { kind: 'line', text: "or paste any board's link on the line and press return.", tone: 'faded' },
+          ] as Row[])
+        : []),
     ];
   if (q.phase === 'not-connected')
     return [
@@ -76,6 +89,7 @@ export function questRows(q: Quest): Row[] {
       { kind: 'gap' },
       { kind: 'entry', mark: '↻', text: 'try again', pick: 'jira-again' },
       { kind: 'entry', mark: '⇄', text: 'tie it to a different board', pick: 'jira-relink' },
+      { kind: 'line', text: "or paste any board's link on the line and press return.", tone: 'faded' },
     ];
   if (q.phase === 'linking') {
     const looking = q.written?.trim() ?? '';
@@ -158,7 +172,8 @@ function boardRows(q: Quest): Row[] {
     rows.push(
       { kind: 'entry', mark: '+', text: 'pin a new one', pick: 'jira-new' },
       { kind: 'entry', mark: '↗', text: 'open it in jira', pick: 'jira-open' },
-      { kind: 'entry', mark: '⇄', text: 'tie it to a different board', pick: 'jira-relink' }
+      { kind: 'entry', mark: '⇄', text: 'tie it to a different board', pick: 'jira-relink' },
+      { kind: 'line', text: "or paste any board's link on the line and press return.", tone: 'faded' },
     );
   return rows;
 }

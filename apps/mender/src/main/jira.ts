@@ -241,7 +241,7 @@ export function createJiraController(): Controller {
 
   const paged = async (site: string, path: string): Promise<Got<RawIssue[]>> => {
     const out: RawIssue[] = [];
-    for (let at = 0; at < 1000; ) {
+    for (let at = 0; at < 500; ) {
       const got = await call<{ issues: RawIssue[]; total?: number }>(
         site,
         `${path}${path.includes('?') ? '&' : '?'}startAt=${at}&maxResults=100`
