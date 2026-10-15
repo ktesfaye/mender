@@ -158,11 +158,11 @@ export function boardView(
 
   // ── the heading ─────────────────────────────────────────────────────────
   const paintTop = (): void => {
-    const proj = gold(board.projectName, (event) => boardSlab(event.currentTarget as HTMLElement), 'proj');
-    proj.classList.remove('gold');
-    proj.title = 'this board';
-    const here = h('div', 'jr-here sh', proj, h('span', 'slash', '/'), h('span', 'where', board.sprint?.name ?? board.name));
-    const sub = h('div', 'jr-sub sh');
+    const name = gold(board.sprint?.name ?? board.name, (event) => boardSlab(event.currentTarget as HTMLElement), 'where');
+    name.classList.remove('gold');
+    name.title = `${board.projectName} · this board`;
+    const sub = h('span', 'jr-sub');
+    const here = h('div', 'jr-here sh', name, sub);
     if (board.sprint?.end) {
       const days = Math.ceil((new Date(board.sprint.end).getTime() - Date.now()) / 86_400_000);
       sub.append(
@@ -170,12 +170,12 @@ export function boardView(
           ? h('b', '', days === 0 ? 'ends today' : `${days} day${days === 1 ? '' : 's'} left`)
           : h('b', 'late', `${-days} day${days === -1 ? '' : 's'} over`)
       );
-      if (board.sprint.goal) sub.append(` · ${board.sprint.goal}`);
+      if (board.sprint.goal) sub.title = board.sprint.goal;
     } else sub.append(board.kind === 'project' ? `everything open in ${board.projectKey}` : board.kind === 'kanban' ? 'kanban · done drops off after a fortnight' : board.name);
 
     const tools = h('div', 'jr-tools sh');
     const find = h('input', 'jr-find');
-    find.placeholder = 'find on the board…';
+    find.placeholder = 'find…';
     find.value = filters.text;
     find.addEventListener('input', () => {
       filters.text = find.value;
@@ -281,7 +281,7 @@ export function boardView(
       state.append(end);
     }
     state.append(h('div', 'm', meter, `${done} of ${total} done`));
-    top.replaceChildren(here, sub, tools, state);
+    top.replaceChildren(here, tools, state);
   };
 
   const toggle = <T>(set: Set<T>, one: T): void => {
@@ -578,18 +578,18 @@ export function boardView(
     const el = h('div', `jr-note${card.flagged ? ' flag' : ''}`);
     el.draggable = true;
     el.dataset.key = card.key;
+    el.append(titled(card.summary, 'sum'));
+    if (look.show.labels && card.labels.length) el.append(h('div', 'labels', ...card.labels.map((one) => h('span', 'lab', one))));
     if (card.parent && look.show.epic) {
-      const tape = h('div', 'tape', shortEpic(card.parent.summary));
-      tape.style.background = tapeOf(card.parent.color, card.parent.key);
-      tape.title = `${card.parent.key} ${card.parent.summary}`;
-      tape.addEventListener('click', (event) => {
+      const chip = h('span', 'epic', h('i'), h('span', '', shortEpic(card.parent.summary)));
+      chip.style.setProperty('--epic', tapeOf(card.parent.color, card.parent.key));
+      chip.title = `${card.parent.key} ${card.parent.summary}`;
+      chip.addEventListener('click', (event) => {
         event.stopPropagation();
         hands.open(card.parent!.key);
       });
-      el.append(tape);
-    } else el.append(h('div', 'tack'));
-    el.append(titled(card.summary, 'sum'));
-    if (look.show.labels && card.labels.length) el.append(h('div', 'labels', ...card.labels.map((one) => h('span', 'lab', one))));
+      el.append(h('div', 'chips', chip));
+    }
     const due = card.due ? new Date(`${card.due}T12:00`) : null;
     const soon = due && (due.getTime() - Date.now()) / 86_400_000 < 3;
     const foot = h(
@@ -599,6 +599,7 @@ export function boardView(
       h('span', '', card.key),
       h('span', 'grow'),
       look.show.due && card.due ? h('span', `due${soon ? ' soon' : ''}`, day(card.due)) : null,
+      card.flagged ? h('span', 'flagged', h('i')) : null,
       look.show.priority ? pri(card.priority?.name) : null,
       look.show.points && card.points !== undefined ? h('span', 'jr-pts', String(card.points)) : null,
       face(jira, card.assignee, 'small')
@@ -616,7 +617,6 @@ export function boardView(
         )
       );
     }
-    if (card.flagged) el.append(h('div', 'ribbon'));
     const on = lit()[card.key];
     const acts = h('div', 'acts');
     if (!on && card.category !== 'done') {
@@ -640,7 +640,7 @@ export function boardView(
       const mood = moodOf(on.mood);
       el.classList.add('lit');
       el.style.setProperty('--lit', mood.color);
-      el.append(lantern(on, 'jr-lantern'));
+      foot.insertBefore(lantern(on, 'jr-lantern'), foot.lastChild);
       const who = h('div', 'jr-who sh', h('i'), `${on.name} · ${mood.says}`);
       who.style.setProperty('--lit', mood.color);
       who.title = 'walk into that session';
@@ -1133,7 +1133,7 @@ export function boardView(
     const post = h('div', 'jr-post');
     if (!done && (mine.length || (writing?.column === at && !opts.lane))) scroll.append(post);
     scroll.append(notes);
-    if (!done && !opts.lane && writing?.column !== at) scroll.append(gold('+ pin a new one', () => write(at), 'jr-pin sh'));
+    if (!done && !opts.lane && writing?.column !== at) scroll.append(gold('+', () => write(at), 'jr-pin'));
     col.append(scroll);
     dropOn(col, notes, at, opts.lane);
     requestAnimationFrame(() => {

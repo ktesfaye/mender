@@ -4135,6 +4135,19 @@ was not driven end to end, since it starts a real agent turn; only its ticket
 read changed.
 
 
+### Jira stands in the yard between its heading and its rail, in dark cards, and a ticket is a window (2026-10-15) — done
+
+The board no longer takes the whole window: the yard's heading and rail stay
+up and the board fills the band between them, its own heading cut to one line
+(sprint, days left, find, faces, filter, group, settings, new ticket, meter,
+complete the sprint). Parchment notes on posts became dark cards in dark
+column lanes, Jira's own layout drawn in the village's faces: title, labels,
+the epic as a coloured chip, then the foot; done is the same card quieter.
+Pressing a card opens it as a window over the board instead of a page of its
+own; a ticket opened from inside it gets a gold "‹ KEY" back, Escape and the
+× and a press outside put it away. Driven in the dev instance on INV: board,
+a ticket, its epic opened from the chip, back, Escape out to the board.
+
 ### Jira is written into the yard at night, with everything its board does (2026-10-15) — done
 
 Jira's own dark theme is gone: the board sits over the dimmed village with the

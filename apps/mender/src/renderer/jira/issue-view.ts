@@ -21,6 +21,8 @@ export interface IssueHands {
   changed(): void;
   open(key: string): void;
   only(epic: string): void;
+  /** The window put away, back to the board. */
+  close(): void;
   outside(url: string): void;
   said(text: string, sore?: boolean): void;
 }
@@ -76,15 +78,18 @@ const enc = encodeURIComponent;
 export function issueView(
   jira: Jira,
   key: string,
-  ctx: { board?: Board; me?: string; lit: () => Record<string, Lit>; host: HTMLElement },
+  ctx: { board?: Board; me?: string; lit: () => Record<string, Lit>; host: HTMLElement; from?: string },
   hands: IssueHands
 ): { top: HTMLElement; body: HTMLElement; refresh(): void } {
   const top = h('div', 'jr-top');
   const body = h('div', 'jr-body');
-  top.append(
-    h('div', 'jr-here sh', gold(ctx.board?.projectName ?? key.split('-')[0]!, () => hands.back(), 'proj'), h('span', 'slash', '/'), h('span', 'where', key)),
-    h('div', 'jr-sub sh', 'reading it…')
-  );
+  const shutter = (): HTMLElement => {
+    const x = h('button', 'jr-x', '×');
+    x.title = 'back to the board';
+    x.addEventListener('click', () => hands.close());
+    return x;
+  };
+  top.append(h('div', 'jr-tools sh', h('span', 'k', key), h('span', 'grow'), shutter()), h('div', 'jr-here sh', h('span', 'where', 'reading it…')));
 
   let issue: Full | null = null;
   let comments: Comment[] = [];
@@ -117,7 +122,7 @@ export function issueView(
       } else children = [];
       paint();
     } catch (cause) {
-      top.querySelector('.jr-sub')?.replaceChildren(h('span', 'sore', `Jira would not hand ${key} over: ${(cause as Error).message}`));
+      top.querySelector('.jr-here')?.replaceChildren(h('span', 'sore', `Jira would not hand ${key} over: ${(cause as Error).message}`));
     }
   };
 
@@ -169,9 +174,9 @@ export function issueView(
       input.focus();
       input.select();
     });
-    const here = h('div', 'jr-here sh', gold(ctx.board?.projectName ?? (f.project as { name?: string } | undefined)?.name ?? key, () => hands.back(), 'proj'), h('span', 'slash', '/'), where);
+    const here = h('div', 'jr-here sh', where);
 
-    const sub = h('div', 'jr-sub sh', key, ` · ${(f.issuetype?.name ?? '').toLowerCase()}`);
+    const sub = h('div', 'jr-sub sh', (f.issuetype?.name ?? '').toLowerCase());
     if (epic) {
       const done = children.filter((kid) => categoryOf(kid.fields.status?.statusCategory?.key) === 'done').length;
       sub.append(' · ', h('b', '', `${done} of ${children.length} done`));
@@ -179,14 +184,17 @@ export function issueView(
     const who = personOf(f.assignee);
     sub.append(` · ${who ? who.name : 'nobody has it'} · touched ${ago(f.updated as string)}`);
 
-    const tools = h('div', 'jr-tools sh', gold('‹ back to the board', () => hands.back()));
+    const tools = h('div', 'jr-tools sh');
+    if (ctx.from) tools.append(gold(`‹ ${ctx.from}`, () => hands.back()));
+    tools.append(h('span', 'k', key));
     if (epic) {
       tools.append(gold('show only this on the board', () => hands.only(key)));
       tools.append(gold('+ add a ticket to it', (event) => addUnder(event.currentTarget as HTMLElement, false)));
     }
     tools.append(gold('copy its link', () => void navigator.clipboard.writeText(url).then(() => hands.said('its link is copied'))));
     tools.append(gold('open in jira', () => hands.outside(url)));
-    top.replaceChildren(here, sub, tools);
+    tools.append(h('span', 'grow'), shutter());
+    top.replaceChildren(tools, here, sub);
 
     // the three columns
     const grid = h('div', `jr-yard${epic ? ' epic' : ''}`);
@@ -217,24 +225,24 @@ export function issueView(
     write(() => jira.send('POST', `/rest/api/3/issue/${key}/comment`, { body: markdownToAdf(text) }), `said on ${key}`);
 
   // ── left: what it asks ──────────────────────────────────────────────────
+  const canRewrite = (now: Full): boolean => Boolean(now.editmeta?.fields.description);
   const asks = (now: Full): HTMLElement => {
     const f = now.fields;
-    const col = h('div', 'jr-c', h('div', 'jr-head-label sh', 'what it asks'), h('div', 'jr-post'));
+    const col = h('div', 'jr-c', h('div', 'jr-head-label sh', 'what it asks', canRewrite(now) && !editing ? h('span', 'n', 'press it to rewrite') : null));
     const note = h('div', 'jr-ask');
     const parent = f.parent;
     if (parent?.key) {
       const card = ctx.board?.cards.find((one) => one.parent?.key === parent.key)?.parent;
-      const tape = h('div', 'tape', shortEpic(parent.fields?.summary ?? parent.key));
-      tape.style.background = tapeOf(card?.color, parent.key);
-      tape.title = `${parent.key} ${parent.fields?.summary ?? ''}`;
-      tape.addEventListener('click', (event) => {
+      const chip = h('span', 'epic', h('i'), h('span', '', shortEpic(parent.fields?.summary ?? parent.key)));
+      chip.style.setProperty('--epic', tapeOf(card?.color, parent.key));
+      chip.title = `${parent.key} ${parent.fields?.summary ?? ''}`;
+      chip.addEventListener('click', (event) => {
         event.stopPropagation();
         hands.open(parent.key!);
       });
-      note.append(tape);
-    } else note.append(h('div', 'tack'));
+      note.append(h('div', 'chips', chip));
+    }
     const canEdit = Boolean(now.editmeta?.fields.description);
-    note.append(h('div', 'meta', icon(jira, f.issuetype?.iconUrl, ''), `${(f.issuetype?.name ?? '').toLowerCase()} · ${key}${canEdit && !editing ? ' · press to rewrite' : ''}`));
     if (editing) {
       const area = h('textarea');
       area.value = adfToMarkdown(f.description);

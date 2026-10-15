@@ -664,7 +664,10 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     scrims(root);
     lay();
     carried(hands, line, yard, does);
+    const headFrom = root.childElementCount;
     head(root, waking ? hushed(yard) : yard, layer.edge(), does);
+    /* The heading is what stays up when Jira is written into the yard. */
+    for (const one of Array.from(root.children).slice(headFrom)) (one as HTMLElement).dataset.head = '';
     /* A project nobody has worked in yet has nothing to put in three columns,
        and three headings over three empty columns is scaffolding, not a place.
        So it says the one true thing and lets the district behind it do the

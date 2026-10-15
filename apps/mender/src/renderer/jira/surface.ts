@@ -60,9 +60,41 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
   root.style.display = 'none';
   /* Everything on Jira is Jira's: the village's own keys and pointer sit on
      the window, under this. */
-  for (const kind of ['keydown', 'keyup', 'pointerdown', 'pointerup', 'mousedown', 'click', 'wheel', 'dblclick', 'contextmenu'] as const)
-    root.addEventListener(kind, (event) => event.stopPropagation());
-  document.body.append(root);
+  const pop = h('div', 'jr-pop');
+  pop.tabIndex = -1;
+  /* A ticket is a window over the board, the way a project's settings are,
+     and the board stays where it was under it. */
+  const popBack = h('div', 'jr-popback', pop);
+  popBack.style.display = 'none';
+  for (const el of [root, popBack])
+    for (const kind of ['keydown', 'keyup', 'pointerdown', 'pointerup', 'mousedown', 'click', 'wheel', 'dblclick', 'contextmenu'] as const)
+      el.addEventListener(kind, (event) => event.stopPropagation());
+  let downOutside = false;
+  popBack.addEventListener('pointerdown', (event) => {
+    downOutside = event.target === popBack;
+  });
+  popBack.addEventListener('click', (event) => {
+    if (downOutside && event.target === popBack && !slabsUp()) shut();
+    downOutside = false;
+  });
+  document.body.append(root, popBack);
+
+  /** Where the yard leaves room for it: under the yard's own heading, over its rail. */
+  const room = (): void => {
+    const yard = document.querySelector('.yard');
+    const head = yard?.querySelector('[data-stays="rule:head"]')?.getBoundingClientRect();
+    const signs = yard?.querySelector('[data-stays="signs"]')?.getBoundingClientRect();
+    const rail = yard?.querySelector('[data-stays="rail"]')?.getBoundingClientRect();
+    const top = Math.max(head?.bottom ?? 120, signs?.height ? signs.bottom : 0) + 16;
+    const bottom = rail?.height ? window.innerHeight - rail.top + 8 : 40;
+    root.style.top = `${top}px`;
+    root.style.bottom = `${bottom}px`;
+    root.style.left = `${head?.width ? head.left : 40}px`;
+    root.style.right = `${head?.width ? window.innerWidth - head.right : 40}px`;
+  };
+  window.addEventListener('resize', () => {
+    if (up) room();
+  });
 
   let up = false;
   let project = '';
@@ -81,17 +113,16 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
   /** The board picker is up; nothing read in the meantime is drawn over it. */
   let picking = false;
 
-  const said = (text: string, sore = false): void => saidBack(root, text, sore);
+  const said = (text: string, sore = false): void => saidBack(trail.length ? popBack : root, text, sore);
   const failed = (cause: unknown): string => (cause instanceof Error ? cause.message : 'Jira did not answer.');
-  const rule = (): HTMLElement => h('div', 'jr-rule');
 
   /** A page of its own over the village with only a few words on it. */
   const quiet = (title: string, ...lines: (Node | string | null)[]): void => {
-    trail = [];
+    shut();
     shown = null;
-    const top = h('div', 'jr-top', h('div', 'jr-here sh', h('span', 'proj', project), h('span', 'slash', '/'), h('span', 'where', 'jira')), h('div', 'jr-sub sh', title));
+    const top = h('div', 'jr-top', h('div', 'jr-here sh', h('span', 'where', `${project}’s jira`), h('span', 'jr-sub', title)));
     const body = h('div', 'jr-body', h('div', 'jr-quiet sh', ...lines));
-    root.replaceChildren(top, rule(), body);
+    root.replaceChildren(top, body);
   };
 
   // ── the board ───────────────────────────────────────────────────────────
@@ -149,16 +180,11 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
 
   const paintBoard = (): void => {
     if (!jira || !board || picking) return;
-    if (trail.length) {
-      /* Under a ticket: the board is read again but stays where it is. */
-      shown = null;
-      return;
-    }
     const keep = root.querySelector<HTMLInputElement>('.jr-find');
     const typing = keep && document.activeElement === keep;
     const at = typing ? keep.selectionStart : null;
     shown = boardView(jira, board, () => lit, filters, look, root, boardHands);
-    root.replaceChildren(shown.top, rule(), shown.body);
+    root.replaceChildren(shown.top, shown.body);
     if (typing) {
       const find = root.querySelector<HTMLInputElement>('.jr-find');
       find?.focus();
@@ -208,7 +234,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
     const view = issueView(
       j,
       key,
-      { ...(board ? { board } : {}), ...(me ? { me } : {}), lit: () => lit, host: root },
+      { ...(board ? { board } : {}), ...(me ? { me } : {}), lit: () => lit, host: popBack, ...(trail.length ? { from: trail[trail.length - 1]!.key } : {}) },
       {
         take: (k) => hands.take(j.site, k),
         go: (task) => hands.go(task),
@@ -217,30 +243,47 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
         open: (k) => openIssue(k),
         only: (epic) => {
           filters.epics = new Set([epic]);
-          trail = [];
+          shut();
           paintBoard();
         },
+        close: () => shut(),
         outside: hands.outside,
         said,
       }
     );
     trail = trail.filter((one) => one.key !== key);
     trail.push({ key, view });
-    root.replaceChildren(view.top, rule(), view.body);
-    root.focus();
+    const opening = popBack.style.display === 'none';
+    pop.replaceChildren(view.top, view.body);
+    popBack.style.display = 'flex';
+    if (opening) {
+      popBack.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
+      pop.animate([{ transform: 'translateY(8px) scale(0.99)' }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    }
+    pop.focus();
   };
 
-  /** One step back: to the ticket before, or to the board. */
+  /** One step back: to the ticket before, or off the board's window altogether. */
   const back = (): void => {
     closeSlabs();
     trail.pop();
     const last = trail[trail.length - 1];
     if (last) {
-      root.replaceChildren(last.view.top, rule(), last.view.body);
+      pop.replaceChildren(last.view.top, last.view.body);
       last.view.refresh();
-    } else paintBoard();
-    root.focus();
+      pop.focus();
+    } else shut();
   };
+
+  /** The ticket window put away, the board as it was under it. */
+  function shut(): void {
+    if (popBack.style.display === 'none') return;
+    closeSlabs();
+    trail = [];
+    popBack.style.display = 'none';
+    pop.replaceChildren();
+    root.focus();
+  }
 
   // ── no board yet ────────────────────────────────────────────────────────
   const showPicker = (): void => {
@@ -339,7 +382,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
   };
 
   // ── keys ────────────────────────────────────────────────────────────────
-  root.addEventListener('keydown', (event) => {
+  const keys = (event: KeyboardEvent): void => {
     const typing = (event.target as HTMLElement).closest('input,textarea,select,[contenteditable]');
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -357,17 +400,19 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
     if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.key === '/' || (event.key === 'f' && !trail.length)) {
       event.preventDefault();
-      root.querySelector<HTMLElement>('.jr-find, .jr-line input')?.focus();
+      (trail.length ? pop : root).querySelector<HTMLElement>('.jr-find, .jr-line input')?.focus();
     } else if (event.key === 'r' && trail.length) {
       event.preventDefault();
-      root.querySelector<HTMLElement>('.jr-line input')?.focus();
+      pop.querySelector<HTMLElement>('.jr-line input')?.focus();
     }
-  });
+  };
+  root.addEventListener('keydown', keys);
+  pop.addEventListener('keydown', keys);
 
   /* It is everybody's board: a teammate moving a ticket moves it here too. */
   window.setInterval(() => {
     if (!up || !board || document.hidden || slabsUp()) return;
-    if (root.querySelector('.dragging, .jr-note.blank, .jr-row input, .jr-row textarea, .jr-ask textarea, .jr-said textarea, .jr-here input')) return;
+    if (document.querySelector('.jr .dragging, .jr .jr-note.blank, .jr-pop .jr-row input, .jr-pop .jr-row textarea, .jr-pop .jr-ask textarea, .jr-pop .jr-said textarea, .jr-pop .jr-here input')) return;
     void loadBoard(true);
     trail[trail.length - 1]?.view.refresh();
   }, 30_000);
@@ -383,6 +428,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
       up = true;
       hands.backdrop(true);
       root.style.display = 'flex';
+      room();
       root.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
       root.focus();
       if (same) {
@@ -391,13 +437,14 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
       }
       filters = noFilters();
       board = null;
-      trail = [];
+      shut();
       picking = false;
       void start();
     },
     close: () => {
       if (!up) return;
       up = false;
+      shut();
       closeSlabs();
       root.style.display = 'none';
       hands.backdrop(false);
@@ -406,7 +453,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
     lit: (map) => {
       if (JSON.stringify(map) === JSON.stringify(lit)) return;
       lit = map;
-      if (up && board && !trail.length) shown?.paint();
+      if (up && board) shown?.paint();
     },
     ticket: async (site, key) => {
       const j = jira?.site === site ? jira : makeJira(hands.wire, site);

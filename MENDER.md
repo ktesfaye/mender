@@ -1257,22 +1257,24 @@ authenticating agents, MCP, skills, accounts, task defaults — still has
 nowhere to live.
 
 **Jira is written into the yard at night.** A blue diamond on the rack,
-beside the sky and the wheel, opens the project's own Jira board over the
-village dimmed to the yard's dark, with the rack still hanging and nothing
-washed over it. Everything Jira's own board does is here; it is only drawn the
-village's way. Its columns stand in its own order with their counts and limits,
-each a post that its tickets are pinned to as parchment notes, folded away to a
-strip when not wanted. A note's title is set in the answer's own face, with the
-bracketed prefixes a team tags tickets with lifted off as small stamps, since
-that face draws a bracket almost as an I; its epic is a strip of coloured tape
-across the top, pressed to open the epic; a flag is a red ribbon; and along the
-foot are its kind, its key, its due date, red when close, its priority as pixel
-chevrons, its points and whose it is, with its subtasks as a row of squares.
-Done work is a column of weathered slips, the epic's colour down the edge and
-the key struck through. The running sprint, its days left and its goal head
-it, with how much is done as a meter and "complete the sprint" in two presses.
-Under the heading is a line to find on the board by, which across all of Jira
-on return, the team's faces, and filter, group, settings and new ticket. Filter
+beside the sky and the wheel, opens the project's own Jira board in the yard
+itself: the yard's heading and its rail of lanterns stay exactly where they
+are, and only what the session says steps aside for the board, which stands
+between the two. Everything Jira's own board does is here; it is only drawn
+the village's way, and as calmly as Jira draws itself. Its columns stand in
+its own order with their counts and limits, each a dark lane its tickets sit
+in as dark cards, folded away to a strip when not wanted. A card's title is
+set in the answer's own face, with the bracketed prefixes a team tags tickets
+with lifted off as small stamps, since that face draws a bracket almost as an
+I; under it its labels, then its epic as a chip in the epic's colour, pressed
+to open the epic; and along the foot are its kind, its key, its due date, red
+when close, a small red flag, its priority as pixel chevrons, its points and
+whose it is, with its subtasks as a row of squares. A flagged card is warmed
+red. Done work is the same card, quieter, the epic's colour down the edge and
+the key struck through. One line heads it: the running sprint and its days
+left, a line to find on the board by, which across all of Jira on return, the
+team's faces, filter, group, settings and new ticket, and at the far end how
+much is done as a meter and "complete the sprint" in two presses. Filter
 is a slab by epic, who has it, where it stands, kind, labels, release and
 priority, plus only mine, flagged, changed today, the board's own quick
 filters and JQL on ⇧F; each one on is written as a phrase with a ×. Grouping by
@@ -1281,17 +1283,19 @@ note dropped in another lane takes that epic or owner. Dragging a note moves it
 through whatever its workflow allows and ranks it, and right-clicking it or its
 dots brings the same slab Jira has: move it along, to the top or the bottom,
 give it to, change its epic, labels, link to another, flag it, copy its link or
-key, archive it, delete it. A new ticket is written straight onto a blank note
-in the column it is to land in. Pressing a note opens it as a yard: what it
-asks on a parchment pinned to the post, with its subtasks, links and pictures
-under it; what's been said in the middle, in the answer's face, with
-everything that changed on it folded under; where it stands as a thread of the
-board's columns, each one it can move to pressable, and every field it has or
-could have down the right, changed in place; and the line along the bottom
-says something on it. An epic is the same yard with what is in it in the
-middle, a strip coloured by where each piece stands, and it can narrow the
-board to itself. Escape walks back one step at a time, ticket to ticket to
-board to village. What the village adds sits on top: a note a session here is
+key, archive it, delete it. A new ticket is written straight onto a blank card
+in the column it is to land in. Pressing a card opens it as a window over the
+board, the way a project's settings are, with the board still under it: its
+title large across the top, what it asks with its epic, subtasks, links and
+pictures under it, and what's been said under that, in the answer's face,
+with everything that changed on it folded under; where it stands as a thread
+of the board's columns down the right, each one it can move to pressable, and
+every field it has or could have under it, changed in place; and the line
+along its foot says something on it. An epic is the same window with what is
+in it in place of what's been said, a strip coloured by where each piece
+stands, and it can narrow the board to itself. Escape walks back one step at a
+time, ticket to ticket to board to the yard, and a press outside the window
+puts it away. What the village adds sits on top: a note a session here is
 working on hangs that session's lantern and carries its name and mood,
 breathing while it works and orange when it wants you, and "take it on", on a
 note or on the ticket, cuts an isolated workspace named after it, starts a
