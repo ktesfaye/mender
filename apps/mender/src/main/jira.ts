@@ -16,6 +16,7 @@ import {
   type JiraTaken,
 } from '../shared/jira';
 import { adfToMarkdown } from '../shared/jira-adf';
+import { forgetToken, readToken, writeToken } from './jira-keychain';
 import { boardLinkOf, hostOf } from './jira-link';
 
 /**
@@ -23,7 +24,7 @@ import { boardLinkOf, hostOf } from './jira-link';
  *
  * The token is the one way in that works the same on a work site and a
  * personal one, and the only one that can read a board's own columns. It is
- * kept encrypted with the machine's own keychain-backed storage and never
+ * kept in the login keychain (see jira-keychain.ts) and never
  * leaves this process: the renderer is only ever told which sites are
  * connected and as whom.
  */
@@ -32,8 +33,9 @@ interface StoredSite {
   site: string;
   email: string;
   who: string;
-  /** The token, encrypted by safeStorage, as base64. */
-  sealed: string;
+  /** Where the token used to be kept, encrypted by safeStorage, as base64.
+      Moved into the keychain the first time it is read and dropped. */
+  sealed?: string;
 }
 
 interface Stored {
@@ -73,6 +75,25 @@ export function createJiraController(): Controller {
   const siteOf = async (site: string): Promise<StoredSite | undefined> =>
     (await stored()).sites?.find((each) => each.site === site);
 
+  const tokenOf = async (known: StoredSite): Promise<string | undefined> => {
+    const kept = await readToken(known.site);
+    if (kept !== undefined || !known.sealed) return kept;
+    let token: string;
+    try {
+      token = safeStorage.decryptString(Buffer.from(known.sealed, 'base64'));
+    } catch {
+      return undefined;
+    }
+    if (await writeToken(known.site, token))
+      await mutate((now) => ({
+        ...now,
+        sites: (now.sites ?? []).map(({ sealed, ...each }) =>
+          each.site === known.site || !sealed ? each : { ...each, sealed }
+        ),
+      }));
+    return token;
+  };
+
   const call = async <T>(
     site: string,
     path: string,
@@ -84,11 +105,8 @@ export function createJiraController(): Controller {
       const known = await siteOf(site);
       if (!known) return { success: false, error: { kind: 'not-connected' } };
       email = known.email;
-      try {
-        token = safeStorage.decryptString(Buffer.from(known.sealed, 'base64'));
-      } catch {
-        return { success: false, error: { kind: 'not-connected' } };
-      }
+      token = await tokenOf(known);
+      if (!token) return { success: false, error: { kind: 'not-connected' } };
     }
     let response: Response;
     try {
@@ -424,23 +442,23 @@ export function createJiraController(): Controller {
         { email: email.trim(), token: token.trim() }
       );
       if (!checked.success) return checked;
-      if (!safeStorage.isEncryptionAvailable())
+      if (!(await writeToken(host, token.trim())))
         return {
           success: false,
           error: { kind: 'refused', said: 'this Mac will not keep a secret for Mender right now.' },
         };
-      const sealed = safeStorage.encryptString(token.trim()).toString('base64');
       const who = checked.data.displayName ?? email;
       await mutate((now) => ({
         ...now,
         sites: [
           ...(now.sites ?? []).filter((each) => each.site !== host),
-          { site: host, email: email.trim(), who, sealed },
+          { site: host, email: email.trim(), who },
         ],
       }));
       return { success: true, data: { site: host, email: email.trim(), who } };
     },
     forget: async ({ site }) => {
+      await forgetToken(site);
       await mutate((now) => ({
         ...now,
         sites: (now.sites ?? []).filter((each) => each.site !== site),
@@ -604,12 +622,9 @@ export function createJiraController(): Controller {
       if (own) {
         const known = await siteOf(site);
         if (!known) return { success: false, error: { kind: 'not-connected' } };
-        try {
-          const token = safeStorage.decryptString(Buffer.from(known.sealed, 'base64'));
-          headers.Authorization = `Basic ${Buffer.from(`${known.email}:${token}`).toString('base64')}`;
-        } catch {
-          return { success: false, error: { kind: 'not-connected' } };
-        }
+        const token = await tokenOf(known);
+        if (!token) return { success: false, error: { kind: 'not-connected' } };
+        headers.Authorization = `Basic ${Buffer.from(`${known.email}:${token}`).toString('base64')}`;
       }
       try {
         const response = await fetch(at.href, { headers, signal: AbortSignal.timeout(20_000) });
