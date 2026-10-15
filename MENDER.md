@@ -1256,40 +1256,54 @@ Everything else the windmill will eventually hold — updating and
 authenticating agents, MCP, skills, accounts, task defaults — still has
 nowhere to live.
 
-**Jira is Jira, opened over the village.** A blue diamond on the rack, beside
-the sky and the wheel, opens the project's own Jira board across the whole
-window, drawn the way Jira draws itself in its own dark theme rather than in
-the village's wood: its columns in its own order with their counts and limits,
-the running sprint and its days left, its quick filters, a row of faces to
-narrow it to anybody on the team, only yours, by epic or by type, and a search.
-Every card is Jira's card: the summary, the epic as its coloured tag, labels,
-the type, the key, a flag, points, priority and the assignee's face. Dragging
-one to another column moves it in Jira through whatever its workflow allows,
-and dragging it up or down a column ranks it. Pressing one opens Jira's own
-issue view over the board: the summary written over where it stands, the
-description as Jira rendered it and edited in markdown, child work items,
-subtasks, linked work, attachments, comments that can be written, edited and
-deleted, and the history; and down the right its status as Jira's own
-transitions, and every field the ticket has or could have, assignee, reporter,
-labels, parent, priority, sprint, points, dates, team and whatever custom
-fields the site keeps, each changed in place with Jira's own pickers. Create
-is Jira's create, from the top or from the foot of a column it lands in. A
-search across the whole site and "open in Jira" are in the bar along the top,
-beside the way back to the village. What the village adds sits on top of all
-that: a card a session here is working on carries that session's lantern light
-and its name and mood, breathing while it works and orange when it wants you,
-and "take it on", on a card or on the ticket, cuts an isolated workspace named
-after it, starts a session in it told whatever the windmill's Jira page says to
-tell it, and moves the ticket out of to-do. Escape steps back out, one thing at
-a time. It all runs on the API token in the windmill, which holds the sites,
-several at once, a work one and a personal one, each kept with the machine's
-own safe storage, and the token never leaves the main process. Each project
-picks its board once, from the boards your own tickets are on or by searching
-or pasting a board's link, and "change board" picks again; the windmill's Jira
-page still takes a pasted link too. A project with no board at all, the way a
-service desk is, gets one column per status. It is read again every half
-minute while it is open, since Jira can only call a machine that the internet
-can reach.
+**Jira is written into the yard at night.** A blue diamond on the rack,
+beside the sky and the wheel, opens the project's own Jira board over the
+village dimmed to the yard's dark, with the rack still hanging and nothing
+washed over it. Everything Jira's own board does is here; it is only drawn the
+village's way. Its columns stand in its own order with their counts and limits,
+each a post that its tickets are pinned to as parchment notes, folded away to a
+strip when not wanted. A note's title is set in the answer's own face, with the
+bracketed prefixes a team tags tickets with lifted off as small stamps, since
+that face draws a bracket almost as an I; its epic is a strip of coloured tape
+across the top, pressed to open the epic; a flag is a red ribbon; and along the
+foot are its kind, its key, its due date, red when close, its priority as pixel
+chevrons, its points and whose it is, with its subtasks as a row of squares.
+Done work is a column of weathered slips, the epic's colour down the edge and
+the key struck through. The running sprint, its days left and its goal head
+it, with how much is done as a meter and "complete the sprint" in two presses.
+Under the heading is a line to find on the board by, which across all of Jira
+on return, the team's faces, and filter, group, settings and new ticket. Filter
+is a slab by epic, who has it, where it stands, kind, labels, release and
+priority, plus only mine, flagged, changed today, the board's own quick
+filters and JQL on ⇧F; each one on is written as a phrase with a ×. Grouping by
+epic, who has it or labels hangs a beam with a signboard over each lane, and a
+note dropped in another lane takes that epic or owner. Dragging a note moves it
+through whatever its workflow allows and ranks it, and right-clicking it or its
+dots brings the same slab Jira has: move it along, to the top or the bottom,
+give it to, change its epic, labels, link to another, flag it, copy its link or
+key, archive it, delete it. A new ticket is written straight onto a blank note
+in the column it is to land in. Pressing a note opens it as a yard: what it
+asks on a parchment pinned to the post, with its subtasks, links and pictures
+under it; what's been said in the middle, in the answer's face, with
+everything that changed on it folded under; where it stands as a thread of the
+board's columns, each one it can move to pressable, and every field it has or
+could have down the right, changed in place; and the line along the bottom
+says something on it. An epic is the same yard with what is in it in the
+middle, a strip coloured by where each piece stands, and it can narrow the
+board to itself. Escape walks back one step at a time, ticket to ticket to
+board to village. What the village adds sits on top: a note a session here is
+working on hangs that session's lantern and carries its name and mood,
+breathing while it works and orange when it wants you, and "take it on", on a
+note or on the ticket, cuts an isolated workspace named after it, starts a
+session in it told whatever the windmill's Jira page says to tell it, and
+moves the ticket out of to-do. It all runs on the API token in the windmill,
+which holds the sites, several at once, each kept with the machine's own safe
+storage, and the token never leaves the main process. Each project picks its
+board once, from the boards your own tickets are on or by searching or pasting
+a board's link, and pressing the project's name over the board picks again. A
+project with no board at all gets one column per status. It is read again
+every half minute while it is open, since Jira can only call a machine that
+the internet can reach.
 
 **A session remembers what it was last thinking with.** Change an agent's
 model or mode on one session and every fresh session with that same agent

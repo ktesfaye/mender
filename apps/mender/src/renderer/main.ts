@@ -3620,7 +3620,27 @@ async function boot(): Promise<void> {
           const project = quest?.project;
           if (project) await client.jira.link({ project: project.id, to });
         },
+        /* Jira is written into the yard at night rather than over a sheet:
+           the village dims to the yard's own dark, everything the yard had
+           up steps aside, and the rack stays hanging where it is. */
+        backdrop: (on) => {
+          for (const child of Array.from(layer.root.children) as HTMLElement[]) {
+            if (child.classList.contains('rack')) continue;
+            if (on) {
+              child.dataset.underJira = child.style.visibility;
+              child.style.visibility = 'hidden';
+            } else if (child.dataset.underJira !== undefined) {
+              child.style.visibility = child.dataset.underJira;
+              delete child.dataset.underJira;
+            }
+          }
+          if (on) {
+            underJira = pixi.canvas.style.filter;
+            dim(pixi.canvas, 'yard');
+          } else pixi.canvas.style.filter = underJira;
+        },
       }));
+    let underJira = '';
     const closeJira = (): void => {
       if (!quest) return;
       quest = null;

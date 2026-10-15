@@ -4134,3 +4134,37 @@ column, a session's light on its card, and a board-less project. "Take it on"
 was not driven end to end, since it starts a real agent turn; only its ticket
 read changed.
 
+
+### Jira is written into the yard at night, with everything its board does (2026-10-15) — done
+
+Jira's own dark theme is gone: the board sits over the dimmed village with the
+rack still up and the yard's own furniture put aside, no wash. Tickets are
+parchment notes pinned to each column's post, titled in the answer's own face
+with "[Mobile]"-style prefixes lifted off as stamps; an epic is coloured tape,
+a flag is a red ribbon, due dates, pixel priority, points, faces and a subtask
+strip are on the foot. Done is a column of weathered slips with the epic's
+colour down the edge. Columns fold and show their limits. Filter is a slab by
+epic, who has it, where it stands, kind, labels, release and priority, with
+only mine, flagged, changed today, the board's own quick filters and JQL (⇧F);
+each filter on is a phrase with a ×. Group by epic, who has it or labels hangs
+lanes off beams with signboards; dropping a note in another lane changes its
+epic or owner. Each note's slab moves it along, to the top or bottom, gives
+it to somebody, changes its epic, labels, links, flags, copies, archives and
+deletes (two presses). New notes are written in place. The sprint shows how
+much is done and completes in two presses, disarming by itself. A ticket opens
+as a yard: what it asks on a pinned parchment with subtasks, links and
+attachments under it, what's been said in the middle, where it stands as a
+thread of the board's columns with the session lantern and every field down
+the right, and the line at the bottom says something on it. An epic shows
+what's in it as a strip and a list by column, and can narrow the board to
+itself. Escape walks back one step at a time. Sprints are now found on
+team-managed boards, which call themselves "simple"; epics are no longer
+drawn as cards; and moves made here survive Jira's board feed lagging behind.
+Driven in a dev instance against the INV test board: filtering by label,
+grouping by epic, moving along and back, flag and unflag, assign, label, epic
+change, a link (checked the right way round) and its removal, drag across
+columns and back with ranking, a comment written and taken back, a note pinned
+and deleted, a column folded, the epic view, and complete-sprint armed and
+left to disarm. "Take it on" and actually completing a sprint were not driven:
+one starts a real agent turn, the other would end the test sprint. Archive
+needs a Jira plan this site does not have, so it says Jira's refusal.

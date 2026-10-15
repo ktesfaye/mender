@@ -40,6 +40,10 @@ export interface Card {
   labels: string[];
   flagged: boolean;
   points?: number;
+  due?: string;
+  subtasks: { key: string; done: boolean }[];
+  versions: string[];
+  updated?: string;
   statusId: string;
   status: string;
   category: Category;
@@ -84,7 +88,7 @@ export interface RawIssue {
   fields: Record<string, unknown> & {
     summary?: string;
     status?: { id?: string; name?: string; statusCategory?: { key?: string } };
-    issuetype?: { name?: string; iconUrl?: string; subtask?: boolean };
+    issuetype?: { name?: string; iconUrl?: string; subtask?: boolean; hierarchyLevel?: number };
     priority?: { name?: string; iconUrl?: string };
     parent?: { key?: string; fields?: { summary?: string } };
     assignee?: RawUser | null;
@@ -127,6 +131,39 @@ const COLORS: Record<string, [string, string]> = {
 };
 const ROTATION = ['purple', 'blue', 'teal', 'green', 'yellow', 'orange', 'red', 'dark_purple'];
 
+/** An epic's colour as the tape it is on a note: Jira's hue, warmed to sit on parchment. */
+const TAPES: Record<string, string> = {
+  purple: '#8f7ee7',
+  dark_purple: '#7a5fc4',
+  blue: '#5c8fe0',
+  dark_blue: '#3d6fd1',
+  teal: '#4fb2b8',
+  dark_teal: '#3a9198',
+  green: '#5fae7c',
+  dark_green: '#3f8a5c',
+  yellow: '#c9a227',
+  dark_yellow: '#a8851a',
+  orange: '#e0894a',
+  dark_orange: '#c8673a',
+  red: '#d4574a',
+  dark_red: '#a8443a',
+  grey: '#9a9a9a',
+  dark_grey: '#6e6e6e',
+};
+const TAPE_ROTATION = ['purple', 'blue', 'teal', 'green', 'orange', 'dark_purple', 'red', 'yellow'];
+
+export function tapeOf(name: string | undefined, key: string): string {
+  const named = name ? TAPES[name.replace(/^color_/, '')] : undefined;
+  if (named) return named;
+  let h = 0;
+  for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return TAPES[TAPE_ROTATION[h % TAPE_ROTATION.length]!]!;
+}
+
+/** Epics are what cards hang from, not cards; subtasks ride on their parent's note. */
+export const isEpic = (raw: RawIssue): boolean =>
+  raw.fields.issuetype?.name === 'Epic' || (raw.fields.issuetype?.hierarchyLevel ?? 0) >= 1;
+
 export function epicColor(name: string | undefined, key: string): [string, string] {
   const named = name ? COLORS[name.replace(/^color_/, '')] : undefined;
   if (named) return named;
@@ -134,6 +171,8 @@ export function epicColor(name: string | undefined, key: string): [string, strin
   for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return COLORS[ROTATION[h % ROTATION.length]!]!;
 }
+
+const pictures = new Map<string, Promise<string | null>>();
 
 export function makeJira(wire: Wire, site: string) {
   const get = <T>(path: string) => wire.api(site, 'GET', path) as Promise<T>;
@@ -201,6 +240,8 @@ export function makeJira(wire: Wire, site: string) {
           : undefined;
         const pts = points ? f[points] : undefined;
         const assignee = personOf(f.assignee);
+        const subs = (f.subtasks as RawIssue[] | undefined) ?? [];
+        const versions = (f.fixVersions as { name?: string }[] | undefined) ?? [];
         return {
           id: raw.id,
           key: raw.key,
@@ -214,6 +255,13 @@ export function makeJira(wire: Wire, site: string) {
           labels: f.labels ?? [],
           flagged: Boolean(flaggedId && Array.isArray(f[flaggedId]) && (f[flaggedId] as unknown[]).length),
           ...(typeof pts === 'number' ? { points: pts } : {}),
+          ...(typeof f.duedate === 'string' ? { due: f.duedate } : {}),
+          ...(typeof f.updated === 'string' ? { updated: f.updated } : {}),
+          subtasks: subs.map((one) => ({
+            key: one.key,
+            done: one.fields.status?.statusCategory?.key === 'done',
+          })),
+          versions: versions.map((one) => one.name ?? '').filter(Boolean),
           statusId,
           status: f.status?.name ?? '',
           category: kinds.get(statusId) ?? categoryOf(f.status?.statusCategory?.key),
@@ -227,7 +275,7 @@ export function makeJira(wire: Wire, site: string) {
     send,
     fields,
 
-    async board(id: number, quick: number[] = []): Promise<Board> {
+    async board(id: number, quick: number[] = [], jql = ''): Promise<Board> {
       const [info, config, ids, me] = await Promise.all([
         get<{
           id: number;
@@ -275,6 +323,10 @@ export function makeJira(wire: Wire, site: string) {
         'parent',
         'assignee',
         'labels',
+        'duedate',
+        'subtasks',
+        'fixVersions',
+        'updated',
         ...(points ? [points] : []),
         ...(flaggedId ? [flaggedId] : []),
       ];
@@ -282,38 +334,40 @@ export function makeJira(wire: Wire, site: string) {
       const filters = await get<{ values: { id: number; name: string; jql: string }[] }>(
         `/rest/agile/1.0/board/${id}/quickfilter?maxResults=50`
       ).catch(() => ({ values: [] }));
-      const extra = filters.values
-        .filter((one) => quick.includes(one.id))
-        .map((one) => `(${one.jql})`)
-        .join(' AND ');
+      const extra = [
+        ...filters.values.filter((one) => quick.includes(one.id)).map((one) => `(${one.jql})`),
+        ...(jql.trim() ? [`(${jql.trim()})`] : []),
+      ].join(' AND ');
 
       let sprint: Board['sprint'];
-      let raws: RawIssue[];
-      if (info.type === 'scrum') {
+      let raws: RawIssue[] | null = null;
+      /* A team-managed board calls itself "simple" whether it runs sprints or
+         not, so anything that is not plainly kanban is asked for one. */
+      if (info.type !== 'kanban') {
         const sprints = await get<{
           values: { id: number; name: string; endDate?: string; goal?: string }[];
         }>(`/rest/agile/1.0/board/${id}/sprint?state=active`).catch(() => ({ values: [] }));
         const running = sprints.values[0];
-        if (running)
+        if (running) {
           sprint = {
             id: running.id,
             name: running.name,
             ...(running.endDate ? { end: running.endDate } : {}),
             ...(running.goal ? { goal: running.goal } : {}),
           };
-        const jql = extra ? `&jql=${enc(extra)}` : '';
-        raws = running
-          ? await issuesOf(`/rest/agile/1.0/board/${id}/sprint/${running.id}/issue?${jql.slice(1)}`, want)
-          : [];
-      } else {
+          const jql = extra ? `jql=${enc(extra)}` : '';
+          raws = await issuesOf(`/rest/agile/1.0/board/${id}/sprint/${running.id}/issue?${jql}`, want);
+        } else if (info.type === 'scrum') raws = [];
+      }
+      if (!raws) {
         /* Jira's own kanban rule: done work drops off after a fortnight. */
         const base = 'statusCategory != Done OR resolutiondate >= -14d OR updated >= -14d';
         const jql = extra ? `(${base}) AND ${extra}` : base;
         raws = await issuesOf(`/rest/agile/1.0/board/${id}/issue?jql=${enc(jql)}`, want);
       }
-      raws = raws.filter((raw) => !raw.fields.issuetype?.subtask);
+      const cardsOnly = raws.filter((raw) => !raw.fields.issuetype?.subtask && !isEpic(raw));
 
-      const cards = await toCards(raws, kinds, points, flaggedId, color);
+      const cards = await toCards(cardsOnly, kinds, points, flaggedId, color);
 
       return {
         site,
@@ -347,7 +401,7 @@ export function makeJira(wire: Wire, site: string) {
       const kinds = new Map(statuses.map((one) => [one.id, categoryOf(one.statusCategory?.key)]));
       const points = ids.get('story point estimate') ?? ids.get('story points');
       const flaggedId = ids.get('flagged');
-      const want = ['summary', 'status', 'issuetype', 'priority', 'parent', 'assignee', 'labels', ...(points ? [points] : []), ...(flaggedId ? [flaggedId] : [])];
+      const want = ['summary', 'status', 'issuetype', 'priority', 'parent', 'assignee', 'labels', 'duedate', 'subtasks', 'fixVersions', 'updated', ...(points ? [points] : []), ...(flaggedId ? [flaggedId] : [])];
       const raws: RawIssue[] = [];
       let token: string | undefined;
       for (let page = 0; page < 10; page++) {
@@ -361,7 +415,7 @@ export function makeJira(wire: Wire, site: string) {
         token = got.nextPageToken;
         if (!token) break;
       }
-      const cards = await toCards(raws.filter((raw) => !raw.fields.issuetype?.subtask), kinds, points, flaggedId, ids.get('#color'));
+      const cards = await toCards(raws.filter((raw) => !raw.fields.issuetype?.subtask && !isEpic(raw)), kinds, points, flaggedId, ids.get('#color'));
       const columns: Column[] = [];
       for (const card of cards)
         if (!columns.some((column) => column.statuses.includes(card.statusId)))
@@ -384,15 +438,15 @@ export function makeJira(wire: Wire, site: string) {
       };
     },
 
-    /** Into whichever of a column's statuses Jira will let it reach from here. */
-    async move(key: string, to: string[]): Promise<boolean> {
+    /** Into whichever of a column's statuses Jira will let it reach from here; says which, or false. */
+    async move(key: string, to: string[]): Promise<string | false> {
       const got = await get<{ transitions: { id: string; to?: { id?: string } }[] }>(
         `/rest/api/3/issue/${key}/transitions`
       );
       const step = got.transitions.find((one) => one.to?.id && to.includes(one.to.id));
-      if (!step) return false;
+      if (!step?.to?.id) return false;
       await send('POST', `/rest/api/3/issue/${key}/transitions`, { transition: { id: step.id } });
-      return true;
+      return step.to.id;
     },
 
     async rank(key: string, before?: string, after?: string): Promise<void> {
@@ -402,7 +456,19 @@ export function makeJira(wire: Wire, site: string) {
       });
     },
 
-    image: (url: string) => wire.image(site, url),
+    /* Every note asks for its kind's icon and its owner's face each time the
+       board is drawn; asked across the wire every time, a hundred notes
+       redrawn on a keystroke queue everything else behind them. */
+    image: (url: string): Promise<string | null> => {
+      const was = pictures.get(url);
+      if (was) return was;
+      const got = wire.image(site, url).then((data) => {
+        if (!data) pictures.delete(url);
+        return data;
+      });
+      pictures.set(url, got);
+      return got;
+    },
   };
 }
 

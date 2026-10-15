@@ -406,6 +406,7 @@ export function makeShelf(
   const root = box({ right: 0, top: 0 }, RACK);
   // Its bare wood holds the window, like the empty part of any Mac toolbar.
   root.dataset.grip = '';
+  root.classList.add('rack');
   at.appendChild(root);
 
   /* The beam, the length of the whole rack and on off the window's edge,
