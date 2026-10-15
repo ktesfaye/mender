@@ -1381,12 +1381,13 @@ async function boot(): Promise<void> {
         void status.dispose();
       }
     };
-    /** The one after this along a list, wrapping, never this one itself. */
+    /* The one beside it, the way a browser closes a tab: the next along, or
+       the one before it when it was the last. Wrapping round to the first
+       threw you clear across the rail. */
     const nextOf = (list: Task[], id: string): Task | undefined => {
       const from = list.findIndex((one) => one.id === id);
-      return [...list.slice(from + 1), ...list.slice(0, Math.max(from, 0))].find(
-        (one) => one.id !== id
-      );
+      if (from < 0) return list[0];
+      return list[from + 1] ?? list[from - 1];
     };
     /* Which session you were last in, per workspace, so walking back onto a
        signboard puts you where you were in there. */
@@ -1560,14 +1561,22 @@ async function boot(): Promise<void> {
             const next =
               nextOf(tasksOn(aim.district), task.id) ??
               (task.workspace ? undefined : nextOf(allOn(aim.district), task.id));
+            /* Over to the neighbour first, the same step pressing its lantern
+               takes, and the one closed comes down behind you. Waiting on the
+               take-down before moving left the board standing on a session
+               whose lantern had already gone, then fading where it stood. */
+            if (next) {
+              const going = openTask(aim, next);
+              await client.tasks.abandon({ id: task.id }, { timeoutMs: 0 });
+              closedIn = task.project;
+              say(null);
+              await going;
+              return;
+            }
             await client.tasks.abandon({ id: task.id }, { timeoutMs: 0 });
             closedIn = task.project;
             say(null);
             if (open !== aim) return;
-            if (next) {
-              await openTask(aim, next);
-              return;
-            }
             if (task.workspace && workspaces.some((each) => each.id === task.workspace)) {
               await enterWorkspace(aim, task.workspace);
               return;
@@ -2222,6 +2231,9 @@ async function boot(): Promise<void> {
       watching = opened;
       yard.show(opened.yard());
       yard.narrowing(...narrowing());
+      /* Whatever moved while it was opening, a session taken down on the way
+         over above all, was handed to nobody, so it is handed on now. */
+      people();
       yard.line.take();
       /* And wake whoever lives in there. A session keeps its checkout and its
          transcript across a restart but the agent is not running, and a

@@ -48,6 +48,7 @@ import {
   dwindling,
   forgetInk,
   keyed,
+  leave,
   leavingInPlace,
   lettingGo,
   measure,
@@ -647,6 +648,16 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const woke = wasWaking && !waking;
     entering = false;
     const was = moving && (!walkedIn || switched) ? measure(stage) : new Map();
+    /* A session taken down goes out on the rail rather than blinking off it,
+       and the ones after it slide along into its place. */
+    const still = new Set(yard.rail.map((one) => `lantern:${one.id}`));
+    const goingOut = (
+      moving && before?.project.id === yard.project.id
+        ? [...root.querySelectorAll<HTMLElement>('[data-key^="lantern:"]')].filter(
+            (el) => el.dataset.key !== 'lantern:+' && !still.has(el.dataset.key!)
+          )
+        : []
+    ).map((el) => ({ el, at: el.getBoundingClientRect() }));
     if (crossed && !gone) lanternsMove(root);
     const off = (switched && !gone) || (woke && moving) ? stepOff() : null;
     const wentAlready = switched && gone;
@@ -744,6 +755,17 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     }
     said_line(root, layer.edge(), grown);
     rail(root, yard, layer.cramped(), layer.edge(), does);
+    /* On the stage rather than the rail, which is drawn afresh on every
+       change and would take it down mid-fade. */
+    for (const { el, at } of goingOut) {
+      delete el.dataset.key;
+      el.style.left = `${at.left}px`;
+      el.style.top = `${at.top}px`;
+      for (const glow of el.querySelectorAll('[data-glow]')) glow.remove();
+      el.style.filter = 'brightness(0.55)';
+      stage.appendChild(el);
+      void leave(el, 160).then(() => el.remove());
+    }
     if (yard.session) grips(columns, floor);
     if (crossed) lanternsMove(root);
     /* What the line asks for follows what the yard is: somebody at the gate
