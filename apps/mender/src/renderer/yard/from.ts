@@ -577,7 +577,11 @@ function stepsOf(deeds: readonly DeedIn[]): Step[] {
   };
   for (const deed of deeds) {
     const plain = plainOf(deed);
-    if (plain.kind === 'look' && !deed.running && !deed.wrong) {
+    /* Reading or searching that came back empty-handed is still only looking:
+       a file that was not there, a pattern that matched nothing. Only a check
+       that ran something and fell over is worth the sore cross. */
+    const quiet = !deed.wrong || plain.looked === 'file' || plain.looked === 'search';
+    if (plain.kind === 'look' && !deed.running && quiet) {
       run.push({ deed, plain });
       continue;
     }
@@ -593,7 +597,8 @@ function stepsOf(deeds: readonly DeedIn[]): Step[] {
     } else if (deed.tool === 'execute-tool-call') {
       step.did =
         plain.said ?? (deed.running ? (deed.why ?? 'looking around') : (looked ?? deed.did));
-      if (plain.said === 'ran the tests' && !deed.running)
+      if (deed.held) step.note = 'not allowed';
+      else if (plain.said === 'ran the tests' && !deed.running)
         step.note = deed.wrong ? 'failed' : 'passed';
       else if (deed.wrong) step.note = 'failed';
     }
@@ -667,6 +672,7 @@ function stepOf(deed: {
   running: boolean;
   background?: boolean;
   wrong?: boolean;
+  held?: boolean;
   path?: string;
   diff?: string[];
   diffMore?: number;

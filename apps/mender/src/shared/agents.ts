@@ -341,6 +341,8 @@ export const deedSchema = z.object({
     })
     .optional(),
   wrong: z.boolean().optional(),
+  /** Never ran: the permission check or a hook would not let it. */
+  held: z.boolean().optional(),
   /** The file this step touched, so the board knows what "open it" means. */
   path: z.string().optional(),
   /** A few marked lines of what changed, capped, for reading right under the step. */

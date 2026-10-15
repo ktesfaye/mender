@@ -55,6 +55,7 @@ import { wantsAnswer } from './asked-you';
 import { forgetClaudeSession } from './claude-cli-history';
 import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
 import { goingIn, pickUpNote, type CutOff } from './cut-off';
+import { howItFailed } from './failed-command';
 import { questionsOf, type FormQuestion, type FormValue } from './form';
 import {
   helperTrail,
@@ -3721,6 +3722,12 @@ function toldFrom(
     note = `${node.matchCount} match${node.matchCount === 1 ? '' : 'es'}`;
   }
 
+  const failed =
+    node.status !== 'error'
+      ? undefined
+      : node.kind === 'execute-tool-call'
+        ? howItFailed(node.command ?? node.title, node.outputText)
+        : 'wrong';
   deeds.push({
     id: node.id,
     did: deedOf(node, root),
@@ -3733,7 +3740,7 @@ function toldFrom(
     ...(node.kind === 'execute-tool-call' && node.background
       ? { background: true, job: jobFrom(node.toolCallId, node.outputText, at) }
       : {}),
-    ...(node.status === 'error' ? { wrong: true } : {}),
+    ...(failed === 'wrong' ? { wrong: true } : failed === 'held' ? { held: true } : {}),
     ...(path ? { path } : {}),
     ...(diff ? { diff } : {}),
     ...(diffMore ? { diffMore } : {}),
