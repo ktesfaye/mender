@@ -3,10 +3,13 @@
 
 .jr {
   position: fixed;
-  left: 40px; right: 40px; top: 160px; bottom: 140px;
-  z-index: 9;
+  inset: 0;
+  z-index: 15;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: rgba(5, 7, 9, 0.72);
   color: #c7d1db;
   font: 400 15px/1.35 'Josefin Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -23,12 +26,11 @@
 .jr .sore, .jr-popback .sore { color: #f2665a; }
 .jr .quiet, .jr-popback .quiet { color: #738496; }
 
-.jr > .jr-top, .jr > .jr-body { width: min(100%, calc(var(--cols, 5) * 332px + (var(--cols, 5) - 1) * 12px)); margin-left: auto; margin-right: auto; }
-.jr > .jr-top { flex-wrap: wrap; row-gap: 8px; }
+.jr-win { position: relative; display: flex; flex-direction: column; width: min(100%, calc(var(--cols, 4) * 332px + (var(--cols, 4) - 1) * 12px + 40px)); min-width: min(100%, 1040px); height: min(100%, 820px); padding: 18px 20px 20px; background: #1d2125; border: 2px solid #38414a; border-radius: 6px; box-shadow: inset 0 2px 0 #2c333a, 0 6px 0 rgba(10, 12, 14, 0.7), 0 24px 60px rgba(0, 0, 0, 0.55); outline: none; overflow: hidden; }
+.jr-win > .jr-top { flex-wrap: wrap; row-gap: 8px; padding: 0 2px 16px; }
 
 /* While the board is up, the yard keeps its heading and its rail and nothing else. */
-.yard.under-jira > :not(.rack) { visibility: hidden; }
-.yard.under-jira [data-head], .yard.under-jira [data-stays='signs'], .yard.under-jira [data-stays='rail'] { visibility: visible; }
+
 
 /* ── the heading: one line ─────────────────────────────────────────────── */
 .jr-top { flex: 0 0 auto; display: flex; align-items: center; gap: 22px; padding: 0 2px 14px; min-height: 34px; }
@@ -68,7 +70,7 @@
 /* ── the board ─────────────────────────────────────────────────────────── */
 .jr-body { flex: 1 1 auto; min-height: 0; position: relative; }
 .jr-cols { position: absolute; inset: 0; display: flex; gap: 12px; align-items: flex-start; }
-.jr-col { flex: 0 1 332px; min-width: 0; max-height: 100%; display: flex; flex-direction: column; background: rgba(22, 26, 29, 0.94); border-radius: 8px; transition: box-shadow 0.15s; }
+.jr-col { flex: 1 1 0; max-width: 360px; min-width: 0; max-height: 100%; display: flex; flex-direction: column; background: #161a1d; border-radius: 8px; transition: box-shadow 0.15s; }
 .jr-col.over { box-shadow: inset 0 0 0 1px rgba(224, 181, 106, 0.45); }
 .jr-col.folded { flex: 0 0 44px; cursor: pointer; }
 .jr-col.folded:hover .jr-label { color: #e0b56a; }

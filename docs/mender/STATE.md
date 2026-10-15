@@ -4159,6 +4159,10 @@ Columns now keep Jira's own width and the board is only as wide as they are,
 centred in the yard, so a wide window or a board of few columns no longer
 stretches cards into long thin strips; type is a size up. Looked at in the dev
 instance at his own window size on his AUR board.
+Then out of the yard altogether: the board is a window of its own over
+everything, the village and yard dimmed behind it, closed by a press outside,
+its × or Escape, with a ticket a second window over it. Driven at his window
+size on AUR: open, a ticket over it, Escape back, a press outside to close.
 
 ### Jira is written into the yard at night, with everything its board does (2026-10-15) — done
 

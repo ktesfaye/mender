@@ -98,6 +98,8 @@ export interface BoardHands {
   /** Moved here by other means than a drag, so the lagging feed does not undo it. */
   moved(key: string, statusId: string): void;
   pickBoard(): void;
+  /** Put the board away. */
+  close(): void;
   outside(url: string): void;
   said(text: string, sore?: boolean): void;
 }
@@ -281,6 +283,10 @@ export function boardView(
       state.append(end);
     }
     state.append(h('div', 'm', meter, `${done} of ${total} done`));
+    const x = h('button', 'jr-x', '×');
+    x.title = 'put the board away';
+    x.addEventListener('click', () => hands.close());
+    state.append(x);
     top.replaceChildren(here, tools, state);
   };
 

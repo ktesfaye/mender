@@ -55,9 +55,12 @@ export interface JiraSurface {
 const enc = encodeURIComponent;
 
 export function makeJiraSurface(hands: JiraHands): JiraSurface {
-  const root = h('div', 'jr');
+  /* The board is a window of its own over everything, the way a project's
+     settings are, with the whole village dimmed behind it. */
+  const root = h('div', 'jr-win');
   root.tabIndex = -1;
-  root.style.display = 'none';
+  const shade = h('div', 'jr', root);
+  shade.style.display = 'none';
   /* Everything on Jira is Jira's: the village's own keys and pointer sit on
      the window, under this. */
   const pop = h('div', 'jr-pop');
@@ -66,7 +69,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
      and the board stays where it was under it. */
   const popBack = h('div', 'jr-popback', pop);
   popBack.style.display = 'none';
-  for (const el of [root, popBack])
+  for (const el of [shade, popBack])
     for (const kind of ['keydown', 'keyup', 'pointerdown', 'pointerup', 'mousedown', 'click', 'wheel', 'dblclick', 'contextmenu'] as const)
       el.addEventListener(kind, (event) => event.stopPropagation());
   let downOutside = false;
@@ -77,24 +80,15 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
     if (downOutside && event.target === popBack && !slabsUp()) shut();
     downOutside = false;
   });
-  document.body.append(root, popBack);
-
-  /** Where the yard leaves room for it: under the yard's own heading, over its rail. */
-  const room = (): void => {
-    const yard = document.querySelector('.yard');
-    const head = yard?.querySelector('[data-stays="rule:head"]')?.getBoundingClientRect();
-    const signs = yard?.querySelector('[data-stays="signs"]')?.getBoundingClientRect();
-    const rail = yard?.querySelector('[data-stays="rail"]')?.getBoundingClientRect();
-    const top = Math.max(head?.bottom ?? 120, signs?.height ? signs.bottom : 0) + 16;
-    const bottom = rail?.height ? window.innerHeight - rail.top + 8 : 40;
-    root.style.top = `${top}px`;
-    root.style.bottom = `${bottom}px`;
-    root.style.left = `${head?.width ? head.left : 40}px`;
-    root.style.right = `${head?.width ? window.innerWidth - head.right : 40}px`;
-  };
-  window.addEventListener('resize', () => {
-    if (up) room();
+  let downOff = false;
+  shade.addEventListener('pointerdown', (event) => {
+    downOff = event.target === shade;
   });
+  shade.addEventListener('click', (event) => {
+    if (downOff && event.target === shade && !slabsUp()) hands.close();
+    downOff = false;
+  });
+  document.body.append(shade, popBack);
 
   let up = false;
   let project = '';
@@ -174,6 +168,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
     reload: (quietly) => loadBoard(quietly),
     moved: (key, statusId) => recent.set(key, { statusId, at: Date.now() }),
     pickBoard: () => showPicker(),
+    close: () => hands.close(),
     outside: hands.outside,
     said,
   };
@@ -429,9 +424,9 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
       link = at.link;
       up = true;
       hands.backdrop(true);
-      root.style.display = 'flex';
-      room();
-      root.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      shade.style.display = 'flex';
+      shade.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
+      root.animate([{ transform: 'translateY(8px) scale(0.99)' }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
       root.focus();
       if (same) {
         void loadBoard(true);
@@ -448,7 +443,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
       up = false;
       shut();
       closeSlabs();
-      root.style.display = 'none';
+      shade.style.display = 'none';
       hands.backdrop(false);
       (document.activeElement as HTMLElement | null)?.blur();
     },

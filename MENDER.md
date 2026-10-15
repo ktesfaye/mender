@@ -1257,10 +1257,10 @@ authenticating agents, MCP, skills, accounts, task defaults — still has
 nowhere to live.
 
 **Jira is written into the yard at night.** A blue diamond on the rack,
-beside the sky and the wheel, opens the project's own Jira board in the yard
-itself: the yard's heading and its rail of lanterns stay exactly where they
-are, and only what the session says steps aside for the board, which stands
-between the two. Everything Jira's own board does is here; it is only drawn
+beside the sky and the wheel, opens the project's own Jira board as a window
+of its own over everything, the way a project's settings are, the village and
+the yard dimmed behind it; a press outside it, its ×, or Escape puts it away,
+and the board is only as wide as its columns. Everything Jira's own board does is here; it is only drawn
 the village's way, and as calmly as Jira draws itself. Its columns stand in
 its own order with their counts and limits, each a dark lane its tickets sit
 in as dark cards, folded away to a strip when not wanted. A card's title is
