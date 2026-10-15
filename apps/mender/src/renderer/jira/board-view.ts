@@ -171,7 +171,7 @@ export function boardView(
           : h('b', 'late', `${-days} day${days === -1 ? '' : 's'} over`)
       );
       if (board.sprint.goal) sub.title = board.sprint.goal;
-    } else sub.append(board.kind === 'project' ? `everything open in ${board.projectKey}` : board.kind === 'kanban' ? 'kanban · done drops off after a fortnight' : board.name);
+    } else sub.append(board.kind === 'project' ? `everything open in ${board.projectKey}` : board.kind === 'kanban' ? 'kanban · done drops off after a fortnight' : '');
 
     const tools = h('div', 'jr-tools sh');
     const find = h('input', 'jr-find');

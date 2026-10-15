@@ -4147,6 +4147,9 @@ Pressing a card opens it as a window over the board instead of a page of its
 own; a ticket opened from inside it gets a gold "‹ KEY" back, Escape and the
 × and a press outside put it away. Driven in the dev instance on INV: board,
 a ticket, its epic opened from the chip, back, Escape out to the board.
+Columns now only reach down as far as their cards, so an empty or sparse one
+is a short lane rather than a tall dark slab, titles are a size larger, and a
+board with no sprint no longer writes its name twice.
 
 ### Jira is written into the yard at night, with everything its board does (2026-10-15) — done
 
