@@ -2767,3 +2767,193 @@ body.carrying-board * {
   font-size: 11px;
   color: #7d6a50;
 }
+
+/* ── the quest board: a project's Jira tickets pinned up under its columns ──
+   The notes are the gatepost's own parchment; a done one is weathered into
+   the wood the way older notes on the post are; one a session here is
+   working on carries that session's light. */
+.quest {
+  display: flex;
+  gap: 22px;
+  margin-top: 18px;
+  padding-bottom: 8px;
+  overflow-x: auto;
+  align-items: flex-start;
+  pointer-events: auto;
+}
+.quest-col {
+  flex: 1 1 0;
+  min-width: 190px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 4px 12px;
+  border-radius: 2px;
+  transition: background 160ms ease;
+}
+.quest-col.over {
+  background: rgba(255, 168, 60, 0.1);
+}
+.quest-head {
+  display: flex;
+  justify-content: space-between;
+  font: 11px 'Josefin Sans', sans-serif;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--yard-ink-dim);
+  border-bottom: 1px solid var(--yard-rule);
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+.quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.quest-note {
+  position: relative;
+  background: var(--yard-parchment);
+  color: #2c2013;
+  padding: 20px 13px 11px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  transform: rotate(-0.5deg);
+  cursor: default;
+  text-shadow: none;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease;
+}
+.quest-note:nth-child(even) {
+  transform: rotate(0.45deg);
+}
+.quest-note::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 13px;
+  width: 7px;
+  height: 7px;
+  background: #d0782c;
+  box-shadow: 1px 1px 0 #6b3510;
+}
+.quest-note:hover {
+  transform: rotate(0deg) translateY(-2px);
+  box-shadow: 5px 7px 0 rgba(0, 0, 0, 0.5);
+}
+.quest-note.held {
+  opacity: 0.4;
+}
+/* The team's tickets are pinned a shade back from yours. */
+.quest-note:not(.mine):not(.worn) {
+  background: #f1e2bd;
+}
+.quest-note.mine::before {
+  background: var(--yard-gold);
+}
+.quest-key {
+  position: absolute;
+  top: 5px;
+  left: 27px;
+  font: 9px 'Silkscreen', monospace;
+  letter-spacing: 0.06em;
+  color: #8a6a44;
+}
+.quest-title {
+  font-family: 'Mender Hand', cursive;
+  font-size: 18px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.quest-meta,
+.quest-who {
+  font: 10px 'Josefin Sans', sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a6a44;
+  margin-top: 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quest-who {
+  text-transform: none;
+  letter-spacing: 0.04em;
+  margin-top: 3px;
+}
+.quest-lit {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px dashed #c9ad80;
+  font: 12px 'Courier Prime', monospace;
+  color: #6a4a26;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quest-ember {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: #a89272;
+}
+.quest-note.lit.working,
+.quest-note.lit.arriving {
+  box-shadow:
+    4px 4px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 2px #f6c46a,
+    0 0 34px 8px rgba(255, 168, 60, 0.38);
+}
+.quest-note.lit.working .quest-ember,
+.quest-note.lit.arriving .quest-ember {
+  background: #ff9a3a;
+  animation: quest-breathe 1.6s ease-in-out infinite;
+}
+.quest-note.lit.asking {
+  box-shadow:
+    4px 4px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 2px var(--yard-wants-you),
+    0 0 30px 6px rgba(255, 154, 106, 0.35);
+}
+.quest-note.lit.asking .quest-ember {
+  background: var(--yard-wants-you);
+}
+.quest-note.lit.resting .quest-ember {
+  background: var(--yard-done);
+}
+.quest-note.lit.hurt .quest-ember {
+  background: var(--yard-broken);
+}
+@keyframes quest-breathe {
+  50% {
+    opacity: 0.35;
+  }
+}
+/* Done is weathered into the wood rather than pinned on it. */
+.quest-note.worn {
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  border-left: 2px solid var(--yard-timber-light);
+  padding: 2px 0 2px 12px;
+}
+.quest-note.worn::before {
+  display: none;
+}
+.quest-note.worn .quest-key {
+  position: static;
+  color: #7d6648;
+}
+.quest-note.worn .quest-title {
+  font-size: 16px;
+  color: var(--yard-ink-dim);
+}
+.quest-more {
+  font: 12px 'Josefin Sans', sans-serif;
+  color: var(--yard-ink-dim);
+  letter-spacing: 0.06em;
+  padding-left: 14px;
+}

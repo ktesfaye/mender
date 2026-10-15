@@ -36,6 +36,10 @@ export interface Reading {
    * torn down and rebuilt out from under whatever is running in it.
    */
   terminal?: HTMLElement;
+  /** Something drawn rather than written, under the rows: a board of
+      columns, which no list of lines could ever be. Replaced whole on
+      every rewrite, since it is only ever a picture of what the rows say. */
+  board?: HTMLElement;
 }
 
 export interface Scrim {
@@ -95,6 +99,8 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
     'position:relative;display:none;flex:1;min-height:240px;width:100%;margin-top:8px'
   );
   under.appendChild(termHost);
+  const boardHost = box({}, 'position:relative;display:none;width:100%');
+  under.appendChild(boardHost);
 
   /* Held so a terminal reading can give the wash a real height to shrink its
      writing against — without this the wash sizes itself to its own content
@@ -166,7 +172,16 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
         termHost.style.display = 'none';
         termHost.replaceChildren();
       }
-      under.scrollTop = 0;
+      const keepScroll = Boolean(reading.board) && was;
+      const top = under.scrollTop;
+      if (reading.board) {
+        boardHost.style.display = '';
+        boardHost.replaceChildren(reading.board);
+      } else {
+        boardHost.style.display = 'none';
+        boardHost.replaceChildren();
+      }
+      under.scrollTop = keepScroll ? top : 0;
     },
     scrolled: (key) => {
       if (!showing) return false;

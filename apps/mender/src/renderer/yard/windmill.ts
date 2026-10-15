@@ -35,10 +35,11 @@ import {
   type SessionShare,
   type UsageWindow,
 } from '@shared/five-hours';
+import type { JiraSite } from '@shared/jira';
 import type { UpdateState } from '@shared/updates';
 import { counted } from '../board/card';
 import { chordLabel, chordOf, rebindableDoings } from '../board/finder';
-import { chip, formRow, hintLine, input, intro, pageOf, section } from './settings';
+import { area, chip, formRow, hintLine, input, intro, pageOf, section } from './settings';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
  *  and whether anything still uses it. */
@@ -130,6 +131,15 @@ export interface WindmillDoings {
   checkUpdate(): Promise<void>;
   /** Quit, swap the waiting one in, open it again. */
   restartToUpdate(): Promise<void>;
+  /** Jira, read and written straight through rather than held in the
+      window's state, since nothing else in the windmill ever needs it. */
+  jira: {
+    status(): Promise<{ sites: JiraSite[]; recipe: string }>;
+    /** Null when it took, or what Jira said when it didn't. */
+    connect(site: string, email: string, token: string): Promise<string | null>;
+    forget(site: string): Promise<void>;
+    setRecipe(recipe: string): Promise<void>;
+  };
   closed(): void;
 }
 
@@ -141,7 +151,7 @@ export interface Windmill {
 }
 
 /** The pages down the window's left side, in the order they hang there. */
-type Page = 'general' | 'checkouts' | 'terminal' | 'keys' | 'agents' | 'disk' | 'machine';
+type Page = 'general' | 'checkouts' | 'terminal' | 'keys' | 'agents' | 'jira' | 'disk' | 'machine';
 
 const PAGES: { page: Page; said: string }[] = [
   { page: 'general', said: 'General' },
@@ -149,12 +159,18 @@ const PAGES: { page: Page; said: string }[] = [
   { page: 'terminal', said: 'Terminal' },
   { page: 'keys', said: 'Keys' },
   { page: 'agents', said: 'Agents' },
+  { page: 'jira', said: 'Jira' },
   { page: 'disk', said: 'On disk' },
   { page: 'machine', said: 'This machine' },
 ];
 
 /** Whichever page was open last, so coming back to the windmill lands there. */
 let lastPage: Page = 'general';
+
+/** Opens the windmill on its Jira page next time, for the board's own way in. */
+export function windmillOnJira(): void {
+  lastPage = 'jira';
+}
 
 /** Whichever agent the Agents page was last showing. */
 let lastAgent: string | null = null;
@@ -211,6 +227,9 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   const agentArgs = section('Extra arguments');
   const agentEnv = section('Environment');
   const agentInstall = section('Which install');
+  const jiraSites = section('Sites');
+  const jiraAdd = section('Connect a site');
+  const jiraRecipe = section('Taking a ticket on');
   const worktrees = section('Worktrees Mender has cut');
   const spend = section('Right now');
   const five = section('The five hours');
@@ -228,6 +247,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       agentEnv.root,
       agentInstall.root,
     ]),
+    jira: pageOf([intro(JIRA), jiraSites.root, jiraAdd.root, jiraRecipe.root]),
     disk: pageOf([intro(DISK), worktrees.root]),
     machine: pageOf([spend.root, five.root, shares.root]),
   };
@@ -470,6 +490,111 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       formRow('Own copies', trees),
       hintLine('A cloned or freshly started project, and a session’s own copy, go here.'),
     ]);
+  }
+
+  // ── jira ─────────────────────────────────────────────────────────────────
+  let jiraFailed = '';
+  let jiraTrying = false;
+  let jiraForgetting: string | null = null;
+  let jiraDrawn = false;
+  async function drawJira(): Promise<void> {
+    if (!jiraDrawn) jiraSites.fill([hintLine('Reading it…')]);
+    const held = await does.jira.status();
+    jiraDrawn = true;
+    const tab = tabs.get('jira');
+    if (tab)
+      tab.sub.textContent = held.sites.length
+        ? held.sites.map((one) => one.site.replace('.atlassian.net', '')).join(' · ')
+        : 'not connected';
+    if (busy(jiraAdd) || busy(jiraRecipe)) return;
+    jiraSites.fill(
+      held.sites.length
+        ? held.sites.map((one) => {
+            const line = el('div', 'settings-when-detail');
+            const said = el('span', 'settings-hint-inline');
+            said.textContent = `${one.site}, as ${one.who}`;
+            const armed = jiraForgetting === one.site;
+            const forget = button(
+              armed ? 'forget it: press again' : 'forget',
+              'settings-link',
+              () => {
+                if (!armed) {
+                  jiraForgetting = one.site;
+                  void drawJira();
+                  window.setTimeout(() => {
+                    if (jiraForgetting !== one.site) return;
+                    jiraForgetting = null;
+                    void drawJira();
+                  }, STANDS_MS);
+                  return;
+                }
+                jiraForgetting = null;
+                void does.jira.forget(one.site).then(() => drawJira());
+              }
+            );
+            line.append(said, forget);
+            return line;
+          })
+        : [hintLine('Nothing on this Mac is connected to Jira yet.')]
+    );
+
+    const site = input('', 'yourteam.atlassian.net', async () => undefined);
+    const email = input('', 'you@example.com', async () => undefined);
+    const token = input('', 'API token', async () => undefined);
+    token.type = 'password';
+    const go = button(jiraTrying ? 'checking it…' : 'connect', 'settings-link', () => {
+      if (jiraTrying) return;
+      jiraTrying = true;
+      jiraFailed = '';
+      void drawJiraAdd();
+      void does.jira.connect(site.value, email.value, token.value).then((said) => {
+        jiraTrying = false;
+        jiraFailed = said ?? '';
+        took(jiraAdd, said ? undefined : 'connected');
+        if (!said) {
+          site.value = '';
+          email.value = '';
+          token.value = '';
+        }
+        void drawJira();
+      });
+    });
+    const tokenPage = button('make a token', 'settings-link', () => {
+      window.mender.openLink('https://id.atlassian.com/manage-profile/security/api-tokens');
+    });
+    const drawJiraAdd = (): void => {
+      go.textContent = jiraTrying ? 'checking it…' : 'connect';
+      jiraAdd.fill([
+        formRow('Site', site),
+        formRow('Email', email),
+        formRow('API token', token),
+        ...(jiraFailed ? [troubled(jiraFailed)] : []),
+        (() => {
+          const line = el('div', 'settings-when-detail');
+          line.style.gap = '24px';
+          line.append(go, tokenPage);
+          return line;
+        })(),
+      ]);
+    };
+    drawJiraAdd();
+
+    const recipe = area(held.recipe, 'Work on {key}: {summary}', 6, async (text) => {
+      await does.jira.setRecipe(text);
+      took(jiraRecipe);
+    });
+    jiraRecipe.fill([
+      recipe,
+      hintLine(
+        'What a session taking a ticket on is told first. {key}, {summary}, {url} and {description} are filled in from the ticket.'
+      ),
+    ]);
+  }
+
+  function troubled(text: string): HTMLElement {
+    const said = el('p', 'settings-trouble');
+    said.textContent = text;
+    return said;
   }
 
   // ── terminal ─────────────────────────────────────────────────────────────
@@ -1080,6 +1205,8 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       drawKeys();
     } else if (page === 'agents') {
       drawAgents();
+    } else if (page === 'jira') {
+      if (!busy(jiraAdd) && !busy(jiraRecipe)) void drawJira();
     } else if (page === 'disk') {
       drawWorktrees();
     } else {
@@ -1146,6 +1273,9 @@ const KEYS =
 
 const AGENTS =
   'What this machine hands each agent’s own CLI beyond its ordinary command, in every project.';
+
+const JIRA =
+  'The Jira sites this Mac is connected to, each with its own email and API token. Each project picks its own board from them, off the blue token on the rack.';
 
 const DISK =
   'Every own copy Mender has cut on this machine that no session is standing in. Stale means its branch is already upstream, or nothing points at it any more.';

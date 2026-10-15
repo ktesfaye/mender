@@ -4055,3 +4055,22 @@ then stops. Driven in a dev instance with Claude pointed at a host that does
 not exist: Claude's own ten retries ran out, the board drew the new wait with
 "don't carry on by itself", the rail said "offline · back when it is", and it
 carried on by itself ten seconds later. Not driven: a real service outage.
+
+### A project's Jira board hangs on the rack, and a ticket is taken on from it (2026-10-14) — done
+
+A blue diamond token on the rack, between the sky and the wheel, lays the
+project's Jira board over the yard: its own columns in its own order, every
+ticket a parchment note, yours pinned brighter than the team's, done ones
+weathered and folded into a count, and the one a session here is working on
+carrying that session's lantern light and mood. The windmill's Jira page
+connects any number of sites with an email and an API token (kept with the
+machine's own safe storage) and holds the recipe a session taking a ticket on is
+told first. A project picks its board once from every connected site. A note is
+pressed to read the ticket, dragged to another column to move it in Jira, and
+"take this on" cuts an isolated workspace named after it, hands it the recipe
+and moves the ticket out of to-do. "Pin a new one" is written on the line.
+Scrum boards read the running sprint; kanban reads the open work plus the last
+two weeks done; a project with no board at all (a service desk) gets one column
+per status. Driven in a dev instance against a real personal site: connect,
+link, read, move both ways, pin and take on (on Haiku). Not driven: the work
+site and its on-call board, which need his work token on that laptop.

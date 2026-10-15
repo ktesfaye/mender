@@ -13,6 +13,7 @@ import { boardContract } from './board';
 import { changesContract } from './changes';
 import { findingContract } from './finding';
 import { githubContract } from './github';
+import { jiraContract } from './jira';
 import { projectsContract } from './projects';
 import { promptsContract } from './prompts';
 import { schedulesContract } from './schedules';
@@ -39,6 +40,7 @@ export const menderDomainContracts = {
   git: gitContract,
   github: githubContract,
   host: hostDependenciesContract,
+  jira: jiraContract,
   projects: projectsContract,
   prompts: promptsContract,
   pulls: pullRequestsContract,

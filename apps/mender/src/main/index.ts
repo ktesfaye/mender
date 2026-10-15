@@ -22,6 +22,7 @@ import { createFiveHours } from './five-hours';
 import { createGitHubStatus } from './github';
 import { installGrip } from './grip';
 import { watchHungry } from './hungry';
+import { createJiraController } from './jira';
 import { logWindow } from './logging';
 import { installAppMenu } from './menu';
 import { watchMissed } from './missed';
@@ -122,6 +123,7 @@ export async function main(): Promise<void> {
     changes: createChangesController(changes),
     finding: createFindingController(finding),
     github: createGitHubStatus(),
+    jira: createJiraController(),
     projects: createProjectsController(projects),
     prompts: createPromptsController(),
     schedules: createSchedulesController(schedules, appSettings),

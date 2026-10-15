@@ -72,9 +72,17 @@
         "h": 9
       }
     },
-    "glyph-fire": {
+    "glyph-jira": {
       "frame": {
         "x": 142,
+        "y": 0,
+        "w": 9,
+        "h": 9
+      }
+    },
+    "glyph-fire": {
+      "frame": {
+        "x": 152,
         "y": 0,
         "w": 9,
         "h": 9
@@ -84,7 +92,7 @@
   "meta": {
     "image": "rack.png",
     "size": {
-      "w": 152,
+      "w": 162,
       "h": 24
     }
   }

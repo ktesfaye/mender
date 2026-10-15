@@ -400,7 +400,8 @@ export function makeShelf(
   settings: () => void,
   sky: () => void,
   menu: (id: string, x: number, y: number) => void,
-  pulling?: Pulling
+  pulling?: Pulling,
+  quest?: () => void
 ): Shelf {
   const root = box({ right: 0, top: 0 }, RACK);
   // Its bare wood holds the window, like the empty part of any Mac toolbar.
@@ -539,6 +540,13 @@ export function makeShelf(
   named(wheel, () => 'settings');
   wheel.addEventListener('click', () => settings());
 
+  /* The project's Jira board, its tickets pinned up like notices outside an
+     inn. Only standing in a project, since a board is one project's. */
+  const jira = hangToken('rack/glyph-jira');
+  jira.dataset.shelf = 'jira';
+  named(jira, () => 'the board');
+  jira.addEventListener('click', () => quest?.());
+
   const fire = hangToken('rack/glyph-fire');
   fire.dataset.shelf = 'island';
   named(fire, () => 'the island');
@@ -604,7 +612,7 @@ export function makeShelf(
     const boards = last
       .map((project) => nodes.get(project.id))
       .filter((node): node is HTMLDivElement => !!node);
-    lineUp([...boards, band, weather, wheel, fire]);
+    lineUp([...boards, band, weather, jira, wheel, fire]);
   };
 
   function show(projects: OnShelf[]): void {
@@ -615,6 +623,7 @@ export function makeShelf(
     const was = inside;
     inside = projects.some((project) => project.here);
     up(fire, inside, TOKEN);
+    up(jira, inside && Boolean(quest), TOKEN);
     up(weather, !inside, TOKEN);
     /* Walking into a yard folds it shut and walking back out to the island
        opens it; in between it stays however he left it. */

@@ -116,9 +116,12 @@ import {
   type MachineSample,
   type WorktreeRow,
   type Windmill,
+  windmillOnJira,
 } from './yard/windmill';
 import type { Signboard } from './yard/what';
 import { inBeamOrder, makeYard } from './yard/yard';
+import { briefOf, questBoard, questRows, type Lit as OnTicket, type Quest } from './board/quest';
+import type { JiraError } from '@shared/jira';
 
 /** The kinds of picture an agent can actually be shown. */
 const CARRIED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -211,6 +214,7 @@ async function boot(): Promise<void> {
     await loadCuts();
     const layer = makeLayer();
     let openTheSky = (): void => undefined;
+    let openTheBoard = (): void => undefined;
     let rackMenu = (_id: string, _x: number, _y: number): void => undefined;
     const shelf = makeShelf(
       layer.root,
@@ -241,7 +245,8 @@ async function boot(): Promise<void> {
         },
         over: (x, y) => editing?.arriveOver({ x: x * pageZoom(), y: y * pageZoom() }),
         drop: (x, y) => void editing?.arriveAt({ x: x * pageZoom(), y: y * pageZoom() }),
-      }
+      },
+      () => openTheBoard()
     );
     /* The rack's sky slot wears what the sky is doing, kept up to date. */
     const paintSkySlot = (): void => shelf.setSky(skyPicture(sky));
@@ -285,7 +290,15 @@ async function boot(): Promise<void> {
         /* One line, and whatever is open decides what is being written on it:
            a name for a new session, a new name for this one, a commit message,
            something to look for, or something to say to the agent. */
-        if (naming || titling || writing || looking || hunt || reading?.noting) {
+        if (
+          naming ||
+          titling ||
+          writing ||
+          looking ||
+          hunt ||
+          reading?.noting ||
+          quest?.written !== undefined
+        ) {
           wrote(text);
           return;
         }
@@ -322,6 +335,11 @@ async function boot(): Promise<void> {
         }
         if (writing) {
           void commit();
+          return;
+        }
+        if (quest?.written !== undefined) {
+          quest = { ...quest, written: text };
+          void pinTicket();
           return;
         }
         /* A project nobody has worked in yet says "say what you want built,
@@ -399,7 +417,7 @@ async function boot(): Promise<void> {
      * board it still carries has been moved onto the yard's own scrim, this is
      * what keeps them from being written over each other.
      */
-    const wood = (rows: Row[], terminal?: HTMLElement): void => {
+    const wood = (rows: Row[], terminal?: HTMLElement, board?: HTMLElement): void => {
       /* Anything opened from inside a project is laid over its yard rather
          than shown instead of it: the world drops to silhouettes, a wash comes
          down over the middle and the right, and what you asked for is written
@@ -419,6 +437,7 @@ async function boot(): Promise<void> {
         rows,
         ...(asks ? { asks } : {}),
         ...(terminal ? { terminal } : {}),
+        ...(board ? { board } : {}),
       });
     };
 
@@ -429,7 +448,7 @@ async function boot(): Promise<void> {
      * an agent says another sentence. Nothing here decides what the board says
      * — it is handed the rows again and writes them where they already were.
      */
-    const rewrite = (rows: Row[], terminal?: HTMLElement): void => {
+    const rewrite = (rows: Row[], terminal?: HTMLElement, board?: HTMLElement): void => {
       if (!yard.open) return;
       const asks = prompting();
       yard.reading({
@@ -437,6 +456,7 @@ async function boot(): Promise<void> {
         rows,
         ...(asks ? { asks } : {}),
         ...(terminal ? { terminal } : {}),
+        ...(board ? { board } : {}),
       });
     };
 
@@ -594,6 +614,7 @@ async function boot(): Promise<void> {
       !walking &&
       !talking &&
       !sending &&
+      !quest &&
       !hunt &&
       !naming &&
       !titling &&
@@ -650,6 +671,10 @@ async function boot(): Promise<void> {
       if (writing) steps.push({ said: 'a commit', go: back });
       if (talking) steps.push({ said: talking.name, go: back });
       if (sending) steps.push({ said: 'what is open', go: back });
+      if (quest) {
+        steps.push({ said: 'the board', go: back });
+        if (quest.phase === 'ticket') steps.push({ said: quest.ticket?.key ?? 'a ticket', go: back });
+      }
       if (walkedUp) steps.push({ said: walkedUp.hand.errand, go: back });
       if (card) steps.push({ said: 'who works here', go: back });
       if (reading) steps.push({ said: shortly(reading.path), go: back });
@@ -1056,6 +1081,8 @@ async function boot(): Promise<void> {
     const servers = new Map<string, string[]>();
     /* What is open against the other end for this checkout's branch. */
     let sending: (Sent & { repository: string; number?: number }) | null = null;
+    /** The project's Jira board, while it is laid over the yard. */
+    let quest: Quest | null = null;
     /** Somebody the session sent out, walked up to in the yard. */
     let walkedUp: Walked | null = null;
     /** The next read of a background command's output, while its board is open. */
@@ -1109,6 +1136,10 @@ async function boot(): Promise<void> {
       isolated: boolean;
       /** The workspace it would go into, when you are standing in one. */
       among?: string;
+      /** Said to it first even in its own workspace: a Jira ticket's brief. */
+      brief?: string;
+      /** The ticket it was started for, and where to move it once it has. */
+      jira?: { site: string; key: string; to: string[] };
     } | null = null;
     /** Set while an existing session is being called something else, or —
         the same one line, the same keys — while a custom server is being
@@ -1161,8 +1192,7 @@ async function boot(): Promise<void> {
       /* A spot remembered before sessions carried their project is the same
          spot, but once that session is gone it has nowhere to fall back to,
          so it is written again the moment it is stood in. */
-      const stale =
-        wasIn?.kind === 'task' && now.kind === 'task' && wasIn.project !== now.project;
+      const stale = wasIn?.kind === 'task' && now.kind === 'task' && wasIn.project !== now.project;
       if (now.kind !== 'island' && (stale || !same(wasIn ?? undefined, now))) {
         wasIn = now;
         try {
@@ -1240,11 +1270,13 @@ async function boot(): Promise<void> {
     const paintRail = (): void => {
       const here = open ? projectOn(open.district) : undefined;
       drawn.pennants.set(
-        projects.filter((project) => !isAway(project)).map((project) => ({
-          district: project.district,
-          name: project.name,
-          ...(project.icon ? { icon: project.icon } : {}),
-        }))
+        projects
+          .filter((project) => !isAway(project))
+          .map((project) => ({
+            district: project.district,
+            name: project.name,
+            ...(project.icon ? { icon: project.icon } : {}),
+          }))
       );
       shelf.show(
         projects.map((project) => ({
@@ -1654,6 +1686,7 @@ async function boot(): Promise<void> {
       wood(finding('', { projects, tasks, moods: seen, where: standing() }, keybindings));
       /* From nowhere, every time. The mark outlives a board on purpose, so
          without this the finder opens standing on whatever row it was left on
+      quest = null;
          last time and steps one further from there, which lands it two or
          three rows down a list it just drew fresh. */
       yard.walk.stand(null);
@@ -1914,6 +1947,23 @@ async function boot(): Promise<void> {
           state.sessions = sessions;
           ui.update(state);
         });
+        jira: {
+          status: () => client.jira.status({}),
+          connect: async (site, email, token) => {
+            const done = await client.jira.connect({ site, email, token }, { timeoutMs: 30_000 });
+            if (done.success) {
+              if (quest) void loadQuest();
+              return null;
+            }
+            return jiraSaid(done.error);
+          },
+          forget: async (site) => {
+            await client.jira.forget({ site });
+          },
+          setRecipe: async (recipe) => {
+            await client.jira.setRecipe({ recipe });
+          },
+        },
         void client.appSettings.fiveHours({}, { timeoutMs: 0 }).then((five) => {
           state.fiveHours = five;
           ui.update(state);
@@ -2065,6 +2115,7 @@ async function boot(): Promise<void> {
     const showYard = async (
       aim: Aim,
       project: Project,
+      quest = null;
       here?: Task,
       settingUp?: string
     ): Promise<void> => {
@@ -2105,6 +2156,7 @@ async function boot(): Promise<void> {
       dim(pixi.canvas, 'yard');
       paintRail();
 
+      quest = null;
       const opened = await openYard(
         client,
         {
@@ -2378,6 +2430,7 @@ async function boot(): Promise<void> {
      * A project's settings, in a window of their own over everything.
      *
      * Not laid over the yard like the rest, because it is not about the work
+      quest = null;
      * in there: nothing under it moves, and closing it leaves you exactly
      * where you were. It opens at once with what is known and fills in as the
      * checkout answers, since reading every picture in it takes a moment.
@@ -2600,6 +2653,7 @@ async function boot(): Promise<void> {
       reading.change = got.data;
       wood(rowsForChange());
     };
+      quest = null;
 
     /* A committed change is history and there is nothing to undo about it; one
        in the working tree is the only thing in the village that can be thrown
@@ -3527,6 +3581,262 @@ async function boot(): Promise<void> {
       if (!on || on.kind === 'detached' || on.kind === 'unborn') {
         say('this checkout is not on a branch.', 5000);
         home();
+    /** What Jira said, in words. */
+    const jiraSaid = (error: JiraError): string =>
+      error.kind === 'not-connected'
+        ? 'this Mac is not connected to that Jira site any more.'
+        : error.kind === 'unreachable'
+          ? `Jira could not be reached: ${error.said}`
+          : error.said;
+
+    /** Which session here is on which ticket, and what its lantern says. */
+    const litTickets = async (): Promise<Record<string, OnTicket>> => {
+      const taken = await client.jira.taken({});
+      const out: Record<string, OnTicket> = {};
+      for (const one of taken) {
+        const task = tasks.find((each) => each.id === one.task);
+        if (!task) continue;
+        out[one.key] = { task: task.id, name: task.title || task.name, mood: seen[task.id] ?? 'empty' };
+      }
+      return out;
+    };
+
+    /** The project a board is opened for, held so a reload asks about the same one. */
+    let questProject: Project | null = null;
+    let questPainted = '';
+
+    const paintQuest = (first = false): void => {
+      if (!quest) return;
+      const now = quest;
+      questPainted = JSON.stringify(now);
+      const board = questBoard(now, {
+        open: (key) => void openTicket(key),
+        moved: (key, column) => void moveTicket(key, column),
+      });
+      if (first) wood(questRows(now), undefined, board);
+      else rewrite(questRows(now), undefined, board);
+    };
+
+    /**
+     * The project's Jira board, off the blue token on the rack.
+     *
+     * The board is read fresh every time it is opened and every half minute
+     * while it stays open, since it is everybody's board and not only this
+     * Mac's: a teammate moving a ticket moves it here too.
+     */
+    const openQuest = async (): Promise<void> => {
+      const project = open ? projectOn(open.district) : undefined;
+      if (!open || !project) return;
+      stopWalking();
+      stopTalking();
+      questProject = project;
+      quest = { project: project.name, link: null, phase: 'reading', lit: {} };
+      paintQuest(true);
+      await loadQuest();
+    };
+    openTheBoard = () => {
+      if (quest) {
+        quest = null;
+        home();
+        return;
+      }
+      void openQuest();
+    };
+
+    const loadQuest = async (): Promise<void> => {
+      const project = questProject;
+      if (!quest || !project) return;
+      const status = await client.jira.status({});
+      if (!quest) return;
+      if (!status.sites.length) {
+        quest = { ...quest, phase: 'not-connected' };
+        paintQuest();
+        return;
+      }
+      const link = await client.jira.linkOf({ project: project.id });
+      if (!quest) return;
+      if (!link) {
+        quest = { ...quest, phase: 'linking' };
+        paintQuest();
+        const got = await client.jira.projects({}, { timeoutMs: 30_000 });
+        if (!quest || quest.phase !== 'linking') return;
+        quest = got.success
+          ? { ...quest, picks: got.data.projects }
+          : { ...quest, phase: 'failed', said: jiraSaid(got.error) };
+        paintQuest();
+        return;
+      }
+      const [got, lit] = await Promise.all([
+        client.jira.board(link, { timeoutMs: 60_000 }),
+        litTickets(),
+      ]);
+      if (!quest) return;
+      if (!got.success) {
+        quest = { ...quest, link, phase: 'failed', said: jiraSaid(got.error) };
+        paintQuest();
+        return;
+      }
+      const phase = quest.phase === 'ticket' ? 'ticket' : 'board';
+      const next: Quest = { ...quest, link, board: got.data, lit, phase };
+      delete next.said;
+      quest = next;
+      /* Only repainted when something on it actually changed, so the half
+         minute's look does not make the whole board blink. */
+      if (JSON.stringify(next) !== questPainted) paintQuest();
+    };
+    window.setInterval(() => {
+      if (quest && quest.phase === 'board' && quest.written === undefined && !quest.waiting)
+        void loadQuest();
+    }, 30_000);
+
+    const openTicket = async (key: string): Promise<void> => {
+      const link = quest?.link;
+      if (!quest || !link) return;
+      const next: Quest = { ...quest, phase: 'ticket', waiting: 'reading it off Jira…' };
+      delete next.ticket;
+      quest = next;
+      paintQuest(true);
+      const got = await client.jira.ticket({ site: link.site, key }, { timeoutMs: 30_000 });
+      if (!quest || quest.phase !== 'ticket') return;
+      const read: Quest = got.success
+        ? { ...quest, ticket: got.data }
+        : { ...quest, phase: 'failed', said: jiraSaid(got.error) };
+      delete read.waiting;
+      quest = read;
+      paintQuest();
+    };
+
+    const moveTicket = async (key: string, column: number): Promise<void> => {
+      const link = quest?.link;
+      const board = quest?.board;
+      const to = board?.columns[column];
+      if (!quest || !link || !board || !to) return;
+      /* It goes where it was let go at once; Jira catches up. */
+      quest = {
+        ...quest,
+        board: {
+          ...board,
+          issues: board.issues.map((one) =>
+            one.key === key
+              ? { ...one, statusId: to.statuses[0] ?? one.statusId, category: to.category }
+              : one
+          ),
+        },
+      };
+      paintQuest();
+      const done = await client.jira.move({ site: link.site, key, statuses: to.statuses });
+      if (!done.success) say(jiraSaid(done.error), 6000);
+      await loadQuest();
+    };
+
+    /** A ticket taken on: its own copy, its own branch, the ticket said first. */
+    const takeOn = async (): Promise<void> => {
+      const q = quest;
+      const ticket = q?.ticket;
+      const project = questProject;
+      if (!q || !ticket || !q.link || !open || !project) return;
+      const { recipe } = await client.jira.status({});
+      const board = q.board;
+      const at = board?.issues.find((one) => one.key === ticket.key);
+      const working = board?.columns.find((column) => column.category === 'indeterminate');
+      quest = null;
+      home();
+      naming = {
+        district: open.district,
+        project,
+        slot: null,
+        written: `${ticket.key} ${ticket.summary}`.slice(0, 60),
+        revivable: null,
+        terminal: false,
+        isolated: true,
+        said: '',
+        brief: briefOf(recipe, ticket),
+        jira: {
+          site: q.link.site,
+          key: ticket.key,
+          to: at?.category === 'new' && working ? working.statuses : [],
+        },
+      };
+      void begin();
+    };
+
+    /** Whatever was half-written to the session goes back on the line. */
+    const giveLineBack = (): void => {
+      yard.line.write(inside ? (drafts.get(inside.id) ?? '') : '');
+    };
+
+    const pinTicket = async (): Promise<void> => {
+      const q = quest;
+      const summary = q?.written?.trim();
+      if (!q || !q.link) return;
+      if (!summary) {
+        const next = { ...q };
+        delete next.written;
+        quest = next;
+        giveLineBack();
+        paintQuest();
+        return;
+      }
+      const next: Quest = { ...q, waiting: 'pinning it up…' };
+      delete next.written;
+      quest = next;
+      paintQuest();
+      giveLineBack();
+      const made = await client.jira.create({ site: q.link.site, project: q.link.key, summary });
+      if (!quest) return;
+      const after = { ...quest };
+      delete after.waiting;
+      quest = after;
+      if (!made.success) say(jiraSaid(made.error), 6000);
+      await loadQuest();
+      paintQuest();
+    };
+
+    /** Everything a press on the board can mean. */
+    const questPressed = (pick: string): boolean => {
+      if (!pick.startsWith('jira-')) return false;
+      const q = quest;
+      const project = questProject;
+      if (pick === 'jira-connect') {
+        windmillOnJira();
+        openTheWindmill();
+      } else if (pick === 'jira-again') {
+        void loadQuest();
+      } else if (pick === 'jira-relink' && project) {
+        void client.jira.link({ project: project.id, to: null }).then(() => loadQuest());
+      } else if (pick.startsWith('jira-link:') && project && q) {
+        const [site, key] = pick.slice('jira-link:'.length).split(' ');
+        if (site && key) {
+          quest = { ...q, phase: 'reading' };
+          paintQuest();
+          void client.jira.link({ project: project.id, to: { site, key } }).then(() => loadQuest());
+        }
+      } else if (pick === 'jira-new' && q) {
+        quest = { ...q, written: '' };
+        yard.line.write('');
+        yard.line.take();
+        paintQuest();
+      } else if (pick === 'jira-open' && q?.board) {
+        window.mender.openLink(q.board.url);
+      } else if (pick === 'jira-open-ticket' && q?.ticket) {
+        window.mender.openLink(q.ticket.url);
+      } else if (pick === 'jira-take') {
+        void takeOn();
+      } else if (pick.startsWith('jira-move:') && q?.ticket) {
+        const key = q.ticket.key;
+        const next: Quest = { ...q, phase: 'board' };
+        delete next.ticket;
+        quest = next;
+        paintQuest(true);
+        void moveTicket(key, Number(pick.slice('jira-move:'.length)));
+      } else if (pick.startsWith('jira-session:')) {
+        quest = null;
+        home();
+        go(`task:${pick.slice('jira-session:'.length)}`);
+      }
+      return true;
+    };
+
         return;
       }
       const branch = shortName(on.ref);
@@ -3901,6 +4211,7 @@ async function boot(): Promise<void> {
       if (!writing) return;
       if (back) writing.held.add(path);
       else writing.held.delete(path);
+      quest = null;
       rewrite(rowsForCommit());
     };
 
@@ -4030,6 +4341,7 @@ async function boot(): Promise<void> {
       lastIn.set(project.id, task.id);
       await showYard(aim, project, task);
       arrived();
+      quest = null;
     };
 
     /**
@@ -4350,6 +4662,7 @@ async function boot(): Promise<void> {
       wood(addingServer(titling));
       yard.line.take();
     };
+      quest = null;
 
     /** Naming a skill of your own, the same one line and the same keys. */
     const askKnackAdd = (task: Task): void => {
@@ -4369,6 +4682,7 @@ async function boot(): Promise<void> {
       yard.line.take();
     };
 
+      quest = null;
     const wrote = (written: string): void => {
       if (reading?.noting) {
         reading = { ...reading, noting: { ...reading.noting, text: written } };
@@ -4387,6 +4701,7 @@ async function boot(): Promise<void> {
         // the obvious thing without you having to aim first.
         if (!yard.walk.on) yard.walk.step(1);
         return;
+      quest = null;
       }
       if (titling) {
         titling = { ...titling, written };
@@ -4420,11 +4735,16 @@ async function boot(): Promise<void> {
 
     const begin = async (): Promise<void> => {
       if (!naming) return;
-      const { project, slot, written, terminal, resume, isolated } = naming;
+      const { project, slot, written, terminal, resume, isolated, brief, jira } = naming;
       const said = naming.said ?? written;
       const aim = open;
       naming = null;
       const draftId = `cutting:${crypto.randomUUID()}`;
+      if (quest?.written !== undefined) {
+        quest = { ...quest, written };
+        paintQuest();
+        return;
+      }
       const draft: Task = {
         id: draftId,
         project: project.id,
@@ -4486,7 +4806,7 @@ async function boot(): Promise<void> {
       } else {
         /* Same in a conversation: in its own workspace what was written names
            the workspace, and the session opens with nothing said. */
-        const told = isolated ? '' : said;
+        const told = isolated ? (brief ?? '') : said;
         if (resume) {
           // A resumed conversation must actually run on Claude: the picked
           // session id is a Claude Code CLI session id, and only that
@@ -4531,6 +4851,11 @@ async function boot(): Promise<void> {
           if (!done.success && done.error.kind === 'refused') say(done.error.because, 6000);
         }
         if (aim) await showCard(aim, asked.task);
+      if (jira) {
+        void client.jira.take({ task: made.data.id, site: jira.site, key: jira.key });
+        if (jira.to.length)
+          void client.jira.move({ site: jira.site, key: jira.key, statuses: jira.to });
+      }
         return;
       }
       if (asked.mode === 'skill') {
@@ -4875,7 +5200,8 @@ async function boot(): Promise<void> {
         walkedUp = { ...walkedUp, printed: got.success ? got.data : null };
         rewrite(helper(walkedUp));
         /* What it prints keeps coming for as long as it is going and you are looking. */
-        if (walkedUp.hand.where === 'out') tailing = window.setTimeout(() => void readTrail(id), 1500);
+        if (walkedUp.hand.where === 'out')
+          tailing = window.setTimeout(() => void readTrail(id), 1500);
         return;
       }
       if (!task || !call) {
@@ -5123,6 +5449,7 @@ async function boot(): Promise<void> {
       }
       if (pick.startsWith('hand-check:')) {
         const id = pick.slice(11);
+      if (questPressed(pick)) return;
         const check = sending?.pull?.checks.find((one) => one.id === id);
         if (check) {
           yard.line.write(toHandCheck(check));
@@ -5664,6 +5991,27 @@ async function boot(): Promise<void> {
           if (live) wood(live.rows());
           else home();
           return;
+        if (quest) {
+          if (quest.written !== undefined) {
+            const next = { ...quest };
+            delete next.written;
+            quest = next;
+            giveLineBack();
+            paintQuest();
+            return;
+          }
+          if (quest.phase === 'ticket' || (quest.phase === 'failed' && quest.board)) {
+            const next: Quest = { ...quest, phase: 'board' };
+            delete next.ticket;
+            delete next.said;
+            quest = next;
+            paintQuest(true);
+            return;
+          }
+          quest = null;
+          home();
+          return;
+        }
         }
         if (browsingAt) {
           if (browsingAt.written !== browsingAt.url) {
@@ -5671,6 +6019,7 @@ async function boot(): Promise<void> {
             rewrite(browsing(browsingAt), browsingAt.el);
             return;
           }
+          quest = null;
           closeBrowser();
           if (live) wood(live.rows());
           else home();
@@ -5869,7 +6218,8 @@ async function boot(): Promise<void> {
         /* A shifted letter is its own chord, the way command-shift-T is not
            command-T; one nobody has bound still means the plain letter. */
         const pressed =
-          event.shiftKey && /^[a-z]$/i.test(event.key) ? event.key.toUpperCase() : event.key;
+          shifted ??
+          (event.shiftKey && /^[a-z]$/i.test(event.key) ? event.key.toUpperCase() : event.key);
         const meant = chordFor(pressed, standing(), hanging, keybindings);
         if (!meant) return false;
         /* The chord is always a fresh session, straight away. Turning the
@@ -5892,6 +6242,9 @@ async function boot(): Promise<void> {
           !event.altKey &&
           open &&
           !looking &&
+        /* Command-shift-comma reads as a comma on some keyboards rather than
+           the < it is printed with, and command-comma alone is settings. */
+        const shifted = { ',': '<', '.': '>' }[event.shiftKey ? event.key : ''];
           !talking &&
           !(sending?.written !== undefined) &&
           !amending &&
@@ -5920,6 +6273,7 @@ async function boot(): Promise<void> {
           else return yard.scrolled(event.key);
           return true;
         }
+          !(quest?.written !== undefined) &&
         /* Saying what a pull request is for, before opening it. */
         if (sending?.written !== undefined) {
           const mine = sending;
@@ -6159,15 +6513,15 @@ async function boot(): Promise<void> {
        stay on the rack, or go back on. */
     rackMenu = (id, x, y): void => {
       unslabIsland();
+    if (import.meta.env.DEV) {
+      Object.assign((window as unknown as Record<string, object>).__village ?? {}, { editing });
+    }
       const project = projects.find((one) => one.id === id);
       if (!project || editing?.active) return;
       const slab = document.createElement('div');
       slab.className = 'menu slab';
       const offer = isAway(project)
         ? pressing('put it back on the island', () => {
-    if (import.meta.env.DEV) {
-      Object.assign((window as unknown as Record<string, object>).__village ?? {}, { editing });
-    }
             unslabIsland();
             void putBack(id);
           })

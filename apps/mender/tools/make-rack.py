@@ -273,6 +273,9 @@ GLYPH_PALETTE = {
     "r": rgb("#e0603a"),
     "l": LOG["lt"],
     "d": LOG["dk"],
+    "b": rgb("#4c9aff"),
+    "B": rgb("#0c66e4"),
+    "n": rgb("#0747a6"),
 }
 GLYPHS = {
     # The windmill: a cart wheel front on, the same one make-wheel.py draws, small.
@@ -286,6 +289,19 @@ GLYPHS = {
         "WW..W..WW",
         ".WW.W.WW.",
         "..WWWWW..",
+    ],
+    # The quest board: Jira's own mark, two blue chevrons folded into a
+    # diamond, so it reads as Jira from across the room.
+    "glyph-jira": [
+        "....b....",
+        "...bbb...",
+        "..bbbBb..",
+        ".bbb.BBn.",
+        "bbb...BBn",
+        ".bBB.BBn.",
+        "..BBBBn..",
+        "...BBn...",
+        "....n....",
     ],
     # The way home: the fire the island grows from.
     "glyph-fire": [

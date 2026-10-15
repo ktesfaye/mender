@@ -1256,6 +1256,24 @@ Everything else the windmill will eventually hold — updating and
 authenticating agents, MCP, skills, accounts, task defaults — still has
 nowhere to live.
 
+**Jira is a board pinned up outside the yard.** A blue diamond on the rack,
+beside the sky and the wheel, lays the project's own Jira board over the yard:
+its columns as Jira has them, named and ordered by whoever set the board up,
+every ticket a parchment note pinned under its column, yours pinned brighter
+than the team's, the done ones weathered into the wood. A note somebody here is
+working on carries that session's lantern light, breathing while it works and
+orange when it wants you. Pressing a note reads the ticket; dragging it to
+another column moves it in Jira; "take this on" cuts an isolated workspace
+named after the ticket and starts a session in it told whatever the windmill's
+Jira page says to tell it, and moves the ticket out of to-do. "Pin a new one"
+is written on the line like everything else. The windmill holds the sites,
+several at once, a work one and a personal one, each an email and an API token
+kept with the machine's own safe storage; each project picks its board once.
+A sprint board shows the running sprint, a plain one its open work, and a
+project with no board at all, the way a service desk is, one column per
+status. It is read again every half minute while it is open, since Jira can
+only call a machine that the internet can reach.
+
 **A session remembers what it was last thinking with.** Change an agent's
 model or mode on one session and every fresh session with that same agent
 starts on it too, not on whatever it happens to open with. And the line does
