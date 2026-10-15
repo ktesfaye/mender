@@ -456,6 +456,15 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
         send();
         return true;
       }
+      /* Backspace lands on the line the same as a letter does, so a picture
+         standing at its end is put down without pressing the line first. */
+      if (event.key === 'Backspace') {
+        if (event.metaKey || event.ctrlKey || event.altKey) return false;
+        if (at instanceof HTMLInputElement || at instanceof HTMLTextAreaElement) return false;
+        if (!said.textContent) return false;
+        take();
+        return true;
+      }
       if (event.key.length !== 1) return false;
       take();
       return true;
