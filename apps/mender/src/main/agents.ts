@@ -1734,11 +1734,25 @@ export function createAgents(
          Escape does it: what was asked goes back on the line to be said
          again, rather than sitting on the post as one more thing stopped. */
       const asked = keep ? undefined : house?.untouched();
+      /* What is there was not asked by opening the turn but slipped into it
+         while it ran and never read: calling it off is "read this now", the
+         same as with it still waiting, so it goes out again on its own. */
+      const rehand = asked?.steered ? asked : undefined;
       house?.hushing(true);
       const done = await runtimes.acp.cancelTurn({ conversationId: conversation });
       if (!done.success) {
         house?.hushing(false);
         return refusal(whatItSaid(done.error));
+      }
+      if (rehand) {
+        house?.rehand();
+        house?.again();
+        const carrying = rehand.pictures.flatMap((one): Carried[] => {
+          const mime = pictured(one.mimeType);
+          return mime ? [{ id: one.id, name: one.name, mime }] : [];
+        });
+        void doTell(task, rehand.text, carrying.length ? carrying : undefined);
+        return { success: true, data: {} };
       }
       if (!asked) return { success: true, data: {} };
       const key = backKey(asked);
@@ -2304,19 +2318,29 @@ class House {
     return askedOnly(turn, true);
   }
 
+  /** Turns whose note was called off unread and handed straight over again. */
+  private readonly rehanded = new Set<string>();
+
+  /** The turn in flight was called off unread and its note goes out again,
+   *  so the post shows it once, as the turn it opens next. */
+  rehand(): void {
+    if (this.live) this.rehanded.add(this.live.id);
+  }
+
   /** The turns as the post shows them, without any that went back on the line. */
   private shown(turns: TranscriptTurn[]): TranscriptTurn[] {
     const back = this.takenBack();
-    if (!back.length) return turns;
+    if (!back.length && !this.rehanded.size) return turns;
     const out: TranscriptTurn[] = [];
     let dropped = false;
     for (const whole of turns) {
       /* Claude writes the stop down as though you had said it, at the head of
          whatever comes next, and it went with the note it stopped. */
-      const turn = dropped ? withoutStops(whole) : whole;
+      const turn: TranscriptTurn = dropped ? withoutStops(whole) : whole;
       if (turn !== whole && !turn.items.some(spoken)) continue;
       const asked = askedOnly(turn, true);
-      dropped = asked !== undefined && back.includes(backKey(asked));
+      dropped =
+        this.rehanded.has(whole.id) || (asked !== undefined && back.includes(backKey(asked)));
       if (!dropped) out.push(turn);
     }
     return out;
@@ -3373,7 +3397,12 @@ type Flat = (
 ) & { turn: number };
 
 /** What a turn was asked: its words, and the pictures that went with them. */
-type Asked = { text: string; pictures: readonly AttachmentRef[] };
+type Asked = {
+  text: string;
+  pictures: readonly AttachmentRef[];
+  /** Handed into a turn already running rather than opening one. */
+  steered?: boolean;
+};
 
 /** A picture handed back to the line, with where it is on this machine. */
 type Returned = Carried & { path?: string };
@@ -3412,7 +3441,7 @@ function askedOnly(turn: TranscriptTurn, stopped = false): Asked | undefined {
     if (stopped && INTERRUPTED.test(text)) continue;
     const pictures = item.attachments ?? [];
     if (asked !== undefined || (!text && !pictures.length) || carried(text)) return undefined;
-    asked = { text, pictures };
+    asked = { text, pictures, ...(STEERED.test(item.id) ? { steered: true } : {}) };
   }
   return asked;
 }
