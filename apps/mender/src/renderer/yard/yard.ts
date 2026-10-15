@@ -484,6 +484,10 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     }
     return goBack(event.key === 'ArrowUp' ? 1 : -1, written);
   }
+  function holdsRecalled(): boolean {
+    if (recalled < 0 || recalledIn !== last?.session?.id) return false;
+    return line.written() === last?.session?.notes?.[recalled]?.said;
+  }
   function goBack(by: number, written: string): boolean {
     const notes = last?.session?.notes ?? [];
     const to = recalled + by;
@@ -1218,6 +1222,10 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     narrowing: (offers, from) => {
       if (dismissedAt !== null && dismissedAt === line.written()) offers = [];
       else dismissedAt = null;
+      /* A note walked back to with the arrows that happens to start with a
+         slash is still being walked through, not asked about, so the list
+         stays shut and the next up goes on to the one before it. */
+      if (holdsRecalled()) offers = [];
       /* Asked before the lines are replaced, because afterwards there is
          nothing left to ask about. */
       const wasInside = standingInOverlay();
