@@ -513,6 +513,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
      because a list you have to arrow into before Return does anything is a
      list that made you press two keys to do one thing. */
   line.onInstead(standingInOverlay);
+  line.onWaiting(() => (last?.session?.waiting ?? []).some((one) => !one.handed));
 
   /** Whether the keyboard's mark is on one of the lines the overlay opened. */
   function standingInOverlay(): boolean {

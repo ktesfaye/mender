@@ -105,6 +105,12 @@ export interface Line {
    */
   onInstead(run: () => boolean): void;
   /**
+   * Whether something said is still waiting its turn. An empty Return then
+   * means "read it now", which is wanted from wherever the keyboard is, not
+   * only from the line.
+   */
+  onWaiting(run: () => boolean): void;
+  /**
    * First refusal on any key, before the line does anything with it. Whatever
    * a slash or an @ has opened walks on the arrows, picks on Tab and closes on
    * Escape; answering true says it took the key.
@@ -149,6 +155,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   let empty: () => void = () => {};
   let typed: (said: string) => void = () => {};
   let instead: () => boolean = () => false;
+  let waiting: () => boolean = () => false;
   let first: (event: KeyboardEvent) => boolean = () => false;
   let putDown: (id: string) => void = () => {};
   let pickBack: (id: string) => void = () => {};
@@ -442,7 +449,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
       if (event.key === 'Enter') {
         if (event.shiftKey || event.isComposing || event.defaultPrevented) return false;
         if (at instanceof HTMLInputElement || at instanceof HTMLTextAreaElement) return false;
-        if (!words().trim() && !carried.length) return false;
+        if (!words().trim() && !carried.length && !waiting()) return false;
         event.preventDefault();
         take();
         if (instead()) return true;
@@ -455,6 +462,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     },
     onSay: (run) => (say = run),
     onInstead: (run) => (instead = run),
+    onWaiting: (run) => (waiting = run),
     onKey: (run) => (first = run),
     at: (index) => {
       /* Walked off the text itself, because a contenteditable is free to split
