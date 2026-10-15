@@ -1745,7 +1745,9 @@ export function createAgents(
         return refusal(whatItSaid(done.error));
       }
       if (rehand) {
-        house?.rehand();
+        const key = REHANDED + backKey(rehand);
+        takenBack = { ...takenBack, [task]: [...(takenBack[task] ?? []), key].slice(-20) };
+        void store.set(TAKEN_BACK_KEY, takenBack as unknown as never);
         house?.again();
         const carrying = rehand.pictures.flatMap((one): Carried[] => {
           const mime = pictured(one.mimeType);
@@ -2318,19 +2320,10 @@ class House {
     return askedOnly(turn, true);
   }
 
-  /** Turns whose note was called off unread and handed straight over again. */
-  private readonly rehanded = new Set<string>();
-
-  /** The turn in flight was called off unread and its note goes out again,
-   *  so the post shows it once, as the turn it opens next. */
-  rehand(): void {
-    if (this.live) this.rehanded.add(this.live.id);
-  }
-
   /** The turns as the post shows them, without any that went back on the line. */
   private shown(turns: TranscriptTurn[]): TranscriptTurn[] {
     const back = this.takenBack();
-    if (!back.length && !this.rehanded.size) return turns;
+    if (!back.length) return turns;
     const out: TranscriptTurn[] = [];
     let dropped = false;
     for (const whole of turns) {
@@ -2339,8 +2332,12 @@ class House {
       const turn: TranscriptTurn = dropped ? withoutStops(whole) : whole;
       if (turn !== whole && !turn.items.some(spoken)) continue;
       const asked = askedOnly(turn, true);
+      /* One handed straight over again goes out as a turn of its own, so
+         only the turn it was called off in comes off, never the one in flight. */
       dropped =
-        this.rehanded.has(whole.id) || (asked !== undefined && back.includes(backKey(asked)));
+        asked !== undefined &&
+        (back.includes(backKey(asked)) ||
+          ((whole !== this.live || !!asked.steered) && back.includes(REHANDED + backKey(asked))));
       if (!dropped) out.push(turn);
     }
     return out;
@@ -3406,6 +3403,9 @@ type Asked = {
 
 /** A picture handed back to the line, with where it is on this machine. */
 type Returned = Carried & { path?: string };
+
+/** Marks a taken-back key whose note went straight out again rather than to the line. */
+const REHANDED = '\u0001';
 
 /** How Claude's own transcript writes down a turn you stopped. */
 const INTERRUPTED = /^\[Request interrupted by user[^\]]*\]$/;
