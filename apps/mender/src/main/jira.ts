@@ -15,7 +15,7 @@ import {
   type JiraSite,
   type JiraTaken,
 } from '../shared/jira';
-import { adfToMarkdown } from './jira-adf';
+import { adfToMarkdown } from '../shared/jira-adf';
 import { boardLinkOf, hostOf } from './jira-link';
 
 /**
@@ -66,6 +66,9 @@ export function createJiraController(): Controller {
     queue = next.catch(() => undefined);
     return next;
   };
+
+  /** Avatars and icons, kept for as long as the app is open. */
+  const images = new Map<string, string>();
 
   const siteOf = async (site: string): Promise<StoredSite | undefined> =>
     (await stored()).sites?.find((each) => each.site === site);
@@ -577,6 +580,55 @@ export function createJiraController(): Controller {
         body: { fields: { project: { key: project }, summary, issuetype: { id: type.id } } },
       });
       return made.success ? { success: true, data: { key: made.data.key } } : made;
+    },
+    api: async ({ site, method, path, body }) => {
+      if (!path.startsWith('/rest/') || path.includes('..'))
+        return { success: false, error: { kind: 'refused', said: 'only Jira\'s own API.' } };
+      return call<unknown>(site, path, { method, ...(body === undefined ? {} : { body }) });
+    },
+    image: async ({ site, url }) => {
+      const kept = images.get(url);
+      if (kept) return { success: true, data: kept };
+      let at: URL;
+      try {
+        at = new URL(url, `https://${site}`);
+      } catch {
+        return { success: false, error: { kind: 'refused', said: 'not an address.' } };
+      }
+      if (at.protocol !== 'https:')
+        return { success: false, error: { kind: 'refused', said: 'not an address.' } };
+      /* Only the site itself is handed the token; avatars on Atlassian's
+         and Gravatar's own servers are public. */
+      const own = at.hostname === site;
+      const headers: Record<string, string> = {};
+      if (own) {
+        const known = await siteOf(site);
+        if (!known) return { success: false, error: { kind: 'not-connected' } };
+        try {
+          const token = safeStorage.decryptString(Buffer.from(known.sealed, 'base64'));
+          headers.Authorization = `Basic ${Buffer.from(`${known.email}:${token}`).toString('base64')}`;
+        } catch {
+          return { success: false, error: { kind: 'not-connected' } };
+        }
+      }
+      try {
+        const response = await fetch(at.href, { headers, signal: AbortSignal.timeout(20_000) });
+        if (!response.ok)
+          return { success: false, error: { kind: 'refused', said: `Jira said ${response.status}.` } };
+        const type = response.headers.get('content-type')?.split(';')[0] ?? 'image/png';
+        const bytes = Buffer.from(await response.arrayBuffer());
+        const data = `data:${type};base64,${bytes.toString('base64')}`;
+        if (bytes.length < 400_000) {
+          images.set(url, data);
+          if (images.size > 800) images.delete(images.keys().next().value as string);
+        }
+        return { success: true, data };
+      } catch (cause) {
+        return {
+          success: false,
+          error: { kind: 'unreachable', said: cause instanceof Error ? cause.message : String(cause) },
+        };
+      }
     },
     take: async (taken) => {
       await mutate((now) => ({

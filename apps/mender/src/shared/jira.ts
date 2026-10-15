@@ -178,6 +178,27 @@ export const jiraContract = defineContract({
     data: z.object({ key: z.string() }),
     error: jiraErrorSchema,
   }),
+  /**
+   * Anything else Jira's REST API answers, on a connected site, with the
+   * token kept here. Only `/rest/` paths, so it is Jira's API and nothing
+   * else on the site.
+   */
+  api: fallible({
+    input: z.object({
+      site: z.string(),
+      method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('GET'),
+      path: z.string(),
+      body: z.unknown().optional(),
+    }),
+    data: z.unknown(),
+    error: jiraErrorSchema,
+  }),
+  /** An avatar, an icon or an attachment, as a data URL, signed in where it has to be. */
+  image: fallible({
+    input: z.object({ site: z.string(), url: z.string() }),
+    data: z.string(),
+    error: jiraErrorSchema,
+  }),
   /** Which session took which ticket on, so its card can carry its light. */
   take: procedure({ input: jiraTakenSchema, output: z.object({}) }),
   taken: procedure({ input: z.object({}), output: z.array(jiraTakenSchema) }),

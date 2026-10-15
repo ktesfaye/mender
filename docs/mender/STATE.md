@@ -4114,3 +4114,23 @@ in a browser, paste the address bar, return. It saves, names the board under
 the field, and replaces whatever was picked before, by accident or not;
 clearing it lets the project pick again off the rack. Driven in a dev
 instance: a pasted link saved, the board named, and the link stored.
+
+### Jira is drawn as Jira, every field and all, not as notes on the wood (2026-10-15) — done
+
+The quest board on the brown wash is gone. The blue token opens the project's
+board over the whole window in Jira's own dark theme: its columns, sprint,
+quick filters, people, epic and type filters and search; cards with epic tag,
+type, key, flag, points, priority and the assignee's face; drag to move through
+the workflow and to rank. A card opens Jira's issue view: editable summary,
+rendered description edited as markdown, children, subtasks, links,
+attachments, comments (add, edit, delete) and history, with status
+transitions and every editmeta field down the right edited with Jira's own
+pickers. Create, site-wide search and "open in Jira" are in the top bar.
+Sessions' lights and "take it on" sit on top. Boards with no board behind them
+get a column per status. Driven in a dev instance on the personal site: a
+label added and removed, a comment written with bold and deleted, status moved
+there and back, a card dragged to another column, a ticket created into a
+column, a session's light on its card, and a board-less project. "Take it on"
+was not driven end to end, since it starts a real agent turn; only its ticket
+read changed.
+
