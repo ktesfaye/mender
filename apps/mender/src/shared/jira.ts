@@ -27,6 +27,10 @@ export const jiraLinkSchema = z.object({
   key: z.string(),
   /** Which of that project's boards, since a big project has one per team. */
   board: z.number().optional(),
+  /** The board's own name, kept so it can be said without asking Jira. */
+  name: z.string().optional(),
+  /** The link it was set from, when it was pasted. */
+  url: z.string().optional(),
 });
 export type JiraLink = z.infer<typeof jiraLinkSchema>;
 
@@ -143,6 +147,14 @@ export const jiraContract = defineContract({
   boards: fallible({
     input: z.object({ query: z.string() }),
     data: z.object({ boards: z.array(jiraBoardPickSchema) }),
+    error: jiraErrorSchema,
+  }),
+  /** Every project's board, keyed by project. */
+  links: procedure({ input: z.object({}), output: z.record(z.string(), jiraLinkSchema) }),
+  /** Ties a project to the board a pasted link is to; an empty link unties it. */
+  setBoard: fallible({
+    input: z.object({ project: z.string(), url: z.string() }),
+    data: jiraLinkSchema.nullable(),
     error: jiraErrorSchema,
   }),
   linkOf: procedure({

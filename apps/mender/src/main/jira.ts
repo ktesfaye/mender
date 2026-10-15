@@ -459,6 +459,48 @@ export function createJiraController(): Controller {
       }
       return { success: true, data: { boards: out } };
     },
+    links: async () => (await stored()).links ?? {},
+    setBoard: async ({ project, url }) => {
+      const written = url.trim();
+      const tie = async (to: JiraLink | null): Promise<void> => {
+        await mutate((now) => {
+          const links = { ...(now.links ?? {}) };
+          if (to) links[project] = to;
+          else delete links[project];
+          return { ...now, links };
+        });
+      };
+      if (!written) {
+        await tie(null);
+        return { success: true, data: null };
+      }
+      const pasted = boardLinkOf(written);
+      if (!pasted)
+        return {
+          success: false,
+          error: {
+            kind: 'refused',
+            said: "that isn't a Jira link. open the board in your browser and copy the address bar.",
+          },
+        };
+      const got = await linkedBoard(pasted);
+      if (!got.success) return got;
+      const found = got.data.boards[0];
+      if (!found)
+        return {
+          success: false,
+          error: { kind: 'refused', said: 'Jira shows no board at that link to this account.' },
+        };
+      const to: JiraLink = {
+        site: found.site,
+        key: found.key,
+        board: found.board,
+        name: found.name,
+        url: written,
+      };
+      await tie(to);
+      return { success: true, data: to };
+    },
     linkOf: async ({ project }) => (await stored()).links?.[project] ?? null,
     link: async ({ project, to }) => {
       await mutate((now) => {

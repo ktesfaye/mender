@@ -1952,6 +1952,17 @@ async function boot(): Promise<void> {
           setRecipe: async (recipe) => {
             await client.jira.setRecipe({ recipe });
           },
+          projects: () => projects.map((one) => ({ id: one.id, name: one.name })),
+          links: () => client.jira.links({}),
+          setBoard: async (project, url) => {
+            const done = await client.jira
+              .setBoard({ project, url }, { timeoutMs: 60_000 })
+              .catch(() => null);
+            if (!done) return 'Jira took too long to answer.';
+            if (!done.success) return jiraSaid(done.error);
+            if (quest && questProject?.id === project) void loadQuest();
+            return null;
+          },
         },
         closed: () => {
           if (windmill === ui) windmill = null;
@@ -3688,6 +3699,13 @@ async function boot(): Promise<void> {
       const phase = quest.phase === 'ticket' ? 'ticket' : 'board';
       const next: Quest = { ...quest, link, board: got.data, lit, phase };
       delete next.said;
+      /* Tied from somewhere else while the search was up: the line was the
+         search's, and is the session's again. */
+      if (quest.phase === 'linking') {
+        delete next.written;
+        delete next.picks;
+        giveLineBack();
+      }
       quest = next;
       /* Only repainted when something on it actually changed, so the half
          minute's look does not make the whole board blink. */

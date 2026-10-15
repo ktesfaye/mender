@@ -4106,3 +4106,11 @@ the whole time, a load that takes too long says so instead of hanging, and a
 board's link pasted on the line with the board open, whatever it is showing,
 swaps straight to that board. Driven in a dev instance: a pasted link with a
 board open swapped it.
+
+### Each project's board is a link pasted in the windmill (2026-10-14) — done
+
+The windmill's Jira page has a field per project for its board: open the board
+in a browser, paste the address bar, return. It saves, names the board under
+the field, and replaces whatever was picked before, by accident or not;
+clearing it lets the project pick again off the rack. Driven in a dev
+instance: a pasted link saved, the board named, and the link stored.

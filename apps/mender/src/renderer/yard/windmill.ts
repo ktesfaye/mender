@@ -35,7 +35,7 @@ import {
   type SessionShare,
   type UsageWindow,
 } from '@shared/five-hours';
-import type { JiraSite } from '@shared/jira';
+import type { JiraLink, JiraSite } from '@shared/jira';
 import type { UpdateState } from '@shared/updates';
 import { counted } from '../board/card';
 import { chordLabel, chordOf, rebindableDoings } from '../board/finder';
@@ -139,6 +139,11 @@ export interface WindmillDoings {
     connect(site: string, email: string, token: string): Promise<string | null>;
     forget(site: string): Promise<void>;
     setRecipe(recipe: string): Promise<void>;
+    /** Every project in the village, for a board link each. */
+    projects(): { id: string; name: string }[];
+    links(): Promise<Record<string, JiraLink>>;
+    /** Null when it took, or what went wrong. An empty link unties it. */
+    setBoard(project: string, url: string): Promise<string | null>;
   };
   closed(): void;
 }
@@ -229,6 +234,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   const agentInstall = section('Which install');
   const jiraSites = section('Sites');
   const jiraAdd = section('Connect a site');
+  const jiraBoards = section("Each project's board");
   const jiraRecipe = section('Taking a ticket on');
   const worktrees = section('Worktrees Mender has cut');
   const spend = section('Right now');
@@ -247,7 +253,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       agentEnv.root,
       agentInstall.root,
     ]),
-    jira: pageOf([intro(JIRA), jiraSites.root, jiraAdd.root, jiraRecipe.root]),
+    jira: pageOf([intro(JIRA), jiraSites.root, jiraBoards.root, jiraAdd.root, jiraRecipe.root]),
     disk: pageOf([intro(DISK), worktrees.root]),
     machine: pageOf([spend.root, five.root, shares.root]),
   };
@@ -497,6 +503,8 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   let jiraTrying = false;
   let jiraForgetting: string | null = null;
   let jiraDrawn = false;
+  /** What went wrong setting each project's board, kept until it next takes. */
+  const jiraBoardFailed: Record<string, string> = {};
   /** The empty form for one more site, folded away once one is connected. */
   let jiraAdding = false;
   async function drawJira(): Promise<void> {
@@ -598,6 +606,36 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       ]);
     };
     drawJiraAdd();
+
+    jiraBoards.root.style.display = held.sites.length ? '' : 'none';
+    if (held.sites.length && !busy(jiraBoards)) {
+      const links = await does.jira.links();
+      jiraBoards.fill([
+        hintLine(
+          "Open the board in your browser, copy the address bar, and paste it here. Return saves it; clearing it lets the project pick again."
+        ),
+        ...does.jira.projects().map((one) => {
+          const link = links[one.id];
+          const field = input(
+            link?.url ?? '',
+            'https://yourteam.atlassian.net/jira/software/projects/KEY/boards/12',
+            async (url) => {
+              if (url.trim() === (link?.url ?? '')) return;
+              const said = await does.jira.setBoard(one.id, url);
+              jiraBoardFailed[one.id] = said ?? '';
+              took(jiraBoards, said ? undefined : 'saved');
+              void drawJira();
+            }
+          );
+          const now = el('span', 'settings-hint-inline');
+          now.textContent = link
+            ? `showing ${link.name ?? `the ${link.key} board`} · ${link.site.replace('.atlassian.net', '')}`
+            : 'no board picked yet';
+          const failed = jiraBoardFailed[one.id];
+          return formRow(one.name, field, now, ...(failed ? [troubled(failed)] : []));
+        }),
+      ]);
+    }
 
     const recipe = area(held.recipe, 'Work on {key}: {summary}', 6, async (text) => {
       await does.jira.setRecipe(text);
