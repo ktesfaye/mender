@@ -4150,6 +4150,11 @@ a ticket, its epic opened from the chip, back, Escape out to the board.
 Columns now only reach down as far as their cards, so an empty or sparse one
 is a short lane rather than a tall dark slab, titles are a size larger, and a
 board with no sprint no longer writes its name twice.
+Then redrawn on Jira's own proportions and in neutral darks instead of brown:
+charcoal lanes, slate cards with tight titles in the answer's face, keys and
+numbers in Josefin (Grunell's 1 reads as an I), rounded chips and round faces,
+column names as Jira writes them. The ticket window and the slabs speak the
+same way, with no spaced capitals left in them.
 
 ### Jira is written into the yard at night, with everything its board does (2026-10-15) — done
 

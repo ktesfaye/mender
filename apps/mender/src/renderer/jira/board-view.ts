@@ -596,7 +596,7 @@ export function boardView(
       'div',
       'foot',
       icon(jira, card.type.icon, card.type.name),
-      h('span', '', card.key),
+      h('span', 'key', card.key),
       h('span', 'grow'),
       look.show.due && card.due ? h('span', `due${soon ? ' soon' : ''}`, day(card.due)) : null,
       card.flagged ? h('span', 'flagged', h('i')) : null,
@@ -1101,7 +1101,7 @@ export function boardView(
       setFolded(() => toggle(folded, column.name));
     });
     void at;
-    return h('div', 'jr-label sh', column.name.toLowerCase(), n, fold);
+    return h('div', 'jr-label', column.name, n, fold);
   };
 
   const columnOfCards = (column: Column, at: number, mine: Card[], opts: { lane?: { epic?: string; who?: string }; head?: boolean; all?: Card[] } = {}): HTMLElement => {
