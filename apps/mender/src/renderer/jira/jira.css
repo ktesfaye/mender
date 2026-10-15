@@ -23,6 +23,9 @@
 .jr .sore, .jr-popback .sore { color: #f2665a; }
 .jr .quiet, .jr-popback .quiet { color: #738496; }
 
+.jr > .jr-top, .jr > .jr-body { width: min(100%, calc(var(--cols, 5) * 332px + (var(--cols, 5) - 1) * 12px)); margin-left: auto; margin-right: auto; }
+.jr > .jr-top { flex-wrap: wrap; row-gap: 8px; }
+
 /* While the board is up, the yard keeps its heading and its rail and nothing else. */
 .yard.under-jira > :not(.rack) { visibility: hidden; }
 .yard.under-jira [data-head], .yard.under-jira [data-stays='signs'], .yard.under-jira [data-stays='rail'] { visibility: visible; }
@@ -65,12 +68,12 @@
 /* ── the board ─────────────────────────────────────────────────────────── */
 .jr-body { flex: 1 1 auto; min-height: 0; position: relative; }
 .jr-cols { position: absolute; inset: 0; display: flex; gap: 12px; align-items: flex-start; }
-.jr-col { flex: 1 1 0; min-width: 0; max-height: 100%; display: flex; flex-direction: column; background: rgba(22, 26, 29, 0.94); border-radius: 8px; transition: box-shadow 0.15s; }
+.jr-col { flex: 0 1 332px; min-width: 0; max-height: 100%; display: flex; flex-direction: column; background: rgba(22, 26, 29, 0.94); border-radius: 8px; transition: box-shadow 0.15s; }
 .jr-col.over { box-shadow: inset 0 0 0 1px rgba(224, 181, 106, 0.45); }
 .jr-col.folded { flex: 0 0 44px; cursor: pointer; }
 .jr-col.folded:hover .jr-label { color: #e0b56a; }
 .jr-col.folded .jr-label { writing-mode: vertical-rl; padding: 16px 0; gap: 12px; align-items: center; }
-.jr-label { flex: 0 0 auto; font: 400 14px 'Mender Said'; color: #b6c2cf; padding: 14px 16px 10px; display: flex; gap: 8px; align-items: baseline; white-space: nowrap; }
+.jr-label { flex: 0 0 auto; font: 400 15.5px 'Mender Said'; color: #b6c2cf; padding: 14px 16px 10px; display: flex; gap: 8px; align-items: baseline; white-space: nowrap; }
 .jr-label .n { font: 400 13px 'Mender Said'; color: #738496; }
 .jr-label .n.over { color: #f2665a; }
 .jr-label .fold { margin-left: auto; font: 400 12px 'Mender Said'; color: #738496; cursor: pointer; opacity: 0; transition: opacity 0.12s; }
@@ -86,16 +89,16 @@
 .jr-mark { height: 2px; background: #e0b56a; box-shadow: 0 0 8px rgba(224, 181, 106, 0.6); margin: -5px 0 -5px; border-radius: 1px; }
 
 /* ── a card: Jira's own proportions, in the village's faces ─────────────── */
-.jr-note { position: relative; background: #22272b; border-radius: 6px; box-shadow: 0 1px 1px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(166, 197, 226, 0.05); padding: 14px 14px 12px; color: #dee4ea; font: 400 15px/1.45 'Mender Said'; cursor: grab; transition: background 0.12s, box-shadow 0.12s, opacity 0.12s; }
+.jr-note { position: relative; background: #22272b; border-radius: 6px; box-shadow: 0 1px 1px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(166, 197, 226, 0.05); padding: 14px 14px 12px; color: #dee4ea; font: 400 16.5px/1.45 'Mender Said'; cursor: grab; transition: background 0.12s, box-shadow 0.12s, opacity 0.12s; }
 .jr-note:hover, .jr-note.held { background: #2c333a; }
 .jr-note.dragging { opacity: 0.35; }
 .jr-note .sum { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; padding-right: 6px; }
 .jr-tags { display: inline-flex; gap: 4px; margin-right: 6px; vertical-align: 1px; }
-.jr-tg { font: 400 11px/1 'Mender Said'; color: #8c9bab; background: rgba(166, 197, 226, 0.07); border-radius: 3px; padding: 3px 5px 2px; white-space: nowrap; }
+.jr-tg { font: 400 12px/1 'Mender Said'; color: #8c9bab; background: rgba(166, 197, 226, 0.07); border-radius: 3px; padding: 3px 5px 2px; white-space: nowrap; }
 .jr-note .labels { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
-.jr-note .lab { font: 400 12.5px/1.2 'Mender Said'; color: #c7d1db; border: 1px solid rgba(166, 197, 226, 0.22); border-radius: 4px; padding: 2px 6px; }
+.jr-note .lab { font: 400 13.5px/1.2 'Mender Said'; color: #c7d1db; border: 1px solid rgba(166, 197, 226, 0.22); border-radius: 4px; padding: 2px 6px; }
 .jr-note .chips { display: flex; margin-top: 10px; min-width: 0; }
-.jr-note .epic, .jr-ask .epic { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 3px 9px 3px 7px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--epic) 70%, transparent); background: color-mix(in srgb, var(--epic) 14%, transparent); font: 400 12.5px/1.2 'Mender Said'; color: #c7d1db; cursor: pointer; white-space: nowrap; }
+.jr-note .epic, .jr-ask .epic { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 3px 9px 3px 7px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--epic) 70%, transparent); background: color-mix(in srgb, var(--epic) 14%, transparent); font: 400 13.5px/1.2 'Mender Said'; color: #c7d1db; cursor: pointer; white-space: nowrap; }
 .jr-note .epic i, .jr-ask .epic i { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; background: var(--epic); }
 .jr-note .epic span, .jr-ask .epic span { overflow: hidden; text-overflow: ellipsis; }
 .jr-note .epic:hover, .jr-ask .epic:hover { color: #f0cf8a; }
@@ -109,7 +112,7 @@
 .jr-pri i { width: 9px; height: 2px; background: currentColor; }
 .jr-pri.up { color: #f2665a; }
 .jr-pri.down { color: #6fa3d8; }
-.jr-note .jr-face, .jr-old .jr-face { width: 24px; height: 24px; border-radius: 50%; font-size: 9px; box-shadow: none; }
+.jr-note .jr-face, .jr-old .jr-face { width: 26px; height: 26px; border-radius: 50%; font-size: 9px; box-shadow: none; }
 .jr-note .jr-face.none, .jr-old .jr-face.none { background: radial-gradient(circle at 50% 38%, #738496 0 4px, transparent 4.5px), radial-gradient(ellipse 8px 6px at 50% 100%, #738496 0 100%, transparent 101%), #2c333a; border: 0; }
 .jr-note .subs { display: flex; align-items: center; gap: 5px; margin: 12px -14px -12px; padding: 9px 14px; border-top: 1px solid rgba(166, 197, 226, 0.07); font: 400 13px 'Mender Said'; color: #8c9bab; }
 .jr-note .subs i { width: 8px; height: 8px; border-radius: 2px; border: 1px solid #738496; }
@@ -134,9 +137,9 @@
 
 /* Grunell's 1 is an I, so keys and numbers are set in Josefin. */
 .jr-note .foot > .key, .jr-note .foot > .due, .jr-pts, .jr-label .n, .jr-note .subs span, .jr-old .when { font-family: 'Josefin Sans', sans-serif; font-weight: 600; letter-spacing: 0.04em; }
-.jr-note .foot > .key, .jr-note .foot > .due { font-size: 11px; padding-top: 2px; }
+.jr-note .foot > .key, .jr-note .foot > .due { font-size: 12px; padding-top: 2px; }
 .jr-note .foot > .key { color: #738496; }
-.jr-pts, .jr-label .n { font-size: 10.5px; }
+.jr-pts, .jr-label .n { font-size: 11.5px; }
 .jr-label .n { color: #738496; }
 .jr-note .sum { line-height: 1.42; }
 
@@ -153,7 +156,7 @@
 .jr-old:hover { background: #22272b; }
 .jr-old.dragging { opacity: 0.3; }
 .jr-old .edge { position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 2px 2px 0; }
-.jr-old .said { font: 400 14px/1.45 'Mender Said'; color: #8c9bab; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.jr-old .said { font: 400 15px/1.45 'Mender Said'; color: #8c9bab; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .jr-old:hover .said { color: #c7d1db; }
 .jr-old .when { display: flex; align-items: center; gap: 7px; margin-top: 6px; font: 400 12px 'Mender Said'; color: #738496; }
 .jr-old .when s { text-decoration-color: rgba(115, 132, 150, 0.7); }
@@ -165,9 +168,9 @@
 
 /* ── grouped: beams with signboards ────────────────────────────────────── */
 .jr-lanes { position: absolute; inset: 0; overflow-y: auto; }
-.jr-lanes .jr-heads { display: flex; gap: 10px; position: sticky; top: 0; z-index: 3; }
+.jr-lanes .jr-heads { display: flex; gap: 12px; position: sticky; top: 0; z-index: 3; }
 .jr-lanes .jr-heads .jr-col { background: rgba(22, 26, 29, 0.97); }
-.jr-lanes .jr-lane { display: flex; gap: 10px; padding-top: 38px; }
+.jr-lanes .jr-lane { display: flex; gap: 12px; padding-top: 38px; }
 .jr-lanes .jr-lane .jr-col { border-radius: 4px; }
 .jr-lanes .jr-lane .jr-scroll { overflow: visible; padding-top: 8px; }
 .jr-beam { position: relative; height: 9px; margin: 22px 0 0; background: linear-gradient(#5e4326, #2c333a); box-shadow: 0 2px 0 #120d07; }

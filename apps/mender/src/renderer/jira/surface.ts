@@ -183,6 +183,8 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
     const keep = root.querySelector<HTMLInputElement>('.jr-find');
     const typing = keep && document.activeElement === keep;
     const at = typing ? keep.selectionStart : null;
+    /* Only as wide as its columns, the way Jira keeps them, centred in the yard. */
+    root.style.setProperty('--cols', String(Math.max(board.columns.length, 3)));
     shown = boardView(jira, board, () => lit, filters, look, root, boardHands);
     root.replaceChildren(shown.top, shown.body);
     if (typing) {

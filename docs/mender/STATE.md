@@ -4155,6 +4155,10 @@ charcoal lanes, slate cards with tight titles in the answer's face, keys and
 numbers in Josefin (Grunell's 1 reads as an I), rounded chips and round faces,
 column names as Jira writes them. The ticket window and the slabs speak the
 same way, with no spaced capitals left in them.
+Columns now keep Jira's own width and the board is only as wide as they are,
+centred in the yard, so a wide window or a board of few columns no longer
+stretches cards into long thin strips; type is a size up. Looked at in the dev
+instance at his own window size on his AUR board.
 
 ### Jira is written into the yard at night, with everything its board does (2026-10-15) — done
 
