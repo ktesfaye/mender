@@ -1682,11 +1682,11 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      quest = null;
       walkedUp = null;
       wood(finding('', { projects, tasks, moods: seen, where: standing() }, keybindings));
       /* From nowhere, every time. The mark outlives a board on purpose, so
          without this the finder opens standing on whatever row it was left on
-      quest = null;
          last time and steps one further from there, which lands it two or
          three rows down a list it just drew fresh. */
       yard.walk.stand(null);
@@ -1921,6 +1921,23 @@ async function boot(): Promise<void> {
         restartToUpdate: async () => {
           await client.updates.restart({});
         },
+        jira: {
+          status: () => client.jira.status({}),
+          connect: async (site, email, token) => {
+            const done = await client.jira.connect({ site, email, token }, { timeoutMs: 30_000 });
+            if (done.success) {
+              if (quest) void loadQuest();
+              return null;
+            }
+            return jiraSaid(done.error);
+          },
+          forget: async (site) => {
+            await client.jira.forget({ site });
+          },
+          setRecipe: async (recipe) => {
+            await client.jira.setRecipe({ recipe });
+          },
+        },
         closed: () => {
           if (windmill === ui) windmill = null;
           void records?.dispose();
@@ -1947,23 +1964,6 @@ async function boot(): Promise<void> {
           state.sessions = sessions;
           ui.update(state);
         });
-        jira: {
-          status: () => client.jira.status({}),
-          connect: async (site, email, token) => {
-            const done = await client.jira.connect({ site, email, token }, { timeoutMs: 30_000 });
-            if (done.success) {
-              if (quest) void loadQuest();
-              return null;
-            }
-            return jiraSaid(done.error);
-          },
-          forget: async (site) => {
-            await client.jira.forget({ site });
-          },
-          setRecipe: async (recipe) => {
-            await client.jira.setRecipe({ recipe });
-          },
-        },
         void client.appSettings.fiveHours({}, { timeoutMs: 0 }).then((five) => {
           state.fiveHours = five;
           ui.update(state);
@@ -2089,6 +2089,7 @@ async function boot(): Promise<void> {
       letGoOfTree();
       stopTalking();
       sending = null;
+      quest = null;
       walkedUp = null;
       const shown = card;
       card = null;
@@ -2115,7 +2116,6 @@ async function boot(): Promise<void> {
     const showYard = async (
       aim: Aim,
       project: Project,
-      quest = null;
       here?: Task,
       settingUp?: string
     ): Promise<void> => {
@@ -2130,6 +2130,7 @@ async function boot(): Promise<void> {
       else stopWalking();
       stopTalking();
       sending = null;
+      quest = null;
       walkedUp = null;
       /* The line belongs to the session it was written in. Stepping to
          another leaves that one's half-written line with it, not on this. */
@@ -2156,7 +2157,6 @@ async function boot(): Promise<void> {
       dim(pixi.canvas, 'yard');
       paintRail();
 
-      quest = null;
       const opened = await openYard(
         client,
         {
@@ -2404,6 +2404,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      quest = null;
       walkedUp = null;
       await was?.close();
       const shown = card;
@@ -2430,7 +2431,6 @@ async function boot(): Promise<void> {
      * A project's settings, in a window of their own over everything.
      *
      * Not laid over the yard like the rest, because it is not about the work
-      quest = null;
      * in there: nothing under it moves, and closing it leaves you exactly
      * where you were. It opens at once with what is known and fills in as the
      * checkout answers, since reading every picture in it takes a moment.
@@ -2627,6 +2627,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      quest = null;
       walkedUp = null;
       home();
     };
@@ -2653,7 +2654,6 @@ async function boot(): Promise<void> {
       reading.change = got.data;
       wood(rowsForChange());
     };
-      quest = null;
 
     /* A committed change is history and there is nothing to undo about it; one
        in the working tree is the only thing in the village that can be thrown
@@ -3555,32 +3555,6 @@ async function boot(): Promise<void> {
       wood(browsing(browsingAt), browsingAt.el);
     };
 
-    /**
-     * What is open against the other end for this branch, and what to do.
-     *
-     * A pull request is the end of a piece of work, and the village is where
-     * the work happened, so it ends here rather than in a browser. What is on
-     * the wood is the four things that decide whether it lands: what it is,
-     * who has looked, what the machines think, and the way in.
-     */
-    const openSent = async (): Promise<void> => {
-      const place = onPlace();
-      if (!place || !open) return;
-      const aim = open;
-      const parsed = parseNativeAbsolute(place.path);
-      if (!parsed.success) return;
-      const checkout = parsed.data;
-      stopWalking();
-      stopTalking();
-      const name = 'title' in place ? place.title : place.name;
-
-      wood(sent({ name, branch: '', waiting: 'asking the other end…' }));
-
-      const head = await client.git.checkout.model.state({ checkout }, 'head').snapshot();
-      const on = head.data;
-      if (!on || on.kind === 'detached' || on.kind === 'unborn') {
-        say('this checkout is not on a branch.', 5000);
-        home();
     /** What Jira said, in words. */
     const jiraSaid = (error: JiraError): string =>
       error.kind === 'not-connected'
@@ -3837,6 +3811,32 @@ async function boot(): Promise<void> {
       return true;
     };
 
+    /**
+     * What is open against the other end for this branch, and what to do.
+     *
+     * A pull request is the end of a piece of work, and the village is where
+     * the work happened, so it ends here rather than in a browser. What is on
+     * the wood is the four things that decide whether it lands: what it is,
+     * who has looked, what the machines think, and the way in.
+     */
+    const openSent = async (): Promise<void> => {
+      const place = onPlace();
+      if (!place || !open) return;
+      const aim = open;
+      const parsed = parseNativeAbsolute(place.path);
+      if (!parsed.success) return;
+      const checkout = parsed.data;
+      stopWalking();
+      stopTalking();
+      const name = 'title' in place ? place.title : place.name;
+
+      wood(sent({ name, branch: '', waiting: 'asking the other end…' }));
+
+      const head = await client.git.checkout.model.state({ checkout }, 'head').snapshot();
+      const on = head.data;
+      if (!on || on.kind === 'detached' || on.kind === 'unborn') {
+        say('this checkout is not on a branch.', 5000);
+        home();
         return;
       }
       const branch = shortName(on.ref);
@@ -4185,6 +4185,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      quest = null;
       walkedUp = null;
       writing = {
         aim,
@@ -4211,7 +4212,6 @@ async function boot(): Promise<void> {
       if (!writing) return;
       if (back) writing.held.add(path);
       else writing.held.delete(path);
-      quest = null;
       rewrite(rowsForCommit());
     };
 
@@ -4315,6 +4315,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      quest = null;
       walkedUp = null;
       if (!live) return;
       /* Back at the top, which is where the file was pressed: a session's
@@ -4341,7 +4342,6 @@ async function boot(): Promise<void> {
       lastIn.set(project.id, task.id);
       await showYard(aim, project, task);
       arrived();
-      quest = null;
     };
 
     /**
@@ -4636,6 +4636,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      quest = null;
       walkedUp = null;
       titling = { task, written: task.title };
       yard.asks('name');
@@ -4655,6 +4656,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      quest = null;
       walkedUp = null;
       titling = { task, written: '', mode: 'mcp' };
       yard.asks('server');
@@ -4662,7 +4664,6 @@ async function boot(): Promise<void> {
       wood(addingServer(titling));
       yard.line.take();
     };
-      quest = null;
 
     /** Naming a skill of your own, the same one line and the same keys. */
     const askKnackAdd = (task: Task): void => {
@@ -4674,6 +4675,7 @@ async function boot(): Promise<void> {
       stopWalking();
       stopTalking();
       sending = null;
+      quest = null;
       walkedUp = null;
       titling = { task, written: '', mode: 'skill' };
       yard.asks('skill');
@@ -4682,7 +4684,6 @@ async function boot(): Promise<void> {
       yard.line.take();
     };
 
-      quest = null;
     const wrote = (written: string): void => {
       if (reading?.noting) {
         reading = { ...reading, noting: { ...reading.noting, text: written } };
@@ -4701,7 +4702,6 @@ async function boot(): Promise<void> {
         // the obvious thing without you having to aim first.
         if (!yard.walk.on) yard.walk.step(1);
         return;
-      quest = null;
       }
       if (titling) {
         titling = { ...titling, written };
@@ -4712,6 +4712,11 @@ async function boot(): Promise<void> {
               ? addingSkill(titling)
               : retitling(titling)
         );
+        return;
+      }
+      if (quest?.written !== undefined) {
+        quest = { ...quest, written };
+        paintQuest();
         return;
       }
       if (!naming) return;
@@ -4740,11 +4745,6 @@ async function boot(): Promise<void> {
       const aim = open;
       naming = null;
       const draftId = `cutting:${crypto.randomUUID()}`;
-      if (quest?.written !== undefined) {
-        quest = { ...quest, written };
-        paintQuest();
-        return;
-      }
       const draft: Task = {
         id: draftId,
         project: project.id,
@@ -4825,6 +4825,11 @@ async function boot(): Promise<void> {
           void client.agents.tell({ task: made.data.id, text: told }, { timeoutMs: 0 });
         }
       }
+      if (jira) {
+        void client.jira.take({ task: made.data.id, site: jira.site, key: jira.key });
+        if (jira.to.length)
+          void client.jira.move({ site: jira.site, key: jira.key, statuses: jira.to });
+      }
       /* The untouched session this board was opened over was only ever a
          placeholder for this one. */
       const stale = replacing;
@@ -4851,11 +4856,6 @@ async function boot(): Promise<void> {
           if (!done.success && done.error.kind === 'refused') say(done.error.because, 6000);
         }
         if (aim) await showCard(aim, asked.task);
-      if (jira) {
-        void client.jira.take({ task: made.data.id, site: jira.site, key: jira.key });
-        if (jira.to.length)
-          void client.jira.move({ site: jira.site, key: jira.key, statuses: jira.to });
-      }
         return;
       }
       if (asked.mode === 'skill') {
@@ -5423,6 +5423,7 @@ async function boot(): Promise<void> {
         void openSent();
         return;
       }
+      if (questPressed(pick)) return;
       if (pick === 'open-pull') {
         if (sending) {
           sending = { ...sending, written: '' };
@@ -5449,7 +5450,6 @@ async function boot(): Promise<void> {
       }
       if (pick.startsWith('hand-check:')) {
         const id = pick.slice(11);
-      if (questPressed(pick)) return;
         const check = sending?.pull?.checks.find((one) => one.id === id);
         if (check) {
           yard.line.write(toHandCheck(check));
@@ -5965,32 +5965,6 @@ async function boot(): Promise<void> {
           home();
           return;
         }
-        if (sending) {
-          if (sending.written) {
-            sending = { ...sending, written: '' };
-            rewrite(sent(sending));
-            return;
-          }
-          sending = null;
-          walkedUp = null;
-          home();
-          return;
-        }
-        if (amending) {
-          amending = null;
-          showMade();
-          return;
-        }
-        /* Reached only when the terminal does not itself have the keyboard —
-           Escape is that terminal's own key otherwise, passed straight
-           through to whatever is running, and `ctrl+]` is what steps out. */
-        if (talking) {
-          stopTalking();
-          /* Steps back to the checkout board it was opened from, when there
-             is one, rather than all the way home past it. */
-          if (live) wood(live.rows());
-          else home();
-          return;
         if (quest) {
           if (quest.written !== undefined) {
             const next = { ...quest };
@@ -6012,6 +5986,33 @@ async function boot(): Promise<void> {
           home();
           return;
         }
+        if (sending) {
+          if (sending.written) {
+            sending = { ...sending, written: '' };
+            rewrite(sent(sending));
+            return;
+          }
+          sending = null;
+          quest = null;
+          walkedUp = null;
+          home();
+          return;
+        }
+        if (amending) {
+          amending = null;
+          showMade();
+          return;
+        }
+        /* Reached only when the terminal does not itself have the keyboard —
+           Escape is that terminal's own key otherwise, passed straight
+           through to whatever is running, and `ctrl+]` is what steps out. */
+        if (talking) {
+          stopTalking();
+          /* Steps back to the checkout board it was opened from, when there
+             is one, rather than all the way home past it. */
+          if (live) wood(live.rows());
+          else home();
+          return;
         }
         if (browsingAt) {
           if (browsingAt.written !== browsingAt.url) {
@@ -6019,7 +6020,6 @@ async function boot(): Promise<void> {
             rewrite(browsing(browsingAt), browsingAt.el);
             return;
           }
-          quest = null;
           closeBrowser();
           if (live) wood(live.rows());
           else home();
@@ -6215,6 +6215,9 @@ async function boot(): Promise<void> {
           return true;
         }
         const hanging = open ? tasksOn(open.district).length : projects.length;
+        /* Command-shift-comma reads as a comma on some keyboards rather than
+           the < it is printed with, and command-comma alone is settings. */
+        const shifted = { ',': '<', '.': '>' }[event.shiftKey ? event.key : ''];
         /* A shifted letter is its own chord, the way command-shift-T is not
            command-T; one nobody has bound still means the plain letter. */
         const pressed =
@@ -6242,11 +6245,9 @@ async function boot(): Promise<void> {
           !event.altKey &&
           open &&
           !looking &&
-        /* Command-shift-comma reads as a comma on some keyboards rather than
-           the < it is printed with, and command-comma alone is settings. */
-        const shifted = { ',': '<', '.': '>' }[event.shiftKey ? event.key : ''];
           !talking &&
           !(sending?.written !== undefined) &&
+          !(quest?.written !== undefined) &&
           !amending &&
           !hunt &&
           !browsingAt
@@ -6273,7 +6274,6 @@ async function boot(): Promise<void> {
           else return yard.scrolled(event.key);
           return true;
         }
-          !(quest?.written !== undefined) &&
         /* Saying what a pull request is for, before opening it. */
         if (sending?.written !== undefined) {
           const mine = sending;
@@ -6487,6 +6487,9 @@ async function boot(): Promise<void> {
       },
       layer.root
     );
+    if (import.meta.env.DEV) {
+      Object.assign((window as unknown as Record<string, object>).__village ?? {}, { editing });
+    }
 
     /* Out on the island with nothing open, a right-click is the one way into
        rearranging it. Anywhere a board is up, the right-click is the board's. */
@@ -6513,9 +6516,6 @@ async function boot(): Promise<void> {
        stay on the rack, or go back on. */
     rackMenu = (id, x, y): void => {
       unslabIsland();
-    if (import.meta.env.DEV) {
-      Object.assign((window as unknown as Record<string, object>).__village ?? {}, { editing });
-    }
       const project = projects.find((one) => one.id === id);
       if (!project || editing?.active) return;
       const slab = document.createElement('div');
