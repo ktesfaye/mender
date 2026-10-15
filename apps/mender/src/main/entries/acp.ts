@@ -37,10 +37,29 @@ const BOARD = [
   'invent an image URL.',
 ].join(' ');
 
+/**
+ * What the agent is told about the Mac it runs on. A session here inherits
+ * Mender's own Screen Recording, Accessibility and Automation grants, so it
+ * can see and drive every other app, but nothing said so and every session
+ * fell back to handing him a list of clicks. Chrome is named because it is
+ * where his logins live, and a fresh profile has none of them.
+ */
+const HANDS = [
+  'You are running on the person\'s own Mac, and you can see and operate any app on it yourself:',
+  'screencapture -x <file>.png then read the image to see the screen; osascript (AppleScript or',
+  'JXA, including System Events for menus, buttons, windows and keystrokes in any app); cliclick',
+  'for mouse clicks, drags and typing at screen coordinates; open -a to launch apps. So never tell',
+  'the person to click, open, copy, toggle or type something in an app, and never ask them to do a',
+  'step "manually": do it yourself, look at a screenshot to confirm it worked, and only ask when it',
+  'truly needs their hands (a password, a Touch ID prompt, a physical device). For websites, use',
+  'their real Google Chrome, where they are signed in, via osascript (tell application "Google',
+  'Chrome" ... execute javascript); never launch a separate or blank Chrome profile.',
+].join(' ');
+
 void runWireComponentWorker(
   createAcpComponent({
     pluginRegistry,
-    sessionMeta: () => ({ systemPrompt: { append: BOARD } }),
+    sessionMeta: () => ({ systemPrompt: { append: `${BOARD}\n\n${HANDS}` } }),
   }),
   { logger }
 );

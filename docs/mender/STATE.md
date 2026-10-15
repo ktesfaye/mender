@@ -259,6 +259,14 @@ that writing, and pictures can be files on this machine too. Driven: "the top
 5 brunch spots near me and their top foods" came back with each place's dish
 beside its own entry.
 
+The same note now also says the session is running on his own Mac and can see
+and work every app on it itself, by screenshot, AppleScript, System Events and
+clicks, his real signed-in Chrome for anything on the web, so it does a step
+rather than handing him a list of clicks, and only asks for his hands for a
+password, a fingerprint or a device. Until then nothing told it, and every
+session acted as if it could not. Driven: asked what Finder's View menu says
+about the path bar, Haiku went and read the menu and answered right.
+
 The same note now says what else the board draws, tables, fenced blocks and
 mermaid, and that anything with a shape gets its shape rather than a paragraph,
 a tree, a table, a diagram, numbered steps, with a wall of text named as the
