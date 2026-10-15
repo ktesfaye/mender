@@ -1217,8 +1217,16 @@ export function createAgents(
     /* From here on the village is watching: you said something, so anything
        that turns up after it is happening in front of you and can honestly
        be dated. Everything before it might be a week old. */
-    house.watched();
+    /* Said to a session that went home, the agent first reads its whole past
+       back in, a piece at a time, exactly as opening its board does. So it is
+       woken the same way, held as it was until that is over, rather than the
+       board flickering through every half of it, and only then watched, so
+       none of that old history is dated to now. A pick-up after a restart and
+       a continue after a limit both come through here. */
+    const sleeping = !house.awake();
     house.arriving();
+    if (sleeping) house.waking(true);
+    else house.watched();
     const hand = record.agent ?? (await settings.defaultHand());
     /* A session with a choice of its own keeps it; one that has never said
        either starts on whatever this agent was last asked for anywhere. */
@@ -1226,21 +1234,32 @@ export function createAgents(
     // No deadline on either: starting an agent means spawning its CLI and
     // waiting for it to say hello, and a prompt is open for as long as the
     // work takes.
-    const started = await runtimes.acp.launch(
-      {
-        conversationId: conversation,
-        providerId: hand,
-        cwd: record.path,
-        sessionId: sessionFor(task, conversation),
-        model: record.model ?? remembered.model,
-        modeId: remembered.mode,
-      },
-      { timeoutMs: 0 }
-    );
-    if (!started.success) {
-      log.error('agents: launch failed', { area: 'agents', task, error: started.error });
-      house.broke(whatItSaid(started.error));
-      return refused(whatItSaid(started.error));
+    try {
+      const started = await runtimes.acp.launch(
+        {
+          conversationId: conversation,
+          providerId: hand,
+          cwd: record.path,
+          sessionId: sessionFor(task, conversation),
+          model: record.model ?? remembered.model,
+          modeId: remembered.mode,
+        },
+        { timeoutMs: 0 }
+      );
+      if (!started.success) {
+        log.error('agents: launch failed', { area: 'agents', task, error: started.error });
+        house.broke(whatItSaid(started.error));
+        return refused(whatItSaid(started.error));
+      }
+      if (sleeping) {
+        await house.pastStarting(1500);
+        await house.readBack();
+      }
+    } finally {
+      if (sleeping) {
+        house.waking(false);
+        house.watched();
+      }
     }
 
     const sent = await runtimes.acp.sendPrompt(
