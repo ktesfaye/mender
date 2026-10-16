@@ -3630,7 +3630,10 @@ async function boot(): Promise<void> {
           layer.root.classList.toggle('under-jira', on);
           if (on) {
             underJira = pixi.canvas.style.filter;
-            dim(pixi.canvas, 'yard');
+            /* Lighter than the yard's own dark: Jira's window is frosted
+               glass, and the island glowing through it is the point. */
+            pixi.canvas.style.transition = 'filter 520ms cubic-bezier(.2,.8,.2,1)';
+            pixi.canvas.style.filter = 'brightness(.62) saturate(1.1)';
           } else pixi.canvas.style.filter = underJira;
         },
       }));

@@ -21,19 +21,19 @@
 export const PAGE_SAYS = 'mender⟩';
 
 export const PAGE_CSS = `
-/* Jira's own dark theme, retinted to the village at night: its warm near-black,
-   its cream ink, and gold where Jira would be blue. Jira draws everything from
+/* Jira's own dark theme, retinted to the village at night: frosted glass for
+   its page, its cream ink, and gold where Jira would be blue. Jira draws everything from
    these tokens, so the whole page follows; the status and label colours are
    left as Jira has them, since they mean something. */
 html[data-color-mode] {
-  --ds-surface: #1d1811 !important;
-  --ds-elevation-surface-current: #1d1811 !important;
-  --ds-surface-hovered: #251f17 !important;
-  --ds-surface-pressed: #2d261c !important;
-  --ds-surface-sunken: #16120c !important;
-  --ds-surface-raised: #2a2219 !important;
-  --ds-surface-raised-hovered: #322920 !important;
-  --ds-surface-raised-pressed: #3a3026 !important;
+  --ds-surface: transparent !important;
+  --ds-elevation-surface-current: transparent !important;
+  --ds-surface-hovered: rgba(244, 227, 192, 0.05) !important;
+  --ds-surface-pressed: rgba(244, 227, 192, 0.09) !important;
+  --ds-surface-sunken: rgba(12, 9, 5, 0.32) !important;
+  --ds-surface-raised: rgba(46, 37, 27, 0.78) !important;
+  --ds-surface-raised-hovered: rgba(56, 46, 34, 0.86) !important;
+  --ds-surface-raised-pressed: rgba(64, 52, 39, 0.9) !important;
   --ds-surface-overlay: #2c241a !important;
   --ds-surface-overlay-hovered: #352c21 !important;
   --ds-surface-overlay-pressed: #3e3427 !important;
@@ -80,7 +80,9 @@ html[data-color-mode] {
   --ds-border-brand: #e0b56a !important;
   --ds-border-focused: #f0cf8a !important;
 }
-html[data-color-mode], html[data-color-mode] body { background: #1d1811 !important; }
+/* The page itself is see-through, so the village's frosted glass behind it is
+   what it sits on; cards and columns float on that. */
+html[data-color-mode], html[data-color-mode] body { background: transparent !important; }
 html.mender-bare [data-testid="page-layout.banner"],
 html.mender-bare [data-testid="page-layout.top-nav"],
 html.mender-bare [data-testid="page-layout.sidebar"],

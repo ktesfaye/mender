@@ -4221,3 +4221,9 @@ Then retinted: Jira's own colour tokens are overridden to the village's
 night (warm near-black surfaces, cream text, gold for Jira's blue), statuses
 and labels untouched, and the whole window behind it, yard words and rack
 included, is dimmed. Looked at on the AUR board and an open ticket.
+Then made glass: the window is a frosted, see-through pane with the island
+behind it blurred and only lightly dimmed, Jira's page transparent so its
+columns and cards float on it. Looked at in the dev instance at night; colour
+couldn't be judged that evening because the Mac's own display filter was
+washing out every screenshot, desktop included.
+

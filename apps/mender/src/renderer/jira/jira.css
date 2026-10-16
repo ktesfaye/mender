@@ -14,7 +14,7 @@
   -webkit-font-smoothing: antialiased;
   outline: none;
   /* Everything behind it, the yard's words and the rack included, steps back. */
-  background: rgba(10, 7, 4, 0.74);
+  background: rgba(10, 7, 4, 0.28);
 }
 .jr * { box-sizing: border-box; }
 .jr button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
@@ -23,17 +23,20 @@
 .jr .gold:hover { color: #f0cf8a; }
 .jr .sore { color: #f2665a; }
 
-/* The same night Jira's page is retinted to, so the strip and the page read as one surface. */
+/* Frosted glass over the village: the yard shows through, blurred and warmed,
+   and Jira's see-through page and this strip sit on the same pane. */
 .jr-win {
   position: relative;
   display: flex;
   flex-direction: column;
   width: min(100%, 1600px);
   height: 100%;
-  background: #1d1811;
-  border: 1px solid rgba(244, 227, 192, 0.16);
-  border-radius: 8px;
-  box-shadow: 0 6px 0 rgba(10, 12, 14, 0.6), 0 24px 60px rgba(0, 0, 0, 0.55);
+  background: linear-gradient(160deg, rgba(60, 46, 30, 0.22), rgba(16, 12, 8, 0.38));
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  backdrop-filter: blur(22px) saturate(1.6);
+  border: 1px solid rgba(244, 227, 192, 0.18);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, 0.12), 0 30px 80px rgba(0, 0, 0, 0.5);
   outline: none;
   overflow: hidden;
 }
@@ -59,6 +62,6 @@
 .jr-x:hover { color: #e0b56a !important; }
 
 .jr-stage { flex: 1 1 auto; min-height: 0; position: relative; }
-.jr-page { position: absolute; inset: 0; display: flex; background: #1d1811; }
+.jr-page { position: absolute; inset: 0; display: flex; background: transparent; }
 .jr-quiet { padding: 60px; max-width: 640px; font: 400 17px/1.5 'Mender Said', sans-serif; color: #dcc8a0; }
 .jr-quiet .acts { margin-top: 18px; }
