@@ -218,6 +218,8 @@ export interface Standing {
   asks(what: Prompting): void;
   /** Write the lines a slash or an @ has opened under the line. */
   narrowing(offers: Offer[], from: number): void;
+  /** Whether a slash or an @ has a list open with a line of it picked out. */
+  narrowed(): boolean;
   /**
    * Lay something over the yard to read, or take it away.
    *
@@ -1246,6 +1248,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     },
     show: (yard) => show(yard),
     fly,
+    narrowed: () => standingInOverlay(),
     narrowing: (offers, from) => {
       if (dismissedAt !== null && dismissedAt === line.written()) offers = [];
       else dismissedAt = null;

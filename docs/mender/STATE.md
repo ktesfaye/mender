@@ -4244,3 +4244,14 @@ included. Driven with a refused token: Atlassian's login came up plain in the
 window, and Microsoft's and Google's sign-in pages both opened inside it. The
 work site itself is not tried, since it needs his work account.
 
+
+**Return did nothing on the slash list (2026-10-16).** Letting up and down move
+through what you wrote also took away the one place that pressed the line the
+slash list had picked out, so from 1.8.6 no command or skill could be picked or
+sent from it. The arrows and return walk and press that list again, and only
+that list. A name written out whole that nothing listed starts with, a skill
+taught since the agent last said what it has, now leads the list as "say it as
+written", so return sends it rather than whatever only mentions those letters.
+And a slash on a session that went home wakes it, so its list is current.
+Driven in a dev instance on Haiku: model picked with return, a skill missing
+from the list sent and run, arrows down the list and return writing the pick.

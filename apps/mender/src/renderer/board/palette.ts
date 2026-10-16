@@ -93,7 +93,12 @@ const OURS: Ours[] = [
   },
 ];
 
-const SECTION = { ours: 'this session', theirs: 'commands', kept: 'kept' } as const;
+const SECTION = {
+  ours: 'this session',
+  theirs: 'commands',
+  kept: 'kept',
+  written: 'as you wrote it',
+} as const;
 
 /** Everything you have kept, for every session at once. */
 let kept: Prompt[] = [];
@@ -121,6 +126,11 @@ export class Palette {
 
   told(kit: Kit | null): void {
     this.kit = kit;
+  }
+
+  /** Whether the agent behind the list is up, so what it lists is current. */
+  get awake(): boolean {
+    return this.kit?.awake ?? false;
   }
 
   /** Whatever is on the line now. */
@@ -220,7 +230,20 @@ export class Palette {
         section: SECTION.kept,
       });
     }
-    return rank(offers, open.asked.slice(1));
+    const ranked = rank(offers, open.asked.slice(1));
+    /* A whole name written out that nothing here starts with is still meant:
+       a skill taught since the agent last said what it has, or one it never
+       listed. Return says it as written rather than picking whatever only
+       happens to mention those letters, which used to swallow it for good. */
+    const want = open.asked.slice(1).toLowerCase();
+    const named = ranked.some((one) =>
+      one.name.replace(/^\/+/, '').toLowerCase().startsWith(want)
+    );
+    if (open.kind !== 'all' || want.length < 2 || named) return ranked;
+    return [
+      { pick: 'slash:as-written', name: open.asked, about: 'say it as written', section: SECTION.written },
+      ...ranked,
+    ];
   }
 
   /** What a pressed line means. */
@@ -230,6 +253,7 @@ export class Palette {
     if (!open || !kit) return null;
     const before = this.text.slice(0, open.from);
 
+    if (pick === 'slash:as-written') return { does: 'send', text: this.text.trim() };
     if (pick === 'slash:keep') {
       const what = open.asked.trim();
       return what ? { does: 'keep', text: what } : { does: 'write', text: '/keep ' };
