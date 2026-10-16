@@ -2120,7 +2120,7 @@ class House {
     const whole = new Map(back.data.turns.map((turn) => [turn.id, turn]));
     const live = this.live?.id;
     this.before = [
-      ...back.data.turns.filter((turn) => turn.id !== live),
+      ...back.data.turns.filter((turn) => turn.id !== live).map(unprompted),
       ...this.before.filter((had) => !whole.has(had.id)),
     ]
       .sort((a, b) => a.seq - b.seq)
@@ -2376,7 +2376,7 @@ class House {
   }
 
   private turned(turn: TranscriptTurn | null | undefined): void {
-    const now = turn ?? null;
+    const now = turn ? unprompted(turn) : null;
     // A turn that settled and was replaced moves behind the one in flight; the
     // active state only ever carries the latest.
     if (this.live && (!now || now.id !== this.live.id)) {
@@ -3406,6 +3406,19 @@ type Returned = Carried & { path?: string };
 
 /** Marks a taken-back key whose note went straight out again rather than to the line. */
 const REHANDED = '\u0001';
+
+/** What Claude Code hands its own agent as though you said it: a background
+    task or monitor reporting back, a slash command's output. */
+const UNPROMPTED = /^<(task-notification|local-command-[a-z]+|command-name|bash-notification)>/;
+
+/** A turn without what the CLI said to the agent in your place. */
+function unprompted(turn: TranscriptTurn): TranscriptTurn {
+  const items = turn.items.filter(
+    (item) =>
+      item.kind !== 'message' || item.role !== 'user' || !UNPROMPTED.test(item.text.trimStart())
+  );
+  return items.length === turn.items.length ? turn : { ...turn, items };
+}
 
 /** How Claude's own transcript writes down a turn you stopped. */
 const INTERRUPTED = /^\[Request interrupted by user[^\]]*\]$/;
