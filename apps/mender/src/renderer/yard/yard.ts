@@ -679,7 +679,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const headFrom = root.childElementCount;
     head(root, waking ? hushed(yard) : yard, layer.edge(), does);
     /* The heading is what stays up when Jira is written into the yard. */
-    for (const one of Array.from(root.children).slice(headFrom)) (one as HTMLElement).dataset.head = '';
+    for (const one of Array.from(root.children).slice(headFrom))
+      (one as HTMLElement).dataset.head = '';
     /* A project nobody has worked in yet has nothing to put in three columns,
        and three headings over three empty columns is scaffolding, not a place.
        So it says the one true thing and lets the district behind it do the
@@ -2256,72 +2257,57 @@ function asked(
   const notes = yard.session?.notes ?? [];
   const [newest, ...older] = notes;
   root.appendChild(stays(label('what you asked', { left: at.x, top: HEAD.label }), 'label:asked'));
-  let top = HEAD.top;
-  if (coming.length) {
-    const list = stack({ left: at.x + 22, top, width: at.wide - 60 }, 14);
-    for (const one of coming) {
-      const note = unheard(one);
-      if (one.handed || !takeBack) list.appendChild(keyed(note, `waiting:${one.id}`));
-      else {
-        note.style.pointerEvents = 'auto';
-        note.style.cursor = 'pointer';
-        note.addEventListener('mousedown', (event) => event.preventDefault());
-        note.addEventListener('click', () => takeBack(one.id));
-        list.appendChild(keyed(note, `waiting:${one.id}`));
-      }
-    }
-    root.appendChild(list);
-    top += list.offsetHeight + 22;
-  }
-  if (!newest) {
-    post.style.height = `${Math.min(room, top - HEAD.top + 20)}px`;
-    return;
-  }
-
-  const card = keyed(
-    pinned(newest, { left: at.x + 22, top, width: at.wide - 60 }, rerun),
-    `note:${newest.id}`
-  );
-  root.appendChild(pickable(card, newest.said, pick));
-  /* The newest note is all there, as tall as what was said, pushing what
-     came before it further down the post. Only one longer than the whole post
-     is cut, on a whole line and fading out, since nothing scrolls inside a
-     piece of parchment: that is a resumed session handing back the
-     instructions it was started with, never something anybody wrote. */
-  const body = card.querySelector<HTMLElement>('[data-note="said"]');
-  if (body) {
-    const line = Math.max(1, Math.round(NOTE_LINE));
-    const chrome = card.offsetHeight - body.offsetHeight;
-    const fits = Math.max(1, Math.floor((under - 44 - top - chrome) / line));
-    if (Math.round(body.scrollHeight / line) > fits) {
-      body.style.height = `${fits * line}px`;
-      body.style.overflow = 'hidden';
-      body.style.webkitMaskImage = `linear-gradient(180deg,#000 calc(100% - ${line}px),transparent)`;
-    }
-  }
-  post.style.height = `${Math.min(room, top - HEAD.top + card.offsetHeight + 60)}px`;
-
-  if (!older.length || cramped) return;
-  /* The card is as tall as whatever was written on it, which nothing knows
-     until it is in, so the rest of the post is placed off its real height.
-     Everything said before it is on the post, every note, and the post
-     scrolls when there are more than it is tall. */
-  const below = top + card.offsetHeight + 22;
+  /* Everything on the post scrolls as one, the parchment with it. Holding the
+     newest still over the rest left a long one covering the whole column with
+     nothing under it to reach and no way past it. The room over the first
+     note is for the tack, and the room at the side for the card's tilt and
+     its shadow, which a scroller would otherwise shave off. */
+  const width = at.wide - 60;
   const list = stack(
-    { left: at.x + 22, top: below, width: at.wide - 60, height: Math.max(0, under - 44 - below) },
+    {
+      left: at.x + 22,
+      top: HEAD.top - 8,
+      width: width + 40,
+      height: Math.max(0, under - 36 - HEAD.top),
+    },
     14
   );
-  /* The foot fades rather than slicing a note through the middle. */
   list.style.cssText +=
-    ';overflow-y:auto;overflow-x:hidden;pointer-events:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 36px),transparent)';
-  for (const note of older)
-    list.appendChild(pickable(keyed(weathered(note), `note:${note.id}`), note.said, pick));
+    ';align-items:flex-start;padding-top:8px;box-sizing:border-box;overflow-y:auto;overflow-x:hidden;pointer-events:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 36px),transparent)';
+  for (const one of coming) {
+    const note = unheard(one);
+    note.style.width = `${width}px`;
+    if (!one.handed && takeBack) {
+      note.style.pointerEvents = 'auto';
+      note.style.cursor = 'pointer';
+      note.addEventListener('mousedown', (event) => event.preventDefault());
+      note.addEventListener('click', () => takeBack(one.id));
+    }
+    list.appendChild(keyed(note, `waiting:${one.id}`));
+  }
+  if (newest) {
+    const card = keyed(pinned(newest, { width }, rerun), `note:${newest.id}`);
+    card.style.position = 'relative';
+    card.style.flexShrink = '0';
+    list.appendChild(pickable(card, newest.said, pick));
+  }
+  if (!cramped)
+    for (const note of older) {
+      const old = weathered(note);
+      old.style.width = `${width}px`;
+      list.appendChild(pickable(keyed(old, `note:${note.id}`), note.said, pick));
+    }
   root.appendChild(list);
 
+  /* Where it was scrolled to is kept per session, until something new goes up
+     on it, which is always worth being brought back up to see. */
   const id = yard.session?.id ?? '';
+  const head = `${coming[0]?.id ?? ''}|${newest?.id ?? ''}`;
+  if (postHead.get(id) !== head) postScrolled.delete(id);
+  postHead.set(id, head);
   list.scrollTop = postScrolled.get(id) ?? 0;
   list.addEventListener('scroll', () => postScrolled.set(id, list.scrollTop));
-  post.style.height = `${Math.min(room, below + list.scrollHeight - HEAD.top + 40)}px`;
+  post.style.height = `${Math.min(room, list.scrollHeight + 40)}px`;
 }
 
 /** A note that writes itself back on the line when pressed, and looks no different. */
@@ -2335,16 +2321,11 @@ function pickable<T extends HTMLElement>(el: T, said: string, pick: (said: strin
 
 /** Where the post was left scrolled to, per session, across redraws. */
 const postScrolled = new Map<string, number>();
+const postHead = new Map<string, string>();
 
-/** What one of those lines is, at the card's own size and leading. */
-const NOTE_LINE = 19 * 1.25;
 
 /** The newest note: on parchment, pinned, and not quite straight. */
-function pinned(
-  note: Note,
-  where: { left: number; top: number; width: number },
-  rerun?: () => void
-): HTMLElement {
+function pinned(note: Note, where: { width: number }, rerun?: () => void): HTMLElement {
   const card = box(where, CARD);
   card.classList.add('paper');
   const tack = box(
