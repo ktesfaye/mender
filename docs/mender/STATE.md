@@ -134,6 +134,8 @@ worse. Struck-through ones are fixed.
   No message, no reason. (W7.)
 - ~~**The card is mouse-only.**~~ Fixed in W1, and more generally: every board
   is a list of pressable lines, the arrows walk any of them and return picks.
+  Not the yard, though: there the arrows belong to the line you write on and
+  move its caret, never a highlight over the header and the rail.
 - ~~**The permission question has never been seen.**~~ Fixed in W2: it fires,
   it lands on the wood, and a number key answers it. It had never been seen
   because this machine's Claude answers its own permission questions; setting a

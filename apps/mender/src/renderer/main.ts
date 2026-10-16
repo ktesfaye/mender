@@ -6306,12 +6306,9 @@ async function boot(): Promise<void> {
         /* A question at the gate takes the number keys and nothing else, so
            that answering it cannot be done by accident while typing. */
         if (saying.asked()) return yard.answerKey(event);
-        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-          yard.walk.step(event.key === 'ArrowDown' ? 1 : -1);
-          return true;
-        }
-        if (event.key === 'Enter' && yard.walk.on) return yard.walk.press();
-        /* Everything else is writing, and the line takes that itself. */
+        /* Everything else is writing, and the line takes that itself: the
+           arrows move the caret through what is written, never a highlight
+           over the yard's pressable lines. */
         return false;
       },
     };
