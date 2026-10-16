@@ -4255,3 +4255,11 @@ written", so return sends it rather than whatever only mentions those letters.
 And a slash on a session that went home wakes it, so its list is current.
 Driven in a dev instance on Haiku: model picked with return, a skill missing
 from the list sent and run, arrows down the list and return writing the pick.
+
+**A new session listed no skills on the slash list (2026-10-16).** The agent
+announces its commands and skills in the same breath as it answers "start a
+session", and the runtime dropped any update for a session it had not yet
+registered, so a fresh session only ever offered the village's own six. Updates
+that arrive early are now held and handed over once the session is known. Driven
+in a dev instance on Haiku: a new session's slash list shows its commands and
+every skill, a hundred and three, where it showed none.

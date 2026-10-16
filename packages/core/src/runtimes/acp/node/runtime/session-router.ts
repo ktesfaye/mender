@@ -38,6 +38,14 @@ export interface SessionRouteTarget {
 export class SessionRouter implements InboundRouter {
   private readonly routes = new Map<string, Map<string, string>>();
   private readonly loadingConversationByOwner = new Map<string, string>();
+  /* An agent may announce itself in the same breath as it answers session/new,
+     the Claude adapter's command list among them, so an update can land a moment
+     before the session's route is registered. Held by owner and session, and
+     delivered when the route appears, rather than dropped for good. */
+  private readonly early = new Map<
+    string,
+    { connection: AcpConnectionContext; params: SessionNotification; event: NormalizedEvent }[]
+  >();
 
   constructor(
     private readonly target: SessionRouteTarget,
@@ -52,10 +60,11 @@ export class SessionRouter implements InboundRouter {
     const processOwner = routeOwnerId(connection.key, connection.generation);
     const conversationId = this.resolveConversationForSession(processOwner, params.sessionId);
     if (!conversationId) {
-      this.logger.warn('SessionManager: sessionUpdate for unknown sessionId', {
-        processOwner,
-        sessionId: params.sessionId,
-      });
+      const key = `${processOwner}\n${params.sessionId}`;
+      const held = this.early.get(key) ?? [];
+      if (held.length < 32) held.push({ connection, params, event });
+      this.early.set(key, held);
+      if (this.early.size > 64) this.early.delete(this.early.keys().next().value as string);
       return;
     }
     this.target.onSessionUpdate(conversationId, connection, params, event);
@@ -111,6 +120,16 @@ export class SessionRouter implements InboundRouter {
       this.routes.set(processOwner, bySession);
     }
     bySession.set(acpSessionId, conversationId);
+    const key = `${processOwner}\n${acpSessionId}`;
+    const held = this.early.get(key);
+    if (held) {
+      this.early.delete(key);
+      setTimeout(() => {
+        for (const one of held) {
+          this.target.onSessionUpdate(conversationId, one.connection, one.params, one.event);
+        }
+      }, 0);
+    }
   }
 
   unregister(processOwner: string, conversationId: string): void {
@@ -150,6 +169,7 @@ export class SessionRouter implements InboundRouter {
   }
 
   invalidate(processOwner: string): void {
+    for (const key of [...this.early.keys()]) if (key.startsWith(`${processOwner}\n`)) this.early.delete(key);
     this.routes.delete(processOwner);
     this.loadingConversationByOwner.delete(processOwner);
   }
