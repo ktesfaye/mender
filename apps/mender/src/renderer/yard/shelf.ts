@@ -594,9 +594,13 @@ export function makeShelf(
      project you are standing in, and any with somebody at work, asking,
      finished or broken behind it. Only the quiet ones go behind the beam, so
      the folded rack still answers "does anywhere else want me" by what is
-     left hanging on it. */
+     left hanging on it. Once a board has hung there while folded it stays,
+     even after whatever lit it has gone quiet or he has walked on to another,
+     so the handful he is working between stays in reach; only folding it
+     afresh puts the quiet ones back behind the beam. */
+  const kept = new Set<string>();
   const pinned = (project: OnShelf): boolean =>
-    !away || project.here || project.wants !== undefined;
+    !away || project.here || project.wants !== undefined || kept.has(project.id);
 
   /* Puts each where it belongs along the strip, touching only the ones
      that are not already there. Taking an element out of the page and
@@ -628,7 +632,10 @@ export function makeShelf(
     up(weather, !inside, TOKEN);
     /* Walking into a yard folds it shut and walking back out to the island
        opens it; in between it stays however he left it. */
-    if (inside !== was) away = inside;
+    if (inside !== was) {
+      if (inside && !away) kept.clear();
+      away = inside;
+    }
     if (away) hideTag(true);
 
     const wanted = new Set(projects.map((project) => project.id));
@@ -698,6 +705,7 @@ export function makeShelf(
       }
       paintBoard(node, project);
     }
+    if (away) for (const project of projects) if (pinned(project)) kept.add(project.id);
     const anyUp = projects.some(pinned);
     band.style.display = anyUp ? '' : 'none';
     tail();
@@ -857,6 +865,7 @@ export function makeShelf(
 
   function fold(shut = true): void {
     if (away === shut) return;
+    if (shut) kept.clear();
     away = shut;
     show(last);
   }

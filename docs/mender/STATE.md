@@ -2029,6 +2029,15 @@ ember and stayed pinned too; and once it lifted and the turn finished the
 board went green and was caught mid-knock, several frames of its own swing
 rising and settling.
 
+And a board that hung on the folded rack stays hung once it goes quiet:
+any project that was lit or stood in while the rack was shut keeps its board
+up until the rack is folded afresh, so the few he is working between stay in
+reach rather than vanishing the moment their alert clears. `kept` in
+`yard/shelf.ts`. Driven over the debug port with a rack built off the real
+module in a scratch dev instance: two lit boards went quiet and stayed up,
+walking on to a fourth kept all three, and unfolding and folding again left
+only the one he was standing in.
+
 And a chord goes straight to whoever wants him, island-wide: `Cmd/Ctrl+U`
 ("go to whoever wants you," in the finder's own "held with command" list from
 anywhere) stands him in the yard of whichever session is asking or hurt,

@@ -467,7 +467,10 @@ opens it, and the whole beam is the handle, a press anywhere along the wood
 the boards hang from, unless the press carried the window off instead. Folding
 draws the boards up behind the beam one after another from the far end and
 then rolls the beam in; unfolding plays it back, the beam running out and the
-boards dropping in one by one. A slot held
+boards dropping in one by one. Folded shut it still hangs whatever is lit
+and the one you are standing in, and once a board has hung there it stays
+after its light goes out and after you walk on, so the ones you are working
+between stay in reach until the rack is folded afresh. A slot held
 and dragged along it moves there, the others stepping aside, and stays.
 
 A slot on the rack carries the same warm or red wash a lit house gets, the
