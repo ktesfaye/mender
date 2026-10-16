@@ -193,8 +193,13 @@ void main(void) {
   float power = max(max(light.r, light.g), light.b);
   /* Stepped the way pixel art steps a gradient: a few levels, dithered
      between on the world's own pixel grid, so a pool of light reads as drawn
-     rather than as rings or an airbrush. */
-  int bi = int(mod(floor(wp.y), 4.0)) * 4 + int(mod(floor(wp.x), 4.0));
+     rather than as rings or an airbrush. Zoomed out past a world pixel per
+     screen pixel, the world grid only gets sampled every so often, so most
+     of the pattern is skipped and the steps show as hard rings; there the
+     screen's own pixels carry the dither instead. */
+  float perPixel = max(fwidth(world.x), fwidth(world.y));
+  vec2 cell = perPixel > 0.75 ? floor(gl_FragCoord.xy) : floor(wp);
+  int bi = int(mod(cell.y, 4.0)) * 4 + int(mod(cell.x, 4.0));
   float bayer = (BAYER[bi] + 0.5) / 16.0;
   float levels = 8.0;
   float stepped = floor(power * levels + bayer) / levels;
