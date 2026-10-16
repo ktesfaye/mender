@@ -4226,4 +4226,10 @@ behind it blurred and only lightly dimmed, Jira's page transparent so its
 columns and cards float on it. Looked at in the dev instance at night; colour
 couldn't be judged that evening because the Mac's own display filter was
 washing out every screenshot, desktop included.
+Then signing in on a work site: the token is only put on requests once Jira
+has accepted it, and a sign-in that leaves Atlassian for the company's own
+page stays in the window instead of being thrown out to the browser, popups
+included. Driven with a refused token: Atlassian's login came up plain in the
+window, and Microsoft's and Google's sign-in pages both opened inside it. The
+work site itself is not tried, since it needs his work account.
 

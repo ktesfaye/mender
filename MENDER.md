@@ -1263,8 +1263,12 @@ the island glowing through it blurred, and everything round it, the yard's
 words and the rack too, stepping back a little; a press outside it, its ×, or Escape once nothing of
 Jira's own is open puts it away. It is signed in with the API token the
 windmill already holds, added to every request on its way out of the main
-process, so there is no second sign-in and no single sign-on page to refuse an
-embedded browser, and the token never reaches the page. On a board or a
+process once Jira has been seen to take it, so there is no second sign-in, and
+the token never reaches the page. A site that refuses API tokens, as a work
+site can, signs in the ordinary way instead, and every step of that, the
+company's own Okta or Microsoft or Google page included, happens inside the
+window so the session it ends with is the board's; Atlassian's and the
+company's pages are shown as they are, never retinted. On a board or a
 ticket Jira's own top bar, sidebar, project header and cookie banner are
 taken off, leaving its tabs and the board and nothing that says "website",
 and the whole page is retinted from Jira's own colour settings to the

@@ -98,6 +98,16 @@ export function boardOfUrl(url: string): { site: string; key: string; board: num
   }
 }
 
+/** Whether an address is a Jira site itself rather than a page on the way to one. */
+export function onJira(url: string): boolean {
+  try {
+    const { protocol, host } = new URL(url);
+    return protocol === 'https:' && host.endsWith('.atlassian.net') && host !== 'id.atlassian.net';
+  } catch {
+    return false;
+  }
+}
+
 /** Which ticket a Jira address has open, if any. */
 export function ticketOfUrl(url: string): string | null {
   try {
@@ -239,8 +249,12 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
     el.addEventListener('dom-ready', () => {
       ready = true;
       picked = [];
-      void el.insertCSS(PAGE_CSS);
-      void el.executeJavaScript(PAGE_JS).then(push, () => undefined);
+      /* Only Jira itself is retinted and laid into: a sign-in page on the
+         way, Atlassian's own or a company's, is shown exactly as it is. */
+      if (onJira(el.getURL())) {
+        void el.insertCSS(PAGE_CSS);
+        void el.executeJavaScript(PAGE_JS).then(push, () => undefined);
+      }
       paintStrip();
     });
     const moved = (): void => {
