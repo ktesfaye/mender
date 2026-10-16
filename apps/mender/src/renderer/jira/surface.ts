@@ -1,39 +1,43 @@
 import './jira.css';
 import { adfToMarkdown } from '@shared/jira-adf';
-import type { JiraBoardPick, JiraLink } from '@shared/jira';
-import { boardView, noFilters, readLook, type BoardHands, type Filters, type Lit, type Look } from './board-view';
-import { categoryOf, makeJira, type Board, type Jira, type RawIssue, type Wire } from './data';
-import { closeSlabs, gold, h, saidBack, slabsUp } from './dom';
-import { issueView } from './issue-view';
-
-export type { Lit } from './board-view';
+import { JIRA_PARTITION, type JiraLink } from '@shared/jira';
+import { categoryOf, makeJira, type RawIssue, type Wire } from './data';
+import { PAGE_CSS, PAGE_JS, PAGE_SAYS } from './page';
 
 /**
- * Jira, written into the yard at night.
+ * Jira's own board, in a window over the village.
  *
- * Everything Jira's own board does is here: its columns and limits, its
- * sprint, filters and grouping, every card's epic, type, priority, points,
- * due date, subtasks and flag, dragging to move and rank, and every field of
- * a ticket changed in place. It is drawn the village's way rather than
- * Jira's: tickets are notes pinned to posts in the answer's own face, done
- * work is weathered slips, epics are tape and beams, every menu a slab, and
- * the village stays dimmed behind it with the rack still up. What the village
- * adds sits on top: "take it on", and the lantern of whichever session is
- * working on a ticket.
+ * Not drawn by us any more: it is the real site, signed in with the token the
+ * windmill holds, with its own navigation taken off so all that is left is
+ * the board and its tickets (see page.ts). The window is the same one a
+ * project's settings open in, the village dimmed behind it, and over the page
+ * runs one strip of the village's own: whose Jira it is, whichever ticket is
+ * open with "launch" beside it, how many are picked with "launch these", and
+ * the way out.
+ *
+ * The page is made once and kept, hidden, so opening it again is instant and
+ * finds it where it was left.
  */
 
 export interface JiraHands {
   wire: Wire;
   close(): void;
+  /** One ticket: its own workspace, and you standing in it. */
   take(site: string, key: string): void;
+  /** Several: each its own workspace, launched one after another, while you stay on the board. */
+  takeMany(site: string, keys: string[], progress: (said: string) => void): Promise<void>;
   go(task: string): void;
-  outside(url: string): void;
   connect(): void;
   sites(): Promise<{ site: string; who: string }[]>;
-  boards(query: string): Promise<JiraBoardPick[] | string>;
   link(to: JiraLink | null): Promise<void>;
   /** The village dimmed behind it, everything but the rack put away, and back. */
   backdrop(on: boolean): void;
+}
+
+export interface Lit {
+  task: string;
+  name: string;
+  mood: string;
 }
 
 export interface Ticket {
@@ -48,378 +52,272 @@ export interface JiraSurface {
   close(): void;
   lit(map: Record<string, Lit>): void;
   ticket(site: string, key: string): Promise<Ticket | null>;
-  /** Out of to-do and into the board's first column that is under way. */
+  /** Out of to-do and into the first status that is under way. */
   start(site: string, key: string): Promise<void>;
 }
 
+type WebView = HTMLElement & {
+  src: string;
+  getURL(): string;
+  loadURL(url: string): Promise<void>;
+  insertCSS(css: string): Promise<string>;
+  executeJavaScript(code: string): Promise<unknown>;
+  focus(): void;
+};
+
 const enc = encodeURIComponent;
 
+const h = <K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  cls = '',
+  ...children: (Node | string | null | undefined)[]
+): HTMLElementTagNameMap[K] => {
+  const el = document.createElement(tag);
+  if (cls) el.className = cls;
+  for (const child of children) if (child) el.append(child);
+  return el;
+};
+
+const gold = (text: string, act: () => void): HTMLSpanElement => {
+  const el = h('span', 'gold', text);
+  el.addEventListener('click', (event) => {
+    event.stopPropagation();
+    act();
+  });
+  return el;
+};
+
+/** Which board a Jira address is, if it is one. */
+export function boardOfUrl(url: string): { site: string; key: string; board: number } | null {
+  try {
+    const at = new URL(url);
+    const got = at.pathname.match(/\/jira\/software\/(?:c\/)?projects\/([^/]+)\/boards\/(\d+)/);
+    return got ? { site: at.host, key: got[1]!, board: Number(got[2]) } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Which ticket a Jira address has open, if any. */
+export function ticketOfUrl(url: string): string | null {
+  try {
+    const at = new URL(url);
+    return (
+      at.searchParams.get('selectedIssue') ??
+      at.pathname.match(/\/browse\/([A-Z][A-Z0-9_]*-\d+)/)?.[1] ??
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function makeJiraSurface(hands: JiraHands): JiraSurface {
-  /* The board is a window of its own over everything, the way a project's
-     settings are, with the whole village dimmed behind it. */
-  const root = h('div', 'jr-win');
-  root.tabIndex = -1;
-  const shade = h('div', 'jr', root);
+  const shade = h('div', 'jr');
   shade.style.display = 'none';
-  /* Everything on Jira is Jira's: the village's own keys and pointer sit on
-     the window, under this. */
-  const pop = h('div', 'jr-pop');
-  pop.tabIndex = -1;
-  /* A ticket is a window over the board, the way a project's settings are,
-     and the board stays where it was under it. */
-  const popBack = h('div', 'jr-popback', pop);
-  popBack.style.display = 'none';
-  for (const el of [shade, popBack])
-    for (const kind of ['keydown', 'keyup', 'pointerdown', 'pointerup', 'mousedown', 'click', 'wheel', 'dblclick', 'contextmenu'] as const)
-      el.addEventListener(kind, (event) => event.stopPropagation());
-  let downOutside = false;
-  popBack.addEventListener('pointerdown', (event) => {
-    downOutside = event.target === popBack;
-  });
-  popBack.addEventListener('click', (event) => {
-    if (downOutside && event.target === popBack && !slabsUp()) shut();
-    downOutside = false;
-  });
+  const root = h('div', 'jr-win jr-web');
+  root.tabIndex = -1;
+  shade.append(root);
+  for (const kind of ['keydown', 'keyup', 'pointerdown', 'pointerup', 'mousedown', 'click', 'wheel', 'dblclick', 'contextmenu'] as const)
+    shade.addEventListener(kind, (event) => event.stopPropagation());
   let downOff = false;
   shade.addEventListener('pointerdown', (event) => {
     downOff = event.target === shade;
   });
   shade.addEventListener('click', (event) => {
-    if (downOff && event.target === shade && !slabsUp()) hands.close();
+    if (downOff && event.target === shade) hands.close();
     downOff = false;
   });
-  document.body.append(shade, popBack);
+  root.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' || (event.metaKey && event.key.toLowerCase() === 'w')) {
+      event.preventDefault();
+      hands.close();
+    }
+  });
+  document.body.append(shade);
+
+  const where = h('span', 'where');
+  const open = h('div', 'jr-strip-open');
+  const picks = h('div', 'jr-strip-picks');
+  const said = h('div', 'jr-strip-said');
+  const x = h('button', 'jr-x', '×');
+  x.title = 'put it away';
+  x.addEventListener('click', () => hands.close());
+  const strip = h('div', 'jr-strip', h('div', 'jr-here', where), open, picks, said, h('div', 'jr-gap'), x);
+  const stage = h('div', 'jr-stage');
+  root.append(strip, stage);
 
   let up = false;
   let project = '';
   let link: JiraLink | null = null;
-  let jira: Jira | null = null;
-  let board: Board | null = null;
+  let site = '';
   let lit: Record<string, Lit> = {};
-  let filters: Filters = noFilters();
-  const look: Look = readLook();
-  let loading = 0;
-  let me: string | undefined;
-  /** What is open over the board, the newest last; Escape walks back down it. */
-  let trail: { key: string; view: ReturnType<typeof issueView> }[] = [];
-  let shown: ReturnType<typeof boardView> | null = null;
-  const recent = new Map<string, { statusId: string; at: number }>();
-  /** The board picker is up; nothing read in the meantime is drawn over it. */
-  let picking = false;
+  let picked: string[] = [];
+  let launching = false;
+  let view: WebView | null = null;
+  let ready = false;
+  let saidTimer: number | undefined;
 
-  const said = (text: string, sore = false): void => saidBack(trail.length ? popBack : root, text, sore);
-  const failed = (cause: unknown): string => (cause instanceof Error ? cause.message : 'Jira did not answer.');
-
-  /** A page of its own over the village with only a few words on it. */
-  const quiet = (title: string, ...lines: (Node | string | null)[]): void => {
-    shut();
-    shown = null;
-    const top = h('div', 'jr-top', h('div', 'jr-here sh', h('span', 'where', `${project}’s jira`), h('span', 'jr-sub', title)));
-    const body = h('div', 'jr-body', h('div', 'jr-quiet sh', ...lines));
-    root.replaceChildren(top, body);
+  const tell = (text: string, sore = false, stay = false): void => {
+    window.clearTimeout(saidTimer);
+    said.textContent = text;
+    said.classList.toggle('sore', sore);
+    if (!stay) saidTimer = window.setTimeout(() => (said.textContent = ''), sore ? 12_000 : 4000);
   };
 
-  // ── the board ───────────────────────────────────────────────────────────
-  const loadBoard = async (quietly = false): Promise<void> => {
-    if (!jira || !link) return;
-    const mine = ++loading;
-    if (!quietly && !board) quiet('reading the board…');
+  const urlOf = (): string => {
+    if (link?.url && boardOfUrl(link.url)?.site === site) return link.url;
+    if (link && link.site === site && link.board !== undefined)
+      return `https://${site}/jira/software/projects/${enc(link.key)}/boards/${link.board}`;
+    if (link && link.site === site) return `https://${site}/jira/software/projects/${enc(link.key)}/boards`;
+    return `https://${site}/jira/projects`;
+  };
+
+  const push = (): void => {
+    if (!view || !ready) return;
+    void view.executeJavaScript(`window.__mender && window.__mender.set(${JSON.stringify({ lit })})`).catch(() => undefined);
+  };
+
+  const launch = async (keys: string[]): Promise<void> => {
+    if (!keys.length || launching) return;
+    if (keys.length === 1) {
+      hands.take(site, keys[0]!);
+      return;
+    }
+    launching = true;
+    paintStrip();
     try {
-      const got =
-        link.board === undefined
-          ? await jira.projectBoard(link.key)
-          : await jira.board(link.board, [...filters.quick], filters.jql);
-      if (mine !== loading) return;
-      /* Jira's board feed lags a move by a few seconds; what was just moved
-         here stays where it was put until the feed agrees. */
-      const now = Date.now();
-      for (const [key, was] of recent) {
-        const card = got.cards.find((one) => one.key === key);
-        if (now - was.at > 60_000 || !card || card.statusId === was.statusId) recent.delete(key);
-        else {
-          card.statusId = was.statusId;
-          card.category = got.columns.find((column) => column.statuses.includes(was.statusId))?.category ?? card.category;
-        }
-      }
-      board = got;
-      me = got.me;
-      paintBoard();
-    } catch (cause) {
-      if (mine !== loading) return;
-      if (filters.jql && board) {
-        said(`that jql: ${failed(cause)}`, true);
-        filters.jql = '';
-        return;
-      }
-      if (!quietly)
-        quiet(
-          'Jira would not hand this board over',
-          h('div', 'sore', failed(cause)),
-          h('div', 'acts', gold('try again', () => void loadBoard()), gold('pick another board', () => showPicker()))
-        );
+      await hands.takeMany(site, keys, (text) => tell(text, false, true));
+      tell(`launched ${keys.length}, each in its own workspace`);
+    } finally {
+      launching = false;
+      /* Jira's board doesn't hear about moves made over its API until it is read again. */
+      (view as (WebView & { reload(): void }) | null)?.reload();
+      paintStrip();
     }
   };
 
-  const boardHands: BoardHands = {
-    open: (key) => openIssue(key),
-    go: (task) => hands.go(task),
-    take: (key) => jira && hands.take(jira.site, key),
-    move: (key, column, before, after) => moveCard(key, column, before, after),
-    reload: (quietly) => loadBoard(quietly),
-    moved: (key, statusId) => recent.set(key, { statusId, at: Date.now() }),
-    pickBoard: () => showPicker(),
-    close: () => hands.close(),
-    outside: hands.outside,
-    said,
-  };
-
-  const paintBoard = (): void => {
-    if (!jira || !board || picking) return;
-    const keep = root.querySelector<HTMLInputElement>('.jr-find');
-    const typing = keep && document.activeElement === keep;
-    const at = typing ? keep.selectionStart : null;
-    /* Only as wide as its columns, the way Jira keeps them, centred in the yard. */
-    root.style.setProperty('--cols', String(Math.max(board.columns.length, 3)));
-    shown = boardView(jira, board, () => lit, filters, look, root, boardHands);
-    root.replaceChildren(shown.top, shown.body);
-    if (typing) {
-      const find = root.querySelector<HTMLInputElement>('.jr-find');
-      find?.focus();
-      if (find && at !== null) find.setSelectionRange(at, at);
-    }
-  };
-
-  const moveCard = async (key: string, column: number, before?: string, after?: string): Promise<void> => {
-    const j = jira;
-    const b = board;
-    const to = b?.columns[column];
-    const card = b?.cards.find((one) => one.key === key);
-    if (!j || !b || !to || !card) return;
-    const moving = !to.statuses.includes(card.statusId);
-    /* It goes where it was let go at once; Jira catches up. */
-    b.cards.splice(b.cards.indexOf(card), 1);
-    if (moving) {
-      card.statusId = to.statuses[0] ?? card.statusId;
-      card.category = to.category;
-    }
-    const at = before ? b.cards.findIndex((one) => one.key === before) : -1;
-    if (at >= 0) b.cards.splice(at, 0, card);
-    else {
-      const last = after ? b.cards.findIndex((one) => one.key === after) : -1;
-      b.cards.splice(last >= 0 ? last + 1 : b.cards.length, 0, card);
-    }
-    paintBoard();
-    try {
-      const went = moving ? await j.move(key, to.statuses) : null;
-      if (went === false) said(`Jira's workflow won't let ${key} go straight to ${to.name.toLowerCase()}`, true);
-      else {
-        if (went) recent.set(key, { statusId: went, at: Date.now() });
-        if ((before || after) && b.rank) await j.rank(key, before, before ? undefined : after);
-        if (moving) said(`${key} is ${to.name.toLowerCase()} now`);
-      }
-    } catch (cause) {
-      said(failed(cause), true);
-    }
-    await loadBoard(true);
-  };
-
-  // ── a ticket over it ────────────────────────────────────────────────────
-  const openIssue = (key: string): void => {
-    const j = jira;
-    if (!j) return;
-    closeSlabs();
-    const view = issueView(
-      j,
-      key,
-      { ...(board ? { board } : {}), ...(me ? { me } : {}), lit: () => lit, host: popBack, ...(trail.length ? { from: trail[trail.length - 1]!.key } : {}) },
-      {
-        take: (k) => hands.take(j.site, k),
-        go: (task) => hands.go(task),
-        back: () => back(),
-        changed: () => void loadBoard(true),
-        open: (k) => openIssue(k),
-        only: (epic) => {
-          filters.epics = new Set([epic]);
-          shut();
-          paintBoard();
-        },
-        close: () => shut(),
-        outside: hands.outside,
-        said,
-      }
-    );
-    trail = trail.filter((one) => one.key !== key);
-    trail.push({ key, view });
-    const opening = popBack.style.display === 'none';
-    pop.replaceChildren(view.top, view.body);
-    popBack.style.display = 'flex';
-    if (opening) {
-      popBack.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
-      pop.animate([{ transform: 'translateY(8px) scale(0.99)' }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
-    }
-    pop.focus();
-  };
-
-  /** One step back: to the ticket before, or off the board's window altogether. */
-  const back = (): void => {
-    closeSlabs();
-    trail.pop();
-    const last = trail[trail.length - 1];
-    if (last) {
-      pop.replaceChildren(last.view.top, last.view.body);
-      last.view.refresh();
-      pop.focus();
-    } else shut();
-  };
-
-  /** The ticket window put away, the board as it was under it. */
-  function shut(): void {
-    if (popBack.style.display === 'none') return;
-    closeSlabs();
-    trail = [];
-    popBack.style.display = 'none';
-    pop.replaceChildren();
-    root.focus();
-  }
-
-  // ── no board yet ────────────────────────────────────────────────────────
-  const showPicker = (): void => {
-    closeSlabs();
-    picking = true;
-    const search = h('input', 'jr-find');
-    search.placeholder = 'a board or project, or paste its link…';
-    search.style.width = '420px';
-    const list = h('div', 'jr-picks', h('div', 'jr-wait', 'asking Jira…'));
-    let asked = 0;
-    let wait: number | undefined;
-    const find = async (): Promise<void> => {
-      const mine = ++asked;
-      const got = await hands.boards(search.value.trim());
-      if (mine !== asked) return;
-      if (typeof got === 'string') {
-        list.replaceChildren(h('div', 'sore', got));
-        return;
-      }
-      if (!got.length) {
-        list.replaceChildren(h('div', 'jr-wait', search.value.trim() ? 'no board by that name' : 'none of your tickets are on a board yet. look one up.'));
-        return;
-      }
-      list.replaceChildren(
-        ...got.map((one) => {
-          const row = h('div', 'pick', h('b', '', one.name), h('small', '', `${one.project} · ${one.key} · ${one.site.replace('.atlassian.net', '')}`));
-          row.addEventListener('click', () => void choose({ site: one.site, key: one.key, board: one.board, name: one.name }));
-          return row;
-        })
+  const paintStrip = (): void => {
+    where.textContent = `${project}’s jira`;
+    const current = view && ready ? view.getURL() : '';
+    const key = current ? ticketOfUrl(current) : null;
+    open.replaceChildren();
+    if (key) {
+      const on = lit[key];
+      open.append(
+        h('span', 'k', key),
+        on
+          ? gold(`${on.name}, walk in`, () => hands.go(on.task))
+          : gold('launch it', () => void launch([key]))
       );
+    }
+    picks.replaceChildren();
+    if (picked.length && !launching)
+      picks.append(
+        h('span', 'k', `${picked.length} picked`),
+        gold(picked.length === 1 ? 'launch it' : 'launch these', () => void launch([...picked])),
+        gold('let go', () => void view?.executeJavaScript('window.__mender && window.__mender.clear()'))
+      );
+  };
+
+  const remember = (url: string): void => {
+    const board = boardOfUrl(url);
+    if (!board) return;
+    const clean = new URL(url);
+    clean.search = '';
+    const to: JiraLink = { site: board.site, key: board.key, board: board.board, url: clean.toString() };
+    if (link && link.site === to.site && link.board === to.board && link.url === to.url) return;
+    link = { ...link, ...to };
+    void hands.link(link);
+  };
+
+  const make = (): WebView => {
+    const el = document.createElement('webview') as WebView;
+    el.setAttribute('partition', JIRA_PARTITION);
+    el.setAttribute('allowpopups', '');
+    el.className = 'jr-page';
+    el.addEventListener('dom-ready', () => {
+      ready = true;
+      picked = [];
+      void el.insertCSS(PAGE_CSS);
+      void el.executeJavaScript(PAGE_JS).then(push, () => undefined);
+      paintStrip();
+    });
+    const moved = (): void => {
+      if (!ready) return;
+      remember(el.getURL());
+      paintStrip();
     };
-    search.addEventListener('input', () => {
-      window.clearTimeout(wait);
-      wait = window.setTimeout(() => void find(), 300);
+    el.addEventListener('did-navigate', moved);
+    el.addEventListener('did-navigate-in-page', moved);
+    el.addEventListener('did-fail-load', (event) => {
+      const failed = event as unknown as { errorCode: number; isMainFrame: boolean; errorDescription: string };
+      if (failed.isMainFrame && failed.errorCode !== -3) tell(`Jira didn’t load: ${failed.errorDescription}`, true, true);
     });
-    search.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        window.clearTimeout(wait);
-        void find().then(() => (list.querySelector('.pick') as HTMLElement | null)?.click());
+    el.addEventListener('console-message', (event) => {
+      const message = (event as unknown as { message: string }).message;
+      if (!message.startsWith(PAGE_SAYS)) return;
+      let what: { launch?: string[]; picked?: string[]; go?: string; escape?: boolean };
+      try {
+        what = JSON.parse(message.slice(PAGE_SAYS.length));
+      } catch {
+        return;
       }
+      if (what.launch) void launch(what.launch);
+      else if (what.picked) {
+        picked = what.picked;
+        paintStrip();
+      } else if (what.go) hands.go(what.go);
+      else if (what.escape) hands.close();
     });
-    quiet(
-      `which board is ${project}’s?`,
-      h('div', 'big', 'the boards your tickets are on'),
-      search,
-      list,
-      link && board
-        ? gold('keep the one it has', () => {
-            picking = false;
-            paintBoard();
-          })
-        : null
-    );
-    search.focus();
-    void find();
+    return el;
   };
 
-  const choose = async (to: JiraLink): Promise<void> => {
-    picking = false;
-    await hands.link(to);
-    link = to;
-    jira = makeJira(hands.wire, to.site);
-    filters = noFilters();
-    board = null;
-    await loadBoard();
-  };
-
-  const start = async (): Promise<void> => {
-    quiet('opening Jira…');
+  const show = async (): Promise<void> => {
     const sites = await hands.sites();
-    if (!sites.length) {
-      jira = null;
-      board = null;
-      quiet(
-        'connect Jira first',
-        'Nothing on this Mac is connected to a Jira site yet. It takes the site, your email and an API token, kept in the windmill.',
-        h('div', 'acts', gold('connect a jira site', () => hands.connect()))
+    if (!up) return;
+    const wanted = link?.site && sites.some((one) => one.site === link?.site) ? link.site : sites[0]?.site;
+    if (!wanted) {
+      view?.remove();
+      view = null;
+      ready = false;
+      stage.replaceChildren(
+        h(
+          'div',
+          'jr-quiet sh',
+          'Nothing on this Mac is connected to a Jira site yet. It takes the site, your email and an API token, kept in the windmill.',
+          h('div', 'acts', gold('connect a jira site', () => hands.connect()))
+        )
       );
       return;
     }
-    if (!link) {
-      jira = makeJira(hands.wire, sites[0]!.site);
-      showPicker();
-      return;
+    const goTo = wanted !== site || !view;
+    site = wanted;
+    if (!view) {
+      view = make();
+      stage.replaceChildren(view);
+    } else if (!stage.contains(view)) stage.replaceChildren(view);
+    if (goTo) {
+      ready = false;
+      view.src = urlOf();
+    } else {
+      const now = boardOfUrl(view.getURL());
+      const want = link?.board;
+      if (want !== undefined && now && (now.board !== want || now.key !== link?.key)) void view.loadURL(urlOf());
+      push();
     }
-    if (!sites.some((one) => one.site === link?.site)) {
-      quiet(
-        `${link.site} isn’t connected on this Mac`,
-        h('div', 'acts', gold('connect it', () => hands.connect()), gold('pick another board', () => showPicker()))
-      );
-      return;
-    }
-    jira = makeJira(hands.wire, link.site);
-    await loadBoard();
+    view.focus();
   };
-
-  // ── keys ────────────────────────────────────────────────────────────────
-  const keys = (event: KeyboardEvent): void => {
-    const typing = (event.target as HTMLElement).closest('input,textarea,select,[contenteditable]');
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      if (typing && (typing as HTMLInputElement).value) return;
-      if (typing) (typing as HTMLElement).blur();
-      else if (trail.length) back();
-      else hands.close();
-      return;
-    }
-    if (event.metaKey && event.key.toLowerCase() === 'w') {
-      event.preventDefault();
-      hands.close();
-      return;
-    }
-    if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
-    if (event.key === '/' || (event.key === 'f' && !trail.length)) {
-      event.preventDefault();
-      (trail.length ? pop : root).querySelector<HTMLElement>('.jr-find, .jr-line input')?.focus();
-    } else if (event.key === 'r' && trail.length) {
-      event.preventDefault();
-      pop.querySelector<HTMLElement>('.jr-line input')?.focus();
-    }
-  };
-  root.addEventListener('keydown', keys);
-  pop.addEventListener('keydown', keys);
-
-  /* It is everybody's board: a teammate moving a ticket moves it here too. */
-  window.setInterval(() => {
-    if (!up || !board || document.hidden || slabsUp()) return;
-    if (document.querySelector('.jr .dragging, .jr .jr-note.blank, .jr-pop .jr-row input, .jr-pop .jr-row textarea, .jr-pop .jr-ask textarea, .jr-pop .jr-said textarea, .jr-pop .jr-here input')) return;
-    void loadBoard(true);
-    trail[trail.length - 1]?.view.refresh();
-  }, 30_000);
 
   return {
     get up() {
       return up;
     },
     open: (at) => {
-      const same = at.project === project && JSON.stringify(at.link) === JSON.stringify(link) && board;
+      if (at.project !== project) {
+        picked = [];
+        void view?.executeJavaScript('window.__mender && window.__mender.clear()').catch(() => undefined);
+      }
       project = at.project;
       link = at.link;
       up = true;
@@ -427,22 +325,12 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
       shade.style.display = 'flex';
       shade.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
       root.animate([{ transform: 'translateY(8px) scale(0.99)' }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
-      root.focus();
-      if (same) {
-        void loadBoard(true);
-        return;
-      }
-      filters = noFilters();
-      board = null;
-      shut();
-      picking = false;
-      void start();
+      paintStrip();
+      void show();
     },
     close: () => {
       if (!up) return;
       up = false;
-      shut();
-      closeSlabs();
       shade.style.display = 'none';
       hands.backdrop(false);
       (document.activeElement as HTMLElement | null)?.blur();
@@ -450,12 +338,12 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
     lit: (map) => {
       if (JSON.stringify(map) === JSON.stringify(lit)) return;
       lit = map;
-      if (up && board) shown?.paint();
+      push();
+      if (up) paintStrip();
     },
-    ticket: async (site, key) => {
-      const j = jira?.site === site ? jira : makeJira(hands.wire, site);
+    ticket: async (at, key) => {
       try {
-        const got = await j.get<RawIssue>(`/rest/api/3/issue/${key}?fields=summary,status,description`);
+        const got = await makeJira(hands.wire, at).get<RawIssue>(`/rest/api/3/issue/${enc(key)}?fields=summary,status,description`);
         return {
           summary: (got.fields.summary as string) ?? '',
           description: adfToMarkdown(got.fields.description),
@@ -465,19 +353,17 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
         return null;
       }
     },
-    start: async (site, key) => {
-      const j = jira?.site === site ? jira : makeJira(hands.wire, site);
-      const working = board?.columns.find((column) => column.category === 'indeterminate' && !/block/i.test(column.name));
-      if (working) {
-        await j.move(key, working.statuses).catch(() => false);
-      } else {
-        const got = await j
-          .get<{ transitions: { id: string; to?: { statusCategory?: { key?: string } } }[] }>(`/rest/api/3/issue/${enc(key)}/transitions`)
-          .catch(() => null);
-        const step = got?.transitions.find((one) => one.to?.statusCategory?.key === 'indeterminate');
-        if (step) await j.send('POST', `/rest/api/3/issue/${enc(key)}/transitions`, { transition: { id: step.id } }).catch(() => undefined);
-      }
-      void loadBoard(true);
+    start: async (at, key) => {
+      const j = makeJira(hands.wire, at);
+      const got = await j
+        .get<{ transitions: { id: string; name?: string; to?: { name?: string; statusCategory?: { key?: string } } }[] }>(
+          `/rest/api/3/issue/${enc(key)}/transitions`
+        )
+        .catch(() => null);
+      const step = got?.transitions.find(
+        (one) => one.to?.statusCategory?.key === 'indeterminate' && !/block|review/i.test(one.to?.name ?? '')
+      );
+      if (step) await j.send('POST', `/rest/api/3/issue/${enc(key)}/transitions`, { transition: { id: step.id } }).catch(() => undefined);
     },
   };
 }

@@ -4197,3 +4197,24 @@ and deleted, a column folded, the epic view, and complete-sprint armed and
 left to disarm. "Take it on" and actually completing a sprint were not driven:
 one starts a real agent turn, the other would end the test sprint. Archive
 needs a Jira plan this site does not have, so it says Jira's refusal.
+
+### Jira is the real site in a window, with launch on every card (2026-10-15) — done
+
+The hand-drawn board, ticket view and their data layer are gone. The blue
+diamond opens Jira's own site in a `<webview>` on its own partition, signed in
+by the main process adding the windmill's API token to every request to a
+connected site, and stripped of Jira's top bar, sidebar, project header and
+cookie banner on boards and tickets. Laid into the page: a pick ring and
+"launch" on every card, a Launch button by an open ticket's status, and the
+working session's lantern on cards that have one. One launch cuts an isolated
+workspace named after the ticket, moves it to in progress, tells the session
+the windmill's recipe and walks you in; several picked launch one after
+another while the board stays up and reloads. Escape closes it once nothing of
+Jira's is open; external links go to the browser. Driven in a dev instance on
+the AUR board with a Haiku session and a one-word recipe: the board signed in
+with no login, picking two and launching them (two worktrees, both tickets to
+in progress, lanterns on both cards), opening a ticket and launching it from
+its own button (walked into the new workspace, brief said), Escape out. The
+test tickets were moved back to To Do afterwards. Not tried: a work site, and
+Jira's page on a narrow window.
+

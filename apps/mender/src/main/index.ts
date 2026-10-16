@@ -23,6 +23,7 @@ import { createGitHubStatus } from './github';
 import { installGrip } from './grip';
 import { watchHungry } from './hungry';
 import { createJiraController } from './jira';
+import { installJiraWeb } from './jira-web';
 import { logWindow } from './logging';
 import { installAppMenu } from './menu';
 import { watchMissed } from './missed';
@@ -158,6 +159,7 @@ export async function main(): Promise<void> {
   });
 
   installDragOut(app);
+  installJiraWeb();
   installGrip();
 }
 

@@ -1256,58 +1256,32 @@ Everything else the windmill will eventually hold — updating and
 authenticating agents, MCP, skills, accounts, task defaults — still has
 nowhere to live.
 
-**Jira is written into the yard at night.** A blue diamond on the rack,
-beside the sky and the wheel, opens the project's own Jira board as a window
-of its own over everything, the way a project's settings are, the village and
-the yard dimmed behind it; a press outside it, its ×, or Escape puts it away,
-and the board is only as wide as its columns. Everything Jira's own board does is here; it is only drawn
-the village's way, and as calmly as Jira draws itself. Its columns stand in
-its own order with their counts and limits, each a dark lane its tickets sit
-in as dark cards, folded away to a strip when not wanted. A card's title is
-set in the answer's own face, with the bracketed prefixes a team tags tickets
-with lifted off as small stamps, since that face draws a bracket almost as an
-I; under it its labels, then its epic as a chip in the epic's colour, pressed
-to open the epic; and along the foot are its kind, its key, its due date, red
-when close, a small red flag, its priority as pixel chevrons, its points and
-whose it is, with its subtasks as a row of squares. A flagged card is warmed
-red. Done work is the same card, quieter, the epic's colour down the edge and
-the key struck through. One line heads it: the running sprint and its days
-left, a line to find on the board by, which across all of Jira on return, the
-team's faces, filter, group, settings and new ticket, and at the far end how
-much is done as a meter and "complete the sprint" in two presses. Filter
-is a slab by epic, who has it, where it stands, kind, labels, release and
-priority, plus only mine, flagged, changed today, the board's own quick
-filters and JQL on ⇧F; each one on is written as a phrase with a ×. Grouping by
-epic, who has it or labels hangs a beam with a signboard over each lane, and a
-note dropped in another lane takes that epic or owner. Dragging a note moves it
-through whatever its workflow allows and ranks it, and right-clicking it or its
-dots brings the same slab Jira has: move it along, to the top or the bottom,
-give it to, change its epic, labels, link to another, flag it, copy its link or
-key, archive it, delete it. A new ticket is written straight onto a blank card
-in the column it is to land in. Pressing a card opens it as a window over the
-board, the way a project's settings are, with the board still under it: its
-title large across the top, what it asks with its epic, subtasks, links and
-pictures under it, and what's been said under that, in the answer's face,
-with everything that changed on it folded under; where it stands as a thread
-of the board's columns down the right, each one it can move to pressable, and
-every field it has or could have under it, changed in place; and the line
-along its foot says something on it. An epic is the same window with what is
-in it in place of what's been said, a strip coloured by where each piece
-stands, and it can narrow the board to itself. Escape walks back one step at a
-time, ticket to ticket to board to the yard, and a press outside the window
-puts it away. What the village adds sits on top: a note a session here is
-working on hangs that session's lantern and carries its name and mood,
-breathing while it works and orange when it wants you, and "take it on", on a
-note or on the ticket, cuts an isolated workspace named after it, starts a
-session in it told whatever the windmill's Jira page says to tell it, and
-moves the ticket out of to-do. It all runs on the API token in the windmill,
-which holds the sites, several at once, each kept with the machine's own safe
-storage, and the token never leaves the main process. Each project picks its
-board once, from the boards your own tickets are on or by searching or pasting
-a board's link, and pressing the project's name over the board picks again. A
-project with no board at all gets one column per status. It is read again
-every half minute while it is open, since Jira can only call a machine that
-the internet can reach.
+**Jira is Jira, in a window over the village.** Drawing Jira ourselves was
+rebuilding Jira, so the blue diamond on the rack now opens the real site, in
+a window of its own over everything the way a project's settings are, the
+village dimmed behind it; a press outside it, its ×, or Escape once nothing of
+Jira's own is open puts it away. It is signed in with the API token the
+windmill already holds, added to every request on its way out of the main
+process, so there is no second sign-in and no single sign-on page to refuse an
+embedded browser, and the token never reaches the page. On a board or a
+ticket Jira's own top bar, sidebar, project header and cookie banner are
+taken off, leaving its tabs and the board and nothing that says "website";
+anywhere else it keeps its own navigation, since that is how another board is
+found, and whichever board you were last on is the one it opens on next time.
+A link that leads out of Jira opens in the machine's own browser. The page is
+made once and kept, so opening it again is instant and finds it as it was.
+What the village adds is laid into the page and is gold: on every card, under
+the pointer, a ring to pick it and "launch"; beside an open ticket's status, a
+Launch button; and on a card a session here is already working on, that
+session's lantern and name, breathing while it works, which walks into it.
+Launching one cuts an isolated workspace named after the ticket, moves the
+ticket out of to-do, starts a session in it told whatever the windmill's Jira
+page says to tell it, and stands you in it. Picking several and "launch
+these", on the strip along the window's top, does the same for each, one
+after another, while you stay on the board and their lanterns come up on the
+cards. That strip also names whichever ticket is open with "launch it" beside
+it, so a ticket can still be launched if Jira ever changes its page out from
+under the buttons laid into it.
 
 **A session remembers what it was last thinking with.** Change an agent's
 model or mode on one session and every fresh session with that same agent

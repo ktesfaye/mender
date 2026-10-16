@@ -12,6 +12,9 @@ import { z } from 'zod';
  * are.
  */
 
+/** Where Jira's own site keeps its cookies, apart from every other page. */
+export const JIRA_PARTITION = 'persist:mender-jira';
+
 export const jiraSiteSchema = z.object({
   /** The bare host, `something.atlassian.net`. */
   site: z.string(),

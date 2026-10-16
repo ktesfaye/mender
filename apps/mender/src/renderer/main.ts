@@ -3587,9 +3587,9 @@ async function boot(): Promise<void> {
     };
 
     /**
-     * The project's Jira, off the blue token on the rack, over the whole
-     * village and drawn the way Jira draws itself. Made the first time it is
-     * asked for and kept after that, so it opens again where it was left.
+     * The project's Jira, off the blue token on the rack: Jira's own site in a
+     * window over the whole village. Made the first time it is asked for and
+     * kept after that, so it opens again where it was left.
      */
     let jiraSurface: JiraSurface | null = null;
     const jiraView = (): JiraSurface =>
@@ -3603,31 +3603,20 @@ async function boot(): Promise<void> {
             if (!got.success) throw new JiraFailed(jiraSaid(got.error));
             return got.data;
           },
-          image: async (site, url) => {
-            const got = await client.jira.image({ site, url }, { timeoutMs: 30_000 }).catch(() => null);
-            return got?.success ? got.data : null;
-          },
         },
         close: () => closeJira(),
         take: (site, key) => void takeOn(site, key),
+        takeMany: (site, keys, progress) => takeMany(site, keys, progress),
         go: (task) => {
           closeJira();
           go(`task:${task}`);
         },
-        outside: (url) => window.mender.openLink(url),
         connect: () => {
           closeJira();
           windmillOnJira();
           openTheWindmill();
         },
         sites: async () => (await client.jira.status({})).sites,
-        boards: async (query) => {
-          const got = await client.jira
-            .boards({ query }, { timeoutMs: 60_000 })
-            .catch(() => null);
-          if (!got) return 'Jira took too long to answer.';
-          return got.success ? got.data.boards : jiraSaid(got.error);
-        },
         link: async (to) => {
           const project = quest?.project;
           if (project) await client.jira.link({ project: project.id, to });
@@ -3704,6 +3693,51 @@ async function boot(): Promise<void> {
         jira: { site, key, to: [] },
       };
       void begin();
+    };
+
+    /**
+     * Several tickets at once: each its own workspace named after it, told
+     * its ticket first, and moved out of to-do, one after another so no two
+     * worktrees are cut on top of each other. Nobody is walked anywhere; their
+     * lanterns come up on the board's cards as each one starts.
+     */
+    const takeMany = async (site: string, keys: string[], progress: (said: string) => void): Promise<void> => {
+      const project = quest?.project;
+      if (!project) return;
+      const view = jiraView();
+      const status = await client.jira.status({});
+      let n = 0;
+      for (const key of keys) {
+        progress(`launching ${key}, ${++n} of ${keys.length}…`);
+        const ticket = await view.ticket(site, key);
+        if (!ticket) {
+          progress(`Jira would not hand ${key} over`);
+          continue;
+        }
+        if (ticket.category === 'new') void view.start(site, key);
+        const made = await client.tasks.begin(
+          { project: project.id, name: `${key} ${ticket.summary}`.slice(0, 60), slot: null, isolated: true },
+          { timeoutMs: 0 }
+        );
+        if (!made.success) {
+          progress(`${key}: ${whyNot(made.error)}`);
+          continue;
+        }
+        void client.jira.take({ task: made.data.id, site, key });
+        void client.agents.tell(
+          {
+            task: made.data.id,
+            text: briefOf(status.recipe, {
+              key,
+              summary: ticket.summary,
+              url: `https://${site}/browse/${key}`,
+              description: ticket.description,
+            }),
+          },
+          { timeoutMs: 0 }
+        );
+        void litTickets().then((lit) => view.lit(lit));
+      }
     };
 
     /**
