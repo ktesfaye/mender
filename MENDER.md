@@ -863,7 +863,7 @@ own prompt says so plainly instead of pretending there is something to weigh.
 **A new session is asked for on a signboard.** Right-clicking the empty hook
 hangs a timber board over the village on two cords, the one place in the app
 with a box you write in rather than the line: what it is for, and under it
-three tiles that are each on or off and go together in any mix. In its own
+three tiles. In its own
 isolated workspace cuts a worktree on its own branch instead of the project's
 folder. Start from a past session turns the sign over to a wider board
 of the Claude Code conversations already had in that folder: a line to find
@@ -880,11 +880,13 @@ those come after this folder's, under "in other folders", each saying where
 it was had, and resuming one brings a copy of it over into this folder
 first, since Claude only looks for a session under the folder it is run in.
 Resume picks the chosen one back up with whatever the tiles said, and back
-turns the sign over again. Open in a terminal makes
-the session nothing but a real login shell in the checkout, drawn the way
-Terminal.app draws it, SF Mono on its Basic dark ink, with whatever was
-written run as its first command, or `claude --resume` when a past session was
-picked. It lives in its own tmux, so it is still there after the app closes,
+turns the sign over again. Open a terminal is not a setting but a door:
+one press and the session is nothing but a real login shell, up at once in
+whatever folder you are standing in, the project's own or the workspace
+you are in, drawn the way Terminal.app draws it, SF Mono on its Basic dark
+ink, with whatever was written in the box run as its first command. It never
+cuts a copy of its own unless the isolated tile was pressed on that sign
+first; command-N putting it on for a conversation does not count. It lives in its own tmux, so it is still there after the app closes,
 and taking the session down ends it. Return starts it and Escape or a click
 off the board puts it away. Issues, existing branches and allowing everything
 from the start are gone from here on purpose. A session made the older way,

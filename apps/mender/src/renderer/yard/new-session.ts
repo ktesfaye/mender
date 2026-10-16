@@ -56,6 +56,10 @@ const OFF = { bg: '#3a2712', fg: '#d9c49a', bd: '#3a2712', sh: 'none' };
 
 export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
   let isolated = Boolean(hooks.isolated);
+  /* Command-N hangs the sign with isolation already on, which is a guess
+     about a conversation. Only a press on the tile itself says a terminal
+     wants a copy of its own. */
+  let isolatedByHand = false;
   let terminal = false;
   let revivable: string | null = null;
   let closed = false;
@@ -182,12 +186,17 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
   };
   const isoTile = tile(KIT_NAMES.crate, 32, 'in its own isolated workspace', () => {
     isolated = !isolated;
+    isolatedByHand = true;
   });
   const pastTile = tile(KIT_NAMES.lanternOn, 40, 'start from a past session', () => {
     openPast();
   });
-  const termTile = tile(KIT_NAMES.anvil, 32, 'open in a terminal', () => {
-    terminal = !terminal;
+  /* A terminal is opened, not configured: one press and it is up, in the
+     folder you are standing in, running whatever is in the box. */
+  const termTile = tile(KIT_NAMES.anvil, 32, 'open a terminal', () => {
+    terminal = true;
+    if (!isolatedByHand) isolated = false;
+    submit();
   });
 
   const summary = el('span', {
