@@ -1258,14 +1258,17 @@ nowhere to live.
 
 **Jira is Jira, in a window over the village.** Drawing Jira ourselves was
 rebuilding Jira, so the blue diamond on the rack now opens the real site, in
-a window of its own over everything the way a project's settings are, the
-village dimmed behind it; a press outside it, its ×, or Escape once nothing of
+a window of its own over everything the way a project's settings are, with
+everything behind it dimmed, the yard's words and the rack too; a press outside it, its ×, or Escape once nothing of
 Jira's own is open puts it away. It is signed in with the API token the
 windmill already holds, added to every request on its way out of the main
 process, so there is no second sign-in and no single sign-on page to refuse an
 embedded browser, and the token never reaches the page. On a board or a
 ticket Jira's own top bar, sidebar, project header and cookie banner are
-taken off, leaving its tabs and the board and nothing that says "website";
+taken off, leaving its tabs and the board and nothing that says "website",
+and the whole page is retinted from Jira's own colour settings to the
+village's night, its warm near-black, its cream ink and gold where Jira would
+be blue, with only status and label colours left as Jira has them;
 anywhere else it keeps its own navigation, since that is how another board is
 found, and whichever board you were last on is the one it opens on next time.
 A link that leads out of Jira opens in the machine's own browser. The page is

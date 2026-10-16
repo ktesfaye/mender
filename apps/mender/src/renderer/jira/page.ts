@@ -21,6 +21,66 @@
 export const PAGE_SAYS = 'mender⟩';
 
 export const PAGE_CSS = `
+/* Jira's own dark theme, retinted to the village at night: its warm near-black,
+   its cream ink, and gold where Jira would be blue. Jira draws everything from
+   these tokens, so the whole page follows; the status and label colours are
+   left as Jira has them, since they mean something. */
+html[data-color-mode] {
+  --ds-surface: #1d1811 !important;
+  --ds-elevation-surface-current: #1d1811 !important;
+  --ds-surface-hovered: #251f17 !important;
+  --ds-surface-pressed: #2d261c !important;
+  --ds-surface-sunken: #16120c !important;
+  --ds-surface-raised: #2a2219 !important;
+  --ds-surface-raised-hovered: #322920 !important;
+  --ds-surface-raised-pressed: #3a3026 !important;
+  --ds-surface-overlay: #2c241a !important;
+  --ds-surface-overlay-hovered: #352c21 !important;
+  --ds-surface-overlay-pressed: #3e3427 !important;
+  --ds-surface-container: rgba(244, 227, 192, 0.04) !important;
+  --ds-surface-container-hovered: rgba(244, 227, 192, 0.07) !important;
+  --ds-surface-container-pressed: rgba(244, 227, 192, 0.1) !important;
+  --ds-text: #ecdcb8 !important;
+  --ds-text-subtle: #bba783 !important;
+  --ds-text-subtlest: #988563 !important;
+  --ds-text-inverse: #1d1811 !important;
+  --ds-icon: #ecdcb8 !important;
+  --ds-icon-subtle: #bba783 !important;
+  --ds-icon-subtlest: #988563 !important;
+  --ds-border: rgba(244, 227, 192, 0.13) !important;
+  --ds-border-input: #6b5a42 !important;
+  --ds-border-input-search: rgba(244, 227, 192, 0.13) !important;
+  --ds-background-input: #2a2219 !important;
+  --ds-background-input-hovered: #322920 !important;
+  --ds-background-input-pressed: #2a2219 !important;
+  --ds-background-neutral: rgba(244, 227, 192, 0.07) !important;
+  --ds-background-neutral-hovered: rgba(244, 227, 192, 0.12) !important;
+  --ds-background-neutral-pressed: rgba(244, 227, 192, 0.2) !important;
+  --ds-background-neutral-subtle-hovered: rgba(244, 227, 192, 0.07) !important;
+  --ds-background-neutral-subtle-pressed: rgba(244, 227, 192, 0.12) !important;
+  --ds-background-selected: rgba(224, 181, 106, 0.14) !important;
+  --ds-background-selected-hovered: rgba(224, 181, 106, 0.2) !important;
+  --ds-background-selected-pressed: rgba(224, 181, 106, 0.3) !important;
+  --ds-background-selected-bold: #e0b56a !important;
+  --ds-background-selected-bold-hovered: #f0cf8a !important;
+  --ds-background-selected-bold-pressed: #b08f52 !important;
+  --ds-background-brand-subtlest: rgba(224, 181, 106, 0.14) !important;
+  --ds-background-brand-subtlest-hovered: rgba(224, 181, 106, 0.2) !important;
+  --ds-background-brand-subtlest-pressed: rgba(224, 181, 106, 0.3) !important;
+  --ds-background-brand-bold: #e0b56a !important;
+  --ds-background-brand-bold-hovered: #f0cf8a !important;
+  --ds-background-brand-bold-pressed: #b08f52 !important;
+  --ds-text-selected: #e0b56a !important;
+  --ds-text-brand: #e0b56a !important;
+  --ds-icon-selected: #e0b56a !important;
+  --ds-icon-brand: #e0b56a !important;
+  --ds-link: #e0b56a !important;
+  --ds-link-pressed: #f0cf8a !important;
+  --ds-border-selected: #e0b56a !important;
+  --ds-border-brand: #e0b56a !important;
+  --ds-border-focused: #f0cf8a !important;
+}
+html[data-color-mode], html[data-color-mode] body { background: #1d1811 !important; }
 html.mender-bare [data-testid="page-layout.banner"],
 html.mender-bare [data-testid="page-layout.top-nav"],
 html.mender-bare [data-testid="page-layout.sidebar"],
@@ -54,9 +114,9 @@ html.mender-bare #ak-project-view-navigation > div > div:first-child { display: 
 .mender-launch { padding: 0 8px; color: #e0b56a !important; }
 .mender-launch:hover { background: rgba(224,181,106,.14) !important; color: #f0cf8a !important; }
 .mender-launch svg, .mender-open-launch svg { width: 11px; height: 11px; fill: currentColor; }
-.mender-lit { padding: 0 8px 0 6px; max-width: 100%; min-width: 0; overflow: hidden; color: var(--ds-text, #cecfd2) !important; background: rgba(255,255,255,.05); }
+.mender-bits .mender-lit { padding: 0 8px 0 6px; max-width: 100%; min-width: 0; overflow: hidden; color: var(--ds-text, #cecfd2) !important; background: rgba(244,227,192,.07); }
 .mender-lit span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mender-lit i { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: #8c8f97; }
+.mender-lit i { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: #a89272; }
 .mender-lit.working i { background: #f0b85a; animation: mender-breathe 1.8s ease-in-out infinite; box-shadow: 0 0 6px #f0b85a; }
 .mender-lit.asking i { background: #ff8a3d; animation: mender-breathe .7s ease-in-out infinite; box-shadow: 0 0 6px #ff8a3d; }
 .mender-lit.done i { background: #a8c469; box-shadow: 0 0 5px #a8c469; }
@@ -64,7 +124,7 @@ html.mender-bare #ak-project-view-navigation > div > div:first-child { display: 
 @keyframes mender-breathe { 50% { opacity: .45; } }
 .mender-open-launch { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; margin: 0 0 12px 8px; border-radius: 4px; font: 500 14px/1 var(--ds-font-family-body, system-ui), system-ui, sans-serif; color: #1f1a12; background: #e0b56a; }
 .mender-open-launch:hover { background: #f0cf8a; }
-.mender-open-launch.lit { background: rgba(255,255,255,.06); color: var(--ds-text, #cecfd2); }
+.mender-open-launch.lit { background: rgba(244,227,192,.07); color: var(--ds-text, #cecfd2); }
 .mender-open-launch.lit i { width: 8px; height: 8px; border-radius: 50%; background: #f0b85a; }
 `;
 

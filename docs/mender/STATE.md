@@ -4217,4 +4217,7 @@ in progress, lanterns on both cards), opening a ticket and launching it from
 its own button (walked into the new workspace, brief said), Escape out. The
 test tickets were moved back to To Do afterwards. Not tried: a work site, and
 Jira's page on a narrow window.
-
+Then retinted: Jira's own colour tokens are overridden to the village's
+night (warm near-black surfaces, cream text, gold for Jira's blue), statuses
+and labels untouched, and the whole window behind it, yard words and rack
+included, is dimmed. Looked at on the AUR board and an open ticket.

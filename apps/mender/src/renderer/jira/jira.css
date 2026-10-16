@@ -9,10 +9,12 @@
   align-items: center;
   justify-content: center;
   padding: 34px 40px;
-  color: #c7d1db;
+  color: #dcc8a0;
   font: 400 15px/1.35 'Josefin Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   outline: none;
+  /* Everything behind it, the yard's words and the rack included, steps back. */
+  background: rgba(10, 7, 4, 0.74);
 }
 .jr * { box-sizing: border-box; }
 .jr button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
@@ -21,15 +23,15 @@
 .jr .gold:hover { color: #f0cf8a; }
 .jr .sore { color: #f2665a; }
 
-/* The same dark Jira's own page sits on, so the strip and the page read as one surface. */
+/* The same night Jira's page is retinted to, so the strip and the page read as one surface. */
 .jr-win {
   position: relative;
   display: flex;
   flex-direction: column;
   width: min(100%, 1600px);
   height: 100%;
-  background: #1f1f21;
-  border: 1px solid #38393d;
+  background: #1d1811;
+  border: 1px solid rgba(244, 227, 192, 0.16);
   border-radius: 8px;
   box-shadow: 0 6px 0 rgba(10, 12, 14, 0.6), 0 24px 60px rgba(0, 0, 0, 0.55);
   outline: none;
@@ -43,20 +45,20 @@
   gap: 28px;
   height: 46px;
   padding: 0 14px 0 22px;
-  border-bottom: 1px solid #2c2d31;
+  border-bottom: 1px solid rgba(244, 227, 192, 0.1);
   white-space: nowrap;
 }
-.jr-here .where { font: 600 12px 'Josefin Sans'; letter-spacing: 0.22em; text-transform: uppercase; color: #dee4ea; }
+.jr-here .where { font: 600 12px 'Josefin Sans'; letter-spacing: 0.22em; text-transform: uppercase; color: #f4e3c0; }
 .jr-strip-open, .jr-strip-picks { display: flex; align-items: baseline; gap: 12px; }
-.jr-strip .k { font: 400 13px 'Courier Prime', monospace; color: #8c9bab; }
+.jr-strip .k { font: 400 13px 'Courier Prime', monospace; color: #a89272; }
 .jr-strip .gold { font: 600 11px 'Josefin Sans'; letter-spacing: 0.2em; text-transform: uppercase; }
 .jr-strip-said { font: 400 13px 'Courier Prime', monospace; color: #a8c469; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .jr-strip-said.sore { color: #f2665a; }
 .jr-gap { flex: 1 1 auto; }
-.jr-x { font: 400 24px/1 'Josefin Sans' !important; color: #8c9bab !important; padding: 0 6px !important; }
+.jr-x { font: 400 24px/1 'Josefin Sans' !important; color: #a89272 !important; padding: 0 6px !important; }
 .jr-x:hover { color: #e0b56a !important; }
 
 .jr-stage { flex: 1 1 auto; min-height: 0; position: relative; }
-.jr-page { position: absolute; inset: 0; display: flex; background: #1f1f21; }
-.jr-quiet { padding: 60px; max-width: 640px; font: 400 17px/1.5 'Mender Said', sans-serif; color: #c7d1db; }
+.jr-page { position: absolute; inset: 0; display: flex; background: #1d1811; }
+.jr-quiet { padding: 60px; max-width: 640px; font: 400 17px/1.5 'Mender Said', sans-serif; color: #dcc8a0; }
 .jr-quiet .acts { margin-top: 18px; }
