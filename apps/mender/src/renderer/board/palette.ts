@@ -27,6 +27,8 @@ export type Meant =
       what: 'model' | 'mode' | 'effort' | 'collab' | 'defaultModel' | 'defaultEffort';
       id: string;
       name: string;
+      /** The sentence the slash was written into, which stays on the line. */
+      keep?: { text: string; caret: number };
     }
   /** Turn the board over and show what the session works with. */
   | { does: 'card' }
@@ -230,8 +232,9 @@ export class Palette {
     }
 
     const offers: Offer[] = [];
-    if (open.kind === 'all') {
+    if (open.kind === 'all' || open.kind === 'later') {
       for (const ours of OURS) {
+        if (open.kind === 'later' && !ours.what) continue;
         if (ours.when ? !ours.when(kit, kept) : ours.choices && !ours.choices(kit).length) continue;
         offers.push({
           pick: `slash:${ours.name}`,
@@ -317,11 +320,24 @@ export class Palette {
       const id = pick.slice(`slash:${ours.name}:`.length);
       const choice = ours.choices?.(kit).find((each) => each.id === id);
       if (!choice || !ours.what) return null;
-      return { does: 'set', what: ours.what, id: choice.id, name: choice.name };
+      const text = before + this.tail.replace(/^\s+/, '');
+      return {
+        does: 'set',
+        what: ours.what,
+        id: choice.id,
+        name: choice.name,
+        ...(text.trim() ? { keep: { text, caret: before.length } } : {}),
+      };
     }
 
     const name = pick.slice('slash:'.length);
-    const ours = open.kind === 'all' ? OURS.find((each) => each.name === name) : undefined;
+    const ours =
+      open.kind === 'all'
+        ? OURS.find((each) => each.name === name)
+        : open.kind === 'later'
+          ? OURS.find((each) => each.name === name && each.what)
+          : undefined;
+    if (ours && open.kind === 'later') return around(`${before}${ours.name} `);
     if (ours) {
       if (ours.name === '/agent') return { does: 'card' };
       if (ours.name === '/resume') return { does: 'resume' };
@@ -350,6 +366,16 @@ export class Palette {
       if (same(head, '/keep')) return { kind: 'keep', from: 0, asked: rest };
       const ours = OURS.find((each) => same(each.name, head) && each.choices);
       if (ours && !rest.includes(' ')) return { kind: 'choice', ours, from: 0, asked: rest };
+    }
+    const mid = /(^|\s)(\/\S+) (\S*)$/.exec(text);
+    const setting = mid && OURS.find((each) => each.what && each.choices && same(each.name, mid[2] ?? ''));
+    if (mid && setting) {
+      return {
+        kind: 'choice',
+        ours: setting,
+        from: mid.index + (mid[1] ?? '').length,
+        asked: mid[3] ?? '',
+      };
     }
     const later = LATER.exec(text);
     if (later && (midway || text.trim() !== later[2])) {

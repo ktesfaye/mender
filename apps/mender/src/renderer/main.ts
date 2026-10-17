@@ -5084,7 +5084,7 @@ async function boot(): Promise<void> {
         return;
       }
       if (meant.does !== 'set') return;
-      said('');
+      said(meant.keep?.text ?? '', meant.keep?.caret);
       const done = await client.agents.choose(
         { task: task.id, what: meant.what, id: meant.id },
         { timeoutMs: 0 }
