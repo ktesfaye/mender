@@ -50,6 +50,13 @@ const PAGE =
 const PUBLISHED =
   /Published (\/\S+) at ((?:https?:\/\/)?claude\.ai\/(?:code\/)?artifacts?\/[A-Za-z0-9-]+)/g;
 
+/**
+ * A picture or a file it put in what it said, on this machine. Handing one
+ * over is the plainest way it says it made it, however it was made: a
+ * picture a shell script rendered never passes through a write at all.
+ */
+const SHOWN = /(!?)\[([^\]\n]{0,80})\]\(<?((?:file:\/\/)?(?:~\/|\/)[^)\s>]+)>?\)/g;
+
 /** What any page is called by whoever wrote it. */
 const TITLE = /<title[^>]*>([^<]{1,120})<\/title>/i;
 
@@ -124,6 +131,20 @@ export function madeIn(
     if (!LOOKED_AT.has(extension(path))) return;
     found.push({ id: path, kind: 'file', name: basename(path), path, at });
   };
+  const shown = (text: string, at: number): void => {
+    for (const match of text.matchAll(SHOWN)) {
+      let path = match[3]!.replace(/^file:\/\//, '');
+      try {
+        path = expand(decodeURI(path));
+      } catch {
+        continue;
+      }
+      const before = found.length;
+      file(path, at);
+      const caption = match[2]?.trim();
+      if (found.length > before && caption && match[1]) found[before]!.name = caption;
+    }
+  };
   const builds = (text: string | undefined, at: number): void => {
     for (const match of (text ?? '').matchAll(BUILT)) {
       const path = expand(match[1]!.replace(/\/+$/, ''));
@@ -190,6 +211,7 @@ export function madeIn(
         if (item.role === 'user' || !settled) continue;
         const at = stamp(item.id, over);
         pages(item.text, at);
+        shown(item.text, at);
         builds(item.text, at);
       } else if (item.kind !== 'thinking') walk(item, over);
     }

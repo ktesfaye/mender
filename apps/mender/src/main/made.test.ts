@@ -66,6 +66,26 @@ describe('madeIn', () => {
     ]);
   });
 
+  it('keeps a picture or document it showed from this machine, under its caption', () => {
+    const made = madeIn(
+      [
+        turn([
+          {
+            kind: 'message',
+            role: 'assistant',
+            id: 'm',
+            text: 'Here.\n![Glow marquee](/r/design/d-glow.png)\n![Rive](https://x.app/a.jpg) [notes](/r/notes.md) [src](/r/a.ts) ![s](/tmp/s.png)',
+          },
+        ]),
+      ],
+      clock
+    );
+    expect(made.map((one) => [one.id, one.name])).toEqual([
+      ['/r/design/d-glow.png', 'Glow marquee'],
+      ['/r/notes.md', 'notes.md'],
+    ]);
+  });
+
   it('names a published page after its own title, or the words before a bare address, even read back', () => {
     const made = madeIn(
       [
