@@ -1,6 +1,8 @@
 import { clockOf, spanOf } from '@shared/five-hours';
 import type { Hungry, HungryChoice } from '@shared/hungry';
 
+import { ask } from './standing';
+
 /**
  * A session caught eating the five hours, put to him over everything.
  *
@@ -91,7 +93,7 @@ export function openHungry(flagged: Hungry, does: HungryDoings): HungryBoard {
     list.appendChild(row);
   });
   body.appendChild(list);
-  const keys = line('a number picks · escape leaves it stopped');
+  const keys = line('return takes the first · a number picks · escape leaves it stopped');
   keys.style.fontSize = '12px';
   keys.style.color = '#8f7d5c';
   body.appendChild(keys);
@@ -112,6 +114,7 @@ export function openHungry(flagged: Hungry, does: HungryDoings): HungryBoard {
     if (!open) return;
     open = false;
     window.removeEventListener('keydown', onKey, true);
+    unask();
     back.remove();
   }
   function finish(choice: HungryChoice): void {
@@ -140,6 +143,11 @@ export function openHungry(flagged: Hungry, does: HungryDoings): HungryBoard {
     /* Nothing else typed reaches the board under it while this is up. */
     event.stopPropagation();
   }
+  const unask = ask({
+    yes: () => choices[0]!.does(),
+    no: () => finish({ kind: 'stop' }),
+    at: back,
+  });
   window.addEventListener('keydown', onKey, true);
 
   return { close, task: flagged.task };

@@ -66,6 +66,7 @@ import { pressing } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, emberLantern, greenLantern, sprite } from './sprite';
+import { stand as standAsking } from './standing';
 import { astop, walking, type Walking } from './walk';
 import type {
   Asking as Ask,
@@ -1122,6 +1123,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
         line.style.whiteSpace = 'normal';
         line.style.maxWidth = '420px';
         line.textContent = `press again to delete it. ${cost}`;
+        standAsking(() => line.click(), line);
       });
     });
     const rename = document.createElement('span');
@@ -4748,9 +4750,11 @@ function handRow(
   line.appendChild(cost);
 
   let armed: number | undefined;
+  let unask = (): void => {};
   const disarm = (): void => {
     if (armed !== undefined) window.clearTimeout(armed);
     armed = undefined;
+    unask();
     cost.style.display = 'none';
     costs.style.display = 'flex';
     line.removeAttribute('data-armed');
@@ -4764,6 +4768,7 @@ function handRow(
     costs.style.display = 'none';
     cost.style.display = 'flex';
     line.setAttribute('data-armed', '');
+    unask = standAsking(() => cross.click(), cross);
     armed = window.setTimeout(disarm, 4000);
   });
   cross.className += ' yard-hand-cross';
@@ -5133,17 +5138,21 @@ function clipped(it: HTMLElement, whole: string): void {
  */
 function twoPress(said: string, cost: string, go: () => void): HTMLSpanElement {
   let armed: number | undefined;
+  let unask = (): void => {};
   const line = pressing(said, () => {
     if (armed !== undefined) {
       window.clearTimeout(armed);
       armed = undefined;
+      unask();
       line.textContent = said;
       go();
       return;
     }
     line.textContent = cost;
+    unask = standAsking(() => line.click(), line);
     armed = window.setTimeout(() => {
       armed = undefined;
+      unask();
       if (line.isConnected) line.textContent = said;
     }, 4000);
   });

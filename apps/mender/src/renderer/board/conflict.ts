@@ -32,6 +32,7 @@ export function conflict(base: string, files: readonly string[], asked: boolean)
       text: 'press again and the merge is undone',
       tone: 'sore',
       pick: 'abort-merge!',
+      armed: true,
     });
   } else {
     rows.push({

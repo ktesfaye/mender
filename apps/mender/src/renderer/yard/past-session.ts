@@ -13,6 +13,8 @@
  * both.
  */
 
+import { ask } from './standing';
+
 export interface PastSession {
   id: string;
   title: string;
@@ -476,6 +478,9 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
   paintList();
   paintFoot();
   document.body.append(scrim);
+  /* Return resumes and Escape goes back wherever the keyboard is, not only
+     while something inside the board has it. */
+  ask({ yes: resume, no: leave, at: scrim });
   search.focus();
   void hooks
     .history()

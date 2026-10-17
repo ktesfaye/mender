@@ -25,6 +25,7 @@ import type { Schedule, ScheduleHand, ScheduleWhen } from '@shared/schedules';
 import type { HistoryEntry } from '@shared/tasks';
 import { slot, toolFor } from './face';
 import { agoOf } from './from';
+import { stand } from './standing';
 
 /** A session's transcript, read back once it has ended. */
 export interface HistoryRead {
@@ -425,7 +426,10 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       close();
       void does.forget();
     });
-    if (armed !== undefined) remove.classList.add('armed');
+    if (armed !== undefined) {
+      remove.classList.add('armed');
+      stand(() => remove.click(), remove);
+    }
     const actions = el('div', 'settings-actions');
     actions.appendChild(remove);
     danger.fill([hintLine(`Takes it off the island. ${cost}`), actions]);
@@ -628,7 +632,10 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
         removing.delete(one.id);
         void does.removeSchedule(one.id);
       });
-      if (gone) remove.classList.add('settings-link-sore');
+      if (gone) {
+        remove.classList.add('settings-link-sore');
+        stand(() => remove.click(), remove);
+      }
       row.append(main, remove);
       list.appendChild(row);
     }

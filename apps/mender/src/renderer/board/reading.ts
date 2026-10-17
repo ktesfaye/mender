@@ -202,6 +202,7 @@ function over(state: Read, readonly: boolean): Row[] {
           text: 'press again and this file is gone',
           tone: 'sore',
           pick: 'bin!',
+          armed: true,
         }
       : { kind: 'entry', mark: '✗', text: 'throw this file away', tone: 'faded', pick: 'bin' }
   );

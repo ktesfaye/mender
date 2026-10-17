@@ -4,9 +4,11 @@
  * The window itself goes dark, dock-style, and the one thing left standing
  * is the line saying what quitting costs — not a dialog stacked on top of
  * the world, the same shape as every other two-press cost on the wood.
- * Pressing that line again is the second press; anything else, including
- * just waiting, is no.
+ * Pressing that line, or Return, is the second press; anything else,
+ * including just waiting, is no.
  */
+
+import { ask } from './standing';
 
 /** How long the offer stands before it withdraws on its own. */
 const STAND_MS = 4000;
@@ -41,12 +43,14 @@ export function showQuitCost(n: number): void {
 
   let done = false;
   let timer = 0;
+  let unask = (): void => {};
 
   const withdraw = (): void => {
     if (done) return;
     done = true;
     window.clearTimeout(timer);
     window.removeEventListener('keydown', onKey, true);
+    unask();
     scrim.remove();
   };
 
@@ -55,6 +59,7 @@ export function showQuitCost(n: number): void {
     done = true;
     window.clearTimeout(timer);
     window.removeEventListener('keydown', onKey, true);
+    unask();
     scrim.remove();
     window.mender?.confirmQuit?.();
   };
@@ -76,6 +81,8 @@ export function showQuitCost(n: number): void {
     if (event.target === line) return;
     withdraw();
   });
+  /* Return is the same as pressing the line; Escape, like any other key, is no. */
+  unask = ask({ yes: confirm, no: withdraw, at: scrim });
   window.addEventListener('keydown', onKey, true);
   timer = window.setTimeout(withdraw, STAND_MS);
 }

@@ -29,6 +29,8 @@
  * enough not to notice says nothing at all.
  */
 
+import { stand } from './standing';
+
 /** How long a thing has to take before it is worth saying it is happening. */
 const NOTICE_MS = 300;
 /** And before it is worth counting. */
@@ -156,16 +158,20 @@ async function carry(line: HTMLSpanElement, said: string, doing: Doing): Promise
  */
 export function twice(said: string, cost: string, does: Doing): HTMLSpanElement {
   let armed: number | undefined;
+  let unask = (): void => {};
   const line = pressing(said, () => {
     if (armed !== undefined) {
       window.clearTimeout(armed);
       armed = undefined;
+      unask();
       line.textContent = said;
       return does;
     }
     line.textContent = `press again — ${cost}`;
+    unask = stand(() => line.click(), line);
     armed = window.setTimeout(() => {
       armed = undefined;
+      unask();
       if (line.isConnected) line.textContent = said;
     }, STANDS_MS);
     return undefined;

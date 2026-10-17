@@ -34,7 +34,8 @@ export type Keep = 'front' | 'tail';
 export type Hand = 'hand' | 'type';
 
 /** What a row does when it is pressed, if it does anything. */
-type Pick = { pick?: string; face?: Hand };
+/** `armed` is a first press already made: Return is the second. */
+type Pick = { pick?: string; face?: Hand; armed?: boolean };
 
 export type Row = (
   | { kind: 'title'; text: string }

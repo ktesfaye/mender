@@ -593,7 +593,9 @@ a pressable thing carries no underline, no arrow and no box. The result of
 pressing lands on the line you pressed: it rewrites itself with what happened,
 sits long enough to be read and settles back, except a failure, which stays.
 Anything that cannot be taken back needs two presses and the first press is
-what names the cost. Nothing spins: a wait is a number counting up, and a wait
+what names the cost. Whatever is asking, a line armed by its first press or a
+window come up with a question, takes Return as its yes and Escape as its no,
+wherever the keyboard happens to be standing. Nothing spins: a wait is a number counting up, and a wait
 too short to notice says nothing at all. There are two exceptions to the gold
 rule in the whole app and they are both deliberate: the rack of projects, which
 is signs hung off a beam out of the kit rather than a piece of the board, and the

@@ -128,6 +128,7 @@ function undo(change: Change, undoing: 'offered' | 'asked'): Row {
     text: away ? 'press again and this file is gone' : `press again and ${counted(change)} gone`,
     tone: 'sore',
     pick: 'undo!',
+    armed: true,
   };
 }
 

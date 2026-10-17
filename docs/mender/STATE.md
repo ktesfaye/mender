@@ -4270,3 +4270,16 @@ registered, so a fresh session only ever offered the village's own six. Updates
 that arrive early are now held and handed over once the session is known. Driven
 in a dev instance on Haiku: a new session's slash list shows its commands and
 every skill, a hundred and three, where it showed none.
+
+**Return said yes to nothing, and Escape missed windows (2026-10-17).** Every
+armed line and every window asking something had to be pressed by hand: the
+quit warning, edit districts' done and its "off the island?" window, the five
+hours window, the new-session sign, settings and the windmill's removes, a
+change or a file thrown away, a helper called back. Each now says it is asking,
+and Return is its yes and Escape its no wherever the keyboard is, so a window
+whose keys used to need focus inside it, like the past-session board, answers
+them after a click too. Driven in a dev instance: edit districts finished on
+Return, the past-session board closed on Escape with nothing focused, and an
+armed throw-away ran on Return from the write line. The quit warning's Return
+was only driven as far as the app's own quit check, since a real Cmd+Q can't be
+sent from outside.

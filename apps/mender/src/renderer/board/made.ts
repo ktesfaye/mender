@@ -81,6 +81,7 @@ function undoing(offer: { isHead: boolean; reverting?: 'offered' | 'asked' }): R
       text: 'press again and a commit undoing this goes in',
       tone: 'sore',
       pick: 'revert-made!',
+      armed: true,
     });
   } else {
     rows.push({

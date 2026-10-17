@@ -11,6 +11,7 @@ import {
 } from 'pixi.js';
 import { stir } from '../pace';
 import { pressing } from '../yard/press';
+import { ask as askKeys } from '../yard/standing';
 
 /** Somewhere a project could stand: one of his districts, or a piece of one. */
 export interface Place {
@@ -128,6 +129,8 @@ export class Editing {
   /** A forget waiting on its second press, and the window asking it. */
   private forgetting: Resident | null = null;
   private asking: HTMLElement | null = null;
+  /** Return is done and Escape backs out, for as long as the mode is on. */
+  private keys: (() => void) | null = null;
   private busy = false;
 
   constructor(
@@ -240,6 +243,7 @@ export class Editing {
     this.on = true;
     this.overlay.visible = true;
     this.unask();
+    this.keys = askKeys({ yes: () => this.stop(), no: () => this.escaped(), keep: true });
     this.refresh();
     this.say();
     this.line.style.opacity = '1';
@@ -253,6 +257,8 @@ export class Editing {
     this.arriving = null;
     this.on = false;
     this.overlay.visible = false;
+    this.keys?.();
+    this.keys = null;
     this.unask();
     this.line.style.opacity = '0';
     this.line.replaceChildren();
@@ -730,6 +736,9 @@ export class Editing {
       { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' }
     );
     this.asking = back;
+    /* Return takes the gentler of the two, putting it away, since removing
+       it takes its sessions with it. */
+    askKeys({ yes: () => void this.putAway(who), no: () => this.escaped(), at: back });
     this.say();
   }
 

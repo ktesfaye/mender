@@ -1,5 +1,6 @@
 import { openPastSession, type PastSession, type PastTold } from './past-session';
 import { cutOf, KIT_NAMES, sprite } from './sprite';
+import { ask } from './standing';
 
 /**
  * The board a new session is asked for on: a timber signboard hung on two
@@ -368,6 +369,9 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
 
   paint();
   document.body.append(scrim);
+  /* Heard wherever the keyboard is, so a press that took it off the box does
+     not leave Return and Escape answering nothing. */
+  ask({ yes: () => submit(), no: dismiss, at: scrim });
   box.focus();
   if (hooks.past) openPast();
 

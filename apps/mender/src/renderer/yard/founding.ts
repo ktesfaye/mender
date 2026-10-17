@@ -10,6 +10,7 @@
  */
 
 import { cutOf, sprite } from './sprite';
+import { ask } from './standing';
 
 export interface FoundingDoings {
   /** The plain, pre-existing folder picker. */
@@ -206,6 +207,10 @@ export function openFounding(does: FoundingDoings): Founding {
     return input;
   };
 
+  /* What Return means on the page showing: nothing while it is asking which
+     of three, and making it once it is asking for an address or a name. */
+  let yes: (() => void) | null = null;
+
   const goBack = (): void => {
     asking = { kind: 'which' };
     draw();
@@ -235,6 +240,7 @@ export function openFounding(does: FoundingDoings): Founding {
     );
     body.replaceChildren(tiles);
     foot.replaceChildren(plank('cancel', false, () => close()));
+    yes = null;
   }
 
   function asked(label: string, input: HTMLInputElement): HTMLElement {
@@ -263,6 +269,7 @@ export function openFounding(does: FoundingDoings): Founding {
     });
     body.replaceChildren(asked('where is it?', input));
     foot.replaceChildren(plank('back', false, goBack), plank('clone it', true, go));
+    yes = go;
     input.focus();
   }
 
@@ -299,6 +306,7 @@ export function openFounding(does: FoundingDoings): Founding {
     );
     body.replaceChildren(asked('what is it called?', input), sides);
     foot.replaceChildren(plank('back', false, goBack), plank('start it', true, go));
+    yes = go;
     input.focus();
   }
 
@@ -331,19 +339,25 @@ export function openFounding(does: FoundingDoings): Founding {
 
   draw();
 
+  const escaped = (): void => {
+    if (asking.kind !== 'which') return goBack();
+    close();
+  };
+  /* Kept after each answer, since Escape on an inner page only steps back to
+     the first one and the board is still asking. */
+  const unask = ask({ yes: () => yes?.(), no: escaped, at: scrim, keep: true });
+
   let open = true;
   function close(): void {
     if (!open) return;
     open = false;
+    unask();
     scrim.remove();
     does.closed();
   }
 
   return {
-    escaped() {
-      if (asking.kind !== 'which') return goBack();
-      close();
-    },
+    escaped,
     holds: (event) => open && scrim.contains(event.target as Node),
     close,
   };

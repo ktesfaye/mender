@@ -52,6 +52,7 @@ export function shell(state: Shell): Row[] {
       text: said,
       tone: state.ending?.armed ? 'sore' : 'faded',
       pick: 'shell-end',
+      armed: !!state.ending?.armed,
     }
   );
   return rows;

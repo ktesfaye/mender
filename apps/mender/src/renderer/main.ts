@@ -119,6 +119,7 @@ import {
   type Windmill,
 } from './yard/windmill';
 import type { Signboard } from './yard/what';
+import { stand } from './yard/standing';
 import { inBeamOrder, makeYard } from './yard/yard';
 import type { JiraError } from '@shared/jira';
 import { JiraFailed } from './jira/data';
@@ -1571,6 +1572,10 @@ async function boot(): Promise<void> {
                   `${left} in here nobody has committed. ⌘${again} again to close it anyway.`,
                   4000
                 );
+                /* Return is the same second press as the chord, for as long
+                   as the offer stands. */
+                const unask = stand(() => go('do:out'));
+                window.setTimeout(unask, 4000);
                 return;
               }
             }

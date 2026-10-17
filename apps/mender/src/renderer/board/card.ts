@@ -344,6 +344,7 @@ function written(
             : 'take it off this machine',
         tone: removingHand === hand.id ? 'sore' : 'faded',
         pick: `rmhand:${hand.id}`,
+        armed: removingHand === hand.id,
       });
     }
   }
@@ -442,6 +443,7 @@ function written(
       text: removing === tool.name ? `press again and ${tool.name} is gone` : `throw it away`,
       tone: removing === tool.name ? 'sore' : 'faded',
       pick: `rmtool:${tool.name}`,
+      armed: removing === tool.name,
     });
   }
   if (kit.tools.length) {
@@ -497,6 +499,7 @@ function written(
           text: asking ? `press again and ${knack.name} is gone` : 'throw it away',
           tone: asking ? 'sore' : 'faded',
           pick: `rmknack:${knack.from}:${knack.name}`,
+          armed: asking,
         });
       }
     }
@@ -657,6 +660,7 @@ function over(ending: Ending | undefined, awake: boolean, shared?: boolean): Row
     text: losing.length ? 'press again and all of that is gone' : 'press again and it is gone',
     tone: 'sore',
     pick: 'end!',
+    armed: true,
   });
   return rows;
 }

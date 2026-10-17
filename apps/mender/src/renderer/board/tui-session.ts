@@ -46,6 +46,7 @@ export function tuiSession(state: TuiSession): Row[] {
     text: state.ending ? `ends ${state.hand}'s process. click again to end it.` : 'end this session',
     tone: state.ending ? 'sore' : 'faded',
     pick: 'shell-end',
+    armed: !!state.ending,
   });
   return rows;
 }

@@ -40,6 +40,7 @@ import type { UpdateState } from '@shared/updates';
 import { counted } from '../board/card';
 import { chordLabel, chordOf, rebindableDoings } from '../board/finder';
 import { area, chip, formRow, hintLine, input, intro, pageOf, section } from './settings';
+import { stand } from './standing';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
  *  and whether anything still uses it. */
@@ -550,6 +551,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
                   void does.jira.forget(one.site).then(() => drawJira());
                 }
               );
+              if (armed) stand(() => forget.click(), forget);
               card.append(
                 formRow('Site', value(one.site)),
                 formRow('Email', value(one.email)),
@@ -1032,7 +1034,10 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
         armClear(null);
         void does.clear(one).then(() => drawWorktrees());
       });
-      if (armedHere) clear.classList.add('settings-link-sore');
+      if (armedHere) {
+        clear.classList.add('settings-link-sore');
+        stand(() => clear.click(), clear);
+      }
       side.append(clear);
       row.append(main, side);
       list.appendChild(row);
@@ -1056,7 +1061,10 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
           })();
         }
       );
-      if (clearingAll) all.classList.add('settings-remove', 'armed');
+      if (clearingAll) {
+        all.classList.add('settings-remove', 'armed');
+        stand(() => all.click(), all);
+      }
       const actions = el('div', 'settings-actions');
       actions.appendChild(all);
       children.push(actions);

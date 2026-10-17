@@ -148,6 +148,7 @@ function stopping(walked: Walked): Row {
         text: 'press again — the command stops where it is',
         tone: 'sore',
         pick: 'recall!',
+        armed: true,
       };
     case 'going':
       return { kind: 'entry', mark: '✗', text: 'stopping it…', tone: 'faded' };
@@ -183,6 +184,7 @@ function recalling(walked: Walked): Row {
         text: 'press again — they stop where they are, and what they found goes with them',
         tone: 'sore',
         pick: 'recall!',
+        armed: true,
       };
     case 'going':
       return { kind: 'entry', mark: '✗', text: 'calling them back…', tone: 'faded' };
@@ -223,6 +225,7 @@ function sendingAway(walked: Walked): Row {
             : 'press again — they leave the yard for good',
       tone: 'sore',
       pick: 'away!',
+      armed: true,
     };
   return {
     kind: 'entry',

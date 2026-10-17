@@ -15,6 +15,7 @@
 
 import type { Row, Tone } from '../board/row';
 import { makeDiagramView } from '../diagram-view';
+import { stand } from './standing';
 import { astop } from './walk';
 
 /** What each tone is, in the light of the yard rather than on a plank. */
@@ -197,6 +198,7 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
     line.addEventListener('mousedown', (event) => event.preventDefault());
     line.addEventListener('click', () => press(pick));
     astop(mine ?? line, pick);
+    if (row.armed) stand(() => press(pick), line);
     /* A file in a list like this one is a real thing on the Mac, and the one
        thing about it a press can't hand over is carrying it somewhere else —
        another app, the Finder, a mail compose window. `open:` is always a
