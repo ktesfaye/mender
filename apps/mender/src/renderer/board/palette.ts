@@ -28,8 +28,8 @@ export type Meant =
   /** Cut a fresh session here and turn straight to its own past terminal
       history, the same door the empty hook's own naming board opens. */
   | { does: 'resume' }
-  /** Put this on the line instead, and keep writing. */
-  | { does: 'write'; text: string }
+  /** Put this on the line instead, and keep writing from `caret`. */
+  | { does: 'write'; text: string; caret?: number }
   /** Say it to the agent as it stands. */
   | { does: 'send'; text: string }
   /** Keep this, to say again. */
@@ -108,7 +108,7 @@ export function keptNow(prompts: Prompt[]): void {
   kept = prompts;
 }
 
-/** The slash being written after something else, if the line ends in one. */
+/** The slash being written after something else, if what is before the caret ends in one. */
 const LATER = /(^|\s)(\/\S*)$/;
 
 /** What is open, if anything: which kind, where it starts, and what is being asked. */
@@ -121,6 +121,10 @@ type Open =
 export class Palette {
   private kit: Kit | null = null;
   private text = '';
+  /** The line up to the caret, which is what a slash is read off. */
+  private head = '';
+  /** And whatever is written after the caret, kept when a command goes in. */
+  private tail = '';
   /** Forgetting takes two presses, and this is the first. */
   private armed: string | null = null;
 
@@ -134,9 +138,11 @@ export class Palette {
   }
 
   /** Whatever is on the line now. */
-  typed(text: string): void {
+  typed(text: string, caret = text.length): void {
     if (text !== this.text) this.armed = null;
     this.text = text;
+    this.head = text.slice(0, caret);
+    this.tail = text.slice(caret);
   }
 
   /** Whether a slash is open at all, which is what makes the keys mean this. */
@@ -251,7 +257,14 @@ export class Palette {
     const open = this.opened();
     const kit = this.kit;
     if (!open || !kit) return null;
-    const before = this.text.slice(0, open.from);
+    const before = this.head.slice(0, open.from);
+    /* Written into the middle of a sentence, the rest of it stays where it
+       was and the caret lands right after what went in. */
+    const around = (put: string): Meant => {
+      const after = this.tail.replace(/^\s+/, '');
+      const head = after && !/\s$/.test(put) ? `${put} ` : put;
+      return { does: 'write', text: head + after, caret: head.length };
+    };
 
     if (pick === 'slash:as-written') return { does: 'send', text: this.text.trim() };
     if (pick === 'slash:keep') {
@@ -271,7 +284,7 @@ export class Palette {
     }
     if (pick.startsWith('slash:kept:')) {
       const one = kept.find((each) => `slash:kept:${each.id}` === pick);
-      return one ? { does: 'write', text: before + one.prompt } : null;
+      return one ? around(before + one.prompt) : null;
     }
 
     if (open.kind === 'choice') {
@@ -298,12 +311,13 @@ export class Palette {
     if (open.kind === 'all' && same(this.text.trim(), name) && !order.takes) {
       return { does: 'send', text: name };
     }
-    return { does: 'write', text: `${before}${name} ` };
+    return around(`${before}${name} `);
   }
 
   private opened(): Open | null {
-    const text = this.text;
-    if (text.startsWith('/')) {
+    const text = this.head;
+    const midway = this.tail.trim() !== '';
+    if (text.startsWith('/') && !midway) {
       const space = text.indexOf(' ');
       if (space === -1) return { kind: 'all', from: 0, asked: text };
       const head = text.slice(0, space);
@@ -313,7 +327,7 @@ export class Palette {
       if (ours && !rest.includes(' ')) return { kind: 'choice', ours, from: 0, asked: rest };
     }
     const later = LATER.exec(text);
-    if (later && text.trim() !== later[2]) {
+    if (later && (midway || text.trim() !== later[2])) {
       const from = later.index + (later[1] ?? '').length;
       return { kind: 'later', from, asked: later[2] ?? '/' };
     }

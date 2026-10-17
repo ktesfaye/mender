@@ -304,7 +304,7 @@ async function boot(): Promise<void> {
           wrote(text);
           return;
         }
-        watching?.typed(text);
+        watching?.typed(text, yard.line.caret());
         yard.narrowing(...narrowing());
         /* A session left at the gate long enough goes home, and what a sleeping
            one lists is only what it last said it had. A slash is asking what it
@@ -398,12 +398,12 @@ async function boot(): Promise<void> {
      * narrowing underneath always hear about it; the line itself tells them
      * when the change came from a hand on the keys.
      */
-    const said = (text: string): void => {
-      yard.line.write(text);
-      watching?.typed(text);
+    const said = (text: string, caret?: number): void => {
+      yard.line.write(text, caret);
+      watching?.typed(text, caret);
       if (watching) yard.show(watching.yard());
       yard.narrowing(...narrowing());
-      yard.line.take();
+      if (caret === undefined) yard.line.take();
     };
 
     /** What the yard is standing on, while it is up. */
@@ -5010,7 +5010,7 @@ async function boot(): Promise<void> {
       const aim = open;
       if (!task || !saying) return;
       if (meant.does === 'write') {
-        said(meant.text);
+        said(meant.text, meant.caret);
         return;
       }
       if (meant.does === 'send') {
@@ -5537,8 +5537,8 @@ async function boot(): Promise<void> {
         return;
       }
       if (pick.startsWith('name:')) {
-        const line = watching?.names.named(yard.line.written(), pick);
-        if (line !== null && line !== undefined) said(line);
+        const line = watching?.names.named(pick);
+        if (line) said(line[0], line[1]);
         return;
       }
       if (pick === 'rail:back' || pick === 'rail:forward') {

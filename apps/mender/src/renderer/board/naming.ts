@@ -12,15 +12,17 @@ import { rank, type Offer } from './offer';
  * The same place as the slash and the same keys.
  */
 
-/** The @ being written, if the line ends in one. */
+/** The @ being written, if what is before the caret ends in one. */
 const AT = /(?:^|\s)@(\S*)$/;
 
 export class Naming {
   private found: string[] = [];
   /** What was last asked for, which is also whether an @ is open at all. */
   private asking: string | null = null;
-  /** The whole line, for where the @ is on it. */
+  /** The line up to the caret, for where the @ is on it. */
   private asked = '';
+  /** And whatever is written after the caret, kept when a path goes in. */
+  private after = '';
 
   constructor(
     private readonly look: (like: string) => Promise<string[]>,
@@ -28,9 +30,10 @@ export class Naming {
   ) {}
 
   /** Whatever is on the line now. */
-  typed(text: string): void {
-    this.asked = text;
-    const written = AT.exec(text)?.[1] ?? null;
+  typed(text: string, caret = text.length): void {
+    this.asked = text.slice(0, caret);
+    this.after = text.slice(caret);
+    const written = AT.exec(this.asked)?.[1] ?? null;
     if (written === this.asking) return;
     this.asking = written;
     this.found = [];
@@ -77,16 +80,12 @@ export class Naming {
     );
   }
 
-  /** The line with a pressed one written into it. */
-  named(text: string, pick: string): string | null {
-    if (!pick.startsWith('name:')) return null;
-    return this.written(text, pick.slice(5));
-  }
-
-  private written(text: string, path: string | undefined): string | null {
-    if (!path) return null;
-    const found = AT.exec(text);
-    if (!found) return null;
-    return `${text.slice(0, found.index + found[0].length - (found[1] ?? '').length)}${path} `;
+  /** The line with a pressed one written into it, and where the caret goes. */
+  named(pick: string): [string, number] | null {
+    const path = pick.startsWith('name:') ? pick.slice(5) : '';
+    const found = AT.exec(this.asked);
+    if (!path || !found) return null;
+    const head = `${this.asked.slice(0, found.index + found[0].length - (found[1] ?? '').length)}${path} `;
+    return [head + this.after.replace(/^\s+/, ''), head.length];
   }
 }

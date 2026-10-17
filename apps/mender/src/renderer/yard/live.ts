@@ -57,7 +57,7 @@ export interface Watching {
   /** What an @ on the line has opened, if there is one. */
   readonly names: Naming;
   /** Something was typed, so both of those know what they are narrowing. */
-  typed(text: string): void;
+  typed(text: string, caret?: number): void;
   /** What has been picked up off the wood and not yet handed over. */
   carrying(): readonly Carried[];
   /** Pick a picture up. What comes back is what went wrong, or nothing. */
@@ -402,9 +402,9 @@ export async function openYard(
     working: () => working?.mood === 'working',
     slash,
     names,
-    typed: (text) => {
-      slash.typed(text);
-      names.typed(text);
+    typed: (text, caret) => {
+      slash.typed(text, caret);
+      names.typed(text, caret);
     },
     carrying: () => held,
     pickUp: async (file) => {

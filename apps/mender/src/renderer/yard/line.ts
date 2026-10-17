@@ -72,8 +72,10 @@ export interface Line {
   readonly root: HTMLElement;
   /** What is written on it right now. */
   written(): string;
-  /** Put something on it, or clear it. */
-  write(text: string): void;
+  /** Where the caret is, counted the same way `written()` counts. */
+  caret(): number;
+  /** Put something on it, or clear it, and the caret at `caret` if given. */
+  write(text: string, caret?: number): void;
   /** Change what it asks for when it is empty. */
   asks(what: Asking): void;
   /** Take the keyboard. */
@@ -165,7 +167,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   const putAside = new Map<string, Token>();
 
   /** The words on the line, with whatever is carried among them left out. */
-  function words(): string {
+  function words(within: Node = said): string {
     let text = '';
     const walk = (node: Node): void => {
       for (const child of node.childNodes) {
@@ -179,8 +181,51 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
         else walk(child);
       }
     };
-    walk(said);
+    walk(within);
     return text;
+  }
+
+  /* Counted by writing out everything before the caret the same way the
+     whole line is written out, so a shortened link or a picture standing
+     before it counts exactly as it does there. */
+  function caret(): number {
+    const where = window.getSelection();
+    if (!where || where.rangeCount === 0) return words().length;
+    const end = where.getRangeAt(0);
+    if (!said.contains(end.endContainer)) return words().length;
+    const before = document.createRange();
+    before.setStart(said, 0);
+    before.setEnd(end.endContainer, end.endOffset);
+    return words(before.cloneContents()).length;
+  }
+
+  /** Put the caret `index` characters in, counted the way `words()` counts. */
+  function caretAt(index: number): void {
+    let left = index;
+    const range = document.createRange();
+    range.selectNodeContents(said);
+    range.collapse(false);
+    for (const child of [...said.childNodes]) {
+      if (child instanceof HTMLElement && child.dataset.carried !== undefined) continue;
+      const length =
+        child instanceof HTMLElement && child.dataset.link !== undefined
+          ? child.dataset.link.length
+          : child instanceof Text
+            ? child.data.length
+            : (child.textContent?.length ?? 0);
+      if (left <= length) {
+        if (child instanceof Text) range.setStart(child, left);
+        else if (left === 0) range.setStartBefore(child);
+        else range.setStartAfter(child);
+        range.collapse(true);
+        break;
+      }
+      left -= length;
+    }
+    const where = window.getSelection();
+    where?.removeAllRanges();
+    where?.addRange(range);
+    place();
   }
 
   function onLine(): HTMLElement[] {
@@ -426,10 +471,14 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
 
   return {
     root,
-    written: words,
-    write: (text) => {
+    written: () => words(),
+    caret,
+    write: (text, at) => {
       said.replaceChildren(linked(text));
       stand();
+      if (at === undefined) return;
+      said.focus();
+      caretAt(at);
     },
     asks: (what) => {
       ghost.textContent = PROMPTS[what];
