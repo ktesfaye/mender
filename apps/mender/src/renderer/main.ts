@@ -280,6 +280,8 @@ async function boot(): Promise<void> {
     const yard = makeYard(layer, {
       open: (id) => void go(`task:${id}`),
       dropCost: (id) => dropCost(id),
+      closeCost: (ids) => closeCost(ids),
+      closeMany: (ids, keep) => void closeMany(ids, keep),
       answer: (id, requestId) => void answered(id, requestId),
       press: (pick) => press(pick),
       typed: (text) => {
@@ -1463,6 +1465,46 @@ async function boot(): Promise<void> {
       return going.length
         ? `this throws away ${going.join(', ')}, and ${cost.branch}.`
         : `nothing unsaved in it; ${cost.branch || 'its branch'} is pushed or merged.`;
+    };
+
+    /** What closing these sessions would throw away, in words, or nothing. */
+    const closeCost = async (ids: string[]): Promise<string> => {
+      const going = tasks.filter((task) => ids.includes(task.id));
+      const busy = going.filter(
+        (task) => seen[task.id] === 'working' || seen[task.id] === 'asking'
+      ).length;
+      const left = (
+        await Promise.all(going.filter((task) => !task.shared).map((task) => uncommittedIn(task)))
+      ).filter(Boolean);
+      const lost = [
+        busy ? `${counted(busy, 'session')} still working, stopped mid-way` : null,
+        left.length ? `${left.join(' and ')} in their own copies nobody has committed` : null,
+      ].filter(Boolean);
+      return lost.length ? `that stops ${lost.join(', and ')}.` : '';
+    };
+
+    /** Closing several sessions off the rail at once, the way a browser
+        closes the tabs round one. If the one you are in goes, you step over
+        to the one that was right-clicked first. */
+    const closeMany = async (ids: string[], keep: string): Promise<void> => {
+      const aim = open;
+      const going = tasks.filter((task) => ids.includes(task.id));
+      if (!aim || !going.length) return;
+      const stay = tasks.find((task) => task.id === keep);
+      const moving = inside && ids.includes(inside.id) && stay ? openTask(aim, stay) : null;
+      const was = inside;
+      await Promise.all(
+        going.map((task) => client.tasks.abandon({ id: task.id }, { timeoutMs: 0 }))
+      );
+      closedIn = going[0]!.project;
+      say(`closed ${counted(going.length, 'session')}.`, 3000);
+      await moving;
+      /* Nobody left to step over to: the same landing taking the last one
+         down from its card gives. */
+      if (moving || !was || !ids.includes(was.id) || open !== aim) return;
+      if (was.workspace && workspaces.some((each) => each.id === was.workspace))
+        await enterWorkspace(aim, was.workspace);
+      else await openDistrict({ kind: 'district', district: aim.district });
     };
 
     /** The signboards moved under the yard you are standing in. */

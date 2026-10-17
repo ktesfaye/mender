@@ -444,7 +444,12 @@ empty hook, an unlit lantern with a small plus in its glass, which is how a
 new session is started, and right-clicking it opens the other ways to start one — and, for the rest of that
 sitting, remembers the last one taken down here: it offers to put it straight
 back up, on the very same branch, before it ever offers to start something
-new. Command-shift-T does the same without the hook, the way a browser brings
+new. Right-clicking a lantern
+offers to close every other session on the beam, the ones to its left, the
+ones to its right, or every one that is done, each saying how many it would
+take and needing a second press that names anything working or uncommitted
+it would stop; if the one you are in goes, you step over to the one pressed.
+Command-shift-T does the same without the hook, the way a browser brings
 back a closed tab: the last session closed in the project you are in, its
 conversation and all, and pressed again the one closed before that; out on
 the island it reaches into whichever project you last closed one in. What was

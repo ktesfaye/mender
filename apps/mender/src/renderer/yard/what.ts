@@ -133,6 +133,8 @@ export interface Lantern {
   /** The one you are standing in hangs lowest and says so. */
   here: boolean;
   unread: boolean;
+  /** Its last answer came to an end of its own, seen or not. */
+  finished?: boolean;
   /** Thinking with Fable, the dearest model, so it is marked on sight. */
   dear?: boolean;
   ground: Ground;

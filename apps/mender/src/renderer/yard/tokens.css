@@ -1599,6 +1599,37 @@ body.gripping-row * {
   font-size: 13px;
   white-space: nowrap;
 }
+.yard .lantern-slab {
+  width: 240px;
+  padding: 8px 0 6px;
+}
+.yard .lantern-slab .menu-head {
+  padding: 2px 18px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.yard .slab-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  white-space: normal;
+}
+.yard .slab-many {
+  flex: none;
+  color: #8a7452;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.yard .slab-none {
+  color: #6b5a40;
+}
+.yard .slab-rule {
+  height: 1px;
+  margin: 5px 18px;
+  background: rgba(244, 227, 192, 0.12);
+}
 
 /* Rearranging the island: one line over the top of it, what the hand is
    doing and the way out. Not a box, the same as the line that says what you

@@ -211,6 +211,10 @@ export interface Doings {
   takeBack?(): Promise<boolean>;
   /** What deleting a workspace would throw away, said before it is done. */
   dropCost?(id: string): Promise<string>;
+  /** What closing these sessions would throw away, said before it is done. */
+  closeCost?(ids: string[]): Promise<string>;
+  /** Close these sessions, standing in `keep` if the one you are in goes. */
+  closeMany?(ids: string[], keep: string): void;
 }
 
 export interface Standing {
@@ -1141,6 +1145,85 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     slab = it;
   }
 
+  /**
+   * A lantern's own slab: close every other session on the rail, or the ones
+   * to one side of it. Each line names how many before it does anything, and
+   * the second press on it closes them.
+   */
+  function lanternSlab(id: string, lantern: HTMLElement): boolean {
+    const rail = (last?.rail ?? []).filter((one) => one.ground !== 'cutting');
+    const at = rail.findIndex((one) => one.id === id);
+    if (at < 0) return false;
+    const sides = [
+      { said: 'close others', ids: rail.filter((one) => one.id !== id) },
+      { said: 'close to the left', ids: rail.slice(0, at) },
+      { said: 'close to the right', ids: rail.slice(at + 1) },
+      { said: 'close done', ids: rail.filter((one) => one.finished), apart: true },
+    ];
+    if (!sides.some((side) => side.ids.length)) return false;
+    const it = document.createElement('div');
+    it.className = 'menu slab lantern-slab';
+    const head = document.createElement('div');
+    head.className = 'menu-head';
+    head.textContent = rail[at]!.name;
+    it.appendChild(head);
+    for (const side of sides) {
+      if (side.apart) {
+        const rule = document.createElement('div');
+        rule.className = 'slab-rule';
+        it.appendChild(rule);
+      }
+      const ids = side.ids.map((one) => one.id);
+      const line = document.createElement('div');
+      line.className = ids.length ? 'press slab-line slab-row' : 'slab-line slab-row slab-none';
+      const said = document.createElement('span');
+      said.textContent = side.said;
+      const many = document.createElement('span');
+      many.className = 'slab-many';
+      many.textContent = ids.length ? String(ids.length) : '·';
+      line.append(said, many);
+      it.appendChild(line);
+      if (!ids.length) continue;
+      let armed = false;
+      line.addEventListener('mousedown', (down) => down.preventDefault());
+      line.addEventListener('click', () => {
+        if (armed) {
+          unslab();
+          /* Close done can take the one pressed too, so you stand in
+             whichever is left nearest it. */
+          const left = rail.filter((one) => !ids.includes(one.id));
+          const near =
+            left.find((one) => one.id === id) ??
+            left.find((one) => rail.indexOf(one) >= at) ??
+            left.at(-1);
+          does.closeMany?.(ids, near?.id ?? '');
+          return;
+        }
+        line.dataset.busy = 'yes';
+        said.textContent = 'looking at what is in them…';
+        void (does.closeCost?.(ids) ?? Promise.resolve('')).then((cost) => {
+          if (slab !== it) return;
+          armed = true;
+          delete line.dataset.busy;
+          if (cost) line.style.color = 'var(--yard-wrong)';
+          const which = ids.length === 1 ? 'it' : `all ${ids.length}`;
+          said.textContent = `press again to close ${which}.${cost ? ` ${cost}` : ''}`;
+          many.textContent = '';
+          standAsking(() => line.click(), line);
+        });
+      });
+    }
+    stage.appendChild(it);
+    /* Standing on the beam over the lantern it is about, so the names on
+       the rail stay readable under it. */
+    const lamp = lantern.getBoundingClientRect();
+    const beam = lamp.top - 10;
+    it.style.left = `${Math.max(12, Math.min(lamp.left, window.innerWidth - it.offsetWidth - 12))}px`;
+    it.style.top = `${Math.max(12, beam - it.offsetHeight)}px`;
+    slab = it;
+    return true;
+  }
+
   window.addEventListener('contextmenu', (event) => {
     unslab();
     const sign = (event.target as HTMLElement | null)?.closest?.<HTMLElement>(
@@ -1150,6 +1233,11 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       event.preventDefault();
       workspaceSlab(sign, event);
       return;
+    }
+    const lantern = (event.target as HTMLElement | null)?.closest?.<HTMLElement>('[data-lantern]');
+    if (lantern && showing() && !scrim.up) {
+      event.preventDefault();
+      if (lanternSlab(lantern.dataset.lantern ?? '', lantern)) return;
     }
     if (!showing() || root.style.display === 'none' || scrim.up || !last?.session) return;
     const part = partAt(event.clientX, event.clientY);
@@ -2328,7 +2416,6 @@ function pickable<T extends HTMLElement>(el: T, said: string, pick: (said: strin
 /** Where the post was left scrolled to, per session, across redraws. */
 const postScrolled = new Map<string, number>();
 const postHead = new Map<string, string>();
-
 
 /** The newest note: on parchment, pinned, and not quite straight. */
 function pinned(note: Note, where: { width: number }, rerun?: () => void): HTMLElement {
@@ -4982,7 +5069,8 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
     const hung = box({ left: x, top, width: bare ? 44 : step, height: 58 });
     /* A lantern still being cut has nowhere to walk into yet: it hangs there
        to say so, not to be pressed. */
-    hung.style.pointerEvents = one.here || cutting ? 'none' : 'auto';
+    hung.style.pointerEvents = cutting ? 'none' : 'auto';
+    hung.dataset.lantern = one.id;
     hung.style.cursor = 'default';
 
     /* A short window keeps the lanterns and gives up the words beside them:

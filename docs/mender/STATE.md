@@ -4283,3 +4283,12 @@ Return, the past-session board closed on Escape with nothing focused, and an
 armed throw-away ran on Return from the write line. The quit warning's Return
 was only driven as far as the app's own quit check, since a real Cmd+Q can't be
 sent from outside.
+
+**Closing sessions round one (2026-10-17).** Right-clicking a lantern on the
+rail opens a small slab headed with its name: close others, close to the left,
+close to the right, and under a rule, close done. Each says how many it would
+close and is greyed when that is none; the first press names anything still
+working or uncommitted in its own copy, the second closes them, and if the one
+you were in went you stand in the one pressed. Driven in a dev instance: close
+to the right took two and moved over, and close done, on Haiku, took the one
+that had finished and nothing else.
