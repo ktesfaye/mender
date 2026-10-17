@@ -22,7 +22,12 @@ import { rank, type Offer } from './offer';
 /** What picking a line here means. */
 export type Meant =
   /** Set one of the session's own settings, without saying a word to it. */
-  | { does: 'set'; what: 'model' | 'mode' | 'effort' | 'collab'; id: string; name: string }
+  | {
+      does: 'set';
+      what: 'model' | 'mode' | 'effort' | 'collab' | 'defaultModel' | 'defaultEffort';
+      id: string;
+      name: string;
+    }
   /** Turn the board over and show what the session works with. */
   | { does: 'card' }
   /** Cut a fresh session here and turn straight to its own past terminal
@@ -37,7 +42,7 @@ export type Meant =
   /** Stop keeping one. */
   | { does: 'forget'; id: string; title: string };
 
-type Setting = 'model' | 'mode' | 'effort' | 'collab';
+type Setting = 'model' | 'mode' | 'effort' | 'collab' | 'defaultModel' | 'defaultEffort';
 
 /** One of the village's own, which the agent never hears about. */
 type Ours = {
@@ -46,6 +51,8 @@ type Ours = {
   /** The choices it is answered with, or nothing if it is answered by doing it. */
   choices?: (kit: Kit) => Choice[];
   on?: (kit: Kit) => string | null;
+  /** Which of its choices new sessions start on, marked in the list. */
+  starts?: (kit: Kit) => string | null;
   what?: Setting;
   /** Answered by what is written after it rather than by a choice. */
   takes?: string;
@@ -56,10 +63,18 @@ type Ours = {
 const OURS: Ours[] = [
   {
     name: '/model',
-    about: 'what it thinks with',
+    about: 'what it thinks with, in this session only',
     what: 'model',
     choices: (kit) => kit.models,
     on: (kit) => kit.model,
+    starts: (kit) => kit.defaultModel,
+  },
+  {
+    name: '/default-model',
+    about: 'what every new session starts thinking with',
+    what: 'defaultModel',
+    choices: (kit) => kit.models,
+    on: (kit) => kit.defaultModel,
   },
   {
     name: '/mode',
@@ -74,6 +89,14 @@ const OURS: Ours[] = [
     what: 'effort',
     choices: (kit) => kit.efforts,
     on: (kit) => kit.effort,
+    starts: (kit) => kit.defaultEffort,
+  },
+  {
+    name: '/default-effort',
+    about: 'how hard every new session starts thinking',
+    what: 'defaultEffort',
+    choices: (kit) => kit.efforts,
+    on: (kit) => kit.defaultEffort,
   },
   {
     name: '/collaboration',
@@ -94,7 +117,7 @@ const OURS: Ours[] = [
 ];
 
 const SECTION = {
-  ours: 'this session',
+  ours: 'settings',
   theirs: 'commands',
   kept: 'kept',
   written: 'as you wrote it',
@@ -188,6 +211,7 @@ export class Palette {
         );
       }
       const on = ours.on?.(kit) ?? null;
+      const starts = ours.starts?.(kit) ?? null;
       return rank(
         (ours.choices?.(kit) ?? []).map((choice) => ({
           pick: `slash:${ours.name}:${choice.id}`,
@@ -195,7 +219,8 @@ export class Palette {
           ...(choice.about ? { about: choice.about } : {}),
           on: choice.id === on,
           section: ours.about,
-          ...(ours.what === 'model' && /fable|mythos/i.test(`${choice.id} ${choice.name}`)
+          ...(starts !== null && choice.id === starts ? { starts: true } : {}),
+          ...((ours.what === 'model' || ours.what === 'defaultModel') && /fable|mythos/i.test(`${choice.id} ${choice.name}`)
             ? { dear: true }
             : {}),
         })),

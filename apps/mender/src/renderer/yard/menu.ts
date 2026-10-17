@@ -116,6 +116,12 @@ function line(
   } else {
     name.textContent = offer.name;
   }
+  if (offer.starts) {
+    const starts = document.createElement('span');
+    starts.className = 'menu-starts';
+    starts.textContent = ' default';
+    name.appendChild(starts);
+  }
   if (offer.takes) {
     const takes = document.createElement('span');
     takes.className = 'menu-takes';

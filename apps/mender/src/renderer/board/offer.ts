@@ -18,6 +18,8 @@ export type Offer = {
   takes?: string;
   /** Pressing it costs something, and it says so. */
   sore?: boolean;
+  /** The one every new session starts on, said beside its name. */
+  starts?: boolean;
   /** Fable, the dearest model, marked in its own violet before it is picked. */
   dear?: boolean;
   /** Where in the name what you typed was found, for picking out. */

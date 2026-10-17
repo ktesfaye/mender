@@ -1304,9 +1304,11 @@ cards. That strip also names whichever ticket is open with "launch it" beside
 it, so a ticket can still be launched if Jira ever changes its page out from
 under the buttons laid into it.
 
-**A session remembers what it was last thinking with.** Change an agent's
-model or mode on one session and every fresh session with that same agent
-starts on it too, not on whatever it happens to open with. And the line does
+**A session's model is its own, and what new ones start on is said on purpose.**
+`/model`, `/mode` and `/effort` change the one session you are in and nothing
+else. What every fresh session with an agent starts on is `/default-model` and
+`/default-effort`, the same lists, with the one chosen marked "default" in
+`/model` and `/effort` beside its name; mode is never carried over. And the line does
 not forget what you were in the middle of saying: a half-written line is kept
 against its own session as you type, put back the moment you stand in that
 yard again, restart of the app included, and let go the moment it is actually

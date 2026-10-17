@@ -33,10 +33,11 @@ export interface Hand {
   here: boolean;
 }
 
-/** What an agent was last asked to think with, on whatever session asked. */
+/** What a fresh session with this agent starts on, as set on purpose. Picking
+    a model or an effort on one session never touches it. */
 export interface LastKit {
   model: string | null;
-  mode: string | null;
+  effort: string | null;
 }
 
 /** What this machine hands an agent's own CLI beyond its ordinary command:
@@ -94,8 +95,8 @@ export interface AppSettings {
   missingCoreDeps(): Promise<MissingDep[]>;
   /** The model and mode a fresh session with this agent starts on. */
   lastKit(agent: string): Promise<LastKit>;
-  rememberModel(agent: string, model: string): Promise<void>;
-  rememberMode(agent: string, mode: string): Promise<void>;
+  setDefaultModel(agent: string, model: string): Promise<void>;
+  setDefaultEffort(agent: string, effort: string): Promise<void>;
   /** What this machine hands that agent's own CLI beyond its ordinary
       command, for its next terminal session. */
   providerConfig(agent: string): Promise<ProviderConfig>;
@@ -128,11 +129,11 @@ export interface AppSettings {
 
 const KEY = 'app';
 const FALLBACK = 'claude';
-const NO_KIT: LastKit = { model: null, mode: null };
+const NO_KIT: LastKit = { model: null, effort: null };
 
 interface Stored {
   defaultHand?: string;
-  perAgent?: Record<string, { model?: string | null; mode?: string | null }>;
+  startsOn?: Record<string, { model?: string | null; effort?: string | null }>;
   providers?: Record<string, { extraArgs?: string; env?: Record<string, string> }>;
   checkout?: {
     branchPrefix?: string;
@@ -177,11 +178,11 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
     return next;
   };
 
-  const rememberKit = async (agent: string, patch: { model?: string; mode?: string }): Promise<void> => {
+  const setStart = async (agent: string, patch: { model?: string; effort?: string }): Promise<void> => {
     await mutate((now) => {
-      const perAgent = { ...now.perAgent };
-      perAgent[agent] = { ...perAgent[agent], ...patch };
-      return { ...now, perAgent };
+      const startsOn = { ...now.startsOn };
+      startsOn[agent] = { ...startsOn[agent], ...patch };
+      return { ...now, startsOn };
     });
   };
 
@@ -231,17 +232,17 @@ export function createAppSettings(runtimes: MenderRuntimes): AppSettings {
     },
 
     async lastKit(agent) {
-      const held = (await stored()).perAgent?.[agent];
+      const held = (await stored()).startsOn?.[agent];
       if (!held) return NO_KIT;
-      return { model: held.model ?? null, mode: held.mode ?? null };
+      return { model: held.model ?? null, effort: held.effort ?? null };
     },
 
-    async rememberModel(agent, model) {
-      await rememberKit(agent, { model });
+    async setDefaultModel(agent, model) {
+      await setStart(agent, { model });
     },
 
-    async rememberMode(agent, mode) {
-      await rememberKit(agent, { mode });
+    async setDefaultEffort(agent, effort) {
+      await setStart(agent, { effort });
     },
 
     providerConfig: providerConfigOf,

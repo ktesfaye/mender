@@ -40,6 +40,8 @@ const NOTHING: Kit = {
   modes: [],
   effort: null,
   efforts: [],
+  defaultModel: null,
+  defaultEffort: null,
   collab: null,
   collabs: [],
   tools: [],
@@ -57,7 +59,7 @@ export interface Kits {
   settle(task: string, conversation: string): Promise<void>;
   choose(
     task: string,
-    what: 'hand' | 'model' | 'mode' | 'effort' | 'collab',
+    what: 'hand' | 'model' | 'mode' | 'effort' | 'collab' | 'defaultModel' | 'defaultEffort',
     id: string
   ): Promise<Wrong>;
   tool(task: string, name: string, on: boolean): Promise<Wrong>;
@@ -121,7 +123,14 @@ export function createKits(
   const cardOf = (task: string): Card => {
     let card = cards.get(task);
     if (!card) {
-      card = new Card(task, runtimes, tasks, () => installed, () => settings.defaultHand());
+      card = new Card(
+        task,
+        runtimes,
+        tasks,
+        () => installed,
+        () => settings.defaultHand(),
+        (agent) => settings.lastKit(agent)
+      );
       cards.set(task, card);
       void card.redraw();
     }
@@ -143,6 +152,15 @@ export function createKits(
         await card.redraw();
         return fine;
       }
+      if (what === 'defaultModel' || what === 'defaultEffort') {
+        /* What a fresh session starts on, and nothing about this one. Every
+           card is redrawn, since each one marks the default in its own list. */
+        const hand = await card.hand();
+        if (what === 'defaultModel') await settings.setDefaultModel(hand, id);
+        else await settings.setDefaultEffort(hand, id);
+        for (const each of cards.values()) await each.redraw();
+        return fine;
+      }
       const conversation = card.conversation;
       if (!conversation || !card.awake) return refused('nobody is working in here yet.');
       const done = await runtimes.acp.setOption({
@@ -158,15 +176,11 @@ export function createKits(
         value: id,
       });
       if (!done.success) return refused(said(done.error));
-      /* Remembered so the session starts on it again. The id is the live one
+      /* Remembered so this session starts on it again. The id is the live one
          the agent itself advertised, which is the only kind `launch` will
          take: the static list a plugin carries is spelled differently and is
          dropped on the floor without a word. */
       if (what === 'model') await tasks.remodel(task, id);
-      /* Also remembered against the agent itself, not just this task, so the
-         next fresh session with the same hand starts on it too. */
-      if (what === 'model') await settings.rememberModel(await card.hand(), id);
-      if (what === 'mode') await settings.rememberMode(await card.hand(), id);
       return fine;
     },
 
@@ -343,7 +357,9 @@ class Card {
     private readonly tasks: Tasks,
     private readonly installed: () => Record<string, boolean>,
     /** Whoever the windmill says a fresh session starts with. */
-    private readonly defaultHand: () => Promise<string>
+    private readonly defaultHand: () => Promise<string>,
+    /** What a fresh session with an agent starts on, as set on purpose. */
+    private readonly startsOn: (agent: string) => Promise<{ model: string | null; effort: string | null }>
   ) {
     this.state = cell<Kit>(NOTHING, { name: `kit:${task}` });
     this.authReplica = new ReplicaState<AgentConfigList>(
@@ -428,6 +444,7 @@ class Card {
 
     const [tools, taught] = await Promise.all([this.toolsOf(hand), knacksFor(hand, record?.path)]);
     const awake = this.awake;
+    const starts = await this.startsOn(hand);
     const working = hands.find((one) => one.id === hand);
     const signIn = working?.signedIn === false ? signInFor(hand, working.name) : null;
 
@@ -440,6 +457,8 @@ class Card {
       modes: choicesOf(this.config?.modeOptions?.available),
       effort: this.config?.efforts?.selected ?? null,
       efforts: choicesOf(this.config?.efforts?.available),
+      defaultModel: starts.model,
+      defaultEffort: starts.effort,
       collab: this.config?.collaborationModeOptions?.selected ?? null,
       collabs: choicesOf(this.config?.collaborationModeOptions?.available),
       tools,

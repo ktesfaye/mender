@@ -580,6 +580,10 @@ export const kitSchema = z.object({
   modes: z.array(choiceSchema),
   effort: z.string().nullable(),
   efforts: z.array(choiceSchema),
+  /** What a fresh session with this agent starts on, set on purpose and
+      never by picking one on a single session. */
+  defaultModel: z.string().nullable(),
+  defaultEffort: z.string().nullable(),
   /** How it goes about the work, where the agent has more than one way (Codex: Default or Plan). */
   collab: z.string().nullable(),
   collabs: z.array(choiceSchema),
@@ -614,7 +618,7 @@ export const agentsContract = defineContract({
   choose: fallible({
     input: z.object({
       task: z.string(),
-      what: z.enum(['hand', 'model', 'mode', 'effort', 'collab']),
+      what: z.enum(['hand', 'model', 'mode', 'effort', 'collab', 'defaultModel', 'defaultEffort']),
       id: z.string(),
     }),
     data: z.void(),

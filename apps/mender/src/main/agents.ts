@@ -147,7 +147,7 @@ export interface Agents {
   kit(task: string): Cell<Kit>;
   choose(
     task: string,
-    what: 'hand' | 'model' | 'mode' | 'effort' | 'collab',
+    what: 'hand' | 'model' | 'mode' | 'effort' | 'collab' | 'defaultModel' | 'defaultEffort',
     id: string
   ): Promise<Told>;
   tool(task: string, name: string, on: boolean): Promise<Told>;
@@ -1230,7 +1230,7 @@ export function createAgents(
     else house.watched();
     const hand = record.agent ?? (await settings.defaultHand());
     /* A session with a choice of its own keeps it; one that has never said
-       either starts on whatever this agent was last asked for anywhere. */
+       starts on what this agent's default was set to on purpose. */
     const remembered = await settings.lastKit(hand);
     // No deadline on either: starting an agent means spawning its CLI and
     // waiting for it to say hello, and a prompt is open for as long as the
@@ -1243,7 +1243,7 @@ export function createAgents(
           cwd: record.path,
           sessionId: sessionFor(task, conversation),
           model: record.model ?? remembered.model,
-          modeId: remembered.mode,
+          effort: remembered.effort,
         },
         { timeoutMs: 0 }
       );
@@ -1339,7 +1339,7 @@ export function createAgents(
           cwd: record.path,
           sessionId: providerSessionId,
           model: record.model ?? remembered.model,
-          modeId: remembered.mode,
+          effort: remembered.effort,
         },
         { timeoutMs: 0 }
       );
@@ -1382,7 +1382,7 @@ export function createAgents(
           cwd: record.path,
           sessionId: sessionFor(task, conversation),
           model: record.model ?? remembered.model,
-          modeId: remembered.mode,
+          effort: remembered.effort,
         },
         { timeoutMs: 0 }
       );

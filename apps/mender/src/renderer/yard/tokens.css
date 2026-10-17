@@ -1125,6 +1125,12 @@ button.settings-row:hover .settings-row-main {
 .yard .menu-takes {
   color: #7d6a4c;
 }
+.yard .menu-starts {
+  color: #9c8760;
+  font-family: var(--yard-face-label);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
 .yard .menu-about {
   flex: 1;
   min-width: 0;

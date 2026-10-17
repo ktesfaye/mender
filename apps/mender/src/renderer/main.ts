@@ -5091,7 +5091,9 @@ async function boot(): Promise<void> {
       );
       if (!done.success) {
         say(done.error.kind === 'refused' ? done.error.because : 'that would not take.', 6000);
-      } else say(`${meant.name}.`, 3000);
+      } else if (meant.what === 'defaultModel' || meant.what === 'defaultEffort')
+        say(`new sessions start on ${meant.name}. this one is as it was.`, 4000);
+      else say(`${meant.name}, in this session.`, 3000);
     };
 
     /* Pressing something on the wood, whether by hand or by key. One way in,
