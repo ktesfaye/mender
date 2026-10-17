@@ -598,7 +598,19 @@ export function makeShelf(
      even after whatever lit it has gone quiet or he has walked on to another,
      so the handful he is working between stays in reach; only folding it
      afresh puts the quiet ones back behind the beam. */
-  const kept = new Set<string>();
+  const KEPT_KEY = 'mender.rack.kept';
+  const kept = new Set<string>(
+    (() => {
+      try {
+        const raw = JSON.parse(localStorage.getItem(KEPT_KEY) ?? '[]') as unknown;
+        return Array.isArray(raw) ? raw.filter((id): id is string => typeof id === 'string') : [];
+      } catch {
+        return [];
+      }
+    })(),
+  );
+  const remember = (): void => localStorage.setItem(KEPT_KEY, JSON.stringify([...kept]));
+  let started = false;
   const pinned = (project: OnShelf): boolean =>
     !away || project.here || project.wants !== undefined || kept.has(project.id);
 
@@ -633,7 +645,10 @@ export function makeShelf(
     /* Walking into a yard folds it shut and walking back out to the island
        opens it; in between it stays however he left it. */
     if (inside !== was) {
-      if (inside && !away) kept.clear();
+      if (inside && !away && started) {
+        kept.clear();
+        remember();
+      }
       away = inside;
     }
     if (away) hideTag(true);
@@ -705,7 +720,12 @@ export function makeShelf(
       }
       paintBoard(node, project);
     }
-    if (away) for (const project of projects) if (pinned(project)) kept.add(project.id);
+    if (away) {
+      const before = kept.size;
+      for (const project of projects) if (pinned(project)) kept.add(project.id);
+      if (kept.size !== before) remember();
+    }
+    started = true;
     const anyUp = projects.some(pinned);
     band.style.display = anyUp ? '' : 'none';
     tail();
@@ -865,7 +885,10 @@ export function makeShelf(
 
   function fold(shut = true): void {
     if (away === shut) return;
-    if (shut) kept.clear();
+    if (shut) {
+      kept.clear();
+      remember();
+    }
     away = shut;
     show(last);
   }
