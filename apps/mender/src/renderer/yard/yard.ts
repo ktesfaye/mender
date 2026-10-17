@@ -3333,6 +3333,23 @@ export function askKey(
     lightAsk(askFocus.at);
     return true;
   }
+  /* "send it" and "talk it over instead" sit side by side, so left and right
+     walk between them, and from any answer step down onto that line. */
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    const doings = asking.answers
+      .map((one, index) => ({ one, index }))
+      .filter(({ one }) => one.kind === 'submit' || one.kind === 'talk')
+      .map(({ index }) => index);
+    if (!doings.length) return true;
+    const along = doings.indexOf(at);
+    const step = event.key === 'ArrowRight' ? 1 : -1;
+    askFocus.at =
+      along < 0
+        ? doings[step > 0 ? 0 : doings.length - 1]
+        : doings[(along + step + doings.length) % doings.length];
+    lightAsk(askFocus.at);
+    return true;
+  }
   const pick = (index: number): boolean => {
     const answer = asking.answers[index];
     if (!answer) return false;
