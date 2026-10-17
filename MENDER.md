@@ -338,7 +338,11 @@ word over it says "still running in the background" with the same ember, and
 its lantern on the rail stays lit saying "running in the background" rather
 than idle, and only goes to done once the last of them has. The lantern you
 are standing in says what it is doing, the same as every other, since the
-light round it already says it is the one you are in. A village closed on one names it in the note
+light round it already says it is the one you are in. A workflow it sets going
+in the background is the same: it stands on the ground as somebody sent out
+under what the workflow says it is for, and the answer and the lantern stay
+lit until it reports back, as they do for anybody else still out after the
+answer. A village closed on one names it in the note
 the session gets when it opens again, so exactly that command is started
 again.
 And it stands in the yard as well, beside whoever was sent out: a pot of

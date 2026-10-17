@@ -288,6 +288,24 @@ describe('enrichClaudeUpdate', () => {
     });
   });
 
+  it('sends a background workflow out as a helper until its task notification', () => {
+    const update = makeToolUpdate({ title: 'Workflow', status: 'completed' });
+    const raw = makeRaw({
+      claudeCode: {
+        toolName: 'Workflow',
+        toolResponse: { status: 'async_launched', taskId: 'wzpoazms7', summary: 'Find streams' },
+      },
+    });
+
+    expect(enrichClaudeUpdate(update, raw)).toMatchObject({
+      kind: 'subagent',
+      agentId: 'wzpoazms7',
+      background: true,
+      title: 'Find streams',
+      status: 'in_progress',
+    });
+  });
+
   it('reclassifies task-notification user chunks as subagent updates', () => {
     const update: NormalizedEvent = {
       kind: 'message',

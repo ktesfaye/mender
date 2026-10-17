@@ -797,7 +797,7 @@ async function boot(): Promise<void> {
             ? 'wants-you'
             : mood === 'hurt'
               ? 'broken'
-              : mood === 'working' || mood === 'arriving' || glance?.background
+              : mood === 'working' || mood === 'arriving' || glance?.background || glance?.helpers
                 ? 'working'
                 : unseen.has(task.id)
                   ? 'done'

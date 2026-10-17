@@ -3618,6 +3618,19 @@ restarts exactly those. Driven in a dev instance: a backgrounded `sleep 45`
 stayed running after the answer, settled on its own when it finished, and a
 second one sat in the cut-off record by its command.
 
+### A workflow left running keeps the session lit (2026-10-17) — built, not driven live
+
+A session that set a workflow going in the background answered at once and
+read "done" everywhere while three searchers were still out, because the
+bridge's "workflow launched in background" result was taken for an ordinary
+finished step. The Claude plugin now sends it out as a background helper under
+its own description, closed by the same task notice a background agent's end
+comes in. And any helper still out after the answer, not only a backgrounded
+command, keeps the answer's word at "still running in the background" and the
+lantern and workspace board lit. Checked against the real transcript of the
+session it happened in and the bridge's own code; not yet driven with a live
+workflow in a dev instance.
+
 ### Background work keeps the answer and the lantern lit (2026-10-08) — done
 
 A turn that answered with a command still going in the background used to say

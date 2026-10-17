@@ -471,7 +471,11 @@ function storyOf(told: Told, going: boolean, asking: boolean, arriving: boolean)
         : {}),
     };
   });
-  const background = told.deeds.some((one) => one.background && one.running);
+  /* A helper still out, or a workflow, after the answer is work still going
+     as much as a command left running is. */
+  const background =
+    told.deeds.some((one) => one.background && one.running) ||
+    told.errands.some((one) => one.running);
   const state: Story['state'] =
     going || arriving
       ? { said: 'working on it', tone: 'going' }
@@ -950,7 +954,7 @@ export function stateOf(
       }
       /* Stopped talking with a command still going in the background is
          still at work, and reads as it from across the room. */
-      const behind = glance?.background ?? 0;
+      const behind = (glance?.background ?? 0) + (glance?.helpers ?? 0);
       if (behind) {
         return {
           posture: 'working',

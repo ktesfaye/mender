@@ -49,16 +49,20 @@ export function enrichClaudeUpdate(update: NormalizedEvent, raw: SessionUpdate):
       ? { outputText: rawOutputText(raw)! }
       : {};
 
-  if (claudeToolName(raw) === 'Agent') {
-    const asyncLaunch = parseAsyncLaunch(raw);
+  const toolName = claudeToolName(raw);
+  if (toolName === 'Agent' || toolName === 'Workflow') {
+    const asyncLaunch = toolName === 'Agent' ? parseAsyncLaunch(raw) : parseWorkflowLaunch(raw);
     return {
       kind: 'subagent',
       operation: normalizedUpdate.kind === 'tool_call' ? 'start' : 'update',
       toolCallId: normalizedUpdate.toolCallId,
-      title: asyncLaunch?.description ?? normalizedUpdate.title ?? 'Agent',
+      title:
+        asyncLaunch?.description ??
+        (toolName === 'Workflow' ? workflowAbout(raw) : normalizedUpdate.title) ??
+        'Agent',
       status: asyncLaunch ? 'in_progress' : (normalizedUpdate.status ?? null),
       parentToolCallId: parentPatch.parentToolCallId ?? normalizedUpdate.parentToolCallId,
-      inputSummary: agentInputSummary(raw),
+      inputSummary: toolName === 'Workflow' ? workflowAbout(raw) : agentInputSummary(raw),
       ...(asyncLaunch ? { background: true } : {}),
       ...(asyncLaunch?.agentId !== undefined ? { agentId: asyncLaunch.agentId } : {}),
       ...(asyncLaunch?.outputFile !== undefined ? { outputFile: asyncLaunch.outputFile } : {}),
@@ -115,6 +119,13 @@ function claudeToolName(raw: SessionUpdate): string | null {
 function agentInputSummary(raw: SessionUpdate): string | undefined {
   const input = (raw as { rawInput?: { description?: unknown } }).rawInput;
   return typeof input?.description === 'string' ? input.description : undefined;
+}
+
+/** What a workflow says it is for, off the `meta` its script opens with. */
+function workflowAbout(raw: SessionUpdate): string | undefined {
+  const script = (raw as { rawInput?: { script?: unknown } }).rawInput?.script;
+  if (typeof script !== 'string') return undefined;
+  return /description:\s*(['"`])((?:(?!\1).)+)\1/.exec(script)?.[2];
 }
 
 function isCommandDescriptionEcho(
@@ -192,6 +203,33 @@ function parseAsyncLaunch(raw: SessionUpdate): AsyncLaunch | null {
     agentId,
     ...(outputFile ? { outputFile } : {}),
   };
+}
+
+/**
+ * A Workflow run left going in the background answers its call at once with
+ * a task id, and only says it is finished later, in the same task
+ * notification a background agent's end comes in. So it is sent out like one.
+ */
+function parseWorkflowLaunch(raw: SessionUpdate): AsyncLaunch | null {
+  const response = claudeMeta(raw)?.toolResponse as
+    | { status?: unknown; taskId?: unknown; summary?: unknown; workflowName?: unknown }
+    | null
+    | undefined;
+  if (response?.status === 'async_launched' && typeof response.taskId === 'string') {
+    const description =
+      typeof response.summary === 'string'
+        ? response.summary
+        : typeof response.workflowName === 'string'
+          ? response.workflowName
+          : undefined;
+    return { agentId: response.taskId, ...(description ? { description } : {}) };
+  }
+  const text = rawText(raw);
+  if (!text.includes('Workflow launched in background.')) return null;
+  const taskId = /Task ID:\s+([^\s]+)/.exec(text)?.[1];
+  if (!taskId) return null;
+  const summary = /^Summary:\s+(.+)$/m.exec(text)?.[1]?.trim();
+  return { agentId: taskId, ...(summary ? { description: summary } : {}) };
 }
 
 function rawText(raw: SessionUpdate): string {
