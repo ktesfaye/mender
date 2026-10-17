@@ -7,10 +7,10 @@
  * What it did is not in the transcript. It is worked out the first time a
  * session is looked at here and kept, so the wait is once per session.
  *
- * The list is this folder's own. What is written on the search line looks
- * further, through every folder on this machine, since a conversation is
- * remembered by what it was about and not where it happened to be had;
- * those come after this folder's, under their own heading.
+ * This folder's own come first, then every other folder's on this machine
+ * under their own heading, since a conversation is remembered by what it was
+ * about and not where it happened to be had. The search line looks through
+ * both.
  */
 
 export interface PastSession {
@@ -30,7 +30,7 @@ export interface PastTold {
 
 export interface PastSessionHooks {
   history(): Promise<PastSession[]>;
-  /** Every other folder's, for the search line. */
+  /** Every other folder's, listed after this one's. */
   elsewhere(): Promise<PastSession[]>;
   told(session: PastSession): Promise<PastTold>;
   resume(session: PastSession): void;
@@ -211,9 +211,10 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
       return quiet(
         search.value.trim()
           ? 'nothing called that, here or anywhere else.'
-          : 'nothing had in this folder yet. write above to look in the others.'
+          : 'nothing had on this machine yet.'
       );
     }
+    if (shown[0]?.elsewhere && !search.value.trim()) quiet('nothing had in this folder yet.');
     let headed = false;
     for (const session of shown) {
       if (session.elsewhere && !headed) {
@@ -374,11 +375,7 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
     const away = shown.length - here;
     const plural = (n: number) => `${n} session${n === 1 ? '' : 's'}`;
     count.textContent =
-      sessions === null
-        ? ''
-        : search.value.trim()
-          ? `${here} here, ${away} elsewhere`
-          : plural(sessions.length);
+      sessions === null ? '' : away ? `${here} here, ${away} elsewhere` : plural(here);
     go.style.opacity = chosen ? '1' : '.5';
     go.style.cursor = chosen ? 'pointer' : 'default';
   };
@@ -425,7 +422,8 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
       didOf(one).toLowerCase().includes(q) ||
       (one.gitBranch ?? '').toLowerCase().includes(q) ||
       (one.elsewhere?.folder ?? '').toLowerCase().includes(q);
-    shown = q ? [...(sessions ?? []).filter(matches), ...others.filter(matches)] : [...(sessions ?? [])];
+    const all = [...(sessions ?? []), ...others];
+    shown = q ? all.filter(matches) : all;
     paintList();
     if (!chosen || !shown.some((one) => one.id === chosen?.id)) choose(shown[0] ?? null);
     else paintFoot();
@@ -492,7 +490,7 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
         .then((away) => {
           if (closed) return;
           others = away;
-          if (search.value.trim()) filter();
+          filter();
         });
       void (async () => {
         for (const one of found) {
