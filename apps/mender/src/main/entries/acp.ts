@@ -38,6 +38,19 @@ const BOARD = [
 ].join(' ');
 
 /**
+ * What the agent is told about putting a choice to him. The question tool is
+ * drawn here as a proper choice, but left to itself a session would as often
+ * write the options out as a numbered list in prose and stop, which reads as
+ * one more answer and can only be replied to by typing.
+ */
+const ASKING = [
+  'When you need the person to choose between options (two or more ways forward, a yes or no with',
+  'consequences, which of several things), ask with the AskUserQuestion tool, which Mender draws as',
+  'a proper choice they answer with a key. Never write the options out as a list in your reply and',
+  'stop to wait for an answer.',
+].join(' ');
+
+/**
  * What the agent is told about the Mac it runs on. A session here inherits
  * Mender's own Screen Recording, Accessibility and Automation grants, so it
  * can see and drive every other app, but nothing said so and every session
@@ -59,7 +72,7 @@ const HANDS = [
 void runWireComponentWorker(
   createAcpComponent({
     pluginRegistry,
-    sessionMeta: () => ({ systemPrompt: { append: `${BOARD}\n\n${HANDS}` } }),
+    sessionMeta: () => ({ systemPrompt: { append: `${BOARD}\n\n${ASKING}\n\n${HANDS}` } }),
   }),
   { logger }
 );
