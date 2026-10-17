@@ -6181,7 +6181,17 @@ async function boot(): Promise<void> {
         if (looking || talking || hunt || browsingAt || amending) return false;
         if (sending?.written !== undefined) return false;
         const rail = watching?.yard().rail.filter((one) => one.ground !== 'cutting') ?? [];
-        const ids = rail.filter((one) => one.finished).map((one) => one.id);
+        /* Every one in the project that has answered and gone quiet, in
+           whichever workspace it hangs, not only the beam you are under. */
+        const project = inside.project;
+        const ids = tasks
+          .filter((task) => task.project === project && !cutting.has(task.id))
+          .filter((task) => {
+            const glance = glances[task.id];
+            const { posture } = stateOf(task, seen[task.id], glance, unseen.get(task.id));
+            return posture === 'done' || (posture === 'resting' && !!glance?.rested);
+          })
+          .map((task) => task.id);
         if (!ids.length) {
           say('nothing done to close.', 2500);
           return true;

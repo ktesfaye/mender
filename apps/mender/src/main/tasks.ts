@@ -531,6 +531,15 @@ export function createTasks(
     return tasks;
   };
 
+  /** Reads the list as it stands and writes the change back, one at a time,
+      so sessions taken down together never write back each other's. */
+  let writing: Promise<unknown> = Promise.resolve();
+  const rewrite = (change: (tasks: Task[]) => Task[]): Promise<Task[]> => {
+    const next = writing.then(async () => await save(change(await all())));
+    writing = next.catch(() => undefined);
+    return next;
+  };
+
   // What is on disk, published once, so anyone watching starts out right
   // rather than empty until the first thing changes.
   void all().then((tasks) => standing.set(tasks));
@@ -944,7 +953,7 @@ export function createTasks(
         });
       }
       letGo(id, forget);
-      return await save(tasks.filter((task) => task.id !== id));
+      return await rewrite((now) => now.filter((task) => task.id !== id));
     },
 
     revivable(project) {

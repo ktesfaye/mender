@@ -983,25 +983,27 @@ export function createAgents(
     if (forget) {
       asleep.delete(task);
       resuming.delete(task);
+      /* Everything comes off in memory before anything is written, so
+         several sessions taken down at once never write back each other's. */
       const { [task]: _draft, ...draftsLeft } = drafts;
+      drafts = draftsLeft;
       const { [task]: _made, ...madeLeft } = madeBy;
+      madeBy = madeLeft;
       const { [task]: _recap, ...recapsLeft } = recaps;
+      recaps = recapsLeft;
       const { [task]: _story, ...storiesLeft } = stories;
       stories = storiesLeft;
-      await store.set(STORIES_KEY, stories as unknown as never);
       const { [task]: _rested, ...restsLeft } = rests;
       rests = restsLeft;
-      await store.set(RESTED_KEY, rests as unknown as never);
       const { [task]: _back, ...backLeft } = takenBack;
       takenBack = backLeft;
-      await store.set(TAKEN_BACK_KEY, takenBack as unknown as never);
-      drafts = draftsLeft;
       const { [task]: _pictures, ...picturesLeft } = draftPictures;
       draftPictures = picturesLeft;
-      await store.set(DRAFT_PICTURES_KEY, draftPictures as unknown as never);
-      madeBy = madeLeft;
-      recaps = recapsLeft;
       if (titledAt.delete(task)) keepTitled();
+      await store.set(STORIES_KEY, stories as unknown as never);
+      await store.set(RESTED_KEY, rests as unknown as never);
+      await store.set(TAKEN_BACK_KEY, takenBack as unknown as never);
+      await store.set(DRAFT_PICTURES_KEY, draftPictures as unknown as never);
       await store.set(DRAFTS_KEY, drafts as unknown as never);
       await store.set(MADE_KEY, madeBy as unknown as never);
       await store.set(RECAPS_KEY, recaps as unknown as never);

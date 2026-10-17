@@ -4300,3 +4300,10 @@ only when one has uncommitted work in its own copy. With writing on the line
 it still deletes a word. Driven in a dev instance: the done one I was standing
 in closed and I landed on the next, and on "hello world" it took "world" and
 closed nothing.
+
+**Option-delete closes every quiet one, all at once (2026-10-17).** It used to
+miss sessions that said stopped or cut off, and those on other boards on the
+beam, and closing several together could lose one, which then came back as
+idle. Now it takes every session in the project that has answered and gone
+quiet in one go. Driven in a dev instance: done, stopped and cut off went in
+one press and the never-asked idle one stayed.

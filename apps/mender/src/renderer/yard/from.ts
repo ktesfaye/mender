@@ -873,7 +873,7 @@ function lanternOf(
     lit: lit || at.here,
     ...(posture === 'waiting' ? { ember: emberOf(at.glance) } : {}),
     unread: posture === 'done',
-    ...(posture === 'done' || (posture === 'resting' && at.glance?.rested?.how === 'done')
+    ...(posture === 'done' || (posture === 'resting' && at.glance?.rested)
       ? { finished: true }
       : {}),
     ground: 'ready',
