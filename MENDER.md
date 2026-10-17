@@ -447,6 +447,8 @@ offers to close every other session on the beam, the ones to its left, the
 ones to its right, or every one that is done, each saying how many it would
 take and needing a second press that names anything working or uncommitted
 it would stop; if the one you are in goes, you step over to the one pressed.
+Option-delete with nothing written on the line closes every one that is
+done, asking a second press only when one of them has uncommitted work.
 Command-shift-T does the same without the hook, the way a browser brings
 back a closed tab: the last session closed in the project you are in, its
 conversation and all, and pressed again the one closed before that; out on

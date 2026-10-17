@@ -4292,3 +4292,11 @@ working or uncommitted in its own copy, the second closes them, and if the one
 you were in went you stand in the one pressed. Driven in a dev instance: close
 to the right took two and moved over, and close done, on Haiku, took the one
 that had finished and nothing else.
+
+**Option-delete closes the done ones (2026-10-17).** With nothing written on
+the line, option-delete closes every session on the rail that is done, the
+same as the slab's close done, warning first and waiting for a second press
+only when one has uncommitted work in its own copy. With writing on the line
+it still deletes a word. Driven in a dev instance: the done one I was standing
+in closed and I landed on the next, and on "hello world" it took "world" and
+closed nothing.

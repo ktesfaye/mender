@@ -1381,6 +1381,8 @@ async function boot(): Promise<void> {
     /** The session Cmd+W has already warned about, and when: a second press
         inside the window takes it down regardless of what goes with it. */
     let closing: { task: string; at: number } | null = null;
+    /** When option-delete last warned about closing the done ones. */
+    let closingDone: number | null = null;
     /** The project a session was last taken down in, for command-shift-T
         pressed from out on the island. */
     let closedIn: string | null = null;
@@ -6172,6 +6174,39 @@ async function boot(): Promise<void> {
         if (browsingAt) closeBrowser();
         void picked(null);
       },
+      closeDone: () => {
+        if (!open || !inside || !yard.showing || yard.line.written()) return false;
+        if (looking || talking || hunt || browsingAt || amending) return false;
+        if (sending?.written !== undefined) return false;
+        const rail = watching?.yard().rail.filter((one) => one.ground !== 'cutting') ?? [];
+        const ids = rail.filter((one) => one.finished).map((one) => one.id);
+        if (!ids.length) {
+          say('nothing done to close.', 2500);
+          return true;
+        }
+        const armed = closingDone !== null && Date.now() - closingDone < 4000;
+        closingDone = null;
+        const left = rail.filter((one) => !ids.includes(one.id));
+        const at = rail.findIndex((one) => one.here);
+        const keep =
+          left.find((one) => one.here) ??
+          left.find((one) => rail.indexOf(one) >= at) ??
+          left.at(-1);
+        if (armed) {
+          void closeMany(ids, keep?.id ?? '');
+          return true;
+        }
+        void closeCost(ids).then((cost) => {
+          if (!cost) {
+            void closeMany(ids, keep?.id ?? '');
+            return;
+          }
+          closingDone = Date.now();
+          const stops = cost.replace(/^that /, '');
+          say(`closing the done ones ${stops} ⌥⌫ again to close them anyway.`, 4000);
+        });
+        return true;
+      },
       /** A key held with command. One table says what it means. */
       ordered: (event) => {
         /* Control and a number is the nth board along the beam, the way
@@ -7075,6 +7110,8 @@ interface Pointing {
   scrolled(key: string): boolean;
   /** A key held with command. True if it meant something. */
   ordered(event: KeyboardEvent): boolean;
+  /** Option-delete with nothing written: close every session that is done. */
+  closeDone(): boolean;
   /** A key that is not escape and not a chord. True if the board took it. */
   typed(event: KeyboardEvent): boolean;
   /** A letter nothing took, which is writing that lost its way to the line. */
@@ -7205,7 +7242,10 @@ function watchPointer(
       if (pointing.ordered(event)) event.preventDefault();
       return;
     }
-    if (event.altKey) return;
+    if (event.altKey) {
+      if (event.key === 'Backspace' && pointing.closeDone()) event.preventDefault();
+      return;
+    }
     if (pointing.typed(event) || pointing.scrolled(event.key)) {
       event.preventDefault();
       return;
