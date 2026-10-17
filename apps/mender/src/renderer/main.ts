@@ -4971,9 +4971,16 @@ async function boot(): Promise<void> {
       /* Every pinned note rides in with what is actually said, file and line
          first, the same way Emdash folds a diff-line comment into the prompt. */
       const text = [said.trim(), ...notes.map((one) => one.text)].filter(Boolean).join('\n\n');
-      /* An empty line says nothing and does nothing, however busy they are.
-         Escape is how somebody is called off. */
-      if (!text && !carrying.length) return;
+      /* An empty line says nothing, however busy they are; Escape is how
+         somebody is called off. With things still waiting their turn it is
+         "read these now": the turn is called off without handing anything
+         back to the line, and everything waiting goes to the agent together
+         as the next thing it reads. */
+      if (!text && !carrying.length) {
+        const waiting = (saying.yard().session?.waiting ?? []).some((one) => !one.handed);
+        if (waiting && saying.working()) await hush(task, false, true);
+        return;
+      }
       saying.handed();
       /* Written as a question's own answer, it goes into the question, not up
          onto the gatepost as though it were something new said. */

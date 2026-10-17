@@ -142,7 +142,8 @@ sore tones everything else on the board already is, and opens in a window you
 can pan with a drag and zoom with the wheel rather than one that shrinks it to
 fit. The last line of the board is where you write back; there is no
 text field anywhere in this app. An empty line says nothing, however busy
-somebody is. Escape calls them off, the way it does in Claude Code; only once
+somebody is, unless something you said is waiting its turn, when it hands
+that over now rather than at the next pause. Escape calls them off, the way it does in Claude Code; only once
 nobody is working does Escape walk you out.
 
 **The bottom of the board is what is coming.** Under everything that has
