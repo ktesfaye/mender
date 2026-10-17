@@ -210,7 +210,7 @@ export function onThisMachine(url: string): Promise<string | null> {
 }
 
 /** A picture on this machine read again at a size worth holding up, or nothing for one on the web. */
-function larger(url: string): Promise<string | null> | undefined {
+export function larger(url: string): Promise<string | null> | undefined {
   if (/^https?:\/\//.test(url) || !local) return undefined;
   let path = url;
   if (path.startsWith('file://')) {

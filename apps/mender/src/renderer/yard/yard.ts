@@ -60,7 +60,8 @@ import {
   unfold,
 } from './motion';
 import { packed } from './pack';
-import { onThisMachine } from './pictures';
+import { holdUp } from './picture-view';
+import { larger, onThisMachine } from './pictures';
 import { pressing } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
@@ -3968,7 +3969,20 @@ function carted(wide: number, made: Session['made'], does: Doings): HTMLElement 
     const line = document.createElement('div');
     line.style.cssText = 'display:flex;align-items:baseline;gap:9px;min-width:0';
     line.appendChild(madeSign(one.kind, i === 0));
-    const name = pressing(one.what, () => does.press(one.pick));
+    const picture = one.picture;
+    const name = picture
+      ? pressing(one.what, () => {
+          unpreview();
+          void onThisMachine(picture).then((src) => {
+            if (src) holdUp(src, one.what, larger(picture));
+            else does.press(one.pick);
+          });
+        })
+      : pressing(one.what, () => does.press(one.pick));
+    if (picture) {
+      name.addEventListener('mouseenter', () => preview(name, [onThisMachine(picture)]));
+      name.addEventListener('mouseleave', unpreview);
+    }
     name.style.cssText += `;font-size:${i ? 13 : 15}px;line-height:1.3;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`;
     line.appendChild(name);
     const when = said(one.when, i ? '#7d6b4f' : '#a8c469');

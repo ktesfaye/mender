@@ -709,10 +709,13 @@ function madeOf(told: Told | undefined): Session['made'] {
     what: one.name,
     when: `${MADE_VERB[one.kind]} ${one.at ? agoOf(Date.now() - one.at) : 'before this'}`,
     pick: madePick(one),
+    ...(one.path && PICTURE.test(one.path) ? { picture: one.path } : {}),
   }));
 }
 
 const MADE_VERB = { page: 'published', file: 'written', build: 'built' } as const;
+
+const PICTURE = /\.(png|jpe?g|gif|webp|svg)$/i;
 
 /** What the board reads better than anything else on the machine would. */
 const READ_HERE = /\.(md|markdown|csv|png|jpe?g|gif|webp|svg)$/i;

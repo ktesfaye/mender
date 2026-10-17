@@ -3264,6 +3264,13 @@ on the original 24-row list was looked at and either already covered by
 something built under a different name, or cut outright with the reason
 recorded above it — nothing was left blank because it ran out of time.
 
+### A picture in what it made shows itself (2026-10-17) — done
+
+A picture on the "what it made" list behaves like every other picture in the
+village: pointing at its name holds it up over the line, and pressing it lays
+it over the whole window to zoom and drag, Escape putting it down. Driven in
+a dev instance on a resumed session that had shown a png.
+
 ### What it made is a short list, not a billboard (2026-10-13) — done
 
 The billboard prop is gone from the top of the right column. Each thing a

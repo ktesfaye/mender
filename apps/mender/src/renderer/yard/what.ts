@@ -390,6 +390,8 @@ export interface Made {
   when: string;
   /** What pressing it does, as a pick on the board. */
   pick: string;
+  /** Where it is on this machine, when it is a picture: pointed at it shows, pressed it is held up. */
+  picture?: string;
 }
 
 /** Somebody it sent out, standing in the yard where their state puts them. */
