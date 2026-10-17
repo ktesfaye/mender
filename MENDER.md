@@ -141,9 +141,9 @@ was never going to read as prose, so it is drawn instead, in the same warm and
 sore tones everything else on the board already is, and opens in a window you
 can pan with a drag and zoom with the wheel rather than one that shrinks it to
 fit. The last line of the board is where you write back; there is no
-text field anywhere in this app. An empty line while somebody is working calls
-them off, and so does Escape, the way it does in Claude Code; only once nobody
-is working does Escape walk you out.
+text field anywhere in this app. An empty line says nothing, however busy
+somebody is. Escape calls them off, the way it does in Claude Code; only once
+nobody is working does Escape walk you out.
 
 **The bottom of the board is what is coming.** Under everything that has
 happened, and above the line you write on, is how much of its room to think in it has used up, and what it has cost so
@@ -203,7 +203,7 @@ under it weathered into the post, any of them written back on the line by
 pressing it, and up on an empty line walks back through them, after
 first taking back off the post anything still waiting its turn and putting
 it on the line, the way Claude Code's own up arrow does. Calling it off,
-by Escape or an empty line, before anything at all has come of what it was
+by Escape, before anything at all has come of what it was
 asked takes that note down too and puts it back on the line to be said
 again, and so does up on an empty line while it is still only thinking,
 since that is the same "not yet". A small
@@ -219,9 +219,7 @@ not seen. It is handed over the next time the agent pauses between one thing
 it does and the next, which is when Claude Code folds one in too, and until
 then it says "waiting its turn" and is still yours to take back. However many
 are waiting, they go together as one, at that pause or once the turn ends,
-so three things said on the way are read and answered as one. An empty
-line with any of them still waiting is "read these now": the turn is called
-off, nothing comes back to the line, and they go straight to it together. And at the foot of that column is the
+so three things said on the way are read and answered as one. And at the foot of that column is the
 project's changelog, in the same small squares and cream lines the glance at
 the other sessions used to be written in: each version on its own line and
 what went into it bulleted and indented under it, newest first and scrolling, read straight off whichever commits moved

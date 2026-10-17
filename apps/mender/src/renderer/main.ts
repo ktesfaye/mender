@@ -4969,16 +4969,9 @@ async function boot(): Promise<void> {
       /* Every pinned note rides in with what is actually said, file and line
          first, the same way Emdash folds a diff-line comment into the prompt. */
       const text = [said.trim(), ...notes.map((one) => one.text)].filter(Boolean).join('\n\n');
-      /* An empty line while somebody is working calls them off. It is the only
-         thing in this app that means something by being nothing. With things
-         still waiting their turn it is "read these now": the turn is called
-         off without handing anything back to the line, and everything waiting
-         goes to the agent together as the next thing it reads. */
-      if (!text && !carrying.length) {
-        const waiting = (saying.yard().session?.waiting ?? []).some((one) => !one.handed);
-        if (saying.working()) await hush(task, false, waiting);
-        return;
-      }
+      /* An empty line says nothing and does nothing, however busy they are.
+         Escape is how somebody is called off. */
+      if (!text && !carrying.length) return;
       saying.handed();
       /* Written as a question's own answer, it goes into the question, not up
          onto the gatepost as though it were something new said. */
@@ -6144,7 +6137,7 @@ async function boot(): Promise<void> {
         }
         /* Standing in a yard where somebody is working, Escape calls them off
            rather than walking out on them: Claude Code's own "esc to
-           interrupt", and the same thing an empty line already does. Stopped,
+           interrupt". Stopped,
            the next Escape leaves as it always did. */
         if (inside && watching?.working()) {
           void hush(inside);
