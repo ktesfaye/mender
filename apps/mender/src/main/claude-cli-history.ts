@@ -118,11 +118,28 @@ export function parseClaudeSessionLines(lines: readonly string[]): {
 function typedTurn(obj: Record<string, unknown>): string | null {
   if (obj.type !== 'user' || obj.isSidechain === true || !isPlainObject(obj.message)) return null;
   const content = obj.message.content;
-  if (typeof content !== 'string') return null;
-  const typed = unpasted(content.trim());
+  const typed = unpasted(spoken(content).trim());
   return typed && !typed.startsWith('<') && !typed.startsWith('[Request interrupted')
     ? typed
     : null;
+}
+
+/** A terminal writes what was typed as one string; a session spoken to over
+    ACP, which is every one the village starts, writes it as blocks, its
+    words in text blocks beside any picture. A turn carrying a tool result
+    is the CLI answering itself, never something typed. */
+function spoken(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  if (content.some((part) => isPlainObject(part) && part.type === 'tool_result')) return '';
+  return content
+    .filter(
+      (part): part is { type: 'text'; text: string } =>
+        isPlainObject(part) && part.type === 'text' && typeof part.text === 'string'
+    )
+    .map((part) => part.text.trim())
+    .filter(Boolean)
+    .join('\n');
 }
 
 /** A turn that opens with something pasted is still typed: what was written
@@ -133,7 +150,10 @@ function unpasted(typed: string): string {
   if (!typed.startsWith('<pasted_content')) return typed;
   const around = typed.replace(pasted, ' ').trim();
   if (around) return around;
-  return [...typed.matchAll(pasted)].map((one) => one[1]!.trim()).join('\n').trim();
+  return [...typed.matchAll(pasted)]
+    .map((one) => one[1]!.trim())
+    .join('\n')
+    .trim();
 }
 
 /** The last name Claude Code gave the session among these lines. */
@@ -363,8 +383,9 @@ export async function readClaudeStory(dirName: string, id: string): Promise<Clau
     const content = obj.message.content;
     if (!Array.isArray(content)) continue;
     const words = content
-      .filter((part): part is { type: 'text'; text: string } =>
-        isPlainObject(part) && part.type === 'text' && typeof part.text === 'string'
+      .filter(
+        (part): part is { type: 'text'; text: string } =>
+          isPlainObject(part) && part.type === 'text' && typeof part.text === 'string'
       )
       .map((part) => part.text.trim())
       .filter(Boolean)

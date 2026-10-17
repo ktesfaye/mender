@@ -18,6 +18,25 @@ describe('claudeProjectDirName', () => {
 });
 
 describe('parseClaudeSessionLines', () => {
+  it('reads a turn written as text blocks, skipping tool results', () => {
+    const lines = [
+      JSON.stringify({
+        type: 'user',
+        message: {
+          content: [
+            { type: 'tool_result', content: 'x' },
+            { type: 'text', text: 'no' },
+          ],
+        },
+      }),
+      JSON.stringify({
+        type: 'user',
+        message: { content: [{ type: 'image' }, { type: 'text', text: 'fix the webview' }] },
+      }),
+    ];
+    expect(parseClaudeSessionLines(lines).title).toBe('fix the webview');
+  });
+
   it('reads sessionId, gitBranch, and the first real user message', () => {
     const lines = [
       JSON.stringify({ type: 'mode', mode: 'normal', sessionId: 'abc-123' }),
