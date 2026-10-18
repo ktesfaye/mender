@@ -201,7 +201,9 @@ said it.
 land in the session you were last in, standing in its yard at night. What you
 asked for is nailed to a gatepost on the left, newest on parchment and the ones
 under it weathered into the post, any of them written back on the line by
-pressing it, and up on an empty line walks back through them, after
+pressing it, a long one, a pasted log say, showing its first few lines with
+a gold line under them that opens the rest and folds it again rather than
+running the post off the window, and up on an empty line walks back through them, after
 first taking back off the post anything still waiting its turn and putting
 it on the line, the way Claude Code's own up arrow does. Calling it off,
 by Escape, before anything at all has come of what it was

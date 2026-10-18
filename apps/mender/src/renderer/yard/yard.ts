@@ -2377,10 +2377,12 @@ function asked(
       note.addEventListener('mousedown', (event) => event.preventDefault());
       note.addEventListener('click', () => takeBack(one.id));
     }
+    note.dataset.fold = `waiting:${one.id}`;
     list.appendChild(keyed(note, `waiting:${one.id}`));
   }
   if (newest) {
     const card = keyed(pinned(newest, { width }, rerun), `note:${newest.id}`);
+    card.dataset.fold = newest.id;
     card.style.position = 'relative';
     card.style.flexShrink = '0';
     list.appendChild(pickable(card, newest.said, pick));
@@ -2389,6 +2391,7 @@ function asked(
     for (const note of older) {
       const old = weathered(note);
       old.style.width = `${width}px`;
+      old.dataset.fold = note.id;
       list.appendChild(pickable(keyed(old, `note:${note.id}`), note.said, pick));
     }
   root.appendChild(list);
@@ -2400,8 +2403,55 @@ function asked(
   if (postHead.get(id) !== head) postScrolled.delete(id);
   postHead.set(id, head);
   list.scrollTop = postScrolled.get(id) ?? 0;
-  list.addEventListener('scroll', () => postScrolled.set(id, list.scrollTop));
-  post.style.height = `${Math.min(room, list.scrollHeight + 40)}px`;
+  list.addEventListener('scroll', () => {
+    /* A tall card's tilt pokes out past the side, and anything that scrolls
+       the column sideways to it slid the whole note out of sight. */
+    list.scrollLeft = 0;
+    postScrolled.set(id, list.scrollTop);
+  });
+  const fit = (): void => {
+    post.style.height = `${Math.min(room, list.scrollHeight + 40)}px`;
+  };
+  for (const one of list.querySelectorAll<HTMLElement>('[data-fold]')) folded(one, fit);
+  fit();
+}
+
+/** Notes opened out past their first few lines, by id, across redraws. */
+const openNotes = new Set<string>();
+
+/**
+ * A long note, a pasted log say, shows its first few lines and folds the rest
+ * under a line that opens it, so it never runs the post off the screen. Has
+ * to be measured, so it runs once the note is on the board.
+ */
+function folded(note: HTMLElement, fit: () => void): void {
+  const key = note.dataset.fold ?? '';
+  const body = note.querySelector<HTMLElement>('[data-note="said"]');
+  if (!body) return;
+  const most = parseFloat(getComputedStyle(body).lineHeight) * 8;
+  if (body.scrollHeight <= most + 4) return;
+  const lines = (body.textContent ?? '').split('\n').length;
+  const paper = note.classList.contains('paper');
+  const set = (): void => {
+    const open = openNotes.has(key);
+    body.style.maxHeight = open ? '' : `${most}px`;
+    body.style.overflow = open ? '' : 'hidden';
+    body.style.maskImage = open ? '' : 'linear-gradient(180deg,#000 55%,transparent)';
+    toggle.textContent = open ? 'fold it' : lines > 8 ? `show all ${lines} lines` : 'show all';
+    fit();
+  };
+  const toggle = pressing('', () => {
+    if (openNotes.has(key)) openNotes.delete(key);
+    else openNotes.add(key);
+    set();
+  });
+  toggle.style.cssText += ';display:inline-block;margin-top:6px;align-self:flex-start';
+  /* The board's gold all but vanishes on cream, so the paper's darker one. */
+  if (paper) toggle.style.color = '#a8741c';
+  /* Opening it is not the same as writing the note back on the line. */
+  toggle.addEventListener('click', (event) => event.stopPropagation());
+  body.after(toggle);
+  set();
 }
 
 /** A note that writes itself back on the line when pressed, and looks no different. */
@@ -2435,6 +2485,7 @@ function pinned(note: Note, where: { width: number }, rerun?: () => void): HTMLE
   card.appendChild(meta);
   const body = document.createElement('div');
   body.dataset.note = 'said';
+  body.style.whiteSpace = 'pre-wrap';
   body.textContent = named(note.said);
   card.appendChild(body);
   handed(card, note, '#b3651f');
@@ -2549,8 +2600,9 @@ function weathered(note: Note): HTMLElement {
     said(`${note.when} · ${note.standing ? 'standing' : note.answered ? 'answered' : 'unanswered'}`)
   );
   const body = document.createElement('span');
+  body.dataset.note = 'said';
   body.style.cssText =
-    "font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
+    "display:block;white-space:pre-wrap;font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
   body.textContent = named(note.said);
   it.appendChild(body);
   handed(it, note);
@@ -2565,8 +2617,9 @@ function unheard(one: { said: string; handed?: boolean }): HTMLElement {
     said(one.handed ? 'just now · not read yet' : 'waiting its turn · press to take back')
   );
   const body = document.createElement('span');
+  body.dataset.note = 'said';
   body.style.cssText =
-    "font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
+    "display:block;white-space:pre-wrap;font-family:'Mender Hand',cursive;font-size:17px;line-height:1.25;color:#cbb491;overflow-wrap:anywhere";
   body.textContent = one.said;
   it.appendChild(body);
   return it;
