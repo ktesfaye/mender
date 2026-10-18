@@ -288,6 +288,37 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
        own, so it is read off the end of the text just before it; the line's
        own box would put it at the far right of the first row. */
     let rect = range.getClientRects()[0];
+    /* A newline at the very end of the text opens a row nothing has been
+       written on, and a row with nothing on it has no box either, so the
+       cursor is stood at the start of the row under the last one by hand. The
+       browser also keeps one more newline after the caret there, so the caret
+       sits just short of the end rather than at it. */
+    let newRow = false;
+    const head = document.createRange();
+    head.setStart(said, 0);
+    head.setEnd(range.endContainer, range.endOffset);
+    const tail = document.createRange();
+    tail.setStart(range.endContainer, range.endOffset);
+    tail.setEnd(said, said.childNodes.length);
+    const after = tail.toString();
+    if (head.toString().endsWith('\n') && (after === '' || after === '\n')) {
+      const walk = document.createTreeWalker(said, NodeFilter.SHOW_TEXT);
+      let row: Text | null = null;
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        if (head.comparePoint(n, (n as Text).length) > 0) break;
+        if ((n as Text).data.endsWith('\n')) row = n as Text;
+      }
+      if (row) {
+        const end = document.createRange();
+        end.setStart(row, row.length - 1);
+        end.setEnd(row, row.length);
+        const box = end.getClientRects()[0];
+        if (box) {
+          rect = box;
+          newRow = true;
+        }
+      }
+    }
     if (!rect) {
       const text = lastText(range.endContainer, range.endOffset);
       if (text) {
@@ -300,6 +331,13 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     rect ??= said.getBoundingClientRect();
     const from = root.getBoundingClientRect();
     cursor.style.position = 'absolute';
+    if (newRow) {
+      const box = said.getBoundingClientRect();
+      const row = parseFloat(getComputedStyle(said).lineHeight) || rect.height;
+      cursor.style.left = `${Math.round(box.left - from.left)}px`;
+      cursor.style.top = `${Math.round(rect.top - from.top + row + (rect.height - 20) / 2)}px`;
+      return;
+    }
     cursor.style.left = `${Math.round(rect.right - from.left)}px`;
     cursor.style.top = `${Math.round(rect.top - from.top + (rect.height - 20) / 2)}px`;
   }
