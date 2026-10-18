@@ -363,7 +363,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     if (chip && !chip.contains(event.relatedTarget as Node | null)) unpreview();
   });
 
-  said.addEventListener('input', () => {
+  function settle(): void {
     /* A picture backspaced off the line is put down, the same as a word
        backspaced off it is gone. */
     const still = new Set(onLine().map((chip) => chip.dataset.carried));
@@ -385,7 +385,44 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     }
     showing();
     typed(words());
-  });
+  }
+  said.addEventListener('input', settle);
+
+  /* Cut or copy a stretch with a picture in it and the picture goes with it:
+     the words on the clipboard name it, and pasting them back stands that
+     very picture on the line again rather than the bare word for it. */
+  let clipped: { text: string; chips: Token[] } | null = null;
+  function clip(event: ClipboardEvent, cutting: boolean): void {
+    const where = window.getSelection();
+    if (!where || where.rangeCount === 0 || where.isCollapsed) return;
+    const range = where.getRangeAt(0);
+    if (!said.contains(range.commonAncestorContainer)) return;
+    const chips: Token[] = [];
+    let text = '';
+    const walk = (node: Node): void => {
+      for (const child of node.childNodes) {
+        if (child instanceof HTMLElement && child.dataset.carried !== undefined) {
+          const id = child.dataset.carried;
+          const token = carried.find((one) => one.id === id) ?? putAside.get(id);
+          if (token) chips.push(token);
+          text += child.textContent ?? '';
+        } else if (child instanceof HTMLElement && child.dataset.link !== undefined) {
+          text += child.dataset.link;
+        } else if (child instanceof Text) text += child.data;
+        else if (child instanceof HTMLBRElement) text += '\n';
+        else walk(child);
+      }
+    };
+    walk(range.cloneContents());
+    event.preventDefault();
+    event.clipboardData?.setData('text/plain', text);
+    clipped = chips.length ? { text, chips } : null;
+    if (!cutting) return;
+    range.deleteContents();
+    settle();
+  }
+  said.addEventListener('cut', (event) => clip(event, true));
+  said.addEventListener('copy', (event) => clip(event, false));
   document.addEventListener('selectionchange', place);
   said.addEventListener('blur', () => (cursor.style.opacity = '0'));
   said.addEventListener('focus', () => {
@@ -443,7 +480,7 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
     event.preventDefault();
     /* Flattened on the way in. Several lines pasted onto a one-line prompt is
        almost always one thing somebody copied with a line break in it. */
-    insert(text.replace(/\s*\n\s*/g, ' '));
+    insert(text.replace(/\s*\n\s*/g, ' '), text === clipped?.text ? clipped.chips : []);
   });
 
   /* A paste that lands on nothing is meant for the line, the same as a stray
@@ -466,20 +503,47 @@ export function makeLine(at: HTMLElement, asking: Asking = 'say'): Line {
   }
   document.addEventListener('paste', strayPaste);
 
-  function insert(text: string): void {
+  function insert(text: string, pictures: readonly Token[] = []): void {
+    /* Pictures cut off the line stand back where their words are; one still
+       on the line stays plain words, since a picture is only carried once. */
+    const back = pictures.filter((one) => putAside.has(one.id));
+    const dress = (nodes: DocumentFragment): DocumentFragment => {
+      for (const one of back) {
+        const word = [...nodes.childNodes].find(
+          (node): node is Text => node instanceof Text && node.data.includes(one.label)
+        );
+        if (!word) continue;
+        const at = word.data.indexOf(one.label);
+        const after = word.splitText(at);
+        after.data = after.data.slice(one.label.length);
+        word.after(tokenChip(one));
+        standing.push(one);
+      }
+      return nodes;
+    };
+    const standing: Token[] = [];
+    const taken = (): void => {
+      for (const one of standing) {
+        putAside.delete(one.id);
+        carried = [...carried, one];
+        pickBack(one.id);
+      }
+    };
     const where = window.getSelection();
     if (!where || where.rangeCount === 0) {
-      said.appendChild(linked(text));
+      said.appendChild(dress(linked(text)));
+      taken();
     } else {
       const range = where.getRangeAt(0);
       range.deleteContents();
-      const nodes = linked(text);
+      const nodes = dress(linked(text));
       const last = nodes.lastChild;
       range.insertNode(nodes);
       if (last) range.setStartAfter(last);
       range.collapse(true);
       where.removeAllRanges();
       where.addRange(range);
+      taken();
     }
     said.scrollTop = said.scrollHeight;
     showing();
