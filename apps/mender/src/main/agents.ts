@@ -2121,9 +2121,16 @@ class House {
     if (!back.success || !back.data || back.data.unavailable || !back.data.turns.length) return;
     const whole = new Map(back.data.turns.map((turn) => [turn.id, turn]));
     const live = this.live?.id;
+    /* Ids and sequence numbers are positions in one replay, and a wake
+       replays a conversation into fewer turns than were seen live, so a turn
+       kept from before is only trusted where the history cannot speak for it:
+       older than a page that stopped short of the start. Anything else it
+       does not hold is an older numbering of something it does, and kept, it
+       sorted after everything real and became the newest thing said. */
+    const oldest = back.data.nextCursor === null ? -Infinity : back.data.turns[0]!.seq;
     this.before = [
       ...back.data.turns.filter((turn) => turn.id !== live).map(unprompted),
-      ...this.before.filter((had) => !whole.has(had.id) && !restated(had, back.data.turns)),
+      ...this.before.filter((had) => !whole.has(had.id) && had.seq < oldest),
     ]
       .sort((a, b) => a.seq - b.seq)
       .slice(-BACKWARD);
@@ -3420,24 +3427,6 @@ function unprompted(turn: TranscriptTurn): TranscriptTurn {
       item.kind !== 'message' || item.role !== 'user' || !UNPROMPTED.test(item.text.trimStart())
   );
   return items.length === turn.items.length ? turn : { ...turn, items };
-}
-
-/**
- * Whether a turn kept from before is only an older numbering of one the
- * history now holds. Ids and sequence numbers are positions in one replay, and
- * a wake replays a conversation with a limit in it into fewer turns than were
- * seen live, so the stale copy kept the old, higher number and sorted after
- * everything real, which made its note the newest one said.
- */
-function restated(had: TranscriptTurn, now: readonly TranscriptTurn[]): boolean {
-  const said = (turn: TranscriptTurn): string =>
-    turn.items
-      .flatMap((item) =>
-        item.kind === 'message' && item.role === 'user' ? [item.text.trim()] : []
-      )
-      .join('\n');
-  const mine = said(had);
-  return mine !== '' && now.some((turn) => said(turn) === mine);
 }
 
 /** How Claude's own transcript writes down a turn you stopped. */
