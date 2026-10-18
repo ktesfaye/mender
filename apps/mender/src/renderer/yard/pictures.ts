@@ -13,7 +13,7 @@
  * will not load is simply not there: a broken frame says less than nothing.
  */
 
-import { holdUp } from './picture-view';
+import { holdUp, type Sibling } from './picture-view';
 
 export interface Picture {
   name: string;
@@ -159,6 +159,7 @@ export function figure(one: Picture): HTMLElement {
 function image(one: Picture, it: HTMLElement): HTMLImageElement {
   const picture = document.createElement('img');
   picture.alt = one.name;
+  picture.dataset.url = one.url;
   picture.draggable = false;
   picture.referrerPolicy = 'no-referrer';
   picture.addEventListener(
@@ -179,7 +180,15 @@ function image(one: Picture, it: HTMLElement): HTMLImageElement {
     if (event.button !== 0 || !picture.currentSrc || picture.closest('a')) return;
     if (Math.hypot(event.clientX - from.x, event.clientY - from.y) > 4) return;
     event.stopPropagation();
-    holdUp(picture.currentSrc, picture.alt, larger(one.url));
+    const everyone = [
+      ...document.querySelectorAll<HTMLImageElement>('.prose-picture:not([hidden]) img'),
+    ].filter((other) => other.currentSrc);
+    const siblings: Sibling[] = everyone.map((other) => ({
+      src: other.currentSrc,
+      name: other.alt,
+      sharper: () => (other.dataset.url ? larger(other.dataset.url) : undefined),
+    }));
+    holdUp(picture.currentSrc, picture.alt, larger(one.url), siblings, everyone.indexOf(picture));
   });
   if (/^https?:\/\//.test(one.url)) picture.src = one.url;
   else {

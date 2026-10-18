@@ -14,8 +14,23 @@ const MAX_SCALE = 8;
 
 let open: (() => void) | null = null;
 
-export function holdUp(src: string, name: string, sharper?: Promise<string | null>): void {
+/** Another picture in the same session, for the arrows to step to. */
+export interface Sibling {
+  src: string;
+  name: string;
+  sharper?: () => Promise<string | null> | undefined;
+}
+
+export function holdUp(
+  src: string,
+  name: string,
+  sharper?: Promise<string | null>,
+  siblings: readonly Sibling[] = [],
+  at = 0
+): void {
   open?.();
+  const all: Sibling[] = siblings.length > 1 ? [...siblings] : [];
+  let index = at;
 
   const wash = document.createElement('div');
   wash.className = 'picture-view';
@@ -26,17 +41,24 @@ export function holdUp(src: string, name: string, sharper?: Promise<string | nul
   picture.alt = name;
   picture.draggable = false;
   picture.referrerPolicy = 'no-referrer';
-  void sharper?.then((better) => {
-    if (better) picture.src = better;
-  });
+  const better = (later?: Promise<string | null>): void => {
+    const shown = picture.alt;
+    void later?.then((sharp) => {
+      if (sharp && picture.alt === shown) picture.src = sharp;
+    });
+  };
+  better(sharper);
   stage.appendChild(picture);
   wash.appendChild(stage);
-  if (name) {
-    const said = document.createElement('div');
-    said.className = 'picture-view-name';
-    said.textContent = name;
-    wash.appendChild(said);
-  }
+  const said = document.createElement('div');
+  said.className = 'picture-view-name';
+  const words = (label: string): void => {
+    const place = all.length ? `${index + 1} / ${all.length}` : '';
+    said.textContent = [label, place].filter(Boolean).join('  ·  ');
+    said.hidden = !said.textContent;
+  };
+  words(name);
+  wash.appendChild(said);
 
   let scale = 1;
   let x = 0;
@@ -109,6 +131,18 @@ export function holdUp(src: string, name: string, sharper?: Promise<string | nul
     event.preventDefault();
     event.stopImmediatePropagation();
     if (event.key === 'Escape') close();
+    else if (all.length && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      index = (index + (event.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length;
+      const next = all[index]!;
+      picture.alt = next.name;
+      picture.src = next.src;
+      scale = 1;
+      x = 0;
+      y = 0;
+      apply();
+      words(next.name);
+      better(next.sharper?.());
+    }
   };
   window.addEventListener('keydown', keys, true);
 
