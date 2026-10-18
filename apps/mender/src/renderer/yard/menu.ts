@@ -45,6 +45,22 @@ export function makeMenu(
   list.className = 'menu-list';
   root.appendChild(list);
 
+  const foot = document.createElement('div');
+  foot.className = 'menu-foot';
+  for (const [key, what] of [
+    ['\u2191\u2193', 'walk'],
+    ['return', 'pick'],
+    ['esc', 'close'],
+  ]) {
+    const one = document.createElement('span');
+    const cap = document.createElement('span');
+    cap.className = 'menu-foot-key';
+    cap.textContent = key;
+    one.append(cap, what);
+    foot.appendChild(one);
+  }
+  root.appendChild(foot);
+
   return {
     root,
     write(offers) {
