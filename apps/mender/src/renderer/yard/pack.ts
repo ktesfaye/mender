@@ -7,15 +7,15 @@ import { longFor } from './from';
  *
  * A strip of cells is everything it was holding in mind. While it packs, a hot front crosses what it was
  * holding and presses each cell flat behind it, sparks going up off the front;
- * once it has, what is left stands up green for a moment and the strip goes,
- * leaving how far down it went and how long it took as one quiet line.
+ * once it has, what is left stands up green beside the flat cells that went,
+ * and stays, with how far down it went and how long it took as a quiet line.
  * Claude says nothing while it works, so how far the front has got is its
  * clock against how long one usually takes here, said as such underneath.
  */
 
 const CELLS = 48;
 const TALL = 16;
-/** How long a finished strip stands before it goes. */
+/** How long a finished strip takes to stand back up. */
 const SETTLE = 2400;
 
 const WARM = '#ffc98a';
@@ -150,26 +150,27 @@ export function packed(id: string, pack: Pack): HTMLElement {
           : `${longFor(elapsed)} in · usually about ${longFor(pack.expect).replace(/ 0s$/, '')}`;
       return;
     }
-    /* Done is said, not drawn: the strip only stays long enough to stand
-       back up once, then goes and leaves the line under the words. */
+    /* Done stays drawn: the whole strip is what it held, the green cells what
+       is left of it, the flat ones what went. It stands up once when fresh. */
     const fresh = pack.ended ? Date.now() - pack.ended : Infinity;
     const left = pack.to !== undefined ? cellsOf(pack.to, pack.from, CELLS) : CELLS;
-    if (fresh < SETTLE) {
-      cells.forEach((cell, i) => {
-        cell.style.boxShadow = '';
-        if (i < left) {
-          cell.style.height = `${TALL}px`;
-          cell.style.background = DONE;
-          cell.style.animation = `yard-pack-rise 520ms steps(4,end) ${i * 20 - fresh}ms both`;
-        } else {
-          cell.style.height = '2px';
-          cell.style.background = 'rgba(168,196,105,.28)';
-        }
-      });
-      window.setTimeout(() => row.remove(), SETTLE - fresh);
-    } else {
-      row.remove();
-    }
+    cells.forEach((cell, i) => {
+      cell.style.boxShadow = '';
+      if (i < left) {
+        cell.style.height = `${TALL}px`;
+        cell.style.background = DONE;
+        cell.style.animation =
+          fresh < SETTLE ? `yard-pack-rise 520ms steps(4,end) ${i * 20 - fresh}ms both` : '';
+      } else {
+        cell.style.height = '3px';
+        cell.style.background = '#7a4a22';
+        cell.style.animation = '';
+      }
+    });
+    big.textContent =
+      pack.from && pack.to !== undefined
+        ? `${Math.max(1, Math.round((pack.to / pack.from) * 100))}% kept`
+        : '';
     const down =
       pack.from && pack.to !== undefined ? `${short(pack.from)} → ${short(pack.to)}` : '';
     const took = pack.began && pack.ended ? `took ${longFor(pack.ended - pack.began)}` : '';

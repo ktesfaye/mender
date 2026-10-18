@@ -191,9 +191,9 @@ it was holding, a hot front crossing it and pressing each cell flat behind it
 with sparks going up, how far along as a percentage, and how long it has been
 at it against how long one usually takes, read off Claude Code's own record of
 the last ones. Claude says nothing while it packs, so the percentage is that
-clock and says so. Once it has, what is left stands back up green for a
-moment and then the strip goes, leaving one quiet line under the words with
-how full it was before and after and how long it took. The
+clock and says so. Once it has, what is left stands back up green beside
+the flat cells that went, and the strip stays, with one quiet line under it
+saying how full it was before and after and how long it took. The
 summary Claude carries across is never put on the gatepost as though you had
 said it.
 
