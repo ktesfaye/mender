@@ -1,5 +1,6 @@
 import type { Pack } from '@shared/agents';
 import type { FiveHours } from '@shared/five-hours';
+import type { Building } from './building';
 /**
  * What a yard is, as a value.
  *
@@ -191,6 +192,8 @@ export interface Session {
   /** Oldest first, the running one last. */
   steps: Step[];
   made: Made[];
+  /** A page it is building, and every look taken at it as it changed. */
+  building?: Building;
   agents: Hand[];
   /** What you said while it was busy, in the order it will hear it. */
   waiting: Waiting[];

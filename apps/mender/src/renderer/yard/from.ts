@@ -17,6 +17,7 @@ import { PICK_UP_SAID } from '@shared/pick-up';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
 import { answersFor } from '../board/work';
+import type { Building } from './building';
 import { doingNow, lookedAround, plainCommand, plainRead, type Plain } from './deeds';
 import { KIT_NAMES } from './sprite';
 import type {
@@ -141,6 +142,8 @@ export interface Standing {
   waking?: boolean;
   /** The project's workspaces, when it has any besides its own folder. */
   workspaces?: readonly Signboard[];
+  /** The page the session you are standing in is building, and every look at it. */
+  building?: Building;
 }
 
 /** The turn the newest note opened, which is the one being answered now. */
@@ -274,6 +277,7 @@ function sessionOf(
       : {}),
     steps: stepsOf(told?.deeds ?? []),
     made: madeOf(told),
+    ...(from.building ? { building: from.building } : {}),
     agents: [
       ...(told?.errands ?? []).map(handOf),
       ...(told?.deeds ?? []).filter((one) => one.job && !one.job.away).map(commandOf),

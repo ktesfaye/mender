@@ -12,6 +12,7 @@ import { watchStayingAwake } from './awake';
 import { watchDockBadge } from './badge';
 import { createBoard } from './board';
 import { createBoardController } from './board-controller';
+import { createBuildingController } from './building';
 import { createChanges } from './changes';
 import { createChangesController } from './changes-controller';
 import { createClaudeUsage } from './claude-usage';
@@ -121,6 +122,7 @@ export async function main(): Promise<void> {
     ),
     appSettings: createAppSettingsController(appSettings, sessionUsage, fiveHours),
     board: createBoardController(createBoard(runtimes)),
+    building: createBuildingController(),
     changes: createChangesController(changes),
     finding: createFindingController(finding),
     github: createGitHubStatus(),

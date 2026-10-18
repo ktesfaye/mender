@@ -4320,3 +4320,16 @@ beam, and closing several together could lose one, which then came back as
 idle. Now it takes every session in the project that has answered and gone
 quiet in one go. Driven in a dev instance: done, stopped and cut off went in
 one press and the never-asked idle one stayed.
+
+**Watching it build (2026-10-18).** A session that writes an html page, or
+names a page on this machine in what it says, gets "what it's building" at
+the head of the right column: a picture of the page as it last looked, taken
+in a window nobody sees each time a write to it lands, with what changed
+marked "just drew" and fading. The fire line and the column both offer "watch
+it", and ⌘L opens it over the yard: the real page running, reloaded as the
+agent edits a file (a server reloads its own), the strip of every look under
+it to drag back through, and what it is doing with the last line it wrote.
+Driven in a dev instance on Haiku: a page written then edited twice grew a
+look per landed edit, the open page reloaded and marked the change, scrubbing
+showed the older look, Escape closed it, and a python server it started and
+named was drawn from its address. Looks are kept for the sitting only.

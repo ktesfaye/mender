@@ -2976,3 +2976,334 @@ body.carrying-board * {
   font-size: 15px;
   color: var(--yard-ink-body);
 }
+
+/* What it is building: the page as it last looked, lit, at the head of the
+   right column. No frame; four ember corners and the light it throws. */
+.yard .building {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--yard-face-label);
+  pointer-events: auto;
+}
+.yard .building-glass {
+  position: relative;
+  margin: 16px 9px 0;
+  aspect-ratio: 16 / 10;
+  cursor: pointer;
+  background: #0c0a10;
+  box-shadow: 0 0 46px rgba(255, 150, 60, 0.18);
+}
+.yard .building-glass::after {
+  content: '';
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: -38px;
+  height: 46px;
+  background: radial-gradient(closest-side, rgba(255, 150, 60, 0.2), rgba(255, 150, 60, 0));
+  pointer-events: none;
+}
+.yard .building-glass img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+.yard .building-glass:hover .building-corner {
+  border-color: var(--yard-gold-hover);
+}
+.yard .building-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 0 solid #f0913a;
+}
+.yard .building-tl {
+  left: -7px;
+  top: -7px;
+  border-top-width: 3px;
+  border-left-width: 3px;
+}
+.yard .building-tr {
+  right: -7px;
+  top: -7px;
+  border-top-width: 3px;
+  border-right-width: 3px;
+}
+.yard .building-bl {
+  left: -7px;
+  bottom: -7px;
+  border-bottom-width: 3px;
+  border-left-width: 3px;
+}
+.yard .building-br {
+  right: -7px;
+  bottom: -7px;
+  border-bottom-width: 3px;
+  border-right-width: 3px;
+}
+.yard .building-live {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  padding: 2px 6px 1px;
+  background: rgba(10, 8, 6, 0.72);
+  color: #ffa05a;
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation: yard-breathe 2.4s ease-in-out infinite alternate;
+}
+.yard .building-live::before {
+  content: '\25CF ';
+}
+.building-drew {
+  position: absolute;
+  border: 2px dashed rgba(240, 145, 58, 0.9);
+  box-shadow: inset 0 0 18px rgba(240, 145, 58, 0.3);
+  animation-name: building-drew;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+}
+.building-drew span {
+  position: absolute;
+  left: -2px;
+  top: -16px;
+  padding: 2px 5px 0;
+  background: #f0913a;
+  color: #1a120a;
+  font-family: 'Silkscreen', monospace;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.building-drew-big {
+  border-width: 3px;
+}
+.building-drew-big span {
+  top: -22px;
+  font-size: 11px;
+  padding: 3px 8px 1px;
+}
+@keyframes building-drew {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.yard .building-about {
+  margin-top: 20px;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: #9a8a6c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.yard .building-line {
+  margin-top: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.yard .building-watch {
+  font-size: 17px;
+  letter-spacing: 0.04em;
+}
+.yard .building-key {
+  font-family: 'Silkscreen', monospace;
+  font-size: 10px;
+  color: #8a7452;
+}
+.yard .said-live-watch {
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.yard .said-live-watch::before {
+  content: '\00B7  ';
+  color: #8a7452;
+}
+
+/* Watching it build: the real page, big, with every look under it. */
+.watch-build {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  font-family: var(--yard-face-label);
+}
+.watch-build-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+.watch-build-frame {
+  position: relative;
+  flex: none;
+  box-shadow:
+    0 0 120px rgba(240, 145, 58, 0.16),
+    0 30px 80px rgba(0, 0, 0, 0.6);
+  background: #0c0a10;
+}
+.watch-build-page {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  display: flex;
+}
+.watch-build-then {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  display: none;
+}
+.watch-build-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.watch-build-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 0 solid #f0913a;
+  pointer-events: none;
+}
+.watch-build-tl {
+  left: -13px;
+  top: -13px;
+  border-top-width: 4px;
+  border-left-width: 4px;
+}
+.watch-build-tr {
+  right: -13px;
+  top: -13px;
+  border-top-width: 4px;
+  border-right-width: 4px;
+}
+.watch-build-bl {
+  left: -13px;
+  bottom: -13px;
+  border-bottom-width: 4px;
+  border-left-width: 4px;
+}
+.watch-build-br {
+  right: -13px;
+  bottom: -13px;
+  border-bottom-width: 4px;
+  border-right-width: 4px;
+}
+.watch-build-foot {
+  flex: none;
+  display: flex;
+  gap: 36px;
+  align-items: flex-start;
+  padding: 0 14px 4px;
+}
+.watch-build-strip {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 5px 5px 0;
+  cursor: ew-resize;
+  user-select: none;
+}
+.watch-build-look {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+}
+.watch-build-look img {
+  display: block;
+  width: 104px;
+  height: 65px;
+  object-fit: cover;
+  object-position: top;
+  opacity: 0.5;
+  outline: 1px solid #3a3526;
+  outline-offset: 3px;
+}
+.watch-build-look span {
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7d7560;
+}
+.watch-build-look.on img {
+  opacity: 1;
+  outline: 3px solid #f0913a;
+}
+.watch-build-look.on span {
+  color: #ffa05a;
+}
+.watch-build-side {
+  flex: 1 1 280px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+.watch-build-doing {
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffc98a;
+  animation: yard-breathe 2.4s ease-in-out infinite alternate;
+}
+.watch-build-doing::before {
+  content: '\25B2  ';
+  color: #f0913a;
+}
+.watch-build-rested {
+  color: #a89272;
+  animation: none;
+}
+.watch-build-rested::before {
+  content: '';
+}
+.watch-build-since {
+  margin-left: 10px;
+  font-family: 'Courier Prime', monospace;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #bfa476;
+}
+.watch-build-code {
+  font-family: 'Courier Prime', monospace;
+  font-size: 13px;
+  color: #a3c48a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.watch-build-hint {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: #8a7c62;
+}

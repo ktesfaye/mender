@@ -63,6 +63,13 @@ export const DOINGS: Doing[] = [
     where: ['district', 'session'],
   },
   {
+    pick: 'do:watch',
+    name: 'watch it build',
+    about: 'the page this session is building, running, with every look it took',
+    chord: 'l',
+    where: ['session'],
+  },
+  {
     pick: 'do:reopen',
     name: 'reopen what you closed',
     about: 'the last file or folder you stepped out of',

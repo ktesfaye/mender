@@ -380,6 +380,18 @@ press says what it would stop and the second sends them away. The foot of
 it is how many tokens they have spent between them, and a button that sends
 everybody who is back home.
 
+**What it is building can be watched being built.** A session that writes
+a page, or names a page running on this machine in what it says, has "what
+it's building" at the head of the right column, standing still while the
+story under it scrolls: the page as it last looked, lit, held at four ember
+corners rather than framed, with whatever its last change drew marked "just
+drew" and fading. It is drawn again, somewhere nobody sees, each time a write
+to it lands. Pressing it, the "watch it" at the end of the fire's line, or
+command-L, lays the real page over the yard in the dark, running, reloaded as
+the agent edits it, with every look it took under it in a strip that is
+dragged back along to watch it come together, and what it is doing and the
+last line it wrote beside that. Escape puts it back.
+
 **Everything but the middle can be put away, and every rule can be moved.**
 Right-clicking what you asked, the changelog, what it made, the plan or what it did offers
 to put it away; right-clicking anywhere in the yard offers back whatever has

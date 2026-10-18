@@ -11,7 +11,7 @@
  */
 
 /** The parts that can be put away. The middle is never one of them. */
-export type Part = 'asked' | 'changelog' | 'made' | 'now' | 'did';
+export type Part = 'asked' | 'changelog' | 'made' | 'now' | 'did' | 'building';
 
 /** What each part is called when it is offered back. */
 export const PART_NAME: Record<Part, string> = {
@@ -20,6 +20,7 @@ export const PART_NAME: Record<Part, string> = {
   made: 'what it made',
   now: "what it's after",
   did: 'how it went',
+  building: "what it's building",
 };
 
 export interface Arrangement {

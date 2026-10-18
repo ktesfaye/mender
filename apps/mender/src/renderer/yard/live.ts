@@ -25,6 +25,7 @@ import type { Task } from '@shared/tasks';
 import { Naming } from '../board/naming';
 import { Palette } from '../board/palette';
 import type { MenderClient } from '../wire';
+import { buildingOf, pageOf, watchPage } from './building';
 import { yardOf } from './from';
 import { onThisMachine } from './pictures';
 import type { Health, Signboard, Yard } from './what';
@@ -306,8 +307,14 @@ export async function openYard(
       ...(versions ? { versions } : {}),
       ...(fiveHours ? { fiveHours } : {}),
       ...(waking() ? { waking: true } : {}),
+      ...(from.here && buildingOf(from.here.id) ? { building: buildingOf(from.here.id) } : {}),
     });
   }
+
+  /* Whatever it is building, looked at again each time it changes. */
+  const lookAgain = (): void => {
+    if (from.here) watchPage(client, from.here.id, pageOf(working?.told), again);
+  };
 
   const here = from.settingUp ? undefined : from.here;
   if (here) {
@@ -319,6 +326,7 @@ export async function openYard(
           (working?.told?.ended !== value.told.ended || working?.mood === 'working');
         working = value;
         if (rested && value.mood !== 'working') readWindow();
+        lookAgain();
         again();
       },
     });
@@ -336,6 +344,7 @@ export async function openYard(
     await Promise.all([work.ready, gear.ready]);
     working = work.current();
     kit = gear.current();
+    lookAgain();
     slash.told(kit ?? null);
   }
 

@@ -65,6 +65,7 @@ import { openShell, type LiveShell } from './board/talking';
 import { refused, trouble, unwritten } from './board/trouble';
 import { tuiSession } from './board/tui-session';
 import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
+import { watchBuild, type WatchingBuild } from './board/watch-build';
 import { answerFor, SEND_ALL } from './board/work';
 import { watchGrip } from './grip';
 import { ran } from './job';
@@ -648,6 +649,7 @@ async function boot(): Promise<void> {
      * the thing you have just closed.
      */
     const home = (): void => {
+      closeBuild();
       if (live) {
         const was = live;
         live = null;
@@ -692,6 +694,7 @@ async function boot(): Promise<void> {
       if (card) steps.push({ said: 'who works here', go: back });
       if (reading) steps.push({ said: shortly(reading.path), go: back });
       if (opened) steps.push({ said: shortly(opened.path), go: back });
+      if (buildWatch) steps.push({ said: 'watching it build', go: back });
       const last = steps.at(-1);
       if (last) delete last.go;
       return steps;
@@ -1089,6 +1092,9 @@ async function boot(): Promise<void> {
        actually loaded; `written` is what the foot-of-board line currently
        says, which differs from it while an address is being typed. */
     let browsingAt: { url: string; written: string; el: HTMLElement } | null = null;
+    /* The page the session is building, opened big over the yard. */
+    let buildWatch: WatchingBuild | null = null;
+    let buildWash: { sheet: HTMLElement; was: string } | null = null;
     /* What each checkout's own shell has noticed listening, most recent
        first. Never asked for; only ever noticed in what the shell printed. */
     const servers = new Map<string, string[]>();
@@ -1586,6 +1592,13 @@ async function boot(): Promise<void> {
       }
       if (id === 'hunt') {
         hunted(false);
+        return;
+      }
+      if (id === 'do:watch' || id === 'watch:build') {
+        if (buildWatch) {
+          closeBuild();
+          home();
+        } else openBuild();
         return;
       }
       if (id === 'do:reopen') {
@@ -2250,6 +2263,7 @@ async function boot(): Promise<void> {
           ...(settingUp ? { settingUp } : {}),
         },
         (now) => {
+          buildWatch?.update(now);
           if (walkedUp) {
             const again = now.session?.agents.find((one) => one.id === walkedUp?.hand.id);
             if (again && open === aim) {
@@ -3617,6 +3631,34 @@ async function boot(): Promise<void> {
       hunt = null;
       browsingAt = { url, written: url, el: openPage(url) };
       wood(browsing(browsingAt), browsingAt.el);
+    };
+
+    /** What it is building, laid over the yard, running, with every look under it. */
+    const openBuild = (): void => {
+      const session = watching?.yard().session;
+      if (!inside || !session?.building) return;
+      const opened = watchBuild(inside.id, session);
+      if (!opened) return;
+      stopWalking();
+      stopTalking();
+      hunt = null;
+      closeBuild();
+      buildWatch = opened;
+      wood([], opened.el);
+      /* The page is lit, so it is watched in the dark rather than on the wash. */
+      const sheet = opened.el.closest<HTMLElement>('[data-sheet]');
+      if (sheet) {
+        buildWash = { sheet, was: sheet.style.background };
+        sheet.style.background = 'rgba(9,8,6,.94)';
+      }
+    };
+
+    const closeBuild = (): void => {
+      const was = buildWatch;
+      buildWatch = null;
+      was?.close();
+      if (buildWash) buildWash.sheet.style.background = buildWash.was;
+      buildWash = null;
     };
 
     const closeBrowser = (): void => {
@@ -5217,6 +5259,10 @@ async function boot(): Promise<void> {
     };
 
     const press = (pick: string): void => {
+      if (pick === 'watch:build') {
+        go(pick);
+        return;
+      }
       if (pick === 'close') {
         dismiss();
         return;
@@ -5994,6 +6040,11 @@ async function boot(): Promise<void> {
           else home();
           return;
         }
+        if (buildWatch) {
+          closeBuild();
+          home();
+          return;
+        }
         if (browsingAt) {
           if (browsingAt.written !== browsingAt.url) {
             browsingAt.written = browsingAt.url;
@@ -6181,11 +6232,12 @@ async function boot(): Promise<void> {
         windmill?.close();
         settings?.ui.close();
         if (browsingAt) closeBrowser();
+        closeBuild();
         void picked(null);
       },
       closeDone: () => {
         if (!open || !inside || !yard.showing || yard.line.written()) return false;
-        if (looking || talking || hunt || browsingAt || amending) return false;
+        if (looking || talking || hunt || browsingAt || buildWatch || amending) return false;
         if (sending?.written !== undefined) return false;
         const rail = watching?.yard().rail.filter((one) => one.ground !== 'cutting') ?? [];
         /* Every one in the project that has answered and gone quiet, in
@@ -6257,7 +6309,12 @@ async function boot(): Promise<void> {
       /* Three things the keyboard can be doing, and never more than one at a
          time: naming a building nobody has moved into, answering the villager
          standing at a door, or saying something to whoever is in there. */
-      scrolled: (key) => yard.scrolled(key),
+      scrolled: (key) => {
+        if (buildWatch && (key === 'ArrowLeft' || key === 'ArrowRight')) {
+          return buildWatch.step(key === 'ArrowLeft' ? -1 : 1);
+        }
+        return yard.scrolled(key);
+      },
       strayed: (event) => void yard.line.catches(event),
       typed: (event) => {
         /* Tab steps along the rail from anywhere in a project the line is not
@@ -6272,7 +6329,8 @@ async function boot(): Promise<void> {
           !(sending?.written !== undefined) &&
           !amending &&
           !hunt &&
-          !browsingAt
+          !browsingAt &&
+          !buildWatch
         ) {
           stepRail(event.shiftKey ? -1 : 1);
           return true;

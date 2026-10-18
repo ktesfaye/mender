@@ -18,6 +18,7 @@
  * writes it down.
  */
 
+import type { Drew } from '@shared/building';
 import { sessionLine } from '@shared/five-hours';
 import type { Offer } from '../board/offer';
 import {
@@ -34,6 +35,7 @@ import {
   unmove,
   type Part,
 } from './arrange';
+import type { Building } from './building';
 import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
 import { waitOut } from './limit';
@@ -2856,7 +2858,11 @@ function thinking(
   const recap = yard.session?.recap;
   if (recap && !live && !failure && !asking) col.appendChild(recapped(recap));
   if (failure) col.appendChild(waitOut(failure, does));
-  if (live) col.appendChild(ember(live, since));
+  if (live) {
+    col.appendChild(
+      ember(live, since, yard.session?.building ? () => does.press('watch:build') : undefined)
+    );
+  }
 
   function laidOlder(): void {
     const hidden = hiddenCount(wholeSize, shown, server);
@@ -3319,7 +3325,7 @@ const REVEAL_CHUNK = 80;
  * Not a spinner. Nothing here spins, and a spinner says only that something
  * is happening, which the fire already says. This says what, and for how long.
  */
-function ember(live: Live, since: number | undefined): HTMLElement {
+function ember(live: Live, since: number | undefined, watch?: () => void): HTMLElement {
   const it = keyed(document.createElement('div'), 'live');
   it.className = 'said-live';
 
@@ -3368,6 +3374,13 @@ function ember(live: Live, since: number | undefined): HTMLElement {
     count.dataset.since = String(since);
     count.style.position = 'relative';
     words.appendChild(count);
+  }
+  /* Building something with a face: the way to watch it is right where you
+     are already looking to see how it is going. */
+  if (watch) {
+    const go = pressing('watch it', watch);
+    go.className += ' said-live-watch';
+    words.appendChild(go);
   }
   it.appendChild(words);
   return it;
@@ -3756,6 +3769,7 @@ function rightEmpty(yard: Yard | undefined): boolean {
   return (
     (hidden('now') || !session.story?.goal) &&
     (hidden('made') || !session.made?.length) &&
+    (hidden('building') || !session.building) &&
     (hidden('did') ||
       (!session.story?.chapters.length && !session.agents?.some((one) => one.where === 'out')))
   );
@@ -3779,6 +3793,7 @@ function made(
      are all home, the piece of work that sent them says so in a line. */
   const hands = hidden('did') ? [] : (session?.agents ?? []);
   const out = hands.some((one) => one.where === 'out');
+  const building = hidden('building') ? undefined : session?.building;
 
   /* NOTHING IS WRITTEN OVER NOTHING.
    *
@@ -3787,7 +3802,7 @@ function made(
    * in it is not drawn at all, and the column's own rule goes with them,
    * because a line down an empty third of the screen is the same lie in
    * thinner form. */
-  if (!goal && !output.length && !chapters.length && !out) return;
+  if (!goal && !output.length && !chapters.length && !out && !building) return;
 
   root.appendChild(
     stays(
@@ -3805,12 +3820,24 @@ function made(
      everything else in here gets the room between the header and the yard
      and not one pixel more. */
   const patch = out ? groundTop(hands.length, floor) : floor;
-  const tall = Math.max(0, patch - (out ? 14 : 24) - HEAD.label);
+  /* What it is building stands at the head of the column and does not scroll
+     with the story under it: the story follows the live end while it works,
+     and the page is the one thing here worth keeping in view all the while. */
+  let head = 0;
+  if (building && session) {
+    const page = built(session, building, at.wide, does);
+    page.style.left = `${at.x}px`;
+    page.style.top = `${HEAD.label}px`;
+    root.appendChild(page);
+    head = page.offsetHeight + (goal || output.length || chapters.length ? 22 : 0);
+    region('building', at, HEAD.label, HEAD.label + page.offsetHeight);
+  }
+  const tall = Math.max(0, patch - (out ? 14 : 24) - HEAD.label - head);
   /* One column read top to bottom, scrolling as one: what it is after, what
      it made, how it went and what is left, so the story is never in two
      boxes scrolling against each other. */
   const it = box(
-    { left: at.x, top: HEAD.label, width: at.wide, height: tall },
+    { left: at.x, top: HEAD.label + head, width: at.wide, height: tall },
     [
       'display:flex',
       'flex-direction:column',
@@ -3834,7 +3861,7 @@ function made(
     it.appendChild(part);
   });
 
-  const top = HEAD.label;
+  const top = HEAD.label + head;
   if (goal) region('now', at, top, top + (parts[0]?.offsetHeight ?? 0));
   const madePart = parts.find((one) => one.dataset.key === 'story:made');
   if (madePart)
@@ -3862,6 +3889,96 @@ function made(
   if (!going) it.addEventListener('scroll', () => storyFollowed.set(id, it.scrollTop));
 
   if (out) ground(root, at, yard, floor, does);
+}
+
+/** How long a change it just drew stays marked on the page. */
+const JUST_DREW_MS = 9_000;
+
+/**
+ * What it is building: the page itself as it last looked, with what it just
+ * drew marked on it, and the way into watching it.
+ *
+ * No frame round it. The page is lit, so it throws light on the wood under
+ * it, and four ember corners hold it where a frame would be.
+ */
+function built(session: Session, building: Building, wide: number, does: Doings): HTMLElement {
+  const it = keyed(document.createElement('div'), 'story:building');
+  it.className = 'building';
+  it.style.width = `${wide}px`;
+  it.appendChild(label("what it's building", {}));
+  const latest = building.looks.at(-1);
+  if (!latest) return it;
+  const working = session.fire === 'lit';
+
+  const glass = document.createElement('div');
+  glass.className = 'building-glass';
+  glass.title = 'watch it build';
+  const shot = document.createElement('img');
+  shot.src = latest.image;
+  shot.alt = building.page.name;
+  shot.draggable = false;
+  glass.appendChild(shot);
+  for (const corner of ['tl', 'tr', 'bl', 'br']) {
+    const bracket = document.createElement('i');
+    bracket.className = `building-corner building-${corner}`;
+    glass.appendChild(bracket);
+  }
+  if (working) {
+    const tag = document.createElement('span');
+    tag.className = 'building-live';
+    tag.textContent = 'live';
+    glass.appendChild(tag);
+  }
+  const since = Date.now() - latest.when;
+  if (latest.drew && since < JUST_DREW_MS) glass.appendChild(justDrew(latest.drew, since));
+  glass.addEventListener('mousedown', (event) => event.preventDefault());
+  glass.addEventListener('click', () => does.press('watch:build'));
+  it.appendChild(glass);
+
+  const about = document.createElement('div');
+  about.className = 'building-about';
+  const ago =
+    Date.now() - latest.at < 60_000 ? 'just now' : `${longFor(Date.now() - latest.at)} ago`;
+  const looks = building.looks.length;
+  about.textContent = [
+    building.page.name,
+    `${working ? 'redrawn' : 'last drawn'} ${ago}`,
+    looks > 1 ? `${looks} looks` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  it.appendChild(about);
+
+  const watch = pressing('watch it build', () => does.press('watch:build'));
+  watch.className += ' building-watch';
+  const key = document.createElement('span');
+  key.className = 'building-key';
+  key.textContent = '\u2318L';
+  const line = document.createElement('div');
+  line.className = 'building-line';
+  line.append(watch, key);
+  it.appendChild(line);
+  return it;
+}
+
+/**
+ * Where the last change landed, marked on the page and fading over a few
+ * seconds. The yard is drawn afresh on every change, so the fade is started
+ * however far into it it already is rather than from the top each time.
+ */
+export function justDrew(drew: Drew, since: number, big = false): HTMLElement {
+  const mark = document.createElement('div');
+  mark.className = big ? 'building-drew building-drew-big' : 'building-drew';
+  mark.style.left = `${drew.x * 100}%`;
+  mark.style.top = `${drew.y * 100}%`;
+  mark.style.width = `${drew.w * 100}%`;
+  mark.style.height = `${drew.h * 100}%`;
+  mark.style.animationDelay = `-${Math.round(since)}ms`;
+  mark.style.animationDuration = `${JUST_DREW_MS}ms`;
+  const tab = document.createElement('span');
+  tab.textContent = 'just drew';
+  mark.appendChild(tab);
+  return mark;
 }
 
 /** Where the story column was left scrolled to, by session. */

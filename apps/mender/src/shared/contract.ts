@@ -10,6 +10,7 @@ import { pullRequestsContract } from '@upstream/services/pull-requests/api/contr
 import { agentsContract } from './agents';
 import { appSettingsContract } from './app-settings';
 import { boardContract } from './board';
+import { buildingContract } from './building';
 import { changesContract } from './changes';
 import { findingContract } from './finding';
 import { githubContract } from './github';
@@ -34,6 +35,7 @@ export const menderDomainContracts = {
   agents: agentsContract,
   appSettings: appSettingsContract,
   board: boardContract,
+  building: buildingContract,
   changes: changesContract,
   files: filesContract,
   finding: findingContract,
