@@ -80,6 +80,7 @@ export class SessionCell {
   private configCatalogState: SessionConfigCatalog['kind'] = 'pending';
   private quiesceTimer: ReturnType<typeof setTimeout> | null = null;
   private lastRunningAgentCount = 0;
+  private readonly foregroundTools = new Set<string>();
   /**
    * Prompts said while a turn runs, held in the queue until the agent next
    * pauses rather than handed to it at once. Claude Code's own terminal folds
@@ -220,6 +221,7 @@ export class SessionCell {
     this.applyEvent({ type: 'ReplayStarted' });
     this.transcript.beginReplay(at);
     this.lastRunningAgentCount = 0;
+    this.foregroundTools.clear();
   }
 
   endReplay(at = Date.now()): void {
@@ -291,6 +293,7 @@ export class SessionCell {
 
     const previousRunningAgentCount = this.lastRunningAgentCount;
     this.transcript.pushEvent(event);
+    this.trackForegroundTool(event);
     if (this.isPause(event)) this.steerHeld();
     if (event.kind === 'config') this.configCatalogState = 'ready';
     this.dispatchAgentsChangedIfNeeded(previousRunningAgentCount);
@@ -661,7 +664,12 @@ export class SessionCell {
         phase: this.machine.phase.kind,
       });
       acceptance?.onAccepted({ queued: true });
-      if (steerable && this.deps.supportsSteering) this.heldForPause.set(prompt.id, acceptance);
+      if (steerable && this.deps.supportsSteering) {
+        this.heldForPause.set(prompt.id, acceptance);
+        /* Parked on helpers, nothing of its own running: no tool will finish to
+           be a pause, so waiting for one would wait for the helpers instead. */
+        if (this.lastRunningAgentCount > 0 && this.foregroundTools.size === 0) this.steerHeld();
+      }
       return ok({ queued: true });
     }
     /* A fresh attempt is the village's own "retry": the failure it's a retry
@@ -753,6 +761,17 @@ export class SessionCell {
       });
       this.settleTurn({ kind: 'error', reason: 'prompt_failed' });
       return err;
+    }
+  }
+
+  private trackForegroundTool(event: NormalizedEvent): void {
+    if (event.kind !== 'tool_call' && event.kind !== 'tool_update') return;
+    if (event.parentToolCallId !== null) return;
+    if (event.kind === 'tool_update' && event.background) return;
+    if (event.status === 'completed' || event.status === 'failed') {
+      this.foregroundTools.delete(event.toolCallId);
+    } else {
+      this.foregroundTools.add(event.toolCallId);
     }
   }
 
