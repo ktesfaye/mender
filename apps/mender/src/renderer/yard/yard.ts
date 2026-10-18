@@ -3900,6 +3900,10 @@ const JUST_DREW_MS = 9_000;
  *
  * No frame round it. The page is lit, so it throws light on the wood under
  * it, and four ember corners hold it where a frame would be.
+ *
+ * A design is as often drawn as stills as it is as a page, so a picture it
+ * made after the page last changed is the newest thing it built, and that is
+ * what stands here instead, pressed to be held up.
  */
 function built(session: Session, building: Building, wide: number, does: Doings): HTMLElement {
   const it = keyed(document.createElement('div'), 'story:building');
@@ -3909,6 +3913,8 @@ function built(session: Session, building: Building, wide: number, does: Doings)
   const latest = building.looks.at(-1);
   if (!latest) return it;
   const working = session.fire === 'lit';
+  const still = session.made.find((one) => one.picture && (one.at ?? 0) > latest.at);
+  if (still?.picture) return drawnStill(it, still, still.picture, working);
 
   const glass = document.createElement('div');
   glass.className = 'building-glass';
@@ -3957,6 +3963,64 @@ function built(session: Session, building: Building, wide: number, does: Doings)
   const line = document.createElement('div');
   line.className = 'building-line';
   line.append(watch, key);
+  it.appendChild(line);
+  return it;
+}
+
+/** Pictures already read off the disk, so a yard drawn afresh never blinks one out. */
+const stills = new Map<string, string>();
+
+function drawnStill(
+  it: HTMLElement,
+  made: Session['made'][number],
+  picture: string,
+  working: boolean
+): HTMLElement {
+  const glass = document.createElement('div');
+  glass.className = 'building-glass';
+  glass.title = made.what;
+  const shot = document.createElement('img');
+  shot.alt = made.what;
+  shot.draggable = false;
+  const ready = stills.get(picture);
+  if (ready) shot.src = ready;
+  else
+    void onThisMachine(picture).then((src) => {
+      if (!src) return;
+      stills.set(picture, src);
+      shot.src = src;
+    });
+  glass.appendChild(shot);
+  for (const corner of ['tl', 'tr', 'bl', 'br']) {
+    const bracket = document.createElement('i');
+    bracket.className = `building-corner building-${corner}`;
+    glass.appendChild(bracket);
+  }
+  if (working) {
+    const tag = document.createElement('span');
+    tag.className = 'building-live';
+    tag.textContent = 'live';
+    glass.appendChild(tag);
+  }
+  const hold = (): void => {
+    void onThisMachine(picture).then((src) => {
+      if (src) holdUp(src, made.what, larger(picture));
+    });
+  };
+  glass.addEventListener('mousedown', (event) => event.preventDefault());
+  glass.addEventListener('click', hold);
+  it.appendChild(glass);
+
+  const about = document.createElement('div');
+  about.className = 'building-about';
+  about.textContent = `${picture.split('/').at(-1) ?? picture} · ${made.when}`;
+  it.appendChild(about);
+
+  const line = document.createElement('div');
+  line.className = 'building-line';
+  const look = pressing(made.what, hold);
+  look.className += ' building-watch';
+  line.appendChild(look);
   it.appendChild(line);
   return it;
 }

@@ -398,6 +398,8 @@ export interface Made {
   pick: string;
   /** Where it is on this machine, when it is a picture: pointed at it shows, pressed it is held up. */
   picture?: string;
+  /** When it was first seen made, or 0 when that was before anybody looked. */
+  at?: number;
 }
 
 /** Somebody it sent out, standing in the yard where their state puts them. */

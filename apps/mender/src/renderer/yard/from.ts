@@ -717,6 +717,7 @@ function madeOf(told: Told | undefined): Session['made'] {
     what: one.name,
     when: `${MADE_VERB[one.kind]} ${one.at ? agoOf(Date.now() - one.at) : 'before this'}`,
     pick: madePick(one),
+    at: one.at,
     ...(one.path && PICTURE.test(one.path) ? { picture: one.path } : {}),
   }));
 }
