@@ -2123,7 +2123,7 @@ class House {
     const live = this.live?.id;
     this.before = [
       ...back.data.turns.filter((turn) => turn.id !== live).map(unprompted),
-      ...this.before.filter((had) => !whole.has(had.id)),
+      ...this.before.filter((had) => !whole.has(had.id) && !restated(had, back.data.turns)),
     ]
       .sort((a, b) => a.seq - b.seq)
       .slice(-BACKWARD);
@@ -3420,6 +3420,24 @@ function unprompted(turn: TranscriptTurn): TranscriptTurn {
       item.kind !== 'message' || item.role !== 'user' || !UNPROMPTED.test(item.text.trimStart())
   );
   return items.length === turn.items.length ? turn : { ...turn, items };
+}
+
+/**
+ * Whether a turn kept from before is only an older numbering of one the
+ * history now holds. Ids and sequence numbers are positions in one replay, and
+ * a wake replays a conversation with a limit in it into fewer turns than were
+ * seen live, so the stale copy kept the old, higher number and sorted after
+ * everything real, which made its note the newest one said.
+ */
+function restated(had: TranscriptTurn, now: readonly TranscriptTurn[]): boolean {
+  const said = (turn: TranscriptTurn): string =>
+    turn.items
+      .flatMap((item) =>
+        item.kind === 'message' && item.role === 'user' ? [item.text.trim()] : []
+      )
+      .join('\n');
+  const mine = said(had);
+  return mine !== '' && now.some((turn) => said(turn) === mine);
 }
 
 /** How Claude's own transcript writes down a turn you stopped. */
