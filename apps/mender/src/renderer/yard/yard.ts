@@ -3938,7 +3938,7 @@ function built(session: Session, building: Building, wide: number, does: Doings)
   const about = document.createElement('div');
   about.className = 'building-about';
   const ago =
-    Date.now() - latest.at < 60_000 ? 'just now' : `${longFor(Date.now() - latest.at)} ago`;
+    since < 60_000 ? 'just now' : `${longFor(since)} ago`;
   const looks = building.looks.length;
   about.textContent = [
     building.page.name,
