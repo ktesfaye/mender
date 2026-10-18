@@ -4286,26 +4286,17 @@ function carted(wide: number, made: Session['made'], does: Doings): HTMLElement 
   it.style.cssText = "position:relative;font-family:'Josefin Sans',sans-serif";
   it.appendChild(label('what it made', {}));
 
+  const pictures = made.filter((one) => one.picture);
+  if (pictures.length) it.appendChild(madePictures(wide, pictures, does));
+
   const list = document.createElement('div');
   list.style.cssText = `display:flex;flex-direction:column;gap:7px;margin-top:12px;max-width:${wide}px`;
   made.forEach((one, i) => {
+    if (one.picture) return;
     const line = document.createElement('div');
     line.style.cssText = 'display:flex;align-items:baseline;gap:9px;min-width:0';
     line.appendChild(madeSign(one.kind, i === 0));
-    const picture = one.picture;
-    const name = picture
-      ? pressing(one.what, () => {
-          unpreview();
-          void onThisMachine(picture).then((src) => {
-            if (src) holdUp(src, one.what, larger(picture));
-            else does.press(one.pick);
-          });
-        })
-      : pressing(one.what, () => does.press(one.pick));
-    if (picture) {
-      name.addEventListener('mouseenter', () => preview(name, [onThisMachine(picture)]));
-      name.addEventListener('mouseleave', unpreview);
-    }
+    const name = pressing(one.what, () => does.press(one.pick));
     name.style.cssText += `;font-size:${i ? 13 : 15}px;line-height:1.3;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`;
     line.appendChild(name);
     const when = said(one.when, i ? '#7d6b4f' : '#a8c469');
@@ -4313,8 +4304,54 @@ function carted(wide: number, made: Session['made'], does: Doings): HTMLElement 
     line.appendChild(when);
     list.appendChild(line);
   });
-  it.appendChild(list);
+  if (list.childNodes.length) it.appendChild(list);
   return it;
+}
+
+/**
+ * The pictures it made, laid out as a grid of what they look like rather than
+ * a list of what they are called. Pressing one holds it up, and the arrows
+ * step through the rest of them.
+ */
+function madePictures(wide: number, pictures: Session['made'], does: Doings): HTMLElement {
+  const grid = document.createElement('div');
+  const columns = Math.max(2, Math.min(4, Math.floor(wide / 110)));
+  grid.style.cssText = `display:grid;grid-template-columns:repeat(${columns},1fr);gap:6px;margin-top:12px;max-width:${wide}px`;
+  const shown = pictures.map((one) => onThisMachine(one.picture!));
+  pictures.forEach((one, i) => {
+    const picture = one.picture!;
+    const cell = document.createElement('div');
+    cell.title = one.what;
+    cell.style.cssText =
+      'position:relative;aspect-ratio:1;overflow:hidden;cursor:pointer;background:rgba(0,0,0,.25)';
+    const img = document.createElement('img');
+    img.draggable = false;
+    img.alt = one.what;
+    img.style.cssText = `display:block;width:100%;height:100%;object-fit:cover;image-rendering:auto;opacity:${i ? 0.85 : 1}`;
+    void shown[i]!.then((src) => {
+      if (src) img.src = src;
+      else cell.remove();
+    });
+    cell.appendChild(img);
+    cell.addEventListener('click', () => {
+      unpreview();
+      void Promise.all(shown).then((srcs) => {
+        const siblings = pictures.flatMap((other, at) =>
+          srcs[at]
+            ? [{ src: srcs[at]!, name: other.what, sharper: () => larger(other.picture!) }]
+            : []
+        );
+        const src = srcs[i];
+        if (!src) {
+          does.press(one.pick);
+          return;
+        }
+        holdUp(src, one.what, larger(picture), siblings, siblings.findIndex((s) => s.src === src));
+      });
+    });
+    grid.appendChild(cell);
+  });
+  return grid;
 }
 
 /* A page is a little globe, a file the same page "read" is drawn with, a
