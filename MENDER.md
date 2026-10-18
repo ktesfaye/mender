@@ -151,7 +151,7 @@ happened, and above the line you write on, is how much of its room to think in i
 far when the agent says, in plain words rather than a currency badge. Nothing warns an agent that it is running out of room; it simply starts
 losing the beginning of the conversation, so the village says it instead.
 
-**A session eating the five hours is stopped and put to him.** Claude's
+**A session eating the five hours is put to him, and left running.** Claude's
 subscription is one meter for the whole account, and the meter alone never
 says who to stop, so the village watches the sessions instead. Every half
 minute, while anybody is working, each working Claude session's last
@@ -165,11 +165,11 @@ coming off the post, and a window comes up over everything wherever he is
 standing, with a banner if he is looking elsewhere: what it took and how
 that compares, the window as a strip with its part in the sore red, when it
 alone would run the window out, what it is thinking with, and the ways on.
-Carry on picks it up exactly where it was; carry on with a cheaper model
+Let it carry on leaves it be; carry on with a cheaper model
 switches it, Fable to Opus to Sonnet to Haiku, one of each family the agent
-offers, and picks it up the same; leave it stopped leaves it; walk in and
-look first stands him in it with the question still waiting. Once answered
-it is only asked about again after taking another tenth of the window. Pointing at
+offers; stop it stops it; Escape leaves it running; walk in and
+look first stands him in it with the question still waiting. A session is
+asked once and never again, whatever he said, until the app next starts. Pointing at
 the line that says what a session thinks with and how full its head is
 brings up, under it, its own part of the five hours against how full the
 window is and when it resets, and takes it away again; the windmill's "this machine"

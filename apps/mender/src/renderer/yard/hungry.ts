@@ -77,6 +77,8 @@ export function openHungry(flagged: Hungry, does: HungryDoings): HungryBoard {
     },
     { said: 'walk in and look first', does: () => look() },
   ];
+  /* Escape leaves it as it is: stopped if it was, running if it never was. */
+  const leave: HungryChoice = flagged.paused ? { kind: 'stop' } : { kind: 'carry-on' };
   const list = el('div');
   list.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:8px';
   choices.forEach((choice, index) => {
@@ -93,7 +95,7 @@ export function openHungry(flagged: Hungry, does: HungryDoings): HungryBoard {
     list.appendChild(row);
   });
   body.appendChild(list);
-  const keys = line('return takes the first · a number picks · escape leaves it stopped');
+  const keys = line('return takes the first · a number picks · escape leaves it as it is');
   keys.style.fontSize = '12px';
   keys.style.color = '#8f7d5c';
   body.appendChild(keys);
@@ -137,7 +139,7 @@ export function openHungry(flagged: Hungry, does: HungryDoings): HungryBoard {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
-      finish({ kind: 'stop' });
+      finish(leave);
       return;
     }
     /* Nothing else typed reaches the board under it while this is up. */
@@ -145,7 +147,7 @@ export function openHungry(flagged: Hungry, does: HungryDoings): HungryBoard {
   }
   const unask = ask({
     yes: () => choices[0]!.does(),
-    no: () => finish({ kind: 'stop' }),
+    no: () => finish(leave),
     at: back,
   });
   window.addEventListener('keydown', onKey, true);

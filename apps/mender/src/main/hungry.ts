@@ -24,12 +24,11 @@ import type { Tasks } from './tasks';
  * much of it that stretch took, and how many times what a session here
  * normally takes in one. The meter itself says how much of the window a
  * token is worth right now, since how much was spent and how full it is are
- * both known. A session that is well out of the ordinary is stopped where it
- * is and asked about: carry on, carry on with something cheaper, or leave it
- * stopped. Carrying on picks it back up from exactly where it was. Once it
- * has been answered it is only asked about again after it has taken another
- * real piece of the window, so a session he has said yes to is not stopped
- * every half minute for the same thing.
+ * both known. A session that is well out of the ordinary is asked about while
+ * it keeps going, since stopping a turn takes whatever its helpers were in
+ * the middle of with it: let it carry on, carry on with something cheaper, or
+ * stop it. Each session is asked once; whatever he says, it is left alone
+ * after, until the app next starts.
  */
 export interface HungryWatch {
   all(): Cell<Record<string, Hungry>>;
@@ -37,8 +36,6 @@ export interface HungryWatch {
 }
 
 const EVERY_MS = 30_000;
-/** Answered once, it is only asked about again after taking this much more. */
-const AGAIN_AFTER = 0.1;
 
 export function watchHungry(options: {
   scope: Scope;
@@ -49,7 +46,7 @@ export function watchHungry(options: {
 }): HungryWatch {
   const { agents, tasks, usage, fiveHours } = options;
   const state = cell<Record<string, Hungry>>({}, { name: 'hungry' });
-  /** What each session had taken of the window when he last answered, by window. */
+  /** Sessions he has answered about; each is asked once and left alone after. */
   const answered = new Map<string, { resetsAt: number; taken: number }>();
   let ticking = false;
 
@@ -79,7 +76,7 @@ export function watchHungry(options: {
     const titles = new Map(peek(tasks.watch()).map((task) => [task.id, task.title]));
 
     for (const { task, session } of mine) {
-      if (peek(state)[task]?.paused) continue;
+      if (peek(state)[task]) continue;
       const spent = recent.find((one) => one.session === session);
       const sofar = whole.find((one) => one.session === session);
       if (!spent || !sofar) continue;
@@ -87,8 +84,7 @@ export function watchHungry(options: {
       const windowShare = sofar.weighted * unit;
       const times = usual ? spent.weighted / usual : null;
       const before = answered.get(task);
-      if (before && before.resetsAt === window.resetsAt && windowShare - before.taken < AGAIN_AFTER)
-        continue;
+      if (before) continue;
       /* A dev instance can be told to call anything over a tiny share hungry,
          so the question can be driven without burning a real window. */
       const forced = Number(process.env.MENDER_HUNGRY_AT);
@@ -109,11 +105,11 @@ export function watchHungry(options: {
         runsOutAt: out < window.resetsAt ? out : null,
         resetsAt: window.resetsAt,
         used: window.utilization,
-        paused: true,
+        paused: false,
         at: now,
         cheaper: cheaperThan(model, kit.models),
       };
-      log.warn('hungry: stopping a session to ask', {
+      log.warn('hungry: asking about a session', {
         area: 'hungry',
         task,
         share,
@@ -121,8 +117,6 @@ export function watchHungry(options: {
         windowShare,
         model: spent.model,
       });
-      const stopped = await agents.hush(task, false, true);
-      if (!stopped.success) flagged.paused = false;
       state.update((all) => ({ ...all, [task]: flagged }));
       notify(flagged);
     }
@@ -153,7 +147,10 @@ export function watchHungry(options: {
       if (flagged)
         answered.set(task, { resetsAt: flagged.resetsAt, taken: flagged.windowShare });
       log.info('hungry: answered', { area: 'hungry', task, choice: choice.kind });
-      if (choice.kind === 'stop') return;
+      if (choice.kind === 'stop') {
+        if (!flagged?.paused) await agents.hush(task, false, true);
+        return;
+      }
       if (choice.kind === 'switch') await agents.choose(task, 'model', choice.model);
       if (flagged?.paused) await agents.retryFailure(task);
     },
