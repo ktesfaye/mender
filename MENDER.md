@@ -1199,6 +1199,14 @@ asking or hurt, the app's own icon gets a small dot; the moment nothing is,
 it is gone. No number on it, because a count is a convention this app does
 not otherwise keep anywhere.
 
+**And the dock icon is the fire, and it says whether anybody is working.**
+While any session anywhere is working the campfire in the dock is lit,
+swaying in a wind that keeps turning and throwing sparks. The moment the last
+one stops it goes out: cold stones under the stars, bursts of smoke coming
+off the logs from different spots and drifting wherever the wind is, and a
+couple of minutes later it has stopped smoking and is simply cold, because a
+dock redrawn all day beside nobody would be paying battery for nothing.
+
 **And the Mac stays awake for exactly as long as it has to.** A working
 turn holds the machine's own lid open, however long it takes; the moment
 the last lit fire on the whole island stops, it lets go. Nothing to look

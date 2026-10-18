@@ -1358,6 +1358,14 @@ the debug-port window is deliberately an accessory app with no dock tile at
 all (see `openVillageWindow`'s own comment on why), so there was nothing on
 screen for a badge to sit on.
 
+And the dock icon is the campfire, lit while anybody anywhere is working and
+out while nobody is (`apps/mender/src/main/dock-fire.ts`, on the same mood
+map as the badge). Both loops are baked by `tools/make-icon.py` into
+`assets/dock/`, and the bundle's still icon is the first lit frame. Gone out,
+it smokes in bursts for two minutes and then holds one cold frame and stops
+drawing. Measured in a dev instance with a dock tile: animating costs a few
+percent of a core between the app and the Dock, nothing once it is cold.
+
 And the Mac cannot sleep out from under a working agent any more: for exactly
 as long as any lantern anywhere is lit — actually generating, not merely
 asking or resting — a `powerSaveBlocker` holds the lid open

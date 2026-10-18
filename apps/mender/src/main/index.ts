@@ -16,6 +16,7 @@ import { createBuildingController } from './building';
 import { createChanges } from './changes';
 import { createChangesController } from './changes-controller';
 import { createClaudeUsage } from './claude-usage';
+import { watchDockFire } from './dock-fire';
 import { installDragOut } from './drag';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
@@ -101,6 +102,7 @@ export async function main(): Promise<void> {
     tuiDoing: (task) => tuiSessions.doing(task),
   });
   watchDockBadge({ scope, agents, moods });
+  watchDockFire({ scope, agents, moods });
   watchStayingAwake({ scope, agents, moods });
   const changes = createChanges(runtimes);
   const finding = createFinding(runtimes, projects);
