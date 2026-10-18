@@ -220,7 +220,9 @@ export class Palette {
           name: choice.name,
           ...(choice.about ? { about: choice.about } : {}),
           on: choice.id === on,
-          section: ours.about,
+          section: ours.what === 'model' || ours.what === 'effort'
+            ? `${ours.about}, shift-return makes it the default`
+            : ours.about,
           ...(starts !== null && choice.id === starts ? { starts: true } : {}),
           ...((ours.what === 'model' || ours.what === 'defaultModel') && /fable|mythos/i.test(`${choice.id} ${choice.name}`)
             ? { dear: true }
@@ -353,6 +355,16 @@ export class Palette {
       return { does: 'send', text: name };
     }
     return around(`${before}${name} `);
+  }
+
+  /** The same line, picked as what every new session starts on rather than this one. */
+  asDefault(pick: string): Meant | null {
+    const open = this.opened();
+    if (!open || open.kind !== 'choice') return null;
+    const which = open.ours.what === 'model' ? 'defaultModel' : open.ours.what === 'effort' ? 'defaultEffort' : null;
+    if (!which) return null;
+    const meant = this.meant(pick);
+    return meant && meant.does === 'set' ? { ...meant, what: which } : null;
   }
 
   private opened(): Open | null {

@@ -6431,6 +6431,13 @@ async function boot(): Promise<void> {
           if (event.key === 'Enter' || event.key === 'Tab') {
             const chose = yard.walk.on;
             if (!chose) return false;
+            if (event.key === 'Enter' && event.shiftKey && chose.startsWith('slash:')) {
+              const meant = watching?.slash.asDefault(chose);
+              if (meant) {
+                void obey(meant);
+                return true;
+              }
+            }
             press(chose);
             return true;
           }
