@@ -1,6 +1,6 @@
 {
   "name": "@emdash/mender",
-  "version": "1.15.0",
+  "version": "1.15.1",
   "private": true,
   "description": "Mender — an agentic coding environment that is a village",
   "license": "Apache-2.0",
@@ -8,6 +8,7 @@
   "main": "./out/main/index.js",
   "scripts": {
     "check:bridge": "tsx tooling/bridge-parity.mts",
+    "check:stop": "tsx tooling/stop-keeps-helpers.mts",
     "dev": "node ../../tooling/scripts/ensure-packages-built.mjs && LOG_LEVEL=debug electron-vite dev",
     "yard": "vite --config tooling/yard.config.mjs",
     "build": "electron-vite build",
