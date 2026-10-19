@@ -36,10 +36,14 @@ export function createTasksController(
     dropWorkspace: ({ id }) => tasks.dropWorkspace(id),
     renameWorkspace: ({ id, name }) => tasks.renameWorkspace(id, name),
     branches: ({ project }) => tasks.branches(project),
-    claudeHistory: async ({ project }) => await named(await tasks.claudeHistory(project)),
-    claudeTold: ({ project, id, mtimeMs, dir }) => tasks.claudeTold(project, id, mtimeMs, dir),
-    claudeElsewhere: async ({ project }) => await named(await tasks.claudeElsewhere(project)),
-    claudeAdopt: ({ project, dir, id }) => tasks.claudeAdopt(project, dir, id),
+    claudeHistory: async ({ project, workspace }) =>
+      await named(await tasks.claudeHistory(project, workspace)),
+    claudeTold: ({ project, id, mtimeMs, dir, workspace }) =>
+      tasks.claudeTold(project, id, mtimeMs, dir, workspace),
+    claudeElsewhere: async ({ project, workspace }) =>
+      await named(await tasks.claudeElsewhere(project, workspace)),
+    claudeAdopt: ({ project, dir, id, workspace }) =>
+      tasks.claudeAdopt(project, dir, id, workspace),
     setupFailure: ({ id }) => tasks.setupFailure(id),
     retrySetup: ({ id }) => tasks.retrySetup(id),
     linkPull: ({ id, url }) => tasks.linkPull(id, url),

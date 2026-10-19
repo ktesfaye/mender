@@ -4531,6 +4531,8 @@ async function boot(): Promise<void> {
     ): void => {
       const project = projectOn(aim.district);
       if (!project) return;
+      const inWorkspace = workspaceOf(project.id);
+      const scoped = inWorkspace ? { workspace: inWorkspace } : {};
       sign?.close();
       /* Nothing here changes until go is pressed. The sign's question is
          kept to itself, and only taken up as the app's own once it is
@@ -4553,14 +4555,15 @@ async function boot(): Promise<void> {
         isolated,
         history: () =>
           client.tasks
-            .claudeHistory({ project: project.id }, { timeoutMs: 5000 })
+            .claudeHistory({ project: project.id, ...scoped }, { timeoutMs: 5000 })
             .then((found) => found),
         elsewhere: () =>
-          client.tasks.claudeElsewhere({ project: project.id }, { timeoutMs: 10000 }),
+          client.tasks.claudeElsewhere({ project: project.id, ...scoped }, { timeoutMs: 10000 }),
         told: (session) =>
           client.tasks.claudeTold(
             {
               project: project.id,
+              ...scoped,
               id: session.id,
               mtimeMs: session.mtimeMs,
               ...(session.elsewhere ? { dir: session.elsewhere.dir } : {}),
@@ -4570,7 +4573,7 @@ async function boot(): Promise<void> {
         adopt: (session) =>
           session.elsewhere
             ? client.tasks.claudeAdopt(
-                { project: project.id, dir: session.elsewhere.dir, id: session.id },
+                { project: project.id, ...scoped, dir: session.elsewhere.dir, id: session.id },
                 { timeoutMs: 10000 }
               )
             : Promise.resolve(),

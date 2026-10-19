@@ -173,7 +173,7 @@ export const tasksContract = defineContract({
       project's own checkout path — offered when starting a new session, as
       a thing to pick up rather than start blank. */
   claudeHistory: procedure({
-    input: z.object({ project: z.string() }),
+    input: z.object({ project: z.string(), workspace: z.string().optional() }),
     output: z.array(claudeCliSessionSchema),
   }),
   /** What one of those past sessions came to: how many turns it ran and
@@ -186,19 +186,25 @@ export const tasksContract = defineContract({
       /** The CLI's own directory it is kept under, when it was had in some
           other folder. */
       dir: z.string().optional(),
+      workspace: z.string().optional(),
     }),
     output: z.object({ turns: z.number(), did: z.string().nullable() }),
   }),
   /** Every past session had in any other folder on this machine, for the
       past-session board to search when this folder's own have nothing. */
   claudeElsewhere: procedure({
-    input: z.object({ project: z.string() }),
+    input: z.object({ project: z.string(), workspace: z.string().optional() }),
     output: z.array(claudeCliSessionSchema),
   }),
   /** Brings a session had in another folder over into this project's, so
       resuming it here finds it. */
   claudeAdopt: procedure({
-    input: z.object({ project: z.string(), dir: z.string(), id: z.string() }),
+    input: z.object({
+      project: z.string(),
+      dir: z.string(),
+      id: z.string(),
+      workspace: z.string().optional(),
+    }),
     output: z.void(),
   }),
   /** The script that failed setting this task's worktree up, if any is

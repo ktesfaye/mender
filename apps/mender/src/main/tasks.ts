@@ -174,13 +174,19 @@ export interface Tasks {
   /** Every past session the Claude Code CLI has kept for this project's own
       checkout path, for the naming step to offer as a thing to pick up
       instead of starting blank. */
-  claudeHistory(project: string): Promise<ClaudeCliSession[]>;
+  claudeHistory(project: string, workspace?: string): Promise<ClaudeCliSession[]>;
   /** What one of those came to, in turns and in a sentence or two. */
-  claudeTold(project: string, id: string, mtimeMs: number, dir?: string): Promise<PastTold>;
+  claudeTold(
+    project: string,
+    id: string,
+    mtimeMs: number,
+    dir?: string,
+    workspace?: string
+  ): Promise<PastTold>;
   /** Every past session had in any other folder on this machine. */
-  claudeElsewhere(project: string): Promise<ClaudeCliSession[]>;
+  claudeElsewhere(project: string, workspace?: string): Promise<ClaudeCliSession[]>;
   /** Brings one of those over into this project's own, to be resumed here. */
-  claudeAdopt(project: string, dir: string, id: string): Promise<void>;
+  claudeAdopt(project: string, dir: string, id: string, workspace?: string): Promise<void>;
   /** The script that failed setting this task's worktree up, if any is still
       unresolved — read off the workspace registry's own record, never
       guessed. */
@@ -399,6 +405,15 @@ export function createTasks(
   const allWorkspaces = async (): Promise<Workspace[]> => {
     await settle();
     return (await rawWorkspaces()).filter((each) => existsSync(each.path));
+  };
+
+  /** The folder the CLI's sessions are kept for: the workspace you are
+      standing in, else the project's own checkout. */
+  const claudeFolder = async (project: string, workspace?: string): Promise<string | null> => {
+    const found = (await projects.list()).find((candidate) => candidate.id === project);
+    if (!found) return null;
+    if (!workspace) return found.path;
+    return (await allWorkspaces()).find((each) => each.id === workspace)?.path ?? found.path;
   };
 
   const saveWorkspaces = async (list: Workspace[]): Promise<Workspace[]> => {
@@ -705,30 +720,30 @@ export function createTasks(
 
     branches: branchesOf,
 
-    async claudeHistory(project) {
-      const found = (await projects.list()).find((candidate) => candidate.id === project);
-      if (!found) return [];
-      const sessions = await listClaudeSessions(found.path);
-      past.warm(claudeProjectDirName(found.path), sessions);
+    async claudeHistory(project, workspace) {
+      const folder = await claudeFolder(project, workspace);
+      if (!folder) return [];
+      const sessions = await listClaudeSessions(folder);
+      past.warm(claudeProjectDirName(folder), sessions);
       return sessions;
     },
 
-    async claudeTold(project, id, mtimeMs, dir) {
-      const found = (await projects.list()).find((candidate) => candidate.id === project);
-      if (!found) return { turns: 0, did: null };
-      return await past.told(dir ?? claudeProjectDirName(found.path), id, mtimeMs);
+    async claudeTold(project, id, mtimeMs, dir, workspace) {
+      const folder = await claudeFolder(project, workspace);
+      if (!folder) return { turns: 0, did: null };
+      return await past.told(dir ?? claudeProjectDirName(folder), id, mtimeMs);
     },
 
-    async claudeElsewhere(project) {
-      const found = (await projects.list()).find((candidate) => candidate.id === project);
-      if (!found) return [];
-      return await listClaudeSessionsElsewhere(found.path);
+    async claudeElsewhere(project, workspace) {
+      const folder = await claudeFolder(project, workspace);
+      if (!folder) return [];
+      return await listClaudeSessionsElsewhere(folder);
     },
 
-    async claudeAdopt(project, dir, id) {
-      const found = (await projects.list()).find((candidate) => candidate.id === project);
-      if (!found) return;
-      await adoptClaudeSession(found.path, dir, id);
+    async claudeAdopt(project, dir, id, workspace) {
+      const folder = await claudeFolder(project, workspace);
+      if (!folder) return;
+      await adoptClaudeSession(folder, dir, id);
     },
 
     async setupFailure(id) {
