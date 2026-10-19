@@ -1731,7 +1731,12 @@ export function createAgents(
       const conversation = lodgers[task];
       if (!conversation) return { success: false, error: { kind: 'no-such-task' } };
       const house = houses.get(task);
-      if (untouched && !house?.untouched()) return { success: true, data: { going: true } };
+      /* Up on the line only takes back a note nobody has picked up. One the
+         agent already folded into the turn it is answering has been read, so
+         up leaves the turn alone; Escape is how that is called off. */
+      if (untouched && (!house?.untouched() || house.untouched()?.steered)) {
+        return { success: true, data: { going: true } };
+      }
       /* Called off before anything came of it, the way Claude Code's own
          Escape does it: what was asked goes back on the line to be said
          again, rather than sitting on the post as one more thing stopped. */
