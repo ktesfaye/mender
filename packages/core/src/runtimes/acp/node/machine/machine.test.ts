@@ -192,6 +192,20 @@ describe('lifecycle control', () => {
     expect(result.effects).toContainEqual({ type: 'sendPrompt', prompt: queued });
   });
 
+  it('sends a queued slash command alone and keeps what follows it waiting', () => {
+    const compact = { id: 'prompt-2', text: '/compact', createdAt: 200, updatedAt: 200 };
+    const after = { id: 'prompt-3', text: 'then carry on', createdAt: 300, updatedAt: 300 };
+    let state = evolve(makeWorking(), { type: 'PromptQueued', prompt: compact }).state;
+    state = evolve(state, { type: 'PromptQueued', prompt: after }).state;
+    const result = evolve(state, {
+      type: 'TurnEnded',
+      outcome: { kind: 'stopped', stopReason: 'end_turn' },
+    });
+
+    expect(result.effects).toContainEqual({ type: 'sendPrompt', prompt: compact });
+    expect(result.state.queuedPrompts).toEqual([after]);
+  });
+
   it('tracks agent activity and background agent counts', () => {
     const active = evolve(makeReady(), { type: 'AgentActivity', active: true }).state;
     expect(active.agentTurnActive).toBe(true);

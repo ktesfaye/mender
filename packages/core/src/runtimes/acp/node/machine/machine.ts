@@ -411,10 +411,28 @@ function dequeuePromptEffects(queuedPrompts: readonly QueuedPrompt[]): {
   queuedPrompts: readonly QueuedPrompt[];
   effects: Effect[];
 } {
-  const merged = mergeQueuedPrompts(queuedPrompts);
+  const [first] = queuedPrompts;
+  if (!first) return { queuedPrompts, effects: [] };
+  /* A slash command is its own turn: folded into other words it stops being a
+     command, and whatever was queued behind it goes once it has finished. */
+  const next = queuedPrompts.findIndex((prompt, at) => at > 0 && isSlashCommand(prompt.text));
+  const taken = isSlashCommand(first.text)
+    ? [first]
+    : next > 0
+      ? queuedPrompts.slice(0, next)
+      : queuedPrompts;
+  const merged = mergeQueuedPrompts(taken);
   return merged
-    ? { queuedPrompts: [], effects: [{ type: 'sendPrompt', prompt: merged }] }
+    ? {
+        queuedPrompts: queuedPrompts.slice(taken.length),
+        effects: [{ type: 'sendPrompt', prompt: merged }],
+      }
     : { queuedPrompts, effects: [] };
+}
+
+/** `/compact`, `/some-skill args`: the agent's own commands, not a path or a sentence. */
+export function isSlashCommand(text: string | undefined): boolean {
+  return /^\s*\/[A-Za-z][\w:.-]*(\s|$)/.test(text ?? '');
 }
 
 export function mergeQueuedPrompts(prompts: readonly QueuedPrompt[]): QueuedPrompt | undefined {

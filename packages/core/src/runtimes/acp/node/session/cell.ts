@@ -42,6 +42,7 @@ import {
   type Command,
   type DomainEvent,
   type Effect,
+  isSlashCommand,
   mergeQueuedPrompts,
   SessionMachine,
   type SessionMachineContext,
@@ -789,9 +790,15 @@ export class SessionCell {
     if (!this.heldForPause.size) return;
     const held = [...this.heldForPause];
     this.heldForPause.clear();
-    const prompts = held.flatMap(([id]) =>
+    const all = held.flatMap(([id]) =>
       this.machine.queuedPrompts.filter((queued) => queued.id === id)
     );
+    /* A slash command can't be slipped into a running turn, it only means
+       anything as a turn of its own, and nothing said after it may jump
+       ahead of it. So steering stops at the first one; the rest wait for the
+       turn to end and go in order. */
+    const stop = all.findIndex((queued) => isSlashCommand(queued.text));
+    const prompts = stop < 0 ? all : all.slice(0, stop);
     const merged = mergeQueuedPrompts(prompts);
     if (!merged) return;
     const acceptance = prompts.length === 1 ? held.find(([id]) => id === merged.id)?.[1] : undefined;
