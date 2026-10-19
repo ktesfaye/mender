@@ -2930,6 +2930,16 @@ function thinking(
     thoughts.forEach((one, i) => {
       if (one.live && !one.quiet) answer = i;
     });
+    /* The answer before the newest is read at the newest's size and ink too,
+       so the last two are what the eye lands on and the rest is history. */
+    let before = -1;
+    for (let i = answer - 1; i >= 0; i -= 1) {
+      const one = thoughts[i]!;
+      if (one.answer && !one.progress) {
+        before = i;
+        break;
+      }
+    }
     /* With the trail open, what it did is laid between what it thought and
        said, in the order it happened, each edit with its lines right there:
        the whole of the way to the answer, not only the talking. */
@@ -3027,15 +3037,18 @@ function thinking(
       /* Trouble keeps its colour as it goes into the history, dimmed with the
        rest, so scrolling back you can still see where it went wrong. */
       const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
+      const recent = i === before && !one.progress;
       const fade = one.progress ? 0.74 : far > 2 ? 0.5 : 0.6;
       items.appendChild(
         keyed(
           thought(
             one,
-            one.progress ? 17 : far > 2 ? 15 : 16,
-            trouble
-              ? `color-mix(in srgb, ${trouble.ink} ${Math.round(fade * 100)}%, transparent)`
-              : `rgba(244,227,192,${fade})`,
+            recent ? (one.said.length > 700 ? 22 : 24) : one.progress ? 17 : far > 2 ? 15 : 16,
+            recent
+              ? (trouble?.ink ?? '#ebe3d3')
+              : trouble
+                ? `color-mix(in srgb, ${trouble.ink} ${Math.round(fade * 100)}%, transparent)`
+                : `rgba(244,227,192,${fade})`,
             trouble?.head,
             trouble?.ink,
             openLink(does)
