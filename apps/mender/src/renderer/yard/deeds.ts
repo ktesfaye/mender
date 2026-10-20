@@ -88,7 +88,7 @@ export function plainCommand(command: string): Plain {
       (w) => (w[0] === 'adb' && w.includes('install')) || (w[0] === 'flutter' && w[1] === 'install')
     )
   )
-    return { kind: 'act', said: 'installed it on the phone' };
+    return { kind: 'act', said: 'installed it on the device' };
   if (has((w) => /^(ditto|cp)$/.test(w[0]!) && w.some((one) => one.startsWith('/Applications'))))
     return { kind: 'act', said: 'installed it on the Mac' };
   if (
