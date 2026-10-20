@@ -34,7 +34,11 @@ const BOARD = [
   'almost any business or product is its page\'s share image: curl -sL -A "Mozilla/5.0" the page and',
   'read <meta property="og:image"> (or twitter:image); failing that, Wikimedia Commons or the',
   'Wikipedia article\'s image. If one source has nothing, try the next before giving up. Never',
-  'invent an image URL.',
+  'invent an image URL. Opening an image file yourself (Read, a screenshot) shows it to you and',
+  'nobody else: anything you made or rendered that the person should look at, designs, mockups,',
+  'screenshots, has to be written into your reply as a markdown image with its path, each one',
+  'before you ask them anything about it. Never put a choice about pictures to them (AskUserQuestion',
+  'included) until the pictures are in your reply.',
 ].join(' ');
 
 /**
