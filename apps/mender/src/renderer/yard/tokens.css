@@ -1605,6 +1605,31 @@ button.settings-row:hover .settings-row-main {
   object-fit: contain;
 }
 
+/* What it looked at before asking: a strip of small ones with a fixed height, so the
+   answers under it keep their room however late each one decodes. */
+.yard .ask-pictures {
+  display: flex;
+  gap: 12px;
+  height: 160px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.yard .ask-pictures .prose-picture {
+  flex: 0 0 auto;
+  gap: 4px;
+}
+.yard .ask-pictures .prose-picture img {
+  width: auto;
+  height: 130px;
+  max-width: 300px;
+  aspect-ratio: auto;
+  object-fit: contain;
+}
+.yard .ask-pictures .prose-picture figcaption {
+  font-size: 11px;
+  white-space: nowrap;
+}
 .yard .prose-pictures {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));

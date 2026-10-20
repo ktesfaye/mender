@@ -90,6 +90,8 @@ export const askSchema = z.object({
   writable: z.boolean().optional(),
   /** What an empty return presses: sending what is marked, or the whole form. */
   submit: z.string().optional(),
+  /** What it last looked at, shown over the question when it is asking about it. */
+  pictures: z.array(z.object({ name: z.string(), path: z.string() })).optional(),
   multi: z.boolean().optional(),
   options: z.array(
     z.object({

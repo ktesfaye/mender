@@ -267,3 +267,38 @@ export function stillThere(made: readonly Made[]): Made[] {
     return there;
   });
 }
+
+const PICTURES = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
+
+/**
+ * The pictures it looked at lately, for the foot of a question about them.
+ *
+ * Opening a picture shows it to the agent and to nobody else, and an agent
+ * that asks which of four mockups you like has usually only looked at them.
+ * So the village puts what it last looked at in front of the question, rather
+ * than trusting it to have written them into its reply.
+ */
+export function viewedIn(turns: readonly TranscriptTurn[]): { name: string; path: string }[] {
+  const seen: string[] = [];
+  const note = (path: string | undefined): void => {
+    if (!path || !path.startsWith('/') || !PICTURES.has(extension(path))) return;
+    const at = seen.indexOf(path);
+    if (at >= 0) seen.splice(at, 1);
+    seen.push(path);
+  };
+  const walk = (node: ToolNode): void => {
+    if (node.kind === 'tool-group') {
+      for (const child of node.children) walk(child);
+      return;
+    }
+    if (node.kind === 'read-tool-call') note(node.locations?.[0]?.path);
+    for (const child of node.children ?? []) walk(child);
+  };
+  for (const turn of turns.slice(-3)) {
+    for (const item of turn.items) if (item.kind !== 'message' && item.kind !== 'thinking') walk(item);
+  }
+  return seen
+    .slice(-6)
+    .filter((path) => existsSync(path))
+    .map((path) => ({ name: basename(path).replace(/\.[^.]+$/, ''), path }));
+}

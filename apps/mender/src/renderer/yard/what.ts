@@ -69,6 +69,8 @@ export interface Asking {
   writable?: boolean;
   /** What an empty return presses, when it presses anything. */
   submit?: string;
+  /** What it last looked at, shown over the question. */
+  pictures?: { name: string; path: string }[];
   /** Several things are asking at once: an answer marks its own pending
    *  question instead of sending, until the last one — "that's everything" —
    *  is pressed. */

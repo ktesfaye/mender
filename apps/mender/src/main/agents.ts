@@ -68,7 +68,7 @@ import {
 } from './helper-trail';
 import { keptFailure } from './kept-failure';
 import { resetFrom } from './limit-clock';
-import { kept, madeIn, stillThere } from './made';
+import { kept, madeIn, stillThere, viewedIn } from './made';
 
 /**
  * Why an install left them not here, in its own words.
@@ -2700,13 +2700,15 @@ class House {
       if (!pending.some((request) => request.requestId === requestId))
         this.marked.delete(requestId);
     }
-    const asking =
+    const asked =
       this.formAsk() ??
       askOf(
         pending.filter((request) => !request.form),
         this.where(),
         this.marked
       );
+    const viewed = asked ? viewedIn(turns) : [];
+    const asking = asked && viewed.length ? { ...asked, pictures: viewed } : asked;
     const failure = this.failureNow();
     const told = helpersIn(
       this.sized(

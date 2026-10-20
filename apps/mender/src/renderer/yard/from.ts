@@ -175,6 +175,7 @@ export function yardOf(from: Standing): Yard {
             ...(from.asking.aside ? { aside: from.asking.aside } : {}),
             ...(from.asking.writable ? { writable: true } : {}),
             ...(from.asking.submit ? { submit: from.asking.submit } : {}),
+            ...(from.asking.pictures?.length ? { pictures: from.asking.pictures } : {}),
             multi: from.asking.multi,
             answers: answersFor(from.asking).map((one) => ({
               id: one.optionId,

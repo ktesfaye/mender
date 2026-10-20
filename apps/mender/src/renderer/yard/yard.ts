@@ -63,7 +63,7 @@ import {
 } from './motion';
 import { packed } from './pack';
 import { holdUp } from './picture-view';
-import { larger, onThisMachine } from './pictures';
+import { figure, larger, onThisMachine } from './pictures';
 import { pressing } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
@@ -3564,6 +3564,14 @@ function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
   said.textContent = asking.said;
   said.dataset.q = 'text';
   it.appendChild(said);
+  /* What it looked at before asking, since looking shows it to nobody else. */
+  if (asking.pictures?.length) {
+    const row = document.createElement('div');
+    row.className = 'ask-pictures';
+    row.style.cssText = `margin-top:12px;max-width:${wide}px`;
+    for (const one of asking.pictures) row.appendChild(figure({ name: one.name, url: one.path }));
+    it.appendChild(row);
+  }
 
   const focus = askFocusOf(asking);
   /* Whether several can be picked: the answers then carry boxes rather than
