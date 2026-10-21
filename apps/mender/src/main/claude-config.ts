@@ -121,14 +121,12 @@ export function readClaudeConfig(dir: string | null = null): ClaudeConfig {
   const global = read(GLOBAL);
   const scoped = dir ? read(file(dir)) : settings;
   const perms = object(scoped.permissions);
-  const env = object(settings.env);
-  const pct = Number(env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE);
   const days = Number(settings.cleanupPeriodDays);
   return {
     outputStyle: typeof settings.outputStyle === 'string' ? settings.outputStyle : 'default',
     styles: styles(),
     autoCompact: global.autoCompactEnabled !== false,
-    compactPct: Number.isFinite(pct) && pct > 0 ? pct : null,
+    compactWindow: typeof settings.autoCompactWindow === 'number' ? settings.autoCompactWindow : null,
     cleanupDays: Number.isFinite(days) ? days : 30,
     switchOnFlag: settings.switchModelsOnFlag === true,
     mode: typeof perms.defaultMode === 'string' ? perms.defaultMode : 'default',
@@ -166,11 +164,9 @@ export function editClaudeConfig(edit: ClaudeEdit, dir: string | null = null): C
   if (edit.what === 'style') {
     if (edit.style === 'default') delete settings.outputStyle;
     else settings.outputStyle = edit.style;
-  } else if (edit.what === 'compactPct') {
-    const env = object(settings.env);
-    if (edit.pct === null) delete env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE;
-    else env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE = String(edit.pct);
-    settings.env = env;
+  } else if (edit.what === 'compactWindow') {
+    if (edit.tokens === null) delete settings.autoCompactWindow;
+    else settings.autoCompactWindow = edit.tokens;
   } else if (edit.what === 'cleanup') {
     settings.cleanupPeriodDays = edit.days;
   } else if (edit.what === 'flag') {

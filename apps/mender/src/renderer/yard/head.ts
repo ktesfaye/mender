@@ -18,7 +18,7 @@ export interface Head {
   room: number;
   model?: string;
   /** Whether it makes room by itself, and how full before it does. Null while it is still being read. */
-  auto: { on: boolean; pct: number | null } | null;
+  auto: { on: boolean; window: number | null } | null;
 }
 
 export interface HeadDoings {
@@ -68,7 +68,7 @@ export function showHead(head: Head, does: HeadDoings): void {
     auto === null
       ? 'Once it fills, it starts losing the beginning of the talk.'
       : auto.on
-        ? `It makes room by itself ${auto.pct === null ? 'when it fills' : `at ${auto.pct}%`}.`
+        ? `It makes room by itself ${auto.window === null ? 'when it fills' : `once the talk reaches ${auto.window >= 1_000_000 ? '1m' : `${auto.window / 1000}k`} tokens`}.`
         : 'It will not make room by itself, so once it fills it starts losing the beginning of the talk.';
   if (auto && !auto.on) note.style.color = 'var(--g-sore)';
 

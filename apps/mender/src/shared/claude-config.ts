@@ -30,8 +30,8 @@ export const claudeConfigSchema = z.object({
   outputStyle: z.string(),
   styles: z.array(claudeStyleSchema),
   autoCompact: z.boolean(),
-  /** How full before it packs, as a percentage; null is Claude's own. */
-  compactPct: z.number().nullable(),
+  /** How big a window, in tokens, before it packs; null is "auto", the one tuned for the model. */
+  compactWindow: z.number().nullable(),
   cleanupDays: z.number(),
   switchOnFlag: z.boolean(),
   mode: z.string(),
@@ -49,7 +49,7 @@ export type Bucket = 'allow' | 'ask' | 'deny';
 export const claudeEditSchema = z.discriminatedUnion('what', [
   z.object({ what: z.literal('style'), style: z.string() }),
   z.object({ what: z.literal('autoCompact'), on: z.boolean() }),
-  z.object({ what: z.literal('compactPct'), pct: z.number().nullable() }),
+  z.object({ what: z.literal('compactWindow'), tokens: z.number().nullable() }),
   z.object({ what: z.literal('cleanup'), days: z.number() }),
   z.object({ what: z.literal('flag'), on: z.boolean() }),
   z.object({ what: z.literal('mode'), mode: z.string() }),

@@ -22,11 +22,14 @@ const STYLE_BARS: Record<string, number[]> = {
   Learning: [3, 1, 2],
 };
 
+const WINDOW = 1_000_000;
+
 const COMPACT_AT = [
-  { said: 'earlier', pct: 70 },
-  { said: 'a bit early', pct: 80 },
-  { said: 'usual', pct: null },
-  { said: 'late', pct: 95 },
+  { said: 'auto', tokens: null },
+  { said: '200k', tokens: 200_000 },
+  { said: '400k', tokens: 400_000 },
+  { said: '600k', tokens: 600_000 },
+  { said: '1m', tokens: WINDOW },
 ];
 
 const KEEPS = [
@@ -150,28 +153,29 @@ export function makeClaudePages(
     talks.fill([cards]);
 
     const meter = el('div', 'st-cells');
-    const at = config.compactPct;
-    const lit = at === null ? 0 : Math.round((at / 100) * 40);
+    const at = config.compactWindow;
+    const lit = at === null ? 0 : Math.round((at / WINDOW) * 40);
     for (let i = 0; i < 40; i += 1) meter.appendChild(el('i', i < lit ? 'f' : ''));
     const when = el('div', 'cc-when');
     const label = el('span', 'g-pix');
-    label.textContent = at === null ? 'its own pick' : `${at}% full`;
+    label.textContent =
+      at === null ? 'auto, tuned for the model' : `packs at ${at >= WINDOW ? '1m' : `${at / 1000}k`} tokens`;
     when.append(meter, label);
     const seg = el('div', 'st-seg');
     for (const one of COMPACT_AT) {
       seg.appendChild(
         chip(
-          one.pct === null ? one.said : `${one.said} ${one.pct}%`,
-          at === one.pct,
-          () => void write({ what: 'compactPct', pct: one.pct }, room)
+          one.said,
+          at === one.tokens,
+          () => void write({ what: 'compactWindow', tokens: one.tokens }, room)
         )
       );
     }
     const card = el('div', 'st-card');
     card.append(
       formRowSub(
-        'Make room by itself',
-        'packs the start of the talk down when it fills',
+        'Auto-compact',
+        'makes room by itself, packing the start of the talk down when it fills',
         toggle(
           config.autoCompact,
           () => void write({ what: 'autoCompact', on: !config.autoCompact }, room)
@@ -181,7 +185,7 @@ export function makeClaudePages(
     if (config.autoCompact) {
       const pick = el('div', 'cc-pick');
       pick.append(when, seg);
-      card.appendChild(formRowSub('When', 'how full before it does', pick));
+      card.appendChild(formRowSub('How big a head', 'it packs once the talk reaches this', pick));
     }
     room.fill([card]);
 
@@ -438,7 +442,7 @@ export function makeClaudePages(
       const own = held.hooks.filter((one) => !one.ours).length;
       return {
         claude: `${style.toLowerCase()} · ${held.autoCompact ? 'room' : 'no room'}`,
-        perms: `${rules} rules`,
+        perms: `${rules} ${rules === 1 ? 'rule' : 'rules'}`,
         plugins: `${on} on · ${held.marketplaces.length} marketplace${held.marketplaces.length === 1 ? '' : 's'}`,
         hooks: own ? `${own} running` : 'none of yours',
       };

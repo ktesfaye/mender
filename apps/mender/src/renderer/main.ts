@@ -5202,7 +5202,7 @@ async function boot(): Promise<void> {
         {
           room: session.room,
           ...(session.model ? { model: session.model } : {}),
-          auto: config ? { on: config.autoCompact, pct: config.compactPct } : null,
+          auto: config ? { on: config.autoCompact, window: config.compactWindow } : null,
         },
         {
           make: (focus) => void tell(focus ? `/compact ${focus}` : '/compact'),
