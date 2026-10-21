@@ -210,9 +210,18 @@ export async function openCheckout(
     },
   });
 
-  await Promise.all([headReplica.ready, statusReplica.ready]);
-  head = headReplica.current();
-  status = statusReplica.current() as StatusState;
+  /* A slow git must not hold the board shut: it opens on what is known and
+     fills in as each answer lands. */
+  const seeded = (): void => {
+    head = headReplica.current();
+    status = statusReplica.current() as StatusState;
+    changed(build(place, head, status, lately, missing));
+  };
+  await Promise.race([
+    Promise.all([headReplica.ready, statusReplica.ready]).then(seeded),
+    new Promise<void>((done) => setTimeout(done, 2500)),
+  ]);
+  void Promise.all([headReplica.ready, statusReplica.ready]).then(seeded, () => {});
 
   await readLog();
 
@@ -434,8 +443,27 @@ export function toneOf(mark: string): Tone {
  * not actually possible right now, which is why these are lines that come and
  * go rather than buttons that grey out.
  */
+/**
+ * What the send/bring-down line says while it is being pressed and after.
+ * The result lands on the line that was pressed, not in a toast under the
+ * glass, so the main process sets this and rewrites the board.
+ */
+let errandNote: { name: string; about: string; sore: boolean; busy: boolean } | null = null;
+
+export function noteErrand(note: typeof errandNote): void {
+  errandNote = note;
+}
+
 function sending(head: CheckoutHeadState | undefined): HTMLElement | null {
   if (!head || head.kind === 'detached' || head.kind === 'unborn') return null;
+  if (errandNote) {
+    return tile(errandNote.sore ? 'up' : 'up', errandNote.name, errandNote.about, {
+      hot: errandNote.busy,
+      sore: errandNote.sore,
+      off: errandNote.busy,
+      ...(errandNote.busy ? {} : { pick: 'push' }),
+    });
+  }
   if (head.upstream.kind === 'none') {
     return tile('up', 'Send it up', 'nobody has seen this branch yet', {
       hot: true,

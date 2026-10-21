@@ -46,6 +46,7 @@ import {
   guideLines,
   landingLines,
   openCheckout,
+  noteErrand,
   type Landing,
   type LiveBoard,
 } from './board/district';
@@ -500,6 +501,7 @@ async function boot(): Promise<void> {
       const project = aim ? projectOn(aim.district) : undefined;
       if (!aim || !project) return;
       const where = inside ?? project;
+      noteErrand(null);
       const session = inside;
       const was = live;
       live = null;
@@ -4356,9 +4358,37 @@ async function boot(): Promise<void> {
         return;
       }
       if (what === 'push') {
-        say('sending it up…', 60000);
-        const sent = await ran(gitContract.checkout.push, checkouts.push, { checkout });
-        say(sent.success ? 'sent up.' : trouble(sent.error ?? {}), 6000);
+        const note = (name: string, about: string, busy: boolean, sore = false): void => {
+          noteErrand({ name, about, busy, sore });
+          if (live && plainCheckout()) rewrite(live.rows());
+        };
+        const started = Date.now();
+        note('Sending it up…', 'git is packing it, a big one can take a few minutes', true);
+        const tick = setInterval(
+          () =>
+            note(
+              'Sending it up…',
+              `${Math.round((Date.now() - started) / 1000)}s so far, still going`,
+              true
+            ),
+          1000
+        );
+        const sent = await ran(gitContract.checkout.push, checkouts.push, { checkout }).catch(
+          (error: unknown) => ({
+            success: false as const,
+            error: { message: error instanceof Error ? error.message : String(error) },
+          })
+        );
+        clearInterval(tick);
+        if (sent.success) {
+          note('Sent up.', 'it is where it was going', true);
+          setTimeout(() => {
+            noteErrand(null);
+            if (live && plainCheckout()) rewrite(live.rows());
+          }, 3000);
+        } else {
+          note('It would not go up', trouble(sent.error ?? {}), false, true);
+        }
         return;
       }
 
