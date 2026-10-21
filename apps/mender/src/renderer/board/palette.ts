@@ -145,6 +145,7 @@ const SECTION = {
   ours: 'settings',
   theirs: 'commands',
   kept: 'kept',
+  usual: 'the ones you reach for',
   written: 'as you wrote it',
 } as const;
 
@@ -167,11 +168,27 @@ function usage(): Record<string, number> {
   }
 }
 
-function usedOnce(name: string): void {
-  const counts = usage();
-  counts[name.toLowerCase()] = (counts[name.toLowerCase()] ?? 0) + 1;
-  localStorage.setItem(USED, JSON.stringify(counts));
+const LATELY = 'mender.slashLately';
+
+/** The names picked most recently, newest first. */
+function lately(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(LATELY) ?? '[]') as string[];
+  } catch {
+    return [];
+  }
 }
+
+function usedOnce(name: string): void {
+  const key = name.toLowerCase();
+  const counts = usage();
+  counts[key] = (counts[key] ?? 0) + 1;
+  localStorage.setItem(USED, JSON.stringify(counts));
+  localStorage.setItem(LATELY, JSON.stringify([key, ...lately().filter((one) => one !== key)].slice(0, 20)));
+}
+
+/** How many of what you reach for stand at the head of an empty list. */
+const USUAL = 5;
 
 /** The slash being written after something else, if what is before the caret ends in one. */
 const LATER = /(^|\s)(\/\S*)$/;
@@ -291,16 +308,33 @@ export class Palette {
     }
     const mine = new Set(offers.map((one) => one.name));
     const counts = usage();
+    const recent = lately();
+    /* With nothing written yet, what you reach for leads: the most picked,
+       ties going to the most recent. Written over, the ordinary ranking rules. */
+    const usual = new Set(
+      open.asked.length > 1
+        ? []
+        : kit.orders
+            .map((order) => slashed(order.name))
+            .filter((name) => !mine.has(name) && (counts[name.toLowerCase()] ?? 0) > 0)
+            .sort(
+              (a, b) =>
+                (counts[b.toLowerCase()] ?? 0) - (counts[a.toLowerCase()] ?? 0) ||
+                (recent.indexOf(a.toLowerCase()) + 1 || 99) - (recent.indexOf(b.toLowerCase()) + 1 || 99)
+            )
+            .slice(0, USUAL)
+    );
+    const front: Offer[] = [];
     for (const order of kit.orders) {
       const name = slashed(order.name);
       if (mine.has(name)) continue;
       const used = counts[name.toLowerCase()] ?? 0;
-      offers.push({
+      (usual.has(name) ? front : offers).push({
         ...(used ? { used } : {}),
         pick: `slash:${name}`,
         name,
         about: order.about,
-        section: SECTION.theirs,
+        section: usual.has(name) ? SECTION.usual : SECTION.theirs,
         ...(order.takes ? { takes: order.takes } : {}),
       });
     }
@@ -312,7 +346,8 @@ export class Palette {
         section: SECTION.kept,
       });
     }
-    const ranked = rank(offers, open.asked.slice(1));
+    front.sort((a, b) => (b.used ?? 0) - (a.used ?? 0));
+    const ranked = rank([...front, ...offers], open.asked.slice(1));
     /* A whole name written out that nothing here starts with is still meant:
        a skill taught since the agent last said what it has, or one it never
        listed. Return says it as written rather than picking whatever only
