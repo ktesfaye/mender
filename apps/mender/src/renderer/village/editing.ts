@@ -10,7 +10,9 @@ import {
   type Texture,
 } from 'pixi.js';
 import { stir } from '../pace';
-import { pressing } from '../yard/press';
+import { glaze, TINT_ISLAND } from '../glass/glass';
+import '../glass/settings.css';
+import { px } from '../glass/px';
 import { ask as askKeys } from '../yard/standing';
 
 /** Somewhere a project could stand: one of his districts, or a piece of one. */
@@ -145,8 +147,8 @@ export class Editing {
     this.overlay.visible = false;
     camera.addChild(this.overlay);
 
-    this.line = document.createElement('div');
-    this.line.className = 'editing-line';
+    this.line = glaze(document.createElement('div'), { tint: 'rgba(16, 18, 22, 0.6)', blur: 14 });
+    this.line.className += ' st-editing';
     root.appendChild(this.line);
 
     const stage = pixi.stage;
@@ -247,6 +249,7 @@ export class Editing {
     this.refresh();
     this.say();
     this.line.style.opacity = '1';
+    this.line.classList.add('shown');
     this.host.reach(boxOf(this.places.flatMap((place) => place.cells)));
     stir();
   }
@@ -261,6 +264,7 @@ export class Editing {
     this.keys = null;
     this.unask();
     this.line.style.opacity = '0';
+    this.line.classList.remove('shown');
     this.line.replaceChildren();
     this.camera.plugins.resume('drag');
     this.pixi.canvas.style.cursor = 'default';
@@ -612,6 +616,7 @@ export class Editing {
     if (!this.on) return;
     const carried = this.carrying;
     const parts: (string | HTMLElement)[] = [];
+    let idle = false;
     const arriving = this.arriving;
     if (arriving) {
       const over = arriving.over;
@@ -652,14 +657,45 @@ export class Editing {
                 : `move ${carried.who.name} to the ${over.name.toLowerCase()}`
       );
     } else {
-      parts.push(
-        result ??
-          'pick up a district or its flag to move it. let go of either on the water to put it away',
-        '   ',
-        pressing('done', () => this.stop())
-      );
+      if (result) parts.push(result);
+      else idle = true;
     }
-    this.line.replaceChildren(...parts);
+    const title = document.createElement('div');
+    title.className = 'st-ed-title';
+    const icon = document.createElement('span');
+    icon.className = 'st-ed-ic';
+    icon.appendChild(px('swap', '#f2c66d', 18));
+    const name = document.createElement('span');
+    name.textContent = 'edit districts';
+    title.append(icon, name);
+    const say = document.createElement('div');
+    say.className = 'st-ed-say';
+    if (idle) {
+      say.style.cssText = 'display:flex;gap:26px;align-items:center;white-space:normal';
+      for (const [sign, color, head, rest] of [
+        ['swap', '#7aaaff', 'on somebody’s', 'the two trade'],
+        ['flag', '#9bd28a', 'on a pale place', 'it moves in'],
+        ['water', '#f08a72', 'on the water', 'put away or removed'],
+      ] as const) {
+        const one = document.createElement('div');
+        one.style.cssText = 'display:flex;gap:10px;align-items:center';
+        const t = document.createElement('div');
+        t.innerHTML = `<b style="display:block;color:var(--g-ink);font-weight:650;font-size:13.5px"></b><span style="font-size:12.5px;color:var(--g-ink-3)"></span>`;
+        t.querySelector('b')!.textContent = head;
+        t.querySelector('span')!.textContent = rest;
+        one.append(px(sign, color, 16), t);
+        say.appendChild(one);
+      }
+    } else {
+      say.replaceChildren(...parts);
+    }
+    const done = document.createElement('button');
+    done.type = 'button';
+    done.className = 'st-ed-done';
+    done.append(px('check', '#2a1b09', 14), document.createTextNode('done'));
+    done.addEventListener('click', () => this.stop());
+    done.style.pointerEvents = 'auto';
+    this.line.replaceChildren(title, say, done);
     this.line.classList.toggle('sore', Boolean(result?.endsWith('so it stays.')));
   }
 
@@ -673,9 +709,9 @@ export class Editing {
     this.unask();
     this.forgetting = who;
     const back = document.createElement('div');
-    back.className = 'settings-back';
-    const panel = document.createElement('div');
-    panel.className = 'settings founding forgetting';
+    back.className = 'st-back';
+    const panel = glaze(document.createElement('div'), { tint: TINT_ISLAND });
+    panel.className += ' st-off';
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
     back.appendChild(panel);
@@ -688,44 +724,86 @@ export class Editing {
       downOutside = false;
     });
 
-    const head = document.createElement('div');
-    head.className = 'settings-head';
-    const heading = document.createElement('div');
-    heading.className = 'settings-name founding-heading';
-    heading.textContent = `Off the island?`;
-    const title = document.createElement('div');
-    title.className = 'settings-who';
-    title.appendChild(heading);
-    head.appendChild(title);
-
-    const body = document.createElement('div');
-    body.className = 'settings-body founding-body';
     const n = this.host.sessions(who.id);
-    const hint = document.createElement('p');
-    hint.className = 'settings-hint forgetting-cost';
-    hint.textContent =
-      `Put away, ${who.name} stays on the rack with everything in it and only its district goes back to sea. ` +
-      (n === 0
-        ? `Removed, it is forgotten.`
-        : n === 1
-          ? `Removed, it is forgotten and its one session is taken down with it.`
-          : `Removed, it is forgotten and all ${n} of its sessions are taken down with it.`) +
-      ' Either way the folder stays exactly where it is on disk.' +
-      (shifts ? ` ${shifts}` : '');
-    const list = document.createElement('div');
-    list.className = 'founding-list';
-    const away = pressing('put it away', () => void this.putAway(who));
-    const remove = pressing(`remove ${who.name}`, () => void this.forget(who));
-    remove.classList.add('forgetting-go');
-    const keep = pressing('keep it here', () => this.escaped());
-    for (const one of [away, remove, keep]) {
-      const row = document.createElement('div');
-      row.className = 'founding-row';
-      row.appendChild(one);
-      list.appendChild(row);
-    }
-    body.append(hint, list);
-    panel.append(head, body);
+    const make = <K extends keyof HTMLElementTagNameMap>(
+      tag: K,
+      cls = '',
+      said = ''
+    ): HTMLElementTagNameMap[K] => {
+      const one = document.createElement(tag);
+      if (cls) one.className = cls;
+      if (said) one.textContent = said;
+      return one;
+    };
+
+    const crumbs = make('div', 'g-crumbs');
+    crumbs.append(make('span', 'g-gold', 'the island'), make('span', 'g-faint', '›'));
+    crumbs.append(make('span', '', 'edit districts'));
+    const shut = make('div', 'g-x', '×');
+    shut.setAttribute('role', 'button');
+    shut.setAttribute('aria-label', 'Close');
+    shut.addEventListener('click', () => this.escaped());
+    const heading = make('h2', '', 'off the island?');
+    const lead = make('p', 'st-off-lead', `${who.name}’s district is being let go on the water.`);
+    const chips = make('div', 'st-chips');
+    const chip = (sign: string, color: string, said: string, mono = false): HTMLElement => {
+      const one = make('span', 'g-chip');
+      one.append(px(sign, color, 13), make('span', mono ? 'g-mono' : '', said));
+      return one;
+    };
+    chips.append(chip('flag', '#f2c66d', who.name));
+    chips.append(
+      chip('flame', '#ff9a4a', n === 1 ? '1 session' : `${n} sessions`)
+    );
+    if (shifts) chips.append(chip('warn', '#f08a72', shifts));
+
+    const option = (
+      sign: string,
+      color: string,
+      head: string,
+      rest: string,
+      cls: string,
+      go: () => void
+    ): HTMLElement => {
+      const one = make('button', `st-opt${cls ? ` ${cls}` : ''}`);
+      one.type = 'button';
+      const icon = make('span', 'st-opt-i');
+      icon.appendChild(px(sign, color, 20));
+      const text = make('div');
+      text.append(make('b', '', head), make('span', 'd', rest));
+      one.append(icon, text);
+      one.addEventListener('click', go);
+      return one;
+    };
+    const opts = make('div', 'st-opts');
+    opts.append(
+      option(
+        'down',
+        '#f2c66d',
+        'put it away',
+        'stays on the rack, every session kept. only its district goes back to sea.',
+        '',
+        () => void this.putAway(who)
+      ),
+      option(
+        'trash_y',
+        '#f08a72',
+        `remove ${who.name}`,
+        n === 0
+          ? 'forgotten for good.'
+          : n === 1
+            ? 'forgotten for good, and its one session is taken down with it.'
+            : `forgotten for good, and all ${n} of its sessions are taken down with it.`,
+        'sore',
+        () => void this.forget(who)
+      )
+    );
+    const foot = make('div', 'st-off-foot');
+    const keep = make('button', 'g-ghost', 'keep it here');
+    keep.type = 'button';
+    keep.addEventListener('click', () => this.escaped());
+    foot.append(make('span', '', 'the folder stays exactly where it is on disk, either way'), keep);
+    panel.append(crumbs, shut, heading, lead, chips, opts, foot);
     document.body.appendChild(back);
     back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
     panel.animate(

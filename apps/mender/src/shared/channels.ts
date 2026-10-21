@@ -59,6 +59,13 @@ export const MENDER_MISSED_CHANNEL = 'mender:missed';
 export const MENDER_START_DRAG_CHANNEL = 'mender:start-drag';
 
 /**
+ * Channel the renderer asks on for a folder to be picked, with the native
+ * dialog, for a setting that wants a path. Answers the path, or null when the
+ * dialog was dismissed.
+ */
+export const MENDER_PICK_FOLDER_CHANNEL = 'mender:pick-folder';
+
+/**
  * Channel the renderer uses to move the window by its top edge. The title bar
  * is hidden and the top of the window is canvas, so there is no native strip
  * to hold; the page says when a grab starts and moves, and when the top

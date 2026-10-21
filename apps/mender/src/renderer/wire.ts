@@ -39,6 +39,8 @@ declare global {
       openInEditor: (path: string) => void;
       /** Carry a file off the board and onto the Mac. */
       startDrag: (path: string) => void;
+      /** A folder picked with the native dialog, or null if dismissed. */
+      pickFolder: (title: string) => Promise<string | null>;
       /** Hold the window by its top: grab, follow the pointer, or double-click. */
       grip: (grip: Grip) => void;
       /** A link an agent wrote, out to whatever the machine reads the web with. */

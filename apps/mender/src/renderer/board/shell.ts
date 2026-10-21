@@ -1,3 +1,5 @@
+import { chip, dom, h, pressable, sign } from '../glass/f';
+import { stand } from '../yard/standing';
 import type { Row } from './row';
 
 /**
@@ -26,34 +28,58 @@ export interface Shell {
 }
 
 export function shell(state: Shell): Row[] {
-  const rows: Row[] = [
-    { kind: 'title', text: state.second ? `${state.name} — second shell` : state.name },
-    { kind: 'line', text: 'a real shell, in this checkout — ctrl+] steps back out', tone: 'faded' },
-  ];
+  const root = h('div', 'f-root');
+  const state_ = h('div', 'f-state');
+  if (state.running && !state.stopped) {
+    const live = chip('tmux · alive', '#ff9a4a');
+    (live.firstElementChild as HTMLElement).style.boxShadow = '0 0 8px #ff9a4a';
+    state_.append(live, chip('closing the village leaves it running'));
+  }
+  root.append(
+    h(
+      'div',
+      'f-top',
+      h(
+        'div',
+        '',
+        h('h1', '', state.second ? 'a second shell in here' : 'a shell in here'),
+        h('div', 'f-sub', h('span', 'g-mono', state.name))
+      ),
+      state_
+    )
+  );
 
   if (state.stopped) {
-    rows.push({ kind: 'gap' }, { kind: 'line', text: state.stopped, tone: 'sore' });
-    return rows;
+    const strip = h('div', 'f-strip f-sorest', sign('warn', '#f08a72', 18), state.stopped);
+    root.append(strip);
+    return [dom(root)];
   }
   if (!state.running) {
-    rows.push({ kind: 'gap' }, { kind: 'line', text: 'starting it…', tone: 'faded' });
-    return rows;
+    root.append(h('div', 'f-note', 'starting it…'));
+    return [dom(root)];
   }
-  const said = state.ending?.armed
-    ? state.ending.what
-      ? `ends ${state.ending.what}. click again to end it.`
-      : 'click again to end it.'
-    : 'end this shell';
-  rows.push(
-    { kind: 'gap' },
-    {
-      kind: 'entry',
-      mark: '→',
-      text: said,
-      tone: state.ending?.armed ? 'sore' : 'faded',
-      pick: 'shell-end',
-      armed: !!state.ending?.armed,
-    }
+
+  const tabs = h('div', 'f-tabs');
+  const one = h('span', `f-tab${state.second ? '' : ' f-on'}`, 'shell 1');
+  const two = h('span', `f-tab${state.second ? ' f-on' : ''}`, 'shell 2');
+  tabs.append(
+    state.second ? pressable(one, 'shell') : one,
+    state.second ? two : pressable(two, 'shell2')
   );
-  return rows;
+  const armed = !!state.ending?.armed;
+  const end = h(
+    'span',
+    'g-ghost f-end f-ghost-sore',
+    sign('cross', '#f08a72', 12),
+    armed
+      ? state.ending?.what
+        ? `ends ${state.ending.what}. press again to end it`
+        : 'press again to end it'
+      : 'End this shell'
+  );
+  pressable(end, 'shell-end');
+  if (armed) stand(() => end.click(), end);
+  tabs.append(end);
+  root.append(tabs);
+  return [dom(root)];
 }

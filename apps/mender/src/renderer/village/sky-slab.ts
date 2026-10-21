@@ -1,3 +1,6 @@
+import { glaze } from '../glass/glass';
+import { ISLAND_LOOK } from '../glass/island-look';
+import { px } from '../glass/px';
 import { HOURS, type Sky, type SkyChoice, type WeatherKind } from './sky';
 
 /**
@@ -58,17 +61,6 @@ const ICONS: Record<string, string[]> = {
     '..yyyyy..',
     '.y..y..y.',
     '....y....',
-  ],
-  rise: [
-    '.........',
-    '.o..o..o.',
-    '...ooo...',
-    '..ooyoo..',
-    '.ooyyyoo.',
-    'ooyyYyyoo',
-    'hhhhhhhhh',
-    '.hhhhhhh.',
-    '.........',
   ],
   moon: [
     '...mmm...',
@@ -136,39 +128,6 @@ const ICONS: Record<string, string[]> = {
     '..ggggggg',
     '.........',
   ],
-  outside: [
-    '..kkkkk..',
-    '.k.....k.',
-    'k...k...k',
-    'k...k...k',
-    'k...kkk.k',
-    'k.......k',
-    '.k.....k.',
-    '..kkkkk..',
-    '.........',
-  ],
-  few: [
-    '.........',
-    '.........',
-    '..b......',
-    '.........',
-    '.....b...',
-    '.........',
-    '.b.......',
-    '.........',
-    '.........',
-  ],
-  many: [
-    'b..b..b..',
-    '.b..b..b.',
-    '..b..b..b',
-    'b..b..b..',
-    '.b..b..b.',
-    '..b..b..b',
-    'b..b..b..',
-    '.b..b..b.',
-    '..b..b..b',
-  ],
 };
 
 /** A pixel picture as crisp SVG, every pixel a square. */
@@ -221,25 +180,72 @@ export function skyPicture(sky: Sky): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg.outerHTML)}`;
 }
 
+const GLYPH: Record<WeatherKind, { sign: string; tint: string }> = {
+  clear: { sign: 'sun_i', tint: '#ffd47a' },
+  cloudy: { sign: 'cloud', tint: '#cfd6e4' },
+  rain: { sign: 'rain', tint: '#7aaaff' },
+  storm: { sign: 'storm', tint: '#c7b6ff' },
+  snow: { sign: 'snow', tint: '#e6f1ff' },
+  fog: { sign: 'fog', tint: '#d8d2c4' },
+};
+
+const RAIN_WORDS = ['a few drops', 'a light shower', 'steady rain', 'heavy rain', 'a downpour'];
+const SNOW_WORDS = ['a few flakes', 'a flurry', 'steady snow', 'heavy snow', 'a blizzard'];
+const THICK_WORDS = ['a wisp', 'a little', 'some', 'a lot', 'thick'];
+const CELLS = 8;
+
+function span(cls: string, words = ''): HTMLSpanElement {
+  const made = document.createElement('span');
+  made.className = cls;
+  made.textContent = words;
+  return made;
+}
+
+function div(cls: string, ...kids: (Node | string)[]): HTMLDivElement {
+  const made = document.createElement('div');
+  made.className = cls;
+  made.append(...kids);
+  return made;
+}
+
 export function skySlab(sky: Sky): HTMLElement {
-  const panel = document.createElement('div');
-  panel.className = 'menu sky-panel';
+  const panel = div('i-pane i-sky');
+  glaze(panel, ISLAND_LOOK);
   panel.addEventListener('contextmenu', (event) => event.preventDefault());
 
+  /* ── the heading ────────────────────────────────────────────────────── */
+  const own = span('g-chip');
+  const ownDot = span('g-dot');
+  own.append(ownDot, document.createTextNode(''));
+  panel.appendChild(
+    div(
+      'i-top',
+      div(
+        '',
+        div('g-pix', "the island's"),
+        Object.assign(document.createElement('h1'), { textContent: 'the sky' })
+      ),
+      own
+    )
+  );
+  (panel.querySelector('.g-pix') as HTMLElement).style.marginBottom = '8px';
+
   /* ── the hour ───────────────────────────────────────────────────────── */
-  const hourHead = heading('the hour');
-  const hourOutside = chip('outside', () => {
-    sky.choose({ time: 'real' });
-    paint();
-  });
-  hourHead.appendChild(hourOutside);
+  const hourSide = span('i-small');
+  const hourHead = div('i-sec', span('g-pix', 'the hour'), hourSide);
+  hourHead.style.marginTop = '22px';
+  hourHead.style.marginBottom = '0';
+  const bigTime = document.createElement('b');
+  const partWord = document.createElement('span');
+  const said = div('i-time', bigTime, partWord);
+
   const hour = slider({
-    left: icon('rise', 22),
-    right: icon('moon', 22),
+    left: px('sun_i', '#ffb86b', 18),
+    right: px('moon', '#b9c3ff', 18),
     track: hourGradient(sky),
     thumb: () => {
       const at = shownHour();
-      return icon(at > 6.5 && at < 19.8 ? 'sun' : 'moon', 14);
+      return px(at > 6.5 && at < 19.8 ? 'sun_i' : 'moon', '#3a2508', 18);
     },
     value: () => (shownHour() - FIRST) / (LAST - FIRST),
     set: (t) => {
@@ -248,40 +254,29 @@ export function skySlab(sky: Sky): HTMLElement {
       paint();
     },
   });
-  const hourSaid = document.createElement('div');
-  hourSaid.className = 'sky-said';
-  const marks = document.createElement('div');
-  marks.className = 'sky-marks';
-  for (const { name, hour: at } of HOURS) {
-    const mark = document.createElement('span');
-    mark.className = 'press sky-mark';
-    mark.textContent = name;
+  const marks = div('i-ticks');
+  marks.style.height = '30px';
+  HOURS.forEach(({ name, hour: at }, index) => {
+    const mark = span('', name);
     mark.style.left = `${((at - FIRST) / (LAST - FIRST)) * 100}%`;
+    if (index % 2 === 1) mark.style.top = '14px';
     mark.addEventListener('mousedown', (event) => event.preventDefault());
     mark.addEventListener('click', () => {
       sky.choose({ time: at });
       paint();
     });
     marks.appendChild(mark);
-  }
+  });
 
   /* ── the weather ────────────────────────────────────────────────────── */
-  const weatherHead = heading('the weather');
-  const weatherOutside = chip('outside', () => {
-    sky.choose({ weather: 'real' });
-    paint();
-  });
-  weatherHead.appendChild(weatherOutside);
-  const tiles = document.createElement('div');
-  tiles.className = 'sky-tiles';
+  const weatherSide = span('i-small');
+  const weatherHead = div('i-sec', span('g-pix', 'the weather'), weatherSide);
+  const tiles = div('i-wx');
   const tileOf = new Map<WeatherKind, HTMLElement>();
-  for (const { kind, name, icon: art } of WEATHER) {
-    const tile = document.createElement('button');
-    tile.className = 'sky-tile';
-    tile.appendChild(icon(art, 30));
-    const label = document.createElement('span');
-    label.textContent = name;
-    tile.appendChild(label);
+  for (const { kind, name } of WEATHER) {
+    const glyph = GLYPH[kind];
+    const tile = div('i-tile', span('i-ic'), name);
+    tile.firstElementChild?.appendChild(px(glyph.sign, glyph.tint, 22));
     tile.addEventListener('mousedown', (event) => event.preventDefault());
     /* Each picture is on or off, and any of them go together. Taking the
        last one off hands the weather back to outside. */
@@ -297,20 +292,62 @@ export function skySlab(sky: Sky): HTMLElement {
   }
 
   /* ── how much ───────────────────────────────────────────────────────── */
-  const amountHead = heading('how much');
-  const amount = slider({
-    left: icon('few', 20),
-    right: icon('many', 20),
-    track: 'linear-gradient(90deg, #2c4d66, #4d86b4 60%, #9cc7ea)',
-    thumb: () => icon('rain', 14),
-    value: () => (sky.chosen.amount - 0.3) / 1.7,
-    set: (t) => {
-      sky.choose({ amount: 0.3 + t * 1.7 });
-      paint();
-    },
+  const amountSaid = span('i-small');
+  const amountHead = div('i-sec', span('g-pix', 'how much'), amountSaid);
+  const cells = div('i-cells');
+  for (let i = 0; i < CELLS; i++) cells.appendChild(document.createElement('i'));
+  const amountEnd = span('');
+  amountEnd.style.display = 'flex';
+  const level = (): number => Math.round(((sky.chosen.amount - 0.3) / 1.7) * (CELLS - 1)) + 1;
+  const reach = (clientX: number): void => {
+    const box = cells.getBoundingClientRect();
+    const t = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
+    const lit = Math.min(CELLS, Math.max(1, Math.ceil(t * CELLS)));
+    sky.choose({ amount: 0.3 + ((lit - 1) / (CELLS - 1)) * 1.7 });
+    paint();
+  };
+  cells.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    cells.setPointerCapture(event.pointerId);
+    reach(event.clientX);
+    const move = (next: PointerEvent): void => reach(next.clientX);
+    const up = (): void => {
+      cells.removeEventListener('pointermove', move);
+      cells.removeEventListener('pointerup', up);
+      cells.removeEventListener('pointercancel', up);
+    };
+    cells.addEventListener('pointermove', move);
+    cells.addEventListener('pointerup', up);
+    cells.addEventListener('pointercancel', up);
   });
+  const amount = div('i-amt', px('drop', '#7aaaff', 14), cells, amountEnd);
+  const wordsLow = span('');
+  const wordsHigh = span('');
+  const amountWords = div('i-words', wordsLow, wordsHigh);
 
-  panel.append(hourHead, hour.root, marks, hourSaid, weatherHead, tiles, amountHead, amount.root);
+  /* ── the foot ───────────────────────────────────────────────────────── */
+  const back = document.createElement('span');
+  back.className = 'g-pill';
+  back.append(px('clock', '#2a1b09', 14), document.createTextNode('back to outside'));
+  back.addEventListener('mousedown', (event) => event.preventDefault());
+  back.addEventListener('click', () => {
+    sky.choose({ time: 'real', weather: 'real' });
+    paint();
+  });
+  const foot = div('i-ft', span('', 'kept on this machine'), back);
+
+  panel.append(
+    hourHead,
+    said,
+    hour.root,
+    marks,
+    weatherHead,
+    tiles,
+    amountHead,
+    amount,
+    amountWords,
+    foot
+  );
 
   function shownHour(): number {
     const chosen = sky.chosen;
@@ -322,19 +359,43 @@ export function skySlab(sky: Sky): HTMLElement {
   function paint(): void {
     const chosen: SkyChoice = sky.chosen;
     hour.paint();
-    amount.paint();
-    const real = chosen.time === 'real';
-    hourOutside.dataset.on = real ? 'yes' : '';
-    hour.root.dataset.real = real ? 'yes' : '';
+    const timeReal = chosen.time === 'real';
+    const weatherReal = chosen.weather === 'real';
     const at = shownHour() % 24;
-    hourSaid.textContent = `${clock(at)} · ${real ? 'as it is outside' : partOfDay(at)}`;
-    weatherOutside.dataset.on = chosen.weather === 'real' ? 'yes' : '';
+    bigTime.textContent = clock(at);
+    partWord.textContent = timeReal ? `${partOfDay(at)} · as outside` : partOfDay(at);
+    const now = new Date();
+    const outside = clock(now.getHours() + now.getMinutes() / 60);
+    hourSide.textContent = `outside it is ${outside}`;
+    weatherSide.textContent = 'any of them together';
+    const mine = !timeReal || !weatherReal;
+    ownDot.style.background = mine ? 'var(--g-gold)' : 'var(--g-moss)';
+    own.lastChild!.textContent = mine ? 'your own sky' : 'as outside';
+    back.classList.toggle('i-pill-off', !mine);
     for (const [kind, tile] of tileOf) {
-      tile.dataset.on = chosen.weather !== 'real' && chosen.weather.includes(kind) ? 'yes' : '';
+      tile.dataset.on = !weatherReal && chosen.weather.includes(kind) ? 'yes' : '';
     }
-    const falls = chosen.weather !== 'real' && chosen.weather.some((one) => one !== 'clear');
+    const kinds: WeatherKind[] = chosen.weather === 'real' ? [] : chosen.weather;
+    const falls = kinds.some((one) => one !== 'clear');
+    const wet = kinds.some((one) => one === 'rain' || one === 'storm' || one === 'snow');
+    const snowy = kinds.includes('snow') && !kinds.includes('rain') && !kinds.includes('storm');
     amountHead.hidden = !falls;
-    amount.root.hidden = !falls;
+    amount.hidden = !falls;
+    amountWords.hidden = !falls;
+    const lit = level();
+    [...cells.children].forEach((cell, i) => cell.classList.toggle('i-f', i < lit));
+    const words = !wet ? THICK_WORDS : snowy ? SNOW_WORDS : RAIN_WORDS;
+    amountSaid.textContent =
+      words[Math.round(((lit - 1) / (CELLS - 1)) * (words.length - 1))] ?? '';
+    wordsLow.textContent = words[0] ?? '';
+    wordsHigh.textContent = words[words.length - 1] ?? '';
+    amountEnd.replaceChildren(
+      px(
+        snowy ? 'snow' : wet ? 'rain' : 'cloud',
+        snowy ? '#e6f1ff' : wet ? '#7aaaff' : '#cfd6e4',
+        18
+      )
+    );
     keepOnScreen(panel);
   }
 
@@ -350,7 +411,7 @@ export function skySlab(sky: Sky): HTMLElement {
   return panel;
 }
 
-/** A slider in the kit's manner: a pixel picture either end, a track, a thumb. */
+/** A slider: a sign either end, a track of the day's own colours, a gold thumb. */
 function slider(options: {
   left: SVGSVGElement;
   right: SVGSVGElement;
@@ -359,41 +420,46 @@ function slider(options: {
   value: () => number;
   set: (t: number) => void;
 }): { root: HTMLElement; paint: () => void } {
-  const root = document.createElement('div');
-  root.className = 'sky-slider';
-  const track = document.createElement('div');
-  track.className = 'sky-track';
-  track.style.background = options.track;
-  const thumb = document.createElement('div');
-  thumb.className = 'sky-thumb';
-  track.appendChild(thumb);
-  root.append(options.left, track, options.right);
+  const root = div('i-track');
+  const bar = div('i-bar');
+  bar.style.background = options.track;
+  const thumb = div('i-thumb');
+  for (const [side, art] of [
+    ['left:4px', options.left],
+    ['right:4px', options.right],
+  ] as const) {
+    const end = span('i-ends');
+    end.style.cssText += side;
+    end.appendChild(art);
+    root.appendChild(end);
+  }
+  root.append(bar, thumb);
 
   const at = (clientX: number): number => {
-    const box = track.getBoundingClientRect();
+    const box = bar.getBoundingClientRect();
     return Math.min(1, Math.max(0, (clientX - box.left) / box.width));
   };
-  track.addEventListener('pointerdown', (event) => {
+  root.addEventListener('pointerdown', (event) => {
     event.preventDefault();
-    track.setPointerCapture(event.pointerId);
-    track.dataset.held = 'yes';
+    root.setPointerCapture(event.pointerId);
+    root.dataset.held = 'yes';
     options.set(at(event.clientX));
     const move = (next: PointerEvent): void => options.set(at(next.clientX));
     const up = (): void => {
-      track.dataset.held = '';
-      track.removeEventListener('pointermove', move);
-      track.removeEventListener('pointerup', up);
-      track.removeEventListener('pointercancel', up);
+      root.dataset.held = '';
+      root.removeEventListener('pointermove', move);
+      root.removeEventListener('pointerup', up);
+      root.removeEventListener('pointercancel', up);
     };
-    track.addEventListener('pointermove', move);
-    track.addEventListener('pointerup', up);
-    track.addEventListener('pointercancel', up);
+    root.addEventListener('pointermove', move);
+    root.addEventListener('pointerup', up);
+    root.addEventListener('pointercancel', up);
   });
 
   let shown = '';
   const paint = (): void => {
     const t = Math.min(1, Math.max(0, options.value()));
-    thumb.style.left = `${t * 100}%`;
+    thumb.style.left = `calc(30px + (100% - 60px) * ${t})`;
     const art = options.thumb();
     const key = art.innerHTML;
     if (key !== shown) {
@@ -459,30 +525,11 @@ function partOfDay(hour: number): string {
   return 'night';
 }
 
-function clock(hour: number): string {
+export function clock(hour: number): string {
   const h = Math.floor(hour) % 24;
   const m = Math.floor((hour - Math.floor(hour)) * 60);
   const twelve = h % 12 === 0 ? 12 : h % 12;
   return `${twelve}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
-}
-
-function heading(text: string): HTMLElement {
-  const head = document.createElement('div');
-  head.className = 'menu-head sky-head';
-  const said = document.createElement('span');
-  said.textContent = text;
-  head.appendChild(said);
-  return head;
-}
-
-/** "Outside": gold to press, plain cream with its clock lit once it is in force. */
-function chip(text: string, does: () => void): HTMLElement {
-  const line = document.createElement('span');
-  line.className = 'press sky-chip';
-  line.append(icon('outside', 11, 'currentColor'), document.createTextNode(text));
-  line.addEventListener('mousedown', (event) => event.preventDefault());
-  line.addEventListener('click', does);
-  return line;
 }
 
 /** A panel that has grown past the bottom of the window moves up by as much. */

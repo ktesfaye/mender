@@ -39,7 +39,21 @@ import type { JiraLink, JiraSite } from '@shared/jira';
 import type { UpdateState } from '@shared/updates';
 import { counted } from '../board/card';
 import { chordLabel, chordOf, rebindableDoings } from '../board/finder';
-import { area, chip, formRow, hintLine, input, intro, pageOf, section } from './settings';
+import '../glass/settings.css';
+import { glaze, TINT_ISLAND } from '../glass/glass';
+import { px } from '../glass/px';
+import {
+  area,
+  chip,
+  formRow,
+  formRowSub,
+  hintLine,
+  input,
+  overIsland,
+  pageOf,
+  savedMark,
+  section,
+} from './settings';
 import { stand } from './standing';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
@@ -156,18 +170,38 @@ export interface Windmill {
   close(): void;
 }
 
+const LEAD_GENERAL = 'Who a fresh session starts with, until you say otherwise on the board.';
+
+const LEAD_MACHINE = 'What it is spending right now. Counting back up every few seconds.';
+
+const CHECKOUTS = 'How a session’s own copy is named and where new things are put.';
+
+const TERMINAL = 'Every real shell the board opens next, in any project.';
+
+const KEYS =
+  'Every doing held with command. Press a chord, then press the key it should be instead.';
+
+const AGENTS =
+  'What this machine hands each agent’s own CLI beyond its ordinary command, in every project.';
+
+const JIRA =
+  'The Jira sites this Mac is connected to, each with its own email and API token. Each project picks its own board from them, off the blue token on the rack.';
+
+const DISK =
+  'Every own copy Mender has cut on this machine that no session is standing in. Stale means its branch is already upstream, or nothing points at it any more.';
+
 /** The pages down the window's left side, in the order they hang there. */
 type Page = 'general' | 'checkouts' | 'terminal' | 'keys' | 'agents' | 'jira' | 'disk' | 'machine';
 
-const PAGES: { page: Page; said: string }[] = [
-  { page: 'general', said: 'General' },
-  { page: 'checkouts', said: 'Checkouts' },
-  { page: 'terminal', said: 'Terminal' },
-  { page: 'keys', said: 'Keys' },
-  { page: 'agents', said: 'Agents' },
-  { page: 'jira', said: 'Jira' },
-  { page: 'disk', said: 'On disk' },
-  { page: 'machine', said: 'This machine' },
+const PAGES: { page: Page; said: string; icon: string; lead: string }[] = [
+  { page: 'general', said: 'General', icon: 'sun', lead: LEAD_GENERAL },
+  { page: 'checkouts', said: 'Checkouts', icon: 'merge', lead: CHECKOUTS },
+  { page: 'disk', said: 'On disk', icon: 'box', lead: DISK },
+  { page: 'terminal', said: 'Terminal', icon: 'term', lead: TERMINAL },
+  { page: 'keys', said: 'Keys', icon: 'key', lead: KEYS },
+  { page: 'agents', said: 'Agents', icon: 'spark', lead: AGENTS },
+  { page: 'machine', said: 'This machine', icon: 'ring', lead: LEAD_MACHINE },
+  { page: 'jira', said: 'Jira', icon: 'gem', lead: JIRA },
 ];
 
 /** Whichever page was open last, so coming back to the windmill lands there. */
@@ -188,8 +222,10 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   let now = state;
   let page: Page = lastPage;
 
-  const back = el('div', 'settings-back');
-  const panel = el('div', 'settings paged windmill');
+  const back = el('div', 'st-back');
+  const panel = glaze(el('div', 'st-win st-tall'), {
+    tint: overIsland() ? TINT_ISLAND : undefined,
+  });
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-modal', 'true');
   back.appendChild(panel);
@@ -203,94 +239,102 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     downOutside = false;
   });
 
-  // ── the head ─────────────────────────────────────────────────────────────
-  const head = el('div', 'settings-head');
-  const who = el('div', 'settings-who');
-  const heading = el('div', 'settings-name windmill-title');
-  heading.textContent = 'The windmill';
-  const where = el('div', 'settings-where');
-  where.textContent = 'How Mender itself behaves on this machine, in every project.';
-  who.append(heading, where);
-  const shut = button('×', 'settings-close', () => close());
+  // ── the rail's head ──────────────────────────────────────────────────────
+  const me = el('div', 'st-me');
+  const meIcon = el('div', 'st-me-ic');
+  meIcon.appendChild(px('sun', '#f2c66d', 28));
+  const meText = el('div', '');
+  const meName = el('b', '');
+  meName.textContent = 'the windmill';
+  const meSub = el('span', '');
+  meSub.textContent = 'every project';
+  meText.append(meName, meSub);
+  me.append(meIcon, meText);
+
+  const heading = el('h2', '');
+  const lead = el('p', 'st-lead');
+  const head = el('div', 'st-head');
+  head.append(heading, lead);
+  const shut = button('×', 'g-x', () => close());
   shut.setAttribute('aria-label', 'Close');
-  head.append(who, shut);
+  const mark = savedMark(panel);
 
   // ── the pages ────────────────────────────────────────────────────────────
-  const middle = el('div', 'settings-middle');
-  const rail = el('nav', 'settings-rail');
-  const body = el('div', 'settings-body');
-  middle.append(rail, body);
-  panel.append(head, middle);
+  const rail = el('nav', 'st-rail');
+  const main = el('div', 'st-main');
+  const body = el('div', 'st-body g-scroll');
+  main.append(head, body, mark, shut);
+  panel.append(rail, main);
+  rail.appendChild(me);
 
   const starts = section('A fresh session starts with');
   const notify = section('Notifications');
-  const branches = section('Branches');
+  const branches = section('A session’s branch');
   const landing = section('Where new things land');
-  const shellLook = section('How a shell looks');
+  const shellLook = section('As it will draw');
   const shellIs = section('What a shell starts as');
   const keys = section('Chords');
-  const agentPick = section('Agent');
-  const agentArgs = section('Extra arguments');
-  const agentEnv = section('Environment');
-  const agentInstall = section('Which install');
+  const agentPick = section('');
+  const agentArgs = section('');
+  const agentEnv = section('');
+  const agentInstall = section('Which install it runs');
   const jiraSites = section('Sites');
   const jiraAdd = section('Connect a site');
   const jiraBoards = section("Each project's board");
   const jiraRecipe = section('Taking a ticket on');
-  const worktrees = section('Worktrees Mender has cut');
-  const spend = section('Right now');
-  const five = section('The five hours');
-  const shares = section('Each session’s share');
+  const worktrees = section('');
+  const spend = section('');
+  const five = section('');
+  const shares = section('Every open session');
 
   const pageRoots: Record<Page, HTMLElement> = {
     general: pageOf([starts.root, notify.root]),
-    checkouts: pageOf([intro(CHECKOUTS), branches.root, landing.root]),
-    terminal: pageOf([intro(TERMINAL), shellLook.root, shellIs.root]),
-    keys: pageOf([intro(KEYS), keys.root]),
-    agents: pageOf([
-      intro(AGENTS),
-      agentPick.root,
-      agentArgs.root,
-      agentEnv.root,
-      agentInstall.root,
-    ]),
-    jira: pageOf([intro(JIRA), jiraSites.root, jiraBoards.root, jiraAdd.root, jiraRecipe.root]),
-    disk: pageOf([intro(DISK), worktrees.root]),
+    checkouts: pageOf([branches.root, landing.root]),
+    terminal: pageOf([shellLook.root, shellIs.root]),
+    keys: pageOf([keys.root]),
+    agents: pageOf([agentPick.root, agentArgs.root, agentEnv.root, agentInstall.root]),
+    jira: pageOf([jiraSites.root, jiraBoards.root, jiraAdd.root, jiraRecipe.root]),
+    disk: pageOf([worktrees.root]),
     machine: pageOf([spend.root, five.root, shares.root]),
   };
   body.append(...Object.values(pageRoots));
 
   const tabs = new Map<Page, { root: HTMLButtonElement; sub: HTMLElement }>();
   for (const one of PAGES) {
-    const tab = el('button', 'settings-tab');
+    if (one.page === 'jira') rail.appendChild(el('div', 'st-sep'));
+    const tab = el('button', 'st-tab');
     tab.type = 'button';
-    const said = el('span', 'settings-tab-name');
+    const icon = el('span', 'st-tab-i');
+    icon.appendChild(px(one.icon, '#f2c66d', 16));
+    const text = el('span', 'st-tab-t');
+    const said = el('span', 'st-tab-name');
     said.textContent = one.said;
-    const sub = el('span', 'settings-tab-sub');
-    tab.append(said, sub);
+    const sub = el('span', 'st-tab-sub');
+    text.append(said, sub);
+    tab.append(icon, text);
     tab.addEventListener('click', () => go(one.page));
     rail.appendChild(tab);
     tabs.set(one.page, { root: tab, sub });
   }
   // Which Mender this is, and the way to a newer one, at the foot of the rail.
-  const version = el('div', 'windmill-version');
+  const version = el('div', 'st-foot');
   rail.appendChild(version);
   let upToDateTimer = 0;
   let sayUpToDate = false;
 
   function drawVersion(): void {
     const up = now.update;
-    const name = el('span', 'windmill-version-name');
+    const name = el('span', 'st-foot-name');
     name.textContent = up ? `Mender ${up.version}` : 'Mender';
     const parts: HTMLElement[] = [name];
     const quiet = (text: string, sore = false): void => {
-      const line = el('span', sore ? 'windmill-version-said sore' : 'windmill-version-said');
+      const line = el('span', sore ? 'st-foot-said sore' : 'st-foot-said');
       line.textContent = text;
       parts.push(line);
     };
     const check = (said: string): void => {
       parts.push(
-        button(said, 'settings-link windmill-version-act', () => {
+        button(said, 'st-foot-act', () => {
           sayUpToDate = true;
           void does.checkUpdate();
         })
@@ -306,7 +350,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       quiet(`fetching ${up.latest ?? 'the new one'}…`);
     } else if (up.phase === 'ready') {
       parts.push(
-        button(`restart into ${up.latest}`, 'settings-link windmill-version-act', () => {
+        button(`restart into ${up.latest}`, 'st-foot-act', () => {
           void does.restartToUpdate();
         })
       );
@@ -355,6 +399,9 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       tab.root.classList.toggle('here', one === page);
       tab.root.setAttribute('aria-current', String(one === page));
     }
+    const here = PAGES.find((one) => one.page === page);
+    heading.textContent = here?.said ?? '';
+    lead.textContent = here?.lead ?? '';
     body.scrollTop = 0;
   }
 
@@ -409,25 +456,47 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     }
     const here = now.hands.filter((one) => one.here);
     const away = now.hands.length - here.length;
-    const choices = el('div', 'settings-choices');
+    const cards = el('div', 'st-hands');
     for (const hand of here) {
-      choices.appendChild(
-        chip(hand.name, hand.id === now.hand, () => {
-          void does.choose(hand.id).then(() => took(starts));
-        })
+      const picked = hand.id === now.hand;
+      const card = el('div', picked ? 'st-hand picked' : 'st-hand');
+      const art = el('div', 'st-hand-art');
+      art.appendChild(
+        px(picked ? 'flame' : 'hood', picked ? '#f2c66d' : 'rgba(246,236,219,.5)', 28)
       );
+      const title = el('b', '');
+      title.textContent = hand.name;
+      const sub = el('span', 'st-hand-sub');
+      sub.textContent = 'on this machine';
+      card.append(art, title, sub);
+      if (picked) {
+        const badge = el('span', 'st-badge');
+        badge.textContent = 'starts here';
+        card.appendChild(badge);
+        const act = el('span', 'st-hand-act here');
+        act.textContent = 'remembered from last time';
+        card.appendChild(act);
+      } else {
+        const act = button('start here instead', 'st-foot-act', () => {
+          void does.choose(hand.id).then(() => took(starts));
+        });
+        card.appendChild(act);
+      }
+      cards.appendChild(card);
     }
-    const children: HTMLElement[] = [
-      hintLine('Whoever a new session starts with, until you say otherwise on the board.'),
-    ];
-    if (here.length) children.push(choices);
+    const children: HTMLElement[] = [];
+    if (here.length) children.push(cards);
     else children.push(hintLine('No agent is installed on this machine yet.'));
     if (away) {
-      children.push(
-        hintLine(
-          `${counted(away, 'other agent')} could work here once installed. A session’s /agent card brings them in.`
-        )
-      );
+      const card = el('div', 'st-hand off');
+      const art = el('div', 'st-hand-art');
+      art.appendChild(px('plus', 'rgba(246,236,219,.5)', 28));
+      const title = el('b', '');
+      title.textContent = counted(away, 'other');
+      const sub = el('span', 'st-hand-sub');
+      sub.textContent = 'could work here once installed. A session’s /agent card brings them in.';
+      card.append(art, title, sub);
+      cards.appendChild(card);
     }
     starts.fill(children);
   }
@@ -438,7 +507,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       notify.fill([hintLine('Reading it…')]);
       return;
     }
-    const choices = el('div', 'settings-choices');
+    const choices = el('div', 'st-seg');
     const set = (on: boolean) => () =>
       void does.setNotificationsEnabled(on).then(() => took(notify));
     choices.append(
@@ -446,10 +515,8 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       chip('Stay quiet', !held.enabled, set(false))
     );
     notify.fill([
-      hintLine(
-        'When somebody asks you something, finishes or breaks while Mender is not the window in front.'
-      ),
-      choices,
+      formRowSub('A banner', 'when somebody asks, finishes or breaks', choices),
+      hintLine('Only while Mender is not the window in front.'),
     ]);
   }
 
@@ -464,18 +531,32 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       await does.setBranchPrefix(value.trim());
       took(branches);
     });
-    const tail = el('div', 'settings-choices');
-    const set = (on: boolean) => () => void does.setRandomSuffix(on).then(() => took(branches));
-    tail.append(
-      chip('Just the name', !held.randomSuffix, set(false)),
-      chip('A short random tail', held.randomSuffix, set(true))
+    const tail = el('button', held.randomSuffix ? 'st-toggle on' : 'st-toggle');
+    tail.type = 'button';
+    tail.setAttribute('role', 'switch');
+    tail.setAttribute('aria-checked', String(held.randomSuffix));
+    tail.addEventListener(
+      'click',
+      () => void does.setRandomSuffix(!held.randomSuffix).then(() => took(branches))
     );
     const example = `${held.branchPrefix || 'mender'}/fix-the-login${held.randomSuffix ? '-k3q9' : ''}`;
-    branches.fill([
-      formRow('Prefix', prefix),
-      formRow('After the name', tail),
-      hintLine(`A session called “fix the login” gets ${example}.`),
-    ]);
+    const sign = el('div', 'st-sign');
+    const cords = el('div', 'st-cords');
+    cords.append(el('i', ''), el('i', ''));
+    const board = el('div', 'st-board');
+    board.textContent = example;
+    const cap = el('small', '');
+    cap.textContent = 'what a session called “fix the login” gets';
+    sign.append(cords, board, cap);
+    const forms = el('div', 'st-forms');
+    forms.append(
+      formRowSub('Prefix', 'absent anywhere else', prefix),
+      formRowSub('Random tail', 'so two named the same never collide', tail)
+    );
+    forms.style.cssText = 'display:flex;flex-direction:column;justify-content:center';
+    const card = el('div', 'st-card st-branch');
+    card.append(sign, forms);
+    branches.fill([card]);
   }
 
   function drawLanding(): void {
@@ -484,18 +565,39 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       landing.fill([hintLine('Reading it…')]);
       return;
     }
-    const projects = input(held.projectsDir, '~/mender/projects', async (value) => {
-      await does.setProjectsDir(value.trim());
-      took(landing);
-    });
-    const trees = input(held.worktreeDir, '~/mender/worktrees', async (value) => {
-      await does.setWorktreeDir(value.trim());
-      took(landing);
-    });
+    const folder = (
+      value: string,
+      example: string,
+      title: string,
+      save: (path: string) => Promise<void>
+    ): HTMLElement => {
+      const field = input(value, example, async (typed) => {
+        await save(typed.trim());
+        took(landing);
+      });
+      const choose = button('choose…', 'st-link', () => {
+        void window.mender.pickFolder(title).then(async (picked) => {
+          if (!picked) return;
+          field.value = picked;
+          await save(picked);
+          took(landing);
+        });
+      });
+      const line = el('div', 'st-when');
+      field.style.flex = '1';
+      line.append(field, choose);
+      return line;
+    };
+    const projects = folder(held.projectsDir, '~/mender/projects', 'Where new projects land', (p) =>
+      does.setProjectsDir(p)
+    );
+    const trees = folder(held.worktreeDir, '~/mender/worktrees', 'Where own copies are cut', (p) =>
+      does.setWorktreeDir(p)
+    );
     landing.fill([
-      formRow('New projects', projects),
-      formRow('Own copies', trees),
-      hintLine('A cloned or freshly started project, and a session’s own copy, go here.'),
+      formRowSub('New projects', 'cloned or freshly started', projects),
+      formRowSub('Own copies', 'each is a folder of its own', trees),
+      hintLine('Changing this never moves what is already cut.'),
     ]);
   }
 
@@ -519,11 +621,11 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
         : 'not connected';
     if (busy(jiraAdd) || busy(jiraRecipe)) return;
     const value = (text: string): HTMLElement => {
-      const said = el('span', 'settings-jira-value');
+      const said = el('span', 'st-val');
       said.textContent = text;
       return said;
     };
-    const another = button('connect another site', 'settings-link', () => {
+    const another = button('connect another site', 'st-link', () => {
       jiraAdding = true;
       void drawJira();
     });
@@ -531,11 +633,11 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       held.sites.length
         ? [
             ...held.sites.map((one) => {
-              const card = el('div', 'settings-jira-site');
+              const card = el('div', 'st-site');
               const armed = jiraForgetting === one.site;
               const forget = button(
                 armed ? 'forget it: press again' : 'forget this site',
-                'settings-link',
+                'st-link',
                 () => {
                   if (!armed) {
                     jiraForgetting = one.site;
@@ -571,7 +673,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     const email = input('', 'you@example.com', async () => undefined);
     const token = input('', 'API token', async () => undefined);
     token.type = 'password';
-    const go = button(jiraTrying ? 'checking it…' : 'connect', 'settings-link', () => {
+    const go = button(jiraTrying ? 'checking it…' : 'connect', 'st-link', () => {
       if (jiraTrying) return;
       jiraTrying = true;
       jiraFailed = '';
@@ -589,7 +691,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
         void drawJira();
       });
     });
-    const tokenPage = button('make a token', 'settings-link', () => {
+    const tokenPage = button('make a token', 'st-link', () => {
       window.mender.openLink('https://id.atlassian.com/manage-profile/security/api-tokens');
     });
     const drawJiraAdd = (): void => {
@@ -600,7 +702,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
         formRow('API token', token),
         ...(jiraFailed ? [troubled(jiraFailed)] : []),
         (() => {
-          const line = el('div', 'settings-when-detail');
+          const line = el('div', 'st-when');
           line.style.gap = '24px';
           line.append(go, tokenPage);
           return line;
@@ -614,7 +716,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       const links = await does.jira.links();
       jiraBoards.fill([
         hintLine(
-          "Open the board in your browser, copy the address bar, and paste it here. Return saves it; clearing it lets the project pick again."
+          'Open the board in your browser, copy the address bar, and paste it here. Return saves it; clearing it lets the project pick again.'
         ),
         ...does.jira.projects().map((one) => {
           const link = links[one.id];
@@ -629,7 +731,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
               void drawJira();
             }
           );
-          const now = el('span', 'settings-hint-inline');
+          const now = el('span', 'st-inline');
           now.textContent = link
             ? `showing ${link.name ?? `the ${link.key} board`} · ${link.site.replace('.atlassian.net', '')}`
             : 'no board picked yet';
@@ -652,7 +754,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   }
 
   function troubled(text: string): HTMLElement {
-    const said = el('p', 'settings-trouble');
+    const said = el('p', 'st-trouble');
     said.textContent = text;
     return said;
   }
@@ -670,12 +772,38 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       took(shellLook);
     });
     size.inputMode = 'numeric';
-    size.classList.add('settings-small-field');
-    const px = el('span', 'settings-hint-inline');
-    px.textContent = 'pixels';
-    const line = el('div', 'settings-when-detail');
-    line.append(size, px);
-    shellLook.fill([formRow('Font size', line)]);
+    const shown = held.fontSize || 13;
+    const step = (by: number): void => {
+      void does
+        .setTerminalFontSize(Math.min(40, Math.max(8, shown + by)))
+        .then(() => took(shellLook));
+    };
+    const stepper = el('div', 'st-stepper');
+    stepper.append(
+      button('−', '', () => step(-1)),
+      size,
+      button('+', '', () => step(1))
+    );
+    const unit = el('span', 'st-inline');
+    unit.textContent = 'px · what the grid actually draws at';
+    const line = el('div', 'st-when');
+    line.append(stepper, unit);
+
+    const term = el('div', 'st-term');
+    const bar = el('div', 'st-term-bar');
+    bar.append(el('i', ''), el('i', ''), el('i', ''));
+    const barName = el('span', '');
+    barName.textContent = (held.defaultShell || '$SHELL').split('/').at(-1) ?? 'shell';
+    bar.appendChild(barName);
+    const sample = el('pre', '');
+    sample.style.fontSize = `${shown}px`;
+    sample.innerHTML =
+      '<span class="g">you@mac</span> <span class="b">repo</span> % git status -sb\n' +
+      '## main...origin/main [ahead 2]\n' +
+      ' <span class="r">M</span> src/gate.ts\n' +
+      '<span class="g">you@mac</span> <span class="b">repo</span> % ▍';
+    term.append(bar, sample);
+    shellLook.fill([term, formRowSub('Font size', 'every shell opened next', line)]);
   }
 
   function drawShellIs(): void {
@@ -689,7 +817,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       took(shellIs);
     });
     shellIs.fill([
-      formRow('Default shell', shell),
+      formRowSub('Default shell', 'what ps on the spawned process shows', shell),
       hintLine('Blank starts whatever $SHELL already says.'),
     ]);
   }
@@ -765,18 +893,24 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       return;
     }
     const bound = now.keybindings;
-    const list = el('div', 'settings-rows');
-    for (const doing of rebindableDoings()) {
+    const all = rebindableDoings();
+    const half = Math.ceil(all.length / 2);
+    const columns = [el('div', 'st-keycol'), el('div', 'st-keycol')];
+    all.forEach((doing, at) => {
       const chord = chordOf(doing.pick, bound) ?? '';
-      const row = el('div', 'settings-row settings-row-still');
-      const name = el('span', 'settings-row-main');
-      const title = el('span', 'settings-row-title');
-      title.textContent = doing.name;
-      name.append(title);
-      row.append(name);
-      if (bound[doing.pick] !== undefined && arming !== doing.pick) {
-        row.append(
-          button('default', 'settings-link windmill-key-reset', () => {
+      const waiting = arming === doing.pick;
+      const rebound = bound[doing.pick] !== undefined;
+      const row = el(
+        'div',
+        `st-key-row${waiting ? (armed ? ' clash' : ' waiting') : rebound ? ' rebound' : ''}`
+      );
+      const top = el('div', 'st-key-top');
+      const name = el('span', 'st-key-name');
+      name.textContent = doing.name;
+      top.append(name);
+      if (rebound && !waiting) {
+        top.append(
+          button('default', 'st-link', () => {
             void does.unbind(doing.pick).then(() => {
               drawKeys();
               keys.saved();
@@ -784,14 +918,57 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
           })
         );
       }
-      const waiting = arming === doing.pick;
-      const said = waiting ? (armed ?? 'press a key…') : chord ? chordLabel(chord) : 'unset';
-      const key = button(said, 'windmill-key', () => arm(doing.pick));
-      if (waiting) key.classList.add(armed ? 'sore' : 'waiting');
-      row.append(key);
-      list.appendChild(row);
+      const caps = el('button', 'st-key-caps');
+      caps.type = 'button';
+      caps.addEventListener('click', () => arm(doing.pick));
+      if (waiting && !armed) {
+        const wait = el('span', 'st-key-wait');
+        const dot = el('span', 'g-dot');
+        dot.style.background = '#f2c66d';
+        const said = el('span', '');
+        said.textContent = 'press the new key…';
+        wait.append(dot, said);
+        caps.appendChild(wait);
+      } else if (chord) {
+        for (const part of capsOf(chordLabel(chord))) {
+          const cap = el('span', 'g-kc');
+          cap.textContent = part;
+          caps.appendChild(cap);
+        }
+      } else {
+        const said = el('span', 'st-inline');
+        said.textContent = 'unset';
+        caps.appendChild(said);
+      }
+      top.append(caps);
+      row.append(top);
+      if (waiting && armed) {
+        const clash = el('div', 'st-key-clash');
+        clash.append(px('warn', '#f08a72', 14));
+        const said = el('span', '');
+        said.textContent = `${armed}. left as it was.`;
+        clash.append(said);
+        row.append(clash);
+      }
+      columns[at < half ? 0 : 1]?.appendChild(row);
+    });
+    const legend = el('div', 'st-legend');
+    for (const [color, said] of [
+      ['#f2c66d', 'waiting for a key'],
+      ['#f08a72', 'clash, left as it was'],
+      ['#9bd28a', 'rebound, “default” puts it back'],
+    ] as const) {
+      const one = el('span', '');
+      const dot = el('span', 'g-dot');
+      dot.style.background = color;
+      const t = el('span', '');
+      t.textContent = said;
+      one.append(dot, t);
+      legend.appendChild(one);
     }
-    keys.fill([list]);
+    const grid = el('div', 'st-keys');
+    grid.append(...columns);
+    keys.fill([grid, legend]);
   }
 
   // ── agents ───────────────────────────────────────────────────────────────
@@ -814,14 +991,27 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       return;
     }
     const picked = agentHere();
-    const choices = el('div', 'settings-choices');
+    const choices = el('div', 'st-tabsrow');
     for (const hand of here) {
-      choices.appendChild(
-        chip(hand.name, hand.id === picked?.id, () => {
-          lastAgent = hand.id;
-          drawAgents(true);
-        })
-      );
+      const on = hand.id === picked?.id;
+      const tab = el('button', on ? 'st-hand-tab picked' : 'st-hand-tab');
+      tab.type = 'button';
+      tab.appendChild(px(on ? 'flame' : 'hood', on ? '#f2c66d' : 'rgba(246,236,219,.5)', 18));
+      const said = el('span', '');
+      said.textContent = hand.name;
+      tab.appendChild(said);
+      const installs = now.installs[hand.id]?.candidates.length ?? 0;
+      if (installs > 1) {
+        const tag = el('span', 'st-tag');
+        tag.textContent = `${installs} installs`;
+        tab.appendChild(tag);
+      }
+      tab.addEventListener('click', () => {
+        if (on) return;
+        lastAgent = hand.id;
+        drawAgents(true);
+      });
+      choices.appendChild(tab);
     }
     agentPick.fill([choices]);
   }
@@ -837,8 +1027,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       took(agentArgs);
     });
     agentArgs.fill([
-      hintLine(`Put after ${hand.name}’s own command every time it is started.`),
-      field,
+      formRowSub('Extra arguments', `after ${hand.name}’s ordinary command, every time`, field),
     ]);
   }
 
@@ -851,36 +1040,33 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       agentEnv.fill([hintLine('Reading it…')]);
       return;
     }
-    const children: HTMLElement[] = [
-      hintLine(`Set for ${hand.name} in every project, under whatever a project sets itself.`),
-    ];
-    const set = Object.entries(config.env);
-    if (set.length) {
-      const list = el('div', 'settings-rows');
-      for (const [key, value] of set) {
-        const row = el('div', 'settings-row settings-row-still');
-        const main = el('span', 'settings-row-main windmill-env');
-        main.textContent = `${key}=${value}`;
-        main.title = `${key}=${value}`;
-        const remove = button('remove', 'settings-link', () => {
-          void does.removeEnvVar(hand.id, key).then(() => {
-            drawAgentEnv(hand);
-            agentEnv.saved('removed');
-          });
+    const lines: HTMLElement[] = [];
+    for (const [key, value] of Object.entries(config.env)) {
+      const row = el('div', 'st-env');
+      const k = el('span', 'st-env-k');
+      k.textContent = key;
+      const eq = el('span', 'st-inline');
+      eq.textContent = '=';
+      const v = el('span', 'st-env-v');
+      v.textContent = value;
+      v.title = `${key}=${value}`;
+      const remove = button('remove', 'st-link', () => {
+        void does.removeEnvVar(hand.id, key).then(() => {
+          drawAgentEnv(hand);
+          agentEnv.saved('removed');
         });
-        row.append(main, remove);
-        list.appendChild(row);
-      }
-      children.push(list);
+      });
+      row.append(k, eq, v, remove);
+      lines.push(row);
     }
     const name = document.createElement('input');
-    name.className = 'settings-identity-field windmill-env-key';
+    name.className = 'st-input st-key';
     name.placeholder = 'NAME';
     name.spellcheck = false;
     name.value = envKey;
     name.addEventListener('input', () => (envKey = name.value));
     const value = document.createElement('input');
-    value.className = 'settings-identity-field';
+    value.className = 'st-input';
     value.placeholder = 'value';
     value.spellcheck = false;
     value.value = envValue;
@@ -906,10 +1092,15 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
         }
       });
     }
-    const line = el('div', 'settings-identity-row windmill-env-add');
-    line.append(name, value, button('Add', 'settings-button', add));
-    children.push(line);
-    agentEnv.fill(children);
+    const line = el('div', 'st-env');
+    const eq = el('span', 'st-inline');
+    eq.textContent = '=';
+    line.append(name, eq, value, button('add', 'st-link', add));
+    lines.push(line);
+    agentEnv.fill([
+      formRowSub('Environment', `added to ${hand.name}’s spawn, by name`, ...lines),
+      hintLine('Under whatever a project sets itself.'),
+    ]);
   }
 
   function drawAgentInstall(hand: Hand): void {
@@ -919,21 +1110,30 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       return;
     }
     agentInstall.root.style.display = '';
-    const list = el('div', 'settings-rows');
+    const list = el('div', 'st-rows');
     for (const candidate of install.candidates) {
       const picked =
         install.selection?.kind === 'path'
           ? install.selection.path === candidate.path
           : install.resolved?.path === candidate.path && !install.selection;
-      const row = el('button', 'settings-row windmill-install');
+      const row = el('button', 'st-row');
       row.type = 'button';
-      const main = el('span', 'settings-row-main');
-      main.textContent = candidate.path;
-      row.append(main);
+      const radio = el('span', 'st-radio');
+      const main = el('span', 'st-row-main');
+      const path = el('span', 'st-row-title');
+      path.style.fontFamily = 'var(--g-mono)';
+      path.style.fontSize = '14px';
+      path.textContent = candidate.path;
+      main.append(path);
+      row.append(radio, main);
       if (picked) {
         row.classList.add('picked');
-        const side = el('span', 'settings-row-side');
+        const side = el('span', 'st-tag moss');
         side.textContent = 'in use';
+        row.append(side);
+      } else {
+        const side = el('span', 'st-link');
+        side.textContent = 'use this one';
         row.append(side);
       }
       row.addEventListener('click', () => {
@@ -945,10 +1145,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       });
       list.appendChild(row);
     }
-    agentInstall.fill([
-      hintLine(`This machine has more than one ${hand.name}. Pick which one runs.`),
-      list,
-    ]);
+    agentInstall.fill([list]);
   }
 
   function drawAgents(switched = false): void {
@@ -1001,32 +1198,51 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     }
     const children: HTMLElement[] = [];
     const stale = now.worktrees.filter((one) => one.stale);
-    const list = el('div', 'settings-rows');
+    const total = now.worktrees.reduce((sum, one) => sum + (one.bytes ?? 0), 0);
+    const dirty = now.worktrees.filter((one) => one.uncommitted).length;
+    const largest = Math.max(1, ...now.worktrees.map((one) => one.bytes ?? 0));
+
+    const summary = el('div', 'st-card st-stat');
+    const stat = (value: string, said: string, tone = ''): HTMLElement => {
+      const one = el('div', '');
+      const big = el('b', tone);
+      big.textContent = value;
+      const small = el('span', '');
+      small.textContent = said;
+      one.append(big, small);
+      return one;
+    };
+    summary.append(
+      stat(
+        sized(total),
+        `in ${counted(now.worktrees.length, 'own copy').replace('copys', 'copies')}`
+      ),
+      stat(String(stale.length), 'stale, safe to clear', 'moss'),
+      stat(String(dirty), 'has uncommitted work', dirty ? 'ember' : '')
+    );
+    children.push(summary);
+
+    const list = el('div', 'st-rows');
     for (const one of now.worktrees) {
-      const row = el('div', 'settings-row settings-row-still windmill-tree');
-      const main = el('span', 'settings-row-main');
-      const title = el('span', 'settings-row-title');
+      const armedHere = clearing === one.id;
+      const row = el('div', armedHere ? 'st-tree armed' : 'st-tree');
+      const top = el('div', 'st-tree-top');
+      const title = el('span', 'st-tree-name');
       title.textContent = one.branch ?? one.path.split('/').at(-1) ?? one.path;
-      const meta = el('span', 'settings-row-meta');
+      title.title = title.textContent;
+      const meta = el('span', 'st-tree-path');
       meta.textContent = one.path.replace(/^\/Users\/[^/]+/, '~');
       meta.title = one.path;
-      main.append(title, meta);
-      if (clearing === one.id) {
-        const cost = el('span', 'windmill-tree-cost');
-        cost.textContent = costOf(one);
-        main.append(cost);
-      }
-      const side = el('span', 'windmill-tree-side');
-      const size = el('span', 'settings-row-side');
-      size.textContent = one.bytes === null ? 'measuring' : sized(one.bytes);
-      side.append(size);
+      top.append(title, meta);
       if (one.stale) {
-        const tag = el('span', 'windmill-tree-stale');
+        const tag = el('span', 'st-tag moss');
         tag.textContent = 'stale';
-        side.append(tag);
+        top.append(tag);
       }
-      const armedHere = clearing === one.id;
-      const clear = button(armedHere ? 'press again' : 'clear', 'settings-link', () => {
+      const size = el('span', 'st-tree-size');
+      size.textContent = one.bytes === null ? 'measuring' : sized(one.bytes);
+      top.append(size);
+      const clear = button(armedHere ? 'clear it' : 'clear', 'st-link', () => {
         if (!armedHere) {
           armClear(one.id);
           return;
@@ -1035,11 +1251,32 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
         void does.clear(one).then(() => drawWorktrees());
       });
       if (armedHere) {
-        clear.classList.add('settings-link-sore');
+        clear.classList.add('sore');
         stand(() => clear.click(), clear);
+      } else {
+        top.append(clear);
       }
-      side.append(clear);
-      row.append(main, side);
+      const bar = el('div', 'st-bar');
+      const fill = el('i', '');
+      fill.style.width = `${Math.round(((one.bytes ?? 0) / largest) * 100)}%`;
+      bar.append(fill);
+      row.append(top, bar);
+      if (armedHere) {
+        const cost = el('div', 'st-cost');
+        cost.append(px('warn', '#f08a72', 18));
+        const text = el('div', '');
+        const head = el('b', '');
+        head.textContent = 'this is what would go';
+        const said = el('span', '');
+        said.textContent = costOf(one).replace(/^press again — /, '');
+        text.append(head, said);
+        const acts = el('div', 'st-cost-acts');
+        const keep = button('no, keep it', 'st-link', () => armClear(null));
+        keep.style.color = 'var(--g-ink-3)';
+        acts.append(clear, keep);
+        cost.append(text, acts);
+        row.append(cost);
+      }
       list.appendChild(row);
     }
     children.push(list);
@@ -1048,7 +1285,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
         clearingAll
           ? `Press again and all ${stale.length} stale ones go`
           : `Clear every stale one (${stale.length})`,
-        'settings-button',
+        clearingAll ? 'st-pill sore' : 'st-ghost',
         () => {
           if (!clearingAll) {
             armClear('all');
@@ -1061,11 +1298,8 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
           })();
         }
       );
-      if (clearingAll) {
-        all.classList.add('settings-remove', 'armed');
-        stand(() => all.click(), all);
-      }
-      const actions = el('div', 'settings-actions');
+      if (clearingAll) stand(() => all.click(), all);
+      const actions = el('div', 'st-actions');
       actions.appendChild(all);
       children.push(actions);
     }
@@ -1079,22 +1313,27 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       return;
     }
     const one = now.machine;
-    const meters = el('div', 'windmill-meters');
-    meters.append(
-      meter('CPU', one.cpuPercent / 100, `${Math.round(one.cpuPercent)}%`),
-      meter(
+    const dials = el('div', 'st-dials');
+    dials.append(
+      dial('CPU', `${Math.round(one.cpuPercent)}`, '%', one.cpuPercent / 100, 'moss', true),
+      dial(
         'Memory',
+        gbOf(one.memUsedBytes),
+        `gb of ${gbOf(one.memTotalBytes)}`,
         one.memTotalBytes ? one.memUsedBytes / one.memTotalBytes : 0,
-        `${sized(one.memUsedBytes)} of ${sized(one.memTotalBytes)}`,
+        '',
         false
       ),
-      meter(
+      dial(
         'Disk',
+        gbOf(one.diskUsedBytes),
+        `gb of ${gbOf(one.diskTotalBytes)}`,
         one.diskTotalBytes ? one.diskUsedBytes / one.diskTotalBytes : 0,
-        `${sized(one.diskUsedBytes)} of ${sized(one.diskTotalBytes)}`
+        'pale',
+        true
       )
     );
-    spend.fill([meters]);
+    spend.fill([dials]);
   }
 
   function drawFive(): void {
@@ -1114,9 +1353,17 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       shares.fill([hintLine('No session is open.')]);
       return;
     }
-    const list = el('div', 'settings-rows');
-    for (const session of now.sessions) list.appendChild(drawSessionUsage(session));
-    shares.fill([list]);
+    const card = el('div', 'st-card');
+    const headRow = el('div', 'st-share st-th-row');
+    for (const said of ['session', 'cpu', 'mem', 'dev']) {
+      const cell = el('span', said === 'session' ? '' : 'num');
+      cell.textContent = said;
+      if (said === 'session') headRow.append(cell, el('span', ''), el('span', ''));
+      else headRow.append(cell);
+    }
+    headRow.style.gridTemplateColumns = '1fr 190px 52px 60px 64px 34px';
+    card.append(...now.sessions.map(drawSessionUsage));
+    shares.fill([card]);
   }
 
   /* The five hours: the subscription's own window, drawn as the strip of
@@ -1131,40 +1378,58 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       return out;
     }
     const at = Date.now();
-    out.push(drawWindow(window, at, FIVE_HOURS_MS, five.lately));
+    const twin = el('div', 'st-twin');
+    const card = el('div', 'st-win-card');
+    const top = el('div', 'st-win-top');
+    const lab = el('span', 'g-pix');
+    lab.textContent = 'the five hours';
+    top.appendChild(lab);
     const line = windowLine(five, at);
+    if (five.lately !== null && five.lately > 1.5) {
+      const tag = el('span', 'st-tag ember');
+      tag.textContent = `${five.lately.toFixed(1)}× its pace`;
+      top.appendChild(tag);
+    }
+    const foot = el('div', 'st-win-foot');
     if (line) {
-      const said = hintLine(line.said.replace(/^five hours: /, ''));
-      if (line.tone !== 'quiet') said.classList.add(`windmill-five-${line.tone}`);
-      out.push(said);
+      foot.textContent = line.said.replace(/^five hours: /, '');
+      if (line.tone !== 'quiet') foot.classList.add('warn');
     }
-    if (five.lately !== null && (five.lately > 1.5 || five.lately < 0.5)) {
-      out.push(
-        hintLine(
-          five.lately > 1.5
-            ? `The last twenty minutes have run ${five.lately.toFixed(1)}× the window's own pace.`
-            : 'The last twenty minutes have been quieter than the window as a whole.'
-        )
-      );
-    }
+    card.append(top, drawWindow(window, at, FIVE_HOURS_MS, five.lately), foot);
+    twin.appendChild(card);
     const week = five.reading?.sevenDay;
     if (week) {
+      const weekCard = el('div', 'st-win-card');
+      const weekTop = el('div', 'st-win-top');
+      const weekLab = el('span', 'g-pix');
+      weekLab.textContent = 'the week';
+      weekTop.appendChild(weekLab);
       const weekly = drawWindow(week, at, SEVEN_DAYS_MS, null);
-      weekly.classList.add('windmill-five-week');
-      out.push(weekly);
-      out.push(
-        hintLine(
-          `The week: ${Math.round(week.utilization * 100)}% used, resets ${clockOf(week.resetsAt, at)}.`
-        )
-      );
+      weekly.classList.add('week');
+      const weekFoot = el('div', 'st-win-foot');
+      const used = el('span', '');
+      used.innerHTML = `<b>${Math.round(week.utilization * 100)}%</b> used`;
+      const resets = el('span', '');
+      resets.textContent = `resets ${clockOf(week.resetsAt, at)}`;
+      weekFoot.append(used, resets);
+      weekCard.append(weekTop, weekly, weekFoot);
+      twin.appendChild(weekCard);
     }
+    out.push(twin);
     if (five.reading && at - five.reading.at > 10 * 60_000) {
       out.push(hintLine(`Last read ${spanOf(at - five.reading.at)} ago.`));
     }
     if (five.sessions.length) {
-      out.push(hintLine('Who spent it, this window:'));
       const most = Math.max(...five.sessions.map((one) => one.share));
-      const list = el('div', 'settings-rows');
+      const list = el('div', 'st-card');
+      const heads = el('div', 'st-share st-th-row');
+      heads.style.gridTemplateColumns = '1fr 190px 52px';
+      for (const said of ['who spent this window', '', 'share']) {
+        const cell = el('span', said === 'share' ? 'num' : '');
+        cell.textContent = said;
+        heads.appendChild(cell);
+      }
+      list.appendChild(heads);
       for (const session of five.sessions.slice(0, 12)) {
         list.appendChild(drawShare(session, most, at));
       }
@@ -1179,7 +1444,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     span: number,
     lately: number | null
   ): HTMLElement {
-    const strip = el('div', 'windmill-five-strip');
+    const strip = el('div', 'st-strip');
     const cells = 40;
     const start = window.resetsAt - span;
     const through = Math.min(1, Math.max(0, (at - start) / span));
@@ -1187,7 +1452,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
     const spent = Math.min(1, Math.max(0, window.utilization));
     const outAt = out === null ? null : Math.min(1, Math.max(0, (out - start) / span));
     for (let i = 0; i < cells; i += 1) {
-      const cell = el('div', 'windmill-five-cell');
+      const cell = el('i', '');
       const from = i / cells;
       if (from < spent) cell.classList.add('spent');
       if (from < through && from + 1 / cells >= through) cell.classList.add('now');
@@ -1200,48 +1465,56 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   }
 
   function drawShare(session: SessionShare, most: number, at: number): HTMLElement {
-    const row = el('div', 'settings-row settings-row-still windmill-share');
-    const main = el('span', 'settings-row-main');
-    const title = el('span', 'settings-row-title');
+    const row = el('div', 'st-share');
+    row.style.gridTemplateColumns = '1fr 190px 52px';
+    const name = el('div', 'st-share-name');
+    const title = el('b', '');
     title.textContent = session.where ? `${session.title} · ${session.where}` : session.title;
-    const bar = el('div', 'windmill-five-bar');
-    const fill = el('div', 'windmill-five-fill');
-    fill.style.width = `${Math.round((most > 0 ? session.share / most : 0) * 100)}%`;
-    bar.append(fill);
-    const meta = el('span', 'settings-row-meta');
+    const meta = el('span', '');
     meta.textContent = [
       `${counted(session.calls, 'call')}`,
       `${tokensOf(session.context)} re-read each call`,
       ...(session.screenshots ? [`${counted(session.screenshots, 'picture')}`] : []),
       `last ${spanOf(at - session.lastAt)} ago`,
     ].join(' · ');
-    main.append(title, bar, meta);
+    name.append(title, meta);
     if (session.context >= 150_000) {
-      const heavy = el('span', 'settings-row-meta windmill-five-warn');
+      const heavy = el('span', '');
+      heavy.style.color = 'var(--g-sore)';
       heavy.textContent =
         'Heavy: every call re-reads the whole conversation, and this one is long.';
-      main.append(heavy);
+      name.append(heavy);
     }
-    const side = el('span', 'settings-row-side');
+    const bar = el('div', 'st-cells');
+    bar.style.marginTop = '0';
+    const lit = Math.round((most > 0 ? session.share / most : 0) * 20);
+    for (let i = 0; i < 20; i += 1) bar.appendChild(el('i', i < lit ? 'f' : ''));
+    const side = el('span', 'num');
     side.textContent = `${Math.round(session.share * 100)}%`;
-    row.append(main, side);
+    row.append(name, bar, side);
     return row;
   }
 
   function drawSessionUsage(session: SessionUsage): HTMLElement {
-    const row = el('div', 'settings-row settings-row-still');
-    const main = el('span', 'settings-row-main');
-    const title = el('span', 'settings-row-title');
+    const row = el('div', 'st-share');
+    row.style.gridTemplateColumns = '1fr 64px 80px 40px';
+    const name = el('div', 'st-share-name');
+    const title = el('b', '');
     title.textContent = session.title;
-    main.append(title);
-    const parts = session.shares.map(
-      (share) => `${share.label}: cpu ${Math.round(share.cpuPercent)}%, ${sized(share.memBytes)}`
-    );
-    if (session.devServers) parts.push(`${counted(session.devServers, 'dev server')} listening`);
-    const meta = el('span', 'settings-row-meta');
-    meta.textContent = parts.length ? parts.join(' · ') : 'nothing this machine could measure';
-    main.append(meta);
-    row.append(main);
+    const meta = el('span', '');
+    meta.textContent = session.shares.length
+      ? session.shares.map((share) => share.label).join(' · ')
+      : 'nothing this machine could measure';
+    name.append(title, meta);
+    const cpu = session.shares.reduce((sum, share) => sum + share.cpuPercent, 0);
+    const mem = session.shares.reduce((sum, share) => sum + share.memBytes, 0);
+    const cpuCell = el('span', 'num');
+    cpuCell.textContent = session.shares.length ? `${Math.round(cpu)}%` : '—';
+    const memCell = el('span', 'num');
+    memCell.textContent = session.shares.length ? sized(mem) : '—';
+    const devCell = el('span', 'num');
+    devCell.textContent = session.devServers ? String(session.devServers) : '—';
+    row.append(name, cpuCell, memCell, devCell);
     return row;
   }
 
@@ -1330,38 +1603,33 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   };
 }
 
-const CHECKOUTS = 'How a session’s own copy is named and where new things are put.';
-
-const TERMINAL = 'Every real shell the board opens next, in any project.';
-
-const KEYS =
-  'Every doing held with command. Press a chord, then press the key it should be instead.';
-
-const AGENTS =
-  'What this machine hands each agent’s own CLI beyond its ordinary command, in every project.';
-
-const JIRA =
-  'The Jira sites this Mac is connected to, each with its own email and API token. Each project picks its own board from them, off the blue token on the rack.';
-
-const DISK =
-  'Every own copy Mender has cut on this machine that no session is standing in. Stale means its branch is already upstream, or nothing points at it any more.';
-
-/** One of this machine's figures as a bar, so how full it is reads at a look.
-    Memory never warns: macOS keeps it nearly full with cache on purpose. */
-function meter(label: string, full: number, said: string, warns = true): HTMLElement {
-  const row = el('div', 'windmill-meter');
-  const name = el('span', 'windmill-meter-name');
+/** One of this machine's figures as a big number over a strip of cells. */
+function dial(
+  label: string,
+  value: string,
+  unit: string,
+  full: number,
+  tone: string,
+  warns: boolean
+): HTMLElement {
+  const card = el('div', 'st-dial');
+  const name = el('span', 'g-pix');
   name.textContent = label;
-  const bar = el('div', 'windmill-meter-bar');
-  const fill = el('div', 'windmill-meter-fill');
+  const big = el('div', 'st-big');
+  big.textContent = value;
+  const small = el('small', '');
+  small.textContent = unit;
+  big.appendChild(small);
   const part = Math.min(1, Math.max(0, full));
-  fill.style.width = `${Math.round(part * 100)}%`;
-  if (warns && part > 0.9) fill.classList.add('sore');
-  bar.append(fill);
-  const value = el('span', 'windmill-meter-said');
-  value.textContent = said;
-  row.append(name, bar, value);
-  return row;
+  const cells = el('div', `st-cells${warns && part > 0.9 ? ' sore' : tone ? ` ${tone}` : ''}`);
+  const lit = Math.round(part * 14);
+  for (let i = 0; i < 14; i += 1) cells.appendChild(el('i', i < lit ? 'f' : ''));
+  card.append(name, big, cells);
+  return card;
+}
+
+function gbOf(bytes: number): string {
+  return (bytes / (1024 * 1024 * 1024)).toFixed(1);
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -1404,6 +1672,11 @@ function costOf(one: WorktreeRow): string {
   }
   const also = losing ? `, and loses ${losing}` : '';
   return `press again — frees ${size}${also}, and the branch that is already upstream`;
+}
+
+/** A chord as one cap per key: ⇧⌘K is shift, command and K. */
+function capsOf(label: string): string[] {
+  return label.split('');
 }
 
 /** How much room something takes, in plain words. */

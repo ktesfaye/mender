@@ -4,11 +4,14 @@
  * A checkout can arrive three ways — one already on disk, one that only
  * exists somewhere else and has to be cloned, or one that does not exist yet
  * anywhere. The native folder picker has always covered the first. This is
- * the signboard that offers all three: hung on two cords over the island the
- * way the new-session sign is, one tile for each way in, and turned over to
- * one box to write in when the way picked needs an address or a name.
+ * the glass that offers all three, laid over the island: one tile for each
+ * way in, and one box to write in when the way picked needs an address or a name.
  */
 
+import { glaze } from '../glass/glass';
+import { ISLAND_LOOK } from '../glass/island-look';
+import '../glass/island.css';
+import { px } from '../glass/px';
 import { cutOf, sprite } from './sprite';
 import { ask } from './standing';
 
@@ -28,238 +31,231 @@ export interface Founding {
   close(): void;
 }
 
-const ON = { bg: '#e0b56a', fg: '#482510', bd: '#482510', sh: '3px 3px 0 rgba(0,0,0,.45)' };
-const OFF = { bg: '#3a2712', fg: '#d9c49a', bd: '#3a2712', sh: 'none' };
-
 const FOLDER = 'props/TX Village Props - Crate 01 A.png';
 const CLONE = 'props/TX Village Props - Cart 01 E.png';
 const CREATE = 'props/TX Village Props - Flower Pot 03.png';
 
 export function openFounding(does: FoundingDoings): Founding {
-  const scrim = el('div', {
-    position: 'fixed',
-    inset: '0',
-    zIndex: '50',
-    background: 'rgba(12,8,4,.62)',
-    fontFamily: "'Josefin Sans', sans-serif",
-  });
-  const hang = el('div', {
-    position: 'absolute',
-    left: '50%',
-    top: '40px',
-    transform: 'translateX(-50%)',
-    width: '560px',
-    maxWidth: 'calc(100vw - 32px)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-  });
-  hang.setAttribute('role', 'dialog');
-  hang.setAttribute('aria-modal', 'true');
-  const cords = el('div', { display: 'flex', justifyContent: 'space-between', width: '340px' });
-  for (let i = 0; i < 2; i++) {
-    cords.append(el('span', { width: '4px', height: '28px', background: '#6b5a40' }));
-  }
-  const board = el('div', {
-    alignSelf: 'stretch',
-    background: '#2e1f10',
-    border: '2px solid #482510',
-    boxShadow: '6px 6px 0 rgba(0,0,0,.45)',
-    color: '#f4e3c0',
-  });
-  const head = el('div', {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '4px',
-    padding: '18px 20px 16px',
-    background: '#5a3a1c',
-    borderBottom: '2px solid #3a2712',
-    boxShadow: 'inset 0 -4px 0 #3a2712',
-  });
-  const title = text('span', '', {
-    fontSize: '22px',
-    letterSpacing: '.28em',
-    textTransform: 'uppercase',
-    fontWeight: '600',
-  });
-  const under = text('span', '', { fontSize: '14px', color: '#d9c49a' });
-  head.append(title, under);
-  const body = el('div', { display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px' });
-  const foot = el('div', {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '10px',
-    padding: '14px 20px',
-    borderTop: '2px solid #3a2712',
-    background: '#241810',
-  });
-  board.append(head, body, foot);
-  hang.append(cords, board);
-  scrim.append(hang);
+  const scrim = el('div', {});
+  scrim.className = 'i-found-scrim';
+  const board = el('div', {});
+  board.className = 'i-found';
+  board.setAttribute('role', 'dialog');
+  board.setAttribute('aria-modal', 'true');
+  glaze(board, ISLAND_LOOK);
+  scrim.append(board);
 
   let downOutside = false;
   scrim.addEventListener('pointerdown', (event) => {
-    downOutside = event.target === scrim || event.target === hang;
+    downOutside = event.target === scrim;
   });
   scrim.addEventListener('click', (event) => {
-    if (downOutside && (event.target === scrim || event.target === hang)) close();
+    if (downOutside && event.target === scrim) close();
     downOutside = false;
   });
 
   document.body.appendChild(scrim);
-  scrim.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
-  hang.animate(
+  board.animate(
     [
-      { transform: 'translate(-50%, -24px)', opacity: 0 },
+      { transform: 'translate(-50%, -14px)', opacity: 0 },
       { transform: 'translate(-50%, 0)', opacity: 1 },
     ],
-    { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' }
+    { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' }
   );
 
-  /* What is asked: the three ways in, or one of the two questions a choice
-     opened. Kept as a tag rather than three booleans so drawing it is one
-     switch instead of a pile of ifs. */
+  /* What is asked: the three ways in, or the one a choice opened. Kept as a
+     tag rather than booleans so drawing it is one switch. */
   type Asking = { kind: 'which' } | { kind: 'clone' } | { kind: 'create'; private: boolean };
   let asking: Asking = { kind: 'which' };
+  let written = '';
 
-  const tile = (file: string, words: string, on: boolean, does: () => void) => {
-    const look = on ? ON : OFF;
-    const face = el('div', {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: '8px',
-      padding: '14px 8px 12px',
-      textAlign: 'center',
-      cursor: 'pointer',
-      border: `2px solid ${look.bd}`,
-      background: look.bg,
-      color: look.fg,
-      boxShadow: look.sh,
-    });
-    const well = el('div', {
-      width: '96px',
-      height: '56px',
-      display: 'flex',
-      alignItems: 'flex-end',
-      justifyContent: 'center',
-    });
+  /* What Return means on the page showing: nothing while it is asking which
+     of three, and making it once it is asking for an address or a name. */
+  let yes: (() => void) | null = null;
+
+  const tile = (file: string, name: string, about: string, hot: boolean, press: () => void) => {
+    const face = el('div', {});
+    face.className = hot ? 'i-bigtile i-hot' : 'i-bigtile';
+    const art = el('div', {});
+    art.className = 'i-art';
     /* The kit's props are drawn at their own sizes, a cart several crates
        long, so each is scaled by whole pixels to fit the same well. */
     const cut = cutOf(file);
-    const fit = cut ? Math.floor(Math.min(56 / cut.h, 96 / cut.w)) : 1;
-    well.append(sprite(file, Math.max(1, Math.min(4, fit)) as 1 | 2 | 3 | 4));
-    face.append(well, text('span', words, { fontSize: '14px', lineHeight: '1.3' }));
-    face.addEventListener('mouseenter', () => {
-      if (!on) face.style.borderColor = '#6b5a40';
+    const fit = cut ? Math.floor(Math.min(56 / cut.h, 120 / cut.w)) : 1;
+    const times = Math.max(1, Math.min(4, fit)) as 1 | 2 | 3 | 4;
+    const holder = el('div', {
+      width: `${(cut?.w ?? 16) * times}px`,
+      height: `${(cut?.h ?? 16) * times}px`,
     });
-    face.addEventListener('mouseleave', () => {
-      if (!on) face.style.borderColor = look.bd;
-    });
-    face.addEventListener('click', does);
+    holder.append(sprite(file, times));
+    art.append(holder);
+    face.append(art, text('b', name), text('span', about));
+    face.addEventListener('click', press);
     return face;
   };
 
-  const plank = (words: string, gold: boolean, does: () => void): HTMLElement => {
-    const made = text('span', words, {
-      cursor: 'pointer',
-      padding: '8px 16px',
-      fontSize: '14px',
-      fontWeight: gold ? '600' : '400',
-      color: gold ? '#482510' : '#d9c49a',
-      border: `2px solid ${gold ? '#482510' : '#3a2712'}`,
-      background: gold ? '#e0b56a' : '#5a3a1c',
-      boxShadow: gold ? '3px 3px 0 rgba(0,0,0,.45)' : 'none',
-    });
-    if (gold) {
-      made.addEventListener('pointerdown', () => {
-        made.style.transform = 'translate(2px,2px)';
-        made.style.boxShadow = '1px 1px 0 rgba(0,0,0,.45)';
-      });
-      const lift = (): void => {
-        made.style.transform = '';
-        made.style.boxShadow = '3px 3px 0 rgba(0,0,0,.45)';
-      };
-      made.addEventListener('pointerup', lift);
-      made.addEventListener('pointerleave', lift);
-    }
-    made.addEventListener('click', does);
+  const ghost = (words: string, press: () => void): HTMLElement => {
+    const made = text('span', words);
+    made.className = 'g-ghost';
+    made.addEventListener('mousedown', (event) => event.preventDefault());
+    made.addEventListener('click', press);
+    return made;
+  };
+
+  const pill = (sign: string, words: string, press: () => void): HTMLElement => {
+    const made = el('span', {});
+    made.className = 'g-pill';
+    made.append(px(sign, '#2a1b09', 14), document.createTextNode(words));
+    made.addEventListener('mousedown', (event) => event.preventDefault());
+    made.addEventListener('click', press);
     return made;
   };
 
   const field = (placeholder: string, value: string): HTMLInputElement => {
     const input = document.createElement('input');
+    input.className = 'i-line';
     input.spellcheck = false;
     input.placeholder = placeholder;
     input.value = value;
-    Object.assign(input.style, {
-      fontFamily: "'Josefin Sans', sans-serif",
-      fontSize: '15px',
-      lineHeight: '1.5',
-      padding: '12px',
-      background: '#1d1811',
-      color: '#f4e3c0',
-      border: '2px solid #3a2712',
-      boxShadow: 'inset 0 4px 0 #120e09',
-      outline: 'none',
-    } satisfies Partial<CSSStyleDeclaration>);
     return input;
   };
 
-  /* What Return means on the page showing: nothing while it is asking which
-     of three, and making it once it is asking for an address or a name. */
-  let yes: (() => void) | null = null;
+  const asked = (label: string, input: HTMLElement): HTMLElement => {
+    const wrap = el('div', {});
+    const words = text('div', label);
+    words.className = 'g-pix i-lab';
+    wrap.append(words, input);
+    return wrap;
+  };
+
+  const chip = (sign: string, tint: string, words: string): HTMLElement => {
+    const made = el('span', {});
+    made.className = 'g-chip';
+    made.append(px(sign, tint, 12), document.createTextNode(words));
+    return made;
+  };
 
   const goBack = (): void => {
     asking = { kind: 'which' };
     draw();
   };
 
-  function drawWhich(): void {
-    title.textContent = 'Found a project';
-    under.textContent = 'where does its checkout come from?';
-    const tiles = el('div', {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(3,minmax(0,1fr))',
-      gap: '8px',
-    });
-    tiles.append(
-      tile(FOLDER, 'a folder on disk', false, () => {
+  function draw(): void {
+    const close_ = el('div', {});
+    close_.className = 'g-x';
+    close_.textContent = '×';
+    close_.addEventListener('click', () => close());
+    const crumbs = el('div', {});
+    crumbs.className = 'g-crumbs';
+    crumbs.append(
+      Object.assign(el('span', {}), { className: 'g-gold', textContent: 'the island' }),
+      Object.assign(el('span', {}), { className: 'g-faint', textContent: '›' }),
+      Object.assign(el('span', {}), { className: 'g-mute', textContent: 'the campfire' })
+    );
+    crumbs.firstElementChild?.addEventListener('click', () => close());
+    const title = text('h1', 'where does its checkout come from?');
+    title.className = 'g-serif';
+    const sub = text(
+      'div',
+      'three ways in. whichever it is, it lands as a fresh district with its settings open.'
+    );
+    sub.className = 'i-sub';
+
+    const grid = el('div', {});
+    grid.className = 'i-grid';
+    grid.append(
+      tile(FOLDER, 'a folder on disk', 'pick one you already have', false, () => {
         does.folder();
         close();
       }),
-      tile(CLONE, 'clone a repository', false, () => {
+      tile(CLONE, 'clone one', 'bring it down from an address', asking.kind === 'clone', () => {
         asking = { kind: 'clone' };
         draw();
       }),
-      tile(CREATE, 'start a new one', false, () => {
-        asking = { kind: 'create', private: true };
-        draw();
-      })
+      tile(
+        CREATE,
+        'start a new one',
+        'made for real, then cloned back down',
+        asking.kind === 'create',
+        () => {
+          asking = { kind: 'create', private: true };
+          draw();
+        }
+      )
     );
-    body.replaceChildren(tiles);
-    foot.replaceChildren(plank('cancel', false, () => close()));
+
+    const parts: HTMLElement[] = [close_, crumbs, title, sub, grid];
+    const foot = el('div', {});
+    foot.className = 'i-fnd-ft';
     yes = null;
+    let focus: HTMLInputElement | null = null;
+
+    if (asking.kind === 'clone') {
+      const input = field('git@github.com:owner/repo.git', written);
+      const go = (): void => {
+        if (!input.value.trim()) return input.focus();
+        does.clone(input.value.trim());
+        close();
+      };
+      wire(input, go);
+      const form = el('div', {});
+      form.className = 'g-card i-form';
+      const row = el('div', {});
+      row.className = 'i-f1 i-one';
+      row.append(asked('where is it?', input));
+      form.append(row);
+      parts.push(form);
+      foot.append(ghost('back', goBack), pill('plus', 'clone it', go));
+      yes = go;
+      focus = input;
+    } else if (asking.kind === 'create') {
+      const state = asking;
+      const input = field('owner/repo, or just a name', written);
+      const go = (): void => {
+        if (!input.value.trim()) return input.focus();
+        does.create(input.value.trim(), state.private);
+        close();
+      };
+      wire(input, go);
+      const flip = (to: boolean) => () => {
+        asking = { kind: 'create', private: to };
+        draw();
+      };
+      const side = (on: boolean, sign: string, name: string, press: () => void): HTMLElement => {
+        const made = el('div', {});
+        made.className = on ? 'i-segon' : '';
+        made.append(px(sign, on ? '#2a1b09' : '#f2c66d', 14), document.createTextNode(name));
+        if (!on) made.addEventListener('click', press);
+        return made;
+      };
+      const seg = el('div', {});
+      seg.className = 'i-seg';
+      seg.append(
+        side(state.private, 'lock', 'private', flip(true)),
+        side(!state.private, 'globe', 'public', flip(false))
+      );
+      const form = el('div', {});
+      form.className = 'g-card i-form';
+      const row = el('div', {});
+      row.className = 'i-f1';
+      row.append(asked('its name', input), asked('who can see it', seg));
+      const how = el('div', {});
+      how.className = 'i-how';
+      how.append(chip('merge', '#7aaaff', 'made on github, then cloned back down'));
+      form.append(row, how);
+      parts.push(form);
+      foot.append(ghost('back', goBack), pill('plus', 'start it', go));
+      yes = go;
+      focus = input;
+    } else {
+      foot.append(ghost('cancel', () => close()));
+    }
+    parts.push(foot);
+    board.replaceChildren(...parts);
+    focus?.focus();
   }
 
-  function asked(label: string, input: HTMLInputElement): HTMLElement {
-    const wrap = el('div', { display: 'flex', flexDirection: 'column', gap: '6px' });
-    wrap.append(text('span', label, { fontSize: '15px', color: '#d9c49a' }), input);
-    return wrap;
-  }
-
-  let written = '';
-
-  function drawClone(): void {
-    title.textContent = 'Clone a repository';
-    under.textContent = 'it is copied down and moves in';
-    const input = field('git@github.com:owner/repo.git', written);
-    const go = (): void => {
-      if (!input.value.trim()) return input.focus();
-      does.clone(input.value.trim());
-      close();
-    };
+  function wire(input: HTMLInputElement, go: () => void): void {
     input.addEventListener('input', () => (written = input.value));
     input.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
@@ -267,74 +263,6 @@ export function openFounding(does: FoundingDoings): Founding {
         go();
       }
     });
-    body.replaceChildren(asked('where is it?', input));
-    foot.replaceChildren(plank('back', false, goBack), plank('clone it', true, go));
-    yes = go;
-    input.focus();
-  }
-
-  function drawCreate(): void {
-    if (asking.kind !== 'create') return;
-    const state = asking;
-    title.textContent = 'Start a new one';
-    under.textContent = 'made on GitHub, then cloned straight back down';
-    const input = field('owner/repo, or just a name', written);
-    const go = (): void => {
-      if (!input.value.trim()) return input.focus();
-      does.create(input.value.trim(), state.private);
-      close();
-    };
-    input.addEventListener('input', () => (written = input.value));
-    input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        go();
-      }
-    });
-    const flip = (to: boolean) => () => {
-      asking = { kind: 'create', private: to };
-      draw();
-    };
-    const sides = el('div', {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(2,minmax(0,1fr))',
-      gap: '8px',
-    });
-    sides.append(
-      side('private', 'only you can see it', state.private, flip(true)),
-      side('public', 'anyone can see it', !state.private, flip(false))
-    );
-    body.replaceChildren(asked('what is it called?', input), sides);
-    foot.replaceChildren(plank('back', false, goBack), plank('start it', true, go));
-    yes = go;
-    input.focus();
-  }
-
-  function side(name: string, about: string, on: boolean, does: () => void): HTMLElement {
-    const look = on ? ON : OFF;
-    const face = el('div', {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '2px',
-      padding: '10px 12px',
-      cursor: 'pointer',
-      border: `2px solid ${look.bd}`,
-      background: look.bg,
-      color: look.fg,
-      boxShadow: look.sh,
-    });
-    face.append(
-      text('span', name, { fontSize: '14px', fontWeight: '600' }),
-      text('span', about, { fontSize: '12px', opacity: '.8' })
-    );
-    face.addEventListener('click', does);
-    return face;
-  }
-
-  function draw(): void {
-    if (asking.kind === 'which') drawWhich();
-    else if (asking.kind === 'clone') drawClone();
-    else drawCreate();
   }
 
   draw();
@@ -369,8 +297,8 @@ function el(tag: string, style: Partial<CSSStyleDeclaration>): HTMLElement {
   return made;
 }
 
-function text(tag: string, words: string, style: Partial<CSSStyleDeclaration>): HTMLElement {
-  const made = el(tag, style);
+function text(tag: string, words: string): HTMLElement {
+  const made = el(tag, {});
   made.textContent = words;
   return made;
 }

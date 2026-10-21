@@ -19,7 +19,8 @@
 import type { Row } from '../board/row';
 import { pressing, trail as trailOf } from './press';
 import { makeRows, type Written } from './rows';
-import { box, exact, rule } from './write';
+import { box, exact } from './write';
+import { glaze } from '../glass/glass';
 
 export interface Reading {
   /** The way home, outermost first, ending in where you are. */
@@ -55,28 +56,38 @@ export interface Scrim {
 }
 
 export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim {
-  const root = box({}, WASH);
+  const root = glaze(box({}, PANE));
   root.dataset.sheet = 'yes';
+  /* A board drawn rather than written marks what can be pressed with
+     data-pick, and pressing it is the same as pressing a row that says so. */
+  root.addEventListener('click', (e) => {
+    const at = (e.target as HTMLElement).closest<HTMLElement>('[data-pick]');
+    if (!at || !root.contains(at)) return;
+    e.stopPropagation();
+    press(at.dataset.pick ?? '');
+  });
   root.style.display = 'none';
   at.appendChild(root);
 
   const head = box({}, HEAD);
   head.style.position = 'relative';
-  head.style.padding = '20px 32px 0';
+  head.style.padding = '24px 74px 0 32px';
   root.appendChild(head);
   const way = box({}, 'position:relative');
   const meta = box({}, 'position:relative');
   /* Escape and a click off it were the only ways out, and neither can be
      seen. The way out is written where anybody looks for it. */
-  const shut = pressing('close ✕', () => press('close'));
-  shut.style.cssText += "font-family:'Courier Prime',monospace;font-size:13px";
+  const shut = document.createElement('div');
+  shut.className = 'g-x';
+  shut.textContent = '×';
+  shut.addEventListener('click', (e) => {
+    e.stopPropagation();
+    press('close');
+  });
   const right = box({}, 'position:relative;display:flex;align-items:baseline;gap:24px');
-  right.append(meta, shut);
+  right.append(meta);
   head.append(way, right);
-  const across = rule({ left: 32, right: 32, height: 2 });
-  across.style.position = 'relative';
-  across.style.margin = '12px 0 0';
-  root.appendChild(across);
+  root.appendChild(shut);
 
   /* The writing scrolls and the chrome above it does not, which is why they
      are two boxes rather than one. */
@@ -135,6 +146,9 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
       const was = showing;
       showing = Boolean(reading);
       root.style.display = reading ? 'flex' : 'none';
+      /* Glass shows what is under it, so a slash menu left open on the line
+         would read through the board; it stands down while one is up. */
+      document.body.toggleAttribute('data-board-up', showing);
       if (!reading) return;
       /* It steps in from the top the first time it comes up, and after that a
          change of what is on it is a cut: only the trail moves, because you
@@ -204,17 +218,20 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
       under.scrollTop += by;
       return true;
     },
-    close: () => root.remove(),
+    close: () => {
+      document.body.removeAttribute('data-board-up');
+      root.remove();
+    },
   };
 }
 
-const WASH = [
+/* Lantern glass, not the flat brown wash it replaced: the yard stays lit
+   behind it and the glass bends it, which is what sets the board apart. */
+const PANE = [
   'position:absolute',
   'display:flex',
   'flex-direction:column',
-  /* Flat, not blurred. Nothing in this art is blurred, and a frosted panel
-     over a pixel village reads as a screenshot of a different program. */
-  'background:rgba(72,37,16,.72)',
+  'border-radius:30px',
   'pointer-events:auto',
   'overflow:hidden',
 ].join(';');

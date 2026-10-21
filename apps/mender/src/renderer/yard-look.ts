@@ -32,7 +32,7 @@ import { districtBounds, Ground } from './village/ground';
 import { loadKit } from './village/kit';
 import { buildScene } from './village/scene';
 import { dim, makeLayer } from './yard/frame';
-import { richSample, SAMPLE } from './yard/sample';
+import { askSample, richSample, SAMPLE } from './yard/sample';
 import { makeShelf } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
 import { makeYard } from './yard/yard';
@@ -128,11 +128,13 @@ async function boot(): Promise<void> {
   const query = new URLSearchParams(location.search);
   const bare = query.has('bare');
   yard.show(
-    query.has('rich')
-      ? richSample(query.has('live'))
-      : bare && SAMPLE.session
-        ? { ...SAMPLE, session: { ...SAMPLE.session, plan: [], made: [] } }
-        : SAMPLE
+    query.has('ask') || query.has('limit')
+      ? askSample(query.get('ask') ?? (query.has('armed') ? 'limit-armed' : 'limit'))
+      : query.has('rich')
+        ? richSample(query.has('live'))
+        : bare && SAMPLE.session
+          ? { ...SAMPLE, session: { ...SAMPLE.session, plan: [], made: [] } }
+          : SAMPLE
   );
   yard.line.take();
 

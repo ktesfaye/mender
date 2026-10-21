@@ -1,8 +1,22 @@
 import type { FileContentModel } from '@emdash/core/runtimes/files/api';
 import type { BlameHunk } from '@emdash/core/runtimes/git/api';
+import {
+  chip,
+  code,
+  cursor,
+  danger,
+  dom,
+  ghost,
+  h,
+  head,
+  pressable,
+  sign,
+  writing,
+} from '../glass/read';
+import { makeRows } from '../yard/rows';
 import { parseCSV } from './csv';
 import type { Row } from './row';
-import { columned, saying } from './writing';
+import { columned } from './writing';
 
 /**
  * A file, on the wood.
@@ -40,209 +54,226 @@ export interface Read {
 }
 
 export function read(state: Read): Row[] {
-  const rows: Row[] = [{ kind: 'title', text: name(state.path) }, ...where(state.path)];
   const content = state.content;
+  const rows: Row[] = [];
+  const top = (extra: HTMLElement[] = []): void => {
+    rows.push(dom(head({ title: name(state.path), sub: [state.path, ...extra] })));
+  };
 
   switch (content.kind) {
     case 'binary':
       if (state.picture) {
-        rows.push(
-          {
-            kind: 'picture',
-            src: state.picture.src,
-            wide: state.picture.wide,
-            tall: state.picture.tall,
-          },
-          { kind: 'line', text: sized(content.byteSize), tone: 'faded' }
-        );
+        top([chip('picture')]);
+        rows.push(dom(tools(state, { kind: 'picture' })));
+        const box = h('div', 'gr-pic');
+        const img = h('img');
+        img.src = state.picture.src;
+        img.width = state.picture.wide;
+        img.height = state.picture.tall;
+        img.style.imageRendering =
+          Math.max(state.picture.wide, state.picture.tall) <= 256 ? 'pixelated' : 'auto';
+        box.append(img, h('span', 'g-faint', sized(content.byteSize)));
+        rows.push(dom(box));
         return rows;
       }
+      top([chip(sized(content.byteSize))]);
+      rows.push(dom(tools(state, { kind: 'other' })), { kind: 'gap' });
       rows.push({ kind: 'line', text: notWriting(content.byteSize), tone: 'faded' });
-      return [...rows, ...openProperly(state)];
+      return rows;
     case 'too-large':
+      top([chip(sized(content.byteSize))]);
+      rows.push(dom(tools(state, { kind: 'other' })), { kind: 'gap' });
       rows.push({
         kind: 'line',
         text: `${sized(content.byteSize)}, which is more than a board will hold.`,
         tone: 'faded',
       });
-      return [...rows, ...openProperly(state)];
+      return rows;
     case 'unavailable':
-      rows.push({ kind: 'line', text: missing(content.code), tone: 'sore' });
+      top();
+      rows.push({ kind: 'gap' }, { kind: 'line', text: missing(content.code), tone: 'sore' });
       return rows;
   }
 
   const lines = content.content.split('\n');
   // A file ending in a newline has no empty last line; it has an end.
   if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  const readonly = content.readonly;
+  const kind = isMarkdown(state.path) ? 'md' : isCSV(state.path) ? 'csv' : 'text';
 
-  if (state.blame) return [...rows, ...whose(state.blame, lines)];
+  top([
+    chip(languageOf(state.path)),
+    chip(lines.length === 1 ? '1 line' : `${lines.length} lines`),
+    ...(readonly ? [chip('nothing here can change it')] : []),
+  ]);
+  rows.push(dom(tools(state, { kind, readonly })));
+
+  if (state.renaming !== undefined) {
+    const field = h('div', 'gr-input gr-field');
+    const said = h('span', '', state.renaming);
+    said.appendChild(cursor());
+    field.append(sign('edit', '#f2c66d', 16), said, h('span', 'hint', 'a new name for it'));
+    rows.push(dom(field));
+  }
+
+  if (state.blame) {
+    rows.push(dom(whose(state.blame, lines)));
+    return rows;
+  }
 
   /* A markdown file read plain shows the marks rather than the shape they are
-     for — read it the way an agent's own words already are, with one line to
-     drop back to the raw text when that is what the writing itself is for. */
-  if (isMarkdown(state.path) && !state.raw) {
-    rows.push(
-      {
-        kind: 'line',
-        text: 'read as writing. press to read the raw text.',
-        tone: 'faded',
-        pick: 'raw',
-      },
-      { kind: 'gap' },
-      ...saying(content.content, undefined, 'ink'),
-      { kind: 'gap' }
-    );
-    return [...rows, ...over(state, content.readonly)];
+     for — read it the way an agent's own words already are. */
+  if (kind === 'md' && !state.raw) {
+    rows.push(dom(writing(content.content)));
+    return [...rows, ...over(state, readonly)];
   }
-  if (isMarkdown(state.path) && state.raw) {
-    rows.push({
-      kind: 'line',
-      text: 'the raw text. press to read it as writing.',
-      tone: 'faded',
-      pick: 'raw',
-    });
-    rows.push({ kind: 'gap' });
-  }
-
   /* A CSV reads as a table, the same padded columns markdown's own tables
-     get, because a spreadsheet's columns are the whole point of looking at
-     one and a raw line of commas says nothing about where they are. */
-  if (isCSV(state.path) && !state.raw) {
-    const grid = parseCSV(content.content);
-    rows.push(
-      {
-        kind: 'line',
-        text: 'read as a table. press to read the raw text.',
-        tone: 'faded',
-        pick: 'raw',
-      },
-      { kind: 'gap' },
-      ...columned(grid),
-      { kind: 'gap' }
-    );
-    return [...rows, ...over(state, content.readonly)];
-  }
-  if (isCSV(state.path) && state.raw) {
-    rows.push(
-      {
-        kind: 'line',
-        text: 'the raw text. press to read it as a table.',
-        tone: 'faded',
-        pick: 'raw',
-      },
-      { kind: 'gap' }
-    );
+     get, because a spreadsheet's columns are the whole point of looking at one. */
+  if (kind === 'csv' && !state.raw) {
+    rows.push(dom(prose(columned(parseCSV(content.content)))));
+    return [...rows, ...over(state, readonly)];
   }
 
-  rows.push({ kind: 'line', text: how(lines.length, content.readonly), tone: 'faded' });
-  rows.push({ kind: 'gap' });
-
+  const file = h('div', 'gr-file');
+  const code$ = h('div', 'gr-code');
   for (let at = 0; at < Math.min(lines.length, LINES); at++) {
+    const el = h('div', 'gr-fl');
+    el.append(h('span', 'n', String(at + 1)));
     if (state.fixing?.at === at) {
-      rows.push({ kind: 'typed', text: state.fixing.written, face: 'type' });
-      continue;
+      el.classList.add('edit');
+      const c = h('span', 'c', state.fixing.written);
+      c.appendChild(cursor());
+      el.appendChild(c);
+    } else {
+      const c = h('span', 'c');
+      c.appendChild(code(lines[at] ?? ''));
+      el.appendChild(c);
+      if (!readonly) pressable(el, `line:${at}`);
     }
-    /* A file is read in the type, whatever is in it: indentation is what tells
-       you the shape of the thing, and a proportional face throws it away. */
-    rows.push({
-      kind: 'line',
-      text: lines[at] ?? '',
-      tone: 'faded',
-      keep: 'front',
-      face: 'type',
-      ...(content.readonly ? {} : { pick: `line:${at}` }),
-    });
+    code$.appendChild(el);
   }
   if (lines.length > LINES) {
-    rows.push(
-      { kind: 'gap' },
-      { kind: 'line', text: `and ${lines.length - LINES} more lines.`, tone: 'faded' }
-    );
+    code$.appendChild(h('div', 'gr-more', `and ${lines.length - LINES} more lines`));
   }
-  return [...rows, ...over(state, content.readonly)];
+  file.appendChild(code$);
+  rows.push(dom(file));
+  return [...rows, ...over(state, readonly)];
+}
+
+/** What the file's own kind lets you do to how it is shown, and to the file. */
+function tools(
+  state: Read,
+  how: { kind: 'text' | 'md' | 'csv' | 'picture' | 'other'; readonly?: boolean }
+): HTMLElement {
+  const bar = h('div', 'gr-tools');
+  const writing = how.kind === 'text' || how.kind === 'md' || how.kind === 'csv';
+  if (how.kind === 'md' || how.kind === 'csv') {
+    const seg = h('div', 'gr-seg');
+    const first = h('span', state.raw ? '' : 'gr-on');
+    first.append(
+      sign(how.kind === 'md' ? 'page' : 'layout', '#f2c66d', 13),
+      document.createTextNode(how.kind === 'md' ? 'as writing' : 'as a table')
+    );
+    const second = h('span', state.raw ? 'gr-on' : '');
+    second.append(sign('file', '#f2c66d', 13), document.createTextNode('the raw text'));
+    if (state.raw) pressable(first, 'raw');
+    else pressable(second, 'raw');
+    seg.append(first, second);
+    bar.appendChild(seg);
+  } else if (how.kind === 'text') {
+    const seg = h('div', 'gr-seg');
+    const first = h('span', state.blame ? '' : 'gr-on');
+    first.append(sign('file', '#f2c66d', 13), document.createTextNode('read'));
+    const second = h('span', state.blame ? 'gr-on' : '');
+    second.append(sign('blame', '#f2c66d', 13), document.createTextNode('who wrote it'));
+    if (!state.blame) pressable(second, 'blame');
+    seg.append(first, second);
+    bar.appendChild(seg);
+  }
+  bar.appendChild(h('span', 'gr-fill'));
+  if (writing && (how.kind === 'md' || how.kind === 'csv') && !state.blame) {
+    bar.appendChild(pressable(ghost('who wrote it', 'blame'), 'blame'));
+  }
+  if (!state.blame) {
+    bar.appendChild(pressable(ghost('open in editor', 'editor'), 'open-editor'));
+    bar.appendChild(pressable(ghost('open properly', 'up'), 'open-it'));
+    if (writing && !how.readonly)
+      bar.appendChild(pressable(ghost('call it something else', 'edit'), 'rename'));
+  }
+  return bar;
+}
+
+/** Rows written into a card, which is how a markdown file or a table reads. */
+function prose(rows: Row[]): HTMLElement {
+  const box = h('div', 'gr-prose');
+  makeRows(box, () => undefined).write(rows);
+  return box;
 }
 
 /**
- * The two things you can do to a file rather than to its writing.
- *
- * At the bottom, under everything the file says, because you came here to read
- * it. Throwing one away asks twice like everything else that cannot be pressed
- * again; renaming does not, because a name is put back by typing the old one.
+ * The thing you can do to a file rather than to its writing, at the bottom,
+ * under everything the file says. Throwing one away asks twice like
+ * everything else that cannot be pressed again.
  */
 function over(state: Read, readonly: boolean): Row[] {
-  if (readonly || state.blame) return openProperly(state);
-  const rows: Row[] = [{ kind: 'gap' }];
-  if (state.renaming !== undefined) {
-    rows.push(
-      { kind: 'line', text: 'call it something else. return does it.', tone: 'faded' },
-      { kind: 'typed', text: state.renaming }
-    );
-    return rows;
-  }
-  rows.push({
-    kind: 'entry',
-    mark: '→',
-    text: 'who last touched it',
-    tone: 'faded',
-    pick: 'blame',
-  });
-  rows.push({
-    kind: 'entry',
-    mark: '→',
-    text: 'call it something else',
-    tone: 'faded',
-    pick: 'rename',
-  });
-  rows.push(...openProperly(state));
-  rows.push(
-    state.asked
-      ? {
-          kind: 'entry',
-          mark: '✗',
-          text: 'press again and this file is gone',
-          tone: 'sore',
-          pick: 'bin!',
-          armed: true,
-        }
-      : { kind: 'entry', mark: '✗', text: 'throw this file away', tone: 'faded', pick: 'bin' }
-  );
-  return rows;
+  if (readonly || state.blame || state.renaming !== undefined) return [];
+  return [
+    dom(
+      danger({
+        icon: 'trash_y',
+        title: state.asked ? 'throw it away?' : 'throw this file away',
+        said: state.asked
+          ? 'nothing brings it back from here.'
+          : 'if it is in a commit, git can bring it back.',
+        button: state.asked ? 'yes, throw it away' : 'throw it away',
+        pick: state.asked ? 'bin!' : 'bin',
+        armed: state.asked,
+      })
+    ),
+  ];
 }
 
 /**
  * Who last touched each run of lines.
  *
- * Not a name in the margin of every line. Writing is done in runs — twelve
- * lines somebody put in on a Tuesday, then four somebody else changed since —
- * and saying it once over the run is both the truth and far easier to read
- * than the same name stamped twelve times down the side of a board.
+ * Writing is done in runs, so it says it once beside the run, with who, how
+ * long ago and what they were doing, rather than stamping a name on every line.
  */
-function whose(hunks: readonly BlameHunk[], lines: readonly string[]): Row[] {
-  const rows: Row[] = [
-    { kind: 'line', text: 'who last touched it. escape goes back to reading it.', tone: 'faded' },
-  ];
+function whose(hunks: readonly BlameHunk[], lines: readonly string[]): HTMLElement {
+  const file = h('div', 'gr-file');
   if (!hunks.length) {
-    rows.push(
-      { kind: 'gap' },
-      { kind: 'line', text: 'nobody: it is not committed.', tone: 'faded' }
-    );
-    return rows;
+    file.appendChild(h('div', 'gr-more', 'nobody: it is not committed.'));
+    return file;
   }
+  const authors = [...new Set(hunks.map((hunk) => hunk.author))];
   for (const hunk of hunks) {
-    rows.push({ kind: 'gap' }, { kind: 'heading', text: by(hunk) });
     const from = Math.max(0, hunk.startLine - 1);
-    for (const line of lines.slice(from, from + hunk.lineCount)) {
-      rows.push({ kind: 'line', text: line, tone: 'faded', keep: 'front' });
-    }
+    const grid = h('div', 'gr-gw');
+    const run = h('div', 'gr-bl');
+    const inner = h('div', 'gr-run');
+    inner.style.borderColor = TINTS[authors.indexOf(hunk.author) % TINTS.length] ?? '#f2c66d';
+    inner.style.minHeight = `${hunk.lineCount * 24}px`;
+    inner.append(
+      h('b', '', `${hunk.author} · ${ago(hunk.date)}`),
+      document.createTextNode(hunk.summary.trim())
+    );
+    run.appendChild(inner);
+    const code$ = h('div', 'gr-code');
+    lines.slice(from, from + hunk.lineCount).forEach((line, i) => {
+      const el = h('div', 'gr-fl');
+      el.appendChild(h('span', 'n', String(from + i + 1)));
+      const c = h('span', 'c');
+      c.appendChild(code(line));
+      el.appendChild(c);
+      code$.appendChild(el);
+    });
+    grid.append(run, code$);
+    file.appendChild(grid);
   }
-  return rows;
+  return file;
 }
 
-function by(hunk: BlameHunk): string {
-  const said = [`${hunk.author}, ${ago(hunk.date)}`];
-  if (hunk.summary.trim()) said.push(hunk.summary.trim());
-  return said.join(' · ');
-}
+const TINTS = ['#7aaaff', '#f2c66d', '#9bd28a', '#c9b2ff', '#f08a72'];
 
 /** How long ago, as somebody would say it rather than as a date. */
 function ago(at: number): string {
@@ -255,41 +286,45 @@ function ago(at: number): string {
   return `${Math.floor(days / 365)} years ago`;
 }
 
+const LANGUAGES: Record<string, string> = {
+  ts: 'typescript',
+  tsx: 'typescript',
+  js: 'javascript',
+  jsx: 'javascript',
+  mjs: 'javascript',
+  json: 'json',
+  md: 'markdown',
+  mdx: 'markdown',
+  css: 'css',
+  html: 'html',
+  py: 'python',
+  rs: 'rust',
+  go: 'go',
+  rb: 'ruby',
+  swift: 'swift',
+  kt: 'kotlin',
+  java: 'java',
+  dart: 'dart',
+  sh: 'shell',
+  yml: 'yaml',
+  yaml: 'yaml',
+  toml: 'toml',
+  csv: 'table',
+  txt: 'text',
+  sql: 'sql',
+};
+
+function languageOf(path: string): string {
+  const ext = /\.([A-Za-z0-9]+)$/.exec(path)?.[1]?.toLowerCase();
+  return (ext && LANGUAGES[ext]) || 'text';
+}
+
 /** While the file is still being fetched. */
 export function unopened(path: string): Row[] {
   return [
-    { kind: 'title', text: name(path) },
-    ...where(path),
-    { kind: 'line', text: 'opening it…', tone: 'faded' },
-  ];
-}
-
-/**
- * The one line saying what kind of file you are standing in front of.
- *
- * It says the lines can be rewritten because nothing else on the board would:
- * a line of writing does not look pressable, and this is the only place in the
- * village where pressing something changes what is on the disk.
- */
-function how(lines: number, readonly: boolean): string {
-  const many = lines === 1 ? 'one line' : `${lines} lines`;
-  return readonly ? `${many}, and nothing here can change it` : `${many}. press one to rewrite it`;
-}
-
-/**
- * Opening the file in whatever the machine opens files like it with.
- *
- * Most work here goes through the agent and the line editor covers a small
- * human fix, but a real editor, or the only sane default-app open for a
- * binary or too-large file, has no other door — one line, using the same
- * bridge a checkout's own "show in Finder" already does.
- */
-function openProperly(state: Read): Row[] {
-  if (state.blame) return [];
-  return [
+    dom(head({ title: name(path), sub: [path] })),
     { kind: 'gap' },
-    { kind: 'entry', mark: '→', text: 'open it properly', tone: 'faded', pick: 'open-it' },
-    { kind: 'entry', mark: '→', text: 'open it in the editor', tone: 'faded', pick: 'open-editor' },
+    { kind: 'line', text: 'opening it…', tone: 'faded' },
   ];
 }
 
@@ -323,15 +358,6 @@ function sized(bytes: number): string {
   if (bytes < 1024) return `${bytes} bytes`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}k`;
   return `${(bytes / (1024 * 1024)).toFixed(1)}mb`;
-}
-
-function where(path: string): Row[] {
-  const cut = path.lastIndexOf('/');
-  if (cut === -1) return [{ kind: 'gap' }];
-  return [
-    { kind: 'line', text: path.slice(0, cut), tone: 'faded', keep: 'front' },
-    { kind: 'gap' },
-  ];
 }
 
 function name(path: string): string {

@@ -38,6 +38,9 @@
  * that never really moved is still just a press.
  */
 
+import { glaze } from '../glass/glass';
+import { ISLAND_LOOK } from '../glass/island-look';
+import '../glass/island.css';
 import { gripCarried } from '../grip';
 import { toolFor } from './face';
 import { cutOf, sprite } from './sprite';
@@ -445,12 +448,13 @@ export function makeShelf(
      rather than going up and coming down again. Never pressable: the pointer
      goes straight through it. */
   const tag = document.createElement('div');
+  tag.className = 'i-tag';
   tag.style.cssText = TAG;
-  const tagChains = [chain(0, 0, false), chain(0, 0, false)];
-  for (const each of tagChains) tag.appendChild(each);
-  const tagPlate = document.createElement('div');
-  tagPlate.style.cssText = TAG_PLATE;
-  tag.appendChild(tagPlate);
+  const tagPlate = glaze(document.createElement('div'), ISLAND_LOOK);
+  tagPlate.className += ' i-plate';
+  const tagNub = document.createElement('div');
+  tagNub.className = 'i-nub';
+  tag.append(tagNub, tagPlate);
   root.appendChild(tag);
   let tagFor: HTMLElement | null = null;
   let tagLeave = 0;
@@ -468,12 +472,9 @@ export function makeShelf(
     const middle = box.left - rack.left + box.width / 2;
     const left = Math.round(Math.max(4, Math.min(rack.width - wide - 6, middle - wide / 2)));
     const top = Math.round(bottom - X * 2);
-    /* The chains hang straight down off the board above, so they stay put
-       under it however far the name runs either side. */
-    const reach = Math.min(box.width, BOARD) / 2 - 7 * X;
-    tagChains[0].style.left = `${Math.round(middle - left - reach - X)}px`;
-    tagChains[1].style.left = `${Math.round(middle - left + reach - X * 2)}px`;
-    for (const each of tagChains) each.style.top = '0px';
+    /* The nub points up at the board above, so it stays put under it
+       however far the name runs either side. */
+    tagNub.style.left = `${Math.round(middle - left - 6)}px`;
     if (!already) {
       tag.style.transition = 'none';
       tag.style.left = `${left}px`;
@@ -975,24 +976,6 @@ const TAG_MOVES = [
   'opacity 140ms ease',
   `transform 220ms ${EASE}`,
 ].join(',');
-
-/* A small board of the same wood, the name in the flags' own lettering in
-   cream with the ink under it, hung a chain's length below. */
-const TAG_PLATE = [
-  'position:relative',
-  `margin-top:${5 * X}px`,
-  `padding:${3 * X}px ${4 * X}px ${2 * X}px`,
-  "font-family:'Silkscreen',monospace",
-  'font-size:16px',
-  'line-height:1',
-  'text-transform:lowercase',
-  'white-space:nowrap',
-  'color:#f4e3c0',
-  'text-shadow:0 2px 0 #2a1508',
-  'background:#74593a',
-  `border:${X}px solid #482510`,
-  `box-shadow:inset 0 ${X}px 0 #947e5c,inset 0 -${X}px 0 #56351d`,
-].join(';');
 
 const HANG = (wide: number): string =>
   [

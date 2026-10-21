@@ -238,11 +238,14 @@ export class Palette {
       for (const ours of OURS) {
         if (open.kind === 'later' && !ours.what) continue;
         if (ours.when ? !ours.when(kit, kept) : ours.choices && !ours.choices(kit).length) continue;
+        const was = ours.on?.(kit);
+        const now = was ? ours.choices?.(kit).find((one) => one.id === was)?.name : undefined;
         offers.push({
           pick: `slash:${ours.name}`,
           name: ours.name,
           about: ours.about,
           section: SECTION.ours,
+          ...(now ? { now } : {}),
         });
       }
     }

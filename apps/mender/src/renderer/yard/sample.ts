@@ -264,7 +264,8 @@ export function richSample(live: boolean): Yard {
       agents: [],
       steps: [
         {
-          id: 'x1', seq: 15,
+          id: 'x1',
+          seq: 15,
           prop: KIT_NAMES.sign,
           kind: 'look',
           did: 'read 6 files and searched 4 times',
@@ -274,7 +275,8 @@ export function richSample(live: boolean): Yard {
           ],
         },
         {
-          id: 'x2', seq: 17,
+          id: 'x2',
+          seq: 17,
           prop: KIT_NAMES.anvil,
           kind: 'edit',
           did: 'changed rail.ts',
@@ -295,36 +297,60 @@ export function richSample(live: boolean): Yard {
           ],
         },
         {
-          id: 'x3', seq: 18,
+          id: 'x3',
+          seq: 18,
           prop: KIT_NAMES.crate,
           kind: 'write',
           did: 'wrote agents-flush.ts',
           note: '38 lines',
         },
         {
-          id: 'x3b', seq: 19,
+          id: 'x3b',
+          seq: 19,
           prop: KIT_NAMES.pot,
           kind: 'run',
           did: 'check whether the crash predates my change',
           note: 'failed',
           tone: 'broken',
         },
-        { id: 'x4', seq: 20, prop: KIT_NAMES.pot, kind: 'test', did: 'ran the tests', note: 'passed' },
         {
-          id: 'x4b', seq: 21,
+          id: 'x4',
+          seq: 20,
+          prop: KIT_NAMES.pot,
+          kind: 'test',
+          did: 'ran the tests',
+          note: 'passed',
+        },
+        {
+          id: 'x4b',
+          seq: 21,
           prop: KIT_NAMES.pot,
           kind: 'commit',
           did: 'committed “the rail follows only the tail”',
         },
-        { id: 'x4c', seq: 22, prop: KIT_NAMES.pot, kind: 'install', did: 'installed it on the Mac' },
         {
-          id: 'x4d', seq: 23,
+          id: 'x4c',
+          seq: 22,
+          prop: KIT_NAMES.pot,
+          kind: 'install',
+          did: 'installed it on the Mac',
+        },
+        {
+          id: 'x4d',
+          seq: 23,
           prop: KIT_NAMES.sign,
           kind: 'look',
           did: 'read 3 files, looked at 4 pictures, searched 7 times and ran 4 checks',
           group: [{ id: 'g3', did: 'read STATE.md' }],
         },
-        { id: 'x5', seq: 24, prop: KIT_NAMES.pot, kind: 'build', did: 'built the app', running: live },
+        {
+          id: 'x5',
+          seq: 24,
+          prop: KIT_NAMES.pot,
+          kind: 'build',
+          did: 'built the app',
+          running: live,
+        },
       ],
       notes: [
         {
@@ -344,33 +370,38 @@ export function richSample(live: boolean): Yard {
       ],
       thoughts: [
         {
-          id: 'q1', seq: 1,
+          id: 'q1',
+          seq: 1,
           when: '1h ago',
           answer: true,
           said: 'Tidied. The rail now hangs every lantern on the same cord, and a long session name is clipped instead of pushing the next one off the end.',
         },
         {
-          id: 'q2', seq: 5,
+          id: 'q2',
+          seq: 5,
           when: '40m ago',
           answer: true,
           said: 'Slowed the breath from 1.6s to 2.4s and eased it, so a working lantern reads as **calm** rather than *anxious*. Nothing else on the rail moved.',
         },
         {
-          id: 's1', seq: 8,
+          id: 's1',
+          seq: 8,
           when: '35m ago',
           answer: true,
           trouble: 'stopped',
           said: 'Partway through what it was saying.',
         },
         {
-          id: 's2', seq: 10,
+          id: 's2',
+          seq: 10,
           when: '20m ago',
           answer: true,
           trouble: 'warn',
           said: 'It ran out of room to answer and stopped short.',
         },
         {
-          id: 's3', seq: 12,
+          id: 's3',
+          seq: 12,
           when: '10m ago',
           answer: true,
           trouble: 'wrong',
@@ -378,21 +409,31 @@ export function richSample(live: boolean): Yard {
         },
         { id: 'n1', seq: 14, when: '3m ago', said: 'Looking at how the rail reads each session.' },
         {
-          id: 'n2', seq: 16,
+          id: 'n2',
+          seq: 16,
           when: '2m ago',
           quiet: true,
           said: 'The tick re-reads whole transcripts; that would explain it.',
         },
         live
           ? {
-              id: 'q3', seq: 30,
+              id: 'q3',
+              seq: 30,
               when: 'now',
               live: true,
               ended: 'going',
               at: '1m 12s',
               said: newest.split('\n## What changed')[0] ?? '',
             }
-          : { id: 'q3', seq: 30, when: '1m ago', live: true, answer: true, ended: 'done', said: newest },
+          : {
+              id: 'q3',
+              seq: 30,
+              when: '1m ago',
+              live: true,
+              answer: true,
+              ended: 'done',
+              said: newest,
+            },
       ],
       recap: live
         ? undefined
@@ -404,4 +445,100 @@ export function richSample(live: boolean): Yard {
       waiting: [],
     },
   };
+}
+
+/** A question, a form, a check, several permissions, or a wait on a limit, for `?ask=` and `?limit`. */
+export function askSample(kind: string): Yard {
+  const base = richSample(false);
+  const session = base.session;
+  const min = 60_000;
+  const failure = (armed: boolean): NonNullable<Yard['session']>['failure'] => ({
+    doing: 'Out of usage',
+    canRetry: false,
+    canCarryOn: !armed,
+    kind: 'limit',
+    since: Date.now() - 33 * min,
+    resetAt: Date.now() + 49 * min,
+    ...(armed ? { carryOnAt: Date.now() + 50 * min } : {}),
+  });
+  const talk = { id: '__talk__', said: 'talk it over instead', kind: 'talk' as const };
+  const answers = {
+    single: {
+      said: 'Which database should the photo index live in?',
+      header: 'Storage',
+      answers: [
+        {
+          id: '0',
+          said: 'SQLite (recommended)',
+          about: 'One file, nothing to run, fits this size',
+        },
+        { id: '1', said: 'Postgres', about: 'Needs a server but scales' },
+        { id: '2', said: 'Just JSON files', about: 'Simplest, slow past a few thousand' },
+        { id: '__other__', said: 'something else', kind: 'other' as const },
+        talk,
+      ],
+    },
+    multi: {
+      said: 'Which cities should the photo pass cover?',
+      header: 'Cities',
+      step: '1 of 3',
+      submit: '__submit__',
+      answers: [
+        { id: '0', said: 'New Orleans', about: 'Already done' },
+        { id: '1', said: '✓ Baton Rouge', about: 'About an hour away' },
+        { id: '2', said: '✓ Lafayette', about: 'Cajun food, worth it' },
+        { id: '3', said: 'Mobile', about: 'Across the line' },
+        { id: '__other__', said: 'something else', kind: 'other' as const },
+        { id: '__submit__', said: "that's my answer", kind: 'submit' as const },
+        talk,
+      ],
+    },
+    check: {
+      said: 'Is that everything right?',
+      header: 'before it goes',
+      submit: '__submit__',
+      answers: [
+        { id: 'q:0', said: 'which cities', about: 'New Orleans, Lafayette' },
+        { id: 'q:1', said: 'where the index lives', about: 'SQLite' },
+        { id: 'q:2', said: 'how many photos', about: 'not answered' },
+        { id: '__submit__', said: 'send it', kind: 'submit' as const },
+        talk,
+      ],
+    },
+    perm: {
+      said: '3 things are asking.',
+      multi: true,
+      answers: [
+        {
+          id: 'a',
+          requestId: 'r1',
+          said: '✓ node scrape.mjs --city lafayette --out photos/ — allow once',
+        },
+        {
+          id: 'b',
+          requestId: 'r1',
+          said: 'node scrape.mjs --city lafayette --out photos/ — always allow',
+        },
+        {
+          id: 'c',
+          requestId: 'r1',
+          said: 'node scrape.mjs --city lafayette --out photos/ — reject',
+        },
+        { id: 'a', requestId: 'r2', said: 'changed slideshow/nola/candidates.md — allow once' },
+        { id: 'b', requestId: 'r2', said: '✓ changed slideshow/nola/candidates.md — always allow' },
+        { id: 'c', requestId: 'r2', said: 'changed slideshow/nola/candidates.md — reject' },
+        { id: 'a', requestId: 'r3', said: 'read boudinboy.example/menu — allow once' },
+        { id: 'b', requestId: 'r3', said: 'read boudinboy.example/menu — always allow' },
+        { id: 'c', requestId: 'r3', said: '✓ read boudinboy.example/menu — reject' },
+        { id: '__send_all__', said: "that's everything" },
+      ],
+    },
+  } as const;
+  if (kind === 'limit' || kind === 'limit-armed') {
+    return session
+      ? { ...base, session: { ...session, failure: failure(kind === 'limit-armed') } }
+      : base;
+  }
+  const one = answers[kind as keyof typeof answers];
+  return one ? { ...base, asking: { ...one, answers: [...one.answers] } } : base;
 }

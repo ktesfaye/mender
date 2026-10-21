@@ -4341,3 +4341,30 @@ Driven in a dev instance on Haiku: a page written then edited twice grew a
 look per landed edit, the open page reloaded and marked the change, scrubbing
 showed the older look, Escape closed it, and a python server it started and
 named was drawn from its address. Looks are kept for the sitting only.
+
+**Every popup is lantern glass (2026-10-20).** The flat brown wash and the
+timber slabs are gone from every popup. Each is now a pane of real glass that
+blurs and bends whatever is behind it, the island or the yard and its writing,
+with a split-colour rim and light only at the corners, and the yard is no
+longer darkened further while one is open. The insides were redrawn to the
+approved mockups in `~/mender-scratch/popups`: Fraunces for names and
+questions, Figtree for the rest, pixel capitals only for small labels, cards,
+tiles, chips, segmented choices and meters, a small pixel sign on every row,
+and no usage tips anywhere. That covers project settings and the windmill's
+pages, the water menu, the sky, the campfire's three ways in, the rack's name
+tag and right-click menu, what you missed, the quit warning, the edit-districts
+line and its confirm, the new-session board and past sessions, the workspace
+and lantern and column slabs, the hover card on a workspace board, the agent's
+questions and permission asks and the out-of-usage card, the hungry-session
+window, the slash and @ menu with the model list, the /agent card, the
+checkout board, writing and reading commits, a change, the branch's whole
+diff, a file, a markdown file, a mermaid diagram in its own window, a picture
+held up, the folder, finding a file, the finder, a shell, the pull request
+board, a conflict, a helper's board and a background command's board. The
+quit warning now names who is still working, the missed line says how long
+you were away, and the windmill's landing folders can be chosen with the Mac's
+own folder picker. Driven in dev instances, never with a real turn: each
+surface was opened in the app and compared to its mockup. The question,
+permission, limit, helper and background-command boards were driven with
+sample states; the pull request board's states past "nowhere to send it" and
+the native folder picker were not driven.

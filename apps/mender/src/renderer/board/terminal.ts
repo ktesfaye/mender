@@ -60,6 +60,13 @@ export function makeTerminal(
   const container = document.createElement('div');
   container.style.cssText = 'width:100%;height:100%';
   if (plain) container.style.background = MAC.background;
+  else {
+    container.style.borderRadius = '18px';
+    container.style.overflow = 'hidden';
+    container.style.background = BOARD.background;
+    container.style.boxShadow =
+      'inset 0 0 0 1px rgba(255,255,255,.1), inset 0 2px 14px rgba(0,0,0,.5)';
+  }
 
   const term = new Xterm({
     cols: COLS,
@@ -67,16 +74,16 @@ export function makeTerminal(
     scrollback: 5000,
     fontFamily: plain
       ? "ui-monospace, 'SF Mono', Menlo, monospace"
-      : "'Courier Prime', ui-monospace, monospace",
+      : "ui-monospace, 'SF Mono', Menlo, monospace",
     fontSize,
-    lineHeight: plain ? 1.0 : 1.3,
+    lineHeight: plain ? 1.0 : 1.25,
     cursorBlink: !plain,
     allowProposedApi: true,
     // The runtime owns line discipline; rewriting a bare \n corrupts anything
     // running in raw mode (tmux, an agent's own TUI) that uses it to mean
     // "down one row, same column" rather than "down and back to the left".
     convertEol: false,
-    theme: plain ? MAC : theme(),
+    theme: plain ? MAC : BOARD,
   });
 
   term.open(container);
@@ -84,7 +91,7 @@ export function makeTerminal(
   if (el) {
     el.style.width = '100%';
     el.style.height = '100%';
-    el.style.padding = '4px 6px';
+    el.style.padding = plain ? '4px 6px' : '14px 16px';
     el.style.boxSizing = 'border-box';
   }
 
@@ -224,22 +231,30 @@ const MAC = {
   brightWhite: '#e5e5e5',
 };
 
-/** The board's own ink, lifted onto the grid. */
-function theme() {
-  const read = (name: string, fallback: string): string => {
-    const said = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return said || fallback;
-  };
-  return {
-    background: read('--yard-night', '#1d1811'),
-    foreground: read('--yard-ink-body', '#dcc8a0'),
-    cursor: read('--yard-ink-bright', '#f4e3c0'),
-    cursorAccent: read('--yard-night', '#1d1811'),
-    selectionBackground: 'rgba(224,181,106,.35)',
-    black: '#2a2117',
-    brightBlack: read('--yard-ink-dim', '#a89272'),
-  };
-}
+/** Lantern glass: a near-black screen with the village's own soft ANSI inks. */
+const BOARD = {
+  background: '#0b0b0c',
+  foreground: '#e8e8e8',
+  cursor: '#e8e8e8',
+  cursorAccent: '#0b0b0c',
+  selectionBackground: 'rgba(242,198,109,.3)',
+  black: '#2a2a2c',
+  red: '#ff6a5e',
+  green: '#4fd35f',
+  yellow: '#e5c14a',
+  blue: '#6f93ff',
+  magenta: '#c88cff',
+  cyan: '#5fd0d6',
+  white: '#d8d8d8',
+  brightBlack: '#8c8c8c',
+  brightRed: '#ff8a7e',
+  brightGreen: '#7be88a',
+  brightYellow: '#f2d672',
+  brightBlue: '#93acff',
+  brightMagenta: '#dcaeff',
+  brightCyan: '#8be4e8',
+  brightWhite: '#ffffff',
+};
 
 /** Command and a number walks the rail, even from inside a terminal. It means
     nothing to the program running there, since command never reaches a pty,

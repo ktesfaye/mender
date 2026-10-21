@@ -9,6 +9,9 @@
  * answer, because the answer is written again whenever the board changes.
  */
 
+import { glaze } from '../glass/glass';
+import { h, sign } from '../glass/read';
+
 const MIN_SCALE = 1;
 const MAX_SCALE = 8;
 
@@ -32,10 +35,8 @@ export function holdUp(
   const all: Sibling[] = siblings.length > 1 ? [...siblings] : [];
   let index = at;
 
-  const wash = document.createElement('div');
-  wash.className = 'picture-view';
-  const stage = document.createElement('div');
-  stage.className = 'picture-view-stage';
+  const wash = h('div', 'gr-pv');
+  const stage = h('div', 'gr-pv-stage');
   const picture = document.createElement('img');
   picture.src = src;
   picture.alt = name;
@@ -49,16 +50,47 @@ export function holdUp(
   };
   better(sharper);
   stage.appendChild(picture);
-  wash.appendChild(stage);
-  const said = document.createElement('div');
-  said.className = 'picture-view-name';
-  const words = (label: string): void => {
-    const place = all.length ? `${index + 1} / ${all.length}` : '';
-    said.textContent = [label, place].filter(Boolean).join('  ·  ');
-    said.hidden = !said.textContent;
+  const shut = h('div', 'g-x gr-pv-x', '×');
+  shut.style.background = 'rgba(14,15,18,.6)';
+  const thumbs = h('div', 'gr-pv-th');
+  const nav = (way: 1 | -1): HTMLElement => {
+    const el = h('div', `gr-pv-nav ${way > 0 ? 'r' : 'l'}`);
+    el.appendChild(sign(way > 0 ? 'right' : 'left', '#f2c66d', 18));
+    el.addEventListener('pointerup', (event) => event.stopPropagation());
+    el.addEventListener('click', (event) => {
+      event.stopPropagation();
+      step(way);
+    });
+    return el;
   };
+  const said = h('div', 'gr-pv-cap');
+  glaze(said);
+  const title = h('div', 'g-serif gr-pv-t');
+  const sub = h('div', 'g-faint gr-pv-s');
+  said.append(title, sub);
+  const words = (label: string): void => {
+    const place = all.length ? `${index + 1} of ${all.length}` : '';
+    title.textContent = label;
+    sub.textContent = [place, size()].filter(Boolean).join(' · ');
+    said.hidden = !label;
+    [...thumbs.children].forEach((el, i) => el.classList.toggle('on', i === index));
+  };
+  const size = (): string =>
+    picture.naturalWidth ? `${picture.naturalWidth} × ${picture.naturalHeight}` : '';
+  picture.addEventListener('load', () => words(picture.alt));
+  all.forEach((one, i) => {
+    const t = h('i');
+    t.style.backgroundImage = `url("${one.src}")`;
+    t.addEventListener('pointerup', (event) => event.stopPropagation());
+    t.addEventListener('click', (event) => {
+      event.stopPropagation();
+      go(i);
+    });
+    thumbs.appendChild(t);
+  });
+  stage.append(shut, ...(all.length ? [thumbs] : []));
+  wash.append(stage, said, ...(all.length ? [nav(-1), nav(1)] : []));
   words(name);
-  wash.appendChild(said);
 
   let scale = 1;
   let x = 0;
@@ -95,6 +127,7 @@ export function holdUp(
   let moved = false;
   wash.addEventListener('pointerdown', (event) => {
     event.stopPropagation();
+    if ((event.target as HTMLElement).closest('.gr-pv-nav, .gr-pv-th, .gr-pv-cap')) return;
     down = { x: event.clientX, y: event.clientY };
     moved = false;
     wash.setPointerCapture(event.pointerId);
@@ -115,6 +148,7 @@ export function holdUp(
   });
   wash.addEventListener('pointerup', (event) => {
     event.stopPropagation();
+    if ((event.target as HTMLElement).closest('.gr-pv-nav, .gr-pv-th, .gr-pv-cap')) return;
     const was = down;
     down = null;
     if (was && !moved) close();
@@ -126,23 +160,29 @@ export function holdUp(
     event.stopPropagation();
   });
 
+  function go(to: number): void {
+    index = to;
+    const next = all[index]!;
+    picture.alt = next.name;
+    picture.src = next.src;
+    scale = 1;
+    x = 0;
+    y = 0;
+    apply();
+    words(next.name);
+    better(next.sharper?.());
+  }
+  function step(way: 1 | -1): void {
+    if (all.length) go((index + (way > 0 ? 1 : all.length - 1)) % all.length);
+  }
+
   const keys = (event: KeyboardEvent): void => {
     if (event.metaKey && event.key !== 'Escape') return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if (event.key === 'Escape') close();
-    else if (all.length && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
-      index = (index + (event.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length;
-      const next = all[index]!;
-      picture.alt = next.name;
-      picture.src = next.src;
-      scale = 1;
-      x = 0;
-      y = 0;
-      apply();
-      words(next.name);
-      better(next.sharper?.());
-    }
+    else if (event.key === 'ArrowLeft') step(-1);
+    else if (event.key === 'ArrowRight') step(1);
   };
   window.addEventListener('keydown', keys, true);
 
@@ -150,7 +190,7 @@ export function holdUp(
     if (open !== close) return;
     open = null;
     window.removeEventListener('keydown', keys, true);
-    wash.classList.add('picture-view-going');
+    wash.classList.add('gr-pv-going');
     setTimeout(() => wash.remove(), 160);
   }
   open = close;

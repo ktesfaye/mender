@@ -2,9 +2,12 @@ import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import type { CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import type { Kit, Told } from '@shared/agents';
+import { isDear } from '@shared/hungry';
 import { MCP_CATALOG } from '@shared/mcp-catalog';
 import type { Task } from '@shared/tasks';
+import { chip, dom, h, label, pressable, sign } from '../glass/f';
 import type { MenderClient } from '../wire';
+import { stand } from '../yard/standing';
 import type { Row } from './row';
 
 /**
@@ -86,6 +89,8 @@ export async function openCard(
   let ending: Ending = { uncommitted: 0, unsent: 0, asked: false };
   /** Whether the agents who are not on this machine are folded open. */
   let showing = false;
+  /** Whether the models older than the latest few are folded open. */
+  let older = false;
   /** Whether the catalogue of suggested servers is folded open. */
   let catalogShowing = false;
   /** The server armed for a second press to throw it away, if any. */
@@ -101,7 +106,18 @@ export async function openCard(
 
   const redraw = (): void => {
     changed(
-      written(task, kit, ending, showing, catalogShowing, removing, removingHand, exported, knackUi)
+      written(
+        task,
+        kit,
+        ending,
+        showing,
+        catalogShowing,
+        removing,
+        removingHand,
+        exported,
+        knackUi,
+        older
+      )
     );
   };
 
@@ -154,7 +170,8 @@ export async function openCard(
         removing,
         removingHand,
         exported,
-        knackUi
+        knackUi,
+        older
       ),
     setExported: (said) => {
       exported = said;
@@ -173,6 +190,10 @@ export async function openCard(
       ending = { ...ending, asked };
     },
     meant: (pick) => {
+      if (pick === 'older') {
+        older = !older;
+        return { does: 'browse' };
+      }
       const meant = read(pick, kit);
       /* Arming or firing removal is the card's own state, tracked here rather
          than asked of the caller twice. */
@@ -288,9 +309,18 @@ function read(pick: string, kit: Kit | null): Meant | null {
   return null;
 }
 
-/** The one you are on, and the ones you are not. */
-const ON = '●';
-const OFF = '·';
+/** How much of the window a model spends, by family: Fable most, Haiku least. */
+function spend(choice: { id: string; name: string }): { n: number; word: string } | null {
+  const said = `${choice.name} ${choice.id}`.toLowerCase();
+  if (/fable|mythos/.test(said)) return { n: 4, word: 'dearest' };
+  if (/opus/.test(said)) return { n: 3, word: 'steady' };
+  if (/sonnet/.test(said)) return { n: 2, word: 'light' };
+  if (/haiku/.test(said)) return { n: 1, word: 'lightest' };
+  return null;
+}
+
+/** How many of the models are shown before the rest are folded under "older". */
+const LATEST = 4;
 
 function written(
   task: Task,
@@ -301,256 +331,385 @@ function written(
   removing?: string | null,
   removingHand?: string | null,
   exported?: { text: string; path?: string } | null,
-  knackUi?: KnackUi
+  knackUi?: KnackUi,
+  older?: boolean
 ): Row[] {
-  const rows: Row[] = [
-    { kind: 'title', text: task.title, pick: 'card' },
-    { kind: 'line', text: task.branch, tone: 'faded', keep: 'tail' },
-  ];
-  if (!kit) {
-    rows.push({ kind: 'gap' }, { kind: 'line', text: 'looking…', tone: 'faded' });
-    return [...rows, ...over(ending, false, task.shared)];
-  }
+  const root = h('div', 'f-root');
+  const whoIs = kit?.hands.find((hand) => hand.id === kit.hand);
 
-  rows.push({ kind: 'gap' }, { kind: 'heading', text: 'who works here' });
-  // Only the ones you could actually pick. Two dozen agents you have never
-  // installed is not a choice, it is a list.
-  const could = kit.hands.filter((hand) => hand.here || hand.id === kit.hand);
-  for (const hand of could) {
-    rows.push({
-      kind: 'entry',
-      mark: hand.id === kit.hand ? ON : OFF,
-      text: hand.signedIn === false ? `${hand.name}, not signed in` : hand.name,
-      tone: hand.id === kit.hand ? 'ink' : 'faded',
-      pick: `hand:${hand.id}`,
-    });
-    // Only for the ones actually on this machine: a CLI that is only here
-    // because it is the one working right now has nothing installed to bring
-    // up to date or take off.
-    if (hand.here) {
-      rows.push({
-        kind: 'entry',
-        mark: '↻',
-        text: 'bring it up to date',
-        tone: 'faded',
-        pick: `updatehand:${hand.id}`,
-      });
-      rows.push({
-        kind: 'entry',
-        mark: '✗',
-        text:
-          removingHand === hand.id
-            ? `press again and ${hand.name} is off this machine`
-            : 'take it off this machine',
-        tone: removingHand === hand.id ? 'sore' : 'faded',
-        pick: `rmhand:${hand.id}`,
-        armed: removingHand === hand.id,
-      });
-    }
+  const head = h('div', 'f-head');
+  head.append(h('div', 'f-av', sign('spark', '#ffd2bf', 30)));
+  const sub = h('div', 'f-sub');
+  if (whoIs?.signedIn === true) sub.append(chip('signed in', '#9bd28a'));
+  if (whoIs?.signedIn === false) sub.append(chip('not signed in', '#f08a72'));
+  sub.append(`working in ${task.title}`);
+  head.append(h('div', '', h('h1', '', whoIs?.name ?? (kit ? kit.hand : 'who works here')), sub));
+  const acts = h('div', 'f-acts');
+  if (kit && whoIs?.here) {
+    acts.append(
+      pressable(h('span', 'g-ghost g-plain', 'Bring it up to date'), `updatehand:${kit.hand}`)
+    );
+    const asked = removingHand === kit.hand;
+    const off = h(
+      'span',
+      'g-ghost f-ghost-sore',
+      asked ? `press again and ${whoIs.name} is off this machine` : 'Take it off this machine'
+    );
+    pressable(off, `rmhand:${kit.hand}`);
+    if (asked) stand(() => off.click(), off);
+    acts.append(off);
   }
-  /* Only the one working here says how, because that is the one thing about
-     to fail without it. */
-  if (kit.signIn) {
-    rows.push({
-      kind: 'entry',
-      mark: '→',
-      text: `${kit.signIn.agent} needs you to sign in`,
-      pick: 'signin',
-    });
+  if (kit?.signIn) {
+    acts.append(
+      pressable(h('span', 'g-ghost', `${kit.signIn.agent} needs you to sign in`), 'signin')
+    );
   }
-  /* Everyone who speaks the protocol and is not on this machine. Folded away
-     until asked for, because two dozen agents you have never installed is a
-     list rather than a choice; opened, each one offers to be put here. */
-  const away = kit.hands.filter((hand) => !hand.here && hand.id !== kit.hand);
-  if (showing) {
-    for (const hand of away) {
-      rows.push({
-        kind: 'entry',
-        mark: '+',
-        text: `${hand.name}, not here yet`,
-        tone: 'faded',
-        pick: `bring:${hand.id}`,
-      });
-    }
+  head.append(acts);
+  root.append(head);
+
+  if (!kit) {
+    root.append(h('div', 'f-note', 'looking…'));
+    return [dom(root), ...over(ending, false, task.shared)];
   }
-  const elsewhere = showing ? 0 : away.length;
-  if (elsewhere) {
-    /* Not a list, a fact you can act on: everyone who speaks the protocol and
-       is not here yet, each offering to be put on the machine. */
-    rows.push({
-      kind: 'entry',
-      mark: '+',
-      text: `${elsewhere} more speak the protocol. press to bring one here`,
-      tone: 'faded',
-      pick: 'elsewhere',
-    });
-  }
-  rows.push({
-    kind: 'prose',
-    text: 'changing who works here sends the one who was here home. what you say next starts the new one, in the same checkout.',
-    tone: 'faded',
-  });
 
   if (!kit.awake) {
-    rows.push(
-      { kind: 'gap' },
-      {
-        kind: 'prose',
-        text: 'what they think with, how they work and how hard they think are theirs to offer, not ours to guess, so they are not here until somebody has spoken to them.',
-        tone: 'faded',
-      }
+    root.append(
+      h(
+        'div',
+        'f-sec f-prose',
+        'what they think with, how they work and how hard they think are theirs to offer, not ours to guess, so they are not here until somebody has spoken to them.'
+      )
     );
-    /* Nothing has been said yet, so nothing is lost turning this into the
-       agent's own CLI, raw, instead of a chat — the one thing offered here
-       that the naming board already offers before a session even exists. */
-    if (task.kind !== 'terminal') {
-      rows.push({
-        kind: 'entry',
-        mark: '→',
-        text: 'start one like this in its own terminal',
-        tone: 'faded',
-        pick: 'terminal',
-      });
+  } else {
+    if (kit.models.length) {
+      const sec = h('div', 'f-sec', label('thinking with', 'new sessions start on it too'));
+      const grid = h('div', 'f-models');
+      const shown =
+        older || kit.models.length <= LATEST + 1
+          ? kit.models
+          : kit.models.filter((one, at) => at < LATEST || one.id === kit.model);
+      for (const choice of shown) grid.append(modelCard(choice, kit));
+      const hidden = kit.models.length - shown.length;
+      if (hidden > 0 || (older && kit.models.length > LATEST + 1)) {
+        const more = h(
+          'div',
+          'f-m f-more',
+          h('b', '', older ? 'fewer' : `${hidden} older`),
+          h('span', '', older ? 'the latest only' : 'fold them open')
+        );
+        grid.append(pressable(more, 'older'));
+      }
+      sec.append(grid);
+      root.append(sec);
     }
-    /* A finished conversation is exactly the one worth taking a copy of, so
-       the export line stands even while nobody is awake to be configured. */
-    rows.push({ kind: 'gap' }, exportRow(exported));
-    /* A sleeping session still ends, and a session nobody has spoken to is
-       exactly the one you are most likely to want rid of. */
-    return [...rows, ...over(ending, false, task.shared)];
+
+    const pair = h('div', 'f-two f-even');
+    if (kit.efforts.length) {
+      const seg = h('div', 'f-seg');
+      kit.efforts.forEach((choice, at) => {
+        const flames = h('div', 'f-flames');
+        for (let i = 0; i <= Math.min(at, 4); i++) flames.append(sign('flame', '#ff9a4a', 12));
+        const one = h('span', choice.id === kit.effort ? 'f-on' : '', flames, choice.name);
+        seg.append(choice.id === kit.effort ? one : pressable(one, `effort:${choice.id}`));
+      });
+      pair.append(h('div', '', label('how hard it thinks'), seg));
+    }
+    if (kit.modes.length) {
+      const seg = h('div', 'f-seg');
+      for (const choice of kit.modes) {
+        const on = choice.id === kit.mode;
+        const one = h('span', on ? 'f-on' : '', choice.name);
+        if (choice.about) one.append(h('small', '', brief(choice.about)));
+        seg.append(on ? one : pressable(one, `mode:${choice.id}`));
+      }
+      pair.append(h('div', '', label('how it works'), seg));
+    }
+    if (pair.childElementCount) root.append(pair);
+
+    if (kit.collabs.length) {
+      const seg = h('div', 'f-seg');
+      for (const choice of kit.collabs) {
+        const on = choice.id === kit.collab;
+        const one = h('span', on ? 'f-on' : '', choice.name);
+        if (choice.about) one.append(h('small', '', brief(choice.about)));
+        seg.append(on ? one : pressable(one, `collab:${choice.id}`));
+      }
+      root.append(h('div', 'f-sec', label('how it goes about it'), seg));
+    }
   }
 
-  choices(rows, 'thinking with', 'model', kit.model, kit.models);
-  choices(rows, 'how it works', 'mode', kit.mode, kit.modes);
-  choices(rows, 'how hard it thinks', 'effort', kit.effort, kit.efforts);
-  choices(rows, 'how it goes about it', 'collab', kit.collab, kit.collabs);
-
-  rows.push({ kind: 'gap' }, { kind: 'heading', text: 'what it can reach' });
-  if (!kit.tools.length) {
-    rows.push({ kind: 'line', text: 'nothing beyond this machine.', tone: 'faded' });
+  if (kit.awake) {
+    const pair = h('div', 'f-two f-even');
+    pair.append(reach(kit, catalogShowing, removing));
+    pair.append(taught(kit, knackUi));
+    root.append(pair);
+    const open = catalogShowing || knackUi?.catalogShowing;
+    if (open) root.append(catalogues(kit, catalogShowing, knackUi));
+    const reading = readingOf(kit, knackUi);
+    if (reading) root.append(reading);
   }
+
+  const others = kit.hands.filter((hand) => hand.id !== kit.hand);
+  const here = others.filter((hand) => hand.here);
+  const away = others.filter((hand) => !hand.here);
+  if (here.length || away.length) {
+    const row = h('div', 'f-others');
+    for (const hand of here) {
+      const name = hand.signedIn === false ? `${hand.name}, not signed in` : hand.name;
+      const pill = h('span', 'f-hand');
+      const who = h('span', 'f-who', h('i', 'f-b', sign('ring', '#f2c66d', 14)), name);
+      pill.append(pressable(who, `hand:${hand.id}`));
+      const up = pressable(h('span', 'f-small', 'update'), `updatehand:${hand.id}`);
+      const off = pressable(
+        h(
+          'span',
+          removingHand === hand.id ? 'f-small f-sorep' : 'f-small',
+          removingHand === hand.id ? `press again and ${hand.name} is off` : 'take off'
+        ),
+        `rmhand:${hand.id}`
+      );
+      if (removingHand === hand.id) stand(() => off.click(), off);
+      pill.append(up, off);
+      row.append(pill);
+    }
+    if (away.length) {
+      if (showing) {
+        for (const hand of away) {
+          row.append(
+            pressable(
+              h('span', 'f-hand', h('i', 'f-b', sign('plus', '#f2c66d', 14)), hand.name),
+              `bring:${hand.id}`
+            )
+          );
+        }
+      } else {
+        row.append(
+          pressable(
+            h(
+              'span',
+              'f-hand',
+              h('i', 'f-b', sign('plus', '#f2c66d', 14)),
+              `${away.length} more could work here`
+            ),
+            'elsewhere'
+          )
+        );
+      }
+    }
+    root.append(h('div', 'f-sec', label('also on this machine'), row));
+  }
+
+  const foot = h('div', 'f-cardfoot');
+  const out = exported
+    ? h(
+        'span',
+        'g-ghost g-plain',
+        sign('down', exported.path ? '#f2c66d' : '#9bd28a', 13),
+        exported.text
+      )
+    : h('span', 'g-ghost g-plain', sign('down', '#f2c66d', 13), 'Write it all out to Downloads');
+  if (exported ? exported.path : true) {
+    pressable(out, exported ? `show-export:${exported.path}` : 'export');
+  }
+  foot.append(out);
+  if (!kit.awake && task.kind !== 'terminal') {
+    foot.append(
+      pressable(
+        h(
+          'span',
+          'g-ghost g-plain',
+          sign('shell', '#f2c66d', 13),
+          'Start one like this in a terminal'
+        ),
+        'terminal'
+      )
+    );
+  }
+  if (kit.awake) {
+    foot.append(
+      pressable(
+        h('span', 'g-ghost g-plain', sign('house', '#f2c66d', 13), 'Send them home for the night'),
+        'rest'
+      )
+    );
+  }
+  foot.append(h('span', 'f-nt', 'changing who works here sends this one home'));
+  root.append(foot);
+
+  return [dom(root), ...over(ending, kit.awake, task.shared)];
+}
+
+/** What a mode says about itself, short enough to sit under its name. */
+function brief(about: string): string {
+  const one = about.replace(/\s+/g, ' ').trim();
+  return one.length > 26 ? `${one.slice(0, 24).trimEnd()}…` : one;
+}
+
+function modelCard(choice: { id: string; name: string; about?: string }, kit: Kit): HTMLElement {
+  const on = choice.id === kit.model;
+  const dear = isDear({ model: choice.id, models: [choice] });
+  const card = h('div', `f-m${on ? ' f-on' : ''}${dear ? ' f-fable' : ''}`);
+  /* "Default (recommended)" is the agent's own label for letting it choose;
+     the card says that in a word, and what it means in the line under it. */
+  const named = choice.name.replace(/\s*\(.*\)\s*$/, '');
+  const name = h(
+    'b',
+    '',
+    dear ? sign('gem', '#c9b2ff', 14) : null,
+    /^default$/i.test(named) ? 'default' : named
+  );
+  card.append(name);
+  if (choice.about) card.append(h('span', '', choice.about.replace(/\s+/g, ' ').trim()));
+  const cost = spend(choice);
+  if (cost) {
+    const meter = h('div', 'f-cost');
+    for (let i = 0; i < 4; i++) meter.append(h('i', i < cost.n ? 'f' : ''));
+    meter.append(h('small', '', cost.word));
+    card.append(meter);
+  }
+  return on ? card : pressable(card, `model:${choice.id}`);
+}
+
+function reach(kit: Kit, catalogShowing?: boolean, removing?: string | null): HTMLElement {
+  const sec = h(
+    'div',
+    '',
+    label(
+      'what it can reach',
+      kit.tools.length ? `${kit.tools.length} server${kit.tools.length === 1 ? '' : 's'}` : ''
+    )
+  );
+  const chips = h('div', 'f-chips');
   for (const tool of kit.tools) {
-    rows.push({
-      kind: 'entry',
-      mark: tool.on ? ON : OFF,
-      text: tool.trouble ? `${tool.name} · ${tool.trouble}` : tool.name,
-      tone: tool.trouble ? 'sore' : tool.on ? 'ink' : 'faded',
-      pick: `tool:${tool.name}`,
-    });
-    rows.push({
-      kind: 'entry',
-      mark: '✗',
-      text: removing === tool.name ? `press again and ${tool.name} is gone` : `throw it away`,
-      tone: removing === tool.name ? 'sore' : 'faded',
-      pick: `rmtool:${tool.name}`,
-      armed: removing === tool.name,
-    });
-  }
-  if (kit.tools.length) {
-    rows.push({
-      kind: 'prose',
-      text: 'a server turned on or off here is on or off for this agent everywhere, and it takes hold next time a session starts.',
-      tone: 'faded',
-    });
-  }
-
-  const has = new Set(kit.tools.map((tool) => tool.name));
-  if (catalogShowing) {
-    for (const entry of MCP_CATALOG.filter((each) => !has.has(each.name.toLowerCase()))) {
-      rows.push({
-        kind: 'line',
-        text: `${entry.name} · ${entry.description}`,
-        pick: `addcat:${entry.key}`,
-      });
+    const armed = removing === tool.name;
+    const dot = h('span', 'g-dot');
+    dot.style.background = tool.trouble ? '#f08a72' : tool.on ? '#9bd28a' : 'rgba(255,240,215,.3)';
+    const one = h(
+      'span',
+      `f-cp${armed ? ' f-armed' : ''}${tool.on || tool.trouble ? '' : ' f-dim'}`,
+      dot,
+      tool.name
+    );
+    if (tool.trouble) {
+      const why = h('span', '', tool.trouble);
+      why.style.cssText = 'color:var(--g-sore);font-weight:500;font-size:11.5px';
+      one.append(why);
     }
-    rows.push({ kind: 'line', text: 'fold the catalogue away', pick: 'browse' });
-  } else {
-    rows.push({ kind: 'line', text: 'add a server from the catalogue', pick: 'browse' });
+    pressable(one, `tool:${tool.name}`);
+    const x = h('span', '', armed ? `press again and ${tool.name} is gone` : '×');
+    x.style.cssText = `margin-left:2px;opacity:${armed ? 1 : 0.6};font-weight:500`;
+    pressable(x, `rmtool:${tool.name}`, false);
+    if (armed) stand(() => x.click(), x);
+    one.append(x);
+    chips.append(one);
   }
-  rows.push({ kind: 'line', text: 'add a server of your own', pick: 'addcustom' });
+  chips.append(
+    pressable(
+      h('span', 'f-cp f-add1', catalogShowing ? 'fold the catalogue' : '+ add one'),
+      'browse'
+    )
+  );
+  chips.append(pressable(h('span', 'f-cp f-add1', '+ one of your own'), 'addcustom'));
+  sec.append(chips);
+  if (!kit.tools.length) {
+    sec.append(h('div', 'f-note', 'nothing beyond this machine.'));
+  }
+  return sec;
+}
 
-  rows.push({ kind: 'gap' }, { kind: 'heading', text: 'what it has been taught' });
+function taught(kit: Kit, knackUi?: KnackUi): HTMLElement {
+  const sec = h(
+    'div',
+    '',
+    label('what it has been taught', kit.knacksSupported ? `${kit.knacks.length} skills` : '')
+  );
   if (!kit.knacksSupported) {
-    rows.push({ kind: 'line', text: 'this agent keeps none.', tone: 'faded' });
-  } else {
-    if (!kit.knacks.length) {
-      rows.push({ kind: 'line', text: 'nothing yet.', tone: 'faded' });
-    }
-    for (const knack of kit.knacks) {
-      const open = knackUi?.reading?.name === knack.name && knackUi.reading.from === knack.from;
-      rows.push({
-        kind: 'entry',
-        mark: knack.from === 'here' ? '■' : OFF,
-        text: knack.about ? `${knack.name} · ${knack.about}` : knack.name,
-        tone: 'ink',
-        pick: `knack:${knack.from}:${knack.name}`,
-      });
-      if (open) {
-        rows.push({
-          kind: 'prose',
-          text: knackUi?.reading?.text ?? 'reading…',
-          tone: 'faded',
-        });
-        const asking =
-          knackUi?.removing?.name === knack.name && knackUi.removing.from === knack.from;
-        rows.push({
-          kind: 'entry',
-          mark: '✗',
-          text: asking ? `press again and ${knack.name} is gone` : 'throw it away',
-          tone: asking ? 'sore' : 'faded',
-          pick: `rmknack:${knack.from}:${knack.name}`,
-          armed: asking,
-        });
-      }
-    }
-    if (knackUi?.catalogShowing) {
-      const has = new Set(kit.knacks.map((knack) => knack.name));
-      for (const entry of (knackUi.catalog ?? []).filter((one) => !has.has(one.id))) {
-        rows.push({
-          kind: 'line',
-          text: `${entry.name} · ${entry.about}`,
-          pick: `addknack:${entry.id}`,
-        });
-      }
-      rows.push({ kind: 'line', text: 'fold the catalogue away', pick: 'browseknacks' });
-    } else {
-      rows.push({ kind: 'line', text: 'teach it one from the catalogue', pick: 'browseknacks' });
-    }
-    rows.push({ kind: 'line', text: 'teach it one of your own', pick: 'addcustomknack' });
+    sec.append(h('div', 'f-note', 'this agent keeps none.'));
+    return sec;
   }
-  rows.push({ kind: 'gap' }, exportRow(exported));
-  return [...rows, ...over(ending, kit.awake, task.shared)];
+  const chips = h('div', 'f-chips');
+  for (const knack of kit.knacks) {
+    const open = knackUi?.reading?.name === knack.name && knackUi.reading.from === knack.from;
+    const one = h('span', `f-cp${open ? ' f-armed' : ''}`, knack.name);
+    if (open) one.style.color = 'var(--g-ink)';
+    one.title = knack.about;
+    chips.append(pressable(one, `knack:${knack.from}:${knack.name}`));
+  }
+  chips.append(
+    pressable(
+      h('span', 'f-cp f-add1', knackUi?.catalogShowing ? 'fold the catalogue' : '+ teach one'),
+      'browseknacks'
+    )
+  );
+  chips.append(pressable(h('span', 'f-cp f-add1', '+ one of your own'), 'addcustomknack'));
+  sec.append(chips);
+  return sec;
 }
 
-/** The one thing the card does to the conversation rather than to who has it. */
-function exportRow(exported: { text: string; path?: string } | null | undefined): Row {
-  return {
-    kind: 'entry',
-    mark: '→',
-    text: exported?.text ?? 'export the transcript as markdown',
-    tone: exported ? 'keen' : 'faded',
-    pick: exported ? (exported.path ? `show-export:${exported.path}` : undefined) : 'export',
-  };
+/** The catalogues of servers and skills, folded open under the card. */
+function catalogues(kit: Kit, catalogShowing?: boolean, knackUi?: KnackUi): HTMLElement {
+  const sec = h('div', 'f-sec');
+  if (catalogShowing) {
+    const has = new Set(kit.tools.map((tool) => tool.name));
+    sec.append(label('servers worth adding'));
+    const list = h('div', 'f-card f-list');
+    for (const entry of MCP_CATALOG.filter((each) => !has.has(each.name.toLowerCase()))) {
+      const line = h(
+        'div',
+        'f-line',
+        sign('plus', '#f2c66d', 12),
+        h('span', 'f-f f-ltr', entry.name),
+        h('span', 'f-d', entry.description)
+      );
+      list.append(pressable(line, `addcat:${entry.key}`));
+    }
+    sec.append(list);
+  }
+  if (knackUi?.catalogShowing) {
+    const has = new Set(kit.knacks.map((knack) => knack.name));
+    sec.append(label('skills worth teaching'));
+    const list = h('div', 'f-card f-list');
+    const found = (knackUi.catalog ?? []).filter((one) => !has.has(one.id));
+    if (!knackUi.catalog) list.append(h('div', 'f-note', 'looking…'));
+    for (const entry of found) {
+      const line = h(
+        'div',
+        'f-line',
+        sign('plus', '#f2c66d', 12),
+        h('span', 'f-f f-ltr', entry.name),
+        h('span', 'f-d', entry.about)
+      );
+      list.append(pressable(line, `addknack:${entry.id}`));
+    }
+    sec.append(list);
+  }
+  return sec;
 }
 
-function choices(
-  rows: Row[],
-  heading: string,
-  what: string,
-  on: string | null,
-  all: { id: string; name: string; about?: string }[]
-): void {
-  if (!all.length) return;
-  rows.push({ kind: 'gap' }, { kind: 'heading', text: heading });
-  for (const choice of all) {
-    rows.push({
-      kind: 'entry',
-      mark: choice.id === on ? ON : OFF,
-      text: choice.about ? `${choice.name} · ${choice.about}` : choice.name,
-      tone: choice.id === on ? 'ink' : 'faded',
-      pick: `${what}:${choice.id}`,
-    });
-  }
+/** What a skill says, opened under the chips, and the way to throw it away. */
+function readingOf(kit: Kit, knackUi?: KnackUi): HTMLElement | null {
+  const open = knackUi?.reading;
+  if (!open) return null;
+  const knack = kit.knacks.find((one) => one.name === open.name && one.from === open.from);
+  if (!knack) return null;
+  const wrap = h(
+    'div',
+    'f-sec',
+    label(knack.name, knack.from === 'here' ? 'only in this checkout' : '')
+  );
+  wrap.append(h('div', 'f-read', open.text ?? 'reading…'));
+  const asking = knackUi?.removing?.name === knack.name && knackUi.removing.from === knack.from;
+  const gone = h(
+    'span',
+    asking ? 'g-ghost f-ghost-sore' : 'g-ghost g-plain',
+    sign('trash_y', asking ? '#f08a72' : '#f2c66d', 13),
+    asking ? `press again and ${knack.name} is gone` : 'Throw it away'
+  );
+  gone.style.marginTop = '10px';
+  pressable(gone, `rmknack:${knack.from}:${knack.name}`);
+  if (asking) stand(() => gone.click(), gone);
+  wrap.append(gone);
+  return wrap;
 }
 
 /**
@@ -571,61 +730,36 @@ export interface Ending {
 }
 
 /**
- * Sending whoever is working home without touching the worktree.
- *
- * One press, not two, because nothing here is thrown away: the branch, the
- * transcript and the worktree all stay exactly as they are, and opening this
- * session again — or just saying something to it — wakes the same one back
- * up. Only offered while somebody is actually here to send home.
+ * The end of a session, with what it would cost said before you are asked
+ * rather than after, and two presses like everything else here that cannot be
+ * pressed again.
  */
-function homeward(awake: boolean): Row[] {
-  if (!awake) return [];
-  return [
-    { kind: 'gap' },
-    {
-      kind: 'entry',
-      mark: '○',
-      text: 'send them home for the night',
-      tone: 'faded',
-      pick: 'rest',
-    },
-    {
-      kind: 'prose',
-      text: 'the files and everything said stay. opening this again wakes the same one back up.',
-      tone: 'faded',
-    },
-  ];
-}
-
-function over(ending: Ending | undefined, awake: boolean, shared?: boolean): Row[] {
-  if (!ending) return homeward(awake);
+function over(ending: Ending | undefined, _awake: boolean, shared?: boolean): Row[] {
+  if (!ending) return [];
+  const strip = h('div', 'g-danger');
+  strip.style.cssText = 'margin-top:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap';
   if (shared) {
     /* Nothing of its own to lose: the folder is the project's, and whatever
        was changed in it stays for whoever is next. */
-    return [
-      ...homeward(awake),
-      { kind: 'gap' },
-      { kind: 'heading', text: 'when it is over' },
-      {
-        kind: 'line',
-        text: 'it works in the project’s own folder, so taking it down leaves every file where it is.',
-        tone: 'faded',
-      },
-      {
-        kind: 'entry',
-        mark: '✗',
-        text: 'send them home and take this down',
-        tone: 'faded',
-        pick: 'end!',
-      },
-    ];
+    const go = h(
+      'span',
+      'g-ghost f-ghost-sore',
+      sign('cross', '#f08a72', 12),
+      'Send them home and take this down'
+    );
+    pressable(go, 'end!');
+    strip.append(
+      h(
+        'span',
+        '',
+        'it works in the project’s own folder, so taking it down leaves every file where it is.'
+      ),
+      go
+    );
+    (strip.firstElementChild as HTMLElement).style.cssText =
+      'flex:1;min-width:240px;color:#f6c4b6;font-size:13px';
+    return [dom(strip)];
   }
-  const rows: Row[] = [
-    ...homeward(awake),
-    { kind: 'gap' },
-    { kind: 'heading', text: 'when it is over' },
-  ];
-
   const losing = [
     ending.uncommitted
       ? `${counted(ending.uncommitted, 'file')} in there nobody has committed`
@@ -636,33 +770,28 @@ function over(ending: Ending | undefined, awake: boolean, shared?: boolean): Row
         ? `${counted(ending.unsent, 'commit')} nowhere else has`
         : '',
   ].filter(Boolean);
-  rows.push({
-    kind: 'line',
-    text: losing.length
+  const said = h(
+    'span',
+    '',
+    losing.length
       ? `there ${losing.length === 1 ? 'is' : 'are'} ${losing.join(' and ')}.`
-      : 'everything in there is committed and sent.',
-    tone: losing.length ? 'sore' : 'faded',
-  });
-
-  if (!ending.asked) {
-    rows.push({
-      kind: 'entry',
-      mark: '✗',
-      text: 'send everybody home and take this down',
-      tone: 'faded',
-      pick: 'end',
-    });
-    return rows;
-  }
-  rows.push({
-    kind: 'entry',
-    mark: '✗',
-    text: losing.length ? 'press again and all of that is gone' : 'press again and it is gone',
-    tone: 'sore',
-    pick: 'end!',
-    armed: true,
-  });
-  return rows;
+      : 'everything in there is committed and sent.'
+  );
+  said.style.cssText = `flex:1;min-width:240px;font-size:13px;color:${losing.length ? '#f6c4b6' : 'var(--g-ink-2)'}`;
+  const go = h(
+    'span',
+    'g-ghost f-ghost-sore',
+    sign('cross', '#f08a72', 12),
+    ending.asked
+      ? losing.length
+        ? 'press again and all of that is gone'
+        : 'press again and it is gone'
+      : 'Send everybody home and take this down'
+  );
+  pressable(go, ending.asked ? 'end!' : 'end');
+  if (ending.asked) stand(() => go.click(), go);
+  strip.append(said, go);
+  return [dom(strip)];
 }
 
 export function counted(many: number, thing: string): string {

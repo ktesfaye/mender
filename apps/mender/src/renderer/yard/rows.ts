@@ -20,10 +20,10 @@ import { astop } from './walk';
 
 /** What each tone is, in the light of the yard rather than on a plank. */
 const INK: Record<Tone, string> = {
-  ink: '#f4e3c0',
-  faded: '#a89272',
-  keen: 'var(--yard-well)',
-  sore: 'var(--yard-wrong)',
+  ink: 'var(--g-ink)',
+  faded: 'var(--g-ink-3)',
+  keen: 'var(--g-moss)',
+  sore: 'var(--g-sore)',
   warn: 'var(--yard-warn)',
   /* Something quoted exactly — a name, a path, a flag — reads cool against the
      rest so it is a thing rather than a word. */
@@ -122,6 +122,9 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
       return line;
     }
 
+    case 'dom':
+      return row.el;
+
     case 'diagram': {
       line.style.cssText = 'padding:8px 0';
       line.appendChild(makeDiagramView(row.svg));
@@ -214,43 +217,42 @@ function one(row: Row, press: (pick: string) => void): HTMLElement {
   return line;
 }
 
-const SHEET = ["font-family:'Josefin Sans',sans-serif", 'font-size:15px', 'line-height:1.45'].join(
-  ';'
-);
+const SHEET = ["font-family:'Figtree',sans-serif", 'font-size:14.5px', 'line-height:1.5'].join(';');
 
+/* Lantern glass: the title is a name, so it is set in Fraunces, and the
+   headings are the small pixel capitals every glass pane labels itself with. */
 const TITLE = [
-  "font-family:'Josefin Sans',sans-serif",
-  'font-size:22px',
-  'font-weight:600',
-  'letter-spacing:.24em',
-  'text-transform:uppercase',
-  'color:#f4e3c0',
-  'text-shadow:2px 2px 0 #120d07',
-  'padding-bottom:6px',
+  "font-family:'Fraunces',serif",
+  "font-variation-settings:'SOFT' 100,'WONK' 0,'opsz' 60",
+  'font-size:30px',
+  'font-weight:500',
+  'line-height:1.1',
+  'color:var(--g-ink)',
+  'padding:6px 0 10px',
 ].join(';');
 
 const HEADING = [
-  "font-family:'Josefin Sans',sans-serif",
-  'font-size:11px',
-  'letter-spacing:.24em',
+  "font-family:'Silkscreen',monospace",
+  'font-size:10px',
+  'letter-spacing:.12em',
   'text-transform:uppercase',
-  'color:#a89272',
-  'padding:12px 0 4px',
+  'color:var(--g-ink-3)',
+  'padding:16px 0 6px',
 ].join(';');
 
 const TYPED_CURSOR = [
   'width:2px',
   'height:16px',
   'margin-left:2px',
-  'background:#f4e3c0',
+  'background:var(--g-gold)',
   'animation:yard-blink 900ms steps(1,end) infinite',
   'flex:none',
 ].join(';');
 
 const BODY = [
-  "font-family:'Josefin Sans',sans-serif",
-  'font-size:15px',
-  'line-height:1.45',
+  "font-family:'Figtree',sans-serif",
+  'font-size:14.5px',
+  'line-height:1.5',
   /* Everything wraps. A board whose lines run off the edge is a board that
      has quietly decided what you are allowed to read. */
   'overflow-wrap:anywhere',

@@ -1,4 +1,21 @@
 import type { Commit, FileChange } from '@emdash/core/runtimes/git/api';
+import {
+  card,
+  chip,
+  counts,
+  cursor,
+  danger,
+  dirOf,
+  dom,
+  ghost,
+  h,
+  head,
+  label,
+  meter,
+  nameOf,
+  pressable,
+  sign,
+} from '../glass/read';
 import type { Row } from './row';
 
 /**
@@ -15,41 +32,101 @@ export function made(
   files: readonly FileChange[] | undefined,
   offer?: { isHead: boolean; reverting?: 'offered' | 'asked' }
 ): Row[] {
-  /* The subject is a sentence rather than a name, and a board's title is
-     written twice the size, so it is read out rather than titled: a sentence
-     that has to be cut off to be a heading is worse than one that is simply
-     read. */
-  const rows: Row[] = [{ kind: 'prose', text: saying(commit.subject) }];
+  /* The subject is a sentence rather than a name, so it is set as the title
+     and left to wrap. */
+  const state = [
+    chip(commit.isPushed ? 'sent up' : 'not sent up', commit.isPushed ? '#9bd28a' : '#7aaaff'),
+    ...(files ? [chip(files.length === 1 ? '1 file' : `${files.length} files`)] : []),
+  ];
+  const top = h('div', 'gr-head');
+  const left = h('div', 'gr-head-l');
+  const meta = h('div', 'gr-when');
+  meta.style.marginTop = '14px';
+  meta.append(
+    sign('commit', '#7aaaff', 16),
+    h('span', 'gr-hash', commit.hash.slice(0, 7)),
+    h('span', 'g-faint', '·'),
+    h('span', 'g-mute', stamp(commit.date))
+  );
+  const title = h('div', 'g-serif gr-h1', saying(commit.subject));
+  title.style.marginTop = '10px';
+  left.append(meta, title);
+  const flags = h('div', 'gr-state');
+  flags.append(...state);
+  top.append(left, flags);
 
-  for (const paragraph of why(commit.body)) {
-    rows.push({ kind: 'gap' }, { kind: 'prose', text: paragraph, tone: 'faded' });
+  const rows: Row[] = [dom(top)];
+
+  const grid = h('div', 'gr-two');
+  const paragraphs = why(commit.body);
+  if (paragraphs.length) {
+    const c = card('gr-p16');
+    c.append(label('what it was for', 'gr-flush'));
+    for (const paragraph of paragraphs) c.appendChild(h('div', 'gr-v', paragraph));
+    grid.appendChild(c);
+  } else {
+    grid.style.gridTemplateColumns = '1fr';
   }
-
-  rows.push({ kind: 'gap' }, { kind: 'line', text: by(commit), tone: 'faded' }, { kind: 'gap' });
+  const who = card('gr-p16');
+  who.appendChild(label('who, and where it stands', 'gr-flush'));
+  const line = h('div', 'gr-who');
+  const av = h('div', 'gr-av');
+  const initial = h('span', 'g-serif', commit.author.slice(0, 1).toLowerCase());
+  initial.style.cssText = 'font-size:20px;color:#f2c66d';
+  av.appendChild(initial);
+  const t = h('div', 'gr-v');
+  t.style.lineHeight = '1.35';
+  const b = h('b', '', commit.author);
+  const sub = h(
+    'span',
+    'g-faint',
+    [commit.isPushed ? 'sent up' : 'still only here', ...commit.tags].join(' · ')
+  );
+  sub.style.fontSize = '13px';
+  t.append(
+    b,
+    document.createTextNode(` · ${clock(commit.date)}`),
+    document.createElement('br'),
+    sub
+  );
+  line.append(av, t);
+  who.appendChild(line);
+  grid.appendChild(who);
+  rows.push(dom(grid));
 
   if (!files) {
-    rows.push({ kind: 'line', text: 'reading what it touched…', tone: 'faded' });
+    rows.push({ kind: 'gap' }, { kind: 'line', text: 'reading what it touched…', tone: 'faded' });
     return rows;
   }
   if (!files.length) {
-    rows.push({ kind: 'line', text: 'it touched nothing.', tone: 'faded' });
-    return rows;
+    rows.push({ kind: 'gap' }, { kind: 'line', text: 'it touched nothing.', tone: 'faded' });
+  } else {
+    rows.push(dom(label('what it moved')));
+    const list = card('gr-files');
+    for (const file of files) list.appendChild(fileRow(file, true));
+    rows.push(dom(list));
   }
 
-  rows.push({ kind: 'heading', text: counted(files) });
-  for (const file of files) {
-    rows.push({
-      kind: 'entry',
-      mark: mark(file.status),
-      text: file.path,
-      tone: file.status === 'deleted' ? 'sore' : file.status === 'added' ? 'keen' : 'faded',
-      keep: 'tail',
-      pick: `in:${file.path}`,
-    });
-  }
-
-  if (offer) rows.push({ kind: 'gap' }, ...undoing(offer));
+  if (offer) rows.push(dom(undoing(offer)));
   return rows;
+}
+
+/** One file a commit or a branch moved: its letter, its name, how much. */
+export function fileRow(file: FileChange, withDir: boolean, pick = `in:${file.path}`): HTMLElement {
+  const tone = file.status === 'deleted' ? 'del' : file.status === 'added' ? 'new' : 'mod';
+  const el = h('div', 'gr-f');
+  const name = h('span');
+  if (withDir) name.appendChild(h('span', 'dir', dirOf(file.path) || './'));
+  name.appendChild(h('span', 'nm', nameOf(file.path)));
+  const ct = counts(file.additions, file.deletions);
+  ct.className = 'ct';
+  el.append(
+    h('span', `gr-badge ${tone}`, mark(file.status)),
+    name,
+    ct,
+    meter(file.additions, file.deletions)
+  );
+  return pressable(el, pick);
 }
 
 /**
@@ -60,49 +137,37 @@ export function made(
  * what it did is a new commit that undoes it, which is why "it went in
  * wrong" always has an answer here whichever commit that turns out to be.
  */
-function undoing(offer: { isHead: boolean; reverting?: 'offered' | 'asked' }): Row[] {
-  const rows: Row[] = [];
+function undoing(offer: { isHead: boolean; reverting?: 'offered' | 'asked' }): HTMLElement {
+  const wrap = h('div');
   if (offer.isHead) {
-    rows.push(
-      { kind: 'entry', mark: '✎', text: 'say it differently', tone: 'faded', pick: 'amend' },
-      {
-        kind: 'entry',
-        mark: '✗',
-        text: 'take it back, keep what it wrote',
-        tone: 'faded',
-        pick: 'uncommit',
-      }
+    const tools = h('div', 'gr-tools');
+    tools.append(
+      pressable(ghost('say it differently', 'edit'), 'amend'),
+      pressable(ghost('take it back, keep what it wrote', 'undo_y'), 'uncommit')
     );
+    wrap.appendChild(tools);
   }
-  if (offer.reverting === 'asked') {
-    rows.push({
-      kind: 'entry',
-      mark: '✗',
-      text: 'press again and a commit undoing this goes in',
-      tone: 'sore',
-      pick: 'revert-made!',
-      armed: true,
-    });
-  } else {
-    rows.push({
-      kind: 'entry',
-      mark: '✗',
-      text: 'undo it with a new commit',
-      tone: 'faded',
-      pick: 'revert-made',
-    });
-  }
-  return rows;
+  const asked = offer.reverting === 'asked';
+  wrap.appendChild(
+    danger({
+      icon: 'undo_y',
+      title: asked ? 'a commit undoing this goes in' : 'undo it with a new commit',
+      said: asked ? 'nothing is lost, the history keeps both.' : 'the history keeps both.',
+      button: asked ? 'yes, undo it' : 'undo it',
+      pick: asked ? 'revert-made!' : 'revert-made',
+      armed: asked,
+    })
+  );
+  return wrap;
 }
 
 /** Saying a commit differently: the same write-line a new one is said on. */
 export function amending(written: string): Row[] {
-  return [
-    { kind: 'title', text: 'say it differently' },
-    { kind: 'gap' },
-    { kind: 'line', text: 'return writes it.', tone: 'faded' },
-    { kind: 'typed', text: written },
-  ];
+  const field = h('div', 'gr-input');
+  const said = h('span', '', written);
+  said.appendChild(cursor());
+  field.append(sign('edit', '#f2c66d', 16), said);
+  return [dom(head({ title: 'say it differently' })), dom(field)];
 }
 
 /** While git is still being asked what the commit was. */
@@ -169,19 +234,6 @@ function why(body: string): string[] {
   return said;
 }
 
-/**
- * Who made it, when, and whether anybody else has it yet.
- *
- * Whether it has been pushed is the one thing about a commit that changes
- * what you can still do to it, so it goes in the same breath as the date.
- */
-function by(commit: Commit): string {
-  const said = [`${commit.author}, ${when(commit.date)}`];
-  if (!commit.isPushed) said.push('still only here');
-  if (commit.tags.length) said.push(commit.tags.join(', '));
-  return said.join(' · ');
-}
-
 /** A date somebody would say out loud, not one git would print. */
 function when(at: number): string {
   const days = (Date.now() - at) / 86400000;
@@ -192,15 +244,6 @@ function when(at: number): string {
   if (days < 7) return day.toLocaleDateString(undefined, { weekday: 'long' }).toLowerCase();
   const short = day.toLocaleDateString(undefined, { day: 'numeric', month: 'long' }).toLowerCase();
   return days < 300 ? short : `${short} ${day.getFullYear()}`;
-}
-
-/** How much of the checkout it moved, as a heading over the list. */
-function counted(files: readonly FileChange[]): string {
-  const added = files.reduce((all, file) => all + file.additions, 0);
-  const taken = files.reduce((all, file) => all + file.deletions, 0);
-  const many = files.length === 1 ? 'one file' : `${files.length} files`;
-  const moved = [added ? `${added} in` : '', taken ? `${taken} out` : ''].filter(Boolean);
-  return moved.length ? `${many}, ${moved.join(' and ')}` : many;
 }
 
 /** Git's own letter for what happened to the file, the same one a status uses. */
@@ -217,4 +260,16 @@ function mark(status: FileChange['status']): string {
     default:
       return 'M';
   }
+}
+
+function clock(at: number): string {
+  return new Date(at)
+    .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    .toLowerCase();
+}
+
+/** `today, 11:15 am`, or the day it was. */
+function stamp(at: number): string {
+  const days = (Date.now() - at) / 86400000;
+  return days < 1 ? `today, ${clock(at)}` : when(at);
 }

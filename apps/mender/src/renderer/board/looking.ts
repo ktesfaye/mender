@@ -1,3 +1,4 @@
+import { chip, cursor, dirOf, dom, h, head, nameOf, pressable, sign } from '../glass/read';
 import type { Row } from './row';
 
 /**
@@ -36,28 +37,43 @@ export interface Found {
 const SHOWN = 4;
 
 export function hunting(hunt: Hunt): Row[] {
+  const lines = hunt.found.reduce((all, file) => all + (file.lines?.length ?? 0), 0);
+  const count = hunt.inside
+    ? `${lines === 1 ? '1 line' : `${lines} lines`} in ${hunt.found.length === 1 ? '1 file' : `${hunt.found.length} files`}`
+    : hunt.found.length === 1
+      ? '1 file'
+      : `${hunt.found.length} files`;
   const rows: Row[] = [
-    { kind: 'title', text: hunt.name },
-    { kind: 'gap' },
-    {
-      kind: 'entry',
-      mark: '→',
-      text: hunt.inside
-        ? 'looking inside them. press to look for names'
-        : 'looking for names. press to look inside them',
-      tone: 'faded',
-      pick: 'flip',
-    },
-    { kind: 'gap' },
+    dom(
+      head({
+        title: hunt.inside ? 'where is it written' : 'where is it called',
+        sub: [hunt.name],
+        right: hunt.written && hunt.found.length ? [chip(count, '#9bd28a')] : [],
+      })
+    ),
   ];
 
-  if (!hunt.written) {
-    rows.push({
-      kind: 'line',
-      text: hunt.inside ? 'say what is written in it.' : 'say what it is called.',
-      tone: 'faded',
-    });
-  } else if (hunt.asking && !hunt.found.length) {
+  const q = h('div', 'gr-tools');
+  const seg = h('div', 'gr-seg');
+  const byName = h('span', hunt.inside ? '' : 'gr-on', 'by name');
+  const byText = h('span', hunt.inside ? 'gr-on' : '', "by what's written");
+  pressable(hunt.inside ? byName : byText, 'flip');
+  seg.append(byName, byText);
+  const field = h('div', 'gr-input');
+  field.style.cssText = 'flex:1;margin-top:0';
+  const said = h('span', '');
+  if (hunt.written) said.textContent = hunt.written;
+  else {
+    said.className = 'ph';
+    said.textContent = hunt.inside ? 'what is written in it' : 'what it is called';
+  }
+  said.appendChild(cursor());
+  field.append(sign('find', '#f2c66d', 16), said);
+  q.append(seg, field);
+  rows.push(dom(q), { kind: 'gap' });
+
+  if (!hunt.written) return rows;
+  if (hunt.asking && !hunt.found.length) {
     rows.push({ kind: 'line', text: 'looking…', tone: 'faded' });
   } else if (hunt.unread) {
     /* An empty answer from an index that has not read the checkout yet is not
@@ -65,37 +81,55 @@ export function hunting(hunt: Hunt): Row[] {
     rows.push({ kind: 'line', text: 'still reading the checkout…', tone: 'faded' });
   } else if (!hunt.found.length) {
     rows.push({ kind: 'line', text: 'nothing in here is.', tone: 'faded' });
-  } else {
+  } else if (!hunt.inside) {
+    const list = h('div', 'gr-list');
     for (const file of hunt.found) {
-      rows.push({
-        kind: 'entry',
-        mark: ' ',
-        text: file.path,
-        keep: 'tail',
-        pick: `open:${file.path}`,
-      });
+      const el = h('div', 'gr-fl2');
+      const n = h('span', 'n');
+      n.appendChild(marked(nameOf(file.path), hunt.written));
+      const d = h('span', 'd g-mono', dirOf(file.path) || './');
+      el.append(sign('file', '#f2c66d', 16), n, d);
+      list.appendChild(pressable(el, `open:${file.path}`, { drag: file.path }));
+    }
+    rows.push(dom(list));
+  } else {
+    const all = h('div');
+    for (const file of hunt.found) {
+      const g = h('div', 'gr-hit');
+      const top = h('div', 'gr-hit-h');
+      const n = h('span', 'n', nameOf(file.path));
+      top.append(sign('file', '#f2c66d', 15), n, h('span', 'p', dirOf(file.path) || './'));
+      if (file.lines?.length) top.appendChild(chip(String(file.lines.length), undefined, 'ct'));
+      g.appendChild(pressable(top, `open:${file.path}`));
       for (const line of (file.lines ?? []).slice(0, SHOWN)) {
-        rows.push({
-          kind: 'line',
-          text: `    ${line.text.trim()}`,
-          tone: 'faded',
-          // A line of code reads from its start; cutting the front hides it.
-          keep: 'front',
-          face: 'type',
-          pick: `open:${file.path}`,
-        });
+        const el = h('div', 'gr-ln');
+        const text = h('span');
+        text.appendChild(marked(line.text.trim(), hunt.written));
+        el.append(h('span', 'no', String(line.at)), text);
+        g.appendChild(pressable(el, `open:${file.path}`));
       }
       const over = (file.lines?.length ?? 0) - SHOWN;
-      if (over > 0) {
-        rows.push({
-          kind: 'line',
-          text: `    and ${over} more in it`,
-          tone: 'faded',
-          face: 'type',
-        });
-      }
+      if (over > 0) g.appendChild(h('div', 'gr-more', `and ${over} more in it`));
+      all.appendChild(g);
     }
+    rows.push(dom(all));
   }
+  return rows;
+}
 
-  return [...rows, { kind: 'gap' }, { kind: 'typed', text: hunt.written }];
+/** Text with whatever was looked for lit up in it. */
+function marked(text: string, needle: string): DocumentFragment {
+  const out = document.createDocumentFragment();
+  const low = text.toLowerCase();
+  const find = needle.toLowerCase();
+  let at = 0;
+  while (find) {
+    const hit = low.indexOf(find, at);
+    if (hit === -1) break;
+    if (hit > at) out.appendChild(document.createTextNode(text.slice(at, hit)));
+    out.appendChild(h('mark', '', text.slice(hit, hit + find.length)));
+    at = hit + find.length;
+  }
+  if (at < text.length) out.appendChild(document.createTextNode(text.slice(at)));
+  return out;
 }

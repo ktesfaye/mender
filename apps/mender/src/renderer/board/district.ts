@@ -2,6 +2,7 @@ import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { shortName, type CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
 import type { MissingDep } from '@shared/app-settings';
+import { badge, chip, dom, h, label, pressable, sign, tile } from '../glass/f';
 import type { MenderClient } from '../wire';
 import { saying } from './made';
 import type { Row, Tone } from './row';
@@ -94,33 +95,35 @@ export interface Landing {
  */
 export function landingLines(on: Landing | null): Row[] {
   if (!on) return [];
-  const rows: Row[] = [{ kind: 'gap' }];
+  const rows: Row[] = [];
   if (on.behind) {
-    rows.push({
-      kind: 'entry',
-      mark: '+',
-      text: `bring ${on.base} in`,
-      pick: 'bring-base',
-    });
+    rows.push(
+      dom(
+        tile('down', `Bring ${on.base} in`, `it moved ${counted(on.behind, 'commit')} since`, {
+          pick: 'bring-base',
+        })
+      )
+    );
   }
   if (on.landed) {
     rows.push({ kind: 'line', text: `it has gone into ${on.base}.`, tone: 'faded' });
   } else {
-    rows.push({
-      kind: 'entry',
-      mark: '+',
-      text: `bring it into ${on.base} here`,
-      pick: 'land-here',
-    });
+    rows.push(
+      dom(
+        tile('land', `Land it on ${on.base}`, 'right here on disk, no remote', {
+          pick: 'land-here',
+        })
+      )
+    );
   }
   if (on.ahead) {
-    rows.push({
-      kind: 'entry',
-      mark: '→',
-      text: 'everything this session changed',
-      tone: 'faded',
-      pick: 'branch-changed',
-    });
+    rows.push(
+      dom(
+        tile('diff', 'Everything it changed', 'the whole branch, file by file', {
+          pick: 'branch-changed',
+        })
+      )
+    );
   }
   return rows;
 }
@@ -240,85 +243,161 @@ function build(
   lately: Commits['commits'],
   missing: MissingDep[]
 ): Row[] {
-  const rows: Row[] = [
-    { kind: 'title', text: place.name },
-    // Where it is, and the way in to what is actually in there.
-    { kind: 'line', text: place.path, tone: 'faded', keep: 'tail', pick: 'inside' },
-    { kind: 'gap' },
-    { kind: 'line', text: standing(head) },
-    ...sending(head),
-    ...(place.tail?.() ?? []),
-    { kind: 'gap' },
-    // Whatever Mender itself needs that this machine doesn't have, named
-    // plainly rather than left to fail somewhere quieter — a missing `gh`
-    // otherwise only shows up as a pull request that mysteriously won't send.
-    ...missing.map(
-      (dep): Row => ({
-        kind: 'entry',
-        mark: '!',
-        text: dep.command
-          ? `${dep.name} is missing here. press to put \`${dep.command}\` on the shell, and return runs it`
-          : `${dep.name} is missing here.`,
-        tone: 'sore',
-        pick: dep.command ? `installdep:${dep.id}\u0000${dep.command}` : undefined,
-      })
-    ),
-    // The one thing a checkout is for that git has no word for.
-    { kind: 'entry', mark: '→', text: 'open a shell in here', tone: 'faded', pick: 'shell' },
-    // Two places to work at once — the first stays exactly where it was,
-    // still running in its own tmux, whichever one the board is showing.
-    { kind: 'entry', mark: '→', text: 'open a second shell in here', tone: 'faded', pick: 'shell2' },
-    // Finding a file does not need walking to it first.
-    { kind: 'entry', mark: '→', text: 'find a file', tone: 'faded', pick: 'hunt' },
-    // And the way this piece of work ends, which is not in a browser.
-    { kind: 'entry', mark: '→', text: 'what is open for this branch', tone: 'faded', pick: 'sent' },
-    ...listening(place.servers?.() ?? []),
-    { kind: 'gap' },
-  ];
-
-  rows.push({ kind: 'heading', text: 'uncommitted' });
+  const tail = place.tail?.() ?? [];
+  const tiles = tail.filter((row): row is Extract<Row, { kind: 'dom' }> => row.kind === 'dom');
+  const notes = tail.filter((row) => row.kind !== 'dom' && row.kind !== 'gap');
   const entries = Object.entries(status?.entries ?? {});
+  const files = changedIn(status);
+  const tracking =
+    head && head.kind !== 'detached' && head.kind !== 'unborn' && head.upstream.kind !== 'none'
+      ? head.upstream.tracking
+      : undefined;
+  const ahead = tracking?.kind === 'resolved' ? tracking.ahead : 0;
+
+  const root = h('div', 'f-root');
+
+  const state = h('div', 'f-state');
+  if (entries.length) state.append(chip(`${entries.length} uncommitted`, '#f2c66d'));
+  if (head && head.kind !== 'detached' && head.kind !== 'unborn') {
+    if (head.upstream.kind === 'none') state.append(chip('nobody has seen it', '#7aaaff'));
+    else if (ahead) state.append(chip(`${ahead} not sent up`, '#7aaaff'));
+    if (tracking?.kind === 'resolved' && tracking.behind) {
+      state.append(chip(`${tracking.behind} behind`, '#ff9a4a'));
+    }
+  }
+  const branch = h('span', 'f-branch', sign('merge', '#9bd28a', 13), branchName(head));
+  const where = h('div', 'f-sub', branch, h('span', 'g-mono', place.path));
+  root.append(h('div', 'f-top', h('div', '', h('h1', '', place.name), where), state));
+
+  for (const dep of missing) {
+    const strip = h(
+      'div',
+      'f-strip f-sorest',
+      sign('warn', '#f08a72', 18),
+      h('span', 'f-t', h('b', '', dep.name), ' is missing here')
+    );
+    if (dep.command) {
+      pressable(strip, `installdep:${dep.id}\u0000${dep.command}`);
+      strip.append(
+        h('span', 'g-ghost', sign('term', '#f2c66d', 13), 'write the line that fetches it')
+      );
+    }
+    root.append(strip);
+  }
+
+  const grid = h('div', 'f-grid');
+  const sendTile = sending(head);
+  if (sendTile) grid.append(sendTile);
+  for (const one of tiles) grid.append(one.el);
+  /* However many there are fill the row, so one lone action is never a
+     quarter-width tile beside an empty three quarters. */
+  if (grid.childElementCount) {
+    grid.style.gridTemplateColumns = `repeat(${Math.min(4, grid.childElementCount)}, 1fr)`;
+    if (grid.childElementCount === 1) grid.firstElementChild?.classList.add('f-wide');
+    root.append(grid);
+  }
+  const ways = h('div', 'f-grid f-compact');
+  ways.append(
+    tile('shell', 'Open a shell', 'a real one, in here', { pick: 'shell', wide: true }),
+    tile('shell', 'A second shell', 'its own, beside the first', { pick: 'shell2', wide: true }),
+    tile('find', 'Find a file', 'by name or by what is in it', { pick: 'hunt', wide: true }),
+    tile('pr', 'What is open for it', 'the pull request, the machines', {
+      pick: 'sent',
+      wide: true,
+    }),
+    tile('page', 'Walk the folder', 'what is in it', { pick: 'inside', wide: true })
+  );
+  root.append(ways);
+
+  for (const note of notes) {
+    const line = h('div', 'f-note');
+    if (note.kind === 'line' || note.kind === 'entry' || note.kind === 'prose') {
+      line.textContent = note.text;
+      if (note.tone === 'sore') line.style.color = 'var(--g-sore)';
+      if (note.pick) {
+        line.style.color = 'var(--g-gold)';
+        pressable(line, note.pick);
+      }
+    }
+    root.append(line);
+  }
+
+  const urls = place.servers?.() ?? [];
+  if (urls.length) {
+    const chips = h('div', 'f-chips');
+    for (const url of urls) {
+      const one = h(
+        'span',
+        'f-cp',
+        sign('globe', '#ff9a4a', 12),
+        `listening on ${shortAddress(url)}`
+      );
+      chips.append(pressable(one, `page:${url}`));
+    }
+    root.append(h('div', 'f-sec', label('running here'), chips));
+  }
+
+  const left = h('div', '', label('uncommitted'));
+  const card = h('div', 'f-card');
   if (status?.kind === 'error') {
-    rows.push({ kind: 'line', text: status.message ?? 'git would not say.', tone: 'sore' });
+    card.append(h('div', 'f-note', status.message ?? 'git would not say.'));
   } else if (status?.kind === 'too-many-files') {
-    rows.push({ kind: 'line', text: 'more than this board can hold.', tone: 'faded' });
+    card.append(h('div', 'f-note', 'more than this board can hold.'));
   } else if (!entries.length) {
-    rows.push({ kind: 'line', text: 'nothing. the tree is clean.', tone: 'faded' });
+    card.append(h('div', 'f-note', 'nothing. the tree is clean.'));
   } else {
-    for (const file of changedIn(status).slice(0, CHANGES)) {
-      rows.push({
-        kind: 'entry',
-        mark: file.mark,
-        text: file.path,
-        tone: toneOf(file.mark),
-        keep: 'tail',
-        // Pressing a file that has changed is how the change is read.
-        pick: `change:${file.path}`,
-      });
+    for (const file of files.slice(0, CHANGES)) {
+      const cut = file.path.lastIndexOf('/');
+      const name = h('span', 'f-f f-ltr', file.path.slice(cut + 1));
+      const dir = cut > 0 ? h('span', 'f-d g-mono', file.path.slice(0, cut)) : h('span', 'f-d', '');
+      const line = h('div', 'f-line', badge(file.mark), name, dir);
+      card.append(pressable(line, `change:${file.path}`));
     }
     if (entries.length > CHANGES) {
-      rows.push({ kind: 'line', text: `and ${entries.length - CHANGES} more.`, tone: 'faded' });
+      card.append(h('div', 'f-note', `and ${entries.length - CHANGES} more.`));
     }
-    // And the one thing you can do with all of it at once.
-    rows.push({ kind: 'entry', mark: '+', text: 'write a commit', pick: 'commit' });
+    const commit = h('span', 'g-pill', sign('pen', '#2a1b09', 14), 'Write a commit');
+    card.append(h('div', 'f-foot', pressable(commit, 'commit')));
   }
+  left.append(card);
 
+  const right = h('div');
   if (lately.length) {
-    rows.push(
-      { kind: 'gap' },
-      { kind: 'heading', text: place.since === undefined ? 'lately' : 'committed here' }
-    );
-    for (const commit of lately) {
-      rows.push({
-        kind: 'entry',
-        mark: since(commit.date),
-        text: saying(commit.subject),
-        // Pressing a commit is how what was done in it is read.
-        pick: `made:${commit.hash}`,
-      });
-    }
+    right.append(label(place.since === undefined ? 'lately' : 'committed here'));
+    const line = h('div', 'f-card f-tl');
+    lately.forEach((commit, at) => {
+      const one = h(
+        'div',
+        `f-c${at < ahead ? ' f-ahead' : ''}`,
+        h('div', 'f-cs', saying(commit.subject)),
+        h('div', 'f-w', `${ago(commit.date)}${at < ahead ? ' · not sent up' : ''}`)
+      );
+      line.append(pressable(one, `made:${commit.hash}`));
+    });
+    right.append(line);
   }
-  return rows;
+  root.append(h('div', lately.length ? 'f-two' : 'f-sec', left, right));
+  return [dom(root)];
+}
+
+function branchName(head: CheckoutHeadState | undefined): string {
+  if (!head) return 'reading the checkout…';
+  if (head.kind === 'detached') return `adrift at ${head.shortHash}`;
+  return shortName(head.ref);
+}
+
+/** How long ago, in words. */
+function ago(at: number): string {
+  const minutes = Math.max(0, (Date.now() - at) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60)
+    return `${Math.floor(minutes)} minute${Math.floor(minutes) === 1 ? '' : 's'} ago`;
+  const hours = minutes / 60;
+  if (hours < 24) return `${Math.floor(hours)} hour${Math.floor(hours) === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 60) return `${days} day${days === 1 ? '' : 's'} ago`;
+  const months = Math.floor(days / 30.4);
+  return months < 12 ? `${months} months ago` : `${Math.floor(days / 365)} years ago`;
 }
 
 /** What is not as it was committed, in the order git lists it. */
@@ -335,20 +414,6 @@ export function toneOf(mark: string): Tone {
   return TONE[mark.trim()[0] ?? ''] ?? 'faded';
 }
 
-/** How long ago, in the width of the margin: two characters and a space. */
-function since(at: number): string {
-  const minutes = Math.max(0, (Date.now() - at) / 60000);
-  if (minutes < 60) return 'now';
-  const hours = minutes / 60;
-  if (hours < 24) return `${Math.floor(hours)}h`;
-  const days = hours / 24;
-  if (days < 7) return `${Math.floor(days)}d`;
-  const weeks = days / 7;
-  if (weeks < 9) return `${Math.floor(weeks)}w`;
-  const months = days / 30.4;
-  return months < 12 ? `${Math.floor(months)}mo` : `${Math.floor(days / 365)}y`;
-}
-
 /**
  * What you can do about where the checkout stands, if anything.
  *
@@ -357,49 +422,42 @@ function since(at: number): string {
  * not actually possible right now, which is why these are lines that come and
  * go rather than buttons that grey out.
  */
-function sending(head: CheckoutHeadState | undefined): Row[] {
-  if (!head || head.kind === 'detached' || head.kind === 'unborn') return [];
+function sending(head: CheckoutHeadState | undefined): HTMLElement | null {
+  if (!head || head.kind === 'detached' || head.kind === 'unborn') return null;
   if (head.upstream.kind === 'none') {
-    return [{ kind: 'entry', mark: '+', text: 'send this branch up', pick: 'publish' }];
-  }
-  const tracking = head.upstream.tracking;
-  if (tracking.kind !== 'resolved') return [];
-  const rows: Row[] = [];
-  if (tracking.ahead) {
-    rows.push({
-      kind: 'entry',
-      mark: '+',
-      text: `send ${counted(tracking.ahead, 'commit')} up`,
-      pick: 'push',
+    return tile('up', 'Send it up', 'nobody has seen this branch yet', {
+      hot: true,
+      pick: 'publish',
     });
   }
+  const tracking = head.upstream.tracking;
+  if (tracking.kind !== 'resolved') return null;
   /* Always offered, because nothing here goes and asks the other end what it
      has: behind is only ever as true as the last time somebody looked, and
      bringing it down is what looking is. */
-  rows.push({
-    kind: 'entry',
-    mark: '+',
-    text: tracking.behind
-      ? `bring ${counted(tracking.behind, 'commit')} down`
-      : 'bring down anything new',
-    pick: 'pull',
-  });
-  return rows;
+  if (tracking.ahead) {
+    return tile(
+      'up',
+      `Send ${tracking.ahead === 1 ? 'the one commit' : `all ${tracking.ahead} commits`} up`,
+      'to where it is going',
+      {
+        hot: true,
+        pick: 'push',
+      }
+    );
+  }
+  return tile(
+    'down',
+    tracking.behind ? 'Bring them down' : 'Bring down anything new',
+    tracking.behind
+      ? `${tracking.behind === 1 ? 'one commit' : `${tracking.behind} commits`} waiting`
+      : 'looking is how you find out',
+    { pick: 'pull' }
+  );
 }
 
 function counted(many: number, thing: string): string {
-  return many === 1 ? `the one ${thing}` : `all ${many} ${thing}s`;
-}
-
-/** What this checkout's own shell has noticed listening, most recent first. */
-function listening(urls: readonly string[]): Row[] {
-  return urls.map((url) => ({
-    kind: 'entry',
-    mark: '→',
-    text: `listening on ${shortAddress(url)}`,
-    tone: 'faded',
-    pick: `page:${url}`,
-  }));
+  return many === 1 ? `one ${thing}` : `${many} ${thing}s`;
 }
 
 function shortAddress(url: string): string {
@@ -410,19 +468,4 @@ function shortAddress(url: string): string {
   } catch {
     return url;
   }
-}
-
-/** The one line that says where the checkout stands. */
-function standing(head: CheckoutHeadState | undefined): string {
-  if (!head) return 'reading the checkout…';
-  if (head.kind === 'detached') return `adrift at ${head.shortHash}`;
-  const branch = shortName(head.ref);
-  if (head.kind === 'unborn') return `on ${branch}, nothing committed yet`;
-  const tracking = head.upstream.kind === 'none' ? undefined : head.upstream.tracking;
-  if (!tracking || tracking.kind !== 'resolved') return `on ${branch}`;
-  const drift = [
-    tracking.ahead ? `${tracking.ahead} ahead` : '',
-    tracking.behind ? `${tracking.behind} behind` : '',
-  ].filter(Boolean);
-  return drift.length ? `on ${branch}, ${drift.join(' and ')}` : `on ${branch}`;
 }

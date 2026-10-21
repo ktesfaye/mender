@@ -58,5 +58,8 @@ export type Row = (
   | { kind: 'picture'; src: string; wide: number; tall: number }
   /** A drawn diagram, panned and zoomed rather than shrunk to fit. */
   | { kind: 'diagram'; svg: string }
+  /** A card, tiles, a segmented row: drawn by the board that made it, with
+      anything pressable inside marked `data-pick` and `data-walk`. */
+  | { kind: 'dom'; el: HTMLElement }
 ) &
   Pick;

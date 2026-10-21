@@ -63,15 +63,16 @@ import {
 } from './motion';
 import { packed } from './pack';
 import { holdUp } from './picture-view';
-import { figure, larger, onThisMachine } from './pictures';
+import { askKey, gate } from '../glass/asks';
+import { larger, onThisMachine } from './pictures';
 import { pressing } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, emberLantern, greenLantern, sprite } from './sprite';
 import { stand as standAsking } from './standing';
+import { columnMenu, lanternMenu, signCardPane, workspaceMenu } from '../glass/slabs';
 import { astop, walking, type Walking } from './walk';
 import type {
-  Asking as Ask,
   Chapter,
   Fire,
   Hand,
@@ -1106,44 +1107,29 @@ export function makeYard(layer: Layer, does: Doings): Standing {
    */
   function workspaceSlab(sign: HTMLElement, event: MouseEvent): void {
     const id = sign.dataset.workspace ?? '';
-    const it = document.createElement('div');
-    it.className = 'menu slab';
-    let armed = false;
-    const line = document.createElement('span');
-    line.className = 'press slab-line';
-    line.textContent = `delete ${sign.dataset.name ?? 'this workspace'}`;
-    line.addEventListener('mousedown', (down) => down.preventDefault());
-    line.addEventListener('click', () => {
-      if (armed) {
+    hideSignCard();
+    const place = (): void => {
+      it.style.left = `${Math.max(12, Math.min(event.clientX, window.innerWidth - it.offsetWidth - 12))}px`;
+      it.style.top = `${Math.max(12, Math.min(event.clientY, window.innerHeight - it.offsetHeight - 12))}px`;
+    };
+    const it = workspaceMenu({
+      name: sign.dataset.name ?? 'this workspace',
+      branch: sign.dataset.branch,
+      dropCost: () => does.dropCost?.(id) ?? Promise.resolve(''),
+      rename: () => {
+        unslab();
+        renamers.get(sign)?.();
+      },
+      drop: () => {
         unslab();
         does.press(`workspace-drop:${id}`);
-        return;
-      }
-      line.dataset.busy = 'yes';
-      line.textContent = 'looking at what is in there…';
-      void (does.dropCost?.(id) ?? Promise.resolve('')).then((cost) => {
-        if (slab !== it) return;
-        armed = true;
-        delete line.dataset.busy;
-        line.style.color = 'var(--yard-wrong)';
-        line.style.whiteSpace = 'normal';
-        line.style.maxWidth = '420px';
-        line.textContent = `press again to delete it. ${cost}`;
-        standAsking(() => line.click(), line);
-      });
+      },
+      alive: () => slab === it,
+      fit: place,
+      stand: (yes, at) => standAsking(yes, at),
     });
-    const rename = document.createElement('span');
-    rename.className = 'press slab-line';
-    rename.textContent = `rename ${sign.dataset.name ?? 'this workspace'}`;
-    rename.addEventListener('mousedown', (down) => down.preventDefault());
-    rename.addEventListener('click', () => {
-      unslab();
-      renamers.get(sign)?.();
-    });
-    it.append(rename, line);
     stage.appendChild(it);
-    it.style.left = `${Math.min(event.clientX, window.innerWidth - it.offsetWidth - 12)}px`;
-    it.style.top = `${Math.min(event.clientY, window.innerHeight - it.offsetHeight - 12)}px`;
+    place();
     slab = it;
   }
 
@@ -1163,65 +1149,56 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       { said: 'close done', ids: rail.filter((one) => one.finished), apart: true },
     ];
     if (!sides.some((side) => side.ids.length)) return false;
-    const it = document.createElement('div');
-    it.className = 'menu slab lantern-slab';
-    const head = document.createElement('div');
-    head.className = 'menu-head';
-    head.textContent = rail[at]!.name;
-    it.appendChild(head);
-    for (const side of sides) {
-      if (side.apart) {
-        const rule = document.createElement('div');
-        rule.className = 'slab-rule';
-        it.appendChild(rule);
-      }
-      const ids = side.ids.map((one) => one.id);
-      const line = document.createElement('div');
-      line.className = ids.length ? 'press slab-line slab-row' : 'slab-line slab-row slab-none';
-      const said = document.createElement('span');
-      said.textContent = side.said;
-      const many = document.createElement('span');
-      many.className = 'slab-many';
-      many.textContent = ids.length ? String(ids.length) : '·';
-      line.append(said, many);
-      it.appendChild(line);
-      if (!ids.length) continue;
-      let armed = false;
-      line.addEventListener('mousedown', (down) => down.preventDefault());
-      line.addEventListener('click', () => {
-        if (armed) {
-          unslab();
-          /* Close done can take the one pressed too, so you stand in
-             whichever is left nearest it. */
-          const left = rail.filter((one) => !ids.includes(one.id));
-          const near =
-            left.find((one) => one.id === id) ??
-            left.find((one) => rail.indexOf(one) >= at) ??
-            left.at(-1);
-          does.closeMany?.(ids, near?.id ?? '');
-          return;
-        }
-        line.dataset.busy = 'yes';
-        said.textContent = 'looking at what is in them…';
-        void (does.closeCost?.(ids) ?? Promise.resolve('')).then((cost) => {
-          if (slab !== it) return;
-          armed = true;
-          delete line.dataset.busy;
-          if (cost) line.style.color = 'var(--yard-wrong)';
-          const which = ids.length === 1 ? 'it' : `all ${ids.length}`;
-          said.textContent = `press again to close ${which}.${cost ? ` ${cost}` : ''}`;
-          many.textContent = '';
-          standAsking(() => line.click(), line);
-        });
-      });
-    }
-    stage.appendChild(it);
+    const near = (ids: string[]): string => {
+      const left = rail.filter((one) => !ids.includes(one.id));
+      return (
+        left.find((one) => one.id === id) ??
+        left.find((one) => rail.indexOf(one) >= at) ??
+        left.at(-1)
+      )?.id ?? '';
+    };
     /* Standing on the beam over the lantern it is about, so the names on
        the rail stay readable under it. */
     const lamp = lantern.getBoundingClientRect();
-    const beam = lamp.top - 10;
-    it.style.left = `${Math.max(12, Math.min(lamp.left, window.innerWidth - it.offsetWidth - 12))}px`;
-    it.style.top = `${Math.max(12, beam - it.offsetHeight)}px`;
+    const place = (): void => {
+      it.style.left = `${Math.max(12, Math.min(lamp.left, window.innerWidth - it.offsetWidth - 12))}px`;
+      it.style.top = `${Math.max(12, lamp.top - 10 - it.offsetHeight)}px`;
+    };
+    const kinds = ['moveall', 'left', 'right', 'check'];
+    const smalls = [
+      'keeps only this one on the rail',
+      rail
+        .slice(0, at)
+        .map((one) => one.name)
+        .slice(-2)
+        .join(', '),
+      rail
+        .slice(at + 1)
+        .map((one) => one.name)
+        .slice(0, 2)
+        .join(', '),
+      'every one that has finished',
+    ];
+    const it = lanternMenu({
+      name: rail[at]!.name,
+      sides: sides.map((side, i) => ({
+        said: side.said.replace(/^close/, 'Close'),
+        small: side.ids.length ? smalls[i]! : 'nothing here',
+        icon: kinds[i]!,
+        names: [],
+        ids: side.ids.map((one) => one.id),
+      })),
+      cost: (ids) => does.closeCost?.(ids) ?? Promise.resolve(''),
+      close: (ids) => {
+        unslab();
+        does.closeMany?.(ids, near(ids));
+      },
+      alive: () => slab === it,
+      fit: place,
+      stand: (yes, at) => standAsking(yes, at),
+    });
+    stage.appendChild(it);
+    place();
     slab = it;
     return true;
   }
@@ -1251,17 +1228,22 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     if (moved()) offers.push({ said: 'put the dividers back', run: unmove });
     if (!offers.length) return;
     event.preventDefault();
-    const it = document.createElement('div');
-    it.className = 'menu slab';
-    for (const offer of offers) {
-      const line = pressing(offer.said, () => {
-        offer.run();
+    const it = columnMenu(
+      offers.map((offer) => ({
+        said: offer.said.replace(/^./, (c) => c.toUpperCase()),
+        kind: offer.said.startsWith('put the dividers') ? 'rules' : offer.said.startsWith('bring') ? 'back' : 'away',
+        small: offer.said.startsWith('put the dividers')
+          ? 'the columns and rows where they started'
+          : offer.said.startsWith('bring')
+            ? 'back where it was'
+            : 'the rest takes the room',
+        run: offer.run,
+      })),
+      () => {
         unslab();
         if (last) show(last, false);
-      });
-      line.className += ' slab-line';
-      it.appendChild(line);
-    }
+      }
+    );
     stage.appendChild(it);
     const wide = it.offsetWidth;
     const tall = it.offsetHeight;
@@ -1353,7 +1335,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
          nothing left to ask about. */
       const wasInside = standingInOverlay();
       narrowedFrom = from;
-      menu.write(offers);
+      menu.write(offers, line.written().slice(from).match(/^\S*/)?.[0] ?? '');
       stand();
 
       /* The first line of it stands under the keyboard, so Return means it.
@@ -1368,7 +1350,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       const first = offers[0]?.pick;
       if (first && (moved || !standingInOverlay())) {
         walk.stand(first);
-        if (moved) menu.root.querySelector('.menu-list')?.scrollTo({ top: 0 });
+        if (moved) menu.root.querySelector('.gm-list')?.scrollTo({ top: 0 });
       } else if (!offers.length && wasInside) walk.stand(null);
       else walk.again();
     },
@@ -1773,55 +1755,7 @@ function signCard(sign: HTMLElement, board: Signboard, root: HTMLElement): void 
 }
 
 function cardOf(board: Signboard): HTMLElement {
-  const it = document.createElement('div');
-  it.className = 'menu sign-card';
-  const head = document.createElement('div');
-  head.className = 'sign-card-head';
-  const name = document.createElement('span');
-  name.textContent = board.name;
-  head.appendChild(name);
-  if (board.branch && board.branch !== board.name) {
-    const branch = document.createElement('span');
-    branch.className = 'sign-card-branch';
-    branch.textContent = board.branch;
-    head.appendChild(branch);
-  }
-  it.appendChild(head);
-  const sessions = board.sessions ?? [];
-  if (!sessions.length) {
-    const empty = document.createElement('div');
-    empty.className = 'sign-card-empty';
-    empty.textContent = 'nobody in here yet';
-    it.appendChild(empty);
-  }
-  const order: Posture[] = ['wants-you', 'broken', 'working', 'done', 'waiting', 'resting'];
-  const ranked = [...sessions].sort((a, b) => order.indexOf(a.posture) - order.indexOf(b.posture));
-  for (const one of ranked) {
-    const line = document.createElement('div');
-    line.className = 'sign-card-line';
-    const mark = document.createElement('span');
-    mark.className = 'sign-card-mark';
-    mark.dataset.posture = one.posture;
-    const who = document.createElement('span');
-    who.className = 'sign-card-who';
-    who.style.color = TONE[one.posture];
-    who.textContent = one.name;
-    const says = document.createElement('span');
-    says.className = 'sign-card-says';
-    says.style.color = SAYS[one.posture];
-    says.textContent = one.saying;
-    line.append(mark, who, says);
-    it.appendChild(line);
-  }
-  if (board.id) {
-    const foot = document.createElement('div');
-    foot.className = 'sign-card-foot';
-    foot.textContent = board.here
-      ? 'double-click to rename · right-click to delete'
-      : 'press to walk in · double-click to rename · right-click to delete';
-    it.appendChild(foot);
-  }
-  return it;
+  return signCardPane(board);
 }
 
 /* ── the workspaces ────────────────────────────────────────────────────────
@@ -1887,6 +1821,7 @@ function signboards(
     if (board.id) {
       hung_.dataset.workspace = board.id;
       hung_.dataset.name = board.name;
+      if (board.branch) hung_.dataset.branch = board.branch;
       hung_.addEventListener('pointerdown', (event) => liftBoard(board.id, event));
       hung_.addEventListener(
         'click',
@@ -2813,7 +2748,7 @@ function thinking(
      scrolled away from, and never read as one more paragraph of the answer. */
   let asked = 0;
   if (asking) {
-    const pinned = keyed(box({ left: at.x, width: at.wide }, ASKING_BLOCK), 'gate');
+    const pinned = keyed(box({ left: at.x, width: at.wide }, 'pointer-events:none'), 'gate');
     pinned.appendChild(gate(at.wide, asking, does));
     root.appendChild(pinned);
     asked = Math.min(pinned.offsetHeight, Math.round(room * 0.7));
@@ -3438,291 +3373,6 @@ const STEP: Record<string, string> = {
   doing: '#ffdca4',
   ahead: '#a89272',
 };
-
-/**
- * Somebody standing at the gate with a question.
- *
- * It takes the whole middle of the board, because whatever it was thinking
- * stopped when it came to ask and nothing under that matters until you answer.
- * A number key answers it; so does pressing the line, because a line you can
- * press by hand and not by key is only half there and the other way round is
- * no better.
- */
-/**
- * Where the keyboard is standing on the question up at the gate.
- *
- * The question is answered from the keyboard as much as by hand, wherever the
- * keyboard happens to be: the arrows walk a highlight over everything that
- * can be pressed, return presses what it is on, and a number presses that
- * answer outright. It is kept per question, so moving on starts the
- * highlight at the top of the next one, or on "send it" at the check.
- */
-let askFocus = { key: '', at: 0 };
-
-function askKeyOf(asking: Ask): string {
-  return `${asking.said}|${asking.answers.map((one) => one.id).join(',')}`;
-}
-
-function askFocusOf(asking: Ask): number {
-  const key = askKeyOf(asking);
-  if (askFocus.key !== key) {
-    const send = asking.answers.findIndex((one) => one.kind === 'submit');
-    const reviewing = asking.answers.some((one) => one.id.startsWith('q:'));
-    askFocus = { key, at: reviewing && send >= 0 ? send : 0 };
-  }
-  return Math.min(askFocus.at, asking.answers.length - 1);
-}
-
-/** Lights the line the keyboard is on, without drawing the question again. */
-function lightAsk(at: number): void {
-  for (const each of document.querySelectorAll<HTMLElement>('[data-ask-at]')) {
-    const on = Number(each.dataset.askAt) === at;
-    each.style.background = on ? 'rgba(255,201,138,.10)' : 'transparent';
-    each.style.boxShadow = on ? 'inset 2px 0 0 #ffc98a' : 'none';
-  }
-}
-
-/**
- * The question's own keys. True when it took the key: the arrows, return and
- * the numbers, but only while nothing is written on the line, because
- * anything written there is your own answer and return sends that instead.
- */
-export function askKey(
-  asking: Ask | undefined,
-  written: string,
-  event: KeyboardEvent,
-  does: Doings
-): boolean {
-  if (!asking || written.trim()) return false;
-  if (event.metaKey || event.ctrlKey || event.altKey) return false;
-  const at = askFocusOf(asking);
-  const count = asking.answers.length;
-  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-    askFocus.at = (at + (event.key === 'ArrowDown' ? 1 : count - 1)) % count;
-    lightAsk(askFocus.at);
-    return true;
-  }
-  /* "send it" and "talk it over instead" sit side by side, so left and right
-     walk between them, and from any answer step down onto that line. */
-  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-    const doings = asking.answers
-      .map((one, index) => ({ one, index }))
-      .filter(({ one }) => one.kind === 'submit' || one.kind === 'talk')
-      .map(({ index }) => index);
-    if (!doings.length) return true;
-    const along = doings.indexOf(at);
-    const step = event.key === 'ArrowRight' ? 1 : -1;
-    askFocus.at =
-      along < 0
-        ? doings[step > 0 ? 0 : doings.length - 1]
-        : doings[(along + step + doings.length) % doings.length];
-    lightAsk(askFocus.at);
-    return true;
-  }
-  const pick = (index: number): boolean => {
-    const answer = asking.answers[index];
-    if (!answer) return false;
-    askFocus.at = index;
-    lightAsk(index);
-    does.answer(answer.id, answer.requestId);
-    return true;
-  };
-  /* Space ticks the answer under the light, the way a list of boxes does
-     everywhere else; return does the same. */
-  if (event.key === 'Enter' || event.key === ' ') return pick(at) || true;
-  /* Tab sends whatever is ticked, so a question that takes several is never
-     a walk down past every answer to reach the line that sends them. */
-  if (event.key === 'Tab' && !event.shiftKey) {
-    const send = asking.answers.findIndex((one) => one.kind === 'submit');
-    return send >= 0 ? pick(send) : false;
-  }
-  if (/^[1-9]$/.test(event.key)) {
-    const numbered = asking.answers
-      .map((one, index) => ({ one, index }))
-      .filter(({ one }) => one.kind !== 'submit' && one.kind !== 'talk');
-    const hit = numbered[Number(event.key) - 1];
-    return hit ? pick(hit.index) : true;
-  }
-  return false;
-}
-
-function gate(wide: number, asking: Ask, does: Doings): HTMLElement {
-  const it = document.createElement('div');
-  it.style.cssText = 'position:relative';
-  const head = label(
-    ['it is asking you', asking.header?.toLowerCase(), asking.step].filter(Boolean).join(' · '),
-    {}
-  );
-  /* Pixel type for the header and the answers' names, the way a game puts a
-     choice to you, so the question never reads as more of the answer. */
-  head.style.cssText += ';font-family:Silkscreen,monospace;letter-spacing:.08em';
-  head.style.color = '#ffc98a';
-  head.dataset.q = 'head';
-  it.appendChild(head);
-  const said = document.createElement('div');
-  said.style.cssText = `${ASKED};margin-top:12px;max-width:${wide}px`;
-  said.textContent = asking.said;
-  said.dataset.q = 'text';
-  it.appendChild(said);
-  /* What it looked at before asking, since looking shows it to nobody else. */
-  if (asking.pictures?.length) {
-    const row = document.createElement('div');
-    row.className = 'ask-pictures';
-    row.style.cssText = `margin-top:12px;max-width:${wide}px`;
-    for (const one of asking.pictures) row.appendChild(figure({ name: one.name, url: one.path }));
-    it.appendChild(row);
-  }
-
-  const focus = askFocusOf(asking);
-  /* Whether several can be picked: the answers then carry boxes rather than
-     rings, so it is plain before pressing anything that picks add up. */
-  const several =
-    asking.answers.some((one) => one.kind === 'submit') &&
-    !asking.answers.some((one) => one.id.startsWith('q:'));
-  const reviewing = asking.answers.some((one) => one.id.startsWith('q:'));
-
-  /* The answers, each a row of its own: a number, a ring or a box saying
-     whether it is picked, its name and what it would mean. */
-  const answers = document.createElement('div');
-  answers.style.cssText = 'display:flex;flex-direction:column;gap:2px;margin-top:16px';
-  /* What you can do with them, set right apart on one line of its own:
-     these are not answers, so they never look like one. */
-  const doings = document.createElement('div');
-  doings.style.cssText =
-    'display:flex;flex-wrap:wrap;align-items:center;gap:6px 22px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(244,227,192,.14)';
-
-  let number = 0;
-  for (const [i, answer] of asking.answers.entries()) {
-    const action = answer.kind === 'submit' || answer.kind === 'talk';
-    const go = (): void => {
-      askFocus.at = i;
-      does.answer(answer.id, answer.requestId);
-    };
-    const line = document.createElement('div');
-    line.dataset.askAt = String(i);
-    line.style.cssText = action
-      ? 'display:inline-flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;pointer-events:auto;border-radius:2px'
-      : 'display:flex;align-items:baseline;gap:12px;padding:7px 10px;cursor:pointer;pointer-events:auto;border-radius:2px';
-    line.addEventListener('mousedown', (event) => event.preventDefault());
-    line.addEventListener('mouseenter', () => {
-      askFocus.at = i;
-      lightAsk(i);
-    });
-    line.addEventListener('click', go);
-
-    if (action) {
-      const name = document.createElement('span');
-      name.className = 'press';
-      name.textContent = answer.said;
-      name.style.cssText +=
-        answer.kind === 'submit'
-          ? ';font-family:Silkscreen,monospace;font-size:13px;letter-spacing:.06em'
-          : ";font-family:'Josefin Sans',sans-serif;font-size:14px;font-style:italic";
-      line.appendChild(name);
-      doings.appendChild(line);
-      continue;
-    }
-
-    number += 1;
-    const key = document.createElement('span');
-    key.style.cssText = KEY;
-    key.textContent = String(number);
-    key.dataset.q = 'key';
-    line.appendChild(key);
-    const picked = answer.said.startsWith('✓ ');
-    const plain = answer.said.replace(/^✓ /, '');
-    if (!reviewing) {
-      const mark = document.createElement('span');
-      mark.style.cssText = `font-family:Silkscreen,monospace;font-size:13px;flex:none;width:22px;color:${picked ? '#ffc98a' : '#8a7452'}`;
-      mark.textContent = answer.kind === 'other' ? '' : several ? (picked ? '[x]' : '[ ]') : '( )';
-      line.appendChild(mark);
-    }
-    /* An agent marks its own favourite by writing it into the name; it reads
-       better said quietly after the name than shouted inside it. */
-    const favoured = /\s*\(recommended\)\s*$/i.test(plain);
-    const name = document.createElement('span');
-    name.className = 'press';
-    name.textContent = plain.replace(/\s*\(recommended\)\s*$/i, '');
-    name.style.cssText +=
-      answer.kind === 'other'
-        ? ";font-family:'Josefin Sans',sans-serif;font-size:15px;font-style:italic"
-        : ';font-family:Silkscreen,monospace;font-size:13px;letter-spacing:.03em';
-    name.dataset.q = 'option';
-    const named = document.createElement('span');
-    named.appendChild(name);
-    if (favoured) {
-      const tag = document.createElement('span');
-      tag.style.cssText = `${ABOUT};margin-left:10px;font-style:italic`;
-      tag.textContent = 'recommended';
-      named.appendChild(tag);
-    }
-    const about =
-      answer.about ?? (answer.kind === 'other' ? 'type it on the line below' : undefined);
-    if (about) {
-      const both = document.createElement('div');
-      both.style.cssText = 'display:flex;flex-direction:column;gap:3px;min-width:0';
-      both.appendChild(named);
-      const under = document.createElement('div');
-      under.style.cssText = ABOUT;
-      under.textContent = about;
-      under.dataset.q = 'about';
-      both.appendChild(under);
-      line.appendChild(both);
-    } else line.appendChild(named);
-    answers.appendChild(line);
-  }
-  it.appendChild(answers);
-
-  /* How to work it, said once in the quiet ink: the keys are the same on
-     every question, so this is the only place they need saying. */
-  const how = document.createElement('span');
-  how.style.cssText = `${ABOUT};font-style:italic;margin-left:auto`;
-  how.textContent = reviewing
-    ? '↑ ↓ to move · return to change one or send'
-    : several
-      ? '↑ ↓ to move · space ticks · tab sends · or write your own below'
-      : '↑ ↓ to move · return picks · or write your own below';
-  doings.appendChild(how);
-  it.appendChild(doings);
-  requestAnimationFrame(() => lightAsk(focus));
-  return it;
-}
-
-const ABOUT = [
-  "font-family:'Josefin Sans',sans-serif",
-  'font-size:13px',
-  'line-height:1.4',
-  'color:#a89272',
-].join(';');
-
-const ASKING_BLOCK = [
-  'box-sizing:border-box',
-  'padding:18px 0 20px',
-  'border-top:1px solid rgba(244,227,192,.22)',
-  'border-bottom:1px solid rgba(244,227,192,.22)',
-  'background:linear-gradient(rgba(18,13,7,.55),rgba(18,13,7,.3))',
-  'overflow-y:auto',
-  'scrollbar-width:none',
-  'pointer-events:auto',
-].join(';');
-
-const ASKED = [
-  'font-family:Silkscreen,monospace',
-  'font-size:15px',
-  'letter-spacing:.03em',
-  'line-height:1.6',
-  'color:#ffdca4',
-  'text-shadow:0 2px 10px rgba(0,0,0,.9)',
-].join(';');
-
-const KEY = [
-  "font-family:'Courier Prime',monospace",
-  'font-size:12px',
-  'color:#482510',
-  'background:#a89272',
-  'padding:1px 6px',
-  'flex:none',
-].join(';');
 
 /** A link an agent wrote, pressed out to whatever the machine reads the web with. */
 function openLink(does: Doings): (url: string) => void {

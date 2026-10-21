@@ -11,6 +11,7 @@ import {
   MENDER_MENU_CHANNEL,
   MENDER_MISSED_CHANNEL,
   MENDER_QUIT_COST_CHANNEL,
+  MENDER_PICK_FOLDER_CHANNEL,
   MENDER_START_DRAG_CHANNEL,
   MENDER_WATCH_CHANNEL,
   MENDER_WIRE_CHANNEL,
@@ -181,6 +182,9 @@ contextBridge.exposeInMainWorld('mender', {
   /* Carrying a file out of the board and onto the Mac. Only the main process
      can start an OS-level drag, so this just names the path. */
   startDrag: (path: string) => ipcRenderer.send(MENDER_START_DRAG_CHANNEL, path),
+  /* A folder, picked with the native dialog, for a setting that wants a path. */
+  pickFolder: (title: string): Promise<string | null> =>
+    ipcRenderer.invoke(MENDER_PICK_FOLDER_CHANNEL, title),
   /* Holding the window by its top, since the title bar it would have had is hidden. */
   grip: (grip: Grip) => ipcRenderer.send(MENDER_GRIP_CHANNEL, grip),
   /* A link an agent wrote, out to whatever the machine reads the web with. */

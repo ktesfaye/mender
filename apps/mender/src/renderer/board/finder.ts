@@ -1,6 +1,7 @@
 import type { Mood } from '@shared/agents';
 import type { Project } from '@shared/projects';
 import type { Task } from '@shared/tasks';
+import { card, chip, cursor, dom, h, head, label, pressable, sign } from '../glass/read';
 import type { Row } from './row';
 
 /**
@@ -223,68 +224,128 @@ const SHOWN = 12;
  */
 export function finding(written: string, village: Village, bound: Keybindings = {}): Row[] {
   const looked = written.trim().toLowerCase();
+  const wanting = village.tasks.filter((task) => {
+    const mood = village.moods[task.id];
+    return mood === 'asking' || mood === 'hurt';
+  }).length;
   const rows: Row[] = [
-    { kind: 'title', text: 'what are you after' },
-    { kind: 'gap' },
-    { kind: 'typed', text: written },
-    { kind: 'gap' },
+    dom(
+      head({
+        title: 'what are you after',
+        right: wanting ? [chip(`${wanting} wants you`, '#ff9a4a')] : [],
+      })
+    ),
   ];
+  const field = h('div', 'gr-input');
+  field.style.marginTop = '22px';
+  const said = h('span', written ? '' : 'ph', written || 'a name, a session, a doing');
+  said.appendChild(cursor());
+  field.append(sign('find', '#f2c66d', 17), said);
+  rows.push(dom(field));
 
-  const found: Row[] = [];
   const named = (name: string): boolean => !looked || name.toLowerCase().includes(looked);
-
+  const places: HTMLElement[] = [];
   for (const task of village.tasks) {
     const project = village.projects.find((each) => each.id === task.project);
     if (!named(task.title) && !named(project?.name ?? '')) continue;
-    found.push({
-      kind: 'entry',
-      mark: markOf(village.moods[task.id]),
-      text: project ? `${task.title} · ${project.name}` : task.title,
-      pick: `task:${task.id}`,
-    });
+    const mood = village.moods[task.id];
+    const el = h('div', 'gr-r');
+    const ic = h('span', 'gr-ic2');
+    ic.appendChild(sign('flame', moodColour(mood), 16));
+    const t = h('div');
+    t.append(h('div', 'nm', task.title), h('div', 'ds', [moodSaid(mood), project?.name].filter(Boolean).join(' · ')));
+    el.append(ic, t);
+    if (mood === 'asking' || mood === 'hurt') {
+      const flag = chip(mood === 'hurt' ? 'broken' : 'wants you');
+      flag.style.cssText = 'margin-left:auto;color:#ffc08a';
+      el.appendChild(flag);
+    }
+    places.push(pressable(el, `task:${task.id}`));
   }
   for (const project of village.projects) {
     if (!named(project.name)) continue;
-    found.push({
-      kind: 'entry',
-      mark: '#',
-      text: project.name,
-      tone: 'faded',
-      pick: `project:${project.id}`,
-    });
+    const el = h('div', 'gr-r');
+    const ic = h('span', 'gr-ic2');
+    ic.appendChild(sign('house', '#f2c66d', 16));
+    const t = h('div');
+    t.append(h('div', 'nm', project.name), h('div', 'ds', 'the project, its yard'));
+    el.append(ic, t);
+    places.push(pressable(el, `project:${project.id}`));
   }
-  const doings: Row[] = [];
+  const doings: HTMLElement[] = [];
   for (const doing of DOINGS) {
     if (!doing.where.includes(village.where)) continue;
     if (!named(doing.name) && !named(doing.about)) continue;
-    doings.push({
-      kind: 'entry',
-      mark: chordOf(doing.pick, bound) ?? ' ',
-      text: `${doing.name} · ${doing.about}`,
-      tone: 'faded',
-      pick: doing.pick,
-    });
+    const el = h('div', 'gr-r');
+    const ic = h('span', 'gr-ic2');
+    ic.appendChild(sign(DOING_SIGN[doing.pick] ?? 'spark', '#f2c66d', 16));
+    const t = h('div');
+    t.append(h('div', 'nm', doing.name), h('div', 'ds', doing.about));
+    el.append(ic, t);
+    const chord = chordOf(doing.pick, bound);
+    if (chord) {
+      const keys = h('span', 'k');
+      const caps = /^[A-Z]$/.test(chord) ? ['⌘', '⇧', chord] : ['⌘', chord.toUpperCase()];
+      for (const cap of caps) keys.appendChild(h('b', 'g-kc', cap));
+      el.appendChild(keys);
+    }
+    doings.push(pressable(el, doing.pick));
   }
 
-  if (!found.length && !doings.length) {
-    rows.push({ kind: 'line', text: 'nothing by that name.', tone: 'faded' });
+  if (!places.length && !doings.length) {
+    rows.push({ kind: 'gap' }, { kind: 'line', text: 'nothing by that name.', tone: 'faded' });
     return rows;
   }
-  rows.push(...found.slice(0, SHOWN));
-  if (found.length > SHOWN) {
-    rows.push({ kind: 'line', text: `and ${found.length - SHOWN} more.`, tone: 'faded' });
+  const cols = h('div', 'gr-fcols');
+  if (!places.length || !doings.length) cols.style.gridTemplateColumns = '1fr';
+  if (places.length) {
+    const col = h('div');
+    col.appendChild(label('stand somewhere'));
+    const list = card('gr-list');
+    list.append(...places.slice(0, SHOWN));
+    col.appendChild(list);
+    if (places.length > SHOWN) col.appendChild(h('div', 'gr-more2', `and ${places.length - SHOWN} more`));
+    cols.appendChild(col);
   }
   if (doings.length) {
-    // The letter in the margin is the key it answers to, held with command,
-    // so the way to stop needing this board is written on the board.
-    rows.push({ kind: 'gap' }, { kind: 'heading', text: 'held with command' }, ...doings);
+    const col = h('div');
+    col.appendChild(label('held with command'));
+    const list = card('gr-list');
+    list.append(...doings);
+    col.appendChild(list);
+    cols.appendChild(col);
   }
+  rows.push(dom(cols));
   return rows;
 }
 
-function markOf(mood: Mood | undefined): string {
-  if (mood === 'working') return '…';
-  if (mood === 'asking') return '?';
-  if (mood === 'hurt') return '✗';
-  return '·';
+const DOING_SIGN: Record<string, string> = {
+  new: 'plus',
+  'do:rename': 'pen',
+  card: 'gem',
+  hunt: 'find',
+  'do:watch': 'eye',
+  'do:revive': 'undo',
+  'do:attend': 'jump',
+  'do:workspace': 'plus',
+  'do:found': 'flag',
+  'do:out': 'cross',
+  'do:back': 'left',
+  'do:forward': 'right',
+  'do:windmill': 'sun',
+  'do:reopen': 'folder',
+};
+
+function moodColour(mood: Mood | undefined): string {
+  if (mood === 'working') return '#ff9a4a';
+  if (mood === 'asking') return '#ffc08a';
+  if (mood === 'hurt') return '#f08a72';
+  return 'rgba(246,236,219,.42)';
+}
+
+function moodSaid(mood: Mood | undefined): string {
+  if (mood === 'working') return 'working';
+  if (mood === 'asking') return 'asking you something';
+  if (mood === 'hurt') return 'broken';
+  return '';
 }

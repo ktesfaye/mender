@@ -8,8 +8,7 @@
  * up over everything, with a close mark, and it goes away when you click
  * anywhere outside it, press Escape, or press the mark. Nothing under it moves.
  *
- * It is drawn in the rack's timber rather than on the wash, because what it
- * mostly sets is what the project looks like on the rack.
+ * It is lantern glass: the island or the yard shows through it, bent at the rim.
  */
 
 import type { GitHubStatus } from '@shared/github';
@@ -23,6 +22,9 @@ import type {
 } from '@shared/projects';
 import type { Schedule, ScheduleHand, ScheduleWhen } from '@shared/schedules';
 import type { HistoryEntry } from '@shared/tasks';
+import '../glass/settings.css';
+import { glaze, TINT_ISLAND } from '../glass/glass';
+import { px } from '../glass/px';
 import { slot, toolFor } from './face';
 import { agoOf } from './from';
 import { stand } from './standing';
@@ -112,12 +114,12 @@ const STANDS_MS = 4000;
 /** The pages down the window's left side, in the order they hang there. */
 type Page = 'general' | 'sessions' | 'worktrees' | 'timetable' | 'git';
 
-const PAGES: { page: Page; said: string }[] = [
-  { page: 'general', said: 'General' },
-  { page: 'sessions', said: 'Sessions' },
-  { page: 'worktrees', said: 'Own copies' },
-  { page: 'timetable', said: 'Timetable' },
-  { page: 'git', said: 'Git' },
+const PAGES: { page: Page; said: string; icon: string }[] = [
+  { page: 'general', said: 'General', icon: 'gem' },
+  { page: 'sessions', said: 'Sessions', icon: 'flame' },
+  { page: 'worktrees', said: 'Own copies', icon: 'merge' },
+  { page: 'timetable', said: 'Timetable', icon: 'spark' },
+  { page: 'git', said: 'Git', icon: 'ring' },
 ];
 
 /** Whichever page was open last, so coming back to settings lands there. */
@@ -132,8 +134,8 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   let armed: number | undefined;
   let page: Page = state.fresh ? 'general' : lastPage;
 
-  const back = el('div', 'settings-back');
-  const panel = el('div', 'settings paged');
+  const back = el('div', 'st-back');
+  const panel = glaze(el('div', 'st-win'), { tint: overIsland() ? TINT_ISLAND : undefined });
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-modal', 'true');
   back.appendChild(panel);
@@ -149,24 +151,39 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     downOutside = false;
   });
 
-  // ── the head: its face, its name, where it is ───────────────────────────
-  const head = el('div', 'settings-head');
-  const face = el('div', 'settings-face');
-  const who = el('div', 'settings-who');
+  // ── the rail's head: its face, its name, how many are in it ─────────────
+  const face = el('div', 'st-me-ic');
+  const me = el('div', 'st-me');
+  const who = el('div', '');
+  who.style.minWidth = '0';
+  const meName = el('b', '');
+  const meSub = el('span', '');
+  who.append(meName, meSub);
+  me.append(face, who);
+
+  // ── the name, where it lives ─────────────────────────────────────────────
   const name = document.createElement('input');
-  name.className = 'settings-name';
+  name.className = 'st-input st-name';
   name.spellcheck = false;
   name.setAttribute('aria-label', 'Project name');
-  name.title = 'Click to rename';
-  const where = el('div', 'settings-where');
-  const path = el('span', 'settings-path');
-  const finder = button('Show in Finder', 'settings-link', () => does.show());
-  const editor = button('Open in editor', 'settings-link', () => does.openEditor());
-  where.append(path, finder, editor);
-  who.append(name, where);
-  const shut = button('×', 'settings-close', () => close());
+  const path = el('span', 'st-mono');
+  const finder = button('Show in Finder', 'st-link', () => does.show());
+  const editor = button('Open in editor', 'st-link', () => does.openEditor());
+  const whereLine = el('div', 'st-f-v st-line');
+  whereLine.append(path, finder, editor);
+  const nameCard = el('div', 'st-card');
+  nameCard.append(
+    formRowSub('Name', 'on the rack and its flag', name),
+    formRowSub('Where it lives', 'the checkout', whereLine)
+  );
+
+  const heading = el('h2', '');
+  const lead = el('p', 'st-lead');
+  const head = el('div', 'st-head');
+  head.append(heading, lead);
+  const shut = button('×', 'g-x', () => close());
   shut.setAttribute('aria-label', 'Close');
-  head.append(face, who, shut);
+  const mark = savedMark(panel);
 
   const keep = async (): Promise<void> => {
     const written = name.value.trim();
@@ -185,16 +202,17 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   name.addEventListener('blur', () => void keep());
 
   // ── the pages ────────────────────────────────────────────────────────────
-  const middle = el('div', 'settings-middle');
-  const rail = el('nav', 'settings-rail');
-  const body = el('div', 'settings-body');
-  middle.append(rail, body);
-  panel.append(head, middle);
+  const rail = el('nav', 'st-rail');
+  const main = el('div', 'st-main');
+  const body = el('div', 'st-body g-scroll');
+  main.append(head, body, mark, shut);
+  panel.append(rail, main);
+  rail.appendChild(me);
 
-  const welcome = el('p', 'settings-welcome');
-  const faces = section('Icon');
+  const welcome = el('p', 'st-welcome');
+  const faces = section('Its face · found in the checkout');
   const excludes = section('Left out of search');
-  const danger = section('Remove');
+  const danger = section('');
   const ending = section('When a session ends');
   const history = section('Sessions that have ended');
   const environment = section('Environment');
@@ -206,22 +224,26 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   const github = section('GitHub');
 
   const pageRoots: Record<Page, HTMLElement> = {
-    general: pageOf([welcome, faces.root, excludes.root, danger.root]),
+    general: pageOf([welcome, faces.root, nameCard, excludes.root, danger.root]),
     sessions: pageOf([ending.root, history.root, environment.root]),
-    worktrees: pageOf([intro(OWN_COPIES), sessions.root, scripts.root]),
-    timetable: pageOf([intro(TIMETABLE), timetable.root, addTimed.root]),
+    worktrees: pageOf([sessions.root, scripts.root]),
+    timetable: pageOf([timetable.root, addTimed.root]),
     git: pageOf([identity.root, github.root]),
   };
   body.append(...Object.values(pageRoots));
 
   const tabs = new Map<Page, { root: HTMLButtonElement; sub: HTMLElement }>();
   for (const one of PAGES) {
-    const tab = el('button', 'settings-tab');
+    const tab = el('button', 'st-tab');
     tab.type = 'button';
-    const said = el('span', 'settings-tab-name');
+    const icon = el('span', 'st-tab-i');
+    icon.appendChild(px(one.icon, '#f2c66d', 16));
+    const text = el('span', 'st-tab-t');
+    const said = el('span', 'st-tab-name');
     said.textContent = one.said;
-    const sub = el('span', 'settings-tab-sub');
-    tab.append(said, sub);
+    const sub = el('span', 'st-tab-sub');
+    text.append(said, sub);
+    tab.append(icon, text);
     tab.addEventListener('click', () => go(one.page));
     rail.appendChild(tab);
     tabs.set(one.page, { root: tab, sub });
@@ -251,6 +273,9 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       tab.root.classList.toggle('here', one === page);
       tab.root.setAttribute('aria-current', String(one === page));
     }
+    const here = PAGES.find((one) => one.page === page);
+    heading.textContent = here?.said ?? '';
+    lead.textContent = LEADS[page].replace('{name}', now.project.name);
     body.scrollTop = 0;
   }
 
@@ -259,7 +284,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       const tab = tabs.get(one);
       if (tab) tab.sub.textContent = text;
     };
-    sub('general', 'icon, search, remove');
+    sub('general', 'its face, its name');
     const ended = now.history?.length ?? 0;
     sub(
       'sessions',
@@ -278,6 +303,15 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       scripted ? `${scripted} script${scripted === 1 ? '' : 's'}` : '',
     ].filter(Boolean);
     sub('worktrees', bits.length ? bits.join(' · ') : 'nothing set');
+    const dot = tabs.get('worktrees')?.root;
+    if (dot) {
+      dot.querySelector('.g-dot')?.remove();
+      if (bits.length) {
+        const d = el('span', 'g-dot');
+        d.style.background = '#9bd28a';
+        dot.appendChild(d);
+      }
+    }
     const timed = now.schedules?.length ?? 0;
     sub('timetable', timed ? `${timed} scheduled` : 'nothing scheduled');
     const gh = now.github;
@@ -294,12 +328,14 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   }
 
   // ── reading one back, in place of the pages ─────────────────────────────
-  const past = el('div', 'settings-past');
+  const past = el('div', 'st-page');
   past.style.display = 'none';
-  const pastBack = button('‹ back to sessions', 'settings-link', () => showBody());
-  const pastTitle = el('div', 'settings-past-title');
-  const pastBranch = el('div', 'settings-past-branch');
-  const pastTurns = el('div', 'settings-past-turns');
+  past.style.gap = '0';
+  const pastBack = button('‹ back to sessions', 'st-link', () => showBody());
+  pastBack.style.alignSelf = 'flex-start';
+  const pastTitle = el('div', 'st-past-title');
+  const pastBranch = el('div', 'st-past-branch');
+  const pastTurns = el('div', 'st-past-turns');
   past.append(pastBack, pastTitle, pastBranch, pastTurns);
   body.append(past);
 
@@ -310,26 +346,40 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
 
   // ── general ──────────────────────────────────────────────────────────────
   function drawFaces(): void {
-    const grid = el('div', 'settings-grid');
-    const caption = el('div', 'settings-caption');
+    const grid = el('div', 'st-thumbs');
+    const stage = el('div', 'st-stage');
+    const plank = el('div', 'st-plank');
+    const caption = el('div', 'st-stage-cap');
+    stage.append(plank, caption);
     const own = now.project.picture;
     const chosen: { said: string }[] = [];
+    plank.appendChild(
+      slot(
+        {
+          tool: toolFor(now.at),
+          ...(now.project.icon ? { icon: now.project.icon } : {}),
+        },
+        false,
+        70
+      )
+    );
 
     const add = (
       said: string,
+      short: string,
       here: boolean,
       look: { icon?: string; tool: string },
       from: PictureFrom | null
     ): void => {
-      const one = slot(look, here, 52);
-      one.classList.add('settings-choice');
-      one.tabIndex = 0;
+      const one = el('button', here ? 'st-th on' : 'st-th');
+      one.type = 'button';
+      one.appendChild(slot(look, false, 52));
+      const label = el('small', '');
+      label.textContent = short;
+      one.appendChild(label);
       one.title = said;
-      one.setAttribute('role', 'button');
       one.setAttribute('aria-pressed', String(here));
       if (here) chosen.push({ said });
-      one.addEventListener('pointerenter', () => (caption.textContent = said));
-      one.addEventListener('pointerleave', () => (caption.textContent = chosen[0]?.said ?? ''));
       const pick = (): void => {
         if (!from || here) return;
         trouble = null;
@@ -339,55 +389,56 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
         });
       };
       one.addEventListener('click', pick);
-      one.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          pick();
-        }
-      });
       grid.appendChild(one);
     };
 
-    add('The default', !own, { tool: toolFor(now.at) }, { kind: 'none' });
+    add('The default', 'default', !own, { tool: toolFor(now.at) }, { kind: 'none' });
     const inside = (relative: string): boolean =>
       own === relative || own === `${now.project.path.replace(/\/+$/, '')}/${relative}`;
     /* What it wears now is always on show, even when it came from outside
        the checkout, so the chosen one is never missing from the choices. */
     if (own && now.project.icon && !now.pictures?.some((one) => inside(one.path))) {
-      add(own.split('/').at(-1) ?? own, true, { icon: now.project.icon, tool: '' }, null);
+      const file = own.split('/').at(-1) ?? own;
+      add(file, file, true, { icon: now.project.icon, tool: '' }, null);
     }
     for (const picture of now.pictures ?? []) {
       add(
         `${picture.path}  ·  ${picture.wide}×${picture.tall}`,
+        picture.path.split('/').at(-1) ?? picture.path,
         inside(picture.path),
         { icon: picture.src, tool: '' },
         { kind: 'in', path: picture.path }
       );
     }
-    caption.textContent = chosen[0]?.said ?? '';
+    const custom = el('button', 'st-th add');
+    custom.type = 'button';
+    custom.innerHTML = '<div><em>+</em>from<br>anywhere</div>';
+    custom.addEventListener('click', () => {
+      trouble = null;
+      void does.face({ kind: 'own' }).then((wrong) => {
+        trouble = wrong;
+        drawFaces();
+      });
+    });
+    grid.appendChild(custom);
+    caption.textContent = chosen[0]?.said ?? 'its flag and its board, as they’ll look';
 
-    const hint = hintLine(
-      now.pictures === null
-        ? 'What it wears on the rack and on its flag. Looking through the project for images…'
-        : now.pictures.length
-          ? 'What it wears on the rack and on its flag. Images found in the project come first.'
-          : 'What it wears on the rack and on its flag. There are no images in this project.'
-    );
-
-    const actions = el('div', 'settings-actions');
-    actions.appendChild(
-      button('Choose a file…', 'settings-button', () => {
-        trouble = null;
-        void does.face({ kind: 'own' }).then((wrong) => {
-          trouble = wrong;
-          drawFaces();
-        });
-      })
-    );
-    if (now.more > 0) {
-      actions.appendChild(button(`Show ${now.more} more`, 'settings-button', () => does.more()));
+    const right = el('div', '');
+    right.style.cssText = 'display:flex;flex-direction:column;gap:12px;min-width:0';
+    right.appendChild(grid);
+    if (now.pictures === null)
+      right.appendChild(hintLine('Looking through the project for images…'));
+    else if (!now.pictures.length) {
+      right.appendChild(hintLine('There are no images in this project.'));
     }
-    const children: HTMLElement[] = [hint, grid, caption, actions];
+    if (now.more > 0) {
+      const actions = el('div', 'st-actions');
+      actions.appendChild(button(`Show ${now.more} more`, 'st-ghost', () => does.more()));
+      right.appendChild(actions);
+    }
+    const hero = el('div', 'st-hero');
+    hero.append(stage, right);
+    const children: HTMLElement[] = [hero];
     if (trouble) children.push(troubleLine(trouble));
     faces.fill(children);
   }
@@ -397,22 +448,17 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       await does.excludes(text);
       excludes.saved();
     });
-    excludes.fill([
-      hintLine(
-        "Finding a file by name or by what's in it skips these. One glob a line, on top of what is already skipped, like node_modules."
-      ),
-      field,
-    ]);
+    excludes.fill([formRowSub('Globs', 'one a line, on top of node_modules and the usual', field)]);
   }
 
   function drawDanger(): void {
     const cost = !now.sessions
       ? 'The folder stays exactly where it is.'
       : now.sessions === 1
-        ? 'Its one session is taken down. The folder stays exactly where it is.'
-        : `Its ${now.sessions} sessions are taken down. The folder stays exactly where it is.`;
-    const said = armed !== undefined ? 'Click again to remove it' : 'Remove from Mender';
-    const remove = button(said, 'settings-button settings-remove', () => {
+        ? 'Its one session comes down with it. The folder stays exactly where it is.'
+        : `Its ${now.sessions} sessions come down with it. The folder stays exactly where it is.`;
+    const said = armed !== undefined ? 'Click again to remove it' : 'Remove…';
+    const remove = button(said, armed !== undefined ? 'st-link sore' : 'st-link', () => {
       if (armed === undefined) {
         armed = window.setTimeout(() => {
           armed = undefined;
@@ -426,19 +472,22 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       close();
       void does.forget();
     });
-    if (armed !== undefined) {
-      remove.classList.add('armed');
-      stand(() => remove.click(), remove);
-    }
-    const actions = el('div', 'settings-actions');
-    actions.appendChild(remove);
-    danger.fill([hintLine(`Takes it off the island. ${cost}`), actions]);
+    if (armed !== undefined) stand(() => remove.click(), remove);
+    const strip = el('div', armed !== undefined ? 'st-danger armed' : 'st-danger');
+    const text = el('div', 'st-danger-t');
+    const t = el('b', '');
+    t.textContent = 'Take it off the island';
+    const d = el('span', '');
+    d.textContent = cost;
+    text.append(t, d);
+    strip.append(px('spark', '#f08a72', 16), text, remove);
+    danger.fill([strip]);
   }
 
   // ── sessions ─────────────────────────────────────────────────────────────
   function drawEnding(): void {
     const keeps = now.project.keepsTranscripts === true;
-    const choices = el('div', 'settings-choices');
+    const choices = el('div', 'st-seg');
     choices.append(
       chip('Delete what was said', !keeps, () => void does.keepTranscripts(false)),
       chip('Keep it to read back', keeps, () => void does.keepTranscripts(true))
@@ -470,13 +519,13 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       ]);
       return;
     }
-    const list = el('div', 'settings-rows');
+    const list = el('div', 'st-rows');
     for (const entry of entries) {
-      const row = el('button', 'settings-row');
+      const row = el('button', 'st-row');
       row.type = 'button';
-      const title = el('span', 'settings-row-main');
+      const title = el('span', 'st-row-main');
       title.textContent = entry.title;
-      const ago = el('span', 'settings-row-side');
+      const ago = el('span', 'st-row-side');
       ago.textContent = agoOf(Date.now() - Date.parse(entry.endedAt));
       row.append(title, ago);
       row.addEventListener('click', () => void openPast(entry));
@@ -501,7 +550,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     pastBranch.textContent = read.branch;
     const turns: HTMLElement[] = [];
     for (const turn of read.turns) {
-      const line = el('p', `settings-past-turn settings-past-turn-${turn.who}`);
+      const line = el('p', `st-past-turn st-past-turn-${turn.who}`);
       line.textContent = turn.text;
       turns.push(line);
     }
@@ -534,15 +583,15 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       ]);
       return;
     }
-    const list = el('div', 'settings-list');
+    const list = el('div', 'st-card');
     for (const one of carrying.carries) {
       const line = document.createElement('label');
-      line.className = 'settings-check';
+      line.className = 'st-check';
       const box = document.createElement('input');
       box.type = 'checkbox';
       box.checked = one.on;
       box.addEventListener('change', () => does.carry(one.path, box.checked));
-      const said = el('span', 'settings-check-path');
+      const said = el('span', '');
       said.textContent = one.folder ? `${one.path}/` : one.path;
       line.append(box, said);
       list.appendChild(line);
@@ -561,23 +610,15 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       scripts.fill([hintLine('Reading the project…')]);
       return;
     }
-    const list = el('div', 'settings-scripts-list');
+    const list: HTMLElement[] = [];
     for (const row of SCRIPT_ROWS) {
-      const line = el('div', 'settings-script-row');
-      const label = el('div', 'settings-script-label');
-      const said = el('span', 'settings-script-name');
-      said.textContent = row.said;
-      const when = el('span', 'settings-script-when');
-      when.textContent = row.hint;
-      label.append(said, when);
       const field = input(held[row.which], row.example, async (value) => {
         await does.script(row.which, value);
         scripts.saved();
       });
-      line.append(label, field);
-      list.appendChild(line);
+      list.push(formRowSub(row.said, row.hint, field));
     }
-    scripts.fill([hintLine('One line of shell each. Blank runs nothing.'), list]);
+    scripts.fill([...list, hintLine('One line of shell each. Blank runs nothing.')]);
   }
 
   // ── timetable ────────────────────────────────────────────────────────────
@@ -605,20 +646,20 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       timetable.fill([hintLine('Nothing is scheduled here yet.')]);
       return;
     }
-    const list = el('div', 'settings-rows');
+    const list = el('div', 'st-rows');
     for (const one of now.schedules) {
-      const row = el('div', 'settings-row settings-row-still');
-      const main = el('span', 'settings-row-main');
-      const what = el('span', 'settings-row-title');
+      const row = el('div', 'st-row');
+      const main = el('span', 'st-row-main');
+      const what = el('span', 'st-row-title');
       what.textContent = one.what;
       const hand = now.scheduleHands.find((h) => h.id === one.agent)?.name ?? one.agent;
-      const meta = el('span', 'settings-row-meta');
+      const meta = el('span', 'st-row-meta');
       meta.textContent = `${hand}${one.kind === 'terminal' ? ' in a terminal' : ''} · ${whenSaid(one.when)}${
         one.lastRun ? ` · last ran ${agoOf(Date.now() - Date.parse(one.lastRun))}` : ''
       }`;
       main.append(what, meta);
       const gone = removing.has(one.id);
-      const remove = button(gone ? 'click again to remove' : 'remove', 'settings-link', () => {
+      const remove = button(gone ? 'click again to remove' : 'remove', 'st-link', () => {
         if (!gone) {
           const timer = window.setTimeout(() => {
             removing.delete(one.id);
@@ -633,7 +674,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
         void does.removeSchedule(one.id);
       });
       if (gone) {
-        remove.classList.add('settings-link-sore');
+        remove.classList.add('sore');
         stand(() => remove.click(), remove);
       }
       row.append(main, remove);
@@ -649,14 +690,14 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
     if (!draftHand || !hands.some((one) => one.id === draftHand)) draftHand = hands[0]?.id ?? null;
 
     const what = document.createElement('textarea');
-    what.className = 'settings-env-field';
+    what.className = 'st-area';
     what.rows = 2;
     what.placeholder = 'Look through the open issues and fix the easiest one.';
     what.spellcheck = false;
     what.value = draftWhat;
     what.addEventListener('input', () => (draftWhat = what.value));
 
-    const who = el('div', 'settings-choices');
+    const who = el('div', 'st-seg');
     if (!hands.length) who.appendChild(hintLine('No agent is installed on this machine yet.'));
     for (const hand of hands) {
       who.appendChild(
@@ -667,7 +708,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       );
     }
 
-    const how = el('div', 'settings-choices');
+    const how = el('div', 'st-seg');
     how.append(
       chip('As a conversation', !draftTerminal, () => {
         draftTerminal = false;
@@ -679,7 +720,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       })
     );
 
-    const when = el('div', 'settings-choices');
+    const when = el('div', 'st-seg');
     const kinds: [ScheduleWhen['kind'], string][] = [
       ['daily', 'Every day'],
       ['hours', 'Every few hours'],
@@ -693,35 +734,35 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
         })
       );
     }
-    const detail = el('div', 'settings-when-detail');
+    const detail = el('div', 'st-when');
     if (draftKind === 'daily') {
-      const at = el('span', 'settings-hint-inline');
+      const at = el('span', 'st-inline');
       at.textContent = 'at';
       const time = document.createElement('input');
       time.type = 'time';
-      time.className = 'settings-identity-field settings-small-field';
+      time.className = 'st-input st-small';
       time.value = draftTime;
       time.addEventListener('input', () => (draftTime = time.value));
       detail.append(at, time);
     } else if (draftKind === 'hours') {
-      const every = el('span', 'settings-hint-inline');
+      const every = el('span', 'st-inline');
       every.textContent = 'every';
       const hours = document.createElement('input');
       hours.type = 'number';
       hours.min = '1';
-      hours.className = 'settings-identity-field settings-small-field';
+      hours.className = 'st-input st-small';
       hours.value = String(draftHours);
       hours.addEventListener('input', () => (draftHours = Math.max(1, Number(hours.value) || 1)));
-      const unit = el('span', 'settings-hint-inline');
+      const unit = el('span', 'st-inline');
       unit.textContent = 'hours';
       detail.append(every, hours, unit);
     } else {
-      const said = el('span', 'settings-hint-inline');
+      const said = el('span', 'st-inline');
       said.textContent = 'whenever the base branch moves';
       detail.appendChild(said);
     }
 
-    const add = button('Add to the timetable', 'settings-button', () => {
+    const add = button('Add to the timetable', 'st-ghost', () => {
       const said = draftWhat.trim();
       if (!said) {
         draftTrouble = 'Say what it is for first.';
@@ -742,7 +783,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
         addTimed.saved('added');
       });
     });
-    const actions = el('div', 'settings-actions');
+    const actions = el('div', 'st-actions');
     actions.appendChild(add);
 
     const children: HTMLElement[] = [
@@ -780,7 +821,7 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       [gitName, 'Name', now.project.gitName ?? ''],
       [gitEmail, 'Email', now.project.gitEmail ?? ''],
     ] as const) {
-      field.className = 'settings-identity-field';
+      field.className = 'st-input st-sans';
       field.placeholder = holder;
       field.spellcheck = false;
       field.value = value;
@@ -792,13 +833,12 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       });
       field.addEventListener('blur', () => void save());
     }
-    const row = el('div', 'settings-identity-row');
-    row.append(gitName, gitEmail);
     identity.fill([
+      formRowSub('Name', 'on its commits', gitName),
+      formRowSub('Email', 'on its commits', gitEmail),
       hintLine(
         'Only for commits made in this project. Leave blank to use your usual git identity.'
       ),
-      row,
     ]);
   }
 
@@ -833,9 +873,9 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
       ),
     ];
     if (held.kind === 'signed-out') {
-      const actions = el('div', 'settings-actions');
+      const actions = el('div', 'st-actions');
       actions.appendChild(
-        button('Sign in…', 'settings-button', () => {
+        button('Sign in…', 'st-ghost', () => {
           ghTrouble = null;
           void does.signIn().then((said) => {
             if ('wrong' in said) ghTrouble = said.wrong;
@@ -869,12 +909,17 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
           ...(now.project.icon ? { icon: now.project.icon } : {}),
         },
         false,
-        64
+        46
       )
     );
+    meName.textContent = now.project.name;
+    meSub.textContent = now.sessions
+      ? `${now.sessions} session${now.sessions === 1 ? '' : 's'}`
+      : 'no sessions yet';
     if (document.activeElement !== name) name.value = now.project.name;
     path.textContent = now.project.path.replace(/^\/Users\/[^/]+/, '~');
     path.title = now.project.path;
+    lead.textContent = LEADS[page].replace('{name}', now.project.name);
   }
 
   /** Whether someone is writing in it, in which case it is left alone. */
@@ -945,11 +990,15 @@ export function openSettings(state: SettingsState, does: SettingsDoings): Settin
   };
 }
 
-const OWN_COPIES =
-  'Sessions normally work right in the project folder. These only apply to one started in its own copy, on its own branch.';
-
-const TIMETABLE =
-  'Sessions that start on their own, as if you had pressed the hook and said the first thing yourself. Only while Mender is open; one due while it is closed waits until it opens.';
+const LEADS: Record<Page, string> = {
+  general: 'How {name} looks from the water and on the rack.',
+  sessions: 'What happens to what was said once a session ends.',
+  worktrees:
+    'Sessions work right in the project folder. These only apply to one started in its own copy, on its own branch.',
+  timetable:
+    'Sessions that start on their own, as if you had said the first thing yourself. Only while Mender is open.',
+  git: 'Who its commits go out as, and who the village is to GitHub.',
+};
 
 const SCRIPT_ROWS: { which: ScriptKind; said: string; hint: string; example: string }[] = [
   { which: 'prepare', said: 'Prepare', hint: 'before the session starts', example: 'pnpm install' },
@@ -964,32 +1013,32 @@ const SCRIPT_ROWS: { which: ScriptKind; said: string; hint: string; example: str
 ];
 
 export function pageOf(children: HTMLElement[]): HTMLElement {
-  const root = el('div', 'settings-page');
+  const root = el('div', 'st-page');
   root.append(...children);
   return root;
 }
 
 export function intro(text: string): HTMLElement {
-  const said = el('p', 'settings-intro');
+  const said = el('p', 'st-hint');
   said.textContent = text;
   return said;
 }
 
 export function hintLine(text: string): HTMLElement {
-  const said = el('p', 'settings-hint');
+  const said = el('p', 'st-hint');
   said.textContent = text;
   return said;
 }
 
 export function troubleLine(text: string): HTMLElement {
-  const said = el('p', 'settings-trouble');
+  const said = el('p', 'st-trouble');
   said.textContent = text;
   return said;
 }
 
 /** One of a few answers, the picked one framed in gold. */
 export function chip(said: string, picked: boolean, does: () => void): HTMLButtonElement {
-  const made = button(said, 'settings-chip', () => {
+  const made = button(said, 'st-chip', () => {
     if (!picked) does();
   });
   made.setAttribute('aria-pressed', String(picked));
@@ -998,19 +1047,71 @@ export function chip(said: string, picked: boolean, does: () => void): HTMLButto
 }
 
 export function formRow(label: string, ...fields: HTMLElement[]): HTMLElement {
-  const row = el('div', 'settings-form-row');
-  const said = el('span', 'settings-form-label');
-  said.textContent = label;
-  const right = el('div', 'settings-form-field');
+  return formRowSub(label, '', ...fields);
+}
+
+/** A label with a quiet line under it, and what it sets beside. Neighbours
+    stand together in one soft card. */
+export function formRowSub(label: string, sub: string, ...fields: HTMLElement[]): HTMLElement {
+  const row = el('div', 'st-f');
+  const said = el('div', 'st-f-k');
+  const b = el('b', '');
+  b.textContent = label;
+  said.appendChild(b);
+  if (sub) {
+    const s = el('span', '');
+    s.textContent = sub;
+    said.appendChild(s);
+  }
+  const right = el('div', 'st-f-v');
   right.append(...fields);
   row.append(said, right);
   return row;
 }
 
+/** The "saved" beside a window's heading, lit by whichever section says it took. */
+export function savedMark(within: HTMLElement): HTMLElement {
+  const mark = el('div', 'st-headsaved');
+  let timer: number | undefined;
+  within.addEventListener('st-saved', (event) => {
+    mark.textContent = String((event as CustomEvent).detail ?? 'saved');
+    mark.classList.add('shown');
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => mark.classList.remove('shown'), SAVED_MS);
+  });
+  return mark;
+}
+
+/** Whether a window opening now stands over the island rather than a yard. */
+export function overIsland(): boolean {
+  const canvas = document.body.querySelector<HTMLElement>(':scope > canvas');
+  const filter = canvas?.style.filter ?? '';
+  return !filter.includes('brightness');
+}
+
+/** Runs of form rows share one card; anything else stands as it is. */
+export function grouped(children: HTMLElement[]): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  let card: HTMLElement | null = null;
+  for (const child of children) {
+    if (child.classList.contains('st-f')) {
+      if (!card) {
+        card = el('div', 'st-card');
+        out.push(card);
+      }
+      card.appendChild(child);
+    } else {
+      card = null;
+      out.push(child);
+    }
+  }
+  return out;
+}
+
 /** A one-line field that writes itself on return or on leaving it. */
 export function input(value: string, placeholder: string, save: (value: string) => Promise<void>) {
   const field = document.createElement('input');
-  field.className = 'settings-identity-field';
+  field.className = 'st-input';
   field.placeholder = placeholder;
   field.spellcheck = false;
   field.value = value;
@@ -1034,7 +1135,7 @@ export function area(
   save: (text: string) => Promise<void>
 ): HTMLTextAreaElement {
   const field = document.createElement('textarea');
-  field.className = 'settings-env-field';
+  field.className = 'st-area';
   field.spellcheck = false;
   field.rows = rows;
   field.placeholder = placeholder;
@@ -1068,23 +1169,20 @@ export function section(title: string): {
   /** Says it took, beside the heading, for a moment. */
   saved(said?: string): void;
 } {
-  const root = el('section', 'settings-section');
-  const heading = el('h3', 'settings-label');
+  const root = el('section', 'st-section');
+  const heading = el('h3', 'st-label');
   const words = el('span', '');
   words.textContent = title;
-  const note = el('span', 'settings-saved');
+  const note = el('span', 'st-saved');
   heading.append(words, note);
-  const inner = el('div', 'settings-inner');
-  root.append(heading, inner);
-  let timer: number | undefined;
+  const inner = el('div', 'st-inner');
+  root.append(...(title ? [heading] : []), inner);
   return {
     root,
-    fill: (children) => inner.replaceChildren(...children),
+    fill: (children) => inner.replaceChildren(...grouped(children)),
     saved(said = 'saved') {
       note.textContent = said;
-      note.classList.add('shown');
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => note.classList.remove('shown'), SAVED_MS);
+      root.dispatchEvent(new CustomEvent('st-saved', { bubbles: true, detail: said }));
     },
   };
 }

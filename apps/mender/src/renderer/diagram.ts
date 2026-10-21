@@ -12,26 +12,19 @@
 import { renderMermaidSVG } from 'beautiful-mermaid';
 
 const COLORS = {
-  fg: 'var(--yard-ink-body)',
-  line: 'var(--yard-ink-dim)',
-  accent: 'var(--yard-gold)',
-  muted: 'var(--yard-ink-dim)',
-  surface: 'var(--yard-timber-mid)',
-  border: 'var(--yard-outline)',
+  bg: '#1d1b18',
+  fg: '#f6ecdb',
+  line: '#8d867a',
+  accent: '#f2c66d',
+  muted: '#a39a8a',
+  surface: '#2a2722',
+  border: '#6a6358',
   transparent: true,
 } as const;
 
-/* The same colors as plain hex: a CSS variable means nothing to an SVG shut
-   inside an `<img>` of its own, which is what a picture row already is. */
-const STANDALONE_COLORS = {
-  fg: '#dcc8a0',
-  line: '#a89272',
-  accent: '#e0b56a',
-  muted: '#a89272',
-  surface: '#4a3520',
-  border: '#482510',
-  transparent: true,
-} as const;
+/* The same colors, for an SVG shut inside an `<img>` of its own, which is
+   what a picture row already is. */
+const STANDALONE_COLORS = COLORS;
 
 /** The SVG for one mermaid diagram, or null when it will not parse.
     Colored with CSS variables — for drawing straight into this page. */

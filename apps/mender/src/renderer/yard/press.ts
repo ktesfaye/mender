@@ -187,20 +187,22 @@ export function twice(said: string, cost: string, does: Doing): HTMLSpanElement 
  */
 export function trail(steps: { said: string; go?: () => void }[]): HTMLDivElement {
   const line = document.createElement('div');
-  line.style.cssText = "font-family:'Courier Prime',monospace;font-size:13px";
+  line.className = 'g-crumbs';
   for (const [i, step] of steps.entries()) {
     if (i) {
       const tick = document.createElement('span');
-      tick.style.cssText = 'color:#6b5a40;padding:0 8px';
+      tick.className = 'g-faint';
       tick.textContent = '›';
       line.appendChild(tick);
     }
     if (step.go) {
-      line.appendChild(pressing(step.said, step.go));
+      const back = pressing(step.said, step.go);
+      back.style.fontWeight = '600';
+      line.appendChild(back);
       continue;
     }
     const here = document.createElement('span');
-    here.style.color = 'var(--yard-ink-bright)';
+    here.className = 'g-mute';
     here.textContent = step.said;
     line.appendChild(here);
   }

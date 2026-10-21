@@ -22,6 +22,8 @@ export type Offer = {
   starts?: boolean;
   /** Fable, the dearest model, marked in its own violet before it is picked. */
   dear?: boolean;
+  /** What a setting is on now, said at the end of its line. */
+  now?: string;
   /** Where in the name what you typed was found, for picking out. */
   hit?: [number, number];
 };

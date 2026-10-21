@@ -1,0 +1,1392 @@
+/* Group g: the boards that read something over the yard: a change, a commit,
+   a file, a folder, a search, the finder, a helper. Spec: DESIGN.md. */
+
+.gr {
+  font-family: var(--g-sans);
+  color: var(--g-ink);
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+.gr * {
+  box-sizing: border-box;
+}
+.gr-p {
+  cursor: pointer;
+}
+.yard .gr .picked,
+.gr .picked {
+  background: rgba(242, 198, 109, 0.12);
+  color: inherit;
+  border: 0;
+  box-shadow: inset 0 0 0 1px rgba(242, 198, 109, 0.5);
+}
+.gr-sign {
+  display: inline-grid;
+  place-items: center;
+  font-style: normal;
+  flex: none;
+}
+.gr-label {
+  margin: 22px 0 10px 4px;
+}
+.gr-add {
+  color: #8fd47c;
+}
+.gr-del {
+  color: var(--g-sore);
+}
+.gr-gold {
+  color: var(--g-gold);
+}
+
+/* the head */
+.gr-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.gr-head-l {
+  min-width: 0;
+}
+.gr-h1 {
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.gr-sub {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  color: var(--g-ink-2);
+}
+.gr-path {
+  font-size: 12.5px;
+}
+.gr-state {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+/* a row of tools */
+.gr-tools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.gr-tools .gr-fill {
+  flex: 1;
+}
+.gr-seg {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.gr-seg > span {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--g-gold);
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  cursor: pointer;
+}
+.gr-seg > span.gr-on {
+  background: rgba(242, 198, 109, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(242, 198, 109, 0.4);
+  color: var(--g-ink);
+  cursor: default;
+}
+
+/* danger */
+.gr-danger {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 14px 11px 16px;
+  border-radius: 18px;
+  background: rgba(240, 138, 114, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(240, 138, 114, 0.22);
+  margin-top: 16px;
+}
+.gr-danger-t {
+  flex: 1;
+  font-size: 13px;
+  color: var(--g-ink-2);
+  line-height: 1.4;
+}
+.gr-danger-t b {
+  color: var(--g-sore);
+  font-weight: 650;
+}
+.gr-sore {
+  color: var(--g-sore) !important;
+  background: rgba(240, 138, 114, 0.1) !important;
+  box-shadow: inset 0 0 0 1px rgba(240, 138, 114, 0.35) !important;
+}
+.gr-quiet {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--g-ink-3);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+/* code */
+.gr-code {
+  font-family: var(--g-mono);
+  font-size: 13px;
+  line-height: 24px;
+  overflow: hidden;
+  margin-top: 20px;
+  padding: 6px 0;
+}
+.gr-card-code {
+  border-radius: 20px;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.gr-fold {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0 5px 14px;
+  font: 600 11.5px var(--g-sans);
+  color: var(--g-ink-3);
+  background: rgba(255, 240, 215, 0.035);
+}
+.gr-l {
+  display: grid;
+  grid-template-columns: 42px 42px 26px 1fr;
+  align-items: center;
+  position: relative;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-height: 24px;
+}
+.gr-l .n {
+  color: var(--g-ink-3);
+  text-align: right;
+  padding-right: 10px;
+  font-size: 11.5px;
+}
+.gr-l .s {
+  text-align: center;
+  opacity: 0.85;
+}
+.gr-l .c {
+  color: var(--g-ink-2);
+}
+.gr-l.a {
+  background: rgba(143, 212, 124, 0.1);
+}
+.gr-l.a .s,
+.gr-l.a .c {
+  color: #a9e098;
+}
+.gr-l.d {
+  background: rgba(240, 138, 114, 0.1);
+}
+.gr-l.d .s,
+.gr-l.d .c {
+  color: #f4a490;
+}
+.gr-l.a::before,
+.gr-l.d::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.gr-l.a::before {
+  background: #8fd47c;
+}
+.gr-l.d::before {
+  background: var(--g-sore);
+}
+.gr-l.gr-p:hover {
+  background-image: linear-gradient(rgba(255, 240, 215, 0.05), rgba(255, 240, 215, 0.05));
+}
+.gr-l.sel {
+  background: rgba(242, 198, 109, 0.1);
+}
+.gr-l.sel::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--g-gold);
+}
+.gr-note {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  background: rgba(0, 0, 0, 0.18);
+}
+.gr-note > .b {
+  grid-column: 2;
+  margin: 7px 20px 9px 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font: 500 13px/1.4 var(--g-sans);
+  white-space: normal;
+  color: var(--g-ink);
+  background: linear-gradient(180deg, rgba(242, 198, 109, 0.16), rgba(242, 198, 109, 0.07));
+  box-shadow: inset 0 0 0 1px rgba(242, 198, 109, 0.3);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.gr-note > .b small {
+  display: block;
+  color: var(--g-ink-3);
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+.gr-note > .b .go {
+  margin-left: auto;
+  color: var(--g-gold);
+  font-weight: 650;
+  font-size: 12px;
+  white-space: nowrap;
+  padding-top: 1px;
+  cursor: pointer;
+}
+.gr-note > .b.write {
+  background: rgba(0, 0, 0, 0.3);
+  align-items: center;
+}
+.gr-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  background: var(--g-gold);
+  vertical-align: middle;
+  margin-left: 1px;
+  animation: yard-blink 900ms steps(1, end) infinite;
+}
+.gr-k {
+  color: #f0a37a;
+}
+
+/* a file */
+.gr-file {
+  margin-top: 14px;
+  padding: 8px 0 8px 14px;
+  border-radius: 20px;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  overflow: hidden;
+}
+.gr-file .gr-code {
+  margin-top: 0;
+  padding: 0;
+}
+.gr-fl {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  min-height: 24px;
+  align-items: center;
+  position: relative;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.gr-fl .n {
+  color: var(--g-ink-3);
+  text-align: right;
+  padding-right: 12px;
+  font-size: 11.5px;
+}
+.gr-fl .c {
+  color: var(--g-ink);
+  padding-right: 14px;
+}
+.gr-fl.edit {
+  background: rgba(242, 198, 109, 0.1);
+  box-shadow: inset 3px 0 0 var(--g-gold);
+}
+.gr-fl.gr-p:hover {
+  background: rgba(255, 240, 215, 0.05);
+}
+.gr-gw {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+}
+.gr-bl {
+  border-right: 1px solid var(--g-hair);
+  padding: 0 12px 0 0;
+}
+.gr-run {
+  padding: 4px 10px 4px 14px;
+  font: 12px var(--g-sans);
+  line-height: 1.35;
+  color: var(--g-ink-3);
+  border-left: 3px solid;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.gr-run b {
+  color: var(--g-ink-2);
+  font-weight: 650;
+  font-size: 12.5px;
+}
+.gr-more {
+  padding: 10px 14px 4px 44px;
+  font-size: 12px;
+  color: var(--g-ink-3);
+}
+.gr-pic {
+  margin-top: 16px;
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.gr-pic img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  image-rendering: pixelated;
+}
+.gr-field {
+  margin-top: 14px;
+}
+.gr-prose {
+  margin-top: 14px;
+  padding: 18px 22px;
+  border-radius: 20px;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+
+/* a commit, and everything a branch changed */
+.gr-two {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 14px;
+  margin-top: 22px;
+}
+.gr-p16 {
+  padding: 16px 18px;
+}
+.gr-v {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--g-ink-2);
+  overflow-wrap: anywhere;
+}
+.gr-v b {
+  color: var(--g-ink);
+  font-weight: 600;
+}
+.gr-who {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.gr-av {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  flex: none;
+}
+.gr-hash {
+  font: 600 12px var(--g-mono);
+  color: #9bbcff;
+}
+.gr-when {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 13.5px;
+  margin-top: 12px;
+}
+.gr-files {
+  padding: 7px;
+}
+.gr-f {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 13px;
+  font-size: 14.5px;
+}
+.gr-f .nm {
+  color: var(--g-gold);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.gr-f .dir {
+  color: var(--g-ink-3);
+  font: 12.5px var(--g-mono);
+}
+.gr-f .ct {
+  margin-left: auto;
+  font: 600 12.5px var(--g-mono);
+  white-space: nowrap;
+}
+.gr-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font: 700 11px var(--g-sans);
+  flex: none;
+}
+.gr-badge.new {
+  background: rgba(155, 210, 138, 0.16);
+  color: var(--g-moss);
+}
+.gr-badge.mod {
+  background: rgba(242, 198, 109, 0.16);
+  color: var(--g-gold);
+}
+.gr-badge.del {
+  background: rgba(240, 138, 114, 0.16);
+  color: var(--g-sore);
+}
+.gr-bar {
+  display: flex;
+  gap: 2px;
+  margin-left: 14px;
+  flex: none;
+}
+.gr-bar i {
+  width: 7px;
+  height: 10px;
+  border-radius: 2px;
+  display: block;
+  background: rgba(255, 255, 255, 0.12);
+}
+.gr-bar i.a {
+  background: #8fd47c;
+}
+.gr-bar i.d {
+  background: var(--g-sore);
+}
+.gr-dir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 4px;
+  font: 12.5px var(--g-mono);
+  color: var(--g-ink-3);
+}
+.gr-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(155, 210, 138, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(155, 210, 138, 0.25);
+  color: #cfeac4;
+}
+.gr-cols {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 16px;
+}
+.gr-stat {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 12px;
+}
+.gr-stat > div {
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px 12px 10px;
+}
+.gr-stat b {
+  display: block;
+  font: 600 24px var(--g-serif);
+  font-variation-settings: 'SOFT' 100;
+}
+.gr-stat span {
+  font-size: 11.5px;
+  color: var(--g-ink-3);
+}
+
+/* a folder, a search, the finder */
+.gr-trail {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.gr-trail .s {
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: rgba(242, 198, 109, 0.08);
+  color: var(--g-gold);
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.gr-trail .s.cur {
+  background: rgba(255, 240, 215, 0.08);
+  color: var(--g-ink);
+  cursor: default;
+}
+.gr-acts {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+.gr-tile {
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
+  background: rgba(255, 240, 215, 0.05);
+  box-shadow:
+    inset 0 0 0 1px var(--g-hair),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.gr-tile.hot {
+  background: linear-gradient(180deg, rgba(242, 198, 109, 0.2), rgba(242, 198, 109, 0.08));
+  box-shadow:
+    inset 0 0 0 1px rgba(242, 198, 109, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.gr-tile .ic {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.22);
+  flex: none;
+}
+.gr-tile b {
+  font-size: 13.5px;
+  color: var(--g-gold);
+  font-weight: 650;
+  display: block;
+}
+.gr-tile span.d {
+  display: block;
+  font-size: 11.5px;
+  color: var(--g-ink-3);
+  margin-top: 1px;
+}
+.gr-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.26);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  font-size: 17px;
+  margin-top: 12px;
+}
+.gr-input .hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--g-ink-3);
+}
+.gr-input .ph {
+  color: var(--g-ink-3);
+}
+.gr-lists {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 20px;
+}
+.gr-list {
+  padding: 8px;
+  border-radius: 20px;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.gr-fol {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 14px;
+}
+.gr-fol .n {
+  font-weight: 650;
+  color: var(--g-gold);
+  font-size: 14.5px;
+  overflow-wrap: anywhere;
+}
+.gr-fol .c,
+.gr-fl2 .d {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--g-ink-3);
+  white-space: nowrap;
+}
+.gr-fl2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 13px;
+  font-size: 14.5px;
+}
+.gr-fl2 .n {
+  color: var(--g-gold);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.gr-ic2 {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.22);
+  flex: none;
+}
+.gr-hit {
+  padding: 6px 8px 8px;
+  margin-bottom: 10px;
+  border-radius: 18px;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.gr-hit-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  font-size: 14.5px;
+}
+.gr-hit-h .n {
+  color: var(--g-gold);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.gr-hit-h .p {
+  font: 12px var(--g-mono);
+  color: var(--g-ink-3);
+}
+.gr-hit-h .ct {
+  margin-left: auto;
+}
+.gr-ln {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font: 12.5px var(--g-mono);
+  color: var(--g-ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.gr-ln .no {
+  color: var(--g-ink-3);
+  text-align: right;
+}
+.gr-ln mark {
+  background: rgba(242, 198, 109, 0.22);
+  color: var(--g-gold);
+  border-radius: 4px;
+  padding: 0 2px;
+}
+.gr-r {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 13px;
+}
+.gr-r .nm {
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--g-gold);
+  overflow-wrap: anywhere;
+}
+.gr-r .ds {
+  font-size: 12px;
+  color: var(--g-ink-3);
+  margin-top: 1px;
+}
+.gr-r .k {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+.gr-fcols {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 20px;
+}
+.gr-fcols .g-label {
+  margin-top: 0;
+}
+.gr-lant {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.gr-more2 {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--g-ink-3);
+}
+
+/* a helper and a command */
+.gr-hhead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+.gr-av2 {
+  width: 62px;
+  height: 62px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: radial-gradient(
+    circle at 50% 35%,
+    rgba(255, 154, 74, 0.3),
+    rgba(255, 154, 74, 0.04) 75%
+  );
+  box-shadow: inset 0 0 0 1px rgba(255, 200, 150, 0.22);
+}
+.gr-av2.still {
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.gr-hhead .rt {
+  margin-left: auto;
+  margin-right: 44px;
+  text-align: right;
+}
+.gr-meter {
+  display: flex;
+  gap: 3px;
+  margin-top: 7px;
+  justify-content: flex-end;
+}
+.gr-meter i {
+  width: 12px;
+  height: 7px;
+  border-radius: 2px;
+  background: rgba(255, 240, 215, 0.12);
+}
+.gr-meter i.f {
+  background: var(--g-ember);
+}
+.gr-hcols {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+}
+.gr-cd {
+  padding: 16px 18px;
+}
+.gr-quote {
+  margin-top: 8px;
+  font: italic 400 17px/1.5 var(--g-serif);
+  font-variation-settings:
+    'SOFT' 100,
+    'opsz' 24;
+  color: rgba(246, 236, 219, 0.9);
+  overflow-wrap: anywhere;
+}
+.gr-tl {
+  position: relative;
+  margin-top: 10px;
+  padding-left: 4px;
+}
+.gr-tl::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(255, 240, 215, 0.2), rgba(255, 154, 74, 0.5));
+  border-radius: 2px;
+}
+.gr-st {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+}
+.gr-st .sg {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: #1a1714;
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  position: relative;
+}
+.gr-st .tx {
+  font-size: 13.5px;
+  color: var(--g-ink);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.gr-st .tx em {
+  font-style: normal;
+  color: var(--g-ink-3);
+  font-size: 12px;
+  margin-left: 6px;
+}
+.gr-st .ago {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--g-ink-3);
+  white-space: nowrap;
+}
+.gr-st.live .sg {
+  box-shadow:
+    inset 0 0 0 1.5px var(--g-ember),
+    0 0 12px rgba(255, 154, 74, 0.45);
+}
+.gr-st.live .tx {
+  color: #ffc89d;
+}
+.gr-st.bad .tx {
+  color: var(--g-sore);
+}
+.gr-line {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 13px;
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  font-size: 14px;
+  color: var(--g-ink-3);
+}
+.gr-line i {
+  width: 2px;
+  height: 16px;
+  background: var(--g-gold);
+}
+.gr-nt {
+  margin-top: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--g-ink-3);
+}
+.gr-kv {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.gr-kv > div {
+  padding: 10px 12px;
+  border-radius: 13px;
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 11.5px;
+  color: var(--g-ink-3);
+}
+.gr-kv b {
+  display: block;
+  font: 500 20px var(--g-serif);
+  color: var(--g-ink);
+  margin-bottom: 2px;
+}
+.gr-tok {
+  margin-top: 10px;
+}
+.gr-tok .l {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--g-ink-3);
+}
+.gr-tok .b {
+  margin-top: 7px;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 240, 215, 0.1);
+  overflow: hidden;
+}
+.gr-tok .b i {
+  display: block;
+  height: 100%;
+  background: var(--g-ember);
+  border-radius: 4px;
+}
+.gr-warn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px 14px 20px;
+  border-radius: 18px;
+  background: rgba(240, 138, 114, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(240, 138, 114, 0.3);
+  margin-top: 22px;
+}
+.gr-warn .t {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: rgba(246, 236, 219, 0.8);
+}
+.gr-warn .t b {
+  color: var(--g-sore);
+  font-weight: 700;
+}
+.gr-cmd {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 13px;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  font: 12.5px/1.55 var(--g-mono);
+  color: var(--g-gold);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.gr-cmd i {
+  color: var(--g-ink-3);
+  font-style: normal;
+}
+.gr-term {
+  margin-top: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(6, 6, 8, 0.55);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  font: 12px/1.7 var(--g-mono);
+  color: rgba(246, 236, 219, 0.72);
+  max-height: 292px;
+  min-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.gr-term .cur {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  background: var(--g-ember);
+  vertical-align: -2px;
+}
+.gr-live {
+  color: var(--g-ember);
+}
+.gr-ember-chip {
+  color: #ffc89d;
+}
+.gr-t-k {
+  color: #f0a37a;
+}
+.gr-t-st {
+  color: #a9e098;
+}
+.gr-t-nu {
+  color: #8fb4ff;
+}
+.gr-t-cm {
+  color: var(--g-ink-3);
+}
+.gr-flush {
+  margin: 0 0 12px 0 !important;
+}
+
+/* a picture held up */
+.gr-pv {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 5vh 7vw 3vh;
+  background: rgba(6, 6, 8, 0.55);
+  animation: gr-pv-in 180ms ease-out both;
+}
+.gr-pv-going {
+  animation: gr-pv-out 160ms ease-in both;
+}
+.gr-pv-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 1200px;
+  border-radius: 26px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 40px 100px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(255, 238, 210, 0.14);
+  cursor: zoom-out;
+  touch-action: none;
+}
+.gr-pv-stage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform-origin: 0 0;
+  user-select: none;
+  image-rendering: auto;
+}
+.gr-pv-x {
+  top: 18px;
+  right: 18px;
+}
+.gr-pv-th {
+  position: absolute;
+  left: 22px;
+  bottom: 22px;
+  display: flex;
+  gap: 10px;
+}
+.gr-pv-th i {
+  width: 76px;
+  height: 52px;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center;
+  display: block;
+  box-shadow: 0 0 0 1px rgba(255, 238, 210, 0.25);
+  opacity: 0.7;
+  cursor: pointer;
+}
+.gr-pv-th i.on {
+  opacity: 1;
+  box-shadow: 0 0 0 2px var(--g-gold);
+}
+.gr-pv-nav {
+  position: absolute;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin-top: -23px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(14, 15, 18, 0.6);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  cursor: pointer;
+}
+.gr-pv-nav.l {
+  left: 3vw;
+}
+.gr-pv-nav.r {
+  right: 3vw;
+}
+.gr-pv-cap {
+  position: relative;
+  flex: none;
+  min-width: 360px;
+  max-width: 700px;
+  padding: 14px 26px;
+  border-radius: 28px;
+}
+.gr-pv-t {
+  font-size: 24px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.gr-pv-s {
+  font-size: 12.5px;
+  margin-top: 3px;
+}
+@keyframes gr-pv-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes gr-pv-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* a diagram */
+.gr-dia {
+  position: relative;
+  overflow: hidden;
+  max-width: 100%;
+  touch-action: none;
+  cursor: grab;
+  border-radius: 18px;
+  background-color: rgba(0, 0, 0, 0.18);
+  background-image: radial-gradient(rgba(255, 240, 215, 0.13) 1.2px, transparent 1.4px);
+  background-size: 26px 26px;
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.gr-dia-in {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.gr-dia-in svg {
+  display: block;
+}
+.gr-dia-open {
+  position: absolute !important;
+  right: 10px;
+  top: 10px;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+}
+.gr-dia-wash {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+}
+.gr-dia-win {
+  position: absolute;
+  left: 4vw;
+  right: 4vw;
+  top: 5vh;
+  bottom: 5vh;
+  border-radius: 32px;
+  overflow: hidden;
+}
+.gr-dia-big {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+}
+.gr-dia-way {
+  position: absolute !important;
+  left: 34px;
+  top: 28px;
+  z-index: 2;
+}
+.gr-dia-bar {
+  position: absolute !important;
+  left: 0;
+  right: 0;
+  bottom: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  z-index: 2;
+}
+.gr-dia-zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.gr-dia-zoom b {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.gr-dia-zoom span {
+  min-width: 56px;
+  text-align: center;
+  font: 650 13px var(--g-sans);
+  color: var(--g-ink);
+}
+.gr mark {
+  background: rgba(242, 198, 109, 0.22);
+  color: var(--g-gold);
+  border-radius: 4px;
+  padding: 0 2px;
+}
+.gr-prose {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--g-ink);
+}
+.gr-bare {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  margin-top: 8px;
+}
+
+/* writing inside a read board: the transcript's own marks, set in glass */
+.yard .gr-prose {
+  columns: 2 340px;
+  column-gap: 44px;
+  display: block;
+  user-select: text;
+  cursor: text;
+}
+.yard .gr-prose > * {
+  break-inside: avoid;
+  margin-bottom: 0.8em;
+}
+.yard .gr-prose.gr-bare {
+  columns: auto;
+  padding: 0;
+}
+.yard .gr-prose .prose-heading {
+  font-family: var(--g-serif);
+  font-variation-settings:
+    'SOFT' 100,
+    'WONK' 0,
+    'opsz' 40;
+  font-weight: 500;
+  font-size: 1.25em;
+  color: var(--g-ink);
+}
+.yard .gr-prose .prose-h3 {
+  font-size: 1.1em;
+  font-family: var(--g-serif);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--g-ink);
+}
+.yard .gr-prose .prose-heading::before {
+  box-shadow: none;
+}
+.yard .gr-prose .prose-bullet::before {
+  box-shadow: none;
+}
+.yard .gr-prose .prose-number {
+  font-family: var(--g-sans);
+  font-weight: 700;
+  font-size: 0.72em;
+  color: var(--g-ink);
+  background: rgba(255, 240, 215, 0.08);
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  padding: 0.2em 0.45em;
+}
+.yard .gr-prose .prose-code-card {
+  border: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.yard .gr-prose .prose-code-head {
+  background: none;
+  border: 0;
+  color: var(--g-ink-3);
+}
+.yard .gr-prose .prose-block {
+  color: var(--g-ink);
+}
+.yard .gr-prose .prose-code {
+  font-style: normal;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 7px;
+  padding: 1px 7px;
+  box-shadow: none;
+  border: 0;
+}
+.yard .gr-prose .prose-quote {
+  border-left-color: var(--g-ember);
+  background: rgba(255, 240, 215, 0.05);
+  border-radius: 0 12px 12px 0;
+  color: var(--g-ink-2);
+}
+.yard .gr-prose .prose-table {
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.yard .gr-prose .prose-table table {
+  background: none;
+  font-family: var(--g-sans);
+  width: 100%;
+}
+.yard .gr-prose .prose-table th {
+  font-family: var(--g-sans);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.85em;
+  color: var(--g-ink);
+  background: rgba(255, 240, 215, 0.07);
+  box-shadow: none;
+}
+.yard .gr-prose .prose-table td[style*='right'] {
+  font-family: var(--g-sans);
+  color: var(--g-ink);
+}
+.yard .gr-prose {
+  display: block !important;
+  columns: 2 340px;
+  column-gap: 44px;
+}
+.yard .gr-prose.gr-bare {
+  columns: auto;
+}
+.yard .gr-prose > .prose-item {
+  margin-bottom: 0.35em;
+}
+.yard .gr-prose > .prose-heading {
+  margin-top: 0.4em;
+  margin-bottom: 0.6em;
+}
+.gr-dia-win > .gr-dia-big {
+  position: absolute;
+  inset: 0;
+}
+.gr-dia svg rect {
+  rx: 14px;
+  ry: 14px;
+}
+.gr-dia svg text {
+  font-family: var(--g-sans) !important;
+  font-weight: 600;
+}

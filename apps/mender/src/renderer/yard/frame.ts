@@ -208,7 +208,9 @@ export type Dimness = 'island' | 'yard' | 'reading' | 'stale';
 const DIM: Record<Dimness, string> = {
   island: 'none',
   yard: 'brightness(.22) saturate(.5)',
-  reading: 'brightness(.12) saturate(.4)',
+  /* A board over the yard no longer darkens it further: the glass is what
+     sets it apart, and it needs something lit behind it to bend. */
+  reading: 'brightness(.22) saturate(.5)',
   stale: 'brightness(.14) saturate(.3)',
 };
 

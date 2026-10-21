@@ -13,6 +13,9 @@
  * both.
  */
 
+import '../glass/slabs.css';
+import { glaze } from '../glass/glass';
+import { px } from '../glass/px';
 import { ask } from './standing';
 
 export interface PastSession {
@@ -44,7 +47,6 @@ export interface PastSessionBoard {
 }
 
 const NO_TITLE = '(a past session with nothing typed yet)';
-const MONO = "'Courier Prime', monospace";
 
 export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
   let sessions: PastSession[] | null = null;
@@ -52,153 +54,62 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
   let shown: PastSession[] = [];
   let chosen: PastSession | null = null;
   let closed = false;
+  let thisFolderOnly = false;
   const told = new Map<string, PastTold | 'waiting'>();
   const since = new Map<string, number>();
   let tick: ReturnType<typeof setInterval> | null = null;
 
-  const scrim = el('div', {
-    position: 'fixed',
-    inset: '0',
-    zIndex: '901',
-    background: 'rgba(72,37,16,.62)',
-    fontFamily: "'Josefin Sans', sans-serif",
-  });
+  const scrim = h('div', 'gs-over');
+  scrim.style.zIndex = '901';
   scrim.dataset.pastSession = '';
+  const win = glaze(h('div', 'gs-win'), { tint: 'rgba(14, 15, 18, 0.62)', blur: 30 });
+  win.style.width = '1180px';
+  win.style.height = 'min(820px, calc(100vh - 32px))';
+  scrim.append(win);
 
-  const hang = el('div', {
-    position: 'absolute',
-    left: '50%',
-    top: '40px',
-    transform: 'translateX(-50%)',
-    width: '800px',
-    maxWidth: 'calc(100vw - 32px)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-  });
-  const cords = el('div', {
-    display: 'flex',
-    justifyContent: 'space-between',
-    width: '440px',
-    maxWidth: '60%',
-  });
-  for (let i = 0; i < 2; i++) {
-    cords.append(el('span', { width: '4px', height: '28px', background: '#6b5a40' }));
-  }
-  const board = el('div', {
-    alignSelf: 'stretch',
-    background: '#2e1f10',
-    border: '2px solid #482510',
-    boxShadow: '6px 6px 0 rgba(0,0,0,.45)',
-    color: '#f4e3c0',
-  });
+  const shut = h('div', 'g-x');
+  shut.append(px('close', '#f6ecdb', 11));
+  const crumbs = h('div', 'g-crumbs');
+  const way = h('span', 'g-gold', 'a new session');
+  crumbs.append(way, h('span', 'g-faint', '\u203a'), h('span', 'g-mute', 'a past one'));
+  const title = h('h1', 'gs-h1 g-serif', 'Pick up where it stopped');
+  title.style.fontSize = '32px';
 
-  const head = el('div', {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '4px',
-    padding: '18px 20px 16px',
-    background: '#5a3a1c',
-    borderBottom: '2px solid #3a2712',
-    boxShadow: 'inset 0 -4px 0 #3a2712',
-  });
-  head.append(
-    text('span', 'A past session', {
-      fontSize: '22px',
-      letterSpacing: '.28em',
-      textTransform: 'uppercase',
-      fontWeight: '600',
-    }),
-    text('span', 'picking one resumes it. nothing typed here is sent.', {
-      fontSize: '14px',
-      color: '#d9c49a',
-    })
-  );
-
-  const finding = el('div', { padding: '14px 16px', borderBottom: '2px solid #3a2712' });
+  const top = h('div', 'gs-top');
+  const finding = h('div', 'g-field gs-find');
   const search = document.createElement('input');
-  search.placeholder = 'find a session';
+  search.placeholder = 'find one by what it was about';
   search.spellcheck = false;
-  Object.assign(search.style, {
-    width: '100%',
-    boxSizing: 'border-box',
-    fontFamily: "'Josefin Sans', sans-serif",
-    fontSize: '15px',
-    padding: '10px 12px',
-    background: '#1d1811',
-    color: '#f4e3c0',
-    border: '2px solid #3a2712',
-    boxShadow: 'inset 0 4px 0 #120e09',
-    outline: 'none',
-  } satisfies Partial<CSSStyleDeclaration>);
-  finding.append(search);
+  finding.append(px('find', '#f6ecdb', 16), search);
+  const seg = h('div', 'g-seg');
+  const segAll = h('span', 'g-on', 'everywhere');
+  const segHere = h('span', '', 'this folder');
+  seg.append(segAll, segHere);
+  top.append(finding, seg);
 
-  const split = el('div', {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)',
-    height: 'min(400px, calc(100vh - 330px))',
-    minHeight: '200px',
-  });
-  const list = el('div', {
-    display: 'flex',
-    flexDirection: 'column',
-    overflowY: 'auto',
-    borderRight: '2px solid #3a2712',
-  });
-  const preview = el('div', {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '14px',
-    padding: '20px',
-    background: '#1d1811',
-    overflowY: 'auto',
-    minHeight: '0',
-  });
-  split.append(list, preview);
+  const cols = h('div', 'gs-cols');
+  const list = h('div', 'gs-list g-scroll');
+  const preview = h('div', 'gs-read g-card g-scroll');
+  cols.append(list, preview);
 
-  const foot = el('div', {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '14px 20px',
-    borderTop: '2px solid #3a2712',
-    background: '#241810',
-  });
-  const count = el('span', { flex: '1', fontFamily: MONO, fontSize: '12px', color: '#bfa476' });
-  const back = text('span', 'back', {
-    cursor: 'pointer',
-    padding: '8px 14px',
-    fontSize: '14px',
-    color: '#d9c49a',
-    border: '2px solid #3a2712',
-    background: '#5a3a1c',
-  });
-  const go = text('span', 'resume', {
-    cursor: 'pointer',
-    padding: '8px 16px',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#482510',
-    border: '2px solid #482510',
-    background: '#e0b56a',
-    boxShadow: '3px 3px 0 rgba(0,0,0,.45)',
-  });
-  go.addEventListener('pointerdown', () => {
-    go.style.transform = 'translate(2px,2px)';
-    go.style.boxShadow = '1px 1px 0 rgba(0,0,0,.45)';
-  });
-  const lift = (): void => {
-    go.style.transform = '';
-    go.style.boxShadow = '3px 3px 0 rgba(0,0,0,.45)';
+  const bar = h('div', 'gs-bar');
+  const count = h('span', 'gs-count');
+  const back = h('span', 'g-ghost g-plain gs-end');
+  back.append(px('left', '#f2c66d', 13), document.createTextNode('back'));
+  const go = h('span', 'g-pill');
+  go.append(px('right', '#2a1b09', 15), document.createTextNode('resume this one'));
+  bar.append(count, back, go);
+
+  win.append(shut, crumbs, title, top, cols, bar);
+
+  const setScope = (here: boolean): void => {
+    thisFolderOnly = here;
+    segAll.classList.toggle('g-on', !here);
+    segHere.classList.toggle('g-on', here);
+    filter();
   };
-  go.addEventListener('pointerup', lift);
-  go.addEventListener('pointerleave', lift);
-  foot.append(count, back, go);
-
-  board.append(head, finding, split, foot);
-  hang.append(cords, board);
-  scrim.append(hang);
+  segAll.addEventListener('click', () => setScope(false));
+  segHere.addEventListener('click', () => setScope(true));
 
   const rows = new Map<string, HTMLElement>();
 
@@ -206,9 +117,8 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
     const scrolled = list.scrollTop;
     list.replaceChildren();
     rows.clear();
-    const quiet = (words: string) =>
-      list.append(text('div', words, { padding: '12px 16px', fontSize: '14px', color: '#bfa476' }));
-    if (sessions === null) return quiet('reading its own history…');
+    const quiet = (words: string) => list.append(h('div', 'gs-quiet', words));
+    if (sessions === null) return quiet('reading its own history\u2026');
     if (!shown.length) {
       return quiet(
         search.value.trim()
@@ -216,75 +126,51 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
           : 'nothing had on this machine yet.'
       );
     }
-    if (shown[0]?.elsewhere && !search.value.trim()) quiet('nothing had in this folder yet.');
+    const query = search.value.trim();
+    const hereCount = shown.filter((one) => !one.elsewhere).length;
+    const head = (icon: string, color: string, words: string, n: string): void => {
+      const g = h('div', 'gs-gh');
+      g.append(px(icon, color, 13), h('span', 'g-pix', words), h('span', 'gs-ct', n));
+      list.append(g);
+    };
+    if (!thisFolderOnly || hereCount) {
+      head(
+        'home',
+        '#9bd28a',
+        'in this folder',
+        hereCount || query ? String(hereCount) : 'nothing yet'
+      );
+    }
     let headed = false;
     for (const session of shown) {
       if (session.elsewhere && !headed) {
         headed = true;
-        list.append(
-          text('div', 'in other folders', {
-            padding: '14px 16px 8px',
-            fontSize: '11px',
-            letterSpacing: '.2em',
-            textTransform: 'uppercase',
-            color: '#bfa476',
-            flexShrink: '0',
-          })
+        head(
+          'folder',
+          'rgba(246,236,219,.5)',
+          'in other folders',
+          String(shown.length - hereCount)
         );
       }
       const empty = session.title === NO_TITLE;
-      const row = el('div', {
-        cursor: 'pointer',
-        display: 'flex',
-        gap: '10px',
-        alignItems: 'baseline',
-        padding: '12px 16px',
-        borderBottom: '2px solid #241810',
-        flexShrink: '0',
-      });
-      const arrow = text('span', '·', { fontFamily: MONO, fontSize: '12px', color: '#bfa476' });
-      const words = el('div', {
-        flex: '1',
-        minWidth: '0',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '3px',
-      });
-      const line = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+      const row = h('div', 'gs-s');
       const known = told.get(session.id);
-      words.append(
-        text('span', empty ? NO_TITLE : session.title, {
-          ...line,
-          fontSize: '14px',
-          fontStyle: empty ? 'italic' : 'normal',
-          color: empty ? '#bfa476' : '#f4e3c0',
-        })
-      );
-      const under = [
-        session.elsewhere ? `in ${session.elsewhere.folder}` : '',
-        known && known !== 'waiting' ? (known.did ?? '') : '',
-      ]
-        .filter(Boolean)
-        .join(' · ');
-      if (under) {
-        words.append(text('span', under, { ...line, fontSize: '12px', color: '#bfa476' }));
-      }
       row.append(
-        arrow,
-        words,
-        text('span', ago(session.mtimeMs), {
-          fontFamily: MONO,
-          fontSize: '11px',
-          color: '#bfa476',
-          whiteSpace: 'nowrap',
-        })
+        h('b', empty ? 'gs-none' : '', empty ? NO_TITLE : session.title),
+        h('span', 'gs-when', ago(session.mtimeMs))
       );
-      row.addEventListener('pointerenter', () => {
-        if (chosen?.id !== session.id) row.style.background = '#2a1d10';
-      });
-      row.addEventListener('pointerleave', () => {
-        if (chosen?.id !== session.id) row.style.background = 'transparent';
-      });
+      const did = known && known !== 'waiting' ? (known.did ?? '') : '';
+      if (session.elsewhere || did) {
+        const where = h('span', 'gs-where');
+        if (session.elsewhere) {
+          where.append(
+            px('folder', 'rgba(246,236,219,.4)', 11),
+            h('span', 'gs-f', session.elsewhere.folder)
+          );
+        }
+        if (did) where.append(h('span', '', did));
+        row.append(where);
+      }
       row.addEventListener('click', () => choose(session));
       row.addEventListener('dblclick', () => {
         chosen = session;
@@ -298,78 +184,68 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
   };
 
   const paintChosen = (): void => {
-    for (const [id, row] of rows) {
-      const mine = chosen?.id === id;
-      row.style.background = mine ? '#3a2712' : 'transparent';
-      (row.firstChild as HTMLElement).textContent = mine ? '→' : '·';
-    }
+    for (const [id, row] of rows) row.classList.toggle('gs-on', chosen?.id === id);
   };
 
-  const heading = (words: string) =>
-    text('span', words, {
-      fontSize: '11px',
-      letterSpacing: '.2em',
-      textTransform: 'uppercase',
-      color: '#bfa476',
-    });
+  const chip = (icon: string, words: string, color = '#f6ecdb'): HTMLElement => {
+    const c = h('span', 'g-chip');
+    c.append(px(icon, color, 12), document.createTextNode(words));
+    return c;
+  };
 
   const paintPreview = (): void => {
     preview.replaceChildren();
     if (!chosen) return;
     const said = chosen.said ?? (chosen.title === NO_TITLE ? null : chosen.title);
     const known = told.get(chosen.id);
-    const did = el('span', { fontSize: '16px', lineHeight: '1.5' });
+    const turns = known && known !== 'waiting' ? known.turns : null;
+    preview.append(h('div', 'g-pix', 'the one under the arrow'));
+    preview.append(h('h2', 'g-serif', chosen.title === NO_TITLE ? NO_TITLE : chosen.title));
+    const meta = h('div', 'gs-meta');
+    meta.append(
+      chip('branch', chosen.gitBranch ?? 'no branch', '#7aaaff'),
+      chip('clock', `last worked in ${ago(chosen.mtimeMs)}`)
+    );
+    if (turns !== null) meta.append(chip('page', `${turns} turn${turns === 1 ? '' : 's'}`));
+    if (chosen.elsewhere) meta.append(chip('folder', chosen.elsewhere.folder));
+    preview.append(meta);
+
+    const did = h('div', 'gs-did');
+    did.append(h('div', 'g-pix', 'what it did'));
     if (known && known !== 'waiting' && known.did) {
-      did.textContent = known.did;
-      did.style.color = '#f4e3c0';
+      did.append(h('p', '', known.did));
     } else if (known && known !== 'waiting') {
-      did.textContent = said ? 'it would not say.' : 'nothing was done in it yet.';
-      did.style.color = '#bfa476';
-      did.style.fontStyle = 'italic';
+      did.append(h('p', 'g-faint', said ? 'it would not say.' : 'nothing was done in it yet.'));
     } else {
       const seconds = Math.floor((Date.now() - (since.get(chosen.id) ?? Date.now())) / 1000);
-      did.textContent = seconds >= 1 ? `reading it back… ${seconds}s` : '';
-      did.style.color = '#bfa476';
-      did.style.fontFamily = MONO;
-      did.style.fontSize = '13px';
+      did.append(h('p', 'gs-wait', seconds >= 1 ? `reading it back\u2026 ${seconds}s` : ''));
     }
-    preview.append(heading('What it did'), did);
-    preview.append(
-      heading('First thing said'),
-      text(
-        'span',
-        said ?? 'Nothing was typed in this session yet. Resuming it opens it where it was left.',
-        {
-          fontSize: '14px',
-          lineHeight: '1.5',
-          color: said ? '#d9c49a' : '#bfa476',
-          fontStyle: said ? 'normal' : 'italic',
-          display: '-webkit-box',
-          webkitLineClamp: '6',
-          webkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        } as Partial<CSSStyleDeclaration>
+    preview.append(did);
+
+    const first = h('div', 'gs-said');
+    first.append(
+      h('div', 'g-pix', 'first thing said'),
+      h(
+        'p',
+        '',
+        said ?? 'Nothing was typed in this session yet. Resuming it opens it where it was left.'
       )
     );
-    const meta = el('div', {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '4px',
-      marginTop: 'auto',
-      fontFamily: MONO,
-      fontSize: '12px',
-      color: '#bfa476',
-    });
-    const turns = known && known !== 'waiting' ? String(known.turns) : '';
+    if (!said) first.querySelector('p')?.classList.add('g-faint');
+    preview.append(first);
+
     if (chosen.elsewhere) {
-      meta.append(text('span', `had in · ${chosen.elsewhere.folder}, brought here to resume`, {}));
+      const bring = h('div', 'gs-bring');
+      const words = h('span', '', 'this one was had in ');
+      words.append(
+        h('b', '', chosen.elsewhere.folder),
+        document.createTextNode(
+          '. resuming brings a copy of it over to this folder first, since claude only looks under the folder it runs in.'
+        )
+      );
+      bring.append(px('down', '#9bd28a', 16), words);
+      preview.append(bring);
     }
-    meta.append(
-      text('span', `branch · ${chosen.gitBranch ?? 'no branch'}`, {}),
-      text('span', `last active · ${ago(chosen.mtimeMs)}`, {}),
-      text('span', `turns · ${turns}`, {})
-    );
-    preview.append(meta);
   };
 
   const paintFoot = (): void => {
@@ -378,8 +254,7 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
     const plural = (n: number) => `${n} session${n === 1 ? '' : 's'}`;
     count.textContent =
       sessions === null ? '' : away ? `${here} here, ${away} elsewhere` : plural(here);
-    go.style.opacity = chosen ? '1' : '.5';
-    go.style.cursor = chosen ? 'pointer' : 'default';
+    go.classList.toggle('gs-pill-off', !chosen);
   };
 
   const tell = (session: PastSession): Promise<void> => {
@@ -424,7 +299,7 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
       didOf(one).toLowerCase().includes(q) ||
       (one.gitBranch ?? '').toLowerCase().includes(q) ||
       (one.elsewhere?.folder ?? '').toLowerCase().includes(q);
-    const all = [...(sessions ?? []), ...others];
+    const all = [...(sessions ?? []), ...(thisFolderOnly ? [] : others)];
     shown = q ? all.filter(matches) : all;
     paintList();
     if (!chosen || !shown.some((one) => one.id === chosen?.id)) choose(shown[0] ?? null);
@@ -445,13 +320,15 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
 
   go.addEventListener('click', resume);
   back.addEventListener('click', leave);
+  shut.addEventListener('click', leave);
+  way.addEventListener('click', leave);
   search.addEventListener('input', filter);
 
   for (const kind of ['keydown', 'keyup', 'pointerdown', 'pointerup', 'click', 'wheel'] as const) {
     scrim.addEventListener(kind, (event) => event.stopPropagation());
   }
   scrim.addEventListener('pointerdown', (event) => {
-    if (event.target === scrim) leave();
+    if (!win.contains(event.target as Node)) leave();
   });
   scrim.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
@@ -508,15 +385,10 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
   return { close };
 }
 
-function el(tag: string, style: Partial<CSSStyleDeclaration>): HTMLElement {
+function h(tag: string, cls = '', words = ''): HTMLElement {
   const made = document.createElement(tag);
-  Object.assign(made.style, style);
-  return made;
-}
-
-function text(tag: string, words: string, style: Partial<CSSStyleDeclaration>): HTMLElement {
-  const made = el(tag, style);
-  made.textContent = words;
+  if (cls) made.className = cls;
+  if (words) made.textContent = words;
   return made;
 }
 

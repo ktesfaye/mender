@@ -1,0 +1,347 @@
+/*
+ * Lantern glass: the look every popup takes. The spec is
+ * ~/mender-scratch/popups/mock/DESIGN.md; each class here is the one the
+ * approved mockups use, prefixed g- so nothing from the old yard collides.
+ *
+ * Gold is pressable and only pressable. Ember is live, moss is done, sore is
+ * what cannot be taken back, blue is git, and violet is Fable and nothing else.
+ */
+
+:root {
+  --g-ink: #f6ecdb;
+  --g-ink-2: rgba(246, 236, 219, 0.66);
+  --g-ink-3: rgba(246, 236, 219, 0.42);
+  --g-gold: #f2c66d;
+  --g-gold-soft: rgba(242, 198, 109, 0.16);
+  --g-ember: #ff9a4a;
+  --g-moss: #9bd28a;
+  --g-sore: #f08a72;
+  --g-blue: #7aaaff;
+  --g-violet: #a780ff;
+  --g-violet-ink: #c9b2ff;
+  --g-hair: rgba(255, 238, 210, 0.09);
+  --g-card: rgba(255, 240, 215, 0.045);
+  --g-sans: 'Figtree', system-ui, sans-serif;
+  --g-serif: 'Fraunces', Georgia, serif;
+  --g-pixel: 'Silkscreen', monospace;
+  --g-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* The pane itself. glaze() adds this and the tint; the lens is its backdrop. */
+.g-glass {
+  isolation: isolate;
+  border-radius: 30px;
+  color: var(--g-ink);
+  font-family: var(--g-sans);
+  -webkit-font-smoothing: antialiased;
+  box-shadow:
+    inset 0 0 22px rgba(255, 255, 255, 0.04),
+    0 50px 120px rgba(0, 0, 0, 0.5),
+    0 10px 30px rgba(0, 0, 0, 0.3);
+}
+.g-glass > * {
+  position: relative;
+}
+/* A lamp-lit sheen inside, warmer at the top. */
+.g-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(120% 70% at 30% -10%, rgba(255, 196, 120, 0.1), transparent 60%),
+    linear-gradient(180deg, rgba(255, 246, 228, 0.04), transparent 30%);
+}
+/* The light catching the rim, only at the corners where it would. */
+.g-glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  padding: 1.25px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.42),
+    rgba(255, 255, 255, 0.07) 16%,
+    transparent 32%,
+    transparent 68%,
+    rgba(255, 255, 255, 0.04) 84%,
+    rgba(255, 255, 255, 0.24)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.g-glass.g-flat::before,
+.g-glass.g-flat::after {
+  display: none;
+}
+
+.g-serif {
+  font-family: var(--g-serif);
+  font-variation-settings:
+    'SOFT' 100,
+    'WONK' 0,
+    'opsz' 60;
+}
+.g-it {
+  font-style: italic;
+}
+.g-pix {
+  font-family: var(--g-pixel);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--g-ink-3);
+}
+.g-mono {
+  font-family: var(--g-mono);
+}
+.g-mute {
+  color: var(--g-ink-2);
+}
+.g-faint {
+  color: var(--g-ink-3);
+}
+.g-gold {
+  color: var(--g-gold);
+}
+.g-press {
+  color: var(--g-gold);
+  cursor: pointer;
+}
+.g-press:hover {
+  filter: brightness(1.12);
+}
+
+/* A key, only where the key is the content: the Keys page, a chord, an answer's number. */
+.g-kc {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 7px;
+  font: 600 11.5px var(--g-sans);
+  color: var(--g-ink-2);
+  background: linear-gradient(180deg, rgba(255, 245, 225, 0.12), rgba(255, 245, 225, 0.05));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* The one primary thing a pane does. */
+.g-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  font: 650 14.5px var(--g-sans);
+  background: linear-gradient(180deg, #f8d487, #e3a947);
+  color: #2a1b09;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 8px 22px rgba(227, 169, 71, 0.32);
+}
+.g-pill:hover {
+  filter: brightness(1.06);
+}
+.g-pill.g-sore {
+  background: linear-gradient(180deg, #f6a08a, #d9694f);
+  color: #2a0f08;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 8px 22px rgba(217, 105, 79, 0.3);
+}
+/* A secondary thing a pane does. */
+.g-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--g-gold);
+  font: 650 13.5px var(--g-sans);
+  background: rgba(242, 198, 109, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(242, 198, 109, 0.25);
+}
+.g-ghost.g-plain {
+  background: none;
+  box-shadow: none;
+}
+.g-ghost:hover {
+  background: rgba(242, 198, 109, 0.14);
+}
+.g-ghost.g-plain:hover {
+  background: rgba(242, 198, 109, 0.07);
+}
+
+.g-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font: 600 12.5px var(--g-sans);
+  background: rgba(255, 240, 215, 0.07);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  color: var(--g-ink-2);
+}
+.g-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+}
+
+/* Close mark, top right of every window and board. */
+.g-x {
+  position: absolute !important;
+  top: 20px;
+  right: 20px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: rgba(255, 240, 215, 0.07);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  color: var(--g-ink-2);
+  font: 14px var(--g-sans);
+  z-index: 2;
+}
+.g-x:hover {
+  color: var(--g-gold);
+}
+
+/* The way home, top left of yard boards. */
+.g-crumbs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font: 13px var(--g-sans);
+}
+.g-crumbs .g-gold {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.g-label {
+  margin: 0 0 10px 4px;
+}
+
+/* An inner card: a soft lit rectangle grouping things that go together. */
+.g-card {
+  border-radius: 18px;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.g-card.g-on {
+  background: linear-gradient(180deg, rgba(242, 198, 109, 0.2), rgba(242, 198, 109, 0.07));
+  box-shadow: inset 0 0 0 1.5px rgba(242, 198, 109, 0.55);
+}
+
+/* One of a few, side by side. */
+.g-seg {
+  display: flex;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.g-seg > * {
+  flex: 1;
+  text-align: center;
+  padding: 9px 4px;
+  border-radius: 10px;
+  font: 600 13px var(--g-sans);
+  color: var(--g-gold);
+  cursor: pointer;
+}
+.g-seg > .g-on {
+  background: rgba(255, 240, 215, 0.12);
+  color: var(--g-ink);
+  cursor: default;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* A row in a list: a sign, words, and whatever its state is at the end. */
+.g-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 13px;
+}
+.g-row.g-hot,
+.g-row:hover.g-press {
+  background: rgba(255, 240, 215, 0.07);
+}
+
+/* A strip that names the cost of something that cannot be taken back. */
+.g-danger {
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: rgba(240, 138, 114, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(240, 138, 114, 0.28);
+  color: var(--g-sore);
+}
+
+.g-rule {
+  height: 1px;
+  background: var(--g-hair);
+  border: 0;
+}
+
+/* Something you type into, on glass. */
+.g-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.24);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  font: 14px var(--g-sans);
+  color: var(--g-ink);
+}
+.g-field input,
+.g-field textarea {
+  all: unset;
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  caret-color: var(--g-gold);
+}
+.g-field input::placeholder,
+.g-field textarea::placeholder {
+  color: var(--g-ink-3);
+}
+
+.g-scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 240, 215, 0.18) transparent;
+}
+
+/* The yard puts a hard offset shadow under every letter, which on glass only
+   doubles each stroke; nothing on a pane carries one. */
+.yard .g-glass,
+.yard .g-glass *,
+.g-glass,
+.g-glass * {
+  text-shadow: none;
+}

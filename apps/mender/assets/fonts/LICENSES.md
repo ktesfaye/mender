@@ -19,6 +19,9 @@ SIL Open Font License, Version 1.1.
   Source: https://github.com/google/fonts/tree/main/ofl/silkscreen. The name
   tag on a district's pennant. Fetched from `@fontsource/silkscreen` on
   jsDelivr, latin subset.
+- **Figtree** (variable, regular) — SIL OFL 1.1 — `OFL-Figtree.txt`
+  Source: https://github.com/google/fonts/tree/main/ofl/figtree. The body face
+  of every popup. Fetched from `@fontsource-variable/figtree` on jsDelivr, latin subset.
 - **Fraunces** (variable, regular and italic) — SIL OFL 1.1 — `OFL-Fraunces.txt`
   Source: https://github.com/google/fonts/tree/main/ofl/fraunces. Was what the
   agent says; kept in case Grunell goes back. Fetched from

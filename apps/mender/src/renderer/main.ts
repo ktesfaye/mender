@@ -90,6 +90,7 @@ import { Folk, loadFolk, type Look, type Standing } from './village/folk';
 import { districtBounds, Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
 import './yard/tokens.css';
+import { rackMenuPane, waterMenu } from './glass/island-menus';
 import { say } from './village/notice';
 import { loadFeet, Pennants, plantFlag } from './village/pennants';
 import { buildScene } from './village/scene';
@@ -105,7 +106,6 @@ import { openYard, type Watching } from './yard/live';
 import { showMissed } from './yard/missed';
 import { openNewSession, type NewSessionSign } from './yard/new-session';
 import { seedLocalPictures } from './yard/pictures';
-import { pressing } from './yard/press';
 import { openHungry, type HungryBoard } from './yard/hungry';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
@@ -5353,6 +5353,10 @@ async function boot(): Promise<void> {
         openCommit();
         return;
       }
+      if (pick === 'commit-now') {
+        void commit();
+        return;
+      }
       if (pick === 'push' || pick === 'pull' || pick === 'publish') {
         void errand(pick);
         return;
@@ -6620,30 +6624,18 @@ async function boot(): Promise<void> {
       unslabIsland();
       const project = projects.find((one) => one.id === id);
       if (!project || editing?.active) return;
-      const slab = document.createElement('div');
-      slab.className = 'menu slab';
-      const offer = isAway(project)
-        ? pressing('put it back on the island', () => {
-            unslabIsland();
-            void putBack(id);
-          })
-        : pressing('put it away', () => {
-            unslabIsland();
-            void putAway(id);
-          });
-      offer.className += ' slab-line';
-      slab.appendChild(offer);
-      /* On a layer of its own over everything, since the rack is reached
-         from the island and from inside a yard alike. */
-      const over = document.createElement('div');
-      over.className = 'yard';
-      over.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:30';
-      over.appendChild(slab);
-      document.body.appendChild(over);
-      slab.style.pointerEvents = 'auto';
-      slab.style.left = `${Math.min(x, window.innerWidth - slab.offsetWidth - 12)}px`;
-      slab.style.top = `${Math.min(y, window.innerHeight - slab.offsetHeight - 12)}px`;
-      rearrangeSlab = over;
+      const away = isAway(project);
+      rearrangeSlab = rackMenuPane({
+        name: project.name,
+        away,
+        x,
+        y,
+        parent: document.body,
+        does: () => {
+          unslabIsland();
+          void (away ? putBack(id) : putAway(id));
+        },
+      });
     };
     window.addEventListener('contextmenu', (event) => {
       unslabIsland();
@@ -6658,30 +6650,21 @@ async function boot(): Promise<void> {
         flyToDistrict(camera, districtBounds(aim.district));
         return;
       }
-      const slab = document.createElement('div');
-      slab.className = 'menu slab';
-      const offer = pressing('edit districts', () => {
-        unslabIsland();
-        drawn.ground.hover(null);
-        drawn.pennants.show(null);
-        editing?.start();
+      rearrangeSlab = waterMenu({
+        sky,
+        x: event.clientX,
+        y: event.clientY,
+        parent: layer.root,
+        edit: () => {
+          unslabIsland();
+          drawn.ground.hover(null);
+          drawn.pennants.show(null);
+          editing?.start();
+        },
+        opened: (panel) => {
+          rearrangeSlab = panel;
+        },
       });
-      offer.className += ' slab-line';
-      slab.appendChild(offer);
-      const weather = pressing('the sky', () => {
-        const opened = skySlab(sky);
-        opened.style.left = slab.style.left;
-        opened.style.top = slab.style.top;
-        slab.replaceWith(opened);
-        rearrangeSlab = opened;
-        keepOnScreen(opened);
-      });
-      weather.className += ' slab-line';
-      slab.appendChild(weather);
-      layer.root.appendChild(slab);
-      slab.style.left = `${Math.min(event.clientX, window.innerWidth - slab.offsetWidth - 12)}px`;
-      slab.style.top = `${Math.min(event.clientY, window.innerHeight - slab.offsetHeight - 12)}px`;
-      rearrangeSlab = slab;
     });
     window.addEventListener(
       'pointerdown',
@@ -6694,7 +6677,22 @@ async function boot(): Promise<void> {
     /* A clicked notification names a session the same way pressing it on the
        rail or in the finder does: one path in, `go` decides the rest. */
     window.mender?.attend?.((task) => go(`task:${task}`));
-    window.mender?.quitCost?.((n) => showQuitCost(n));
+    window.mender?.quitCost?.((n) =>
+      showQuitCost(
+        n,
+        tasks
+          .filter((task) => seen[task.id] === 'working')
+          .map((task) => {
+            const said = stateOf(task, 'working', glances[task.id], undefined).saying;
+            const cut = said.lastIndexOf(' · ');
+            return {
+              name: task.title,
+              doing: cut < 0 ? said : said.slice(0, cut),
+              ...(cut < 0 ? {} : { for: said.slice(cut + 3) }),
+            };
+          })
+      )
+    );
 
     /* A session caught eating the five hours is put to him over everything,
        wherever he is standing: one at a time, each only once. */

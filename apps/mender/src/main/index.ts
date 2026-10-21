@@ -18,6 +18,7 @@ import { createChangesController } from './changes-controller';
 import { createClaudeUsage } from './claude-usage';
 import { watchDockFire } from './dock-fire';
 import { installDragOut } from './drag';
+import { installFolderPicker } from './pick-folder';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
 import { createFiveHours } from './five-hours';
@@ -163,6 +164,7 @@ export async function main(): Promise<void> {
   });
 
   installDragOut(app);
+  installFolderPicker();
   installJiraWeb();
   installGrip();
 }

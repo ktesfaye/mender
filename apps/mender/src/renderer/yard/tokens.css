@@ -25,9 +25,9 @@
   --yard-parchment: #fff4d4;
 
   /* ── gold: the one pressable thing ─────────────────────────────────────── */
-  --yard-gold: #e0b56a;
-  --yard-gold-hover: #f0cf8a;
-  --yard-gold-down: #b08f52;
+  --yard-gold: #f2c66d;
+  --yard-gold-hover: #f8d98f;
+  --yard-gold-down: #c99d4c;
 
   /* ── the five tones, each always said as well as shown ─────────────────── */
   --yard-resting: #a89272;

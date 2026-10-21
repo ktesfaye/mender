@@ -1,3 +1,5 @@
+import { chip, dom, h, label, sign, tile } from '../glass/f';
+import { stand } from '../yard/standing';
 import type { Row } from './row';
 
 /**
@@ -9,41 +11,94 @@ import type { Row } from './row';
  * the checkout stood before the merge was tried.
  */
 export function conflict(base: string, files: readonly string[], asked: boolean): Row[] {
-  const rows: Row[] = [
-    { kind: 'title', text: 'a conflict' },
-    {
-      kind: 'line',
-      text: `bringing in ${base} stopped; it could not settle these on its own.`,
-      tone: 'sore',
-    },
-    { kind: 'gap' },
-  ];
-  for (const path of files) {
-    rows.push({ kind: 'entry', mark: '✗', text: path, tone: 'warn', keep: 'tail' });
-  }
-  rows.push(
-    { kind: 'gap' },
-    { kind: 'entry', mark: '→', text: 'hand this to it', pick: 'hand-conflict' }
+  const root = h('div', 'f-root');
+  root.append(
+    h(
+      'div',
+      'f-top',
+      h(
+        'div',
+        '',
+        h('h1', '', `${base} and this don’t agree`),
+        h('div', 'f-sub', h('span', 'f-branch', sign('merge', '#9bd28a', 12), base))
+      ),
+      h(
+        'div',
+        'f-state',
+        chip(`${files.length} ${files.length === 1 ? 'file' : 'files'} stuck`, '#f08a72')
+      )
+    )
   );
-  if (asked) {
-    rows.push({
-      kind: 'entry',
-      mark: '✗',
-      text: 'press again and the merge is undone',
-      tone: 'sore',
-      pick: 'abort-merge!',
-      armed: true,
-    });
-  } else {
-    rows.push({
-      kind: 'entry',
-      mark: '✗',
-      text: 'give up, put it back the way it was',
-      tone: 'faded',
-      pick: 'abort-merge',
-    });
+  root.append(
+    h(
+      'div',
+      'f-strip f-sorest',
+      sign('warn', '#f08a72', 18),
+      h(
+        'span',
+        '',
+        'the merge is half done in the checkout. ',
+        h('b', '', 'nothing is committed'),
+        ' until it settles or you give up.'
+      )
+    )
+  );
+
+  const left = h('div', '', label('where it stopped'));
+  const card = h('div', 'f-card');
+  for (const path of files) {
+    const cut = path.lastIndexOf('/');
+    card.append(
+      h(
+        'div',
+        'f-cf',
+        h('span', 'f-ic2', sign('file', '#f08a72', 16)),
+        h(
+          'div',
+          '',
+          h('div', 'f-n', path.slice(cut + 1)),
+          h('div', 'f-p', cut > 0 ? path.slice(0, cut) : './')
+        )
+      )
+    );
   }
-  return rows;
+  left.append(card);
+
+  const right = h('div', '', label('what to do'));
+  const acts = h('div', 'f-ways');
+  acts.append(
+    tile(
+      'hand',
+      'Hand it over',
+      'the whole thing, as the next thing said to whoever is working here',
+      {
+        hot: true,
+        pick: 'hand-conflict',
+        wide: true,
+      }
+    )
+  );
+  const give = tile(
+    'undo',
+    asked ? 'Press again and the merge is undone' : 'Give up on it',
+    'the checkout goes back how it stood',
+    { sore: true, pick: asked ? 'abort-merge!' : 'abort-merge', wide: true }
+  );
+  if (asked) stand(() => give.click(), give);
+  acts.append(give);
+  right.append(acts);
+  if (asked) {
+    right.append(
+      h(
+        'div',
+        'f-arm',
+        h('b', '', 'this puts the checkout back exactly as it stood'),
+        ' before the merge was tried. whatever went in clean comes back out too.'
+      )
+    );
+  }
+  root.append(h('div', 'f-two', left, right));
+  return [dom(root)];
 }
 
 /** What goes on the gatepost when a conflict is handed to whoever is working. */

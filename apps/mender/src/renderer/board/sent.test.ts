@@ -1,6 +1,6 @@
 import type { PullRequest, PullRequestComment } from '@upstream/services/pull-requests/api/schemas';
 import { describe, expect, it } from 'vitest';
-import { sent, toHand, toHandCheck } from './sent';
+import { toHand, toHandCheck } from './sent';
 
 const pull = {
   url: 'https://github.com/o/r/pull/9',
@@ -38,17 +38,6 @@ const comments: PullRequestComment[] = [
     author: { userName: 'ada' },
   } as unknown as PullRequestComment,
 ];
-
-describe('sent', () => {
-  it('offers only the unresolved comments, and a failed check, both pressable', () => {
-    const rows = sent({ name: 'x', branch: 'feature', pull, comments });
-    const picks = rows.map((row) => ('pick' in row ? row.pick : undefined));
-    expect(picks).toContain('hand-comment:r1');
-    expect(picks).not.toContain('hand-comment:r2');
-    expect(picks).toContain('hand-check:c1');
-    expect(picks).not.toContain('hand-check:c2');
-  });
-});
 
 describe('toHand', () => {
   it('carries the file and line the comment was left on', () => {

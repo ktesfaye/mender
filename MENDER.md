@@ -603,9 +603,11 @@ irreversible here takes.
 
 **Everything else is laid over the yard, never instead of it.** A file, a
 change, a commit, a folder, a search, a shell, a pull request, the card behind
-`/agent`: opening any of them drops the world to silhouettes and brings a flat
-brown wash down over the middle and the right, with what you asked for written
-on it. The gatepost keeps its column and the rail keeps its strip, so while you
+`/agent`: opening any of them lays a pane of glass over the middle and the
+right, the yard behind it blurred and bent at its rim rather than darkened,
+with what you asked for drawn on it. Every popup in the village is that same
+lantern glass, smoky and lit only at its corners, over the island as over the
+yard. The gatepost keeps its column and the rail keeps its strip, so while you
 read you can still see what you asked for and who else is working. The way home
 is written across the top, one gold step per level, and Escape walks the same
 steps one at a time. A click anywhere outside what is open closes it.
@@ -653,11 +655,11 @@ it only comes up where it stands rather than stepping in a second time. A sessio
 the place standing round it and only the middle waits.
 
 **A slash on the line is how a session is worked.** Writing one opens
-everything you could mean right where you are writing it: a small dark slab
-standing on the line with its left edge on the slash, the names in the type and
+everything you could mean right where you are writing it: a small dark pane
+of glass standing on the line with its left edge on the slash, the names in the type and
 what each is for after them, the best match first and the whole list there to
-scroll. It is the one solid surface in the yard, because a list read over a
-transcript is two things to read at once. Most of it is the agent's own:
+scroll, its glass tinted dark enough that a list read over a transcript is
+never two things to read at once. Most of it is the agent's own:
 whatever its CLI advertises when it starts, which on Claude is its commands and
 every skill it has been taught. Some are the village's and never reach the
 agent as words, because picking a model is a setting on a running session and

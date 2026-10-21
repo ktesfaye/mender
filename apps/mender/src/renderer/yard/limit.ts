@@ -1,3 +1,6 @@
+import { glaze } from '../glass/glass';
+import '../glass/asks.css';
+import { px } from '../glass/px';
 import { pressing, twice } from './press';
 import { KIT_NAMES, sprite } from './sprite';
 import { astop } from './walk';
@@ -6,116 +9,142 @@ import type { FailureView } from './what';
 /**
  * The fire banked on a limit, drawn as the wait it is.
  *
- * A banked hearth, low and red and barely breathing, and beside it the wait
- * itself as a strip of cells running from when it was hit to when it lifts:
- * what is behind is spent coals, the front is the one cell still glowing, and
- * what is ahead sits cold until the front reaches it. How long is left is set
- * large beside it, the way the packing strip sets its percentage, and when it
- * lifts the whole strip stands up green. A wait with no end Claude would name
- * keeps the hearth and drops the strip, since there is nothing to measure.
+ * One pane of lantern glass: the banked hearth, how long is left set large
+ * beside it, and the wait itself as a strip of cells running from when it was
+ * hit to when it lifts. What is behind is spent coals, the front is the one
+ * cell still glowing, and what is ahead sits cold until the front reaches it.
+ * Under it are the ways on, each a tile of its own. A wait with no end Claude
+ * would name keeps the hearth and drops the strip, since there is nothing to
+ * measure.
  */
 
-const CELLS = 40;
-const TALL = 14;
-const COLD = 'rgba(150,160,190,.26)';
-const SPENT = '#6a3a1c';
-const FRONT = '#ff8a5a';
-const LIFTED = '#a8c469';
-
-const BIG = [
-  "font-family:'Josefin Sans',sans-serif",
-  'font-size:17px',
-  'letter-spacing:.04em',
-  'white-space:nowrap',
-  'text-shadow:1px 1px 0 #120d07',
-  'font-variant-numeric:tabular-nums',
-].join(';');
-
-const META = [
-  "font-family:'Courier Prime',monospace",
-  'font-size:12px',
-  'color:#bfa476',
-  'text-shadow:1px 1px 0 #120d07',
-  'white-space:nowrap',
-].join(';');
+const CELLS = 48;
+const TALL = 18;
+const COLD = 'rgba(255,240,215,.1)';
+const SPENT = 'rgba(240,138,114,.42)';
+const LIFTED = 'rgba(155,210,138,.55)';
 
 export interface WaitDoings {
   press(what: string): void;
 }
 
+/** A way on, as a tile: the press inside it does the work and the tile is only
+ *  a larger place to put a finger. */
+function tile(
+  sign: string,
+  tone: string,
+  kind: string,
+  press: HTMLElement,
+  about: string
+): HTMLElement {
+  const it = document.createElement('div');
+  it.className = `gl-tile ${kind}`;
+  const icon = document.createElement('div');
+  icon.className = 'gl-ic';
+  icon.appendChild(px(sign, tone, 17));
+  const tx = document.createElement('div');
+  tx.className = 'gl-tx';
+  tx.appendChild(press);
+  const d = document.createElement('span');
+  d.textContent = about;
+  tx.appendChild(d);
+  it.append(icon, tx);
+  it.addEventListener('mousedown', (event) => event.preventDefault());
+  it.addEventListener('click', (event) => {
+    if (event.target !== press) press.click();
+  });
+  return it;
+}
+
 /** The whole of it, for the foot of the middle column. */
 export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
-  const it = document.createElement('div');
+  const it = glaze(document.createElement('div'), {
+    tint: 'rgba(14, 15, 18, 0.5)',
+    blur: 24,
+    thick: 26,
+  });
+  it.classList.add('gl');
   it.dataset.key = 'failure';
   it.dataset.wait = '';
-  it.style.cssText = 'display:flex;gap:22px;align-items:flex-start;padding:10px 0 6px';
 
-  const fire = hearth();
-  it.appendChild(fire);
-
-  const right = document.createElement('div');
-  right.style.cssText = 'display:flex;flex-direction:column;gap:10px;flex:1;min-width:0';
-  it.appendChild(right);
-
-  const words = document.createElement('div');
-  words.style.cssText = 'font-size:21px;line-height:1.4;letter-spacing:.01em;color:#ebe3d3';
-  right.appendChild(words);
+  const head = document.createElement('div');
+  head.className = 'gl-head';
+  const tagEl = document.createElement('span');
+  tagEl.className = 'ga-tag sore';
+  const tagText = document.createElement('span');
+  tagText.className = 'g-pix';
+  tagEl.appendChild(tagText);
+  head.appendChild(tagEl);
+  it.appendChild(head);
 
   const reset = failure.resetAt;
   const since = failure.since ?? Date.now();
   /* What the count runs to: the moment it actually goes again when that is
      armed, or the moment the limit lifts when it is not. */
   const goes = failure.carryOnAt ?? reset;
+
+  const body = document.createElement('div');
+  body.className = 'gl-body';
+  it.appendChild(body);
+  const fire = document.createElement('div');
+  fire.className = 'gl-fire';
+  fire.appendChild(hearth());
+  body.appendChild(fire);
+  const right = document.createElement('div');
+  body.appendChild(right);
+  const big = document.createElement('div');
+  big.className = 'gl-cd';
+  const unit = document.createElement('small');
+  const num = document.createElement('span');
+  big.append(num, unit);
+  const words = document.createElement('div');
+  words.className = 'gl-cap';
+  right.append(big, words);
+
   const cells: HTMLElement[] = [];
   const glows: HTMLElement[] = [];
-  const sparks: HTMLElement[] = [];
-  const big = document.createElement('span');
-  big.style.cssText = BIG;
-  let goal: HTMLElement | undefined;
+  const labels: HTMLElement[] = [];
+  let flag: HTMLElement | undefined;
   if (reset !== undefined) {
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:flex-end;gap:14px;max-width:560px';
     const strip = document.createElement('div');
-    strip.style.cssText = `position:relative;flex:1;min-width:0;height:${TALL}px;display:flex;align-items:flex-end;gap:2px`;
+    strip.className = 'gl-strip';
+    if (failure.carryOnAt !== undefined || failure.untilOnline) {
+      flag = document.createElement('span');
+      flag.className = 'gl-flag';
+      flag.appendChild(px('bell', '#9bd28a', 14));
+      strip.appendChild(flag);
+    }
+    const row = document.createElement('div');
+    row.className = 'gl-cells';
     for (let i = 0; i < CELLS; i += 1) {
-      const cell = document.createElement('div');
-      cell.style.cssText = `position:relative;flex:1;min-width:2px;height:${TALL}px;transition:height 600ms steps(4,end),background-color 600ms steps(4,end)`;
+      const cell = document.createElement('i');
       /* The front fills from the bottom as the minutes go, so the strip is
          seen moving within a cell and not only once a cell is spent. */
-      const glow = document.createElement('div');
-      glow.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:0;background:${FRONT};transition:height 900ms steps(6,end)`;
+      const glow = document.createElement('b');
       cell.appendChild(glow);
-      strip.appendChild(cell);
+      row.appendChild(cell);
       cells.push(cell);
       glows.push(glow);
     }
-    /* Embers lifting off the front, each on its own clock. */
-    for (let i = 0; i < 4; i += 1) {
-      const spark = document.createElement('div');
-      spark.style.cssText = `position:absolute;bottom:${TALL - 3}px;width:2px;height:2px;opacity:0;pointer-events:none;background:${i % 2 ? '#ffb07a' : FRONT};animation:yard-spark ${1500 + i * 380}ms linear ${i * 420}ms infinite;transition:left 900ms steps(6,end)`;
-      strip.appendChild(spark);
-      sparks.push(spark);
+    strip.appendChild(row);
+    const lab = document.createElement('div');
+    lab.className = 'gl-lab';
+    for (let i = 0; i < 3; i += 1) {
+      const l = document.createElement('span');
+      lab.appendChild(l);
+      labels.push(l);
     }
-    /* Where it picks back up: a small gold post at the far end, only when it
-       will, since a post nobody is walking to is a promise. */
-    if (failure.carryOnAt !== undefined) {
-      goal = document.createElement('div');
-      goal.style.cssText = `position:absolute;right:-6px;bottom:-3px;width:3px;height:${TALL + 8}px;background:#e8c070;box-shadow:0 0 6px rgba(232,192,112,.7);animation:yard-banked 2s ease-in-out infinite`;
-      strip.appendChild(goal);
-    }
-    row.appendChild(strip);
-    row.appendChild(big);
-    right.appendChild(row);
+    strip.appendChild(lab);
+    it.appendChild(strip);
   }
 
-  const meta = document.createElement('span');
-  meta.style.cssText = META;
-  right.appendChild(meta);
+  const meta = document.createElement('div');
+  meta.className = 'gl-meta';
+  it.appendChild(meta);
 
-  const actions = document.createElement('div');
-  actions.style.cssText =
-    "display:flex;gap:18px;flex-wrap:wrap;font-family:'Josefin Sans',sans-serif;font-size:14px;margin-top:2px";
-  right.appendChild(actions);
+  const tiles = document.createElement('div');
+  tiles.className = 'gl-tiles';
+  it.appendChild(tiles);
 
   let lifted: boolean | undefined;
 
@@ -123,9 +152,26 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
     const now = Date.now();
     const done = reset !== undefined && reset <= now;
     const going = done && failure.carryOnAt !== undefined && failure.carryOnAt > now;
+    const armed = failure.carryOnAt !== undefined || !!failure.untilOnline;
+    const limit = failure.kind === 'limit';
     words.textContent = headline(failure, done);
     /* Lifted, the fire catches again. */
     fire.dataset.lifted = done ? 'yes' : '';
+    tagEl.className = `ga-tag ${armed ? 'moss' : 'sore'}`;
+    tagEl.replaceChildren(
+      px(armed ? 'check' : 'hourglass', 'currentColor', 11),
+      Object.assign(tagText, {
+        textContent: armed
+          ? failure.carryOnAt !== undefined
+            ? `armed · carries on at ${clockOf(failure.carryOnAt)}`
+            : 'armed · carries on once you are back online'
+          : limit
+            ? 'out of usage'
+            : failure.kind === 'connection'
+              ? 'no connection'
+              : 'trouble at the other end',
+      })
+    );
 
     if (reset !== undefined) {
       const span = Math.max(1, reset - since);
@@ -136,7 +182,6 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
       cells.forEach((cell, i) => {
         const glow = glows[i]!;
         let tone = COLD;
-        let tall = TALL;
         let fill = 0;
         let shadow = '';
         let motion = '';
@@ -144,43 +189,37 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
           tone = LIFTED;
           motion = going ? `yard-pack-wait 1.2s ease-in-out ${-i * 0.04}s infinite` : '';
         } else if (i < front) {
-          /* Spent coals, the ones just behind the front still warm. */
-          const behind = front - i;
-          tone = behind === 1 ? '#a8502c' : behind === 2 ? '#86422a' : SPENT;
-          tall = behind <= 2 ? 6 : 4;
+          tone = SPENT;
         } else if (i === front) {
-          tone = 'rgba(255,138,90,.28)';
+          tone = 'rgba(255,154,74,.3)';
           fill = Math.max(0.15, within);
-          shadow = '0 0 12px rgba(255,110,70,.85)';
+          shadow = '0 0 14px 3px rgba(255,154,74,.6)';
           motion = 'yard-banked 2.6s ease-in-out infinite';
-        } else {
-          /* Still to wait, with a slow shimmer running down toward the front. */
-          motion = `yard-pack-wait 3.2s ease-in-out ${-((CELLS - i) * 0.12)}s infinite`;
         }
         if (cell.style.background !== tone) cell.style.background = tone;
-        cell.style.height = `${tall}px`;
         cell.style.boxShadow = shadow;
         if (cell.style.animation !== motion) cell.style.animation = motion;
         glow.style.height = `${Math.round(fill * TALL)}px`;
       });
-      const at = cells[front];
-      sparks.forEach((spark, n) => {
-        spark.style.display = done ? 'none' : '';
-        if (at) spark.style.left = `${at.offsetLeft + at.offsetWidth / 2 - 1 + (n % 2 ? 2 : -2)}px`;
-      });
-      if (goal) goal.style.background = done ? LIFTED : '#e8c070';
-      big.style.color = done ? LIFTED : FRONT;
-      big.textContent =
-        goes !== undefined && goes > now
-          ? leftFor(goes - now)
-          : done
-            ? 'now'
-            : leftFor(reset - now);
+      labels[0]!.textContent = `${limit ? 'hit' : 'since'} ${clockOf(since)}`;
+      labels[1]!.textContent = done ? '' : `now ${clockOf(now)}`;
+      labels[2]!.textContent = `${done ? 'lifted' : 'lifts'} ${clockOf(reset)}`;
+      big.style.color = done ? '#cfeac4' : '#ffb49a';
+      if (goes !== undefined && goes > now) {
+        num.textContent = leftFor(goes - now);
+        unit.textContent =
+          failure.carryOnAt !== undefined ? 'until it carries on' : 'until it lifts';
+      } else {
+        num.textContent = done ? 'now' : leftFor(reset - now);
+        unit.textContent = done ? '' : 'until it lifts';
+      }
+    } else {
+      big.style.display = 'none';
+      words.classList.add('gl-lone');
     }
 
     const parts: string[] = [];
-    const limit = failure.kind === 'limit';
-    if (failure.since !== undefined)
+    if (reset === undefined && failure.since !== undefined)
       parts.push(`${limit ? 'hit' : 'since'} ${clockOf(failure.since)}`);
     if (going) parts.push('carrying on');
     else if (failure.untilOnline) parts.push("carries on by itself once you're back online");
@@ -188,10 +227,11 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
       parts.push(
         `${limit ? 'carries on' : 'tries again'} by itself at ${clockOf(failure.carryOnAt)}`
       );
-    else if (reset !== undefined) parts.push(`${done ? 'lifted' : 'lifts'} ${clockOf(reset)}`);
-    else if (failure.kind === 'limit') parts.push("Claude didn't say when it lifts");
+    else if (reset === undefined && limit) parts.push("Claude didn't say when it lifts");
     meta.textContent = parts.join(' · ');
     meta.style.display = meta.textContent ? '' : 'none';
+
+    if (flag) flag.style.right = '-4px';
 
     if (lifted !== done) {
       lifted = done;
@@ -200,41 +240,86 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
   }
 
   function lay(done: boolean): void {
-    actions.replaceChildren();
+    tiles.replaceChildren();
     const armed = failure.carryOnAt !== undefined || !!failure.untilOnline;
+    const offered = done || failure.canRetry || reset === undefined;
+    if (offered) {
+      tiles.appendChild(
+        tile(
+          'redo',
+          '#f2c66d',
+          'hot',
+          astop(
+            pressing(done ? 'carry on now' : 'try again now', () => does.press('failure:retry')),
+            'failure:retry'
+          ),
+          done ? 'it picks up where it stopped' : 'sends it again straight away'
+        )
+      );
+    } else {
+      tiles.appendChild(
+        tile(
+          'redo',
+          '#8b8478',
+          'dim',
+          Object.assign(document.createElement('span'), { textContent: 'try again now' }),
+          'would only hit the limit again'
+        )
+      );
+    }
     if (armed) {
-      actions.appendChild(
-        astop(
-          pressing("don't carry on by itself", () => does.press('failure:cancel')),
-          'failure:carryon'
-        )
-      );
-    } else if (failure.canCarryOn && !done) {
-      actions.appendChild(
-        astop(
-          pressing(`carry on by itself at ${clockOf(reset!)}`, () => does.press('failure:carryon')),
-          'failure:carryon'
-        )
-      );
-    }
-    if (done || failure.canRetry || reset === undefined) {
-      actions.appendChild(
-        astop(
-          pressing(done ? 'carry on now' : 'try again now', () => does.press('failure:retry')),
-          'failure:retry'
-        )
-      );
-    }
-    actions.appendChild(
-      astop(
-        twice('start over', 'this conversation is gone for good', {
-          while: 'starting over',
-          run: async () => {
-            does.press('failure:new');
-            return { said: 'started over.' };
-          },
+      const t = tile(
+        'check',
+        '#9bd28a',
+        'arm',
+        Object.assign(document.createElement('span'), {
+          className: 'gl-fix',
+          textContent: 'carrying on by itself',
         }),
-        'failure:new'
+        failure.carryOnAt !== undefined
+          ? `at ${clockOf(failure.carryOnAt)} it is told to carry on, and does`
+          : "once you're back online it carries on"
+      );
+      const off = astop(
+        pressing("don't carry on by itself", () => does.press('failure:cancel')),
+        'failure:carryon'
+      );
+      off.classList.add('gl-sub');
+      t.querySelector('.gl-tx')!.appendChild(off);
+      t.addEventListener('click', (event) => {
+        if (event.target !== off) off.click();
+      });
+      tiles.appendChild(t);
+    } else if (failure.canCarryOn && !done) {
+      tiles.appendChild(
+        tile(
+          'hourglass',
+          '#f2c66d',
+          'hot',
+          astop(
+            pressing('carry on when it lifts', () => does.press('failure:carryon')),
+            'failure:carryon'
+          ),
+          `tells it to carry on, by itself, at ${clockOf(reset!)}`
+        )
+      );
+    }
+    tiles.appendChild(
+      tile(
+        'back',
+        '#f08a72',
+        'bad',
+        astop(
+          twice('start over', 'this conversation is gone for good', {
+            while: 'starting over',
+            run: async () => {
+              does.press('failure:new');
+              return { said: 'started over.' };
+            },
+          }),
+          'failure:new'
+        ),
+        'the conversation is what it costs'
       )
     );
   }

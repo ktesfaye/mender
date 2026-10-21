@@ -1,4 +1,6 @@
 import type { FileChange } from '@emdash/core/runtimes/git/api';
+import { card, dirOf, dom, h, head, label, sign } from '../glass/read';
+import { fileRow } from './made';
 import type { Row } from './row';
 
 /**
@@ -10,9 +12,16 @@ import type { Row } from './row';
  * working change or a commit already uses.
  */
 export function branchMade(base: string, files: readonly FileChange[] | undefined): Row[] {
+  const sub = h('span', 'g-mute', 'since it left');
+  const branch = h('span', 'gr-branch');
+  branch.append(sign('merge', '#9bd28a', 13), document.createTextNode(base));
   const rows: Row[] = [
-    { kind: 'title', text: 'everything this session changed' },
-    { kind: 'line', text: `against ${base}`, tone: 'faded' },
+    dom(
+      head({
+        title: 'everything this session changed',
+        sub: [sub, branch, h('span', 'g-faint', 'the whole branch, read against it')],
+      })
+    ),
     { kind: 'gap' },
   ];
 
@@ -25,24 +34,48 @@ export function branchMade(base: string, files: readonly FileChange[] | undefine
     return rows;
   }
 
-  rows.push({ kind: 'heading', text: counted(files) });
+  const added = files.reduce((all, file) => all + file.additions, 0);
+  const taken = files.reduce((all, file) => all + file.deletions, 0);
+
+  const cols = h('div', 'gr-cols');
+  const left = h('div');
+  left.appendChild(label(files.length === 1 ? '1 file' : `${files.length} files`));
+  const list = card('gr-files');
+  const byDir = new Map<string, FileChange[]>();
   for (const file of files) {
-    rows.push({
-      kind: 'entry',
-      mark: mark(file.status),
-      text: file.path,
-      tone: file.status === 'deleted' ? 'sore' : file.status === 'added' ? 'keen' : 'faded',
-      keep: 'tail',
-      pick: `branch-file:${file.path}`,
-    });
+    const dir = dirOf(file.path) || './';
+    byDir.set(dir, [...(byDir.get(dir) ?? []), file]);
   }
+  for (const [dir, here] of byDir) {
+    const g = h('div', 'gr-dir');
+    g.append(sign('folder', 'rgba(246,236,219,.42)', 13), document.createTextNode(dir));
+    list.appendChild(g);
+    for (const file of here) list.appendChild(fileRow(file, false, `branch-file:${file.path}`));
+  }
+  left.appendChild(list);
+
+  const right = h('div');
+  right.appendChild(label('how much'));
+  const stat = card('gr-stat');
+  for (const [n, what, cls] of [
+    [added ? `+${added}` : '0', 'went in', added ? 'gr-add' : ''],
+    [taken ? `−${taken}` : '0', 'came out', taken ? 'gr-del' : ''],
+    [String(files.length), files.length === 1 ? 'file' : 'files', ''],
+  ] as const) {
+    const cell = h('div');
+    cell.append(h('b', cls, n), h('span', '', what));
+    stat.appendChild(cell);
+  }
+  right.appendChild(stat);
+  cols.append(left, right);
+  rows.push(dom(cols));
   return rows;
 }
 
 /** While git is still being asked what changed. */
 export function unbranchMade(): Row[] {
   return [
-    { kind: 'title', text: 'everything this session changed' },
+    dom(head({ title: 'everything this session changed' })),
     { kind: 'gap' },
     { kind: 'line', text: 'reading it…', tone: 'faded' },
   ];
@@ -51,34 +84,8 @@ export function unbranchMade(): Row[] {
 /** When git would not say. */
 export function branchUnmade(because: string): Row[] {
   return [
-    { kind: 'title', text: 'everything this session changed' },
+    dom(head({ title: 'everything this session changed' })),
     { kind: 'gap' },
     { kind: 'line', text: because, tone: 'sore' },
   ];
-}
-
-/** How much of the checkout it moved, as a heading over the list. */
-function counted(files: readonly FileChange[]): string {
-  const added = files.reduce((all, file) => all + file.additions, 0);
-  const taken = files.reduce((all, file) => all + file.deletions, 0);
-  const many = files.length === 1 ? 'one file' : `${files.length} files`;
-  const moved = [added ? `${added} in` : '', taken ? `${taken} out` : ''].filter(Boolean);
-  return moved.length ? `${many}, ${moved.join(' and ')}` : many;
-}
-
-/** Git's own letter for what happened to the file, the same one a status and
-    a commit's own file list use. */
-function mark(status: FileChange['status']): string {
-  switch (status) {
-    case 'added':
-      return 'A';
-    case 'deleted':
-      return 'D';
-    case 'renamed':
-      return 'R';
-    case 'conflicted':
-      return 'U';
-    default:
-      return 'M';
-  }
 }

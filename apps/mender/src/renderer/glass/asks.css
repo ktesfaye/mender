@@ -1,0 +1,527 @@
+.ga-holder {
+  position: relative;
+  pointer-events: none;
+}
+.ga {
+  position: relative;
+  box-sizing: border-box;
+  max-height: 62vh;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 24px 20px;
+  border-radius: 30px;
+  pointer-events: auto;
+  color: var(--g-ink);
+  font-family: var(--g-sans);
+}
+.ga-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+.ga-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.ga-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 154, 74, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 154, 74, 0.3);
+  color: #ffb57a;
+}
+.ga-tag .g-pix {
+  color: inherit;
+  font-size: 10px;
+}
+.ga-tag.sore {
+  background: rgba(240, 138, 114, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(240, 138, 114, 0.32);
+  color: var(--g-sore);
+}
+.ga-tag.moss {
+  background: rgba(155, 210, 138, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(155, 210, 138, 0.28);
+  color: var(--g-moss);
+}
+.ga-of {
+  margin-left: auto;
+  display: flex;
+  gap: 5px;
+}
+.ga-of i {
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 240, 215, 0.14);
+}
+.ga-of i.on {
+  background: var(--g-gold);
+}
+.ga-count {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--g-ink-2);
+}
+.ga-count b {
+  color: var(--g-moss);
+}
+.ga-q {
+  margin: 14px 0 0;
+  font:
+    500 25px/1.2 'Fraunces',
+    Georgia,
+    serif;
+  font-variation-settings:
+    'SOFT' 100,
+    'opsz' 40;
+  color: var(--g-ink);
+}
+.ga-sub {
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--g-gold);
+}
+.ga-opts {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ga-list {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+.ga-o {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 16px;
+  cursor: pointer;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.ga-o.wide {
+  grid-column: span 2;
+}
+.ga-rg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 2px rgba(246, 236, 219, 0.35);
+}
+.ga-o.box .ga-rg {
+  border-radius: 5px;
+}
+.ga-o.on {
+  background: linear-gradient(180deg, rgba(242, 198, 109, 0.2), rgba(242, 198, 109, 0.08));
+  box-shadow: inset 0 0 0 1px rgba(242, 198, 109, 0.4);
+}
+.ga-o.on .ga-rg,
+.ga-o.ga-cur .ga-rg {
+  box-shadow: inset 0 0 0 2px var(--g-gold);
+}
+.ga-o.on:not(.box) .ga-rg::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--g-gold);
+}
+.ga-o.on.box .ga-rg {
+  background: var(--g-gold);
+}
+.ga-o.on.box .ga-rg::after {
+  content: '';
+  width: 4px;
+  height: 8px;
+  border: solid #2a1b09;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+.ga-o.ga-cur,
+.ga-row.ga-cur,
+.ga-row:has(.ga-cur) {
+  box-shadow:
+    inset 0 0 0 1px rgba(242, 198, 109, 0.4),
+    0 0 0 3px rgba(242, 198, 109, 0.12);
+}
+.ga-t {
+  min-width: 0;
+}
+.ga-t b {
+  display: block;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--g-gold);
+}
+.ga-o.else .ga-t b {
+  color: var(--g-ink-2);
+  font-style: italic;
+  font-weight: 500;
+}
+.ga-d {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--g-ink-2);
+}
+.ga-rec {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font: 600 10.5px var(--g-sans);
+  font-style: normal;
+  color: var(--g-moss);
+  background: rgba(155, 210, 138, 0.14);
+  vertical-align: 2px;
+}
+.ga-o .g-kc {
+  margin-left: auto;
+  flex: none;
+}
+.ga-foot {
+  flex: none;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ga-pill {
+  cursor: pointer;
+}
+.ga-pill.ga-cur {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 0 0 3px rgba(242, 198, 109, 0.3),
+    0 8px 22px rgba(242, 198, 109, 0.3);
+}
+.ga-talk {
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 999px;
+  color: var(--g-gold);
+  font-weight: 600;
+  font-size: 14px;
+}
+.ga-talk.ga-cur,
+.ga-talk:hover {
+  background: rgba(242, 198, 109, 0.12);
+}
+.ask-pictures {
+  margin-top: 12px;
+}
+
+/* several marked at once, and the check */
+.ga-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 12px;
+  border-radius: 16px;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.ga-ic {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.26);
+}
+.ga-what {
+  flex: 1;
+  min-width: 0;
+}
+.ga-what b {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--g-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ga-ans {
+  flex: none;
+  display: flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.24);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.ga-seg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 6px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--g-gold);
+  cursor: pointer;
+}
+.ga-seg .g-kc {
+  min-width: 18px;
+  height: 18px;
+  font-size: 10.5px;
+  padding: 0 4px;
+  border-radius: 6px;
+}
+.ga-seg.on {
+  background: rgba(155, 210, 138, 0.16);
+  color: #cfeac4;
+  box-shadow: inset 0 0 0 1px rgba(155, 210, 138, 0.35);
+}
+.ga-seg.no {
+  background: rgba(240, 138, 114, 0.14);
+  color: var(--g-sore);
+  box-shadow: inset 0 0 0 1px rgba(240, 138, 114, 0.3);
+}
+.ga-seg.ga-cur {
+  box-shadow: inset 0 0 0 1.5px rgba(242, 198, 109, 0.7);
+}
+.ga-check {
+  cursor: pointer;
+  padding-right: 16px;
+}
+.ga-n {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font: 700 13px var(--g-sans);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--g-ink-2);
+}
+.ga-qn {
+  width: 150px;
+  flex: none;
+  font-size: 12px;
+  color: var(--g-ink-3);
+}
+.ga-a {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.ga-a span {
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(155, 210, 138, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(155, 210, 138, 0.25);
+  color: #cfeac4;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.ga-a span.none {
+  background: rgba(240, 138, 114, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(240, 138, 114, 0.28);
+  color: var(--g-sore);
+}
+.ga-ch {
+  margin-left: auto;
+  color: var(--g-gold);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* out of usage */
+.gl {
+  position: relative;
+  box-sizing: border-box;
+  padding: 22px 24px 20px;
+  border-radius: 30px;
+  pointer-events: auto;
+  color: var(--g-ink);
+  font-family: var(--g-sans);
+}
+.gl-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.gl-body {
+  margin-top: 18px;
+  display: flex;
+  gap: 22px;
+  align-items: center;
+}
+.gl-fire {
+  flex: none;
+  width: 112px;
+  height: 90px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(70% 70% at 50% 60%, rgba(240, 100, 60, 0.3), rgba(240, 100, 60, 0) 75%),
+    rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.gl-fire > div {
+  margin: 0;
+}
+.gl-cd {
+  font:
+    500 46px/1 'Fraunces',
+    Georgia,
+    serif;
+  font-variation-settings:
+    'SOFT' 100,
+    'opsz' 60;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.gl-cd small {
+  font: 400 16px var(--g-sans);
+  color: var(--g-ink-2);
+  margin-left: 8px;
+  letter-spacing: 0;
+}
+.gl-cap {
+  margin-top: 8px;
+  font-size: 13.5px;
+  color: var(--g-ink-2);
+}
+.gl-cap.gl-lone {
+  margin: 0;
+  font:
+    500 22px/1.25 'Fraunces',
+    Georgia,
+    serif;
+  color: var(--g-ink);
+}
+.gl-meta {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--g-ink-2);
+}
+.gl-strip {
+  margin-top: 20px;
+  position: relative;
+}
+.gl-flag {
+  position: absolute;
+  right: -4px;
+  top: -20px;
+}
+.gl-cells {
+  display: flex;
+  gap: 3px;
+}
+.gl-cells i {
+  position: relative;
+  flex: 1;
+  min-width: 2px;
+  height: 18px;
+  border-radius: 3px;
+  background: rgba(255, 240, 215, 0.1);
+}
+.gl-cells b {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  border-radius: 3px;
+  background: #ff9a4a;
+}
+.gl-lab {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--g-ink-3);
+}
+.gl-tiles {
+  margin-top: 18px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 10px;
+}
+.gl-tile {
+  position: relative;
+  border-radius: 18px;
+  padding: 13px 14px;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+}
+.gl-ic {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.24);
+}
+.gl-tx > .press,
+.gl-tx > .gl-fix,
+.gl-tx > span:first-child {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 650;
+}
+.gl-tx > span:not(:first-child):not(.gl-sub) {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--g-ink-3);
+  line-height: 1.35;
+}
+.gl-tx .gl-sub {
+  display: block;
+  margin-top: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.gl-tile.dim {
+  cursor: default;
+}
+.gl-tile.dim .gl-tx > span:first-child {
+  color: var(--g-ink-3);
+}
+.gl-tile.hot {
+  background: linear-gradient(180deg, rgba(242, 198, 109, 0.2), rgba(242, 198, 109, 0.08));
+  box-shadow: inset 0 0 0 1px rgba(242, 198, 109, 0.4);
+}
+.gl-tile.arm {
+  background: linear-gradient(180deg, rgba(155, 210, 138, 0.16), rgba(155, 210, 138, 0.05));
+  box-shadow: inset 0 0 0 1px rgba(155, 210, 138, 0.4);
+}
+.gl-tile.arm .gl-fix {
+  color: #cfeac4;
+}
+.gl-tile.bad {
+  background: rgba(240, 138, 114, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(240, 138, 114, 0.28);
+}
+.gl-tile.bad .press {
+  color: var(--g-sore);
+}
