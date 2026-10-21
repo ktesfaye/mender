@@ -1899,3 +1899,220 @@ button.g-ghost {
   border: 0;
   appearance: none;
 }
+
+/* ── the Claude Code pages ───────────────────────────────────────────────── */
+.cc-styles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.cc-style {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  cursor: pointer;
+  min-width: 0;
+}
+.cc-style.picked {
+  background: linear-gradient(180deg, rgba(242, 198, 109, 0.2), rgba(242, 198, 109, 0.07));
+  box-shadow: inset 0 0 0 1.5px rgba(242, 198, 109, 0.55);
+  cursor: default;
+}
+.cc-style b {
+  font: 500 19px var(--g-serif);
+  color: var(--g-ink);
+  margin-top: 8px;
+}
+.cc-style span {
+  font: 400 12px var(--g-sans);
+  color: var(--g-ink-3);
+}
+.cc-style-art {
+  height: 62px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+.cc-style-art i {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(246, 236, 219, 0.35);
+}
+.cc-style-art i.hot {
+  background: var(--g-gold);
+}
+.cc-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.cc-when {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+.cc-when .st-cells {
+  margin-top: 0;
+  width: 100%;
+}
+.cc-when .g-pix {
+  color: var(--g-ember);
+  font-size: 10px;
+}
+.cc-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cc-start {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cc-start .g-pix {
+  color: var(--g-ink-3);
+  font-size: 9px;
+}
+.cc-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.cc-col {
+  --t: var(--g-moss);
+  border-radius: 20px;
+  padding: 12px;
+  background: var(--g-card);
+  box-shadow: inset 0 0 0 1px var(--g-hair), inset 0 2px 0 var(--t);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cc-col.ember {
+  --t: var(--g-ember);
+}
+.cc-col.sore {
+  --t: var(--g-sore);
+}
+.cc-col-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--t);
+  padding: 2px 4px 6px;
+}
+.cc-col-head b {
+  font: 500 19px var(--g-serif);
+  color: var(--g-ink);
+  flex: 1;
+}
+.cc-col-head span {
+  font: 600 12px var(--g-sans);
+  color: var(--g-ink-3);
+}
+.cc-rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+  min-width: 0;
+}
+.cc-rule b {
+  font: 600 13px var(--g-sans);
+  color: var(--g-ink);
+}
+.cc-rule code {
+  font: 400 12px var(--g-mono);
+  color: var(--g-ink-2);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-x {
+  all: unset;
+  cursor: pointer;
+  color: var(--g-ink-3);
+  padding: 0 4px;
+  font: 400 15px var(--g-sans);
+}
+.cc-x:hover {
+  color: var(--g-sore);
+}
+.st-input.cc-add {
+  border-radius: 12px;
+  border: 1px dashed rgba(242, 198, 109, 0.4);
+  background: transparent;
+  font-size: 12px;
+}
+.cc-hook {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  min-width: 0;
+}
+.cc-event {
+  font: 400 10px var(--g-pixel);
+  color: var(--g-ink-3);
+  width: 130px;
+  flex: none;
+}
+.cc-matcher {
+  font: 600 12px var(--g-sans);
+  color: var(--g-ink-2);
+  width: 90px;
+  flex: none;
+}
+.cc-hook code {
+  font: 400 12px var(--g-mono);
+  color: var(--g-ink-2);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-ours {
+  font: 400 12px var(--g-sans);
+  color: var(--g-ink-3);
+  flex: none;
+}
+.cc-take,
+.cc-go {
+  all: unset;
+  cursor: pointer;
+  font: 600 13px var(--g-sans);
+  color: var(--g-gold);
+  flex: none;
+}
+.cc-take.sore {
+  color: var(--g-sore);
+}
+.st-hint.sore {
+  color: var(--g-sore);
+}
+.st-f-v > .st-toggle {
+  align-self: flex-end;
+}
+.cc-events .st-chip {
+  flex: none;
+}

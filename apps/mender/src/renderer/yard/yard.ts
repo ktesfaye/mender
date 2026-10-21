@@ -1637,7 +1637,10 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
   it.className = 'yard-model-line';
   if (room !== undefined) {
     const ink = room < TIGHT ? 'var(--yard-wrong)' : room < LOW ? 'var(--yard-warn)' : undefined;
-    it.appendChild(exact(`context ${Math.round((1 - room) * 100)}% used`, 12, ink));
+    const used = exact(`context ${Math.round((1 - room) * 100)}% used`, 12, ink);
+    used.style.cursor = 'pointer';
+    used.addEventListener('click', () => does.press('head'));
+    it.appendChild(used);
   }
   if (cost) {
     if (room !== undefined) {

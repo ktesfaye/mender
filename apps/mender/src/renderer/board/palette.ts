@@ -35,6 +35,10 @@ export type Meant =
   /** Cut a fresh session here and turn straight to its own past terminal
       history, the same door the empty hook's own naming board opens. */
   | { does: 'resume' }
+  /** Open how full its head is, with the press that makes room. */
+  | { does: 'head' }
+  /** Open the windmill on one of the Claude Code pages, which is where these are set. */
+  | { does: 'windmill'; page: 'claude' | 'perms' | 'plugins' | 'hooks' }
   /** Put this on the line instead, and keep writing from `caret`. */
   | { does: 'write'; text: string; caret?: number }
   /** Say it to the agent as it stands. */
@@ -108,6 +112,15 @@ const OURS: Ours[] = [
     on: (kit) => kit.collab,
   },
   { name: '/agent', about: 'everything this session works with' },
+  { name: '/compact', about: 'how full its head is, and making room now' },
+  { name: '/context', about: 'how full its head is' },
+  { name: '/config', about: 'how it talks, makes room and tidies up, as switches' },
+  { name: '/autocompact', about: 'whether it makes room by itself, and how full before it does' },
+  { name: '/output-style', about: 'how it talks' },
+  { name: '/auto-mode-setup', about: 'what it may do without asking' },
+  { name: '/permissions', about: 'what it may do, what it asks about and what it never does' },
+  { name: '/plugin', about: 'what it has been taught, and where it finds more' },
+  { name: '/hooks', about: 'commands that run by themselves when something happens' },
   { name: '/resume', about: 'pick up one of its own past terminal sessions, in a new one' },
   { name: '/keep', about: 'keep what you write after it, to say again', takes: 'what to keep' },
   {
@@ -117,6 +130,16 @@ const OURS: Ours[] = [
     when: (_kit, kept) => kept.length > 0,
   },
 ];
+
+const WINDMILL_PAGES: Record<string, 'claude' | 'perms' | 'plugins' | 'hooks'> = {
+  '/config': 'claude',
+  '/autocompact': 'claude',
+  '/output-style': 'claude',
+  '/auto-mode-setup': 'perms',
+  '/permissions': 'perms',
+  '/plugin': 'plugins',
+  '/hooks': 'hooks',
+};
 
 const SECTION = {
   ours: 'settings',
@@ -366,6 +389,9 @@ export class Palette {
     if (ours) {
       if (ours.name === '/agent') return { does: 'card' };
       if (ours.name === '/resume') return { does: 'resume' };
+      if (ours.name === '/compact' || ours.name === '/context') return { does: 'head' };
+      const page = WINDMILL_PAGES[ours.name];
+      if (page) return { does: 'windmill', page };
       return { does: 'write', text: `${ours.name} ` };
     }
     const order = kit.orders.find((each) => slashed(each.name) === name);

@@ -42,7 +42,13 @@ import { counted, openCard, transcriptMarkdown, turnsOf, type LiveCard } from '.
 import { lineNumberOf, opening, readOut, unreadable, type Noting } from './board/changed';
 import { committing } from './board/committing';
 import { conflict, conflictMessage } from './board/conflict';
-import { landingLines, openCheckout, type Landing, type LiveBoard } from './board/district';
+import {
+  guideLines,
+  landingLines,
+  openCheckout,
+  type Landing,
+  type LiveBoard,
+} from './board/district';
 import {
   chordFor,
   chordOf,
@@ -107,6 +113,7 @@ import { showMissed } from './yard/missed';
 import { openNewSession, type NewSessionSign } from './yard/new-session';
 import { seedLocalPictures } from './yard/pictures';
 import { openHungry, type HungryBoard } from './yard/hungry';
+import { showHead } from './yard/head';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf, type Want } from './yard/shelf';
@@ -114,6 +121,7 @@ import { loadCuts } from './yard/sprite';
 import {
   keepsBranch,
   openWindmill,
+  windmillOnClaude,
   windmillOnJira,
   type MachineSample,
   type WorktreeRow,
@@ -507,7 +515,13 @@ async function boot(): Promise<void> {
           path: where.path,
           ...(session ? { since: session.base ?? null } : {}),
           ...(session
-            ? { tail: () => [...landingLines(landing), ...setupFailureLines(setupFailure)] }
+            ? {
+                tail: () => [
+                  ...landingLines(landing),
+                  ...guideLines(guideMissing),
+                  ...setupFailureLines(setupFailure),
+                ],
+              }
             : {}),
           servers: () => servers.get(where.path) ?? [],
         },
@@ -523,6 +537,18 @@ async function boot(): Promise<void> {
       wood(opened.rows());
       if (session?.base) void refreshLanding(aim, session, project);
       if (session) void refreshSetupFailure(aim, session);
+      if (session) void refreshGuide(aim, session);
+    };
+
+    /** Whether the checkout has nothing yet telling an agent what it is, read fresh
+        every time its board opens. */
+    const refreshGuide = async (aim: Aim, session: Task): Promise<void> => {
+      const has = await client.appSettings
+        .hasGuide({ dir: session.path }, { timeoutMs: 5000 })
+        .catch(() => true);
+      if (open !== aim || inside !== session) return;
+      guideMissing = !has;
+      if (live && plainCheckout()) rewrite(live.rows());
     };
 
     /** Reads whether the session's own worktree setup ever failed, fresh
@@ -1002,6 +1028,7 @@ async function boot(): Promise<void> {
     /** The script that failed setting this session's worktree up, if the
         board hasn't been told to stop saying so. */
     let setupFailure: { script: string; message: string } | null = null;
+    let guideMissing = false;
     /** A merge that stopped on a conflict, laid over the checkout board. */
     let conflicted: {
       aim: Aim;
@@ -2001,6 +2028,11 @@ async function boot(): Promise<void> {
         },
         restartToUpdate: async () => {
           await client.updates.restart({});
+        },
+        claude: {
+          config: (dir) => client.appSettings.claudeConfig({ dir }, { timeoutMs: 0 }),
+          edit: (edit, dir) => client.appSettings.claudeEdit({ edit, dir }, { timeoutMs: 0 }),
+          projects: () => projects.map((one) => ({ id: one.id, name: one.name, path: one.path })),
         },
         jira: {
           status: () => client.jira.status({}),
@@ -5129,6 +5161,17 @@ async function boot(): Promise<void> {
         if (aim) await showCard(aim, task);
         return;
       }
+      if (meant.does === 'head') {
+        said('');
+        await openHead();
+        return;
+      }
+      if (meant.does === 'windmill') {
+        said('');
+        windmillOnClaude(meant.page);
+        openTheWindmill();
+        return;
+      }
       if (meant.does === 'resume') {
         said('');
         if (aim)
@@ -5146,6 +5189,29 @@ async function boot(): Promise<void> {
       } else if (meant.what === 'defaultModel' || meant.what === 'defaultEffort')
         say(`new sessions start on ${meant.name}. this one is as it was.`, 4000);
       else say(`${meant.name}, in this session.`, 3000);
+    };
+
+    /** How full its head is, with the one press that makes room. */
+    const openHead = async (): Promise<void> => {
+      const session = watching?.yard().session;
+      if (!session || session.room === undefined) return;
+      const config = await client.appSettings
+        .claudeConfig({ dir: null }, { timeoutMs: 0 })
+        .catch(() => null);
+      showHead(
+        {
+          room: session.room,
+          ...(session.model ? { model: session.model } : {}),
+          auto: config ? { on: config.autoCompact, pct: config.compactPct } : null,
+        },
+        {
+          make: (focus) => void tell(focus ? `/compact ${focus}` : '/compact'),
+          settings: () => {
+            windmillOnClaude('claude');
+            openTheWindmill();
+          },
+        }
+      );
     };
 
     /* Pressing something on the wood, whether by hand or by key. One way in,
@@ -5402,6 +5468,17 @@ async function boot(): Promise<void> {
       }
       if (pick === 'inside') {
         void walkIn();
+        return;
+      }
+      if (pick === 'init') {
+        guideMissing = false;
+        void tell('/init');
+        say('asked it to look around and write one.', 4000);
+        if (live && plainCheckout()) rewrite(live.rows());
+        return;
+      }
+      if (pick === 'head') {
+        void openHead();
         return;
       }
       if (pick === 'hunt') {

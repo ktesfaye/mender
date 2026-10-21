@@ -1,5 +1,8 @@
 import { createController, type Controller } from '@emdash/wire/rpc';
 import { appSettingsContract } from '@shared/app-settings';
+import { editClaudeConfig, readClaudeConfig } from './claude-config';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type { AppSettings } from './app-settings';
 import type { FiveHoursReader } from './five-hours';
 import type { SessionUsageReader } from './session-usage';
@@ -31,6 +34,10 @@ export function createAppSettingsController(
     setDefaultShell: ({ shell }) => settings.setDefaultShell(shell),
     notificationSettings: () => settings.notificationSettings(),
     setNotificationsEnabled: ({ on }) => settings.setNotificationsEnabled(on),
+    claudeConfig: ({ dir }) => readClaudeConfig(dir),
+    claudeEdit: ({ edit, dir }) => editClaudeConfig(edit, dir),
+    hasGuide: ({ dir }) =>
+      ['CLAUDE.md', '.claude/CLAUDE.md', 'AGENTS.md'].some((name) => existsSync(join(dir, name))),
     keybindings: () => settings.keybindings(),
     setKeybinding: ({ pick, chord }) => settings.setKeybinding(pick, chord),
     clearKeybinding: ({ pick }) => settings.clearKeybinding(pick),

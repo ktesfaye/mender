@@ -1,5 +1,6 @@
 import { defineContract, procedure } from '@emdash/wire/rpc';
 import { z } from 'zod';
+import { claudeConfigSchema, claudeEditSchema } from './claude-config';
 import { fiveHoursSchema } from './five-hours';
 
 /** The app's own settings — the windmill. Not any one project's. */
@@ -139,6 +140,17 @@ export const appSettingsContract = defineContract({
     input: z.object({ on: z.boolean() }),
     output: notificationSettingsSchema,
   }),
+  /** Claude Code's own settings; `dir` reads a project's own permission rules instead of the global ones. */
+  claudeConfig: procedure({
+    input: z.object({ dir: z.string().nullable() }),
+    output: claudeConfigSchema,
+  }),
+  claudeEdit: procedure({
+    input: z.object({ edit: claudeEditSchema, dir: z.string().nullable() }),
+    output: claudeConfigSchema,
+  }),
+  /** Whether a checkout already has a CLAUDE.md or an AGENTS.md telling an agent about it. */
+  hasGuide: procedure({ input: z.object({ dir: z.string() }), output: z.boolean() }),
   keybindings: procedure({ input: z.object({}), output: keybindingsSchema }),
   /** Rebind one doing's chord. Conflicts are the windmill's own to say
       plainly before it ever calls this — this just stores what it is told. */

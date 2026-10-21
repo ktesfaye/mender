@@ -93,6 +93,18 @@ export interface Landing {
  * session at all. A branch nobody has caught up with is brought in; one
  * that has not gone anywhere yet is offered a local landing right here.
  */
+/** The one press that has the session write down what an agent should know about this checkout. */
+export function guideLines(missing: boolean): Row[] {
+  if (!missing) return [];
+  return [
+    dom(
+      tile('page', 'Write a CLAUDE.md for it', 'so whoever works here starts knowing what this is', {
+        pick: 'init',
+      })
+    ),
+  ];
+}
+
 export function landingLines(on: Landing | null): Row[] {
   if (!on) return [];
   const rows: Row[] = [];

@@ -55,6 +55,7 @@ import {
   section,
 } from './settings';
 import { stand } from './standing';
+import { makeClaudePages, type ClaudeDoings, type ClaudePage } from './claude-pages';
 
 /** One worktree Mender cut, as the windmill reads it: what's on disk for it,
  *  and whether anything still uses it. */
@@ -160,6 +161,7 @@ export interface WindmillDoings {
     /** Null when it took, or what went wrong. An empty link unties it. */
     setBoard(project: string, url: string): Promise<string | null>;
   };
+  claude: ClaudeDoings;
   closed(): void;
 }
 
@@ -187,11 +189,29 @@ const AGENTS =
 const JIRA =
   'The Jira sites this Mac is connected to, each with its own email and API token. Each project picks its own board from them, off the blue token on the rack.';
 
+const CLAUDE =
+  'What its own /config used to print, as switches. Kept in Claude’s own files, so a terminal sees the same.';
+
+const PERMS = 'What it may do without asking. Every project, or just one.';
+
+const PLUGINS = 'What Claude Code has been taught to do, and where it finds more.';
+
+const HOOKS = 'Commands that run by themselves when something happens.';
+
 const DISK =
   'Every own copy Mender has cut on this machine that no session is standing in. Stale means its branch is already upstream, or nothing points at it any more.';
 
 /** The pages down the window's left side, in the order they hang there. */
-type Page = 'general' | 'checkouts' | 'terminal' | 'keys' | 'agents' | 'jira' | 'disk' | 'machine';
+type Page =
+  | 'general'
+  | 'checkouts'
+  | 'terminal'
+  | 'keys'
+  | 'agents'
+  | 'jira'
+  | 'disk'
+  | 'machine'
+  | ClaudePage;
 
 const PAGES: { page: Page; said: string; icon: string; lead: string }[] = [
   { page: 'general', said: 'General', icon: 'sun', lead: LEAD_GENERAL },
@@ -201,6 +221,10 @@ const PAGES: { page: Page; said: string; icon: string; lead: string }[] = [
   { page: 'keys', said: 'Keys', icon: 'key', lead: KEYS },
   { page: 'agents', said: 'Agents', icon: 'spark', lead: AGENTS },
   { page: 'machine', said: 'This machine', icon: 'ring', lead: LEAD_MACHINE },
+  { page: 'claude', said: 'Claude Code', icon: 'talk', lead: CLAUDE },
+  { page: 'perms', said: 'Permissions', icon: 'lock', lead: PERMS },
+  { page: 'plugins', said: 'Plugins', icon: 'box', lead: PLUGINS },
+  { page: 'hooks', said: 'Hooks', icon: 'pipe', lead: HOOKS },
   { page: 'jira', said: 'Jira', icon: 'gem', lead: JIRA },
 ];
 
@@ -210,6 +234,11 @@ let lastPage: Page = 'general';
 /** Opens the windmill on its Jira page next time, for the board's own way in. */
 export function windmillOnJira(): void {
   lastPage = 'jira';
+}
+
+/** Opens the windmill on one of the Claude Code pages next time, for /config and its kin. */
+export function windmillOnClaude(to: ClaudePage = 'claude'): void {
+  lastPage = to;
 }
 
 /** Whichever agent the Agents page was last showing. */
@@ -287,7 +316,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   const five = section('');
   const shares = section('Every open session');
 
-  const pageRoots: Record<Page, HTMLElement> = {
+  const pageRoots: Partial<Record<Page, HTMLElement>> = {
     general: pageOf([starts.root, notify.root]),
     checkouts: pageOf([branches.root, landing.root]),
     terminal: pageOf([shellLook.root, shellIs.root]),
@@ -299,9 +328,18 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
   };
   body.append(...Object.values(pageRoots));
 
+  const claude = makeClaudePages(
+    does.claude,
+    (part) => part.saved(),
+    () => drawRail(),
+    (part) => busy(part)
+  );
+  Object.assign(pageRoots, claude.roots);
+  body.append(...Object.values(claude.roots));
+
   const tabs = new Map<Page, { root: HTMLButtonElement; sub: HTMLElement }>();
   for (const one of PAGES) {
-    if (one.page === 'jira') rail.appendChild(el('div', 'st-sep'));
+    if (one.page === 'claude' || one.page === 'jira') rail.appendChild(el('div', 'st-sep'));
     const tab = el('button', 'st-tab');
     tab.type = 'button';
     const icon = el('span', 'st-tab-i');
@@ -400,6 +438,9 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       tab.root.setAttribute('aria-current', String(one === page));
     }
     const here = PAGES.find((one) => one.page === page);
+    if (page === 'claude' || page === 'perms' || page === 'plugins' || page === 'hooks') {
+      claude.show(page);
+    }
     heading.textContent = here?.said ?? '';
     lead.textContent = here?.lead ?? '';
     body.scrollTop = 0;
@@ -439,6 +480,9 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
           : 'nothing left over'
         : ''
     );
+    for (const [which, said] of Object.entries(claude.subs()) as [ClaudePage, string][]) {
+      if (said) sub(which, said);
+    }
     const machine = now.machine;
     sub(
       'machine',
@@ -1548,6 +1592,8 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
       if (!busy(jiraAdd) && !busy(jiraRecipe)) void drawJira();
     } else if (page === 'disk') {
       drawWorktrees();
+    } else if (page === 'claude' || page === 'perms' || page === 'plugins' || page === 'hooks') {
+      // drawn by its own file, which reads fresh when the page is shown
     } else {
       drawSpend();
       drawFive();
@@ -1567,6 +1613,7 @@ export function openWindmill(state: WindmillState, does: WindmillDoings): Windmi
 
   draw();
   showPage();
+  claude.warm();
   panel.tabIndex = -1;
   panel.focus({ preventScroll: true });
 

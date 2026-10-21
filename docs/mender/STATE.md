@@ -1158,6 +1158,26 @@ authenticating agents rather than only installing them, adding and editing MCP
 servers rather than switching them on and off, installing and writing skills,
 and connecting accounts.
 
+**Claude Code's own settings have pages, 2026-10-20.** Four more pages hang under the
+windmill's rail, read from and written to Claude's own files so a terminal sees the
+same: Claude Code (output style, make room by itself and how full before it does,
+how long old sessions are kept, step down when flagged), Permissions (goes ahead,
+asks first, never, for every project or one, and what mode it starts in), Plugins
+(on and off, marketplaces) and Hooks (what runs, add one, take one off in two
+presses; the village's own plumbing is shown and not removable). `/config`,
+`/autocompact`, `/output-style`, `/auto-mode-setup`, `/permissions`, `/plugin` and
+`/hooks` open the matching page instead of going to the agent as a sentence.
+`/compact` and `/context` open "its head": how full, whether it makes room by itself,
+and a gold "make room now" that sends `/compact` with an optional focus. A checkout
+with no CLAUDE.md or AGENTS.md offers "write a CLAUDE.md for it", which sends `/init`.
+Driven in a dev copy: all four pages read the real files, the switches wrote and
+restored them exactly, `/config` opened the page from the slash, the head popover and
+the init tile drew. Not driven: a real `/compact` or `/init` (each is a real turn).
+Cut on purpose: theme, vim mode, voice, heapdump, team-onboarding. Not built: a
+context breakdown by system/tools/files (nothing exposes it) and a `/goal` row
+(the bridge does not say what goal is set or when the checker clears it, so a row
+would lie).
+
 ### W8 — the island itself
 
 The windmill exists now, reached by ⌘, or "settings" in the finder, over
