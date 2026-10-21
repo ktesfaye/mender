@@ -549,6 +549,13 @@
   align-items: center;
   justify-content: center;
   cursor: default;
+  background: radial-gradient(ellipse at center, rgba(6, 5, 4, 0.8) 0%, rgba(3, 2, 2, 0.93) 100%);
+  animation: i-quit-dark 220ms ease-out both;
+}
+@keyframes i-quit-dark {
+  from {
+    opacity: 0;
+  }
 }
 .i-quit {
   position: relative;
