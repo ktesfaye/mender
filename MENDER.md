@@ -160,8 +160,8 @@ much of the five hours that stretch took, worked out from how full the meter
 is against everything spent in it, and how many times what a session here
 normally takes in a quarter hour, read off the last week. One well out of
 the ordinary, several times normal and a real piece of the window, or a
-fifth of it whatever is normal, is stopped where it is without its note
-coming off the post, and a window comes up over everything wherever he is
+fifth of it whatever is normal, is asked about while it keeps going, since
+stopping a turn takes what its helpers were mid-way through with it, and a window comes up over everything wherever he is
 standing, with a banner if he is looking elsewhere: what it took and how
 that compares, the window as a strip with its part in the sore red, when it
 alone would run the window out, what it is thinking with, and the ways on.
@@ -340,11 +340,7 @@ word over it says "still running in the background" with the same ember, and
 its lantern on the rail stays lit saying "running in the background" rather
 than idle, and only goes to done once the last of them has. The lantern you
 are standing in says what it is doing, the same as every other, since the
-light round it already says it is the one you are in. A workflow it sets going
-in the background is the same: it stands on the ground as somebody sent out
-under what the workflow says it is for, and the answer and the lantern stay
-lit until it reports back, as they do for anybody else still out after the
-answer. A village closed on one names it in the note
+light round it already says it is the one you are in. A village closed on one names it in the note
 the session gets when it opens again, so exactly that command is started
 again.
 And it stands in the yard as well, beside whoever was sent out: a pot of
@@ -1335,11 +1331,9 @@ cards. That strip also names whichever ticket is open with "launch it" beside
 it, so a ticket can still be launched if Jira ever changes its page out from
 under the buttons laid into it.
 
-**A session's model is its own, and what new ones start on is said on purpose.**
-`/model`, `/mode` and `/effort` change the one session you are in and nothing
-else. What every fresh session with an agent starts on is `/default-model` and
-`/default-effort`, the same lists, with the one chosen marked "default" in
-`/model` and `/effort` beside its name; mode is never carried over. And the line does
+**A session remembers what it was last thinking with.** Change an agent's
+model or mode on one session and every fresh session with that same agent
+starts on it too, not on whatever it happens to open with. And the line does
 not forget what you were in the middle of saying: a half-written line is kept
 against its own session as you type, put back the moment you stand in that
 yard again, restart of the app included, and let go the moment it is actually

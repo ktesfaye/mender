@@ -56,6 +56,7 @@ export interface Scrim {
 }
 
 export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim {
+  let lastWhereabouts = '';
   const root = glaze(box({}, PANE));
   root.dataset.sheet = 'yes';
   /* A board drawn rather than written marks what can be pressed with
@@ -145,6 +146,9 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
     show: (reading) => {
       const was = showing;
       showing = Boolean(reading);
+      const whereabouts = reading ? reading.trail.map((t) => t.said).join('\u0000') : '';
+      const moved = whereabouts !== lastWhereabouts;
+      lastWhereabouts = whereabouts;
       root.style.display = reading ? 'flex' : 'none';
       /* Glass shows what is under it, so a slash menu left open on the line
          would read through the board; it stands down while one is up. */
@@ -161,11 +165,12 @@ export function makeScrim(at: HTMLElement, press: (pick: string) => void): Scrim
           ],
           { duration: 300, easing: 'cubic-bezier(.2,.8,.2,1)' }
         );
-      } else {
+      } else if (moved) {
         /* A change of what is on it settles in rather than cutting, so going
            from a folder into a file reads as going somewhere. */
         under.animate([{ opacity: 0.2 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
-      }
+      } /* The same place written again — a git tick, a new line — is not
+           somewhere new, and fading it flickers the whole board. */
       way.replaceChildren(trailOf(reading.trail));
       meta.replaceChildren(reading.meta ? exact(reading.meta, 12, '#a89272') : '');
       sheet.write(reading.rows);

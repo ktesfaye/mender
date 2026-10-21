@@ -127,6 +127,20 @@ export const DOINGS: Doing[] = [
     where: ['island', 'district', 'session', 'card'],
   },
   {
+    pick: 'do:project-back',
+    name: 'the project before',
+    about: 'the last project you were in, in whichever session you left it',
+    chord: '<',
+    where: ['island', 'district', 'session', 'card'],
+  },
+  {
+    pick: 'do:project-forward',
+    name: 'the project after',
+    about: 'the project you were in before you went back',
+    chord: '>',
+    where: ['island', 'district', 'session', 'card'],
+  },
+  {
     pick: 'do:windmill',
     name: 'settings',
     about: 'the app itself, not any one project',

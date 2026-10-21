@@ -27,15 +27,16 @@ import type {
   SessionUsage,
   TerminalSettings,
 } from '@shared/app-settings';
-import type { FiveHours } from '@shared/five-hours';
-import type { UpdateState } from '@shared/updates';
-import type { Hungry } from '@shared/hungry';
 import type { At, Change } from '@shared/changes';
 import { parseEnvLines } from '@shared/env-lines';
+import type { FiveHours } from '@shared/five-hours';
+import type { Hungry } from '@shared/hungry';
+import type { JiraError } from '@shared/jira';
 import type { FoundFrom, Project } from '@shared/projects';
 import type { Prompt } from '@shared/prompts';
 import type { Bustle } from '@shared/sky';
 import type { Task, Workspace } from '@shared/tasks';
+import type { UpdateState } from '@shared/updates';
 import { branchMade, branchUnmade, unbranchMade } from './board/branch';
 import { browsing, openPage, safe as safeAddress } from './board/browsing';
 import { counted, openCard, transcriptMarkdown, turnsOf, type LiveCard } from './board/card';
@@ -45,8 +46,8 @@ import { conflict, conflictMessage } from './board/conflict';
 import {
   guideLines,
   landingLines,
-  openCheckout,
   noteErrand,
+  openCheckout,
   type Landing,
   type LiveBoard,
 } from './board/district';
@@ -75,9 +76,11 @@ import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
 import { watchBuild, type WatchingBuild } from './board/watch-build';
 import { answerFor, SEND_ALL } from './board/work';
 import { watchGrip } from './grip';
+import { JiraFailed } from './jira/data';
+import { briefOf, makeJiraSurface, type JiraSurface, type Lit as OnTicket } from './jira/surface';
 import { ran } from './job';
-import { pageZoom } from './page-zoom';
 import { drawingNow, nudge, setPace, setScenery, watched } from './pace';
+import { pageZoom } from './page-zoom';
 import { Atmosphere, loadEmitters, type Lit } from './village/atmosphere';
 import {
   createCamera,
@@ -93,32 +96,34 @@ import {
 } from './village/camera';
 import { Crowd, type Life } from './village/crowd';
 import { Editing } from './village/editing';
+import './yard/tokens.css';
 import { Folk, loadFolk, type Look, type Standing } from './village/folk';
 import { districtBounds, Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
-import './yard/tokens.css';
-import { rackMenuPane, waterMenu } from './glass/island-menus';
 import { say } from './village/notice';
 import { loadFeet, Pennants, plantFlag } from './village/pennants';
 import { buildScene } from './village/scene';
 import { Sky } from './village/sky';
 import { keepOnScreen, skyPicture, skySlab } from './village/sky-slab';
+import { rackMenuPane, waterMenu } from './glass/island-menus';
 import { Paths, Walkers, type Walking } from './village/walkers';
 import { Water } from './village/water';
 import { wire, type MenderClient } from './wire';
 import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
 import { stateOf, stepsFromTrail } from './yard/from';
+import { openHungry, type HungryBoard } from './yard/hungry';
 import { openYard, type Watching } from './yard/live';
 import { showMissed } from './yard/missed';
 import { openNewSession, type NewSessionSign } from './yard/new-session';
 import { seedLocalPictures } from './yard/pictures';
-import { openHungry, type HungryBoard } from './yard/hungry';
 import { showHead } from './yard/head';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf, type Want } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
+import { stand } from './yard/standing';
+import type { Signboard } from './yard/what';
 import {
   keepsBranch,
   openWindmill,
@@ -128,12 +133,7 @@ import {
   type WorktreeRow,
   type Windmill,
 } from './yard/windmill';
-import type { Signboard } from './yard/what';
-import { stand } from './yard/standing';
 import { inBeamOrder, makeYard } from './yard/yard';
-import type { JiraError } from '@shared/jira';
-import { JiraFailed } from './jira/data';
-import { briefOf, makeJiraSurface, type JiraSurface, type Lit as OnTicket } from './jira/surface';
 
 /** The kinds of picture an agent can actually be shown. */
 const CARRIED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -306,14 +306,7 @@ async function boot(): Promise<void> {
         /* One line, and whatever is open decides what is being written on it:
            a name for a new session, a new name for this one, a commit message,
            something to look for, or something to say to the agent. */
-        if (
-          naming ||
-          titling ||
-          writing ||
-          looking ||
-          hunt ||
-          reading?.noting
-        ) {
+        if (naming || titling || writing || looking || hunt || reading?.noting) {
           wrote(text);
           return;
         }
@@ -501,7 +494,6 @@ async function boot(): Promise<void> {
       const project = aim ? projectOn(aim.district) : undefined;
       if (!aim || !project) return;
       const where = inside ?? project;
-      noteErrand(null);
       const session = inside;
       const was = live;
       live = null;
@@ -509,6 +501,7 @@ async function boot(): Promise<void> {
       conflicted = null;
       setupFailure = null;
       await was?.close();
+      noteErrand(null);
       wood([{ kind: 'line', text: 'reading the checkout…', tone: 'faded' }]);
       const opened = await openCheckout(
         client,
@@ -517,8 +510,7 @@ async function boot(): Promise<void> {
           path: where.path,
           ...(session ? { since: session.base ?? null } : {}),
           ...(session
-            ? {
-                tail: () => [
+            ? { tail: () => [
                   ...landingLines(landing),
                   ...guideLines(guideMissing),
                   ...setupFailureLines(setupFailure),
@@ -813,10 +805,7 @@ async function boot(): Promise<void> {
         lantern would say it: asking over broken over working over done over
         waiting out a limit, and nothing at all when they are all idle. */
     const LOUDEST = ['wants-you', 'broken', 'working', 'done', 'waiting'] as const;
-    const lightIn = (
-      projectId: string,
-      workspace: string
-    ): Pick<Signboard, 'light' | 'ember'> => {
+    const lightIn = (projectId: string, workspace: string): Pick<Signboard, 'light' | 'ember'> => {
       let light: (typeof LOUDEST)[number] | undefined;
       let ember: number | undefined;
       for (const task of tasks) {
@@ -1703,6 +1692,10 @@ async function boot(): Promise<void> {
         void retrace(id === 'do:back' ? -1 : 1);
         return;
       }
+      if (id === 'do:project-back' || id === 'do:project-forward') {
+        void hop(id === 'do:project-back' ? -1 : 1);
+        return;
+      }
       if (id === 'do:attend') {
         attendNext();
         return;
@@ -1822,6 +1815,28 @@ async function boot(): Promise<void> {
       } finally {
         retracing = false;
       }
+    };
+
+    const projectAt = (at: Spot | undefined): string | null =>
+      !at || at.kind === 'island'
+        ? null
+        : at.kind === 'project'
+          ? at.id
+          : (tasks.find((each) => each.id === at.id)?.project ?? null);
+
+    /** Walk the trail to the next project that isn't this one, and stand
+        where you last stood in it: the end of that stretch nearest now going
+        back, and its far end going forward. The island is passed over. */
+    const hop = async (by: number): Promise<void> => {
+      const here = projectAt(trail[step]);
+      let at = step + by;
+      while (trail[at] && (projectAt(trail[at]) === null || projectAt(trail[at]) === here)) {
+        at += by;
+      }
+      const there = projectAt(trail[at]);
+      if (!there) return;
+      if (by > 0) while (projectAt(trail[at + 1]) === there) at += 1;
+      await retrace(at - step);
     };
 
     /** Stand somewhere the trail remembers, or somewhere it was told. */
@@ -2015,7 +2030,10 @@ async function boot(): Promise<void> {
           keybindings = state.keybindings;
         },
         checkUpdate: async () => {
-          state.update = { ...(state.update ?? (await client.updates.state({}))), phase: 'checking' };
+          state.update = {
+            ...(state.update ?? (await client.updates.state({}))),
+            phase: 'checking',
+          };
           ui.update(state);
           // It moves through fetching on its own; look in on it until it settles.
           const asked = client.updates.check({}, { timeoutMs: 0 });
@@ -2058,7 +2076,9 @@ async function boot(): Promise<void> {
             if (!done) return 'Jira took too long to answer.';
             if (!done.success) return jiraSaid(done.error);
             if (quest?.project.id === project)
-              void client.jira.linkOf({ project }).then((link) => jiraView().open({ project: quest?.project.name ?? '', link }));
+              void client.jira
+                .linkOf({ project })
+                .then((link) => jiraView().open({ project: quest?.project.name ?? '', link }));
             return null;
           },
         },
@@ -3726,7 +3746,11 @@ async function boot(): Promise<void> {
       for (const one of taken) {
         const task = tasks.find((each) => each.id === one.task);
         if (!task) continue;
-        out[one.key] = { task: task.id, name: task.title || task.name, mood: seen[task.id] ?? 'empty' };
+        out[one.key] = {
+          task: task.id,
+          name: task.title || task.name,
+          mood: seen[task.id] ?? 'empty',
+        };
       }
       return out;
     };
@@ -3849,7 +3873,11 @@ async function boot(): Promise<void> {
      * worktrees are cut on top of each other. Nobody is walked anywhere; their
      * lanterns come up on the board's cards as each one starts.
      */
-    const takeMany = async (site: string, keys: string[], progress: (said: string) => void): Promise<void> => {
+    const takeMany = async (
+      site: string,
+      keys: string[],
+      progress: (said: string) => void
+    ): Promise<void> => {
       const project = quest?.project;
       if (!project) return;
       const view = jiraView();
@@ -3864,7 +3892,12 @@ async function boot(): Promise<void> {
         }
         if (ticket.category === 'new') void view.start(site, key);
         const made = await client.tasks.begin(
-          { project: project.id, name: `${key} ${ticket.summary}`.slice(0, 60), slot: null, isolated: true },
+          {
+            project: project.id,
+            name: `${key} ${ticket.summary}`.slice(0, 60),
+            slot: null,
+            isolated: true,
+          },
           { timeoutMs: 0 }
         );
         if (!made.success) {
@@ -6584,6 +6617,13 @@ async function boot(): Promise<void> {
           if (event.key === 'Enter') {
             const chose = yard.walk.on;
             if (!chose) return false;
+            if (event.key === 'Enter' && event.shiftKey && chose.startsWith('slash:')) {
+              const meant = watching?.slash.asDefault(chose);
+              if (meant) {
+                void obey(meant);
+                return true;
+              }
+            }
             press(chose);
             return true;
           }
@@ -6603,13 +6643,6 @@ async function boot(): Promise<void> {
           if (event.key === 'Enter' || event.key === 'Tab') {
             const chose = yard.walk.on;
             if (!chose) return false;
-            if (event.key === 'Enter' && event.shiftKey && chose.startsWith('slash:')) {
-              const meant = watching?.slash.asDefault(chose);
-              if (meant) {
-                void obey(meant);
-                return true;
-              }
-            }
             press(chose);
             return true;
           }
