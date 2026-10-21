@@ -45,7 +45,7 @@ export class SessionMaterializer {
   private readonly handshakeTails = new Map<string, Promise<void>>();
 
   constructor(
-    private readonly deps: Pick<AcpRuntimeDeps, 'agentHost' | 'resolveAttachment' | 'sessionMeta'> & {
+    private readonly deps: Pick<AcpRuntimeDeps, 'agentHost' | 'resolveAttachment' | 'sessionMeta' | 'extraMcpServers'> & {
       logger: Logger;
     },
     private readonly connections: AcpConnectionSource,
@@ -84,7 +84,7 @@ export class SessionMaterializer {
     }
 
     const connection = acquired.value;
-    const mcpServers = await this.resolveSessionMcpServers(input.providerId, connection);
+    const mcpServers = await this.resolveSessionMcpServers(input.providerId, input.cwd, connection);
     const mcpServerSummary = summarizeAcpMcpServers(mcpServers);
     const processOwner = routeOwnerId(connection.key, connection.generation);
     let record: SessionRecord | null = null;
@@ -355,7 +355,11 @@ export class SessionMaterializer {
     } while (entry.desiredRevision !== revision);
   }
 
-  private async resolveSessionMcpServers(providerId: string, connection: AcpConnectionEntry) {
+  private async resolveSessionMcpServers(
+    providerId: string,
+    cwd: string,
+    connection: AcpConnectionEntry
+  ) {
     try {
       const result = await this.deps.agentHost.readMcpServers(providerId);
       if (!result.success) {
@@ -365,7 +369,10 @@ export class SessionMaterializer {
         });
         return [];
       }
-      return registrationsToAcpMcpServers(result.data, connection.mcpCapabilities);
+      return registrationsToAcpMcpServers(
+        [...result.data, ...(this.deps.extraMcpServers?.(providerId, cwd) ?? [])],
+        connection.mcpCapabilities
+      );
     } catch (error) {
       this.deps.logger.warn('SessionMaterializer: failed to read MCP servers for session', {
         providerId,

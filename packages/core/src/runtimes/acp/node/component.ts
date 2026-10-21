@@ -41,6 +41,7 @@ export type CreateAcpComponentOptions = {
   pluginRegistry: PluginRegistry<CLIAgentPluginProvider>;
   logger?: Logger;
   sessionMeta?: AcpRuntimeDeps['sessionMeta'];
+  extraMcpServers?: AcpRuntimeDeps['extraMcpServers'];
 };
 
 export function createAcpComponent(options: CreateAcpComponentOptions) {
@@ -94,6 +95,7 @@ export function createAcpComponent(options: CreateAcpComponentOptions) {
         }),
         lifecycle: config.lifecycle,
         sessionMeta: options.sessionMeta,
+        extraMcpServers: options.extraMcpServers,
         logger: runtimeLogger,
       } satisfies AcpRuntimeDeps);
       void acp.reconcile();

@@ -50,7 +50,8 @@ import { pullRequestsContract } from '@upstream/services/pull-requests/api/contr
 import { pullRequestsComponent } from '@upstream/services/pull-requests/node';
 import { app } from 'electron';
 import { createGitHubAuth } from './github';
-import { menderWorkerPath } from './worker-paths';
+import { doorFile } from './session-door';
+import { menderToolsDir, menderWorkerPath } from './worker-paths';
 
 /**
  * Starts the core runtime workers Mender needs.
@@ -319,7 +320,11 @@ export function startRuntimes(scope: Scope): MenderRuntimes {
         ...acpWorkerSpec({
           pluginRegistry,
           executable: menderWorkerPath('acp'),
-          env: process.env,
+          env: {
+            ...process.env,
+            MENDER_DOOR: doorFile(),
+            MENDER_TOOLS_DIR: menderToolsDir(),
+          },
           dependencies: { hostDependencies: resolver, conversations, userEnv },
           attachmentsDir: data('acp-attachments'),
           intentsFilePath: data('acp-intents.json'),

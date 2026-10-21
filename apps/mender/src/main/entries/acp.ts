@@ -88,12 +88,40 @@ const WAITING = [
   'seconds each, so you get a pause to read what they have said and can answer them right away.',
 ].join(' ');
 
+/**
+ * The village's own tool, handed to every chat session beside whatever the
+ * agent's config already lists. Left out when the app did not say where it
+ * lives, which is only ever a worker started by hand.
+ */
+function villageTools(cwd: string) {
+  const door = process.env.MENDER_DOOR;
+  const tools = process.env.MENDER_TOOLS_DIR;
+  if (!door || !tools) return [];
+  return [
+    {
+      name: 'mender',
+      transport: 'stdio' as const,
+      command: 'node',
+      args: [`${tools}/mender-mcp.mjs`],
+      env: { MENDER_DOOR: door, MENDER_CWD: cwd },
+    },
+  ];
+}
+
+const STARTING = [
+  'You can start another Mender session yourself with the start_session tool of the mender',
+  'server. Whenever you are asked to launch, open or spin up a new session or agent here, use it:',
+  'it hangs a lantern on the rail and walks the person into the new session so they watch it work.',
+  'Never click the lantern, drive the window, or run a background claude for that.',
+].join(' ');
+
 void runWireComponentWorker(
   createAcpComponent({
     pluginRegistry,
     sessionMeta: () => ({
-      systemPrompt: { append: `${BOARD}\n\n${ASKING}\n\n${HANDS}\n\n${WAITING}` },
+      systemPrompt: { append: `${BOARD}\n\n${ASKING}\n\n${HANDS}\n\n${WAITING}\n\n${STARTING}` },
     }),
+    extraMcpServers: (_provider, cwd) => villageTools(cwd),
   }),
   { logger }
 );

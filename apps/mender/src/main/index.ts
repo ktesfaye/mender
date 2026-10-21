@@ -37,6 +37,7 @@ import { installQuitGuard } from './quit';
 import { startRuntimes } from './runtimes';
 import { createSchedules } from './schedules';
 import { createSchedulesController } from './schedules-controller';
+import { openSessionDoor } from './session-door';
 import { createSessionUsageReader } from './session-usage';
 import { createSkyController } from './sky';
 import { createTasks } from './tasks';
@@ -109,6 +110,8 @@ export async function main(): Promise<void> {
   const finding = createFinding(runtimes, projects);
   const sessionUsage = createSessionUsageReader(runtimes, tasks);
   const schedules = createSchedules(tasks, agents, projects);
+  const door = openSessionDoor(tasks, agents, projects);
+  scope.add(() => door.dispose());
   scope.add(() => agents.dispose());
   scope.add(() => tasks.dispose());
   scope.add(() => tuiSessions.dispose());

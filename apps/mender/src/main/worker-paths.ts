@@ -19,3 +19,15 @@ export function menderWorkerPath(id: MenderWorkerId): string {
   const appPath = typeof app?.getAppPath === 'function' ? app.getAppPath() : process.cwd();
   return join(appPath, 'out', 'main', `${id}.js`);
 }
+
+/**
+ * The folder the app's own plain-node tools sit in. A program `node` runs
+ * cannot read an archive, so packaged it is the unpacked copy beside it.
+ */
+export function menderToolsDir(): string {
+  const appPath = typeof app?.getAppPath === 'function' ? app.getAppPath() : process.cwd();
+  const real = appPath.includes('app.asar')
+    ? appPath.replace('app.asar', 'app.asar.unpacked')
+    : appPath;
+  return join(real, 'assets', 'tools');
+}

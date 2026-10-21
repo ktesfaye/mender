@@ -1,3 +1,4 @@
+import type { McpServerRegistration } from '#primitives/mcp/api';
 import type { Logger } from '@emdash/shared/logger';
 import type { Clock } from '@emdash/shared/scheduling';
 import type {
@@ -50,6 +51,12 @@ export interface AcpRuntimeDeps {
    * ignore `_meta` they do not know.
    */
   sessionMeta?: (providerId: string) => Record<string, unknown> | undefined;
+  /**
+   * MCP servers a host adds to every session on top of the ones in the agent's
+   * own config, knowing which folder the session works in. They are never
+   * written to that config, so a terminal CLI never sees them.
+   */
+  extraMcpServers?: (providerId: string, cwd: string) => McpServerRegistration[];
   logger: Logger;
 }
 
