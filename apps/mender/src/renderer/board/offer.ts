@@ -26,6 +26,8 @@ export type Offer = {
   now?: string;
   /** Where in the name what you typed was found, for picking out. */
   hit?: [number, number];
+  /** How many times it has been picked, so the ones you reach for most come first. */
+  used?: number;
 };
 
 /**
@@ -77,6 +79,7 @@ export function rank(
         (best.get(sectionOf(a)) ?? 0) - (best.get(sectionOf(b)) ?? 0) ||
         (firstSeen.get(sectionOf(a)) ?? 0) - (firstSeen.get(sectionOf(b)) ?? 0) ||
         a.score - b.score ||
+        (b.offer.used ?? 0) - (a.offer.used ?? 0) ||
         a.at - b.at
     )
     .map((one) => one.offer);

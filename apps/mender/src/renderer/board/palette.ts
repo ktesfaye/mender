@@ -133,6 +133,23 @@ export function keptNow(prompts: Prompt[]): void {
   kept = prompts;
 }
 
+const USED = 'mender.slashUsed';
+
+/** How often each of the agent's commands and skills has been picked, kept on this machine. */
+function usage(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(USED) ?? '{}') as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function usedOnce(name: string): void {
+  const counts = usage();
+  counts[name.toLowerCase()] = (counts[name.toLowerCase()] ?? 0) + 1;
+  localStorage.setItem(USED, JSON.stringify(counts));
+}
+
 /** The slash being written after something else, if what is before the caret ends in one. */
 const LATER = /(^|\s)(\/\S*)$/;
 
@@ -250,10 +267,13 @@ export class Palette {
       }
     }
     const mine = new Set(offers.map((one) => one.name));
+    const counts = usage();
     for (const order of kit.orders) {
       const name = slashed(order.name);
       if (mine.has(name)) continue;
+      const used = counts[name.toLowerCase()] ?? 0;
       offers.push({
+        ...(used ? { used } : {}),
         pick: `slash:${name}`,
         name,
         about: order.about,
@@ -350,6 +370,7 @@ export class Palette {
     }
     const order = kit.orders.find((each) => slashed(each.name) === name);
     if (!order) return null;
+    usedOnce(name);
     /* A command already written out in full is what you meant, so return sends
        it rather than writing it again. Otherwise it is written with a space
        after it, which closes the list, and the next return sends it; the same
