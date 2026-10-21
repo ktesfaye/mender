@@ -40,7 +40,7 @@ import { GUTTER, MARGIN, type Layer } from './frame';
 import { longFor } from './from';
 import { waitOut } from './limit';
 import { makeLine, preview, unpreview, type Asking as Prompting, type Line } from './line';
-import { makeMenu } from './menu';
+import { makeMenu, newestModels } from './menu';
 import {
   arrive,
   catching,
@@ -1331,6 +1331,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
          slash is still being walked through, not asked about, so the list
          stays shut and the next up goes on to the one before it. */
       if (holdsRecalled()) offers = [];
+      offers = newestModels(offers);
       /* Asked before the lines are replaced, because afterwards there is
          nothing left to ask about. */
       const wasInside = standingInOverlay();

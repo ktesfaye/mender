@@ -157,6 +157,23 @@ export function makeMenu(
   };
 }
 
+/** A whole model list without the older models: the agent's own pick and the newest of each family. */
+export function newestModels(offers: Offer[]): Offer[] {
+  const chosen = /^slash:(\/[\w-]+):/.exec(offers[0]?.pick ?? '')?.[1];
+  if (chosen !== '/model' && chosen !== '/default-model') return offers;
+  if (offers.some((one) => one.hit)) return offers;
+  const families = new Set<string>();
+  return offers.filter((offer) => {
+    if (defaultish(offer)) {
+      families.add(familyOf(offer));
+      return true;
+    }
+    const older = families.has(familyOf(offer));
+    families.add(familyOf(offer));
+    return !older || !!offer.on;
+  });
+}
+
 function familyOf(offer: Offer): string {
   return offer.name.trim().split(/[\s-]/)[0]?.toLowerCase() ?? '';
 }
