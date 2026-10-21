@@ -73,10 +73,27 @@ const HANDS = [
   'Chrome" ... execute javascript); never launch a separate or blank Chrome profile.',
 ].join(' ');
 
+/**
+ * What the agent is told about being talked to while it works. Something said
+ * mid-turn is only read at the agent's next pause between steps, so a step
+ * that sits blocked (a build lock, a sleep, a poll loop, a long test run)
+ * leaves the person talking to a wall until they stop it. Waits are made
+ * the agent's to keep short, so the pause arrives.
+ */
+const WAITING = [
+  'The person can talk to you while you work, but anything they say is only read between your',
+  'steps, never during one. So never sit inside one long blocking step: no sleep or polling loop,',
+  'no waiting on a lock, a build, a deploy, another session or a background agent in one command.',
+  'Start slow things in the background (run_in_background) and check on them in short steps, a few',
+  'seconds each, so you get a pause to read what they have said and can answer them right away.',
+].join(' ');
+
 void runWireComponentWorker(
   createAcpComponent({
     pluginRegistry,
-    sessionMeta: () => ({ systemPrompt: { append: `${BOARD}\n\n${ASKING}\n\n${HANDS}` } }),
+    sessionMeta: () => ({
+      systemPrompt: { append: `${BOARD}\n\n${ASKING}\n\n${HANDS}\n\n${WAITING}` },
+    }),
   }),
   { logger }
 );
