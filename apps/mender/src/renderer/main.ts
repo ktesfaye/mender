@@ -5789,6 +5789,11 @@ async function boot(): Promise<void> {
         stepRail(pick === 'rail:back' ? -1 : 1);
         return;
       }
+      if (pick === 'slash:more') {
+        watching?.slash.more();
+        yard.narrowing(...narrowing());
+        return;
+      }
       if (pick.startsWith('slash:')) {
         const meant = watching?.slash.meant(pick);
         if (meant) void obey(meant);

@@ -408,6 +408,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
      what you wrote changes, which is what a list you dismissed is expected to
      do everywhere else. */
   let dismissedAt: string | null = null;
+  /* The list is only what you reach for, with the rest a down-arrow away. */
+  let onlyUsual = false;
   /* Walk and press it by key, before anything else hears about the key: the
      line is where your hands are and this is what the line has open. */
   line.onKey((event) => {
@@ -427,6 +429,10 @@ export function makeYard(layer: Layer, does: Doings): Standing {
         return true;
       }
       return recall(event);
+    }
+    if (event.key === 'ArrowDown' && onlyUsual) {
+      does.press('slash:more');
+      return true;
     }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       walk.step(event.key === 'ArrowDown' ? 1 : -1);
@@ -1258,6 +1264,20 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     },
     true
   );
+  /* Escape on an open slash list closes the list and nothing else, wherever
+     the focus happens to be: it must never reach whoever is working. */
+  window.addEventListener(
+    'keydown',
+    (event) => {
+      if (event.key !== 'Escape' || event.shiftKey || menu.root.style.display === 'none') return;
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      dismissedAt = line.written();
+      menu.write([]);
+      walk.stand(null);
+    },
+    true
+  );
   window.addEventListener(
     'keydown',
     (event) => {
@@ -1332,6 +1352,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
          stays shut and the next up goes on to the one before it. */
       if (holdsRecalled()) offers = [];
       offers = newestModels(offers);
+      onlyUsual = offers.length > 0 && offers.every((one) => one.section === 'recently used');
       /* Asked before the lines are replaced, because afterwards there is
          nothing left to ask about. */
       const wasInside = standingInOverlay();

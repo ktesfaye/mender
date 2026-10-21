@@ -209,6 +209,13 @@ export class Palette {
   private tail = '';
   /** Forgetting takes two presses, and this is the first. */
   private armed: string | null = null;
+  /** The whole list, once down has been pressed on the few that lead it. */
+  private all = false;
+
+  /** Down on the short list of what you reach for opens everything else. */
+  more(): void {
+    this.all = true;
+  }
 
   told(kit: Kit | null): void {
     this.kit = kit;
@@ -222,6 +229,7 @@ export class Palette {
   /** Whatever is on the line now. */
   typed(text: string, caret = text.length): void {
     if (text !== this.text) this.armed = null;
+    if (!text.startsWith('/') || text.length > 1) this.all = false;
     this.text = text;
     this.head = text.slice(0, caret);
     this.tail = text.slice(caret);
@@ -342,6 +350,7 @@ export class Palette {
         if (front.length === USUAL) break;
       }
     }
+    if (front.length && !this.all) return front;
     const ranked = rank([...front, ...offers], open.asked.slice(1));
     /* A whole name written out that nothing here starts with is still meant:
        a skill taught since the agent last said what it has, or one it never
