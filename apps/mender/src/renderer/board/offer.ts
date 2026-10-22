@@ -38,7 +38,8 @@ export type Offer = {
  * `/context` under forty skills whose descriptions happen to mention context.
  * The whole name written out wins, then a name that starts with it, then one
  * with a word in it that starts with it, then one with it anywhere, and last
- * whatever only mentions it in its description. Headings go in the order of
+ * whatever mentions it as a whole word in its description, never as the start of a
+ * longer one, so `/comp` is not every skill that says "complete" or "company". Headings go in the order of
  * the best thing under each, so return always means the best thing there is.
  */
 export function rank(
@@ -92,6 +93,6 @@ function scoreOf(offer: Offer, want: string): number | null {
   if (name.startsWith(want)) return 1;
   if (name.split(/[\s\-_:./]+/).some((word) => word.startsWith(want))) return 2;
   if (name.includes(want)) return 3;
-  if (offer.about?.toLowerCase().includes(want)) return 4;
+  if (offer.about?.toLowerCase().split(/[^a-z0-9]+/).includes(want)) return 4;
   return null;
 }
