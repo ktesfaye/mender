@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { formatAbsolute } from '@emdash/core/primitives/path/api';
 import type { TerminalKey, TerminalSessionList } from '@emdash/core/runtimes/terminals/api';
@@ -9,6 +10,9 @@ import type { MenderRuntimes } from './runtimes';
 import { versionsOf, type Version } from './versions';
 
 const ran = promisify(execFile);
+
+/** The biggest GIF handed over whole, since it travels as text. */
+const GIF_KEPT = 16 * 1024 * 1024;
 
 /**
  * What the board asks of the main process directly.
@@ -35,6 +39,18 @@ export function createBoard(runtimes: MenderRuntimes): Board {
   return {
     versions: (path) => versionsOf(path),
     async picture(path, width) {
+      /* The decoder keeps a GIF's first frame, or none at all, so a GIF is
+         handed over as the file it is, which is what keeps it moving. */
+      if (/\.gif$/i.test(path)) {
+        const whole = await readFile(path).catch(() => null);
+        if (whole && whole.length <= GIF_KEPT && whole.length > 10) {
+          return {
+            src: `data:image/gif;base64,${whole.toString('base64')}`,
+            wide: whole.readUInt16LE(6),
+            tall: whole.readUInt16LE(8),
+          };
+        }
+      }
       const image = await load(path, Math.max(1, Math.round(width)));
       if (!image) return null;
       const { width: wide, height: tall } = image.getSize();
