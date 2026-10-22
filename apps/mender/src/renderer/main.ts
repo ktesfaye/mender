@@ -6821,7 +6821,10 @@ async function boot(): Promise<void> {
 
     /* A clicked notification names a session the same way pressing it on the
        rail or in the finder does: one path in, `go` decides the rest. */
-    window.mender?.attend?.((task) => go(`task:${task}`));
+    window.mender?.attend?.((task, first) => {
+      if (first) firstRun.set(task, first);
+      go(`task:${task}`);
+    });
     window.mender?.quitCost?.((n) =>
       showQuitCost(
         n,

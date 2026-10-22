@@ -22,7 +22,7 @@ declare global {
       /** Whether anybody can see the village, which only the host knows. */
       watching: (to: (now: Watching) => void) => void;
       /** Which session a clicked notification wants him standing in. */
-      attend: (to: (task: string) => void) => void;
+      attend: (to: (task: string, first?: string) => void) => void;
       /** How many villagers are still lit, named before a quit happens. */
       quitCost: (to: (n: number) => void) => void;
       /** The second press: quit anyway. */

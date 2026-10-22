@@ -69,7 +69,7 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
       here.project,
       what,
       null,
-      body.terminal ? 'terminal' : undefined,
+      body.terminal ? 'shell' : undefined,
       undefined,
       body.isolated ? true : undefined,
       body.isolated ? undefined : here.workspace
@@ -91,7 +91,7 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
       setTimeout(() => {
         const win = BrowserWindow.getAllWindows()[0];
         if (!win || win.isDestroyed()) return;
-        win.webContents.send(MENDER_ATTEND_CHANNEL, id);
+        win.webContents.send(MENDER_ATTEND_CHANNEL, id, body.terminal ? what : undefined);
       }, 500);
     }
     return {

@@ -88,11 +88,11 @@ ipcRenderer.on(MENDER_WATCH_CHANNEL, (_event, now: Watching) => {
 });
 
 /* Whichever session a clicked notification named, before the page has asked. */
-let attended: ((task: string) => void) | null = null;
-let heldAttend: string | null = null;
-ipcRenderer.on(MENDER_ATTEND_CHANNEL, (_event, task: string) => {
-  if (attended) attended(task);
-  else heldAttend = task;
+let attended: ((task: string, first?: string) => void) | null = null;
+let heldAttend: [string, string | undefined] | null = null;
+ipcRenderer.on(MENDER_ATTEND_CHANNEL, (_event, task: string, first?: string) => {
+  if (attended) attended(task, first);
+  else heldAttend = [task, first];
 });
 
 /* How many villagers are still lit, named before a quit actually happens. */
@@ -141,10 +141,10 @@ contextBridge.exposeInMainWorld('mender', {
     to(looking);
   },
   /* Which session a clicked notification wants him standing in. */
-  attend: (to: (task: string) => void) => {
+  attend: (to: (task: string, first?: string) => void) => {
     attended = to;
     if (heldAttend) {
-      to(heldAttend);
+      to(...heldAttend);
       heldAttend = null;
     }
   },

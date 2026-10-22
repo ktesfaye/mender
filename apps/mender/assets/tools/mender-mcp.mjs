@@ -38,10 +38,10 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        what: { type: 'string', description: 'The first thing said to the new session: what it is for.' },
+        what: { type: 'string', description: 'The first thing said to the new session: what it is for, in plain words. Never a `claude ...` command line; there is no model or effort setting here, so say so in words if it matters.' },
         agent: { type: 'string', description: 'Agent id to work in it (e.g. "claude"). Defaults to the person\'s usual one.' },
         isolated: { type: 'boolean', description: 'Give it its own worktree on a branch of its own.' },
-        terminal: { type: 'boolean', description: 'Open it as a plain terminal and run `what` as its first command, instead of a chat.' },
+        terminal: { type: 'boolean', description: 'Open it as a plain shell and run `what` as its first command, instead of a chat. Only for a real shell command; needs `show` left on.' },
         show: { type: 'boolean', description: 'Walk the person into it. Default true; false keeps them where they are.' },
       },
       required: ['what'],
