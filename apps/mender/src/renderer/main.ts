@@ -6353,7 +6353,7 @@ async function boot(): Promise<void> {
            rather than walking out on them: Claude Code's own "esc to
            interrupt". Stopped,
            the next Escape leaves as it always did. */
-        if (inside && watching?.working()) {
+        if (inside && (watching?.working() || watching?.asked())) {
           void hush(inside);
           return;
         }
