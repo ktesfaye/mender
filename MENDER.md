@@ -681,8 +681,8 @@ Pressing one holds it up over the whole window, as big as it fits, on a dark
 blurred ground with its own bar underneath, so nothing sits on the picture: the
 caption, the other pictures to step between, and zoom (minus, plus, fit, 1:1,
 with where it stands). The wheel, a pinch, + and - go in closer where the
-pointer is, a double press jumps between fitted and real size, and a drag moves
-it. Escape or a press beside the picture puts it down. Every
+pointer is, a press on the picture goes in and the next comes back out, and a drag moves
+it. The arrows stop at the first and last rather than looping round. Escape or a press beside the picture puts it down. Every
 session is told only that pictures show here, to be visual wherever seeing
 a thing would help, and that a picture has to be one it actually found:
 where and how is left to it.

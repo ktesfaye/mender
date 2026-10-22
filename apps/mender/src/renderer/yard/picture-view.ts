@@ -108,7 +108,10 @@ export function holdUp(
     });
     thumbs.appendChild(t);
   });
-  stage.append(shut, ...(all.length ? [nav(-1), nav(1)] : []));
+  const left = all.length ? nav(-1) : null;
+  const right = all.length ? nav(1) : null;
+  stage.append(shut, ...(left && right ? [left, right] : []));
+  edges();
   bar.append(said, thumbs, zoomBar);
   wash.append(stage, bar);
   words(name);
@@ -124,7 +127,8 @@ export function holdUp(
   const limit = (): number => Math.max(8, actual() * 4);
   const apply = (): void => {
     picture.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-    stage.style.cursor = scale > 1 ? 'grab' : 'default';
+    stage.style.cursor = 'default';
+    picture.style.cursor = scale > 1.01 ? 'zoom-out' : 'zoom-in';
     const fitted = picture.naturalWidth ? picture.clientWidth / picture.naturalWidth : 1;
     percent.textContent = `${Math.round(scale * fitted * 100)}%`;
   };
@@ -168,10 +172,6 @@ export function holdUp(
     },
     { passive: false }
   );
-  stage.addEventListener('dblclick', (event) => {
-    if ((event.target as HTMLElement).closest('.gr-pv-nav, .gr-pv-x')) return;
-    zoomTo(scale > 1.01 ? 1 : actual() > 1.2 ? actual() : 2.5, event.clientX, event.clientY);
-  });
 
   let down: { x: number; y: number } | null = null;
   let moved = false;
@@ -193,7 +193,6 @@ export function holdUp(
     if (scale > 1) {
       x += dx;
       y += dy;
-      stage.style.cursor = 'grabbing';
       picture.style.transition = 'none';
       apply();
     }
@@ -205,7 +204,9 @@ export function holdUp(
     const was = down;
     down = null;
     if (was && !moved && !onPicture) close();
-    else apply();
+    else if (was && !moved) {
+      zoomTo(scale > 1.01 ? 1 : actual() > 1.2 ? actual() : 2.5, event.clientX, event.clientY);
+    } else apply();
   });
   wash.addEventListener('click', (event) => event.stopPropagation());
   wash.addEventListener('contextmenu', (event) => {
@@ -215,6 +216,7 @@ export function holdUp(
 
   function go(to: number): void {
     index = to;
+    edges();
     const next = all[index]!;
     picture.alt = next.name;
     picture.src = next.src;
@@ -225,8 +227,13 @@ export function holdUp(
     words(next.name);
     better(next.sharper?.());
   }
+  function edges(): void {
+    left?.classList.toggle('gr-pv-off', index === 0);
+    right?.classList.toggle('gr-pv-off', index === all.length - 1);
+  }
   function step(way: 1 | -1): void {
-    if (all.length) go((index + (way > 0 ? 1 : all.length - 1)) % all.length);
+    const to = index + way;
+    if (to >= 0 && to < all.length) go(to);
   }
 
   const keys = (event: KeyboardEvent): void => {
