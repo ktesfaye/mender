@@ -2439,7 +2439,7 @@ function pinned(note: Note, where: { width: number }, rerun?: () => void): HTMLE
   );
   card.appendChild(tack);
   const meta = said(
-    `newest · ${note.when} · ${note.on ? 'working on it' : note.answered ? 'answered' : 'unanswered'}`,
+    `${note.when} · ${note.on ? 'working on it' : note.answered ? 'answered' : 'unanswered'}`,
     '#b3651f'
   );
   meta.style.display = 'block';
