@@ -2,18 +2,18 @@
  * A picture in an answer, held up big.
  *
  * Pressing a picture the agent put in what it said lays it over the whole
- * window at the largest size that fits, its caption under it. The wheel goes
- * in closer where the pointer is and a drag moves it, since a picture worth
- * opening big is usually one with small writing on it. Escape or a press that
- * did not drag puts it back down. It hangs off the document rather than the
+ * window at the largest size that fits, with a bar of its own underneath
+ * (caption, the other pictures, zoom) so nothing ever sits on the picture.
+ * The wheel, a pinch, + and - go in closer where the pointer is, a double
+ * press jumps between fitted and real size, and a drag moves it, since a
+ * picture worth opening big is usually one with small writing on it. Escape
+ * or a press beside the picture puts it back down. It hangs off the document rather than the
  * answer, because the answer is written again whenever the board changes.
  */
 
-import { glaze } from '../glass/glass';
 import { h, sign } from '../glass/read';
 
 const MIN_SCALE = 1;
-const MAX_SCALE = 8;
 
 let open: (() => void) | null = null;
 
@@ -53,6 +53,24 @@ export function holdUp(
   const shut = h('div', 'g-x gr-pv-x', '×');
   shut.style.background = 'rgba(14,15,18,.6)';
   const thumbs = h('div', 'gr-pv-th');
+  const bar = h('div', 'gr-pv-bar');
+  const press = (el: HTMLElement, then: () => void): HTMLElement => {
+    el.addEventListener('pointerup', (event) => event.stopPropagation());
+    el.addEventListener('click', (event) => {
+      event.stopPropagation();
+      then();
+    });
+    return el;
+  };
+  const percent = h('b', '', '100%');
+  const zoomBar = h('div', 'gr-pv-zoom');
+  zoomBar.append(
+    press(h('div', 'gr-pv-z', '−'), () => zoomBy(1 / 1.5)),
+    percent,
+    press(h('div', 'gr-pv-z', '+'), () => zoomBy(1.5)),
+    press(h('div', 'gr-pv-z w', 'fit'), () => zoomTo(1)),
+    press(h('div', 'gr-pv-z w', '1:1'), () => zoomTo(actual()))
+  );
   const nav = (way: 1 | -1): HTMLElement => {
     const el = h('div', `gr-pv-nav ${way > 0 ? 'r' : 'l'}`);
     el.appendChild(sign(way > 0 ? 'right' : 'left', '#f2c66d', 18));
@@ -64,7 +82,6 @@ export function holdUp(
     return el;
   };
   const said = h('div', 'gr-pv-cap');
-  glaze(said);
   const title = h('div', 'g-serif gr-pv-t');
   const sub = h('div', 'g-faint gr-pv-s');
   said.append(title, sub);
@@ -72,8 +89,11 @@ export function holdUp(
     const place = all.length ? `${index + 1} of ${all.length}` : '';
     title.textContent = label;
     sub.textContent = [place, size()].filter(Boolean).join(' · ');
-    said.hidden = !label;
-    [...thumbs.children].forEach((el, i) => el.classList.toggle('on', i === index));
+    said.style.visibility = label ? '' : 'hidden';
+    [...thumbs.children].forEach((el, i) => {
+      el.classList.toggle('on', i === index);
+      if (i === index) (el as HTMLElement).scrollIntoView({ inline: 'center', block: 'nearest' });
+    });
   };
   const size = (): string =>
     picture.naturalWidth ? `${picture.naturalWidth} × ${picture.naturalHeight}` : '';
@@ -88,48 +108,80 @@ export function holdUp(
     });
     thumbs.appendChild(t);
   });
-  stage.append(shut, ...(all.length ? [thumbs] : []));
-  wash.append(stage, said, ...(all.length ? [nav(-1), nav(1)] : []));
+  stage.append(shut, ...(all.length ? [nav(-1), nav(1)] : []));
+  bar.append(said, thumbs, zoomBar);
+  wash.append(stage, bar);
   words(name);
 
   let scale = 1;
   let x = 0;
   let y = 0;
+  /** The scale at which one picture pixel is one screen pixel. */
+  const actual = (): number =>
+    picture.naturalWidth && picture.clientWidth
+      ? Math.max(1, picture.naturalWidth / picture.clientWidth)
+      : 2;
+  const limit = (): number => Math.max(8, actual() * 4);
   const apply = (): void => {
     picture.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-    stage.style.cursor = scale > 1 ? 'grab' : 'zoom-out';
+    stage.style.cursor = scale > 1 ? 'grab' : 'default';
+    const fitted = picture.naturalWidth ? picture.clientWidth / picture.naturalWidth : 1;
+    percent.textContent = `${Math.round(scale * fitted * 100)}%`;
   };
   apply();
+  picture.addEventListener('load', apply);
+  window.addEventListener('resize', apply);
+
+  /** Zoom to `next`, keeping the point at (cx, cy) on the screen where it is. */
+  function zoomTo(next: number, cx?: number, cy?: number, animate = true): void {
+    const box = stage.getBoundingClientRect();
+    const px = cx ?? box.left + box.width / 2;
+    const py = cy ?? box.top + box.height / 2;
+    const left = picture.offsetLeft + box.left;
+    const top = picture.offsetTop + box.top;
+    const before = scale;
+    scale = Math.min(limit(), Math.max(MIN_SCALE, next));
+    if (scale === MIN_SCALE) {
+      x = 0;
+      y = 0;
+    } else {
+      /* The point under the pointer stays under it. */
+      x = px - left - ((px - left - x) / before) * scale;
+      y = py - top - ((py - top - y) / before) * scale;
+    }
+    picture.style.transition = animate ? 'transform 140ms ease-out' : 'none';
+    apply();
+  }
+  function zoomBy(factor: number): void {
+    zoomTo(scale * factor);
+  }
 
   wash.addEventListener(
     'wheel',
     (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const left = picture.offsetLeft + stage.getBoundingClientRect().left;
-      const top = picture.offsetTop + stage.getBoundingClientRect().top;
-      const before = scale;
-      scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * Math.exp(-event.deltaY * 0.0025)));
-      if (scale === MIN_SCALE) {
-        x = 0;
-        y = 0;
-      } else {
-        /* The point under the pointer stays under it. */
-        x = event.clientX - left - ((event.clientX - left - x) / before) * scale;
-        y = event.clientY - top - ((event.clientY - top - y) / before) * scale;
-      }
-      apply();
+      if ((event.target as HTMLElement).closest('.gr-pv-bar')) return;
+      /* A pinch arrives as a wheel with ctrl held and tiny steps. */
+      const rate = event.ctrlKey ? 0.01 : 0.0025;
+      zoomTo(scale * Math.exp(-event.deltaY * rate), event.clientX, event.clientY, false);
     },
     { passive: false }
   );
+  stage.addEventListener('dblclick', (event) => {
+    if ((event.target as HTMLElement).closest('.gr-pv-nav, .gr-pv-x')) return;
+    zoomTo(scale > 1.01 ? 1 : actual() > 1.2 ? actual() : 2.5, event.clientX, event.clientY);
+  });
 
   let down: { x: number; y: number } | null = null;
   let moved = false;
+  let onPicture = false;
   wash.addEventListener('pointerdown', (event) => {
     event.stopPropagation();
-    if ((event.target as HTMLElement).closest('.gr-pv-nav, .gr-pv-th, .gr-pv-cap')) return;
+    if ((event.target as HTMLElement).closest('.gr-pv-nav, .gr-pv-bar, .gr-pv-x')) return;
     down = { x: event.clientX, y: event.clientY };
     moved = false;
+    onPicture = event.target === picture;
     wash.setPointerCapture(event.pointerId);
   });
   wash.addEventListener('pointermove', (event) => {
@@ -142,16 +194,17 @@ export function holdUp(
       x += dx;
       y += dy;
       stage.style.cursor = 'grabbing';
+      picture.style.transition = 'none';
       apply();
     }
     down = { x: event.clientX, y: event.clientY };
   });
   wash.addEventListener('pointerup', (event) => {
     event.stopPropagation();
-    if ((event.target as HTMLElement).closest('.gr-pv-nav, .gr-pv-th, .gr-pv-cap')) return;
+    if ((event.target as HTMLElement).closest('.gr-pv-nav, .gr-pv-bar, .gr-pv-x')) return;
     const was = down;
     down = null;
-    if (was && !moved) close();
+    if (was && !moved && !onPicture) close();
     else apply();
   });
   wash.addEventListener('click', (event) => event.stopPropagation());
@@ -183,6 +236,10 @@ export function holdUp(
     if (event.key === 'Escape') close();
     else if (event.key === 'ArrowLeft') step(-1);
     else if (event.key === 'ArrowRight') step(1);
+    else if (event.key === '+' || event.key === '=') zoomBy(1.5);
+    else if (event.key === '-' || event.key === '_') zoomBy(1 / 1.5);
+    else if (event.key === '0') zoomTo(1);
+    else if (event.key === '1') zoomTo(actual());
   };
   window.addEventListener('keydown', keys, true);
 
@@ -190,6 +247,7 @@ export function holdUp(
     if (open !== close) return;
     open = null;
     window.removeEventListener('keydown', keys, true);
+    window.removeEventListener('resize', apply);
     wash.classList.add('gr-pv-going');
     setTimeout(() => wash.remove(), 160);
   }

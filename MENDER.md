@@ -677,8 +677,12 @@ right under one, stands beside that writing, the way a listing puts the
 photo next to what it is a photo of; more than two together, or anywhere
 else, stand where they were written, several in a row, each with its
 caption under it, and one that will not load is simply not there.
-Pressing one holds it up over the whole window, as big as it fits, and the
-wheel goes in closer on it; Escape or a press puts it down. Every
+Pressing one holds it up over the whole window, as big as it fits, on a dark
+blurred ground with its own bar underneath, so nothing sits on the picture: the
+caption, the other pictures to step between, and zoom (minus, plus, fit, 1:1,
+with where it stands). The wheel, a pinch, + and - go in closer where the
+pointer is, a double press jumps between fitted and real size, and a drag moves
+it. Escape or a press beside the picture puts it down. Every
 session is told only that pictures show here, to be visual wherever seeing
 a thing would help, and that a picture has to be one it actually found:
 where and how is left to it.
