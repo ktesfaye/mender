@@ -2892,8 +2892,12 @@ function thinking(
     });
     /* The answer before the newest is read at the newest's size and ink too,
        so the last two are what the eye lands on and the rest is history. */
+    let liveAt = -1;
+    thoughts.forEach((one, i) => {
+      if (one.live) liveAt = i;
+    });
     let before = -1;
-    for (let i = answer - 1; i >= 0; i -= 1) {
+    for (let i = (liveAt >= 0 ? liveAt : answer) - 1; i >= 0; i -= 1) {
       const one = thoughts[i]!;
       if (one.answer && !one.progress) {
         before = i;
