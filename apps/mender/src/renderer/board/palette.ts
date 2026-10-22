@@ -229,7 +229,7 @@ export class Palette {
   /** Whatever is on the line now. */
   typed(text: string, caret = text.length): void {
     if (text !== this.text) this.armed = null;
-    if (!text.startsWith('/') || text.length > 1) this.all = false;
+    if (text !== this.text && (!text.startsWith('/') || text.length > 1)) this.all = false;
     this.text = text;
     this.head = text.slice(0, caret);
     this.tail = text.slice(caret);
@@ -351,7 +351,19 @@ export class Palette {
       }
     }
     if (front.length && !this.all) return front;
-    const ranked = rank([...front, ...offers], open.asked.slice(1));
+    let ranked = rank([...front, ...offers], open.asked.slice(1));
+    /* What only mentions the letters in what it says about itself is real, but
+       it is not what was meant first: the ones named for them lead alone and
+       the rest is a down-arrow off. */
+    const typed = open.asked.slice(1).trim().toLowerCase();
+    if (typed && open.kind === 'all' && !this.all) {
+      const named = ranked.filter((one) =>
+        one.name.replace(/^\/+/, '').toLowerCase().includes(typed)
+      );
+      if (named.length && named.length < ranked.length) {
+        ranked = named.map((one) => ({ ...one, held: true }));
+      }
+    }
     /* A whole name written out that nothing here starts with is still meant:
        a skill taught since the agent last said what it has, or one it never
        listed. Return says it as written rather than picking whatever only

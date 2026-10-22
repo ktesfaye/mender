@@ -1352,7 +1352,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
          stays shut and the next up goes on to the one before it. */
       if (holdsRecalled()) offers = [];
       offers = newestModels(offers);
-      onlyUsual = offers.length > 0 && offers.every((one) => one.section === 'recently used');
+      onlyUsual = offers.length > 0 && offers.every((one) => one.section === 'recently used' || one.held);
       /* Asked before the lines are replaced, because afterwards there is
          nothing left to ask about. */
       const wasInside = standingInOverlay();
