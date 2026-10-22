@@ -353,15 +353,24 @@ export class Palette {
     if (front.length && !this.all) return front;
     let ranked = rank([...front, ...offers], open.asked.slice(1));
     /* What only mentions the letters in what it says about itself is real, but
-       it is not what was meant first: the ones named for them lead alone and
-       the rest is a down-arrow off. */
+       it is not what was meant first: the ones named for them stand alone with
+       a line at the foot that opens the rest. */
     const typed = open.asked.slice(1).trim().toLowerCase();
     if (typed && open.kind === 'all' && !this.all) {
       const named = ranked.filter((one) =>
         one.name.replace(/^\/+/, '').toLowerCase().includes(typed)
       );
-      if (named.length && named.length < ranked.length) {
-        ranked = named.map((one) => ({ ...one, held: true }));
+      const rest = ranked.length - named.length;
+      if (named.length && rest > 0) {
+        ranked = [
+          ...named,
+          {
+            pick: 'slash:more',
+            name: `${rest} more`,
+            about: 'only mention it in what they say about themselves',
+            section: named[named.length - 1]?.section ?? SECTION.theirs,
+          },
+        ];
       }
     }
     /* A whole name written out that nothing here starts with is still meant:
