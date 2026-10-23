@@ -90,6 +90,8 @@ export interface UnknownToolCall extends BaseToolCallItem {
   name: string;
   /** Text the tool reported back, capped; see `OTHER_OUTPUT_CAP`. */
   outputText?: string;
+  /** A watch or task it left going (Monitor): it can outlive the turn that started it. */
+  background?: boolean;
 }
 
 export interface ToolGroup {
@@ -218,6 +220,7 @@ export const unknownToolCallSchema = baseToolCallItemSchema.extend({
   toolKind: z.string().nullable(),
   name: z.string(),
   outputText: z.string().optional(),
+  background: z.boolean().optional(),
 });
 
 export const toolCallItemSchema = z.discriminatedUnion('kind', [

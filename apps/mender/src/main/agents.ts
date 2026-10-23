@@ -3789,13 +3789,16 @@ function toldFrom(
   deeds.push({
     id: node.id,
     did: deedOf(node, root),
-    ...(node.kind === 'execute-tool-call' && node.inputSummary?.trim()
+    ...((node.kind === 'execute-tool-call' || node.kind === 'unknown-tool-call') &&
+    node.inputSummary?.trim() &&
+    (node.kind === 'execute-tool-call' || node.background)
       ? { why: lower(node.inputSummary.trim()) }
       : {}),
     note,
     tool: node.kind,
     running: node.status === 'running',
-    ...(node.kind === 'execute-tool-call' && node.background
+    ...((node.kind === 'execute-tool-call' || node.kind === 'unknown-tool-call') &&
+    node.background
       ? { background: true, job: jobFrom(node.toolCallId, node.outputText, at) }
       : {}),
     ...(failed === 'wrong' ? { wrong: true } : failed === 'held' ? { held: true } : {}),
@@ -3815,7 +3818,7 @@ function toldFrom(
  * in background with ID: b1x2. Output is being written to: /tmp/…/b1x2.output".
  */
 function jobFrom(call: string, said: string | undefined, at: number): NonNullable<Deed['job']> {
-  const id = said?.match(/in background with ID: ([\w-]+)/)?.[1];
+  const id = said?.match(/in background with ID: ([\w-]+)/)?.[1] ?? said?.match(/\(task ([\w-]+),/)?.[1];
   const output = said?.match(/Output is being written to: (\S+?\.output)\b/)?.[1];
   return {
     call,

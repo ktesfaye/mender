@@ -315,6 +315,7 @@ function updateToolCallItem(
         ...(patch.toolKind !== undefined ? { toolKind: patch.toolKind } : {}),
         ...(patch.title !== undefined && patch.title !== null ? { name: nextTitle } : {}),
         ...otherOutput(patch.outputText),
+        ...(patch.background !== undefined ? { background: patch.background } : {}),
       };
   }
 }
