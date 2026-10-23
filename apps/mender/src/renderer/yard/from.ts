@@ -232,6 +232,9 @@ function modelOf(kit: Kit): string | undefined {
   return effort && effort.id !== 'default' ? `${name} · ${effort.name.toLowerCase()}` : name;
 }
 
+/** How much each session had said when it last came to rest. */
+const restedAt = new Map<string, number>();
+
 function sessionOf(
   task: Task,
   told: Told | undefined,
@@ -248,7 +251,12 @@ function sessionOf(
   if (told && unread.length) told = { ...told, notes: told.notes.filter((one) => !one.unread) };
   const notes = (told?.notes ?? []).map(noteOf);
   if (going && !from.asking && notes[0]) notes[0].on = true;
-  const thoughts = thoughtsOf(told, from.mood, Boolean(from.asking));
+  /* A turn that begins by itself, a watched command speaking up, goes in
+     and out in a blink. What was said before it began is already settled,
+     so it is not laid back out as the way to an answer for that blink. */
+  const settled = going ? (restedAt.get(task.id) ?? 0) : (told?.thoughts.length ?? 0);
+  if (!going) restedAt.set(task.id, settled);
+  const thoughts = thoughtsOf(told, from.mood, Boolean(from.asking), settled);
   const live = liveOf(from, told);
   return {
     id: task.id,
@@ -353,7 +361,12 @@ function noteOf(
  * The plan it posted is a different thing and lives above this: the first thing
  * an agent says is not a plan, however much it reads like one.
  */
-function thoughtsOf(told: Told | undefined, mood: Mood | undefined, prompted = false): Thought[] {
+function thoughtsOf(
+  told: Told | undefined,
+  mood: Mood | undefined,
+  prompted = false,
+  settled = 0
+): Thought[] {
   const all = told?.thoughts ?? [];
   /* Whether the newest answer is the last word or only the latest so far,
      said over it, because the fire going out is too quiet a way to say
@@ -425,7 +438,7 @@ function thoughtsOf(told: Told | undefined, mood: Mood | undefined, prompted = f
     /* While a turn is still going, what it tells you on the way is how you
        follow a long one from across the room, so it stays out until the turn
        ends and only the last word of it is kept. */
-    ...(going && one.turn !== undefined && current.has(one.turn) && !one.quiet && !one.trouble
+    ...(going && at >= settled && one.turn !== undefined && current.has(one.turn) && !one.quiet && !one.trouble
       ? { progress: true }
       : {}),
     ...(one.pack ? { pack: one.pack, said: packSaid(one.pack, one.said) } : {}),
