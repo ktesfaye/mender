@@ -75,6 +75,8 @@ import { tuiSession } from './board/tui-session';
 import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
 import { watchBuild, type WatchingBuild } from './board/watch-build';
 import { answerFor, SEND_ALL } from './board/work';
+import { makeDraftingSurface, type DraftingSurface } from './drafting/surface';
+import { rackMenuPane, waterMenu } from './glass/island-menus';
 import { watchGrip } from './grip';
 import { JiraFailed } from './jira/data';
 import { briefOf, makeJiraSurface, type JiraSurface, type Lit as OnTicket } from './jira/surface';
@@ -95,8 +97,8 @@ import {
   type Extent,
 } from './village/camera';
 import { Crowd, type Life } from './village/crowd';
-import { Editing } from './village/editing';
 import './yard/tokens.css';
+import { Editing } from './village/editing';
 import { Folk, loadFolk, type Look, type Standing } from './village/folk';
 import { districtBounds, Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
@@ -105,19 +107,18 @@ import { loadFeet, Pennants, plantFlag } from './village/pennants';
 import { buildScene } from './village/scene';
 import { Sky } from './village/sky';
 import { keepOnScreen, skyPicture, skySlab } from './village/sky-slab';
-import { rackMenuPane, waterMenu } from './glass/island-menus';
 import { Paths, Walkers, type Walking } from './village/walkers';
 import { Water } from './village/water';
 import { wire, type MenderClient } from './wire';
 import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
 import { stateOf, stepsFromTrail } from './yard/from';
+import { showHead } from './yard/head';
 import { openHungry, type HungryBoard } from './yard/hungry';
 import { openYard, type Watching } from './yard/live';
 import { showMissed } from './yard/missed';
 import { openNewSession, type NewSessionSign } from './yard/new-session';
 import { seedLocalPictures } from './yard/pictures';
-import { showHead } from './yard/head';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf, type Want } from './yard/shelf';
@@ -227,6 +228,8 @@ async function boot(): Promise<void> {
     const layer = makeLayer();
     let openTheSky = (): void => undefined;
     let openTheBoard = (): void => undefined;
+    let openTheTable = (): void => undefined;
+    let closeTheTable = (): void => undefined;
     let rackMenu = (_id: string, _x: number, _y: number): void => undefined;
     const shelf = makeShelf(
       layer.root,
@@ -258,7 +261,8 @@ async function boot(): Promise<void> {
         over: (x, y) => editing?.arriveOver({ x: x * pageZoom(), y: y * pageZoom() }),
         drop: (x, y) => void editing?.arriveAt({ x: x * pageZoom(), y: y * pageZoom() }),
       },
-      () => openTheBoard()
+      () => openTheBoard(),
+      () => openTheTable()
     );
     /* The rack's sky slot wears what the sky is doing, kept up to date. */
     const paintSkySlot = (): void => shelf.setSky(skyPicture(sky));
@@ -510,7 +514,8 @@ async function boot(): Promise<void> {
           path: where.path,
           ...(session ? { since: session.base ?? null } : {}),
           ...(session
-            ? { tail: () => [
+            ? {
+                tail: () => [
                   ...landingLines(landing),
                   ...guideLines(guideMissing),
                   ...setupFailureLines(setupFailure),
@@ -1786,6 +1791,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       closeJira();
+      closeTheTable();
       walkedUp = null;
       wood(finding('', { projects, tasks, moods: seen, where: standing() }, keybindings));
       /* From nowhere, every time. The mark outlives a board on purpose, so
@@ -2234,6 +2240,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       closeJira();
+      closeTheTable();
       walkedUp = null;
       const shown = card;
       card = null;
@@ -2275,6 +2282,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       closeJira();
+      closeTheTable();
       walkedUp = null;
       /* The line belongs to the session it was written in. Stepping to
          another leaves that one's half-written line with it, not on this. */
@@ -2553,6 +2561,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       closeJira();
+      closeTheTable();
       walkedUp = null;
       await was?.close();
       const shown = card;
@@ -2776,6 +2785,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       closeJira();
+      closeTheTable();
       walkedUp = null;
       home();
     };
@@ -3778,10 +3788,12 @@ async function boot(): Promise<void> {
         takeMany: (site, keys, progress) => takeMany(site, keys, progress),
         go: (task) => {
           closeJira();
+          closeTheTable();
           go(`task:${task}`);
         },
         connect: () => {
           closeJira();
+          closeTheTable();
           windmillOnJira();
           openTheWindmill();
         },
@@ -3818,6 +3830,7 @@ async function boot(): Promise<void> {
       if (!open || !project) return;
       stopWalking();
       stopTalking();
+      closeTheTable();
       quest = { project };
       const link = await client.jira.linkOf({ project: project.id });
       if (quest?.project !== project) return;
@@ -3827,6 +3840,51 @@ async function boot(): Promise<void> {
     openTheBoard = () => {
       if (quest) closeJira();
       else void openQuest();
+    };
+
+    /**
+     * The drafting table, off the pinned sheet on the rack: the project's own
+     * `design/board.json`, every design its sessions have drawn, in a window
+     * of glass over the village.
+     */
+    let drafting: DraftingSurface | null = null;
+    let tableOf: Project | null = null;
+    const tableView = (): DraftingSurface =>
+      (drafting ??= makeDraftingSurface({
+        read: (path, stamp) => client.drafting.read({ path, stamp }),
+        picture: async (path, width) =>
+          (await client.board.picture({ path, width })).picture?.src ?? null,
+        start: (name, said) => {
+          const project = tableOf;
+          closeTheTable();
+          if (!project || !open) return;
+          home();
+          naming = {
+            district: open.district,
+            project,
+            slot: null,
+            written: name.slice(0, 60),
+            revivable: null,
+            terminal: false,
+            isolated: false,
+            said,
+          };
+          void begin();
+        },
+        close: () => closeTheTable(),
+      }));
+    closeTheTable = () => {
+      if (!tableOf) return;
+      tableOf = null;
+      drafting?.close();
+    };
+    openTheTable = () => {
+      if (tableOf) return closeTheTable();
+      const project = open ? projectOn(open.district) : undefined;
+      if (!open || !project) return;
+      if (quest) closeJira();
+      tableOf = project;
+      tableView().open({ project: project.name, path: project.path });
     };
 
     /* Which cards carry a session's light follows the lanterns. */
@@ -3846,6 +3904,7 @@ async function boot(): Promise<void> {
       }
       if (ticket.category === 'new') void view.start(site, key);
       closeJira();
+      closeTheTable();
       home();
       naming = {
         district: open.district,
@@ -4296,6 +4355,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       closeJira();
+      closeTheTable();
       walkedUp = null;
       writing = {
         aim,
@@ -4454,6 +4514,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       closeJira();
+      closeTheTable();
       walkedUp = null;
       if (!live) return;
       /* Back at the top, which is where the file was pressed: a session's
@@ -4778,6 +4839,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       closeJira();
+      closeTheTable();
       walkedUp = null;
       titling = { task, written: task.title };
       yard.asks('name');
@@ -4798,6 +4860,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       closeJira();
+      closeTheTable();
       walkedUp = null;
       titling = { task, written: '', mode: 'mcp' };
       yard.asks('server');
@@ -4817,6 +4880,7 @@ async function boot(): Promise<void> {
       stopTalking();
       sending = null;
       closeJira();
+      closeTheTable();
       walkedUp = null;
       titling = { task, written: '', mode: 'skill' };
       yard.asks('skill');
@@ -6162,6 +6226,7 @@ async function boot(): Promise<void> {
         }
         if (quest) {
           closeJira();
+          closeTheTable();
           return;
         }
         if (sending) {
@@ -6172,6 +6237,7 @@ async function boot(): Promise<void> {
           }
           sending = null;
           closeJira();
+          closeTheTable();
           walkedUp = null;
           home();
           return;

@@ -17,8 +17,8 @@ import { createChanges } from './changes';
 import { createChangesController } from './changes-controller';
 import { createClaudeUsage } from './claude-usage';
 import { watchDockFire } from './dock-fire';
+import { createDraftingController } from './drafting';
 import { installDragOut } from './drag';
-import { installFolderPicker } from './pick-folder';
 import { createFinding } from './finding';
 import { createFindingController } from './finding-controller';
 import { createFiveHours } from './five-hours';
@@ -30,6 +30,7 @@ import { installJiraWeb } from './jira-web';
 import { logWindow } from './logging';
 import { installAppMenu } from './menu';
 import { watchMissed } from './missed';
+import { installFolderPicker } from './pick-folder';
 import { createProjects } from './projects';
 import { createProjectsController } from './projects-controller';
 import { createPromptsController } from './prompts';
@@ -130,6 +131,7 @@ export async function main(): Promise<void> {
     board: createBoardController(createBoard(runtimes)),
     building: createBuildingController(),
     changes: createChangesController(changes),
+    drafting: createDraftingController(),
     finding: createFindingController(finding),
     github: createGitHubStatus(),
     jira: createJiraController(),

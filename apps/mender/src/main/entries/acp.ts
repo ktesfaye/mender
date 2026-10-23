@@ -33,7 +33,7 @@ const BOARD = [
   'them (curl shows the raw HTML; WebFetch summaries drop image URLs). The quickest real picture of',
   'almost any business or product is its page\'s share image: curl -sL -A "Mozilla/5.0" the page and',
   'read <meta property="og:image"> (or twitter:image); failing that, Wikimedia Commons or the',
-  'Wikipedia article\'s image. If one source has nothing, try the next before giving up. Never',
+  "Wikipedia article's image. If one source has nothing, try the next before giving up. Never",
   'invent an image URL. Opening an image file yourself (Read, a screenshot) shows it to you and',
   'nobody else: anything you made or rendered that the person should look at, designs, mockups,',
   'screenshots, has to be written into your reply as a markdown image with its path, each one',
@@ -62,7 +62,7 @@ const ASKING = [
  * where his logins live, and a fresh profile has none of them.
  */
 const HANDS = [
-  'You are running on the person\'s own Mac, and you can see and operate any app on it yourself:',
+  "You are running on the person's own Mac, and you can see and operate any app on it yourself:",
   'screencapture -x <file>.png then read the image to see the screen; osascript (AppleScript or',
   'JXA, including System Events for menus, buttons, windows and keystrokes in any app); cliclick',
   'for mouse clicks, drags and typing at screen coordinates; open -a to launch apps. So never tell',
@@ -115,11 +115,22 @@ const STARTING = [
   'Never click the lantern, drive the window, or run a background claude for that.',
 ].join(' ');
 
+const DRAFTING = [
+  'Whenever you design anything here (a mockup, a concept, a redesign, an iteration on a visual),',
+  "it goes on the project's drafting table, the pinned sheet on Mender's rack, through the mender",
+  'server: read drafting_table first, then pin_pass every pass you render the moment you have looked',
+  'at it (options drawn side by side share one question), pick the moment he takes one, note what he',
+  'says about it in his words (and anything he never wants back), and set_plan once a part is settled.',
+  'When the whole thing can be walked through, set_flow. Never overwrite a pass; a change is a new one.',
+].join(' ');
+
 void runWireComponentWorker(
   createAcpComponent({
     pluginRegistry,
     sessionMeta: () => ({
-      systemPrompt: { append: `${BOARD}\n\n${ASKING}\n\n${HANDS}\n\n${WAITING}\n\n${STARTING}` },
+      systemPrompt: {
+        append: `${BOARD}\n\n${ASKING}\n\n${HANDS}\n\n${WAITING}\n\n${STARTING}\n\n${DRAFTING}`,
+      },
     }),
     extraMcpServers: (_provider, cwd) => villageTools(cwd),
   }),

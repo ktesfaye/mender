@@ -1335,6 +1335,27 @@ cards. That strip also names whichever ticket is open with "launch it" beside
 it, so a ticket can still be launched if Jira ever changes its page out from
 under the buttons laid into it.
 
+**What gets designed is pinned up, on the drafting table.** A pinned sheet
+hangs on the rack left of Jira's diamond while you stand in a project, and
+pressed it lays that project's designs over the village on the same glass
+every popup is: not the village's, but the project's own
+`design/board.json`, committed with it, so it outlives every session that
+drew on it. Down its left is the finished thing, the whole product walked
+through a picture at a time with what you do at each, the plan of every room
+under it, and then each room on its own. A room is its plan, every part from
+whichever pass drew it best with the states it has, and under that how it got
+there: each question worked through on one thread, every pass drawn for it in
+order, the ones taken ringed in moss, the one still being drawn in ember,
+what was said about each pinned under it in his own words, and beside it all
+what he never wants back and what whoever draws next is told, with a line
+that starts that session. Pressing any pass holds it up with every look it
+has, its states, its draft before review, and the arrows walk the passes
+either side. Nothing is overwritten and nothing drops off. The sessions keep
+it themselves: every one is told to read the table before it draws and to
+pin each pass the moment it renders one, record which he took and what he
+said, and set the plan and the flow, through the village's own tools, and
+whatever they write is on the open board within a breath.
+
 **A session remembers what it was last thinking with.** Change an agent's
 model or mode on one session and every fresh session with that same agent
 starts on it too, not on whatever it happens to open with. And the line does

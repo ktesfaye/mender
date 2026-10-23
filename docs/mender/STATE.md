@@ -4389,3 +4389,19 @@ surface was opened in the app and compared to its mockup. The question,
 permission, limit, helper and background-command boards were driven with
 sample states; the pull request board's states past "nowhere to send it" and
 the native folder picker were not driven.
+
+**The drafting table (2026-10-22).** A pinned sheet on the rack, left of
+Jira, opens the project's designs over the village from its own
+`design/board.json`: the finished thing walked through, then each room's
+plan built from the passes that drew each part best, every pass drawn for
+every question with the taken ones ringed, every variant of a pass kept and
+held up big, his notes pinned where they were said, the never list and the
+brief. Sessions get tools to read it, pin passes and variants, pick, note,
+set the plan, the room and the flow, and are told to use them whenever they
+design. Driven in a dev instance on Aurio's real redesign (three rooms, every
+pass from the day): the sheet hangs left of Jira, every sheet and pass
+opened, variants switched, arrows walked passes, Escape stepped out a level
+at a time, and a note pinned through the tool showed up on the open board
+and went again when removed. Starting a session from a brief was not driven,
+since it runs a real turn.
+

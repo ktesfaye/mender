@@ -12,6 +12,7 @@ import { appSettingsContract } from './app-settings';
 import { boardContract } from './board';
 import { buildingContract } from './building';
 import { changesContract } from './changes';
+import { draftingContract } from './drafting';
 import { findingContract } from './finding';
 import { githubContract } from './github';
 import { jiraContract } from './jira';
@@ -37,6 +38,7 @@ export const menderDomainContracts = {
   board: boardContract,
   building: buildingContract,
   changes: changesContract,
+  drafting: draftingContract,
   files: filesContract,
   finding: findingContract,
   git: gitContract,

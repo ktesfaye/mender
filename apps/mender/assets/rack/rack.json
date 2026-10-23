@@ -80,9 +80,17 @@
         "h": 9
       }
     },
-    "glyph-fire": {
+    "glyph-draft": {
       "frame": {
         "x": 152,
+        "y": 0,
+        "w": 9,
+        "h": 9
+      }
+    },
+    "glyph-fire": {
+      "frame": {
+        "x": 162,
         "y": 0,
         "w": 9,
         "h": 9
@@ -92,7 +100,7 @@
   "meta": {
     "image": "rack.png",
     "size": {
-      "w": 162,
+      "w": 172,
       "h": 24
     }
   }

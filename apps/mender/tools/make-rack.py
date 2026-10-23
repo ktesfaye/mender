@@ -303,6 +303,19 @@ GLYPHS = {
         "...BBn...",
         "....n....",
     ],
+    # The drafting table: a sheet pinned up, a picture framed on it and a
+    # caption under, so it reads as designs on a wall from across the room.
+    "glyph-draft": [
+        "....r....",
+        ".WWWrWWW.",
+        ".WkkkkkW.",
+        ".WkyyokW.",
+        ".WkyookW.",
+        ".WkkkkkW.",
+        ".WWWWWWW.",
+        ".WddWddW.",
+        ".wwwwwww.",
+    ],
     # The way home: the fire the island grows from.
     "glyph-fire": [
         "....y....",
