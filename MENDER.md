@@ -1356,6 +1356,14 @@ pin each pass the moment it renders one, record which he took and what he
 said, and set the plan and the flow, through the village's own tools, and
 whatever they write is on the open board within a breath.
 
+**And a design is shown on the table, never in a browser.** A session that
+wants him to look at what it drew lays the table open itself, in front of
+him, on the room to see the passes side by side, on one pass held up, or on
+a page: a pass drawn as HTML carries its page as one more of its looks, and
+held up it runs right there on the glass, scrolling and all, the way a
+browser would show it. A compare page or a mockup a session made is never
+opened in Chrome.
+
 **A session remembers what it was last thinking with.** Change an agent's
 model or mode on one session and every fresh session with that same agent
 starts on it too, not on whatever it happens to open with. And the line does

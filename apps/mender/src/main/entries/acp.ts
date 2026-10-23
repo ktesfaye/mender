@@ -122,6 +122,9 @@ const DRAFTING = [
   'at it (options drawn side by side share one question), pick the moment he takes one, note what he',
   'says about it in his words (and anything he never wants back), and set_plan once a part is settled.',
   'When the whole thing can be walked through, set_flow. Never overwrite a pass; a change is a new one.',
+  'To show him a design, call show_on_table (on the room to compare passes side by side, on a pass,',
+  'or on an HTML page, which it holds up running): never open a mockup, a compare page or any design',
+  'HTML in Chrome or another browser, and pin a pass drawn as HTML with its page so the table has it.',
 ].join(' ');
 
 void runWireComponentWorker(

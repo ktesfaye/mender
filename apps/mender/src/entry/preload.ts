@@ -13,10 +13,12 @@ import {
   MENDER_QUIT_COST_CHANNEL,
   MENDER_PICK_FOLDER_CHANNEL,
   MENDER_START_DRAG_CHANNEL,
+  MENDER_TABLE_CHANNEL,
   MENDER_WATCH_CHANNEL,
   MENDER_WIRE_CHANNEL,
   type Grip,
   type MenuCommand,
+  type TableAsk,
   type Watching,
 } from '../shared/channels';
 
@@ -95,6 +97,14 @@ ipcRenderer.on(MENDER_ATTEND_CHANNEL, (_event, task: string, first?: string) => 
   else heldAttend = [task, first];
 });
 
+/* A design a session wants laid on the drafting table. */
+let tabled: ((ask: TableAsk) => void) | null = null;
+let heldTable: TableAsk | null = null;
+ipcRenderer.on(MENDER_TABLE_CHANNEL, (_event, ask: TableAsk) => {
+  if (tabled) tabled(ask);
+  else heldTable = ask;
+});
+
 /* How many villagers are still lit, named before a quit actually happens. */
 let quitCost: ((n: number) => void) | null = null;
 ipcRenderer.on(MENDER_QUIT_COST_CHANNEL, (_event, n: number) => {
@@ -146,6 +156,14 @@ contextBridge.exposeInMainWorld('mender', {
     if (heldAttend) {
       to(...heldAttend);
       heldAttend = null;
+    }
+  },
+  /* A design a session wants laid on the drafting table. */
+  table: (to: (ask: TableAsk) => void) => {
+    tabled = to;
+    if (heldTable) {
+      to(heldTable);
+      heldTable = null;
     }
   },
   /* Quitting with the fire still lit: what it costs, and the second press. */

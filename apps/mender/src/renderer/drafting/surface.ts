@@ -21,7 +21,9 @@ import { glaze } from '../glass/glass';
  * was worked through, every pass drawn for it in order with the ones taken
  * ringed in moss, what he said pinned under the pass it was about, and
  * beside it all what he turned down for good and what whoever draws next is
- * told. Pressing any pass holds it up with every variant it has.
+ * told. Pressing any pass holds it up with every variant it has, and a
+ * pass drawn as a page is held up as that page, live, the way a browser
+ * would show it, so nothing a session draws needs a browser tab to be seen.
  *
  * Nothing here is kept by the village: it is the project's own
  * `design/board.json`, read again whenever it is written, so a session
@@ -48,7 +50,8 @@ export interface DraftingHands {
 
 export interface DraftingSurface {
   readonly up: boolean;
-  open(at: { project: string; path: string }): void;
+  /** `room`, `pass` and `page` lay it open on what a session asked to show. */
+  open(at: { project: string; path: string; room?: string; pass?: string; page?: string }): void;
   close(): void;
 }
 
@@ -107,10 +110,52 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
   let sheet = '';
   let held: { room: DraftRoom; question: DraftQuestion; pass: DraftPass; look: number } | null =
     null;
+  /** A page held up on its own, one no pass on the board names. */
+  let paging: string | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
   let canvasScroll = 0;
 
   const abs = (rel: string): string => (rel.startsWith('/') ? rel : `${root}/${rel}`);
+
+  /** A pass's looks: as drawn, each variant, and the page it was drawn as. */
+  const looksOf = (pass: DraftPass): { name: string; image?: string; page?: string }[] => [
+    { name: pass.name || 'as drawn', image: pass.image },
+    ...pass.variants,
+    ...(pass.page && /\.html?$/i.test(pass.page)
+      ? [{ name: 'the page itself', page: pass.page }]
+      : []),
+  ];
+
+  /**
+   * A page drawn for the table, running, in a webview of its own with nothing
+   * of this app's in it. Keys pressed inside it never reach this window, so
+   * the few the table answers to are listened for in there and said back.
+   */
+  const livePage = (rel: string): HTMLElement => {
+    const el = document.createElement('webview') as HTMLElement & {
+      executeJavaScript(code: string): Promise<unknown>;
+    };
+    const path = abs(rel);
+    el.setAttribute('src', `file://${path.split('/').map(encodeURIComponent).join('/')}`);
+    el.setAttribute('partition', 'mender-drafting');
+    el.className = 'dt-page';
+    el.addEventListener('dom-ready', () => {
+      void el
+        .executeJavaScript(
+          `window.addEventListener('keydown', (e) => {
+            const t = e.target && e.target.closest && e.target.closest('input,textarea,[contenteditable="true"]');
+            if (!t && ['Escape', 'ArrowLeft', 'ArrowRight'].includes(e.key)) console.log('mender-key:' + e.key);
+          }, true);`
+        )
+        .catch(() => undefined);
+    });
+    el.addEventListener('console-message', (event) => {
+      const said = (event as Event & { message?: string }).message ?? '';
+      if (said.startsWith('mender-key:'))
+        keys(new KeyboardEvent('keydown', { key: said.slice('mender-key:'.length) }));
+    });
+    return el;
+  };
 
   /** An img that fills itself in once its pixels arrive. */
   const pic = (rel: string | undefined, width: number, cls = ''): HTMLImageElement => {
@@ -144,12 +189,36 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     return room.questions.flatMap((q) => q.passes.map((p) => p.image)).slice(-4);
   };
 
+  /** What the held-up view is showing, so a repaint that changes nothing
+      about it leaves a running page alone rather than loading it again. */
+  const holdKey = (): string =>
+    held
+      ? JSON.stringify([
+          held.room.id,
+          held.question.ask,
+          held.pass,
+          held.look,
+          held.question.picked,
+          held.room.notes.filter((note) => note.on === held!.pass.id),
+        ])
+      : paging
+        ? `page:${paging}`
+        : '';
+
   function paint(): void {
     const keep = win.querySelector<HTMLElement>('.dt-canvas')?.scrollTop ?? canvasScroll;
-    win.replaceChildren();
+    const was = win.querySelector<HTMLElement>(':scope > .dt-hold');
+    const key = holdKey();
+    const stays = was && key && was.dataset.key === key ? was : null;
+    if (stays) {
+      for (const child of [...win.children]) if (child !== stays) child.remove();
+    } else win.replaceChildren();
+    const put = (...nodes: Node[]): void => {
+      for (const node of nodes) win.insertBefore(node, stays);
+    };
     const shut = h('div', 'g-x', '×');
     shut.addEventListener('click', () => hands.close());
-    win.append(shut);
+    put(shut);
 
     const room = sheet ? roomOf(sheet) : undefined;
     if (sheet && !room) sheet = '';
@@ -159,10 +228,10 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     if (room) home.addEventListener('click', () => show(''));
     way.append(h('span', 'g-mute', where?.project ?? ''), h('span', 'g-faint', '›'), home);
     if (room) way.append(h('span', 'g-faint', '›'), h('span', 'g-mute', room.name));
-    win.append(way);
+    put(way);
 
     if (!board) {
-      win.append(empty());
+      put(empty());
       return;
     }
 
@@ -188,7 +257,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
       if (settled) chips.append(chip(`${settled} settled`, MOSS));
     }
     top.append(titles, chips);
-    win.append(top);
+    put(top);
 
     const body = h('div', 'dt-body');
     body.append(rail());
@@ -197,9 +266,13 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     if (room) roomSheet(canvas, room);
     else finished(canvas);
     body.append(canvas);
-    win.append(body);
+    put(body);
     canvas.scrollTop = keep;
-    if (held) win.append(holdUp());
+    if (!stays && (held || paging)) {
+      const over = held ? holdUp() : pageUp(paging!);
+      over.dataset.key = key;
+      win.append(over);
+    }
   }
 
   const chip = (text: string, dot: string): HTMLElement => {
@@ -471,7 +544,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
 
   function holdUp(): HTMLElement {
     const { room, question, pass, look } = held!;
-    const looks = [{ name: pass.name || 'as drawn', image: pass.image }, ...pass.variants];
+    const looks = looksOf(pass);
     const at = Math.min(look, looks.length - 1);
     const over = h('div', 'dt-hold');
     over.addEventListener('click', (event) => {
@@ -480,7 +553,12 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
         paint();
       }
     });
-    const stage = h('div', 'dt-stage', pic(looks[at]!.image, 1600, 'dt-big'));
+    const showing = looks[at]!;
+    const stage = h(
+      'div',
+      'dt-stage',
+      showing.page ? livePage(showing.page) : pic(showing.image, 1600, 'dt-big')
+    );
     const info = h('div', 'dt-info');
     const picked = question.picked.includes(pass.id);
     const plan = room.plan.filter((part) => part.pass === pass.id).map((part) => part.part);
@@ -508,7 +586,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
         const cell = h(
           'div',
           `dt-look${i === at ? ' on' : ''}`,
-          pic(one.image, 160),
+          one.page ? h('div', 'dt-look-page', 'live') : pic(one.image, 160),
           h('span', '', one.name)
         );
         cell.addEventListener('click', () => hold(room, question, pass, i));
@@ -533,6 +611,29 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     }
     info.append(steps);
     over.append(stage, info);
+    return over;
+  }
+
+  /** A page held up that no pass names: the page, and where it is. */
+  function pageUp(page: string): HTMLElement {
+    const over = h('div', 'dt-hold');
+    over.addEventListener('click', (event) => {
+      if (event.target === over) {
+        paging = null;
+        paint();
+      }
+    });
+    const name = page.split('/').pop() ?? page;
+    over.append(
+      h('div', 'dt-stage', livePage(page)),
+      h(
+        'div',
+        'dt-info',
+        h('div', 'g-pix', 'a page'),
+        h('h2', 'g-serif dt-h2', name.replace(/\.html?$/i, '')),
+        h('p', 'dt-said g-mute', page)
+      )
+    );
     return over;
   }
 
@@ -570,8 +671,9 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (held) {
+      if (held || paging) {
         held = null;
+        paging = null;
         paint();
       } else if (sheet) show('');
       else hands.close();
@@ -589,6 +691,33 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     event.stopImmediatePropagation();
   };
 
+  /** Lay the table open on what a session asked to show: a pass, held up,
+      on its page if that was what was named; a room; or a page on its own. */
+  function aim(at: { room?: string; pass?: string; page?: string }): void {
+    const named = (room: DraftRoom): boolean =>
+      !at.room || room.id === at.room || room.name.toLowerCase() === at.room.toLowerCase();
+    const samePage = (page: string | undefined): boolean =>
+      !!page && !!at.page && abs(page) === abs(at.page);
+    for (const room of board?.rooms.filter(named) ?? []) {
+      for (const question of room.questions) {
+        for (const pass of question.passes) {
+          if ((at.pass && pass.id === at.pass) || (!at.pass && samePage(pass.page))) {
+            sheet = room.id;
+            const page = at.page ?? (at.pass ? undefined : pass.page);
+            const look = page ? looksOf(pass).findIndex((one) => samePage(one.page)) : 0;
+            if (look >= 0) return hold(room, question, pass, look);
+          }
+        }
+      }
+    }
+    const room = board?.rooms.find(named);
+    if (at.room && room) show(room.id);
+    if (at.page) {
+      paging = at.page;
+      paint();
+    }
+  }
+
   return {
     get up() {
       return up;
@@ -602,11 +731,13 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
       }
       where = at;
       held = null;
+      paging = null;
       up = true;
       wash.style.display = '';
       window.addEventListener('keydown', keys, true);
       paint();
       void refresh().then(() => {
+        if (at.room || at.pass || at.page) return aim(at);
         /* Straight into whatever is being drawn, if only one room is. */
         if (board && !sheet) {
           const drawing = board.rooms.filter((room) => room.state === 'drawing');

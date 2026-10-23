@@ -15,7 +15,7 @@ import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 
-async function knock(args) {
+async function knock(args, route = '/start') {
   const file = process.env.MENDER_DOOR;
   if (!file) throw new Error('this session was not started by Mender, so there is no village to ask.');
   let door;
@@ -24,7 +24,7 @@ async function knock(args) {
   } catch {
     throw new Error('Mender is not answering; is the app running?');
   }
-  const res = await fetch(`http://127.0.0.1:${door.port}/start`, {
+  const res = await fetch(`http://127.0.0.1:${door.port}${route}`, {
     method: 'POST',
     headers: { authorization: `Bearer ${door.token}`, 'content-type': 'application/json' },
     body: JSON.stringify({ ...args, cwd: process.env.MENDER_CWD ?? process.cwd() }),
@@ -112,6 +112,27 @@ async function keep(at, image, label) {
   }
   await copyFile(full, join(into, name));
   return relative(at.design, join(into, name));
+}
+
+/** A page drawn for the table, pointed at where it is rather than copied:
+    a page leans on the pictures and styles beside it, which a copy would
+    leave behind. Inside the checkout it is kept relative to design/, so the
+    board travels with the repository. */
+async function pageAt(at, page) {
+  if (!page) return undefined;
+  const cwd = process.env.MENDER_CWD ?? process.cwd();
+  let full = isAbsolute(page) ? page : resolve(cwd, page);
+  try {
+    await stat(full);
+  } catch {
+    full = resolve(at.design, page);
+    try {
+      await stat(full);
+    } catch {
+      throw new Error(`there is no page at ${page}.`);
+    }
+  }
+  return full === at.top || full.startsWith(at.top + sep) ? relative(at.design, full) : full;
 }
 
 function roomFor(board, room, create = true) {
@@ -211,6 +232,12 @@ const drafting = (fn) => (args) => {
   return turn;
 };
 
+async function showOnTable(a) {
+  const at = await boardAt();
+  const page = a.page ? await pageAt(at, a.page) : undefined;
+  return knock({ path: at.top, room: a.room, pass: a.id, page }, '/table');
+}
+
 const TOOLS = [
   {
     name: 'start_session',
@@ -229,6 +256,21 @@ const TOOLS = [
       additionalProperties: false,
     },
     run: knock,
+  },
+  {
+    name: 'show_on_table',
+    description:
+      "Lays the drafting table open in Mender, in front of him, on a room, a pass held up, or an HTML page running live. This is how a design is shown to him here: never open a mockup, a compare page or any design HTML in Chrome or another browser. Pin the passes first, then show the room (to compare them side by side), the pass, or the page.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        room: { type: 'string', description: 'The room to open on.' },
+        id: { type: 'string', description: 'A pass to hold up.' },
+        page: { type: 'string', description: 'An HTML page to hold up running (absolute, or relative to your folder). With `id`, that pass is shown as its page.' },
+      },
+      additionalProperties: false,
+    },
+    run: showOnTable,
   },
   {
     name: 'drafting_table',
@@ -255,7 +297,7 @@ const TOOLS = [
           items: { type: 'object', properties: { name: { type: 'string' }, image: { type: 'string' } }, required: ['name', 'image'] },
         },
         said: { type: 'string', description: 'One line on what it tries.' },
-        page: { type: 'string', description: 'The live page or file it was rendered from, if any.' },
+        page: { type: 'string', description: 'The HTML page it was rendered from, if any. The table holds it up running, beside the picture, so he never needs a browser to see it.' },
       },
       required: ['room', 'question', 'id', 'image'],
       additionalProperties: false,
@@ -267,7 +309,7 @@ const TOOLS = [
       const pass = { id: String(a.id), name: a.name ?? '', image: await keep(at, a.image, `${room.id}-${a.id}`), variants: [] };
       for (const v of a.variants ?? []) pass.variants.push({ name: v.name, image: await keep(at, v.image, `${room.id}-${a.id}-${v.name}`) });
       if (a.said) pass.said = a.said;
-      if (a.page) pass.page = a.page;
+      if (a.page) pass.page = await pageAt(at, a.page);
       pass.at = new Date().toISOString();
       question.passes.push(pass);
       if (question.state !== 'open') question.state = 'open';

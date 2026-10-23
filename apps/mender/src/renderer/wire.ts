@@ -6,7 +6,13 @@ import {
   type ContractClient,
   type DomPortLike,
 } from '@emdash/wire/rpc';
-import { MENDER_WIRE_CHANNEL, type Grip, type MenuCommand, type Watching } from '@shared/channels';
+import {
+  MENDER_WIRE_CHANNEL,
+  type Grip,
+  type MenuCommand,
+  type TableAsk,
+  type Watching,
+} from '@shared/channels';
 import { menderWireContract, type menderDomainContracts } from '@shared/contract';
 
 declare global {
@@ -23,6 +29,8 @@ declare global {
       watching: (to: (now: Watching) => void) => void;
       /** Which session a clicked notification wants him standing in. */
       attend: (to: (task: string, first?: string) => void) => void;
+      /** A design a session wants laid on the drafting table. */
+      table: (to: (ask: TableAsk) => void) => void;
       /** How many villagers are still lit, named before a quit happens. */
       quitCost: (to: (n: number) => void) => void;
       /** The second press: quit anyway. */

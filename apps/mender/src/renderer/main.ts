@@ -3887,6 +3887,23 @@ async function boot(): Promise<void> {
       tableView().open({ project: project.name, path: project.path });
     };
 
+    /* A session that has drawn something lays it on the table itself, in
+       front of him, rather than in a browser tab he has to go and find: the
+       board its own checkout keeps, on the room and pass it names. */
+    window.mender?.table?.((ask) => {
+      const project = projects.find((one) => one.id === ask.project);
+      if (!project) return;
+      if (quest) closeJira();
+      tableOf = project;
+      tableView().open({
+        project: project.name,
+        path: ask.path,
+        room: ask.room,
+        pass: ask.pass,
+        page: ask.page,
+      });
+    });
+
     /* Which cards carry a session's light follows the lanterns. */
     window.setInterval(() => {
       if (quest) void litTickets().then((lit) => jiraView().lit(lit));

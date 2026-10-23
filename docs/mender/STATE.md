@@ -4405,3 +4405,13 @@ at a time, and a note pinned through the tool showed up on the open board
 and went again when removed. Starting a session from a brief was not driven,
 since it runs a real turn.
 
+**Designs shown on the table, not in Chrome (2026-10-23).** Sessions get
+`show_on_table`, which lays the drafting table open in front of him on a
+room, a pass, or an HTML page; a pass pinned with its page carries "the page
+itself" as one of its looks and runs live on the table. The design prompt
+and the designing-concepts skill now say to show designs there and never to
+open a compare page in Chrome. Driven in a dev instance: Aurio's
+compare-book.html came up live from the tool with the app out on the
+island, a throwaway project's pass pinned with its page opened on its page,
+the picture look switched back, and Escape inside the page stepped out.
+

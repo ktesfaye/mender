@@ -25,6 +25,18 @@ export type Watching = 'front' | 'behind' | 'gone';
  */
 export const MENDER_ATTEND_CHANNEL = 'mender:attend';
 
+/** A session asking for its design to be laid on the drafting table, in
+    front of him, rather than opened in a browser somewhere he isn't. */
+export const MENDER_TABLE_CHANNEL = 'mender:table';
+
+export interface TableAsk {
+  project: string;
+  path: string;
+  room?: string;
+  pass?: string;
+  page?: string;
+}
+
 /**
  * Channels for naming the cost of quitting before it happens.
  *

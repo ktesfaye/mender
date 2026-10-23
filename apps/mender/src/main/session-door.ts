@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { dirname, join, sep } from 'node:path';
 import { pluginRegistry } from '@emdash/plugins/agents';
 import { app, BrowserWindow } from 'electron';
-import { MENDER_ATTEND_CHANNEL } from '@shared/channels';
+import { MENDER_ATTEND_CHANNEL, MENDER_TABLE_CHANNEL } from '@shared/channels';
 import type { Agents } from './agents';
 import type { Projects } from './projects';
 import type { Tasks } from './tasks';
@@ -27,6 +27,15 @@ interface Start {
   isolated?: boolean;
   terminal?: boolean;
   show?: boolean;
+}
+
+/** Which part of the drafting table to lay over the village. `path` is the
+    checkout the board sits in, which may be a session's own copy. */
+interface Table {
+  path: string;
+  room?: string;
+  pass?: string;
+  page?: string;
 }
 
 export interface SessionDoor {
@@ -81,7 +90,10 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
     if (body.agent) {
       const known = pluginRegistry
         .getAll()
-        .some((plugin) => plugin.metadata.id === body.agent && plugin.capabilities.acp.kind === 'supported');
+        .some(
+          (plugin) =>
+            plugin.metadata.id === body.agent && plugin.capabilities.acp.kind === 'supported'
+        );
       if (!known) return { ok: false, text: `no agent called ${body.agent} is here.` };
       await tasks.rehand(id, body.agent);
     }
@@ -100,12 +112,29 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
     };
   };
 
+  const table = async (body: Table): Promise<{ ok: boolean; text: string }> => {
+    const path = String(body.path ?? '');
+    const here = await whereIs(path);
+    if (!here) return { ok: false, text: 'that folder is not one of the village’s projects.' };
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win || win.isDestroyed()) return { ok: false, text: 'the village has no window open.' };
+    win.webContents.send(MENDER_TABLE_CHANNEL, {
+      project: here.project,
+      path,
+      room: body.room,
+      pass: body.pass,
+      page: body.page,
+    });
+    return { ok: true, text: 'it is up on the drafting table in Mender, in front of him.' };
+  };
+
   const server = createServer((request, response) => {
     const done = (code: number, payload: unknown) => {
       response.writeHead(code, { 'content-type': 'application/json' });
       response.end(JSON.stringify(payload));
     };
-    if (request.method !== 'POST' || request.url !== '/start') return done(404, {});
+    if (request.method !== 'POST' || (request.url !== '/start' && request.url !== '/table'))
+      return done(404, {});
     if (request.headers.authorization !== `Bearer ${token}`) return done(401, {});
     let raw = '';
     request.on('data', (chunk) => {
@@ -113,13 +142,13 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
       if (raw.length > 100_000) request.destroy();
     });
     request.on('end', () => {
-      let body: Start;
+      let body: unknown;
       try {
-        body = JSON.parse(raw) as Start;
+        body = JSON.parse(raw);
       } catch {
         return done(400, { ok: false, text: 'not json.' });
       }
-      start(body).then(
+      (request.url === '/table' ? table(body as Table) : start(body as Start)).then(
         (result) => done(200, result),
         (error) => done(500, { ok: false, text: String(error?.message ?? error) })
       );
