@@ -91,6 +91,8 @@ export interface Shelf {
   fold(away?: boolean): void;
   /** The picture on the sky's slot: what the sky over the island is doing now. */
   setSky(picture: string): void;
+  /** Which of the project tokens have anything behind them for the project stood in. */
+  setTools(tools: { jira: boolean; drafting: boolean }): void;
   close(): void;
 }
 
@@ -562,6 +564,7 @@ export function makeShelf(
   named(fire, () => 'the island');
   fire.addEventListener('click', () => out());
   let inside = false;
+  let tools = { jira: false, drafting: false };
 
   const nodes = new Map<string, HTMLDivElement>();
   const held = new Map<string, OnShelf>();
@@ -649,8 +652,8 @@ export function makeShelf(
     const was = inside;
     inside = projects.some((project) => project.here);
     up(fire, inside, TOKEN);
-    up(jira, inside && Boolean(quest), TOKEN);
-    up(draft, inside && Boolean(drafting), TOKEN);
+    up(jira, inside && tools.jira && Boolean(quest), TOKEN);
+    up(draft, inside && tools.drafting && Boolean(drafting), TOKEN);
     up(weather, !inside, TOKEN);
     /* Walking into a yard folds it shut and walking back out to the island
        opens it; in between it stays however he left it. */
@@ -906,6 +909,11 @@ export function makeShelf(
   return {
     show,
     fold,
+    setTools: (next) => {
+      if (next.jira === tools.jira && next.drafting === tools.drafting) return;
+      tools = next;
+      show(last);
+    },
     setSky: (picture) => {
       if (skyMark.src !== picture) skyMark.src = picture;
     },

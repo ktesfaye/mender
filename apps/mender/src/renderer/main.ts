@@ -229,6 +229,7 @@ async function boot(): Promise<void> {
     let openTheSky = (): void => undefined;
     let openTheBoard = (): void => undefined;
     let openTheTable = (): void => undefined;
+    let refreshTools = (): void => undefined;
     let closeTheTable = (): void => undefined;
     let rackMenu = (_id: string, _x: number, _y: number): void => undefined;
     const shelf = makeShelf(
@@ -1331,6 +1332,7 @@ async function boot(): Promise<void> {
           ...(wantsOf(project.id) ? { wants: wantsOf(project.id) } : {}),
         }))
       );
+      refreshTools();
     };
 
     /**
@@ -3886,6 +3888,31 @@ async function boot(): Promise<void> {
       tableOf = project;
       tableView().open({ project: project.name, path: project.path });
     };
+
+    /* The Jira diamond and the pinned sheet hang only where there is
+       something behind them: a project with no board linked and no designs
+       drawn has neither. Looked at again every few seconds, since a session
+       can pin its first design at any moment. */
+    let toolsAsked = 0;
+    refreshTools = () => {
+      const project = open ? projectOn(open.district) : undefined;
+      if (!project) return;
+      const asked = ++toolsAsked;
+      void Promise.all([
+        client.jira.linkOf({ project: project.id }).catch(() => null),
+        client.drafting.read({ path: project.path, stamp: 0 }).catch(() => null),
+      ]).then(([link, table]) => {
+        const now = open ? projectOn(open.district) : undefined;
+        if (asked !== toolsAsked || now?.id !== project.id) return;
+        shelf.setTools({
+          jira: Boolean(link) || quest?.project.id === project.id,
+          drafting: Boolean(table && (table.board || table.trouble)) || tableOf?.id === project.id,
+        });
+      });
+    };
+    window.setInterval(() => {
+      if (open) refreshTools();
+    }, 4000);
 
     /* A session that has drawn something lays it on the table itself, in
        front of him, rather than in a browser tab he has to go and find: the
