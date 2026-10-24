@@ -62,6 +62,7 @@ export function holdUp(
     });
     return el;
   };
+  press(shut, () => close());
   const percent = h('b', '', '100%');
   const zoomBar = h('div', 'gr-pv-zoom');
   zoomBar.append(
