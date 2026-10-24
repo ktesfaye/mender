@@ -90,14 +90,30 @@ export function watchDockFire(options: DockFireOptions): void {
     if (lit || Date.now() - outSince <= SMOULDER_MS) timer = setInterval(draw, FRAME_MS);
   };
 
+  /* A command left running in the background keeps the fire lit, though the
+     turn that started it is long done and its mood says nothing of it. */
+  let working = false;
+  let behind = false;
+  const settle = () => {
+    const now = working || behind;
+    if (now === lit) return;
+    lit = now;
+    if (!lit) outSince = Date.now();
+    start();
+  };
   observe(
     options.moods ?? options.agents.moods(),
     (snapshot) => {
-      const now = anyWorking(snapshot.value);
-      if (now === lit) return;
-      lit = now;
-      if (!lit) outSince = Date.now();
-      start();
+      working = anyWorking(snapshot.value);
+      settle();
+    },
+    { scope: options.scope }
+  );
+  observe(
+    options.agents.glances(),
+    (snapshot) => {
+      behind = Object.values(snapshot.value).some((glance) => (glance.background ?? 0) > 0);
+      settle();
     },
     { scope: options.scope }
   );
