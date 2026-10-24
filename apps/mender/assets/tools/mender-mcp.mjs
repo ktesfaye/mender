@@ -27,7 +27,11 @@ async function knock(args, route = '/start') {
   const res = await fetch(`http://127.0.0.1:${door.port}${route}`, {
     method: 'POST',
     headers: { authorization: `Bearer ${door.token}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ ...args, cwd: process.env.MENDER_CWD ?? process.cwd() }),
+    body: JSON.stringify({
+      ...args,
+      cwd: process.env.MENDER_CWD ?? process.cwd(),
+      conversation: process.env.MENDER_CONVERSATION,
+    }),
   });
   const out = await res.json().catch(() => ({ ok: false, text: `Mender answered ${res.status}.` }));
   if (!out.ok) throw new Error(out.text);
@@ -256,6 +260,20 @@ const TOOLS = [
       additionalProperties: false,
     },
     run: knock,
+  },
+  {
+    name: 'set_model',
+    description:
+      'Switches the model this session thinks with, on the spot, by a plain name such as "opus", "haiku" or "sonnet 5.5". Use it whenever you are asked to change or switch your model, instead of typing /model or pressing keys in the window. It matches against what this agent itself offers and says so if the name is unclear.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        model: { type: 'string', description: 'The model, in plain words: "opus", "haiku 5.5", "fable".' },
+      },
+      required: ['model'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ model: a.model }, '/model'),
   },
   {
     name: 'show_on_table',

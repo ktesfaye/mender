@@ -150,6 +150,10 @@ export interface Agents {
     what: 'hand' | 'model' | 'mode' | 'effort' | 'collab' | 'defaultModel' | 'defaultEffort',
     id: string
   ): Promise<Told>;
+  /** Switch what a session thinks with by a plain name ("opus", "haiku 5.5"),
+      for the agent itself asking through its own tool. `conversation` is the
+      agent's own id, which is all it knows of itself. */
+  switchModel(conversation: string, want: string): Promise<{ ok: boolean; text: string }>;
   tool(task: string, name: string, on: boolean): Promise<Told>;
   /** Add one from the catalogue of suggested servers. */
   addTool(task: string, key: string): Promise<Told>;
@@ -1412,6 +1416,34 @@ export function createAgents(
     kit: (task) => kits.kit(task),
     moods: () => island,
     glances: () => glances,
+
+    async switchModel(conversation, want) {
+      const task = Object.keys(lodgers).find((each) => lodgers[each] === conversation);
+      if (!task) return { ok: false, text: 'that session is not one of the village’s.' };
+      const asked = want.trim().toLowerCase();
+      if (!asked) return { ok: false, text: 'say which model.' };
+      const kit = peek(kits.kit(task));
+      const listed = kit.models;
+      const words = asked.split(/\s+/);
+      const hits = listed.filter((each) => {
+        const said = `${each.id} ${each.name}`.toLowerCase();
+        return each.id.toLowerCase() === asked || words.every((word) => said.includes(word));
+      });
+      const exact = hits.find((each) => each.id.toLowerCase() === asked);
+      const pick = exact ?? (hits.length === 1 ? hits[0] : undefined);
+      if (!pick) {
+        const names = listed.map((each) => each.name).join(', ');
+        return {
+          ok: false,
+          text: hits.length
+            ? `"${want}" matches more than one: ${hits.map((each) => each.name).join(', ')}.`
+            : `no model like "${want}" here; this agent offers ${names || 'nothing yet'}.`,
+        };
+      }
+      const done = await kits.choose(task, 'model', pick.id);
+      if (!done.success) return { ok: false, text: String(done.error ?? 'it would not switch.') };
+      return { ok: true, text: `switched to ${pick.name}; it takes hold from the next turn.` };
+    },
 
     async choose(task, what, id) {
       /* A session that went home still lists what it thinks with, so picking

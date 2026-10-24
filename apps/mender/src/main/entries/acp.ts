@@ -93,7 +93,7 @@ const WAITING = [
  * agent's config already lists. Left out when the app did not say where it
  * lives, which is only ever a worker started by hand.
  */
-function villageTools(cwd: string) {
+function villageTools(cwd: string, conversation: string) {
   const door = process.env.MENDER_DOOR;
   const tools = process.env.MENDER_TOOLS_DIR;
   if (!door || !tools) return [];
@@ -103,7 +103,7 @@ function villageTools(cwd: string) {
       transport: 'stdio' as const,
       command: 'node',
       args: [`${tools}/mender-mcp.mjs`],
-      env: { MENDER_DOOR: door, MENDER_CWD: cwd },
+      env: { MENDER_DOOR: door, MENDER_CWD: cwd, MENDER_CONVERSATION: conversation },
     },
   ];
 }
@@ -113,6 +113,12 @@ const STARTING = [
   'server. Whenever you are asked to launch, open or spin up a new session or agent here, use it:',
   'it hangs a lantern on the rail and walks the person into the new session so they watch it work.',
   'Never click the lantern, drive the window, or run a background claude for that.',
+].join(' ');
+
+const MODEL = [
+  'You can change the model you think with through the set_model tool of the mender server: name it',
+  'plainly ("opus", "haiku", "sonnet 5.5") and it switches this session on the spot. Use it whenever',
+  'you are asked to switch or change your model. Never press keys or type /model into the window.',
 ].join(' ');
 
 const DRAFTING = [
@@ -132,10 +138,10 @@ void runWireComponentWorker(
     pluginRegistry,
     sessionMeta: () => ({
       systemPrompt: {
-        append: `${BOARD}\n\n${ASKING}\n\n${HANDS}\n\n${WAITING}\n\n${STARTING}\n\n${DRAFTING}`,
+        append: `${BOARD}\n\n${ASKING}\n\n${HANDS}\n\n${WAITING}\n\n${STARTING}\n\n${MODEL}\n\n${DRAFTING}`,
       },
     }),
-    extraMcpServers: (_provider, cwd) => villageTools(cwd),
+    extraMcpServers: (_provider, cwd, conversation) => villageTools(cwd, conversation),
   }),
   { logger }
 );

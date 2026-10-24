@@ -84,7 +84,12 @@ export class SessionMaterializer {
     }
 
     const connection = acquired.value;
-    const mcpServers = await this.resolveSessionMcpServers(input.providerId, input.cwd, connection);
+    const mcpServers = await this.resolveSessionMcpServers(
+      input.providerId,
+      input.cwd,
+      entry.conversationId,
+      connection
+    );
     const mcpServerSummary = summarizeAcpMcpServers(mcpServers);
     const processOwner = routeOwnerId(connection.key, connection.generation);
     let record: SessionRecord | null = null;
@@ -358,6 +363,7 @@ export class SessionMaterializer {
   private async resolveSessionMcpServers(
     providerId: string,
     cwd: string,
+    conversationId: string,
     connection: AcpConnectionEntry
   ) {
     try {
@@ -370,7 +376,7 @@ export class SessionMaterializer {
         return [];
       }
       return registrationsToAcpMcpServers(
-        [...result.data, ...(this.deps.extraMcpServers?.(providerId, cwd) ?? [])],
+        [...result.data, ...(this.deps.extraMcpServers?.(providerId, cwd, conversationId) ?? [])],
         connection.mcpCapabilities
       );
     } catch (error) {

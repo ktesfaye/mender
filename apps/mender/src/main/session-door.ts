@@ -128,12 +128,15 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
     return { ok: true, text: 'it is up on the drafting table in Mender, in front of him.' };
   };
 
+  const model = async (body: { conversation?: string; model?: string }) =>
+    agents.switchModel(String(body.conversation ?? ''), String(body.model ?? ''));
+
   const server = createServer((request, response) => {
     const done = (code: number, payload: unknown) => {
       response.writeHead(code, { 'content-type': 'application/json' });
       response.end(JSON.stringify(payload));
     };
-    if (request.method !== 'POST' || (request.url !== '/start' && request.url !== '/table'))
+    if (request.method !== 'POST' || (request.url !== '/start' && request.url !== '/table' && request.url !== '/model'))
       return done(404, {});
     if (request.headers.authorization !== `Bearer ${token}`) return done(401, {});
     let raw = '';
@@ -148,7 +151,12 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
       } catch {
         return done(400, { ok: false, text: 'not json.' });
       }
-      (request.url === '/table' ? table(body as Table) : start(body as Start)).then(
+      (request.url === '/table'
+        ? table(body as Table)
+        : request.url === '/model'
+          ? model(body as { conversation?: string; model?: string })
+          : start(body as Start)
+      ).then(
         (result) => done(200, result),
         (error) => done(500, { ok: false, text: String(error?.message ?? error) })
       );
