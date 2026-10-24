@@ -114,6 +114,30 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
   let paging: string | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
   let canvasScroll = 0;
+  let query = '';
+  /** Set on opening, so the first paint takes the scroll left at closing. */
+  let restoring = false;
+  const finder = h('input', 'dt-find') as HTMLInputElement;
+  finder.type = 'text';
+  finder.placeholder = 'search the designs';
+  finder.spellcheck = false;
+  finder.addEventListener('input', () => {
+    query = finder.value;
+    held = null;
+    canvasScroll = 0;
+    repaint();
+  });
+
+  /** Paint without the search box losing the cursor it is holding. */
+  function repaint(): void {
+    const typing = document.activeElement === finder;
+    const [from, to] = [finder.selectionStart, finder.selectionEnd];
+    paint();
+    if (typing) {
+      finder.focus();
+      finder.setSelectionRange(from, to);
+    }
+  }
 
   const abs = (rel: string): string => (rel.startsWith('/') ? rel : `${root}/${rel}`);
 
@@ -206,7 +230,9 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
         : '';
 
   function paint(): void {
-    const keep = win.querySelector<HTMLElement>('.dt-canvas')?.scrollTop ?? canvasScroll;
+    const keep = restoring
+      ? canvasScroll
+      : (win.querySelector<HTMLElement>('.dt-canvas')?.scrollTop ?? canvasScroll);
     const was = win.querySelector<HTMLElement>(':scope > .dt-hold');
     const key = holdKey();
     const stays = was && key && was.dataset.key === key ? was : null;
@@ -239,8 +265,16 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     const titles = h(
       'div',
       '',
-      h('h1', 'g-serif dt-h1', room ? room.name : 'the finished thing'),
-      h('div', 'dt-sub g-mute', room ? room.about : board.about || board.title)
+      h(
+        'h1',
+        'g-serif dt-h1',
+        query.trim() ? 'searching' : room ? room.name : 'the finished thing'
+      ),
+      h(
+        'div',
+        'dt-sub g-mute',
+        query.trim() ? 'every pass, in every room' : room ? room.about : board.about || board.title
+      )
     );
     const chips = h('div', 'dt-chips');
     if (room) {
@@ -263,11 +297,16 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     body.append(rail());
     const canvas = h('div', 'dt-canvas');
     if (trouble) canvas.append(h('div', 'dt-trouble', trouble));
-    if (room) roomSheet(canvas, room);
+    if (query.trim()) results(canvas);
+    else if (room) roomSheet(canvas, room);
     else finished(canvas);
     body.append(canvas);
     put(body);
     canvas.scrollTop = keep;
+    if (restoring) {
+      restoring = false;
+      requestAnimationFrame(() => (canvas.scrollTop = keep));
+    }
     if (!stays && (held || paging)) {
       const over = held ? holdUp() : pageUp(paging!);
       over.dataset.key = key;
@@ -299,7 +338,9 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
 
   function rail(): HTMLElement {
     const el = h('div', 'dt-rail');
-    const all = h('div', `dt-sheet${sheet ? '' : ' on'}`);
+    finder.value = query;
+    el.append(finder);
+    const all = h('div', `dt-sheet${sheet || query.trim() ? '' : ' on'}`);
     all.append(h('b', '', 'the finished thing'));
     all.append(
       h(
@@ -315,7 +356,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     el.append(all);
     if (board!.rooms.length) el.append(h('div', 'g-pix dt-label', 'rooms'));
     for (const room of board!.rooms) {
-      const one = h('div', `dt-sheet${sheet === room.id ? ' on' : ''}`);
+      const one = h('div', `dt-sheet${sheet === room.id && !query.trim() ? ' on' : ''}`);
       const dot = h('span', 'g-dot');
       dot.style.background = STATE_DOT[room.state];
       const passes = room.questions.reduce((n, q) => n + q.passes.length, 0);
@@ -339,6 +380,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
 
   function show(id: string): void {
     sheet = id;
+    query = '';
     held = null;
     canvasScroll = 0;
     const canvas = win.querySelector<HTMLElement>('.dt-canvas');
@@ -346,6 +388,55 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     paint();
     const fresh = win.querySelector<HTMLElement>('.dt-canvas');
     if (fresh) fresh.scrollTop = 0;
+  }
+
+  /** Every pass, in every room, that the words in the search box all name. */
+  function results(canvas: HTMLElement): void {
+    const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const found: { room: DraftRoom; question: DraftQuestion; pass: DraftPass }[] = [];
+    for (const room of board!.rooms)
+      for (const question of room.questions)
+        for (const pass of question.passes) {
+          const hay = [
+            room.name,
+            room.about,
+            question.ask,
+            pass.id,
+            pass.name,
+            pass.said ?? '',
+            ...pass.variants.map((v) => v.name),
+            ...room.notes
+              .filter((n) => n.on === pass.id || n.on === question.ask)
+              .map((n) => n.said),
+          ]
+            .join(' ')
+            .toLowerCase();
+          if (words.every((w) => hay.includes(w))) found.push({ room, question, pass });
+        }
+    canvas.append(
+      band(
+        found.length ? `${found.length} ${found.length === 1 ? 'pass' : 'passes'}` : 'nothing',
+        `named "${query.trim()}"`
+      )
+    );
+    if (!found.length) {
+      canvas.append(h('div', 'dt-quiet g-mute', 'No pass, room, question or note says that.'));
+      return;
+    }
+    const grid = h('div', 'dt-found');
+    for (const { room, question, pass } of found) {
+      const picked = question.picked.includes(pass.id);
+      const one = h('div', `dt-hit${picked ? ' dt-took' : ''}`);
+      one.append(
+        pic(pass.image, 300),
+        h('b', '', `${pass.id}${pass.name ? ` · ${pass.name}` : ''}`),
+        h('div', 'dt-s', `${room.name} › ${question.ask}`)
+      );
+      if (picked) one.append(chip('taken', MOSS));
+      one.addEventListener('click', () => hold(room, question, pass));
+      grid.append(one);
+    }
+    canvas.append(grid);
   }
 
   const band = (title: string, note: string): HTMLElement =>
@@ -675,6 +766,10 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
         held = null;
         paging = null;
         paint();
+      } else if (query) {
+        query = '';
+        finder.value = '';
+        paint();
       } else if (sheet) show('');
       else hands.close();
       return;
@@ -727,12 +822,20 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
         board = null;
         stamp = undefined;
         sheet = '';
+        query = '';
+        held = null;
+        paging = null;
+        canvasScroll = 0;
         trouble = null;
       }
       where = at;
-      held = null;
-      paging = null;
+      if (at.room || at.pass || at.page) {
+        held = null;
+        paging = null;
+        query = '';
+      }
       up = true;
+      restoring = true;
       wash.style.display = '';
       window.addEventListener('keydown', keys, true);
       paint();
@@ -749,6 +852,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     },
     close() {
       if (!up) return;
+      canvasScroll = win.querySelector<HTMLElement>('.dt-canvas')?.scrollTop ?? canvasScroll;
       up = false;
       window.removeEventListener('keydown', keys, true);
       if (timer) clearInterval(timer);

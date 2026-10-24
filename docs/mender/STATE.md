@@ -4416,3 +4416,12 @@ compare-book.html came up live from the tool with the app out on the
 island, a throwaway project's pass pinned with its page opened on its page,
 the picture look switched back, and Escape inside the page stepped out.
 
+**Searching the table, and it keeps its place (2026-10-24).** A search box tops
+the table's rail; words in it find every pass in every room by its id, name,
+what was said, the question, the room and notes pinned to it, and a pass found
+is pressed to hold it up. Closing the table and opening it again lands on the
+same sheet, the same search, the same held pass and the same scroll rather than
+home. Driven in a dev instance on Aurio's real board: a search, a held pass,
+close by the margin, reopen, and the held pass, search and scroll were all
+still there.
+

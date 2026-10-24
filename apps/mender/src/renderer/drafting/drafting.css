@@ -653,3 +653,61 @@
   font-family: var(--g-pix, monospace);
   font-size: 11px;
 }
+
+.dt-find {
+  flex: none;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 13px;
+  border: 0;
+  outline: 0;
+  border-radius: 12px;
+  background: rgba(255, 240, 215, 0.05);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+  color: var(--g-ink);
+  font: inherit;
+  font-size: 13px;
+}
+.dt-find:focus {
+  box-shadow: inset 0 0 0 1px rgba(255, 238, 210, 0.28);
+}
+.dt-find::placeholder {
+  color: var(--g-ink-3);
+}
+.dt-found {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.dt-hit {
+  cursor: pointer;
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(255, 240, 215, 0.035);
+  box-shadow: inset 0 0 0 1px var(--g-hair);
+}
+.dt-hit:hover {
+  background: rgba(255, 240, 215, 0.08);
+}
+.dt-hit img {
+  display: block;
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  border-radius: 7px;
+  margin-bottom: 8px;
+  background: rgba(255, 240, 215, 0.05);
+}
+.dt-hit b {
+  display: block;
+  color: var(--g-gold);
+  font-weight: 650;
+  font-size: 13.5px;
+}
+.dt-hit .g-chip {
+  margin-top: 6px;
+}
+.dt-took {
+  box-shadow: inset 0 0 0 2px rgba(155, 210, 138, 0.7);
+}
