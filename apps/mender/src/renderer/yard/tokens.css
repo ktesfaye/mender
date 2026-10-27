@@ -1485,6 +1485,9 @@ button.settings-row:hover .settings-row-main {
   min-width: 0;
 }
 .yard .prose-code-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
   padding: 5px 12px 3px;
   font-family: 'Silkscreen', var(--yard-face-mono);
   font-size: 10px;

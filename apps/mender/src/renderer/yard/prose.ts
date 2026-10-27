@@ -272,12 +272,22 @@ export function prose(
 function codeCard(text: string, lang: string): HTMLElement {
   const card = document.createElement('div');
   card.className = 'prose-code-card';
-  if (lang) {
-    const head = document.createElement('div');
-    head.className = 'prose-code-head';
-    head.textContent = lang;
-    card.appendChild(head);
-  }
+  const head = document.createElement('div');
+  head.className = 'prose-code-head';
+  const named = document.createElement('span');
+  named.textContent = lang;
+  head.appendChild(named);
+  const copy = document.createElement('span');
+  copy.className = 'press';
+  copy.textContent = 'copy';
+  copy.addEventListener('mousedown', (event) => event.preventDefault());
+  copy.addEventListener('click', () => {
+    window.mender.keep(text);
+    copy.textContent = 'copied';
+    window.setTimeout(() => (copy.textContent = 'copy'), 2000);
+  });
+  head.appendChild(copy);
+  card.appendChild(head);
   const code = document.createElement('pre');
   code.className = 'prose-block';
   if (!lang && !DRAWN.test(text)) code.classList.add('prose-block-wraps');

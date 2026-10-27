@@ -4425,3 +4425,7 @@ home. Driven in a dev instance on Aurio's real board: a search, a held pass,
 close by the margin, reopen, and the held pass, search and scroll were all
 still there.
 
+
+Every fenced code block on the board has a gold "copy" in its head that puts
+the whole block on the clipboard and says "copied" in place for a moment. Seen
+drawn in a dev instance; the click and the paste were not driven.
