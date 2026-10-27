@@ -254,11 +254,36 @@ export function finding(written: string, village: Village, bound: Keybindings = 
   field.style.marginTop = '22px';
   const said = h('span', written ? '' : 'ph', written || 'a name, a session, a doing');
   said.appendChild(cursor());
+  /* What Return will open, finished off in the field the way Spotlight does:
+     the rest of the project's name, lit, after what was typed. */
+  const top = looked
+    ? village.projects.find((project) => project.name.toLowerCase().startsWith(looked))
+    : undefined;
+  if (top && top.name.length > looked.length) {
+    const rest = h('span', '', top.name.slice(written.trim().length));
+    rest.style.cssText = 'background:rgba(242,198,109,.28);border-radius:3px;color:#f6ecdb';
+    said.appendChild(rest);
+  }
   field.append(sign('find', '#f2c66d', 17), said);
   rows.push(dom(field));
 
   const named = (name: string): boolean => !looked || name.toLowerCase().includes(looked);
   const places: HTMLElement[] = [];
+  /* A name that starts with what was typed outranks one that merely
+     contains it, so the project you meant is the one under the keyboard. */
+  const starts = (name: string): boolean => !!looked && name.toLowerCase().startsWith(looked);
+  const projectsInOrder = village.projects
+    .filter((project) => named(project.name))
+    .sort((a, b) => Number(starts(b.name)) - Number(starts(a.name)));
+  for (const project of projectsInOrder) {
+    const el = h('div', 'gr-r');
+    const ic = h('span', 'gr-ic2');
+    ic.appendChild(sign('house', '#f2c66d', 16));
+    const t = h('div');
+    t.append(h('div', 'nm', project.name), h('div', 'ds', 'the project, its yard'));
+    el.append(ic, t);
+    places.push(pressable(el, `project:${project.id}`));
+  }
   for (const task of village.tasks) {
     const project = village.projects.find((each) => each.id === task.project);
     if (!named(task.title) && !named(project?.name ?? '')) continue;
@@ -275,16 +300,6 @@ export function finding(written: string, village: Village, bound: Keybindings = 
       el.appendChild(flag);
     }
     places.push(pressable(el, `task:${task.id}`));
-  }
-  for (const project of village.projects) {
-    if (!named(project.name)) continue;
-    const el = h('div', 'gr-r');
-    const ic = h('span', 'gr-ic2');
-    ic.appendChild(sign('house', '#f2c66d', 16));
-    const t = h('div');
-    t.append(h('div', 'nm', project.name), h('div', 'ds', 'the project, its yard'));
-    el.append(ic, t);
-    places.push(pressable(el, `project:${project.id}`));
   }
   const doings: HTMLElement[] = [];
   for (const doing of DOINGS) {

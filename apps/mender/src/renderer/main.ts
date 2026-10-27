@@ -4948,8 +4948,11 @@ async function boot(): Promise<void> {
         looking = { ...looking, written };
         rewrite(finding(written, { projects, tasks, moods: seen, where: standing() }, keybindings));
         // The finder always has something under the keyboard, so return means
-        // the obvious thing without you having to aim first.
-        if (!yard.walk.on) yard.walk.step(1);
+        // the obvious thing without you having to aim first. The top row is
+        // re-picked on every letter: the one stood on a moment ago may be gone,
+        // or no longer the best match.
+        yard.walk.stand(null);
+        yard.walk.step(1);
         return;
       }
       if (titling) {
