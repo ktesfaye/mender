@@ -410,6 +410,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   let dismissedAt: string | null = null;
   /* The list is only what you reach for, with the rest a down-arrow away. */
   let onlyUsual = false;
+  let lastUsual: string | undefined;
+  let opening: string | undefined;
   /* Walk and press it by key, before anything else hears about the key: the
      line is where your hands are and this is what the line has open. */
   line.onKey((event) => {
@@ -430,7 +432,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       }
       return recall(event);
     }
-    if (event.key === 'ArrowDown' && onlyUsual) {
+    if (event.key === 'ArrowDown' && onlyUsual && walk.on === lastUsual) {
+      opening = lastUsual;
       does.press('slash:more');
       return true;
     }
@@ -1353,6 +1356,7 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       if (holdsRecalled()) offers = [];
       offers = newestModels(offers);
       onlyUsual = offers.length > 0 && offers.every((one) => one.section === 'recently used' || one.held);
+      lastUsual = offers[offers.length - 1]?.pick;
       /* Asked before the lines are replaced, because afterwards there is
          nothing left to ask about. */
       const wasInside = standingInOverlay();
@@ -1369,10 +1373,12 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       const now = offers.map((one) => one.pick).join('\u0000');
       const moved = now !== lastNarrowed;
       lastNarrowed = now;
-      const first = offers[0]?.pick;
+      const after = opening ? offers[offers.findIndex((one) => one.pick === opening) + 1]?.pick : undefined;
+      opening = undefined;
+      const first = after ?? offers[0]?.pick;
       if (first && (moved || !standingInOverlay())) {
         walk.stand(first);
-        if (moved) menu.root.querySelector('.gm-list')?.scrollTo({ top: 0 });
+        if (moved && !after) menu.root.querySelector('.gm-list')?.scrollTo({ top: 0 });
       } else if (!offers.length && wasInside) walk.stand(null);
       else walk.again();
     },
