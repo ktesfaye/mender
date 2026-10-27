@@ -340,6 +340,15 @@ async function boot(): Promise<void> {
         if (inside) saveDraft(inside.id, text);
       },
       say: (text) => {
+        /* The finder is open over a session: Return on the line is Return on
+           the finder, which opens whatever is highlighted rather than sending
+           what was typed to the agent. */
+        if (looking) {
+          const chose = yard.walk.on;
+          if (chose) go(chose);
+          else void unlook();
+          return;
+        }
         /* Return on an empty line, with a question up that has something to
            send, sends it: picks on a question that takes several, or the
            whole form from the check before it goes. */
