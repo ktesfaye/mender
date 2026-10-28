@@ -3,6 +3,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { dirname, join, sep } from 'node:path';
 import { pluginRegistry } from '@emdash/plugins/agents';
+import { peek } from '@emdash/wire/state';
 import { app, BrowserWindow } from 'electron';
 import { MENDER_ATTEND_CHANNEL, MENDER_TABLE_CHANNEL } from '@shared/channels';
 import type { Agents } from './agents';
@@ -131,13 +132,109 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
   const model = async (body: { conversation?: string; model?: string }) =>
     agents.switchModel(String(body.conversation ?? ''), String(body.model ?? ''));
 
+  /** The sessions in the project the asker stands in, and which of them is
+      the asker. Reaching further than its own project is not a thing a
+      session can do to another. */
+  const neighbours = async (body: { cwd?: string; conversation?: string }) => {
+    const here = await whereIs(String(body.cwd ?? ''));
+    if (!here) return null;
+    const me = agents.taskOf(String(body.conversation ?? ''));
+    return { me, project: here.project, all: await tasks.list(here.project) };
+  };
+
+  const pick = (
+    near: NonNullable<Awaited<ReturnType<typeof neighbours>>>,
+    which: string
+  ): { task: (typeof near.all)[number] } | { text: string } => {
+    const want = which.trim().toLowerCase();
+    if (!want) return { text: 'say which session.' };
+    const exact = near.all.filter(
+      (each) => each.id === which || each.id.startsWith(which) || each.title.toLowerCase() === want
+    );
+    const hits = exact.length ? exact : near.all.filter((each) => each.title.toLowerCase().includes(want));
+    if (hits.length === 1) return { task: hits[0] };
+    if (!hits.length) return { text: `no session like "${which}" in this project.` };
+    return { text: `"${which}" matches more than one: ${hits.map((each) => each.title).join(', ')}.` };
+  };
+
+  const sessions = async (body: { cwd?: string; conversation?: string }) => {
+    const near = await neighbours(body);
+    if (!near) return { ok: false, text: 'that folder is not one of the village’s projects.' };
+    const lines = near.all.map((each) => {
+      const state = peek(agents.working(each.id));
+      const mood = state?.mood ?? 'empty';
+      return `${each.id === near.me ? '(you) ' : ''}${each.title} [${each.id}] ${mood}${state?.doing ? `: ${state.doing}` : ''}`;
+    });
+    return { ok: true, text: lines.length ? lines.join('\n') : 'no sessions in this project.' };
+  };
+
+  const resolve = async (body: { cwd?: string; conversation?: string; session?: string }) => {
+    const near = await neighbours(body);
+    if (!near) return { text: 'that folder is not one of the village’s projects.' };
+    const found = pick(near, String(body.session ?? ''));
+    if ('text' in found) return found;
+    if (found.task.id === near.me) return { text: 'that is you.' };
+    return { task: found.task, me: near.all.find((each) => each.id === near.me) };
+  };
+
+  const tell = async (body: { cwd?: string; conversation?: string; session?: string; text?: string }) => {
+    const text = String(body.text ?? '').trim();
+    if (!text) return { ok: false, text: 'say what to tell it.' };
+    const found = await resolve(body);
+    if ('text' in found) return { ok: false, text: found.text };
+    const from = found.me?.title ?? 'another session';
+    const told = await agents.tell(found.task.id, `From the session "${from}": ${text}`);
+    if (!told.success) return { ok: false, text: `it would not take that: ${JSON.stringify(told.error)}` };
+    return { ok: true, text: `told "${found.task.title}". It reads it at its next pause, or now if it is idle; use read_session to see what comes of it.` };
+  };
+
+  const read = async (body: { cwd?: string; conversation?: string; session?: string; last?: number }) => {
+    const found = await resolve(body);
+    if ('text' in found) return { ok: false, text: found.text };
+    const state = peek(agents.working(found.task.id));
+    if (!state) return { ok: true, text: `"${found.task.title}" has nobody in it yet.` };
+    const count = Math.max(1, Math.min(20, Math.floor(Number(body.last) || 4)));
+    const said = state.lines.filter((each) => each.kind === 'said').slice(-count);
+    const doing = state.doing.replace(/\.$/, '');
+    const head = `"${found.task.title}" is ${state.mood}${doing ? `: ${doing}` : ''}${state.asking ? `. It is asking: ${state.asking.text}` : ''}.`;
+    const body_ = said.map((each) => each.text).join('\n\n');
+    return { ok: true, text: body_ ? `${head}\n\n${body_.slice(-6000)}` : head };
+  };
+
+  const stop = async (body: { cwd?: string; conversation?: string; session?: string }) => {
+    const found = await resolve(body);
+    if ('text' in found) return { ok: false, text: found.text };
+    const done = await agents.hush(found.task.id, false, true);
+    if (!done.success) return { ok: false, text: `it would not stop: ${JSON.stringify(done.error)}` };
+    return { ok: true, text: `stopped "${found.task.title}". It keeps its place; tell it something to carry on.` };
+  };
+
+  const setModel = async (body: { cwd?: string; conversation?: string; session?: string; model?: string }) => {
+    const found = await resolve(body);
+    if ('text' in found) return { ok: false, text: found.text };
+    const conversation = agents.conversationOf(found.task.id);
+    if (!conversation) return { ok: false, text: `"${found.task.title}" has no agent awake to switch.` };
+    return agents.switchModel(conversation, String(body.model ?? ''));
+  };
+
+  const routes: Record<string, (body: never) => Promise<{ ok: boolean; text: string }>> = {
+    '/start': start as never,
+    '/table': table as never,
+    '/model': model as never,
+    '/sessions': sessions as never,
+    '/tell': tell as never,
+    '/read': read as never,
+    '/stop': stop as never,
+    '/model-of': setModel as never,
+  };
+
   const server = createServer((request, response) => {
     const done = (code: number, payload: unknown) => {
       response.writeHead(code, { 'content-type': 'application/json' });
       response.end(JSON.stringify(payload));
     };
-    if (request.method !== 'POST' || (request.url !== '/start' && request.url !== '/table' && request.url !== '/model'))
-      return done(404, {});
+    const route = request.url ? routes[request.url] : undefined;
+    if (request.method !== 'POST' || !route) return done(404, {});
     if (request.headers.authorization !== `Bearer ${token}`) return done(401, {});
     let raw = '';
     request.on('data', (chunk) => {
@@ -151,12 +248,7 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
       } catch {
         return done(400, { ok: false, text: 'not json.' });
       }
-      (request.url === '/table'
-        ? table(body as Table)
-        : request.url === '/model'
-          ? model(body as { conversation?: string; model?: string })
-          : start(body as Start)
-      ).then(
+      route(body as never).then(
         (result) => done(200, result),
         (error) => done(500, { ok: false, text: String(error?.message ?? error) })
       );

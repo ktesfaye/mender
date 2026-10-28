@@ -115,6 +115,13 @@ const STARTING = [
   'Never click the lantern, drive the window, or run a background claude for that.',
 ].join(' ');
 
+const SESSIONS = [
+  'Other sessions in this project can be worked with through the mender server: list_sessions to see who',
+  'is there, tell_session to say something to one, read_session to see what it said and whether it is',
+  'asking, stop_session to stop it, set_session_model to change what it thinks with. Tell, then check',
+  'back in short steps; never sit waiting on one in a loop. Start new ones with start_session.',
+].join(' ');
+
 const MODEL = [
   'You can change the model you think with through the set_model tool of the mender server: name it',
   'plainly ("opus", "haiku", "sonnet 5.5") and it switches this session on the spot. Use it whenever',
@@ -138,7 +145,7 @@ void runWireComponentWorker(
     pluginRegistry,
     sessionMeta: () => ({
       systemPrompt: {
-        append: `${BOARD}\n\n${ASKING}\n\n${HANDS}\n\n${WAITING}\n\n${STARTING}\n\n${MODEL}\n\n${DRAFTING}`,
+        append: `${BOARD}\n\n${ASKING}\n\n${HANDS}\n\n${WAITING}\n\n${STARTING}\n\n${SESSIONS}\n\n${MODEL}\n\n${DRAFTING}`,
       },
     }),
     extraMcpServers: (_provider, cwd, conversation) => villageTools(cwd, conversation),

@@ -276,6 +276,70 @@ const TOOLS = [
     run: (a) => knock({ model: a.model }, '/model'),
   },
   {
+    name: 'list_sessions',
+    description:
+      'Lists the other sessions in this project: their names, ids and what each is doing right now (working, asking, resting, hurt). Use it to find who you can tell, read or stop.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    run: () => knock({}, '/sessions'),
+  },
+  {
+    name: 'tell_session',
+    description:
+      'Says something to another session in this project, as if the person had written it on its line. It is signed with your session\'s name so it knows who is asking. It queues if that session is busy. Use read_session afterwards to see what came of it; do not wait in a loop.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session: { type: 'string', description: 'The other session\'s name or id, from list_sessions.' },
+        text: { type: 'string', description: 'What to tell it, plainly and self-contained.' },
+      },
+      required: ['session', 'text'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ session: a.session, text: a.text }, '/tell'),
+  },
+  {
+    name: 'read_session',
+    description:
+      'Reads another session in this project: its state, whether it is asking you something, and the last things it said.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session: { type: 'string', description: 'The other session\'s name or id.' },
+        last: { type: 'number', description: 'How many of its latest messages to read. Default 4.' },
+      },
+      required: ['session'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ session: a.session, last: a.last }, '/read'),
+  },
+  {
+    name: 'stop_session',
+    description:
+      'Stops whatever another session in this project is doing right now. It keeps its place and can be told to carry on. Does not close it or touch its files.',
+    inputSchema: {
+      type: 'object',
+      properties: { session: { type: 'string', description: 'The other session\'s name or id.' } },
+      required: ['session'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ session: a.session }, '/stop'),
+  },
+  {
+    name: 'set_session_model',
+    description:
+      'Switches the model another session in this project thinks with, by a plain name such as "opus" or "haiku".',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session: { type: 'string', description: 'The other session\'s name or id.' },
+        model: { type: 'string', description: 'The model, in plain words.' },
+      },
+      required: ['session', 'model'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ session: a.session, model: a.model }, '/model-of'),
+  },
+  {
     name: 'show_on_table',
     description:
       "Lays the drafting table open in Mender, in front of him, on a room, a pass held up, or an HTML page running live. This is how a design is shown to him here: never open a mockup, a compare page or any design HTML in Chrome or another browser. Pin the passes first, then show the room (to compare them side by side), the pass, or the page.",

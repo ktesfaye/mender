@@ -249,6 +249,10 @@ export interface Agents {
   rest(task: string): Promise<Told>;
   /** Every building with a Claude in it, by Claude's own id for the conversation. */
   claudeSessions(): { task: string; session: string }[];
+  /** The agent's own id for the conversation in a building, which is all
+      the agent knows of itself, and the building it lives in. */
+  conversationOf(task: string): string | undefined;
+  taskOf(conversation: string): string | undefined;
   /** What was half-written on this session's line, so it survives a restart. */
   draft(task: string): Promise<string>;
   setDraft(task: string, text: string): Promise<void>;
@@ -1884,6 +1888,14 @@ export function createAgents(
         if (session) out.push({ task, session });
       }
       return out;
+    },
+
+    conversationOf(task) {
+      return lodgers[task];
+    },
+
+    taskOf(conversation) {
+      return Object.keys(lodgers).find((each) => lodgers[each] === conversation);
     },
 
     async draft(task) {
