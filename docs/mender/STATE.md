@@ -1865,7 +1865,7 @@ Every row from `BUILD-CATALOG.md` section 2, with its state and its wave.
 | ST-21 | Skills catalog | done |  |
 | ST-22 | Automations (scheduled/cron agent runs) | done |  |
 | ST-22b | A session starts another in the open (start_session tool on every chat session; lantern hangs, window walks in) | done |  |
-| ST-22c | A session works the others in its project: list_sessions, tell_session, read_session, stop_session, set_session_model (door routes driven against a dev instance with real Haiku sessions; not yet driven by an agent calling the tools) | done |  |
+| ST-22c | A session works the others in its project: list_sessions, tell_session, read_session, stop_session, close_session (refuses one still working unless forced), set_session_model (door routes driven against a dev instance with real Haiku sessions; not yet driven by an agent calling the tools) | done |  |
 | ST-22c | A session switches its own model by plain name (set_model tool on every chat session; no keys pressed) | done |  |
 | ST-23 | Per-project settings — provenance model | cut |  |
 | ST-24 | Per-project "base" settings (GitHub account, worktree root, default branch, base/push remote, git-credential mode, tmux) | part | W7 |

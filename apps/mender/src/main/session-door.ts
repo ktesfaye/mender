@@ -209,6 +209,23 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
     return { ok: true, text: `stopped "${found.task.title}". It keeps its place; tell it something to carry on.` };
   };
 
+  const close = async (body: { cwd?: string; conversation?: string; session?: string; force?: boolean }) => {
+    const found = await resolve(body);
+    if ('text' in found) return { ok: false, text: found.text };
+    const mood = peek(agents.working(found.task.id))?.mood;
+    if ((mood === 'working' || mood === 'asking') && !body.force) {
+      return {
+        ok: false,
+        text: `"${found.task.title}" is still ${mood}. Stop it first, or close it with force if you mean to cut it off.`,
+      };
+    }
+    await tasks.abandon(found.task.id);
+    return {
+      ok: true,
+      text: `closed "${found.task.title}". Its files stay where they are; the person can bring it back with command-shift-T until the app restarts.`,
+    };
+  };
+
   const setModel = async (body: { cwd?: string; conversation?: string; session?: string; model?: string }) => {
     const found = await resolve(body);
     if ('text' in found) return { ok: false, text: found.text };
@@ -225,6 +242,7 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
     '/tell': tell as never,
     '/read': read as never,
     '/stop': stop as never,
+    '/close': close as never,
     '/model-of': setModel as never,
   };
 

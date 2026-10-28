@@ -325,6 +325,21 @@ const TOOLS = [
     run: (a) => knock({ session: a.session }, '/stop'),
   },
   {
+    name: 'close_session',
+    description:
+      'Closes another session in this project: its lantern comes off the rail and its conversation is taken down with it. Its files and branch stay. Refuses a session that is still working or asking unless `force` is set, so stop_session or read it first. Only close sessions you were asked to, or that are plainly finished.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session: { type: 'string', description: 'The other session\'s name or id.' },
+        force: { type: 'boolean', description: 'Close it even though it is working or asking.' },
+      },
+      required: ['session'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ session: a.session, force: a.force }, '/close'),
+  },
+  {
     name: 'set_session_model',
     description:
       'Switches the model another session in this project thinks with, by a plain name such as "opus" or "haiku".',

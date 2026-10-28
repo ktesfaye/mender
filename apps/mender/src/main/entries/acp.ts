@@ -118,7 +118,7 @@ const STARTING = [
 const SESSIONS = [
   'Other sessions in this project can be worked with through the mender server: list_sessions to see who',
   'is there, tell_session to say something to one, read_session to see what it said and whether it is',
-  'asking, stop_session to stop it, set_session_model to change what it thinks with. Tell, then check',
+  'asking, stop_session to stop it, close_session to close a finished one, set_session_model to change what it thinks with. Tell, then check',
   'back in short steps; never sit waiting on one in a loop. Start new ones with start_session.',
 ].join(' ');
 
