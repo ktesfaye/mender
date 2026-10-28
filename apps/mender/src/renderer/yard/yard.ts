@@ -338,6 +338,10 @@ let renamingBoard: { id: string; written: string; since?: number } | null = null
 /** How long a switch waits on a waking session before showing it waking. */
 const WAKE_HELD_MS = 320;
 
+/** How long walking in waits for the next piece of the session, and for all of them. */
+const ARRIVAL_QUIET_MS = 110;
+const ARRIVAL_MAX_MS = 400;
+
 /** Which lanterns were on the beam last time, so a new one can be seen to
     arrive rather than simply being there. */
 const onTheBeam = new Set<string>();
@@ -618,6 +622,10 @@ export function makeYard(layer: Layer, does: Doings): Standing {
   let holding = 0;
   /** Whether the session being left has already gone, while a switch was held. */
   let gone = false;
+  /** A walk-in waiting for what it is drawn from to stop arriving. */
+  let settling = 0;
+  let settled = false;
+  let arrivedAt: number | undefined;
 
   function show(yard: Yard, moving = true): void {
     const before = drawn;
@@ -635,6 +643,24 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       before !== undefined &&
       before.project.id === yard.project.id &&
       before.session?.id !== yard.session?.id;
+    /* Walking in, the session's pieces arrive one after another: the post, the
+       story, then the changelog. Drawn as they come, every one is a rewrite
+       that restarts everything arriving, which on the sides is a flash. So
+       the walk-in waits for the pieces to stop coming and is drawn once. */
+    if (moving && walkedIn && !switched && !settled) {
+      arrivedAt ??= performance.now();
+      window.clearTimeout(settling);
+      settling = window.setTimeout(
+        () => {
+          settled = true;
+          arrivedAt = undefined;
+          if (last && stage.style.display !== 'none') show(last);
+          settled = false;
+        },
+        Math.max(0, Math.min(ARRIVAL_QUIET_MS, ARRIVAL_MAX_MS - (performance.now() - arrivedAt)))
+      );
+      return;
+    }
     const crossed = switched && crossedBoards(before, yard);
     if (switched) lastWay = crossed ? wayAcross(before, yard) : wayAlong(before, yard);
     else if (walkedIn) lastWay = 0;
