@@ -121,8 +121,7 @@ export function decide(
       if (
         s.phase.kind === 'working' ||
         s.phase.kind === 'cancelling' ||
-        s.agentTurnActive ||
-        s.backgroundAgentCount > 0
+        s.agentTurnActive
       ) {
         return ok([{ type: 'PromptQueued', prompt: cmd.prompt }]);
       }
@@ -268,7 +267,7 @@ export function evolve(
       const byId = new Map(s.queuedPrompts.map((prompt) => [prompt.id, prompt]));
       const reordered = ev.ids.map((id) => byId.get(id)!).filter(Boolean);
       const { queuedPrompts, effects: queueEffects } =
-        s.phase.kind === 'ready' && !s.agentTurnActive && s.backgroundAgentCount === 0
+        s.phase.kind === 'ready' && !s.agentTurnActive
           ? dequeuePromptEffects(reordered)
           : { queuedPrompts: reordered, effects: [] as Effect[] };
       return {
@@ -282,9 +281,7 @@ export function evolve(
       if (!active) return warn(s, `TurnEnded with no active turn (phase: '${s.phase.kind}')`);
       const stopReason = ev.outcome.kind === 'stopped' ? ev.outcome.stopReason : null;
       const { queuedPrompts, effects: queueEffects } =
-        s.backgroundAgentCount === 0
-          ? dequeuePromptEffects(s.queuedPrompts)
-          : { queuedPrompts: s.queuedPrompts, effects: [] as Effect[] };
+        dequeuePromptEffects(s.queuedPrompts);
       return {
         state: {
           ...s,
@@ -309,7 +306,7 @@ export function evolve(
     case 'AgentActivity': {
       const wasActive = s.agentTurnActive;
       const { queuedPrompts, effects: queueEffects } =
-        !ev.active && s.phase.kind === 'ready' && s.backgroundAgentCount === 0
+        !ev.active && s.phase.kind === 'ready'
           ? dequeuePromptEffects(s.queuedPrompts)
           : { queuedPrompts: s.queuedPrompts, effects: [] as Effect[] };
       return {
@@ -323,7 +320,7 @@ export function evolve(
 
     case 'AgentsChanged': {
       const { queuedPrompts, effects: queueEffects } =
-        ev.runningCount === 0 && s.phase.kind === 'ready'
+        s.phase.kind === 'ready' && !s.agentTurnActive
           ? dequeuePromptEffects(s.queuedPrompts)
           : { queuedPrompts: s.queuedPrompts, effects: [] as Effect[] };
       return {

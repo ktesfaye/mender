@@ -63,12 +63,12 @@ describe('decide Prompt', () => {
     expect(result.data).toEqual([{ type: 'PromptQueued', prompt }]);
   });
 
-  it('queues while background agents are running', () => {
+  it('starts a turn while background agents are running', () => {
     const state = evolve(makeReady(), { type: 'AgentsChanged', runningCount: 1 }).state;
     const result = decide(state, { type: 'Prompt', prompt });
     expect(isOk(result)).toBe(true);
     if (!isOk(result)) return;
-    expect(result.data).toEqual([{ type: 'PromptQueued', prompt }]);
+    expect(result.data).toEqual([{ type: 'PromptStarted', prompt }]);
   });
 });
 
@@ -169,7 +169,7 @@ describe('lifecycle control', () => {
     expect(effects).toContainEqual({ type: 'sendPrompt', prompt: queued });
   });
 
-  it('keeps queued prompts waiting when a turn ends while background agents run', () => {
+  it('sends queued prompts when a turn ends while background agents run', () => {
     const queued = { id: 'prompt-2', text: 'queued', createdAt: 200, updatedAt: 200 };
     let state = evolve(makeWorking(), { type: 'PromptQueued', prompt: queued }).state;
     state = evolve(state, { type: 'AgentsChanged', runningCount: 1 }).state;
@@ -177,16 +177,6 @@ describe('lifecycle control', () => {
       type: 'TurnEnded',
       outcome: { kind: 'stopped', stopReason: 'end_turn' },
     });
-
-    expect(result.state.queuedPrompts).toEqual([queued]);
-    expect(result.effects).not.toContainEqual({ type: 'sendPrompt', prompt: queued });
-  });
-
-  it('drains one queued prompt when background agents stop', () => {
-    const queued = { id: 'prompt-2', text: 'queued', createdAt: 200, updatedAt: 200 };
-    let state = evolve(makeReady(), { type: 'AgentsChanged', runningCount: 1 }).state;
-    state = evolve(state, { type: 'PromptQueued', prompt: queued }).state;
-    const result = evolve(state, { type: 'AgentsChanged', runningCount: 0 });
 
     expect(result.state.queuedPrompts).toHaveLength(0);
     expect(result.effects).toContainEqual({ type: 'sendPrompt', prompt: queued });
