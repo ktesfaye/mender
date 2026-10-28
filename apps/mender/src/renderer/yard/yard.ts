@@ -89,6 +89,7 @@ import type {
 } from './what';
 import { hiddenCount, revealMore, windowStart } from './window';
 import { box, exact, firelight, folk, label, row, rule, said, stack } from './write';
+import { stretches } from './stretch';
 
 /*
  * On a Mac the window's own three buttons float over the top left corner of
@@ -934,6 +935,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       if (session) workingSince.delete(session.id);
       return undefined;
     }
+    const stretch = stretches.get(session.id);
+    if (stretch) return stretch;
     if (session.live.since) return session.live.since;
     const seen = workingSince.get(session.id) ?? Date.now();
     workingSince.set(session.id, seen);

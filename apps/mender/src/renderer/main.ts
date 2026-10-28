@@ -135,6 +135,7 @@ import {
   type Windmill,
 } from './yard/windmill';
 import { inBeamOrder, makeYard } from './yard/yard';
+import { stretches } from './yard/stretch';
 
 /** The kinds of picture an agent can actually be shown. */
 const CARRIED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -7160,6 +7161,12 @@ async function boot(): Promise<void> {
             else if (now !== 'resting') unseen.delete(task);
           }
           for (const task of unseen.keys()) if (!(task in value)) unseen.delete(task);
+          for (const [task, now] of Object.entries(value)) {
+            if (now === 'working' || now === 'arriving') {
+              if (!stretches.has(task)) stretches.set(task, Date.now());
+            } else stretches.delete(task);
+          }
+          for (const task of stretches.keys()) if (!(task in value)) stretches.delete(task);
           const moved = JSON.stringify(seen) !== JSON.stringify(value);
           seen = value;
           people();
