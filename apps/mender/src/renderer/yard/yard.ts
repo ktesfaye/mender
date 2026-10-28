@@ -2900,7 +2900,8 @@ function thinking(
       if (one.live && !one.quiet) answer = i;
     });
     /* The answer before the newest is read at the newest's size and ink too,
-       so the last two are what the eye lands on and the rest is history. */
+       so the last two are what the eye lands on and the rest is history. While
+       a turn is still going that is the last thing it told you on the way. */
     let liveAt = -1;
     thoughts.forEach((one, i) => {
       if (one.live) liveAt = i;
@@ -2908,7 +2909,7 @@ function thinking(
     let before = -1;
     for (let i = (liveAt >= 0 ? liveAt : answer) - 1; i >= 0; i -= 1) {
       const one = thoughts[i]!;
-      if (one.answer && !one.progress) {
+      if (one.answer || one.progress) {
         before = i;
         break;
       }
@@ -3010,7 +3011,7 @@ function thinking(
       /* Trouble keeps its colour as it goes into the history, dimmed with the
        rest, so scrolling back you can still see where it went wrong. */
       const trouble = one.trouble ? TROUBLE[one.trouble] : undefined;
-      const recent = i === before && !one.progress;
+      const recent = i === before;
       const fade = one.progress ? 0.74 : far > 2 ? 0.5 : 0.6;
       items.appendChild(
         keyed(
