@@ -2165,15 +2165,56 @@ class House {
        does not hold is an older numbering of something it does, and kept, it
        sorted after everything real and became the newest thing said. */
     const oldest = back.data.nextCursor === null ? -Infinity : back.data.turns[0]!.seq;
-    this.before = [
+    const merged = [
       ...back.data.turns.filter((turn) => turn.id !== live).map(unprompted),
       ...this.before.filter((had) => !whole.has(had.id) && had.seq < oldest),
-    ]
-      .sort((a, b) => a.seq - b.seq)
-      .slice(-BACKWARD);
+    ].sort((a, b) => a.seq - b.seq);
+    this.before = merged.slice(-BACKWARD);
+    this.remember(merged.slice(0, -BACKWARD));
     this.seedSeen();
     this.publish();
     void this.redate();
+    if (back.data.nextCursor !== null) void this.reachBack(conversation, back.data.nextCursor);
+  }
+
+  /**
+   * What you said further back than the turns kept in full.
+   *
+   * Only the latest stretch is held whole, but what you asked is the post, and
+   * what the story is told from, and a session that has run on past that
+   * stretch on its own would otherwise lose both the moment its first note
+   * scrolled out. So whatever you said in a turn that fell off is kept as
+   * that and nothing more.
+   */
+  private older: TranscriptTurn[] = [];
+
+  private remember(gone: readonly TranscriptTurn[]): void {
+    const kept = gone.flatMap((turn) => {
+      const only = notesOnly(turn);
+      return only ? [only] : [];
+    });
+    if (!kept.length) return;
+    const have = new Set(this.older.map((turn) => turn.id));
+    this.older = [...this.older, ...kept.filter((turn) => !have.has(turn.id))].sort(
+      (a, b) => a.seq - b.seq
+    );
+  }
+
+  /** Walks back through the rest of the history for what was said in it. */
+  private async reachBack(conversation: string, from: number): Promise<void> {
+    let before: number | null = from;
+    for (let page = 0; before !== null && page < 40; page += 1) {
+      const back = await this.runtimes.acp.loadHistory({
+        conversationId: conversation,
+        before,
+        limit: BACKWARD,
+      });
+      if (this.conversation !== conversation) return;
+      if (!back.success || !back.data || back.data.unavailable) return;
+      this.remember(back.data.turns.map(unprompted));
+      before = back.data.nextCursor;
+    }
+    this.publish();
   }
 
   /**
@@ -2426,7 +2467,9 @@ class House {
     // A turn that settled and was replaced moves behind the one in flight; the
     // active state only ever carries the latest.
     if (this.live && (!now || now.id !== this.live.id)) {
-      this.before = [...this.before, this.live].slice(-BACKWARD);
+      const all = [...this.before, this.live];
+      this.before = all.slice(-BACKWARD);
+      this.remember(all.slice(0, -BACKWARD));
       void this.redate();
       /* The copy held here is the last one seen in flight, and the turn only
          learns how it ended as it is committed, so it is read back settled:
@@ -2723,7 +2766,11 @@ class House {
 
   private read(): WorkingState {
     if (!this.conversation) return EMPTY;
-    const turns = this.shown(this.live ? [...this.before, this.live] : this.before);
+    const turns = this.shown([
+      ...this.older.filter((turn) => !this.before.some((had) => had.id === turn.id)),
+      ...this.before,
+      ...(this.live ? [this.live] : []),
+    ]);
     const lines = linesOf(turns, this.where()).slice(-KEPT);
     const pending = this.lifecycle?.pendingPermissions ?? [];
     /* A mark against a question that has moved on — answered elsewhere,
@@ -3466,6 +3513,21 @@ function unprompted(turn: TranscriptTurn): TranscriptTurn {
       item.kind !== 'message' || item.role !== 'user' || !UNPROMPTED.test(item.text.trimStart())
   );
   return items.length === turn.items.length ? turn : { ...turn, items };
+}
+
+/** A turn reduced to what you said in it, or nothing when that was nothing. */
+function notesOnly(turn: TranscriptTurn): TranscriptTurn | undefined {
+  const items = turn.items.filter(
+    (item) =>
+      item.kind === 'message' &&
+      item.role === 'user' &&
+      (item.text.trim() || item.attachments?.length) &&
+      !UNPROMPTED.test(item.text.trimStart()) &&
+      !INTERRUPTED.test(item.text.trim()) &&
+      !carried(item.text)
+  );
+  if (!items.length) return undefined;
+  return { ...turn, items, outcome: undefined };
 }
 
 /** How Claude's own transcript writes down a turn you stopped. */
