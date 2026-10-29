@@ -898,6 +898,12 @@ the nth board along the beam, in the order it hangs, the way command and a
 number walks the rail. Driven in a dev copy with five boards: control-4 stood
 in the fourth, control-1 went back to the folder, command-1 still took the
 first lantern.
+Any lantern on the rail can be held and slid along it: it comes with the
+pointer, the ones it passes step aside, and let go it stays where it was put,
+kept on this machine, so Tab and the close-to-the-left-or-right follow the new
+order. A press that never moved still walks in. Driven in a dev copy with five
+sessions: charlie slid to the front past the one you are standing in, kept
+across a reload, and a plain press on another lantern still walked in.
 
 **A workspace says how it is from the beam.** Light spills out under each
 board the way it does under a door, in the colour of its loudest session's

@@ -298,6 +298,12 @@ async function boot(): Promise<void> {
       dropCost: (id) => dropCost(id),
       closeCost: (ids) => closeCost(ids),
       closeMany: (ids, keep) => void closeMany(ids, keep),
+      reorder: (ids) => {
+        const next = [...railOrder().filter((id) => !ids.includes(id)), ...ids].slice(-400);
+        localStorage.setItem('mender.rail-order', JSON.stringify(next));
+        const now = open ? projectOn(open.district) : undefined;
+        if (now) syncCutting(now.id);
+      },
       answer: (id, requestId) => void answered(id, requestId),
       press: (pick) => press(pick),
       typed: (text) => {
@@ -769,9 +775,33 @@ async function boot(): Promise<void> {
       const at = workspaceIn.get(projectId) ?? '';
       return workspaces.some((each) => each.id === at) ? at : '';
     };
+    /* Where lanterns were last left on the rail, on this machine. Anything
+       not in it hangs after them in the order it came. */
+    const railOrder = (): string[] => {
+      try {
+        const kept = JSON.parse(localStorage.getItem('mender.rail-order') ?? '[]') as unknown;
+        return Array.isArray(kept) ? kept.filter((id): id is string => typeof id === 'string') : [];
+      } catch {
+        return [];
+      }
+    };
+    const inRailOrder = (list: Task[]): Task[] => {
+      const saved = railOrder();
+      if (!saved.length) return list;
+      const rank = (task: Task, at: number): number => {
+        const kept = saved.indexOf(task.id);
+        return kept === -1 ? saved.length + at : kept;
+      };
+      return list
+        .map((task, at) => ({ task, at: rank(task, at) }))
+        .sort((a, b) => a.at - b.at)
+        .map((each) => each.task);
+    };
     const tasksFor = (projectId: string): Task[] => [
-      ...tasks.filter(
-        (task) => task.project === projectId && (task.workspace ?? '') === workspaceOf(projectId)
+      ...inRailOrder(
+        tasks.filter(
+          (task) => task.project === projectId && (task.workspace ?? '') === workspaceOf(projectId)
+        )
       ),
       ...[...cutting.values()].filter((task) => task.project === projectId),
     ];

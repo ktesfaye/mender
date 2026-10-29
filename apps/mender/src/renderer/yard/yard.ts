@@ -219,6 +219,8 @@ export interface Doings {
   closeCost?(ids: string[]): Promise<string>;
   /** Close these sessions, standing in `keep` if the one you are in goes. */
   closeMany?(ids: string[], keep: string): void;
+  /** A lantern was slid along the rail: these sessions are now in this order. */
+  reorder?(ids: string[]): void;
 }
 
 export interface Standing {
@@ -5133,6 +5135,18 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
       hung.addEventListener('pointerleave', () => (lamp.style.filter = dimmed));
     }
     slot.appendChild(hung);
+    slot.dataset.lanternId = one.id;
+    slot.dataset.span = String(step);
+    if (!cutting) {
+      hung.addEventListener('pointerdown', (event) => liftLantern(one.id, event, does));
+      hung.addEventListener(
+        'click',
+        (event) => {
+          if (lanternJustCarried) event.stopImmediatePropagation();
+        },
+        true
+      );
+    }
   }
 
   /* THE END OF THE RAIL IS HOW A SESSION STARTS.
@@ -5187,6 +5201,145 @@ function rail(root: HTMLElement, yard: Yard, cramped: boolean, edge: number, doe
   stays(beam, 'rail');
   beam.scrollLeft = railScrolled;
   beam.addEventListener('scroll', () => (railScrolled = beam.scrollLeft));
+  if (lanternCarry) placeLantern(beam);
+}
+
+/* ── moving them along the rail ────────────────────────────────────────────
+   A lantern held and slid along the rail comes with the pointer and the ones
+   it passes step aside to open its gap. Let go and the rail keeps that order.
+   The yard is drawn afresh on every change, so what is carried is held out
+   here and put back on whatever lanterns are drawn next. A press that never
+   really moved is still just a press. */
+
+let lanternCarry: {
+  id: string;
+  startX: number;
+  x: number;
+  scrolled: number;
+  startScrolled: number;
+  to: number;
+} | null = null;
+let lanternJustCarried = false;
+
+const railBeam = (): HTMLElement | null =>
+  document.querySelector<HTMLElement>('.yard [data-stays="rail"]');
+
+function liftLantern(id: string, down: PointerEvent, does: Doings): void {
+  if (down.button !== 0 || lanternCarry) return;
+  const startX = down.clientX;
+  const startY = down.clientY;
+  let lifted = false;
+
+  const move = (event: PointerEvent): void => {
+    if (!lifted) {
+      const dx = event.clientX - startX;
+      if (Math.abs(dx) < 5 || Math.abs(dx) < Math.abs(event.clientY - startY)) {
+        if (Math.hypot(dx, event.clientY - startY) > 12) let_(true);
+        return;
+      }
+      const row = railBeam();
+      if (!row) return let_(true);
+      lifted = true;
+      lanternCarry = {
+        id,
+        startX,
+        x: event.clientX,
+        scrolled: row.scrollLeft,
+        startScrolled: row.scrollLeft,
+        to: -1,
+      };
+      document.body.classList.add('carrying-board');
+      window.getSelection()?.removeAllRanges();
+    }
+    if (!lanternCarry) return;
+    event.preventDefault();
+    const row = railBeam();
+    if (!row) return;
+    const edge = row.getBoundingClientRect();
+    const near = 40;
+    if (event.clientX < edge.left + near)
+      row.scrollLeft -= Math.ceil((edge.left + near - event.clientX) / 3);
+    else if (event.clientX > edge.right - near)
+      row.scrollLeft += Math.ceil((event.clientX - edge.right + near) / 3);
+    lanternCarry.scrolled = row.scrollLeft;
+    lanternCarry.x = event.clientX;
+    placeLantern(row);
+  };
+
+  const let_ = (giveUp = false): void => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    window.removeEventListener('pointercancel', up);
+    if (giveUp || !lifted || !lanternCarry) return;
+    lanternJustCarried = true;
+    window.setTimeout(() => (lanternJustCarried = false), 0);
+    document.body.classList.remove('carrying-board');
+    const row = railBeam();
+    const to = lanternCarry.to;
+    lanternCarry = null;
+    if (!row) return;
+    const slots = lanternSlots(row);
+    const from = slots.findIndex((one) => one.dataset.lanternId === id);
+    if (from === -1 || to === -1 || to === from) {
+      for (const one of slots) {
+        one.style.transition = 'transform 180ms cubic-bezier(.2,.8,.2,1)';
+        one.style.transform = '';
+        one.style.zIndex = '';
+      }
+      return;
+    }
+    const order = slots.map((one) => one.dataset.lanternId ?? '');
+    order.splice(to, 0, ...order.splice(from, 1));
+    does.reorder?.(order);
+  };
+  const up = (): void => let_();
+
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', up);
+}
+
+/** The lanterns on the rail, left to right, the empty hook not among them. */
+function lanternSlots(row: HTMLElement): HTMLElement[] {
+  return [...row.querySelectorAll<HTMLElement>(':scope > [data-lantern-id]')].sort(
+    (a, b) => a.offsetLeft - b.offsetLeft
+  );
+}
+
+/** Puts the carried lantern under the pointer and the rest where its gap leaves them. */
+function placeLantern(row: HTMLElement): void {
+  if (!lanternCarry) return;
+  const slots = lanternSlots(row);
+  const from = slots.findIndex((one) => one.dataset.lanternId === lanternCarry?.id);
+  if (from === -1) return;
+  const held = slots[from]!;
+  const spanOf = (one: HTMLElement): number => Number(one.dataset.span) || one.offsetWidth;
+  const step = spanOf(held);
+  const first = slots[0]!.offsetLeft;
+  const last = slots.at(-1)!;
+  const end = last.offsetLeft + spanOf(last);
+  const wanted =
+    lanternCarry.x - lanternCarry.startX + (lanternCarry.scrolled - lanternCarry.startScrolled);
+  const dx = clamp(wanted, first - held.offsetLeft, end - step - held.offsetLeft);
+  const front = held.offsetLeft + dx;
+  const back = front + step;
+  let to = from;
+  slots.forEach((other, at) => {
+    if (at === from) return;
+    const theirs = other.offsetLeft + spanOf(other) / 2;
+    if (at < from && front < theirs) to = Math.min(to, at);
+    if (at > from && back > theirs) to = Math.max(to, at);
+  });
+  lanternCarry.to = to;
+  held.style.transition = 'none';
+  held.style.zIndex = '2';
+  held.style.transform = `translateX(${dx}px)`;
+  slots.forEach((other, at) => {
+    if (at === from) return;
+    const shift = from < at && at <= to ? -step : to <= at && at < from ? step : 0;
+    other.style.transition = reducedMotion() ? 'none' : 'transform 180ms cubic-bezier(.2,.8,.2,1)';
+    other.style.transform = shift ? `translateX(${shift}px)` : '';
+  });
 }
 
 const HOOK = 'background:#3a2712';

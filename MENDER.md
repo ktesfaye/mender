@@ -452,7 +452,8 @@ or stopped, and how long ago, once it has answered anything at all, idle
 only while nothing has been asked of it yet, waiting out a limit with ember filling its glass and when it lifts, broken, or still
 being set up. A shared session's branch is never named, since every one of
 them is on it; one in its own copy names its branch after that. The one you
-are standing in burns brightest. At the end of the beam is one
+are standing in burns brightest. Any lantern can be held and slid along the rail to
+another place on it, the others stepping aside, and it stays there, on this machine. At the end of the beam is one
 empty hook, an unlit lantern with a small plus in its glass, which is how a
 new session is started, and right-clicking it opens the other ways to start one — and, for the rest of that
 sitting, remembers the last one taken down here: it offers to put it straight
