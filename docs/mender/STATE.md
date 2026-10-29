@@ -4430,3 +4430,11 @@ still there.
 Every fenced code block on the board has a gold "copy" in its head that puts
 the whole block on the clipboard and says "copied" in place for a moment. Seen
 drawn in a dev instance; the click and the paste were not driven.
+
+**Drafting table lands on what is new (2026-10-28, 1.28.2).** Opening it goes
+straight to the room with passes drawn since he last looked; rooms in the rail
+are newest first with an "n new" badge, a room opens on "latest" (the newest
+passes, large, tagged new) with its trail newest first. In the finished thing a
+page opens by itself, just the picture and its caption with arrows between the
+finished pages, never the passes behind it. Driven in a dev instance against a
+scratch board.
