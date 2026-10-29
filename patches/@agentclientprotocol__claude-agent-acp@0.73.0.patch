@@ -1,5 +1,5 @@
 diff --git a/dist/acp-agent.js b/dist/acp-agent.js
-index 0214a509eb5e7b777a69e4e34637941c275d27b1..e62ba6d8f4d88d0662a37703677cd8a7ee8a3a12 100644
+index 0214a509eb5e7b777a69e4e34637941c275d27b1..0d646a9e95730b0ffdaf036b4ed922200364786f 100644
 --- a/dist/acp-agent.js
 +++ b/dist/acp-agent.js
 @@ -32,6 +32,43 @@ import { parseToolResultMeta } from "./tool-result-meta.js";
@@ -46,7 +46,15 @@ index 0214a509eb5e7b777a69e4e34637941c275d27b1..e62ba6d8f4d88d0662a37703677cd8a7
  const execFileAsync = promisify(execFile);
  const MAX_INLINE_FAILURE_TITLE_LENGTH = 256;
  /** Claude CLI emits this synthetic result when an interrupted cycle ends on
-@@ -1270,8 +1307,48 @@ export class ClaudeAcpAgent {
+@@ -1258,6 +1295,7 @@ export class ClaudeAcpAgent {
+         // time the consumer next runs, and an unmarked result would settle the turn
+         // (see Turn.steeredEchoes).
+         (turnInFlight.steeredEchoes ??= new Set()).add(steeredUuid);
++        turnInFlight.steeredFinal = false;
+         // A turn already held for background subagents has a recorded outcome the
+         // steer supersedes: move it into the steer lane so one lane owns settlement.
+         // The idle handler re-applies the hold through the subagent gate.
+@@ -1270,8 +1308,48 @@ export class ClaudeAcpAgent {
          await this.publishGoalFromPrompt(sessionId, firstText, steeredUuid);
          return { outcome: "injected" };
      }
@@ -95,7 +103,7 @@ index 0214a509eb5e7b777a69e4e34637941c275d27b1..e62ba6d8f4d88d0662a37703677cd8a7
          const asyncTasks = session?.asyncTaskRuntime;
          if (!session || !asyncTasks?.claimStop(params.asyncTaskId))
              return { stopped: false };
-@@ -1343,7 +1420,9 @@ export class ClaudeAcpAgent {
+@@ -1343,7 +1421,9 @@ export class ClaudeAcpAgent {
          // streamed, captured from `message_start` so the streamed chunks that follow
          // (whose delta events don't carry it) can all be tagged with the same,
          // replay-stable id.
@@ -106,7 +114,42 @@ index 0214a509eb5e7b777a69e4e34637941c275d27b1..e62ba6d8f4d88d0662a37703677cd8a7
          // The text/thinking blocks that have actually streamed live as
          // `stream_event` deltas for the message the next consolidated `assistant`
          // will repeat, in stream order, each accumulated to its full streamed text.
-@@ -2550,6 +2629,7 @@ export class ClaudeAcpAgent {
+@@ -1737,6 +1817,10 @@ export class ClaudeAcpAgent {
+             // so the last result and its usage win.
+             if (isSteering(session.activeTurn)) {
+                 session.activeTurn.steeredSettle = outcome;
++                // Mender: a result with every steered echo already in is the
++                // steered cycle's own, so the next idle is this turn's and no
++                // earlier one's (see the idle lane).
++                session.activeTurn.steeredFinal = session.activeTurn.steeredEchoes.size === 0;
+                 return;
+             }
+             if (session.activeTurn &&
+@@ -2285,6 +2369,23 @@ export class ClaudeAcpAgent {
+                                         }
+                                         settleDeferredIfDrained();
+                                     }
++                                    else if (isSteering(session.activeTurn) &&
++                                        session.activeTurn.steeredFinal &&
++                                        session.activeTurn.steeredEchoes.size === 0 &&
++                                        session.activeTurn.steeredSettle !== undefined) {
++                                        // Mender: the steered cycle's own result is in, so this
++                                        // idle ends the turn even with trailer debt outstanding.
++                                        // A cancel that lands before the CLI answers leaves a
++                                        // debt no idle ever pays; the owed lane below would eat
++                                        // the only idle a steered turn settles on and leave it
++                                        // working forever. Any debt stays to absorb a late idle.
++                                        const steered = session.activeTurn;
++                                        steered.deferredSettle = steered.steeredSettle;
++                                        steered.steeredEchoes = undefined;
++                                        steered.steeredSettle = undefined;
++                                        steered.steeredFinal = undefined;
++                                        settleDeferredIfDrained();
++                                    }
+                                     else if (session.owedTrailingIdles > 0) {
+                                         // Absorb a settled turn's trailing idle. Also covers a
+                                         // cancel that landed between a turn's counted result and
+@@ -2550,6 +2651,7 @@ export class ClaudeAcpAgent {
                              case "task_notification":
                                  // The task settled — no further tool calls can originate
                                  // from it, so its registry entry can be dropped.
@@ -114,7 +157,7 @@ index 0214a509eb5e7b777a69e4e34637941c275d27b1..e62ba6d8f4d88d0662a37703677cd8a7
                                  await subagents.finishTask(message.task_id, message.status, sendUpdate, message.tool_use_id);
                                  await asyncTasks.taskNotification({
                                      task_id: message.task_id,
-@@ -2571,6 +2651,7 @@ export class ClaudeAcpAgent {
+@@ -2571,6 +2673,7 @@ export class ClaudeAcpAgent {
                                  if (message.patch.status === "completed" ||
                                      message.patch.status === "failed" ||
                                      message.patch.status === "killed") {
@@ -122,7 +165,7 @@ index 0214a509eb5e7b777a69e4e34637941c275d27b1..e62ba6d8f4d88d0662a37703677cd8a7
                                      await subagents.finishTask(message.task_id, message.patch.status, sendUpdate);
                                      session.liveBackgroundTasks.delete(message.task_id);
                                  }
-@@ -3198,7 +3279,7 @@ export class ClaudeAcpAgent {
+@@ -3198,7 +3301,7 @@ export class ClaudeAcpAgent {
                          // so the streamed chunks that follow (whose delta events don't carry
                          // it) can all be tagged with the same, replay-stable id.
                          if (message.event.type === "message_start") {
@@ -131,7 +174,7 @@ index 0214a509eb5e7b777a69e4e34637941c275d27b1..e62ba6d8f4d88d0662a37703677cd8a7
                              // A new top-level message starts: clear any streamed-content
                              // residue from a prior message that never reached its
                              // consolidated reset — a cancelled turn breaks out before the
-@@ -3302,7 +3383,7 @@ export class ClaudeAcpAgent {
+@@ -3302,7 +3405,7 @@ export class ClaudeAcpAgent {
                              cwd: session.cwd,
                              taskState: session.taskState,
                              emittedToolCalls: session.emittedToolCalls,
@@ -140,7 +183,7 @@ index 0214a509eb5e7b777a69e4e34637941c275d27b1..e62ba6d8f4d88d0662a37703677cd8a7
                              streamedToolInputs,
                          })) {
                              // sendUpdate records delivery; a subagent stream's chunks carry
-@@ -3407,7 +3488,19 @@ export class ClaudeAcpAgent {
+@@ -3407,7 +3510,19 @@ export class ClaudeAcpAgent {
                                  // lane tells "the answer is still ahead" from "the turn is over"
                                  // (see Turn.steeredEchoes).
                                  if (isSteering(session.activeTurn)) {
@@ -161,7 +204,7 @@ index 0214a509eb5e7b777a69e4e34637941c275d27b1..e62ba6d8f4d88d0662a37703677cd8a7
                                  }
                                  // Unrelated replay (e.g. the echo of an already-settled turn).
                                  break;
-@@ -3799,8 +3892,17 @@ export class ClaudeAcpAgent {
+@@ -3799,8 +3914,17 @@ export class ClaudeAcpAgent {
              return;
          }
          try {
@@ -181,7 +224,7 @@ index 0214a509eb5e7b777a69e4e34637941c275d27b1..e62ba6d8f4d88d0662a37703677cd8a7
          }
          catch (error) {
              this.logger.error(`Session ${params.sessionId}: failed to publish cancelled subagent state`, error);
-@@ -4206,7 +4308,12 @@ export class ClaudeAcpAgent {
+@@ -4206,7 +4330,12 @@ export class ClaudeAcpAgent {
      }
      async replaySessionHistory(sessionId) {
          const toolUseCache = {};
@@ -195,7 +238,7 @@ index 0214a509eb5e7b777a69e4e34637941c275d27b1..e62ba6d8f4d88d0662a37703677cd8a7
          const session = this.sessions[sessionId];
          const forwardSubagentText = session?.forwardSubagentText ?? supportsSubagentTranscript(this.clientCapabilities);
          const supportsTypedFailures = supportsAirSessionFailures(this.clientCapabilities);
-@@ -5342,6 +5449,10 @@ export class ClaudeAcpAgent {
+@@ -5342,6 +5471,10 @@ export class ClaudeAcpAgent {
              // flow instead degrades to the classic refusal error ending the turn.
              // Gated on form elicitation since that's the only ACP surface that can
              // present a choice outside a tool call.

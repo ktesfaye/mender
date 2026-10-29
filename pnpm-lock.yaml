@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@agentclientprotocol/claude-agent-acp@0.73.0':
-    hash: ac725bc734453e3b9245beedffae4dcb00708d1797bfd3e71ad8269360091e8f
+    hash: 792af18e2c8d8ee3b4bb946d900a2a38b51a4a04c25b37b7ed720b9ef0ed4143
     path: patches/@agentclientprotocol__claude-agent-acp@0.73.0.patch
 
 importers:
@@ -660,7 +660,7 @@ importers:
     devDependencies:
       '@agentclientprotocol/claude-agent-acp':
         specifier: ^0.73.0
-        version: 0.73.0(patch_hash=ac725bc734453e3b9245beedffae4dcb00708d1797bfd3e71ad8269360091e8f)(@anthropic-ai/sdk@0.106.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))
+        version: 0.73.0(patch_hash=792af18e2c8d8ee3b4bb946d900a2a38b51a4a04c25b37b7ed720b9ef0ed4143)(@anthropic-ai/sdk@0.106.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))
       '@agentclientprotocol/codex-acp':
         specifier: ^1.7.0
         version: 1.7.0
@@ -9073,7 +9073,7 @@ snapshots:
 
   '@adobe/css-tools@4.5.0': {}
 
-  '@agentclientprotocol/claude-agent-acp@0.73.0(patch_hash=ac725bc734453e3b9245beedffae4dcb00708d1797bfd3e71ad8269360091e8f)(@anthropic-ai/sdk@0.106.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))':
+  '@agentclientprotocol/claude-agent-acp@0.73.0(patch_hash=792af18e2c8d8ee3b4bb946d900a2a38b51a4a04c25b37b7ed720b9ef0ed4143)(@anthropic-ai/sdk@0.106.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))':
     dependencies:
       '@agentclientprotocol/sdk': 1.4.0(zod@4.4.3)
       '@anthropic-ai/claude-agent-sdk': 0.3.257(@anthropic-ai/sdk@0.106.0(zod@4.4.3))(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(zod@4.4.3)
