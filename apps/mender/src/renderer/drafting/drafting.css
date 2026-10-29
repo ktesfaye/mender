@@ -740,3 +740,114 @@
   width: auto;
   max-width: 100%;
 }
+
+.dt-hit {
+  position: relative;
+}
+.dt-pickbtn {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: rgba(10, 10, 12, 0.7);
+  box-shadow: inset 0 0 0 1.5px var(--g-gold);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.dt-img:hover .dt-pickbtn,
+.dt-pass:hover .dt-pickbtn,
+.dt-hit:hover .dt-pickbtn,
+.dt-pickbtn.on {
+  opacity: 1;
+}
+.dt-pickbtn.on {
+  background: var(--g-gold);
+}
+.dt-img .dt-pickbtn {
+  top: 7px;
+  right: 7px;
+  bottom: auto;
+}
+.dt-tray {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--g-hair);
+}
+.dt-tray-one {
+  position: relative;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: rgba(255, 240, 215, 0.04);
+}
+.dt-tray-one img {
+  display: block;
+  height: 100%;
+  max-width: 120px;
+  object-fit: cover;
+}
+.dt-tray-x {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 12px;
+  background: rgba(10, 10, 12, 0.8);
+}
+.dt-tray-one:hover .dt-tray-x {
+  display: grid;
+}
+.dt-tray .dt-line {
+  margin: 0 0 0 10px;
+}
+.dt-tray .dt-quiet-line {
+  color: var(--g-ink-3);
+  cursor: default;
+}
+.dt-cmp {
+  display: flex;
+  gap: 18px;
+  grid-template-columns: none;
+}
+.dt-cmp-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dt-cmp-img {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.dt-cmp-img .dt-big {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.dt-cmp-cap {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin-top: 12px;
+  font-size: 13px;
+}
+.dt-cmp-acts {
+  display: flex;
+  gap: 16px;
+}
+.dt-cmp-acts .dt-line {
+  margin-top: 6px;
+}

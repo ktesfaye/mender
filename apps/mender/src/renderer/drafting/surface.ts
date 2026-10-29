@@ -122,6 +122,9 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
   let paging: string | null = null;
   /** A finished page held up by itself, with only the finished pages to step between. */
   let seeing: { items: Seen[]; at: number } | null = null;
+  /** Passes set aside to compare, kept while he goes off to find the next. */
+  let tray: { room: string; pass: string }[] = [];
+  let comparing = false;
   /** When he last looked, so what has landed since is marked new. */
   let seenAt = Date.now();
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -216,6 +219,99 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
 
   const roomOf = (id: string): DraftRoom | undefined => board?.rooms.find((room) => room.id === id);
 
+  const inTray = (room: DraftRoom, pass: DraftPass): boolean =>
+    tray.some((one) => one.room === room.id && one.pass === pass.id);
+
+  function toggleTray(room: DraftRoom, pass: DraftPass): void {
+    tray = inTray(room, pass)
+      ? tray.filter((one) => !(one.room === room.id && one.pass === pass.id))
+      : [...tray, { room: room.id, pass: pass.id }];
+    if (tray.length < 2) comparing = false;
+    repaint();
+  }
+
+  /** The small ring in a pass's corner that sets it aside to compare. */
+  const pickBtn = (room: DraftRoom, pass: DraftPass): HTMLElement => {
+    const el = h('span', `dt-pickbtn${inTray(room, pass) ? ' on' : ''}`);
+    el.addEventListener('click', (event) => {
+      event.stopPropagation();
+      toggleTray(room, pass);
+    });
+    return el;
+  };
+
+  const trayItems = (): { room: DraftRoom; question: DraftQuestion; pass: DraftPass }[] =>
+    tray.flatMap((one) => {
+      const room = roomOf(one.room);
+      const pass = room ? passIn(room, one.pass) : undefined;
+      const question = room?.questions.find((q) => pass && q.passes.includes(pass));
+      return room && pass && question ? [{ room, question, pass }] : [];
+    });
+
+  /** What has been set aside, along the foot of the table wherever he goes. */
+  function trayStrip(): HTMLElement | null {
+    const items = trayItems();
+    if (!items.length) return null;
+    const el = h('div', 'dt-tray');
+    for (const { room, question, pass } of items) {
+      const one = h('div', 'dt-tray-one');
+      one.title = `${room.name} · ${pass.name || pass.id}`;
+      one.append(pic(pass.image, 120));
+      const out = h('span', 'dt-tray-x', '×');
+      out.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleTray(room, pass);
+      });
+      one.append(out);
+      one.addEventListener('click', () => hold(room, question, pass));
+      el.append(one);
+    }
+    const go = h('span', 'dt-line dt-tray-go', items.length > 1 ? 'compare' : 'pick another to compare');
+    if (items.length > 1)
+      go.addEventListener('click', () => {
+        comparing = true;
+        held = null;
+        paint();
+      });
+    else go.classList.add('dt-quiet-line');
+    const clear = h('span', 'dt-line dt-tray-clear', 'clear');
+    clear.addEventListener('click', () => {
+      tray = [];
+      comparing = false;
+      repaint();
+    });
+    el.append(go, clear);
+    return el;
+  }
+
+  /** Everything set aside, side by side, each pass as big as the width allows. */
+  function compareUp(): HTMLElement {
+    const items = trayItems();
+    const over = h('div', 'dt-hold dt-cmp');
+    for (const { room, question, pass } of items) {
+      const col = h('div', 'dt-cmp-col');
+      col.append(h('div', 'dt-cmp-img', pic(pass.image, 900, 'dt-big')));
+      const open = h('span', 'dt-line', 'open');
+      open.addEventListener('click', () => {
+        comparing = false;
+        hold(room, question, pass);
+      });
+      const out = h('span', 'dt-line', 'take out');
+      out.addEventListener('click', () => toggleTray(room, pass));
+      col.append(
+        h(
+          'div',
+          'dt-cmp-cap',
+          h('b', '', `${pass.id}${pass.name ? ` · ${pass.name}` : ''}`),
+          h('span', 'g-mute', room.name)
+        ),
+        h('div', 'dt-cmp-acts', open, out)
+      );
+      over.append(col);
+    }
+    return over;
+  }
+
   const stampOf = (pass: DraftPass): number => Date.parse(pass.at ?? '') || 0;
   const isNew = (pass: DraftPass): boolean => stampOf(pass) > seenAt;
   const newest = (room: DraftRoom): number =>
@@ -249,9 +345,12 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
           held.pass,
           held.look,
           held.question.picked,
+          inTray(held.room, held.pass),
           held.room.notes.filter((note) => note.on === held!.pass.id),
         ])
-      : seeing
+      : comparing
+        ? JSON.stringify(['compare', tray])
+        : seeing
         ? JSON.stringify(['seeing', seeing.at, seeing.items.map((item) => item.image)])
         : paging
           ? `page:${paging}`
@@ -330,13 +429,15 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     else finished(canvas);
     body.append(canvas);
     put(body);
+    const aside = trayStrip();
+    if (aside) put(aside);
     canvas.scrollTop = keep;
     if (restoring) {
       restoring = false;
       requestAnimationFrame(() => (canvas.scrollTop = keep));
     }
-    if (!stays && (held || paging || seeing)) {
-      const over = held ? holdUp() : seeing ? seeUp() : pageUp(paging!);
+    if (!stays && (held || paging || seeing || comparing)) {
+      const over = held ? holdUp() : comparing ? compareUp() : seeing ? seeUp() : pageUp(paging!);
       over.dataset.key = key;
       win.append(over);
     }
@@ -464,6 +565,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
         h('div', 'dt-s', `${room.name} › ${question.ask}`)
       );
       if (picked) one.append(chip('taken', MOSS));
+      one.append(pickBtn(room, pass));
       one.addEventListener('click', () => hold(room, question, pass));
       grid.append(one);
     }
@@ -617,6 +719,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
         img.style.height = '250px';
         img.append(pic(pass.image, 450));
         if (isNew(pass)) img.append(h('span', 'dt-tag dt-tag-open', 'new'));
+        img.append(pickBtn(room, pass));
         img.addEventListener('click', () => hold(room, question, pass));
         el.append(img, h('div', 'g-pix dt-k', `${pass.id}${pass.name ? ` · ${pass.name}` : ''}`));
         if (pass.said) el.append(h('div', 'dt-cap', pass.said));
@@ -692,6 +795,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
       const one = h('div', `dt-pass${picked ? ' dt-picked' : ''}${live ? ' dt-live' : ''}`);
       one.append(pic(pass.image, 200));
       if (isNew(pass)) one.append(h('span', 'dt-newdot'));
+      one.append(pickBtn(room, pass));
       if (pass.variants.length) one.append(h('span', 'dt-more', `+${pass.variants.length}`));
       one.append(h('span', 'dt-id', pass.id));
       one.title = pass.name || pass.id;
@@ -763,6 +867,13 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
         plan.length ? chip(`in the plan · ${plan.join(', ')}`, MOSS) : null
       )
     );
+    const aside = h(
+      'div',
+      'dt-line',
+      inTray(room, pass) ? 'set aside to compare, take out' : 'set aside to compare'
+    );
+    aside.addEventListener('click', () => toggleTray(room, pass));
+    info.append(aside);
     if (pass.said) info.append(h('p', 'dt-said', pass.said));
     const notes = room.notes.filter((note) => note.on === pass.id);
     for (const note of notes) info.append(sticky(note.said));
@@ -888,10 +999,11 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (held || paging || seeing) {
+      if (held || paging || seeing || comparing) {
         held = null;
         paging = null;
         seeing = null;
+        comparing = false;
         paint();
       } else if (query) {
         query = '';
@@ -960,6 +1072,8 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
         held = null;
         paging = null;
         seeing = null;
+        tray = [];
+        comparing = false;
         canvasScroll = 0;
         trouble = null;
       }

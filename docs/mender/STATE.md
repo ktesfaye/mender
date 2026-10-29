@@ -4438,3 +4438,9 @@ passes, large, tagged new) with its trail newest first. In the finished thing a
 page opens by itself, just the picture and its caption with arrows between the
 finished pages, never the passes behind it. Driven in a dev instance against a
 scratch board.
+
+**Drafting table compare (2026-10-29, 1.29.0).** A ring in the corner of any
+pass (on hover) sets it aside; what is set aside rides along the foot of the
+table across rooms and searches, so one can be picked, another found, then
+"compare" lays them side by side, each with "open" and "take out". Also on a
+held-up pass. Driven in a dev instance against a scratch board.
