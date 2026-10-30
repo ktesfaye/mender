@@ -525,3 +525,40 @@
 .gl-tile.bad .press {
   color: var(--g-sore);
 }
+
+.ga-o.has-prev {
+  flex-wrap: wrap;
+}
+.ga-prev {
+  flex: 0 0 100%;
+  display: flex;
+  gap: 8px;
+  height: 230px;
+  margin: -2px -2px 4px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+}
+.ga-prev-one {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
+}
+.ga-prev-web {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.ga-prev-one .prose-picture {
+  margin: 0;
+  height: 100%;
+}
+.ga-prev-one .prose-picture img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.ga-prev-one .prose-picture figcaption {
+  display: none;
+}

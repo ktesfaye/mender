@@ -80,6 +80,8 @@ export interface Asking {
     id: string;
     said: string;
     about?: string;
+    /** The thing itself, when the agent put it on the option: a picture, a film, a page. */
+    preview?: string;
     requestId?: string;
     /** A line the board adds under the agent's own answers. */
     kind?: 'other' | 'submit' | 'talk';

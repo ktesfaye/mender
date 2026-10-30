@@ -20,6 +20,7 @@ export function answersFor(ask: Ask): {
   requestId?: string;
   name: string;
   about?: string;
+  preview?: string;
   kind?: 'other' | 'submit' | 'talk';
 }[] {
   const answers = ask.options.map((option) => ({
@@ -27,6 +28,7 @@ export function answersFor(ask: Ask): {
     requestId: option.requestId,
     name: option.picked ? `✓ ${option.name}` : option.name,
     ...(option.about ? { about: option.about } : {}),
+    ...(option.preview ? { preview: option.preview } : {}),
     ...(option.kind ? { kind: option.kind } : {}),
   }));
   if (ask.multi)

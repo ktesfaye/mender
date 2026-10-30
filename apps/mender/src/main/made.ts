@@ -280,7 +280,6 @@ const PICTURES = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
  */
 export function viewedIn(turns: readonly TranscriptTurn[]): { name: string; path: string }[] {
   const seen: string[] = [];
-  let onTable = false;
   const note = (path: string | undefined): void => {
     if (!path || !path.startsWith('/') || !PICTURES.has(extension(path))) return;
     const at = seen.indexOf(path);
@@ -293,15 +292,12 @@ export function viewedIn(turns: readonly TranscriptTurn[]): { name: string; path
       return;
     }
     if (node.kind === 'read-tool-call') note(node.locations?.[0]?.path);
-    if (node.kind === 'mcp-tool-call' && /show_on_table$/.test(node.tool)) onTable = true;
     for (const child of node.children ?? []) walk(child);
   };
-  for (const turn of turns.slice(-3)) {
-    for (const item of turn.items) if (item.kind !== 'message' && item.kind !== 'thinking') walk(item);
+  for (const turn of turns.slice(-1)) {
+    for (const item of turn.items)
+      if (item.kind !== 'message' && item.kind !== 'thinking') walk(item);
   }
-  /* What it put on the drafting table is the thing being chosen between, often
-     moving; the stills it opened to check its own work are not. */
-  if (onTable) return [];
   return seen
     .slice(-6)
     .filter((path) => existsSync(path))

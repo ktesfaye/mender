@@ -18,18 +18,27 @@ export interface FormQuestion {
   text: string;
   /** Several answers may be picked at once. */
   several: boolean;
-  options: { value: string | boolean; label: string; about?: string }[];
+  options: { value: string | boolean; label: string; about?: string; preview?: string }[];
 }
 
 const COMPANION = '_askUserQuestionCustomAnswer';
+
+const OPTION_META = '_claude/askUserQuestionOption';
+
+type Choice = {
+  const?: unknown;
+  title?: string;
+  description?: string;
+  _meta?: Record<string, unknown> | null;
+};
 
 type Field = {
   type?: string;
   title?: string;
   description?: string;
   enum?: unknown[];
-  oneOf?: { const?: unknown; title?: string; description?: string }[];
-  anyOf?: { const?: unknown; title?: string; description?: string }[];
+  oneOf?: Choice[];
+  anyOf?: Choice[];
   items?: Field;
   _meta?: Record<string, unknown> | null;
 };
@@ -54,11 +63,16 @@ export function questionsOf(message: string, schema: Record<string, unknown>): F
             { value: false, label: 'no' },
           ]
         : (choices?.oneOf ?? choices?.anyOf ?? []).length
-          ? (choices?.oneOf ?? choices?.anyOf ?? []).map((choice) => ({
-              value: String(choice.const),
-              label: choice.title ?? String(choice.const),
-              ...(choice.description ? { about: choice.description } : {}),
-            }))
+          ? (choices?.oneOf ?? choices?.anyOf ?? []).map((choice) => {
+              const preview = (choice._meta?.[OPTION_META] as { preview?: unknown } | undefined)
+                ?.preview;
+              return {
+                value: String(choice.const),
+                label: choice.title ?? String(choice.const),
+                ...(choice.description ? { about: choice.description } : {}),
+                ...(typeof preview === 'string' && preview.trim() ? { preview } : {}),
+              };
+            })
           : (choices?.enum ?? []).map((value) => ({ value: String(value), label: String(value) }));
     /* A field with nothing to pick from is answered by writing, in itself. */
     const written = companions.get(key) ?? (options.length ? undefined : key);

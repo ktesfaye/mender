@@ -181,6 +181,7 @@ export function yardOf(from: Standing): Yard {
               id: one.optionId,
               said: one.name,
               ...(one.about ? { about: one.about } : {}),
+              ...(one.preview ? { preview: one.preview } : {}),
               ...(one.kind ? { kind: one.kind } : {}),
               requestId: one.requestId,
             })),
@@ -438,7 +439,12 @@ function thoughtsOf(
     /* While a turn is still going, what it tells you on the way is how you
        follow a long one from across the room, so it stays out until the turn
        ends and only the last word of it is kept. */
-    ...(going && at >= settled && one.turn !== undefined && current.has(one.turn) && !one.quiet && !one.trouble
+    ...(going &&
+    at >= settled &&
+    one.turn !== undefined &&
+    current.has(one.turn) &&
+    !one.quiet &&
+    !one.trouble
       ? { progress: true }
       : {}),
     ...(one.pack ? { pack: one.pack, said: packSaid(one.pack, one.said) } : {}),

@@ -4454,3 +4454,5 @@ pass (on hover) sets it aside; what is set aside rides along the foot of the
 table across rooms and searches, so one can be picked, another found, then
 "compare" lays them side by side, each with "open" and "take out". Also on a
 held-up pass. Driven in a dev instance against a scratch board.
+
+**A question shows the thing itself on each answer (2026-10-30, 1.32.0).** An option's `preview` is drawn on the option: a picture, a film or animated picture playing on a loop, or an html page running. Every session is told to hang the real thing there, so choosing between animations means watching them. Without previews the old fallback shows only pictures opened in the latest turn, not the last three turns. Driven in a dev instance on Haiku at low effort: a two-option question with two mp4s drew both, and both were moving across consecutive screenshots.

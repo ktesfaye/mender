@@ -13,6 +13,7 @@ import { SEND_ALL } from '../board/work';
 import { figure } from '../yard/pictures';
 import type { Asking } from '../yard/what';
 import { glaze } from './glass';
+import { previewOf } from './preview';
 import { px } from './px';
 import './asks.css';
 
@@ -252,7 +253,8 @@ export function gate(wide: number, asking: Asking, does: AskDoings): HTMLElement
       const n = asking.answers.filter((one) => !isAction(one) && picked(one)).length;
       body.appendChild(el('div', 'ga-sub', n ? `${n} ticked` : 'none ticked yet'));
     }
-    if (asking.pictures?.length) {
+    const shown = asking.answers.some((one) => one.preview);
+    if (!shown && asking.pictures?.length) {
       const row = el('div', 'ask-pictures');
       for (const one of asking.pictures) row.appendChild(figure({ name: one.name, url: one.path }));
       body.appendChild(row);
@@ -277,6 +279,11 @@ export function gate(wide: number, asking: Asking, does: AskDoings): HTMLElement
       const other = one.kind === 'other';
       const on = picked(one);
       const o = el('div', `ga-o${several ? ' box' : ''}${on ? ' on' : ''}${other ? ' else' : ''}`);
+      const look = one.preview ? previewOf(one.preview) : null;
+      if (look) {
+        o.classList.add('has-prev');
+        o.appendChild(look);
+      }
       const ring = el('span', 'ga-rg');
       o.appendChild(ring);
       const text = el('div', 'ga-t');

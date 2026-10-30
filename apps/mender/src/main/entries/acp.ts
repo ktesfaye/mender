@@ -51,7 +51,10 @@ const ASKING = [
   'When you need the person to choose between options (two or more ways forward, a yes or no with',
   'consequences, which of several things), ask with the AskUserQuestion tool, which Mender draws as',
   'a proper choice they answer with a key. Never write the options out as a list in your reply and',
-  'stop to wait for an answer.',
+  'stop to wait for an answer. When the options are things to look at (designs, mockups, animations, pages),',
+  "put the thing itself on each option's `preview` as an absolute path: a picture, a film (mp4, webm,",
+  'gif) or an html page. Mender draws it on that option, films playing on a loop, so he chooses by',
+  'looking at the very thing, never at contact sheets or stills you happened to open.',
 ].join(' ');
 
 /**

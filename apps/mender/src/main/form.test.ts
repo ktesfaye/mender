@@ -59,4 +59,24 @@ describe('questionsOf', () => {
       { key: 'note', written: 'note', header: 'Note', text: 'Note', several: false, options: [] },
     ]);
   });
+
+  it('carries what the agent hung on an option as its preview', () => {
+    const [question] = questionsOf('Which?', {
+      type: 'object',
+      properties: {
+        question_0: {
+          type: 'string',
+          oneOf: [
+            {
+              const: 'A',
+              title: 'A',
+              _meta: { '_claude/askUserQuestionOption': { preview: '/x/a.mp4' } },
+            },
+            { const: 'B', title: 'B' },
+          ],
+        },
+      },
+    });
+    expect(question.options.map((one) => one.preview)).toEqual(['/x/a.mp4', undefined]);
+  });
 });
