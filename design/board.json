@@ -1,0 +1,856 @@
+{
+  "title": "",
+  "about": "",
+  "flow": [],
+  "rooms": [
+    {
+      "id": "workspace-beam",
+      "name": "workspace beam",
+      "about": "",
+      "state": "drawing",
+      "plan": [],
+      "questions": [
+        {
+          "ask": "tying a workspace to its Jira ticket",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "00",
+              "name": "today",
+              "image": "jira-beam/00-today.png",
+              "variants": [],
+              "said": "What it is now: the ticket buried in a branch slug.",
+              "page": "jira-beam/00-today.html",
+              "at": "2026-10-29T18:32:54.756Z"
+            },
+            {
+              "id": "01",
+              "name": "tag",
+              "image": "jira-beam/01-tag.png",
+              "variants": [],
+              "said": "Plain title on the board, a paper tag with the number tied under it in its column's colour; the tag opens the ticket, hovering shows it.",
+              "page": "jira-beam/01-tag.html",
+              "at": "2026-10-29T18:32:54.795Z"
+            },
+            {
+              "id": "02",
+              "name": "notice",
+              "image": "jira-beam/02-notice.png",
+              "variants": [],
+              "said": "The ticket itself nailed to the top of the gatepost while you're in that workspace; beam boards are number plus plain title with a status notch.",
+              "page": "jira-beam/02-notice.html",
+              "at": "2026-10-29T18:32:54.833Z"
+            },
+            {
+              "id": "03",
+              "name": "lanes",
+              "image": "jira-beam/03-lanes.png",
+              "variants": [],
+              "said": "The beam is cut into the Jira board's own columns; a workspace hangs where its ticket stands and slides along when Jira moves it.",
+              "page": "jira-beam/03-lanes.html",
+              "at": "2026-10-29T18:32:54.871Z"
+            }
+          ]
+        },
+        {
+          "ask": "workspaces reimagined in glass",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "04",
+              "name": "lit windows",
+              "image": "workspaces/kit/01f-windows.png",
+              "variants": [
+                {
+                  "name": "pointing at INV-71880",
+                  "image": "workspaces/kit/01f-windows-hover.png"
+                },
+                {
+                  "name": "right-click",
+                  "image": "workspaces/kit/01f-windows-open.png"
+                },
+                {
+                  "name": "draft before review",
+                  "image": "workspaces/kit/01e-windows.png"
+                }
+              ],
+              "said": "A glass band of lit windows, each workspace's people standing inside in their posture's light; the ticket lettered on the pane, the one you're in widest with its full title.",
+              "page": "workspaces/kit/01f-windows.html",
+              "at": "2026-10-29T18:46:39.905Z"
+            },
+            {
+              "id": "05",
+              "name": "hand of tickets",
+              "image": "workspaces/kit/02b-hand.png",
+              "variants": [
+                {
+                  "name": "pointing at INV-71880",
+                  "image": "workspaces/kit/02b-hand-hover.png"
+                },
+                {
+                  "name": "unfolded",
+                  "image": "workspaces/kit/02b-hand-open.png"
+                },
+                {
+                  "name": "draft before review",
+                  "image": "workspaces/kit/02-hand.png"
+                }
+              ],
+              "said": "The one you're in is a glass ticket laid face up as the header; the rest fanned beside it like cards in a hand, edges glowing in their posture; it unfolds into the whole ticket.",
+              "page": "workspaces/kit/02b-hand.html",
+              "at": "2026-10-29T18:46:39.964Z"
+            },
+            {
+              "id": "06",
+              "name": "night sky",
+              "image": "workspaces/kit/03b-sky.png",
+              "variants": [
+                {
+                  "name": "pointing at INV-71880",
+                  "image": "workspaces/kit/03b-sky-hover.png"
+                },
+                {
+                  "name": "draft before review",
+                  "image": "workspaces/kit/03-sky.png"
+                }
+              ],
+              "said": "Workspaces are stars grouped into constellations by Jira column, burning in their posture; home is the moon; the one you're in drops a beam of light onto the rail.",
+              "page": "workspaces/kit/03b-sky.html",
+              "at": "2026-10-29T18:46:40.032Z"
+            }
+          ]
+        },
+        {
+          "ask": "quiet, in place, with gitlab",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "07",
+              "name": "top rail",
+              "image": "workspaces/kit/07-rail.png",
+              "variants": [
+                {
+                  "name": "pointing at INV-71880",
+                  "image": "workspaces/kit/07-rail-hover.png"
+                },
+                {
+                  "name": "the one you're in, opened",
+                  "image": "workspaces/kit/07-rail-open.png"
+                }
+              ],
+              "said": "The lantern rail's quiet twin under the head: key, plain title, and one line in its posture's tone with the GitLab fact that matters.",
+              "page": "workspaces/kit/07-rail.html",
+              "at": "2026-10-29T18:58:00.420Z"
+            },
+            {
+              "id": "08",
+              "name": "the head says it",
+              "image": "workspaces/kit/08-head.png",
+              "variants": [
+                {
+                  "name": "pointing at INV-71880's lantern",
+                  "image": "workspaces/kit/08-head-hover.png"
+                },
+                {
+                  "name": "switcher open",
+                  "image": "workspaces/kit/08-head-open.png"
+                }
+              ],
+              "said": "No strip: the head's path names the workspace and its meta line says ci/approvals/comments; the others are tiny lanterns beside it, and pressing opens a glass switcher.",
+              "page": "workspaces/kit/08-head.html",
+              "at": "2026-10-29T18:58:00.462Z"
+            },
+            {
+              "id": "09",
+              "name": "the column",
+              "image": "workspaces/kit/09-column.png",
+              "variants": [
+                {
+                  "name": "pointing at INV-71880",
+                  "image": "workspaces/kit/09-column-hover.png"
+                },
+                {
+                  "name": "the one you're in, opened",
+                  "image": "workspaces/kit/09-column-open.png"
+                }
+              ],
+              "said": "A WORKSPACES list at the top of the left column, a line each with a small lit lantern; only what needs saying gets a second line.",
+              "page": "workspaces/kit/09-column.html",
+              "at": "2026-10-29T18:58:00.508Z"
+            }
+          ]
+        },
+        {
+          "ask": "designed, and at home",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "10b",
+              "name": "glass bar",
+              "image": "workspaces/kit/10b-bar.png",
+              "variants": [
+                {
+                  "name": "pointing at INV-71880",
+                  "image": "workspaces/kit/10b-bar-hover.png"
+                },
+                {
+                  "name": "the one you're in, opened",
+                  "image": "workspaces/kit/10b-bar-open.png"
+                },
+                {
+                  "name": "draft before review",
+                  "image": "workspaces/kit/10-bar.png"
+                }
+              ],
+              "said": "One liquid-glass bar under the head, a segment per workspace with its lantern, key, plain title and only the GitLab signs that need you; the one you're in is a raised lens.",
+              "page": "workspaces/kit/10b-bar.html",
+              "at": "2026-10-29T19:08:21.258Z"
+            },
+            {
+              "id": "11b",
+              "name": "ticket in the head",
+              "image": "workspaces/kit/11b-head.png",
+              "variants": [
+                {
+                  "name": "pointing at INV-71880",
+                  "image": "workspaces/kit/11b-head-hover.png"
+                },
+                {
+                  "name": "unfolded",
+                  "image": "workspaces/kit/11b-head-open.png"
+                },
+                {
+                  "name": "draft before review",
+                  "image": "workspaces/kit/11-head.png"
+                }
+              ],
+              "said": "The head is a glass ticket header for the workspace you're in: breadcrumb, the ticket title, status and ci/approvals/comments chips; the others as glass chips beside it; it unfolds into the whole ticket and MR.",
+              "page": "workspaces/kit/11b-head.html",
+              "at": "2026-10-29T19:08:21.301Z"
+            },
+            {
+              "id": "12b",
+              "name": "workspace rail",
+              "image": "workspaces/kit/12b-rail.png",
+              "variants": [
+                {
+                  "name": "pointing at INV-71880",
+                  "image": "workspaces/kit/12b-rail-hover.png"
+                },
+                {
+                  "name": "the one you're in, opened",
+                  "image": "workspaces/kit/12b-rail-open.png"
+                },
+                {
+                  "name": "draft before review",
+                  "image": "workspaces/kit/12-rail.png"
+                }
+              ],
+              "said": "A glass rail down the left like the settings window's pages: a tile per workspace, the one you're in lit and taller with its ci/approvals/comments as signed rows.",
+              "page": "workspaces/kit/12b-rail.html",
+              "at": "2026-10-29T19:08:21.341Z"
+            }
+          ]
+        },
+        {
+          "ask": "the top of the yard, the village's way",
+          "state": "open",
+          "picked": [
+            "13b"
+          ],
+          "passes": [
+            {
+              "id": "13b",
+              "name": "crossroads",
+              "image": "workspaces/kit/13b-crossroads.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/13b-crossroads-crop.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/kit/13b-crossroads-point.png"
+                },
+                {
+                  "name": "opened",
+                  "image": "workspaces/kit/13b-crossroads-open.png"
+                },
+                {
+                  "name": "first draft",
+                  "image": "workspaces/kit/13-crossroads.png"
+                }
+              ],
+              "said": "A signpost: the project on its cap, each workspace an arm, words only on yours and the ones wanting you, a lantern hung off any arm that wants you, the ticket a notice on the post with a crow for failed ci and empty wax rings for missing approvals.",
+              "page": "workspaces/kit/13b-crossroads.html",
+              "at": "2026-10-29T19:55:34.024Z"
+            },
+            {
+              "id": "14b",
+              "name": "harbour",
+              "image": "workspaces/kit/14b-harbour.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/14b-harbour-crop.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/kit/14b-harbour-point.png"
+                },
+                {
+                  "name": "opened",
+                  "image": "workspaces/kit/14b-harbour-open-busy.png"
+                },
+                {
+                  "name": "busy yard",
+                  "image": "workspaces/kit/14b-harbour-busy.png"
+                },
+                {
+                  "name": "first draft",
+                  "image": "workspaces/kit/14-harbour.png"
+                }
+              ],
+              "said": "Each workspace is a boat tied at a pier, its Jira key on the bow and its title on a pennant. A bow lantern means someone in it wants you. The merge request shows on the boat itself: a torn sail for failed ci, empty crew places for missing approvals, gulls for comments. Context is a tide gauge in the water.",
+              "page": "workspaces/kit/14b-harbour.html",
+              "at": "2026-10-29T19:55:34.066Z"
+            },
+            {
+              "id": "15c",
+              "name": "notices on a line",
+              "image": "workspaces/kit/15c-board.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/15c-board-crop.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/kit/15c-board-point.png"
+                },
+                {
+                  "name": "opened",
+                  "image": "workspaces/kit/15c-board-open.png"
+                },
+                {
+                  "name": "board version",
+                  "image": "workspaces/kit/15-board.png"
+                }
+              ],
+              "said": "Each workspace is a notice pegged on a rope between two posts, with no board behind it. Yours hangs in the lantern light. A torn corner means it broke, a ribbon means it's done, and a lantern means someone in it wants you. The merge request is wax rings, slips and a crow, and the model is chalked on a slate.",
+              "page": "workspaces/kit/15c-board.html",
+              "at": "2026-10-29T19:55:46.018Z"
+            }
+          ]
+        },
+        {
+          "ask": "the crossroads, across the whole top",
+          "state": "dropped",
+          "picked": [],
+          "passes": [
+            {
+              "id": "13c",
+              "name": "road along the top",
+              "image": "workspaces/kit/13c-crossroads.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/13c-crossroads-crop.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/kit/13c-crossroads-point.png"
+                },
+                {
+                  "name": "opened",
+                  "image": "workspaces/kit/13c-crossroads-open.png"
+                },
+                {
+                  "name": "quiet yard",
+                  "image": "workspaces/kit/13c-crossroads-yard.png"
+                }
+              ],
+              "said": "Your signpost stands at the left and a road runs out to the rack. Every other workspace is a fingerpost along it, with a lantern hung under the ones that want you.",
+              "page": "workspaces/kit/13c-crossroads.html",
+              "at": "2026-10-29T20:17:32.688Z"
+            },
+            {
+              "id": "13d",
+              "name": "one long fingerboard",
+              "image": "workspaces/kit/13d-crossroads.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/13d-crossroads-crop.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/kit/13d-crossroads-point.png"
+                },
+                {
+                  "name": "opened",
+                  "image": "workspaces/kit/13d-crossroads-open.png"
+                },
+                {
+                  "name": "quiet yard",
+                  "image": "workspaces/kit/13d-crossroads-yard.png"
+                }
+              ],
+              "said": "One run of arrow planks reaches across the top, with home first and yours long and lit. The model, effort and mode hang under your plank as small tags, and the ticket is nailed to a second post in the middle.",
+              "page": "workspaces/kit/13d-crossroads.html",
+              "at": "2026-10-29T20:17:32.766Z"
+            },
+            {
+              "id": "13e",
+              "name": "travellers on the road",
+              "image": "workspaces/kit/13e-crossroads.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/13e-crossroads-crop.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/kit/13e-crossroads-point.png"
+                },
+                {
+                  "name": "opened",
+                  "image": "workspaces/kit/13e-crossroads-open.png"
+                },
+                {
+                  "name": "quiet yard",
+                  "image": "workspaces/kit/13e-crossroads-yard.png"
+                }
+              ],
+              "said": "Your post stands on the left. Out along the road, a workspace that wants you is a villager standing with its lantern beside a stake with its key on it. The broken one stands grey and the quiet ones are bare milestones.",
+              "page": "workspaces/kit/13e-crossroads.html",
+              "at": "2026-10-29T20:17:32.833Z"
+            }
+          ]
+        },
+        {
+          "ask": "the crossroads, readable",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "13g",
+              "name": "fingerboard, every sign says what it is",
+              "image": "workspaces/kit/13g-crossroads.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/13g-crossroads-crop.png"
+                },
+                {
+                  "name": "pointing at a sign",
+                  "image": "workspaces/kit/13g-crossroads-point.png"
+                },
+                {
+                  "name": "your sign opened",
+                  "image": "workspaces/kit/13g-crossroads-open.png"
+                },
+                {
+                  "name": "quiet yard",
+                  "image": "workspaces/kit/13g-crossroads-yard.png"
+                },
+                {
+                  "name": "before polish",
+                  "image": "workspaces/kit/13f-crossroads.png"
+                }
+              ],
+              "said": "Every workspace is a sign showing its ticket title, and yours is the ticket itself. The merge request is on the sign: a crow means ci failed, the wax seals are approvals, the paper slips are comments. A lantern hangs under any sign that wants you.",
+              "page": "workspaces/kit/13g-crossroads.html",
+              "at": "2026-10-29T20:28:22.039Z"
+            }
+          ]
+        },
+        {
+          "ask": "the crossroads as a strip of landscape",
+          "state": "open",
+          "picked": [
+            "13i"
+          ],
+          "passes": [
+            {
+              "id": "13h",
+              "name": "winding road",
+              "image": "workspaces/kit/13h-crossroads.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/13h-crossroads-crop.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/kit/13h-crossroads-point.png"
+                },
+                {
+                  "name": "opened",
+                  "image": "workspaces/kit/13h-crossroads-open.png"
+                },
+                {
+                  "name": "quiet yard",
+                  "image": "workspaces/kit/13h-crossroads-yard.png"
+                }
+              ],
+              "said": "A road winds through grass with signposts planted along it at different depths, each sign showing its ticket title. Villagers stand at the posts that want you, holding lanterns, a broken post leans with somebody grey sitting beside it, and a helper hammers in the one being made.",
+              "page": "workspaces/kit/13h-crossroads.html",
+              "at": "2026-10-29T21:04:56.190Z"
+            },
+            {
+              "id": "13i",
+              "name": "crossroads meadow",
+              "image": "workspaces/kit/13i-crossroads.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/13i-crossroads-crop.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/kit/13i-crossroads-point.png"
+                },
+                {
+                  "name": "opened",
+                  "image": "workspaces/kit/13i-crossroads-open.png"
+                },
+                {
+                  "name": "quiet yard",
+                  "image": "workspaces/kit/13i-crossroads-yard.png"
+                }
+              ],
+              "said": "Footpaths branch out across a bushy meadow from your post to each workspace's sign, with the signs scattered high and low instead of along one road.",
+              "page": "workspaces/kit/13i-crossroads.html",
+              "at": "2026-10-29T21:04:56.244Z"
+            },
+            {
+              "id": "13j",
+              "name": "meadow, board on the right, grass under the rack",
+              "image": "workspaces/kit/13j-crossroads.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/13j-crossroads-crop.png"
+                },
+                {
+                  "name": "no workspaces",
+                  "image": "workspaces/kit/13j-none-crop.png"
+                },
+                {
+                  "name": "one workspace",
+                  "image": "workspaces/kit/13j-one-crop.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/kit/13j-crossroads-point.png"
+                },
+                {
+                  "name": "opened",
+                  "image": "workspaces/kit/13j-crossroads-open.png"
+                },
+                {
+                  "name": "no workspaces, full",
+                  "image": "workspaces/kit/13j-none.png"
+                },
+                {
+                  "name": "one workspace, full",
+                  "image": "workspaces/kit/13j-one.png"
+                }
+              ],
+              "said": "The session board now stands on its own legs on the right of the meadow, and the grass runs the full width under the rack. With nothing open, the meadow is a campfire and a lone home post.",
+              "page": "workspaces/kit/13j-crossroads.html",
+              "at": "2026-10-29T22:12:26.495Z"
+            }
+          ]
+        },
+        {
+          "ask": "where you are standing, and the session corner",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "13k",
+              "name": "washing line",
+              "image": "workspaces/kit/13k-line-inv.png",
+              "variants": [
+                {
+                  "name": "stepped into Flaky e2e",
+                  "image": "workspaces/kit/13k-line-flaky.png"
+                },
+                {
+                  "name": "strip, in INV-71924",
+                  "image": "workspaces/kit/13k-line-inv-crop.png"
+                },
+                {
+                  "name": "strip, in Flaky e2e",
+                  "image": "workspaces/kit/13k-line-flaky-crop.png"
+                }
+              ],
+              "said": "Signs never move; the lantern walks to the workspace you step into and its sign grows to full. The session is a washing line: name on the sheet, mode on a dyed cloth, model and effort on linen, a peg bag filling as its room goes.",
+              "page": "workspaces/kit/13k-switch.html",
+              "at": "2026-10-30T02:14:50.604Z"
+            },
+            {
+              "id": "13l",
+              "name": "its own flag",
+              "image": "workspaces/kit/13k-flag-inv.png",
+              "variants": [
+                {
+                  "name": "stepped into Flaky e2e",
+                  "image": "workspaces/kit/13k-flag-flaky.png"
+                },
+                {
+                  "name": "strip, in INV-71924",
+                  "image": "workspaces/kit/13k-flag-inv-crop.png"
+                },
+                {
+                  "name": "strip, in Flaky e2e",
+                  "image": "workspaces/kit/13k-flag-flaky-crop.png"
+                }
+              ],
+              "said": "Same lantern switch. The session flies its own pennant with its name, mode and model tied under it as ribbons, and a candle in a jar burns down as it uses its room.",
+              "page": "workspaces/kit/13l-switch.html",
+              "at": "2026-10-30T02:14:50.657Z"
+            }
+          ]
+        },
+        {
+          "ask": "the settings corner on its own",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "13m",
+              "name": "washing line",
+              "image": "workspaces/kit/13m-line-inv-crop.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/13m-line-inv-corner.png"
+                },
+                {
+                  "name": "fable, plan, nearly full",
+                  "image": "workspaces/kit/13m-line-flaky-corner.png"
+                },
+                {
+                  "name": "whole yard",
+                  "image": "workspaces/kit/13m-line-inv.png"
+                }
+              ],
+              "said": "Just mode, model, effort, room and cost, the name left where it is. Each setting its own cloth, a peg bag filling as room goes, a purse for cost.",
+              "page": "workspaces/kit/13m-line.html",
+              "at": "2026-10-30T02:26:57.081Z"
+            },
+            {
+              "id": "13n",
+              "name": "ribbons and a candle",
+              "image": "workspaces/kit/13m-pole-inv-crop.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/13m-pole-inv-corner.png"
+                },
+                {
+                  "name": "fable, plan, nearly full",
+                  "image": "workspaces/kit/13m-pole-flaky-corner.png"
+                },
+                {
+                  "name": "whole yard",
+                  "image": "workspaces/kit/13m-pole-inv.png"
+                }
+              ],
+              "said": "Settings tied to a pole as ribbons, a candle in a jar burning down as room goes, copper coins for cost.",
+              "page": "workspaces/kit/13m-pole.html",
+              "at": "2026-10-30T02:26:57.127Z"
+            },
+            {
+              "id": "13o",
+              "name": "barrel",
+              "image": "workspaces/kit/13m-barrel-inv-crop.png",
+              "variants": [
+                {
+                  "name": "close up",
+                  "image": "workspaces/kit/13m-barrel-inv-corner.png"
+                },
+                {
+                  "name": "fable, plan, nearly full",
+                  "image": "workspaces/kit/13m-barrel-flaky-corner.png"
+                },
+                {
+                  "name": "whole yard",
+                  "image": "workspaces/kit/13m-barrel-inv.png"
+                }
+              ],
+              "said": "Model and effort stencilled on a barrel, mode tied round its hoop, a sight glass darkening as room is drawn off, coins on the grass.",
+              "page": "workspaces/kit/13m-barrel.html",
+              "at": "2026-10-30T02:26:57.165Z"
+            }
+          ]
+        },
+        {
+          "ask": "calmer at rest",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "13p",
+              "name": "calmer meadow",
+              "image": "workspaces/kit/13p-inv-crop.png",
+              "variants": [
+                {
+                  "name": "stepped into Flaky e2e",
+                  "image": "workspaces/kit/13p-flaky-crop.png"
+                },
+                {
+                  "name": "whole yard",
+                  "image": "workspaces/kit/13p-inv.png"
+                },
+                {
+                  "name": "before (13m)",
+                  "image": "workspaces/kit/13m-line-inv-crop.png"
+                }
+              ],
+              "said": "Same places as 13m. Villagers, seals and slips come off every sign but the one you're in; a sign only gets a lantern when it wants you, is done or broke. Most flowers, rocks, fireflies and two bushes gone; the purse gone from the corner.",
+              "page": "workspaces/kit/13p-calm.html",
+              "at": "2026-10-30T02:47:36.180Z"
+            },
+            {
+              "id": "13q",
+              "name": "the session hangs under its workspace",
+              "image": "workspaces/kit/13q-inv-crop.png",
+              "variants": [
+                {
+                  "name": "stepped into Flaky e2e",
+                  "image": "workspaces/kit/13q-flaky-crop.png"
+                },
+                {
+                  "name": "close up",
+                  "image": "drafting/workspace-beam-13q-close-up.png"
+                },
+                {
+                  "name": "whole yard",
+                  "image": "workspaces/kit/13q-inv.png"
+                }
+              ],
+              "said": "Fixes 13p losing the session name and not saying which workspace you're in. The post reads like today's path: project on the cap, your workspace the one lit arm, the session you're in a paper tag hung under it. Every other arm dimmer. The here lantern burns in that workspace's own colour.",
+              "page": "workspaces/kit/13q-here.html",
+              "at": "2026-10-30T02:59:52.028Z"
+            }
+          ]
+        },
+        {
+          "ask": "back to the crossroads, grown up",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "13r",
+              "name": "one post, what you need at rest",
+              "image": "workspaces/kit/13r-inv-crop.png",
+              "variants": [
+                {
+                  "name": "stepped into Flaky e2e",
+                  "image": "workspaces/kit/13r-flaky-crop.png"
+                },
+                {
+                  "name": "pointing at the post",
+                  "image": "workspaces/kit/13r-point-crop.png"
+                },
+                {
+                  "name": "ten workspaces",
+                  "image": "workspaces/kit/13r-many-crop.png"
+                },
+                {
+                  "name": "ten, pointing",
+                  "image": "workspaces/kit/13r-many-point-crop.png"
+                },
+                {
+                  "name": "no workspaces",
+                  "image": "workspaces/kit/13r-none-crop.png"
+                },
+                {
+                  "name": "close up",
+                  "image": "drafting/workspace-beam-13r-close-up.png"
+                },
+                {
+                  "name": "whole yard",
+                  "image": "workspaces/kit/13r-inv.png"
+                }
+              ],
+              "said": "13b's post, made to work. The workspace you're in is the notice nailed to it under the lantern: ticket, title, ci, approvals, comments. The session you're in is the one arm pointing into the yard. Other workspaces point away left: home, then the ones wanting you with a lantern beside the tip, the rest folded into one \"more\" arm that fans out when you point at the post. Cap carries the project and what it thinks with.",
+              "page": "workspaces/kit/13r-post.html",
+              "at": "2026-10-30T03:37:55.314Z"
+            }
+          ]
+        }
+      ],
+      "never": [
+        "brown boards hanging off a beam on cords",
+        "busy, loud head bands that don't belong to the yard (lit windows, card fans, glowing star sky)",
+        "plain text lists with nothing designed about them",
+        "UI chrome dressed up: bars, chip rows, tiles, lists, popover-heavy dashboards",
+        "one object crammed in a corner with the rest of the top left empty",
+        "signs with only a number or nothing on them; the ticket floating apart from its workspace",
+        "a plain row of signs",
+        "workspaces scattered across the whole meadow, every one with its own props"
+      ],
+      "notes": [
+        {
+          "said": "the whole workspaces hanging is way too simple visually, especially now we moved from brown boxes to liquid glass. overhaul and reimagine the whole workspaces visuals",
+          "on": "tying a workspace to its Jira ticket",
+          "at": "2026-10-29T18:35:28.826Z"
+        },
+        {
+          "said": "these look a bit too out of place, i don't like it. way too busy and way too out of place. also add gitlab: know if ci failed, if i have approvals or not, if it has comments",
+          "on": "workspaces reimagined in glass",
+          "at": "2026-10-29T18:51:56.948Z"
+        },
+        {
+          "said": "now you went completely the other side on basic and simple",
+          "on": "quiet, in place, with gitlab",
+          "at": "2026-10-29T19:00:14.412Z"
+        },
+        {
+          "said": "all these just look so ugly. not everything needs to be visible right there, be artistic and creative, find nice solutions. stop reusing similar design ideas. do better, like how we designed and thought out our village",
+          "on": "designed, and at home",
+          "at": "2026-10-29T19:40:34.937Z"
+        },
+        {
+          "said": "feel free to redesign the whole top section, minus the projects rack. you have full creative freedom",
+          "at": "2026-10-29T19:42:53.119Z"
+        },
+        {
+          "said": "kinda like the look of the crossroads one, but the usage doesn't make sense, there is so much empty space, expand on that one",
+          "on": "13b",
+          "at": "2026-10-29T20:11:32.811Z"
+        },
+        {
+          "said": "i don't understand these designs, are the posts just the number? the ticket is on one side? huhh??? these are all just weird",
+          "on": "the crossroads, across the whole top",
+          "at": "2026-10-29T20:20:54.163Z"
+        },
+        {
+          "said": "no, we don't need to just go in a row basic and simple like that. i liked earlier when u put grass and make the top more interesting. don't go basic. be smart and artistic and pretty and creative with it",
+          "on": "13g",
+          "at": "2026-10-29T20:56:40.910Z"
+        },
+        {
+          "said": "no reason for this [session board] to be all on the left side, move it to the right. the projects rack is an overlay on top, no need to end the grass area early, just modify it to work on the right. what would the top look like with no workspaces, or just 1?",
+          "on": "13i",
+          "at": "2026-10-29T22:06:12.259Z"
+        },
+        {
+          "said": "i don't like it, it just makes everything so busy and messy, impossible to tell which is selected, hard to see the open session titles, and much busier with more open sessions. lets go back to this initial concept [13b]. not everything needs to be visible at once. take this idea and make it nicer and better",
+          "on": "13q",
+          "at": "2026-10-30T03:34:28.188Z"
+        }
+      ],
+      "brief": ""
+    }
+  ]
+}

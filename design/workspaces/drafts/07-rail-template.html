@@ -1,0 +1,148 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css">
+<style>body{background:#000 url(07-rail-bg.png) 0 0/1480px 1020px no-repeat}.lg::before{display:none}.lg{box-shadow:0 24px 60px rgba(0,0,0,.35)!important}</style>
+<style>
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-400-normal.woff2); }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-700-normal.woff2); font-weight: 700; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-italic.woff2); font-style: italic; }
+.abs { position: absolute; }
+:root { --cm: 'Courier Prime', monospace; --rl: rgba(246,232,208,.62); }
+/* head */
+.nm { left: 40px; top: 44px; }
+.nm .l1 { display: flex; align-items: baseline; gap: 14px; }
+.nm .pj { font: 400 21px 'Josefin Sans'; letter-spacing: .3em; color: var(--ink-2); text-transform: uppercase; }
+.nm .sl { color: var(--ink-3); font-size: 15px; }
+.nm .sn { font: 700 15px var(--cm); color: var(--ink); }
+.nm .mt { margin-top: 12px; font: 400 11.5px var(--cm); color: var(--ink-3); }
+.hm { right: 40px; top: 92px; text-align: right; }
+.hm .a { font: 400 11px 'Josefin Sans'; letter-spacing: .22em; color: var(--ember); text-transform: uppercase; opacity: .85; }
+.hm .b { margin-top: 10px; font: 400 11.5px var(--cm); color: var(--ink-3); }
+/* workspace rail */
+#ws { left: 40px; top: 152px; width: 1400px; height: 52px; display: flex; align-items: flex-start; gap: 24px; }
+.w { position: relative; flex: 0 1 auto; min-width: 0; padding: 4px 0 8px; font-family: var(--cm); white-space: nowrap; }
+.w .g { position: absolute; left: -14px; right: -14px; top: 10px; height: 40px; border-radius: 50%; filter: blur(9px); pointer-events: none; opacity: .0; }
+.w .l1 { position: relative; display: flex; align-items: baseline; gap: 7px; font-size: 12px; line-height: 16px; color: var(--ink-2); min-width: 0; }
+.w .k { font-size: 9.5px; color: var(--ink-3); letter-spacing: .01em; flex: none; }
+.w .t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.w .l2 { position: relative; margin-top: 3px; font-size: 11px; line-height: 14px; color: var(--ink-3); }
+.w .l2 i { font-style: normal; }
+.w .hs { display: inline-block; vertical-align: -2px; margin-right: 6px; }
+.w.cur .l1 { color: var(--ink); font-weight: 700; }
+.w.cur .k { color: var(--ink-2); font-weight: 400; }
+.w.cur::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--rl); }
+.w.hov .l1 { color: var(--ink); } .w.hov .k { color: var(--ink-2); }
+.w.ask .g { background: radial-gradient(closest-side, rgba(255,112,52,.5), transparent); opacity: .5; animation: br 2.4s ease-in-out infinite; }
+.w.work .g { background: radial-gradient(closest-side, rgba(255,154,74,.45), transparent); opacity: .44; animation: br 3.4s ease-in-out infinite; }
+.w.done .g { background: radial-gradient(closest-side, rgba(155,210,138,.4), transparent); opacity: .38; }
+.w.bad .g { background: radial-gradient(closest-side, rgba(240,138,114,.45), transparent); opacity: .44; }
+.w.ask .p { color: #ff8a4c; } .w.work .p { color: #ffae6a; } .w.done .p { color: var(--moss); } .w.bad .p { color: var(--sore); }
+.w .f-bad { color: var(--sore); } .w .f-need { color: var(--ink-2); } .w .f-ok { color: var(--ink-3); } .w .f-run { color: #ffae6a; opacity: .8; }
+.w.cut .l1, .w.cut .k { color: var(--ink-3); } .w.cut .l1 { font-style: italic; }
+.w.cut .p { color: var(--ink-2); }
+@keyframes br { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.plus { align-self: flex-start; margin-top: 3px; margin-left: 0; width: 22px; height: 22px; display: grid; place-items: center; opacity: .55; }
+/* yard bits redrawn lower */
+#lab { left: 471px; top: 214px; font: 400 11px 'Josefin Sans'; letter-spacing: .27em; color: var(--ink-3); text-transform: uppercase; }
+#vr { left: 441px; top: 204px; width: 1px; height: 598px; background: rgba(246,236,219,.1); }
+/* bottom rail */
+#rline { left: 40px; top: 902px; height: 2px; background: linear-gradient(90deg, var(--rl) 0, var(--rl) 80%, transparent); }
+.rlab { right: 40px; top: 912px; font: 400 10px 'Josefin Sans'; letter-spacing: .22em; color: var(--ink-3); text-transform: uppercase; }
+.rl { position: absolute; top: 903px; display: flex; align-items: flex-start; gap: 9px; }
+.rl::before { content: ''; position: absolute; left: 10px; top: -1px; width: 1px; height: 8px; background: rgba(246,236,219,.25); }
+.rl img { width: 22px; height: 38px; margin-top: 7px; image-rendering: pixelated; }
+.rl .tx { margin-top: 12px; font: 400 12px/1.25 var(--cm); }
+.rl .tx b { display: block; font-weight: 400; color: var(--ink); }
+.rl .tx i { font-style: normal; color: var(--ink-3); }
+.rl.w2 img { filter: drop-shadow(0 0 9px rgba(255,154,74,.8)); } .rl.w2 .tx i { color: #ffae6a; }
+.rl.a img { filter: hue-rotate(-24deg) saturate(1.6) drop-shadow(0 0 10px rgba(255,100,40,.9)); } .rl.a .tx i { color: #ff8a4c; }
+.rg { position: absolute; top: 905px; height: 60px; border-radius: 50%; filter: blur(14px); pointer-events: none; }
+/* popover */
+.pop { padding: 18px 20px 16px; border-radius: 24px; }
+.pop .r1 { display: flex; gap: 8px; align-items: center; }
+.pop .key { font: 650 12px 'Figtree'; letter-spacing: .04em; }
+.pop .ty { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; color: var(--ink-2); }
+.pop .st { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; color: var(--ink-2);
+  background: rgba(255,240,215,.07); box-shadow: inset 0 0 0 1px var(--hair); }
+.pop .st .dot { width: 6px; height: 6px; }
+.pop .oj { margin-left: auto; color: var(--gold); font-weight: 650; font-size: 12.5px; }
+.pop h2 { font-size: 18px; font-weight: 500; line-height: 1.22; margin-top: 11px; }
+.pop .ds { font-size: 12px; color: var(--ink-3); line-height: 1.45; margin-top: 7px; }
+.pop .card { margin-top: 13px; border-radius: 16px; background: rgba(255,240,215,.045); box-shadow: inset 0 0 0 1px var(--hair); padding: 11px 13px 12px; }
+.pop .card .pix { font-size: 9px; margin-bottom: 8px; display: flex; align-items: center; gap: 7px; }
+.pop .card .pix .go { margin-left: auto; font: 650 12.5px 'Figtree'; letter-spacing: 0; text-transform: none; color: var(--gold); }
+.pop .who { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+.pop .who img { width: 16px; height: 28px; image-rendering: pixelated; flex: none; }
+.pop .who b { display: block; font: 600 13px 'Figtree'; }
+.pop .who span { font-size: 11.5px; color: var(--ink-3); }
+.pop .who.a img { filter: hue-rotate(-24deg) saturate(1.6) drop-shadow(0 0 7px rgba(255,100,40,.8)); } .pop .who.a span em { color: #ff8a4c; }
+.pop .who.w img { filter: drop-shadow(0 0 7px rgba(255,154,74,.7)); } .pop .who.w span em { color: #ffae6a; }
+.pop .who span em { font-style: normal; }
+.pop .mr { font: 600 13.5px 'Figtree'; line-height: 1.3; }
+.pop .mr .n { color: #7aaaff; margin-right: 6px; }
+.pop .fact { display: flex; align-items: center; gap: 9px; font-size: 12.5px; padding: 4px 0; color: var(--ink-2); }
+.pop .fact b { font-weight: 650; }
+.pop .fact .d { margin-left: auto; font-size: 11.5px; color: var(--ink-3); }
+.pop .bad b { color: var(--sore); } .pop .ok b { color: var(--moss); } .pop .need b { color: var(--ink); } .pop .run b { color: #ffae6a; }
+.pop .foot { display: flex; align-items: center; gap: 10px; margin-top: 13px; font-size: 11.5px; color: var(--ink-3); }
+.pop .foot .mono { color: var(--ink-2); font-size: 11px; }
+.pop .foot .oj { margin-left: auto; }
+@keyframes b { 0%,100% { opacity:.8 } 50% { opacity:1 } }
+</style></head><body>
+<div class="abs nm"><div class="l1"><span class="pj">invest-web</span><span class="sl">/</span><span class="sn">Reason line under each loss</span></div>
+  <div class="mt">inv-71924-wash-sale-info · Claude Code · 12m · 4 turns</div></div>
+<div class="abs hm"><div class="a">auto</div><div class="b">Opus 5.5 · medium</div></div>
+<div id="ws" class="abs"></div>
+<div id="vr" class="abs"></div><div id="lab" class="abs">What it said</div>
+
+<div id="rline" class="abs" style="width:700px"></div>
+<div class="abs rlab" style="right:auto;left:640px;top:912px;display:none"></div>
+<div class="rg" style="left:20px;width:300px;background:radial-gradient(closest-side,rgba(255,154,74,.28),transparent)"></div>
+<div class="rg" style="left:300px;width:300px;background:radial-gradient(closest-side,rgba(255,100,40,.26),transparent)"></div>
+<div class="rl w2" style="left:40px"><img src="lantern.png"><div class="tx"><b>Reason line under each loss</b><i>running something · 12m</i></div></div>
+<div class="rl a" style="left:330px"><img src="lantern.png"><div class="tx"><b>Lot link API</b><i>wants you · 4m</i></div></div>
+<div class="rl" style="left:600px"><img src="lanternoff.png"></div>
+<div class="abs rlab">in INV-71924</div>
+
+<div id="popmount"></div>
+<script>window.PX_EXTRA={
+ house:['....#....','...###...','..#####..','.#######.','.##...##.','.##.#.##.','.##.#.##.','.#######.','.........'],
+ bug:['.#.....#.','..#...#..','...###...','.#######.','#.#####.#','..#####..','#.#####.#','...###...','..#...#..'],
+ story:['..#####..','..#...#..','..#...#..','..#...#..','..#...#..','..#...#..','..#.#.#..','..##.##..','..#...#..'],
+ task:['.#######.','.#.....#.','.#.###.#.','.#.#.#.#.','.#.###.#.','.#.....#.','.#######.','.........','.........'],
+ tick:['.........','.......#.','......##.','#....##..','##..##...','.####....','..##.....','.........','.........'],
+ cross:['.........','.#.....#.','..#...#..','...#.#...','....#....','...#.#...','..#...#..','.#.....#.','.........'],
+ chat:['.#######.','#.......#','#.##.##.#','#.......#','.#######.','..#......','.#.......','.........','.........'],
+ plus:['.........','....#....','....#....','..#####..','....#....','....#....','.........','.........','.........'],
+};</script>
+<script src="px.js"></script><script src="liquid-shaders.js"></script><script src="liquid.js"></script>
+<script>
+const S = window.STATE;
+const WS = [
+ {id:'', home:1, t:'invest-web', p:'idle', pc:'', f:''},
+ {id:'INV-71924', t:'Wash sale info', cls:'ask', p:'wants you', f:'ci failed', fc:'bad', cur:1},
+ {id:'INV-71880', t:'Split-day lots', cls:'ask', p:'wants you', f:'1 comment', fc:'need'},
+ {id:'INV-72011', t:'Q4 tax banner', cls:'done', p:'done', f:'no mr yet', fc:'ok'},
+ {id:'INV-71990', t:'Reinvest toggle', cls:'work', p:'working', f:'ci running', fc:'run'},
+ {id:'INV-71702', t:'Statements e2e', cls:'bad', p:'broken', f:'no mr yet', fc:'ok'},
+ {id:'', t:'chart spike', p:'idle', f:''},
+ {id:'INV-72040', t:'Holding period', cls:'cut', p:'being cut', f:'14s', fc:'ok'},
+];
+const ws = document.getElementById('ws');
+ws.innerHTML = WS.map((w) => `<div class="w ${w.cls||''} ${w.cur?'cur':''} ${S.hover===w.id&&w.id?'hov':''}" data-id="${w.id}">
+  <div class="g"></div>
+  <div class="l1">${w.home?'<i class="hs" data-px="house" data-s="12" data-c="#9bd28a"></i>':''}${w.id?`<span class="k">${w.id}</span>`:''}<span class="t">${w.t}</span></div>
+  <div class="l2"><span class="p">${w.p}</span>${w.f?` <span class="f-${w.fc||'ok'}">· ${w.f}</span>`:''}</div></div>`).join('') + '<div class="plus"><i data-px="plus" data-s="14" data-c="#f6ecdb"></i></div>';
+const A = document.createElement('div');
+A.innerHTML = S.pop || '';
+document.getElementById('popmount').append(...A.children);
+document.querySelectorAll('i[data-px]').forEach((el) => { el.innerHTML = pxIcon(el.dataset.px, el.dataset.c || 'currentColor', +(el.dataset.s || 18)); });
+// position popover under its workspace
+const p = document.querySelector('.pop');
+if (p) { const t = document.querySelector('.w[data-id="'+S.anchor+'"]').getBoundingClientRect(); p.style.left = Math.max(30, t.left - 18) + 'px'; p.style.top = (t.bottom + 12) + 'px'; }
+if (p) { const r = p.getBoundingClientRect(); const lab = document.getElementById('lab'), vr = document.getElementById('vr');
+  const lr = lab.getBoundingClientRect(); if (lr.right > r.left && lr.left < r.right && lr.bottom > r.top && lr.top < r.bottom) lab.style.visibility = 'hidden';
+  if (r.left < 441 && r.right > 441) { vr.style.top = (r.bottom + 12) + 'px'; vr.style.height = (802 - r.bottom - 12) + 'px'; } }
+// light the active rule under the sessions to match
+const cur = document.querySelector('.w.cur');
+liquid('07-rail-bg.png', { blur: 28, lift: 1, refThickness: 24, refDistance: 0.12, refFactor: 1.5, refDispersion: 12, glareConvergence: 0.95, glareRange: 26, glareHardness: 0.05, glareOpposite: 0, fresnelRange: 20 }).catch(e=>{document.body.dataset.err=e.message;document.body.dataset.ready=1})
+</script></body></html>

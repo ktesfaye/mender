@@ -1,0 +1,106 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css">
+<style>.lg::before{display:none}.lg{box-shadow:0 24px 60px rgba(0,0,0,.35)!important}</style>
+<style>
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); }
+.abs { position: absolute; }
+#sky { left: 0; top: 0; width: 1262px; height: 156px; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 100%); }
+#sky .in { position: absolute; inset: 0; -webkit-mask-image: linear-gradient(to right, transparent 0, #000 40px, #000 1190px, transparent 1262px);
+  background:
+    radial-gradient(60% 80% at 62% 110%, rgba(110,130,190,.16), transparent 70%),
+    radial-gradient(40% 70% at 22% 0%, rgba(80,100,160,.12), transparent 70%),
+    linear-gradient(180deg, #05070f 0%, #080b17 55%, #0c0f1a 100%); }
+#sky canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#lines { left: 0; top: 0; width: 1262px; height: 156px; pointer-events: none; }
+.star { position: absolute; width: 0; height: 0; }
+.star .halo { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); mix-blend-mode: screen; }
+.star canvas { position: absolute; transform: translate(-50%,-50%); image-rendering: pixelated; }
+.lbl { position: absolute; text-align: center; white-space: nowrap; transform: translateX(-50%); line-height: 1; }
+.lbl .k { font: 600 10.5px 'Figtree'; letter-spacing: .09em; color: var(--ink-3); text-transform: uppercase; }
+.lbl .t { font: 500 12.5px/1 'Figtree'; color: var(--ink-2); margin-top: 4px; }
+.lbl.cur .k { color: var(--ink-2); } .lbl.cur .t { color: var(--ink); font-weight: 650; font-size: 13.5px; }
+.lbl.hov .k { color: var(--ink-2); } .lbl.hov .t { color: var(--ink); }
+.lbl.wd .t { font-family: 'Fraunces'; font-style: italic; font-variation-settings: 'SOFT' 100,'opsz' 20; font-size: 13px; }
+.grp { position: absolute; top: 139px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.pix { color: rgba(190,205,235,.42); }
+.head-meta { right: 40px; top: 108px; font: 400 11.5px 'Courier Prime', monospace; color: var(--ink-3); text-align: right; }
+
+.plate { left: 30px; top: 8px; width: 384px; height: 140px; padding: 14px 20px 12px; border-radius: 28px; }
+.plate .r1 { display: flex; align-items: center; gap: 10px; height: 22px; }
+.plate .key { font: 650 12.5px 'Figtree'; letter-spacing: .04em; color: var(--ink); }
+.plate .ty { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; color: var(--ink-2); }
+.plate .oj { margin-left: auto; color: var(--gold); font-weight: 650; font-size: 12.5px; }
+.plate h1 { font-size: 17.5px; font-weight: 500; line-height: 1.2; margin-top: 7px; letter-spacing: -.005em; }
+.plate .ds { font-size: 12px; color: var(--ink-3); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plate .br { display: flex; align-items: center; gap: 8px; margin-top: 7px; font-size: 11.5px; }
+.plate .br .mono { color: var(--ink-2); }
+.st { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; color: var(--ink-2);
+  background: rgba(190,205,235,.09); box-shadow: inset 0 0 0 1px rgba(190,205,235,.14); }
+.st .dot { width: 6px; height: 6px; background: #a9bdd9; }
+
+.pop { left: 960px; top: 150px; width: 300px; padding: 18px 20px 16px; border-radius: 24px; }
+.pop .r1 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pop .key { font: 650 12px 'Figtree'; letter-spacing: .04em; margin-right: 2px; }
+.pop h2 { font-size: 17px; font-weight: 500; line-height: 1.22; margin-top: 10px; }
+.pop .ds { font-size: 12px; color: var(--ink-3); line-height: 1.4; margin-top: 7px; }
+.pop .card { margin-top: 14px; border-radius: 16px; background: rgba(255,240,215,.045); box-shadow: inset 0 0 0 1px var(--hair); padding: 10px 12px; }
+.pop .who { display: flex; align-items: center; gap: 10px; }
+.pop .who img { width: 22px; height: 38px; image-rendering: pixelated; filter: hue-rotate(-20deg) saturate(1.4) drop-shadow(0 0 7px rgba(255,106,46,.7)); }
+.pop .who b { display: block; font: 600 13px 'Figtree'; }
+.pop .who span { font-size: 11.5px; color: #ff8a4c; }
+.pop .foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.pop .oj { margin-left: auto; color: var(--gold); font-weight: 650; font-size: 12.5px; }
+.pop .mono { font-size: 11px; color: var(--ink-3); margin-top: 10px; }
+.tether { left: 1110px; top: 126px; width: 1px; height: 24px; background: linear-gradient(180deg, rgba(255,150,90,.55), rgba(255,150,90,0)); }
+
+#beam { left: 855px; top: 90px; width: 100px; height: 812px; pointer-events: none; mix-blend-mode: screen;
+  background: linear-gradient(90deg, transparent, rgba(255,140,70,.04) 38%, rgba(255,170,100,.06) 50%, rgba(255,140,70,.04) 62%, transparent);
+  -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.9) 0, rgba(0,0,0,.35) 30%, rgba(0,0,0,.28) 70%, #000 100%); }
+#beamcore { left: 903px; top: 100px; width: 4px; height: 802px; pointer-events:none; mix-blend-mode: screen;
+  background: linear-gradient(180deg, rgba(255,190,130,.09), rgba(255,160,100,.02) 40%, rgba(255,160,100,.025) 70%, rgba(255,170,100,.15));
+  filter: blur(1.5px); }
+#pool { left: 640px; top: 840px; width: 530px; height: 140px; mix-blend-mode: screen; pointer-events:none;
+  background: radial-gradient(50% 50% at 50% 38%, rgba(255,120,50,.26), rgba(255,120,50,.08) 55%, transparent 100%); }
+#rail { left: 40px; top: 902px; width: 1400px; height: 1px;
+  background: linear-gradient(90deg, rgba(246,236,219,.07), rgba(246,236,219,.07) 35%, rgba(255,170,110,.5) 62%, rgba(255,170,110,.5) 64%, rgba(246,236,219,.07) 82%, rgba(246,236,219,.04)); }
+.rl { position: absolute; top: 902px; display: flex; align-items: flex-start; gap: 9px; }
+.rl::before { content: ''; position: absolute; left: 10px; top: -1px; width: 1px; height: 8px; background: rgba(246,236,219,.25); }
+.rl img { width: 22px; height: 38px; margin-top: 7px; image-rendering: pixelated; }
+.rl .tx { margin-top: 12px; font: 400 12px/1.25 'Courier Prime', monospace; }
+.rl .tx b { display: block; font-weight: 400; color: var(--ink); }
+.rl .tx i { font-style: normal; color: var(--ink-3); }
+.rl.w img { filter: hue-rotate(-12deg) saturate(1.2) drop-shadow(0 0 9px rgba(255,154,74,.8)); }
+.rl.a img { filter: hue-rotate(-24deg) saturate(1.6) drop-shadow(0 0 10px rgba(255,100,40,.9)); }
+.rl.a .tx i { color: #ff8a4c; } .rl.w .tx i { color: #ffae6a; }
+.rl.h img { opacity: .7; }
+.railwho { left: 40px; top: 916px; display: flex; align-items: center; gap: 9px; }
+.railwho .fk { font: 600 12px 'Figtree'; color: var(--ink-2); }
+@keyframes b { 0%,100% { opacity:.8 } 50% { opacity:1 } }
+</style></head><body>
+<div id="sky" class="abs"><div class="in"><canvas id="dust" width="2524" height="312"></canvas></div></div>
+<svg id="lines" class="abs" width="1262" height="156" viewBox="0 0 1262 156"></svg>
+<div id="beam" class="abs"></div><div id="beamcore" class="abs"></div><div id="pool" class="abs"></div>
+<div id="stars"></div>
+<div class="abs head-meta">auto · Opus 5.5 · medium</div>
+
+<div class="lg plate" data-lg='{"tint":[14,15,18,0.42],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":26}'>
+  <div class="r1"><span class="key">INV-71924</span><span class="ty"><i data-px="story" data-s="12" data-c="#f6ecdb"></i>story</span><span class="st"><span class="dot"></span>In Progress</span><span class="oj">open in jira</span></div>
+  <h1 class="serif">FE: G/L wash sale info, explaining why a loss was disallowed</h1>
+  <div class="ds">Show the reason under each disallowed loss on the G/L page.</div>
+  <div class="br"><i data-px="merge" data-s="12" data-c="#7aaaff"></i><span class="mono">inv-71924-wash-sale-info</span><span class="faint" style="margin-left:auto"><span style="color:#7aaaff">3 ahead</span> · 2 uncommitted</span></div>
+</div>
+
+<div id="rail" class="abs"></div>
+<div class="abs railwho"><span class="pix" style="font-family:Silkscreen;font-size:9px;letter-spacing:.12em">IN INV-71924</span></div>
+<div class="rl a abs" style="left:925px"><img src="lantern.png"><div class="tx"><b>Lot link API</b><i>wants you · 4m</i></div></div>
+<div class="rl w abs" style="left:640px"><img src="lantern.png"><div class="tx"><b>Reason line under each loss</b><i>running something · 12m</i></div></div>
+<div class="rl h abs" style="left:1100px"><img src="lanternoff.png"></div>
+
+%%HOVER%%
+<script>window.PX_EXTRA={
+ bug:['.#.....#.','..#...#..','...###...','.#######.','#.#####.#','..#####..','#.#####.#','...###...','..#...#..'],
+ story:['..#####..','..#...#..','..#...#..','..#...#..','..#...#..','..#...#..','..#.#.#..','..##.##..','..#...#..'],
+};</script>
+<script src="px.js"></script><script src="liquid-shaders.js"></script><script src="liquid.js"></script>
+<script src="03-sky-stars.js"></script>
+<script>liquid('03-sky-bg.png', { blur: 28, lift: 1, refThickness: 26, refDistance: 0.12, refFactor: 1.5, refDispersion: 12, glareConvergence: 0.95, glareRange: 26, glareHardness: 0.05, glareOpposite: 0, fresnelRange: 20 }).catch(e=>{document.body.dataset.err=e.message;document.body.dataset.ready=1})</script></body></html>

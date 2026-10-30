@@ -1,0 +1,41 @@
+@font-face{font-family:'Courier Prime';font-weight:400;src:url(../../apps/mender/assets/fonts/courier-prime-400-normal.woff2)}
+@font-face{font-family:'Courier Prime';font-weight:700;src:url(../../apps/mender/assets/fonts/courier-prime-700-normal.woff2)}
+@font-face{font-family:'Josefin Sans';font-weight:400;src:url(../../apps/mender/assets/fonts/josefin-sans-400-normal.woff2)}
+@font-face{font-family:'Josefin Sans';font-weight:600;src:url(../../apps/mender/assets/fonts/josefin-sans-600-normal.woff2)}
+@font-face{font-family:'Cormorant Garamond';font-style:italic;font-weight:500;src:url(../../apps/mender/assets/fonts/cormorant-garamond-500-italic.woff2)}
+@font-face{font-family:'Mender Hand';font-weight:400;src:url(../../apps/mender/assets/fonts/pretty-neat-400-normal.woff2)}
+@font-face{font-family:'Silkscreen';src:url(../../apps/mender/assets/fonts/silkscreen-400-normal.woff2)}
+*{box-sizing:border-box;margin:0}
+body{width:1400px;height:620px;overflow:hidden;background:#1d1811;color:#dcc8a0;font-family:'Josefin Sans';position:relative;
+ background-image:radial-gradient(ellipse at 40% 120%,rgba(255,168,60,.10),transparent 60%),repeating-linear-gradient(90deg,rgba(255,255,255,.012) 0 2px,transparent 2px 40px)}
+.head{position:absolute;left:40px;top:28px}
+.brand{font-family:'Josefin Sans';letter-spacing:.32em;color:#f2c66d;font-size:22px;font-weight:600}
+.title{display:inline-block;margin-left:18px;font-family:'Courier Prime';font-weight:700;font-size:19px;color:#f4e3c0;letter-spacing:.06em}
+.title .slash{color:#a89272;margin-right:12px;font-weight:400}
+.meta{margin-top:12px;font-family:'Courier Prime';font-size:12.5px;color:#bfa476;letter-spacing:.04em}
+.beam{position:absolute;left:0;right:0;top:118px;height:8px;background:#5e4326;border-top:2px solid #6e5232;border-bottom:2px solid #3a2712;box-shadow:0 3px 0 rgba(18,13,7,.6)}
+.signs{position:absolute;left:56px;right:40px;top:128px;display:flex;gap:18px;align-items:flex-start}
+.sign{display:flex;flex-direction:column;align-items:center;position:relative}
+.cords{align-self:stretch;display:flex;justify-content:space-between;padding:0 12px}
+.cords span,.cord{width:2px;height:12px;background:#6b5a40}
+.board{position:relative;white-space:nowrap;padding:6px 14px;font-family:'Courier Prime';font-size:13px;font-weight:700;background:#5a3a1c;color:#d9c49a;border:2px solid #3a2712;box-shadow:inset 0 -3px 0 #4a2f16,3px 3px 0 rgba(18,13,7,.6)}
+.here .board{background:#e0b56a;color:#482510;border-color:#482510;box-shadow:3px 3px 0 rgba(18,13,7,.7);font-weight:400}
+.home .board{display:flex;align-items:center;gap:8px;background:#3d5230;color:#e9d8b0;border-color:#22301a;box-shadow:inset 0 -3px 0 #2e4024,3px 3px 0 rgba(18,13,7,.6)}
+.home .board::before{content:'';width:14px;height:14px;image-rendering:pixelated;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath fill='%23e9d8b0' d='M3 0h1v1h1v1h1v1h1v1h-1v3h-2v-2h-1v2h-2v-3h-1v-1h1v-1h1v-1h1z'/%3E%3C/svg%3E") center/contain no-repeat}
+.more .board{padding:4px 10px;font-weight:400;background:transparent;color:#bfa476;border:2px dashed #6b5a40;box-shadow:none}
+.light .board::after{content:'';position:absolute;left:4px;right:4px;bottom:-2px;height:3px}
+.l-work .board::after{background:#ffd88a;box-shadow:0 2px 10px 2px rgba(255,168,60,.6)}
+.l-want .board::after{background:#ff9a6a;box-shadow:0 2px 12px 3px rgba(255,120,60,.8)}
+.l-done .board::after{background:#a8c469;box-shadow:0 2px 8px 1px rgba(168,196,105,.5)}
+.label{position:absolute;font-family:'Silkscreen';font-size:10px;letter-spacing:.12em;color:#7d6a50}
+.cap{position:absolute;left:40px;bottom:24px;right:40px;font-family:'Cormorant Garamond';font-style:italic;font-size:19px;color:#a89272;border-top:1px solid rgba(244,227,192,.14);padding-top:14px}
+.cap b{font-family:'Silkscreen';font-style:normal;font-weight:400;font-size:11px;letter-spacing:.14em;color:#f2c66d;margin-right:14px}
+.glass{position:absolute;background:rgba(28,22,15,.82);backdrop-filter:blur(8px);border:1px solid rgba(244,227,192,.10);box-shadow:0 10px 40px rgba(0,0,0,.5);padding:14px 18px}
+.glass::before,.glass::after{content:'';position:absolute;width:10px;height:10px;border:2px solid rgba(255,190,110,.55)}
+.glass::before{left:-1px;top:-1px;border-right:0;border-bottom:0}.glass::after{right:-1px;bottom:-1px;border-left:0;border-top:0}
+.gold{color:#f2c66d}
+.dia{display:inline-block;width:9px;height:9px;background:#4c8ff0;transform:rotate(45deg);box-shadow:0 0 0 1px #1d3c6e}
+.pill{font-family:'Silkscreen';font-size:9.5px;letter-spacing:.1em;padding:2px 6px 1px}
+.st-prog{color:#ffdca4;background:rgba(255,168,60,.18)}
+.st-rev{color:#c9e39a;background:rgba(168,196,105,.16)}
+.st-todo{color:#bfa476;background:rgba(191,164,118,.14)}
