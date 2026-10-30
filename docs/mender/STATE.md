@@ -691,6 +691,10 @@ when editing a line is actually what you came for. A fenced ` ```mermaid `
 block draws as a picture row, the same diagram the transcript draws inline,
 capped to the board's own width.
 
+A `.md` or `.csv` path an agent writes in inline code is pressable and reads on the board, anywhere on the
+machine, formatted (driven 2026-10-29 on a throwaway project). Sessions are told never to run `open` on one,
+which threw it into Xcode.
+
 A file can be found from anywhere in a project or a session's yard now, not
 only after walking into the folder first: `find a file` is a line on the
 checkout board and answers to the same key the finder's own doings do, and it

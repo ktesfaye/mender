@@ -1331,6 +1331,13 @@ button.settings-row:hover .settings-row-main {
 }
 .yard .prose a {
   cursor: pointer;
+  text-decoration: none;
+}
+.yard .prose a.prose-code {
+  color: var(--yard-gold);
+}
+.yard .prose a.prose-code:hover {
+  color: var(--yard-gold-hover);
 }
 .yard ::selection {
   background: rgba(224, 181, 106, 0.32);

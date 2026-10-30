@@ -524,7 +524,7 @@ export function inkRuns(
        intercepted one level up rather than let navigate this page away. */
     const holder: HTMLElement | DocumentFragment = run.href
       ? Object.assign(document.createElement('a'), {
-          className: 'press',
+          className: run.className ? `press ${run.className}` : 'press',
           href: run.href,
         })
       : run.className

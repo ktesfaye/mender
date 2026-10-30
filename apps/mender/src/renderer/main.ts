@@ -1,3 +1,4 @@
+import { FILE_SCHEME } from './yard/prose';
 import type { HostDependencyView } from '@emdash/core/primitives/host-dependencies/api';
 import {
   formatAbsolute,
@@ -3182,11 +3183,17 @@ async function boot(): Promise<void> {
     };
 
     /** Opening one file of it, live, so an agent writing to it shows. */
+    /** A path in the checkout, or one that is whole already and may lie outside it. */
+    const wholeOf = (root: Parameters<typeof joinAbsolute>[0], path: string) =>
+      path.startsWith('/')
+        ? parseNativeAbsolute(path)
+        : joinAbsolute(root, path as PortableRelativePath);
+
     const openFile = async (path: string): Promise<void> => {
       const place = inside ?? (open ? projectOn(open.district) : undefined);
       const parsed = place ? parseNativeAbsolute(place.path) : undefined;
       if (!parsed?.success) return;
-      const whole = joinAbsolute(parsed.data, path as PortableRelativePath);
+      const whole = wholeOf(parsed.data, path);
       if (!whole.success) return;
       closeFile();
       wood(unopened(path));
@@ -3255,7 +3262,7 @@ async function boot(): Promise<void> {
       const place = inside ?? (open ? projectOn(open.district) : undefined);
       const parsed = place ? parseNativeAbsolute(place.path) : undefined;
       if (!parsed?.success) return;
-      const whole = joinAbsolute(parsed.data, file.path as PortableRelativePath);
+      const whole = wholeOf(parsed.data, file.path);
       if (!whole.success) return;
       const put = await client.files.content.mutate('write', {
         key: { path: whole.data },
@@ -3281,7 +3288,7 @@ async function boot(): Promise<void> {
       const place = onPlace();
       const parsed = place ? parseNativeAbsolute(place.path) : undefined;
       if (!parsed?.success) return null;
-      const whole = joinAbsolute(parsed.data, path as PortableRelativePath);
+      const whole = wholeOf(parsed.data, path);
       return whole.success ? whole.data : null;
     };
 
@@ -5907,6 +5914,12 @@ async function boot(): Promise<void> {
       if (pick.startsWith('branch-file:')) {
         const on = branchLooked;
         if (on) void openChange(pick.slice(12), { sha: 'HEAD', from: on.mergeBase });
+        return;
+      }
+      if (pick.startsWith(`link:${FILE_SCHEME}`)) {
+        const said = pick.slice(5 + FILE_SCHEME.length);
+        const home = window.mender.home;
+        void openFile(said.startsWith('~/') ? `${home}${said.slice(1)}` : said.replace(/^\.\//, ''));
         return;
       }
       if (pick.startsWith('link:')) {

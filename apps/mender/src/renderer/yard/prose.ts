@@ -19,6 +19,10 @@ import { makeDiagramView } from '../diagram-view';
 import { inkRuns, type InkRun } from './motion';
 import { beside, figure, hangPictures, pictured } from './pictures';
 
+/** A name in code that is a file the board reads well, so pressing it reads it here. */
+const READABLE = /^(?:~\/|\/|\.\/)?[^\s`:*?"<>|]+\.(?:md|markdown|csv)$/i;
+export const FILE_SCHEME = 'mender-file:';
+
 const FENCE = /^\s*(```|~~~)(\s*\S*)?/;
 const HEADING = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 const RULED = /^\s{0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/;
@@ -165,7 +169,13 @@ export function runsOf(text: string): InkRun[] {
   for (const found of text.matchAll(pattern)) {
     const at = found.index ?? 0;
     if (at > from) runs.push({ text: text.slice(from, at) });
-    if (found[1] !== undefined) runs.push({ text: found[1], className: 'prose-code' });
+    if (found[1] !== undefined) {
+      runs.push({
+        text: found[1],
+        className: 'prose-code',
+        ...(READABLE.test(found[1]) ? { href: `${FILE_SCHEME}${found[1]}` } : {}),
+      });
+    }
     else if (found[2] !== undefined || found[3] !== undefined) {
       runs.push({ text: found[2] ?? found[3] ?? '', className: 'prose-heavy' });
     } else if (found[4] !== undefined) runs.push({ text: found[4], className: 'prose-lean' });

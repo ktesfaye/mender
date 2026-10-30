@@ -194,6 +194,7 @@ contextBridge.exposeInMainWorld('mender', {
   /* Out to the real world. A checkout is a folder on this machine and some of
      what you want to do with one is not this app's job: opening it in whatever
      the machine opens folders with, or showing it where it actually is. */
+  home: homedir(),
   openIt: (path: string) => void shell.openPath(path),
   showIt: (path: string) => shell.showItemInFolder(path),
   openInEditor: (path: string) => void openInEditor(path),

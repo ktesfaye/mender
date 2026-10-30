@@ -40,6 +40,8 @@ declare global {
       /** What happened while he was away, said once when he comes back. */
       missed: (to: (lines: string[]) => void) => void;
       /** Open a folder in whatever this machine opens folders with. */
+      /** Where this machine keeps his things, so a `~/` in what is said means somewhere. */
+      home: string;
       openIt: (path: string) => void;
       /** Show it where it actually is, which is a different question. */
       showIt: (path: string) => void;

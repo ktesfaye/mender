@@ -128,6 +128,12 @@ const MODEL = [
   'you are asked to switch or change your model. Never press keys or type /model into the window.',
 ].join(' ');
 
+const READING = [
+  'When asked to open a markdown or csv file, never run `open` or any other opener on it: that throws it',
+  'into whatever app the machine picked, often Xcode. Write its path in inline code in your answer',
+  '(like `~/notes.md`) and it is pressable here, read on the board as formatted writing.',
+].join(' ');
+
 const DRAFTING = [
   'Whenever you design anything here (a mockup, a concept, a redesign, an iteration on a visual),',
   "it goes on the project's drafting table, the pinned sheet on Mender's rack, through the mender",
@@ -145,7 +151,7 @@ void runWireComponentWorker(
     pluginRegistry,
     sessionMeta: () => ({
       systemPrompt: {
-        append: `${BOARD}\n\n${ASKING}\n\n${HANDS}\n\n${WAITING}\n\n${STARTING}\n\n${SESSIONS}\n\n${MODEL}\n\n${DRAFTING}`,
+        append: `${BOARD}\n\n${ASKING}\n\n${HANDS}\n\n${WAITING}\n\n${STARTING}\n\n${SESSIONS}\n\n${MODEL}\n\n${READING}\n\n${DRAFTING}`,
       },
     }),
     extraMcpServers: (_provider, cwd, conversation) => villageTools(cwd, conversation),
