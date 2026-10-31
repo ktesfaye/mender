@@ -562,3 +562,34 @@
 .ga-prev-one .prose-picture figcaption {
   display: none;
 }
+
+.ga-opts.with-pics {
+  grid-template-columns: repeat(var(--pics, 3), minmax(0, 1fr));
+}
+.ga-opts.with-pics .ga-o.wide {
+  grid-column: 1 / -1;
+}
+.ga-o.has-pic {
+  flex-wrap: wrap;
+}
+.ga-pic {
+  flex: 0 0 100%;
+  height: clamp(110px, 26vh, 300px);
+  margin: -2px -2px 4px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.ga-pic .prose-picture {
+  margin: 0;
+  height: 100%;
+}
+.ga-pic .prose-picture img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.ga-pic .prose-picture figcaption {
+  display: none;
+}

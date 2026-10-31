@@ -162,6 +162,43 @@ function steps(step: string | undefined): HTMLElement | null {
   return bars;
 }
 
+/**
+ * Which of the pictures an agent opened belongs to which answer, so each is
+ * drawn on the answer it is a picture of rather than in a strip above them
+ * with file names to match up by eye. By the answer's leading letter or word
+ * turning up whole in the file's name; failing that, by order, when there is
+ * exactly one picture for every answer.
+ */
+function pairPictures(asking: Asking): Map<number, { name: string; path: string }> {
+  const pairs = new Map<number, { name: string; path: string }>();
+  const pictures = asking.pictures ?? [];
+  const choices = asking.answers
+    .map((one, index) => ({ one, index }))
+    .filter(({ one }) => !isAction(one) && one.kind !== 'other' && !one.preview);
+  if (pictures.length < 2 || !choices.length) return pairs;
+  const tokens = (text: string): string[] => text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const lead = (one: Answer): string => tokens(one.said.replace(/^✓ /, ''))[0] ?? '';
+  const taken = new Set<number>();
+  for (const { one, index } of choices) {
+    const word = lead(one);
+    const hits = pictures
+      .map((picture, at) => ({ picture, at }))
+      .filter(({ picture, at }) => {
+        const file = picture.path.split('/').pop() ?? picture.name;
+        return !taken.has(at) && !!word && tokens(`${picture.name} ${file}`).includes(word);
+      });
+    if (hits.length === 1) {
+      taken.add(hits[0]!.at);
+      pairs.set(index, hits[0]!.picture);
+    }
+  }
+  if (pairs.size === choices.length) return pairs;
+  pairs.clear();
+  if (pictures.length === choices.length)
+    choices.forEach(({ index }, n) => pairs.set(index, pictures[n]!));
+  return pairs;
+}
+
 export function gate(wide: number, asking: Asking, does: AskDoings): HTMLElement {
   const holder = el('div', 'ga-holder');
   const card = glaze(el('div', 'ga'), {
@@ -254,12 +291,17 @@ export function gate(wide: number, asking: Asking, does: AskDoings): HTMLElement
       body.appendChild(el('div', 'ga-sub', n ? `${n} ticked` : 'none ticked yet'));
     }
     const shown = asking.answers.some((one) => one.preview);
-    if (!shown && asking.pictures?.length) {
+    const paired = shown ? new Map() : pairPictures(asking);
+    if (!shown && !paired.size && asking.pictures?.length) {
       const row = el('div', 'ask-pictures');
       for (const one of asking.pictures) row.appendChild(figure({ name: one.name, url: one.path }));
       body.appendChild(row);
     }
     const list = el('div', checking ? 'ga-list' : 'ga-opts');
+    if (paired.size) {
+      list.classList.add('with-pics');
+      list.style.setProperty('--pics', String(Math.min(paired.size, 3)));
+    }
     asking.answers.forEach((one, i) => {
       if (isAction(one)) return;
       const n = numbers.get(i)!;
@@ -279,6 +321,13 @@ export function gate(wide: number, asking: Asking, does: AskDoings): HTMLElement
       const other = one.kind === 'other';
       const on = picked(one);
       const o = el('div', `ga-o${several ? ' box' : ''}${on ? ' on' : ''}${other ? ' else' : ''}`);
+      const mine = paired.get(i);
+      if (mine) {
+        o.classList.add('has-pic');
+        const pic = el('div', 'ga-pic');
+        pic.appendChild(figure({ name: '', url: mine.path }));
+        o.appendChild(pic);
+      }
       const look = one.preview ? previewOf(one.preview) : null;
       if (look) {
         o.classList.add('has-prev');
@@ -299,7 +348,8 @@ export function gate(wide: number, asking: Asking, does: AskDoings): HTMLElement
     });
     body.appendChild(list);
     const last = list.lastElementChild;
-    if (!checking && last?.classList.contains('else') && list.childElementCount % 2 === 1)
+    if (paired.size && last?.classList.contains('else')) last.classList.add('wide');
+    else if (!checking && last?.classList.contains('else') && list.childElementCount % 2 === 1)
       last.classList.add('wide');
   }
 
