@@ -183,7 +183,15 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
     const found = await resolve(body);
     if ('text' in found) return { ok: false, text: found.text };
     const from = found.me?.title ?? 'another session';
-    const told = await agents.tell(found.task.id, `From the session "${from}": ${text}`);
+    /* One session talking to another is nothing the person said. It goes in as
+       hidden context, wrapped the way the transcript reader strips, so it
+       never lands on the receiver's gatepost, live or after a restart. */
+    const told = await agents.tell(
+      found.task.id,
+      '',
+      undefined,
+      `[mender, for the agent only: From the session "${from}": ${text}]`
+    );
     if (!told.success) return { ok: false, text: `it would not take that: ${JSON.stringify(told.error)}` };
     return { ok: true, text: `told "${found.task.title}". It reads it at its next pause, or now if it is idle; use read_session to see what comes of it.` };
   };
