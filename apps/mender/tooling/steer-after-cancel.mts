@@ -24,6 +24,7 @@ const DELAY = Number(process.env.DELAY ?? 3000);
 
 function fakeApi(): Promise<{ port: number; close: () => void; count: () => number }> {
   let n = 0;
+  let notified = 0;
   const rounds = new Map<string, number>();
   const server = http.createServer((req, res) => {
     let body = '';
@@ -48,7 +49,11 @@ function fakeApi(): Promise<{ port: number; close: () => void; count: () => numb
         const main = parsed.tools?.some((t: { name?: string }) => t.name === 'Read');
         const marks = [...said.matchAll(/\[tools:([a-z0-9,]+)#(\d+)\]/g)];
         const mark = marks.at(-1);
-        if (main && mark) {
+        if (main && said.includes('task-notification') && notified < Number(process.env.NOTIFY_READS ?? 0)) {
+          notified++;
+          useTool = true;
+          tool = 'read';
+        } else if (main && mark) {
           const key = mark[2];
           const steps = mark[1].split(',');
           const done = rounds.get(key) ?? 0;
