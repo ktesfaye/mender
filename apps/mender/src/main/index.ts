@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { createScope } from '@emdash/shared/concurrency';
 import { peek } from '@emdash/wire/state';
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, powerMonitor } from 'electron';
 import { MENDER_WATCH_CHANNEL, type Watching } from '../shared/channels';
 import { createAgents } from './agents';
 import { createAgentsController } from './agents-controller';
@@ -285,6 +285,13 @@ function tellItWhoIsLooking(window: BrowserWindow): void {
   window.on('hide', look);
   window.on('minimize', look);
   window.on('restore', look);
+  /* Waking or unlocking can hand the window back to him without a focus edge. */
+  powerMonitor.on('resume', look);
+  powerMonitor.on('unlock-screen', look);
+  window.on('closed', () => {
+    powerMonitor.off('resume', look);
+    powerMonitor.off('unlock-screen', look);
+  });
   /* And once the page is there to hear it, because everything above is an
      edge and the renderer misses every one that fired before it loaded. */
   window.webContents.on('did-finish-load', () => {

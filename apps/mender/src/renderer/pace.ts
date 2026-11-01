@@ -81,7 +81,17 @@ export function setScenery(now: boolean): void {
   scenery = now;
 }
 
-function handled(): void {
+function handled(event: Event): void {
+  /* A press or a key can only reach a window somebody is at. If the village
+     still believes it is behind another window, a focus edge was missed (a
+     sleep, a lock) and it would stay frozen under his hand until the next one. */
+  if (
+    watch !== 'front' &&
+    event.isTrusted &&
+    (event.type === 'pointerdown' || event.type === 'keydown')
+  ) {
+    watched('front');
+  }
   if (!scenery) stir();
 }
 
