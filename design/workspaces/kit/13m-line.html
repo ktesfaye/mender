@@ -1,0 +1,163 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-600-normal.woff2); font-weight: 600; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'MenderHand'; src: url(fonts/pretty-neat-400-normal.woff2); }
+@font-face { font-family: 'MenderHand'; font-weight: 700; src: url(fonts/pretty-neat-700-normal.woff2); }
+@font-face { font-family: 'Silk'; src: url(fonts/silkscreen-400-normal.woff2); }
+html,body{margin:0;width:1480px;height:1020px;overflow:hidden}
+img{position:absolute;image-rendering:pixelated;display:block}
+.a{position:absolute}
+.ink,.burn,.burn2,.paper{position:absolute}
+.ink{font:400 13px/24px MenderHand;color:#2a1608;text-shadow:0 1px 0 rgba(255,232,190,.2);white-space:nowrap}
+.ink i{font:600 8.5px 'Josefin Sans';font-style:normal;letter-spacing:.14em;margin-right:6px;opacity:.75;position:relative;top:-1px}
+.glow{position:absolute;border-radius:50%;mix-blend-mode:screen;pointer-events:none}
+.burn{font:600 12px 'Josefin Sans';letter-spacing:.24em;color:#e8b95a;text-shadow:0 0 6px rgba(255,150,40,.55),0 1px 0 #2a1408;white-space:nowrap}
+.burn2{font:400 8px 'Courier Prime';letter-spacing:.01em;color:#1c0e04;opacity:.95;white-space:nowrap}
+.paper{font-family:MenderHand;color:#2d1a0a}
+.breathe{animation:br 3.6s ease-in-out infinite}@keyframes br{50%{opacity:.7;transform:scale(.92)}}
+.ink i{font:600 8.5px 'Josefin Sans';font-style:normal;letter-spacing:.14em;margin-right:6px;opacity:.75;position:relative;top:-1px}
+.stamp{font:400 8px/10px Silk;letter-spacing:.04em;padding:2px 4px 1px;border:1px solid;border-radius:1px;opacity:.95;display:inline-block;flex:none}
+</style></head><body><div id="r"></div><script src="13x-lib.js"></script><script src="13k-lib.js"></script>
+<script>
+// pixel canvas: draw at art scale, shown at 2x
+function pix(x,y,w,h,fn,st=''){const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');fn(g,(px,py,col,ww=1,hh=1)=>{g.fillStyle=col;g.fillRect(px,py,ww,hh)});
+  const e=document.createElement('img');e.src=c.toDataURL();e.style.cssText=`left:${x}px;top:${y}px;width:${w*2}px;height:${h*2}px;${st}`;R.appendChild(e);return e}
+const C=Q.get('c')||'line', IN=Q.get('in')||'inv';
+const SES=IN==='inv'?{model:'opus 5.5',effort:'medium',mode:'auto',used:19,cost:'$35.54'}
+                    :{model:'fable 5.1',effort:'high',mode:'plan',used:72,cost:'$4.10'};
+const tone=u=>u>=85?'#e0563f':u>=65?'#e8913a':null;
+(async()=>{
+await document.fonts.load('14px MenderHand'); await document.fonts.load('8px Silk'); await document.fonts.load('8px "Courier Prime"');
+const fullW=(name,w)=>im(name+'.png',30,0,w,75,'filter:brightness(.72) saturate(.9);-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 124px,transparent 150px),linear-gradient(to right,transparent 0,#000 70px);-webkit-mask-composite:source-in;mask-composite:intersect');
+fullW('ground-j',725);
+flies(11,21,70,1470,24,132);
+dress(7,[['tuft',60,1470,60,146,66],['flower',200,470,70,130,16],['flower',500,1200,90,140,14],['flower',1190,1470,96,140,8],['rock',90,1200,110,142,8],['rock',1300,1470,128,142,3]]);
+nat('bush06',216,116,.62); nat('bush03',70,118,.6);
+nat('bush07',470,128,.62); nat('bush02',690,110,.6); nat('bush05',880,92,.55);
+// the "you are here" lantern: hangs off an iron bracket; only one ever lit
+function bracket(hx,hy,dir){div('a',dir<0?hx-16:hx,hy,'width:16px;height:4px;background:#2e2016;box-shadow:0 2px #4a3524');}
+function here(cx,hy){
+  for(let i=0;i<6;i+=3)div('a',cx-1,hy+4+i,'width:2px;height:2px;background:#6f5a44');
+  im(LAMP1,cx-11,hy+10,11,19,`filter:${ST.work.f}`);
+  pool(cx,hy+30,300,'255,168,70',.2);
+  div('glow breathe',cx-50,hy-20,'width:100px;height:100px;background:radial-gradient(circle,rgba(255,210,120,.5),rgba(255,170,70,0) 65%)');
+}
+// ---- the hill: the project's own post
+const BX=330, BB=118;
+post(BX,BB,56,0,.58);
+cap(BX-70,2,70,'INVEST-WEB',.8);
+bracket(BX+70,4,1);
+if(IN==='inv') here(BX+80,4);
+sign(IN==='inv'
+  ?{big:true,x:BX-6,y:76,title:'Explain why a wash-sale loss was disallowed',key:'INV-71924',side:'R',mr:[0,0],crow:true,slips:3}
+  :{x:BX-6,y:76,title:'Explain why a wash-sale loss was disallowed',key:'71924',side:'R',mr:[0,0],crow:true,slips:3,br:.8});
+{const px=96,pb=122; post(px,pb,22,0,.55); sign({x:px+6,y:80,side:'L',title:'home',W:44,home:true,quiet:true});}
+{const px=620,pb=112; post(px,pb,40,0,.6);
+ sign({x:px-6,y:32,title:'Cost basis',key:'71880',st:'ask',mr:[1,1],slips:1,side:'R'});
+ person('front-0',px+40,pb+4,{lamp:'ask',lampDx:-40,lampDy:46});}
+{const px=154,pb=118; post(px,pb,38,0,.6);
+ nat('flower1',px-22,pb+2,.78);nat('flower3',px+14,pb+4,.78);nat('flower0',px-40,pb,.78);
+ sign({x:px-6,y:40,title:'Q4 banner',key:'72011',st:'done',lamp:'done',side:'R'});}
+{const px=960,pb=104; post(px,pb,42,0,.52);
+ sign({x:px+6,y:20,title:'Dividend toggle',key:'71990',quiet:true,mr:[1,0],side:'L'});
+ sign({x:px-6,y:20,title:'chart spike',quiet:true,side:'R'});
+}
+{const px=1030,pb=134; post(px,pb,44,0,.55);
+ bracket(px+4,48,1);
+ if(IN==='flaky') here(px+20,48);
+ sign(IN==='flaky'
+  ?{big:true,x:px+6,y:72,title:'Flaky e2e on statements download',key:'INV-71702',st:'broke',lamp:'broke',side:'L'}
+  :{x:px+6,y:72,title:'Flaky e2e',key:'71702',st:'broke',lamp:'broke',side:'L',br:.9});
+ person('sit-0',px+52,pb+2,{gray:true});}
+{const px=1150,pb=70; post(px,pb,30,0,1.25,'filter:brightness(1.3) saturate(.5) sepia(.25)');
+ sign({x:px+6,y:2,title:'Gift lots',key:'72040',cut:true,side:'L'});
+ person('helper-side-0',px+34,pb+8,{});
+ im('k/hammer.png',px+22,pb-48,9,22,'');}
+{const px=880,pb=146; im('stem.png',px-6,pb-34,6,17,`filter:brightness(.7)`); im('foot.png',px-14,pb-4,14,4,'filter:brightness(.4)'); nat('coil',px-26,pb+2,.75);}
+pool(1390,100,200,'255,196,110',.06);
+
+// ================= the session corner =================
+const ink='#2a1608', S_=SES;
+const fable=/fable/.test(S_.model);
+
+const cream='#efe0bd', shade='text-shadow:0 1px 0 rgba(0,0,0,.85)';
+const words=(x,y,w,txt,col,al='right',f='400 13px/15px MenderHand')=>div('ink',x,y,`width:${w}px;text-align:${al};font:${f};color:${col};${shade}`,txt);
+const gem=(x,y)=>pix(x,y,4,4,(g,p)=>{p(1,0,'#c9b2ff',2,1);p(0,1,'#9a7ae8',4,2);p(1,3,'#5a3aa8',2,1);p(1,1,'#ece2ff')});
+// copper coins, never gold: gold is for pressing
+const coins=(x,b,n)=>{for(let i=0;i<n;i++)pix(x+(i%2),b-4-i*3,8,3,(g,p)=>{p(1,0,'#d89a62',6,1);p(0,1,'#a8683a',8,1);p(1,2,'#6e4022',6,1)})};
+if(C==='line'){
+  // a washing line: each setting its own cloth, the peg bag filling as its room goes, a purse for what it cost
+  const L0=1196,L1=1456,ty=48;
+  im('k2/lpost49.png',L0,ty,8,49,'filter:brightness(.62) saturate(.9)');
+  im('k2/rpost49.png',L1,ty,8,49,'filter:brightness(.62) saturate(.9)');
+  const rw=(L1-L0)/2-4, sag=6, X0=L0+12, Y0=ty+20;
+  const ry=x=>Math.round(sag*Math.sin(Math.PI*x/rw));
+  pix(X0,Y0,rw,10,(g,p)=>{for(let x=0;x<rw;x++){p(x,ry(x),'#7a5a3c');p(x,ry(x)+1,'#4e3522')}},'filter:brightness(.75)');
+  const cloth=(x0,wA,hA,base,hem,shadeA)=>pix(X0+x0*2,Y0+ry(x0)*2,wA,hA+sag,(g,p)=>{
+     for(let x=0;x<wA;x++){const top=ry(x0+x)-ry(x0);const bot=hA-1+top-((x*7)%3===0?1:0)-(x%5===2?1:0);
+       for(let y=top+1;y<=bot;y++)p(x,y,(x===0||x===wA-1||y===bot)?shadeA:base);
+       if(hem)for(const hy of [top+3,bot-3])p(x,hy,hem);}
+     for(const px of [1,wA-3]){p(px,ry(x0+px)-ry(x0)-1,'#5b3c22',2,3)}},'filter:brightness(.86)');
+  const at=x0=>[X0+x0*2,Y0+ry(x0)*2];
+  {const x0=6,w=20;cloth(x0,w,16,'#a0442c','#7c3220','#6a2a1a');const [x,y]=at(x0);
+   div('a',x,y+12,`width:${w*2}px;text-align:center;font:400 9px Silk;color:#f1e3c8;letter-spacing:.04em`,S_.mode);}
+  {const x0=30,w=36;cloth(x0,w,16,fable?'#b9a2e2':'#d9d3c3',fable?'#9a80d0':null,fable?'#7a5ab8':'#9a9283');const [x,y]=at(x0);
+   div('a',x,y+9,`width:${w*2}px;text-align:center;font:400 14px/16px MenderHand;color:${fable?'#2c1650':ink}`,S_.model);}
+  {const x0=70,w=28;cloth(x0,w,16,'#d9d3c3',null,'#9a9283');const [x,y]=at(x0);
+   div('a',x,y+9,`width:${w*2}px;text-align:center;font:400 14px/16px MenderHand;color:${ink}`,S_.effort);}
+  // purse pegged on the end of the line
+  {const x0=104;const [x,y]=at(x0);
+   pix(x,y+2,9,10,(g,p)=>{p(3,0,'#5b3c22',3,2);for(let yy=2;yy<10;yy++)for(let xx=0;xx<9;xx++){const r=((xx-4)/4.5)**2+((yy-6)/4)**2;if(r<=1)p(xx,yy,r>.6?'#5a3a20':'#8a5a32')}p(2,3,'#a8683a',5,1)},'filter:brightness(.9)');}
+  // peg bag on a nail on the far post
+  {const bw=10,bh=14,x=L1-20,y=ty+50;
+   div('a',L1-2,y-2,'width:6px;height:4px;background:#2e2016');div('a',x+8,y,'width:2px;height:6px;background:#4e3522');
+   pix(x,y+6,bw,bh,(g,p)=>{for(let yy=0;yy<bh;yy++)for(let xx=0;xx<bw;xx++){const edge=xx===0||xx===bw-1||yy===bh-1||yy===0;p(xx,yy,edge?'#6a5a40':'#cbbf9f')}
+     const f=Math.max(1,Math.round((bh-2)*S_.used/100));for(let yy=bh-1-f;yy<bh-1;yy++)for(let xx=1;xx<bw-1;xx++)p(xx,yy,tone(S_.used)||'#8a6a44');p(2,2,'#8a7a5a',6,1)},'filter:brightness(.85)');}
+  words(1230,ty+82,200,`${S_.used}% of its room used <span style="color:#8a7a5e">·</span> <span style="color:${cream}">${S_.cost} so far</span>`,tone(S_.used)||cream);
+}
+if(C==='pole'){
+  // a pole with its settings tied on as ribbons blowing out, a candle burning down at the far end, coins for what it cost
+  const PX=1212, top=64;
+  im('stem.png',PX-6,top,6,41,'filter:brightness(.62)'); im('foot.png',PX-14,142,14,4,'filter:brightness(.45)');
+  div('a',PX-8,top-6,'width:8px;height:8px;border-radius:50%;background:#6f5a44;box-shadow:inset -2px -2px #3e2c1c');
+  const rib=(y,col,txt,font,tcol,w)=>{div('a',PX-8,y,`width:10px;height:6px;background:${col};box-shadow:inset 0 -2px rgba(0,0,0,.25)`);
+     pix(PX,y,w/2,9,(g,p)=>{const W=w/2;for(let x=0;x<W;x++){const o=Math.round(Math.sin(x/5));const r=W-1-x;for(let yy=0;yy<7;yy++){if(r<4&&yy===3)continue;p(x,yy+1+o,yy===6?'rgba(0,0,0,.3)':col)}}});
+     div('a',PX+4,y+3,`width:${w-14}px;text-align:center;font:${font};color:${tcol};white-space:nowrap`,txt);};
+  rib(top+4,'#a0442c',S_.mode,'400 9px/12px Silk','#f1e3c8',52);
+  rib(top+22,fable?'#a58ae0':'#d9d3c3',S_.model,'400 13px/12px MenderHand',fable?'#1e0e3a':ink,78);
+  rib(top+40,'#d9d3c3',S_.effort,'400 13px/12px MenderHand',ink,64);
+  const jx=1426,jb=144,jh=26, left=Math.max(2,Math.round((jh-6)*(100-S_.used)/100));
+  pix(jx,jb-jh*2,10,jh,(g,p)=>{for(let y=0;y<jh;y++)for(let x=0;x<10;x++){const edge=x===0||x===9||y===jh-1;if(edge)p(x,y,'rgba(190,210,220,.5)')}
+     for(let y=jh-1-left;y<jh-1;y++)for(let x=3;x<7;x++)p(x,y,x===3?'#efe2c0':'#d9c79c');
+     const fy2=jh-2-left;p(4,fy2-1,'#3a2a1a');p(4,fy2-3,'#ffcf6a',2,2);p(4,fy2-4,'#fff3c0',1,1)});
+  pool(jx+10,jb-left*2-6,80,'255,190,90',.42);
+  words(jx-160,jb-46,152,`${S_.used}% of its room burnt`,tone(S_.used)||cream);
+  coins(jx-24,jb,4);
+  words(jx-160,jb-26,130,`${S_.cost} so far`,cream);
+}
+if(C==='barrel'){
+  // a barrel: what it thinks with stencilled on, a sight glass for how much room is drawn off, coins in a bowl
+  const bx=1350, bb=146;
+  im('k2/barrel-01.png',bx,bb-76,30,38,'filter:brightness(.78) saturate(.9)');
+  words(bx-2,bb-44,64,S_.model,fable?'#c9b2ff':cream,'center','400 13px/14px MenderHand');
+  if(fable) gem(bx+28,bb-52);
+  words(bx-2,bb-28,64,S_.effort,'#d8c8a4','center','400 11px/12px MenderHand');
+  // the mode tied round its top hoop
+  div('a',bx+4,bb-58,'width:52px;height:4px;background:#a0442c;box-shadow:inset 0 -1px rgba(0,0,0,.3)');
+  pix(bx+50,bb-58,10,12,(g,p)=>{for(let y=0;y<12;y++){p(1+Math.round(y/4),y,'#a0442c',3,1);p(5+Math.round(y/3),y,'#8a3a24',3,1)}});
+  div('a',bx+72,bb-60,'font:400 9px Silk;color:#f1e3c8;letter-spacing:.04em;'+shade,S_.mode);
+  // sight glass on its side: the dark part is room it has drawn off
+  const gx=bx-12,gy=bb-66,gh=52, f=Math.round(gh*S_.used/100);
+  div('a',gx,gy,`width:8px;height:${gh}px;background:rgba(255,214,140,.85);box-shadow:0 0 0 2px #2e2016`);
+  div('a',gx,gy,`width:8px;height:${f}px;background:${tone(S_.used)?'#7a2e18':'#1c120a'}`);
+  div('a',gx+2,gy+2,'width:2px;height:'+(gh-4)+'px;background:rgba(255,255,255,.25)');
+  pool(gx+4,gy+gh-10,60,'255,190,90',.3);
+  words(gx-150,gy+6,142,`${S_.used}% of its room drawn off`,tone(S_.used)||cream);
+  // a bowl of coins on the grass
+  coins(gx-50,bb,3); coins(gx-40,bb,2);
+  words(gx-150,gy+30,96,`${S_.cost} so far`,cream);
+}
+document.body.dataset.ready=1;
+})();
+</script></body></html>

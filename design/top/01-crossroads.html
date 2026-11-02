@@ -1,0 +1,67 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="lib.css">
+<div class="win"><div class="top" id="t"></div></div>
+<script src="lib.js"></script>
+<script>
+const t = document.getElementById('t');
+const g = makeCanvas(t, 3);
+const ground = 46;
+
+// faint rule both sides of the mound
+const rule = (x0, x1) => { const d = document.createElement('div'); d.style.cssText = `position:absolute;left:${x0*S}px;width:${(x1-x0)*S}px;top:${ground*S+1}px;height:1px;background:rgba(201,162,106,.2)`; t.appendChild(d); };
+rule(5, 268); rule(332, 595);
+
+// mound
+for (let i = 0; i < 64; i++) { const x = 268 + i, d = Math.abs(i - 32); const h = d < 18 ? 2 : d < 26 ? 1 : 0; if (h) px(g, x, ground - h + 1, 1, h, C.dirt); }
+px(g, 276, ground, 48, 1, C.dirtHi);
+tuft(g, 280, ground); tuft(g, 290, ground - 1); tuft(g, 309, ground - 1); tuft(g, 318, ground);
+stone(g, 284, ground + 1, 4, 2); stone(g, 313, ground + 1, 5, 3);
+
+const PX = 298;
+post(g, PX, 6, ground - 6, 5);
+
+// crown
+plank(g, 262, 2, 78, 11, { tone: 'wood', nails: true, seed: 3 });
+txt(t, 262, 2.8, 'INVEST-WEB', 'caps', 'width:234px;text-align:center;font-size:15px;letter-spacing:5px;padding-left:5px');
+txt(t, 262, 8.2, 'opus 5.5 · medium · auto · 45% full', 'meta', 'width:234px;text-align:center;font-size:10px;color:#e8cf9f');
+
+// lantern off the crown on an iron arm
+bracket(g, 340, 4, 9, 1); chain(g, 348, 5, 2); lantern(g, 345, 6, '#ffb347');
+glow(t, 348.5, 11, 20, '#ffb347', .6);
+
+const L = (w, y, tone, seed) => plank(g, PX - w, y, w, 8, { point: 'l', tone, seed });
+const R = (w, y, tone, seed) => plank(g, PX + 5, y, w, 8, { point: 'r', tone, seed });
+const ink = 'font-size:15px;color:#f1dfbd;text-shadow:0 1px 0 rgba(0,0,0,.35)';
+const no = 'color:#e2c79a;font-size:10px;opacity:.8';
+
+L(56, 17, 'pale', 11);
+house(g, PX - 46, 18, '#3e2716');
+label(t, PX - 37, 17, 8, 'invest-web', 'sign', 'font-size:15px');
+
+L(86, 28, 'wood', 12);
+label(t, PX - 76, 28, 8, '71880', 'num', no);
+label(t, PX - 64, 28, 8, 'Cost basis, split day', 'sign', ink);
+
+L(66, 38, 'wood', 13);
+label(t, PX - 56, 38, 8, '72011', 'num', no);
+label(t, PX - 44, 38, 8, 'Q4 tax banner', 'sign', ink);
+glow(t, PX - 30, 48, 14, '#7fd36a', .4);
+
+R(100, 17, 'gold', 21);
+label(t, PX + 11, 17, 8, 'Reason line under each loss', 'sign lit', 'font-size:15px');
+glow(t, PX + 54, 22, 34, '#ffc95a', .3);
+
+R(78, 28, 'wood', 22);
+label(t, PX + 11, 28, 8, '71702', 'num', no);
+label(t, PX + 23, 28, 8, 'Flaky e2e', 'sign', ink);
+label(t, PX + 58, 28, 8, '14s', 'timer', 'font-size:10px');
+glow(t, PX + 44, 40, 16, '#ff9a3a', .5);
+
+R(20, 38, 'grey', 23);
+label(t, PX + 11, 37.6, 8, '+', 'sign', 'font-size:19px;color:#2a221c');
+
+// left: where you are
+txt(t, 14, 14, 'Reason line under each loss', 'said', 'font-size:25px');
+txt(t, 14.3, 25, '<span class="g">invest-web</span><span class="s">·</span>reason-line<span class="s">·</span>Claude Code<span class="s">·</span>14s<span class="s">·</span>3 turns', 'meta');
+</script>

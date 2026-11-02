@@ -851,6 +851,236 @@
         }
       ],
       "brief": ""
+    },
+    {
+      "id": "top-of-the-yard",
+      "name": "top of the yard",
+      "about": "",
+      "state": "drawing",
+      "plan": [],
+      "questions": [
+        {
+          "ask": "signpost, three ways",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "01",
+              "name": "crossroads",
+              "image": "top/01-crossroads.png",
+              "variants": [],
+              "said": "One post dead centre on a little mound; project and model on the crown, workspaces split left and right, the session alone on the left, rack untouched on the right.",
+              "page": "top/01-crossroads.html",
+              "at": "2026-10-30T20:39:44.901Z"
+            },
+            {
+              "id": "02",
+              "name": "the road",
+              "image": "top/02-road.png",
+              "variants": [],
+              "said": "A track runs the whole width from the project's cottage; each workspace is a fingerpost along it, the one you're in carries the lantern and the session's name stands over it.",
+              "page": "top/02-road.html",
+              "at": "2026-10-30T20:39:44.956Z"
+            },
+            {
+              "id": "03",
+              "name": "the post holds the rack",
+              "image": "top/03-tall-post.png",
+              "variants": [],
+              "said": "The rack's beam rests on one tall post with the workspaces nailed down it, so the whole right is one structure and the session has the left and the middle stays open.",
+              "page": "top/03-tall-post.html",
+              "at": "2026-10-30T20:39:45.006Z"
+            }
+          ]
+        },
+        {
+          "ask": "spread out, in the kit's own wood",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "04",
+              "name": "signs across the bar",
+              "image": "top/04-kit-spread.png",
+              "variants": [],
+              "said": "The kit's own road signs, each workspace on its own post across the whole width, pointing away from the lit one you're in; project board at the start, model under the rack.",
+              "page": "top/04-kit-spread.html",
+              "at": "2026-10-30T20:45:49.950Z"
+            }
+          ]
+        },
+        {
+          "ask": "his post, quiet until asked",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "05",
+              "name": "his post, cut off",
+              "image": "top/05-post-rest.png",
+              "variants": [
+                {
+                  "name": "dropped open, one picked",
+                  "image": "top/05b-post-open.png"
+                }
+              ],
+              "said": "At rest only the crown, the row you're in and the next loudest row sinking under the bar's edge; pressing it lets the post drop over a dimmed yard with every workspace, and the picked one shows its sessions as lanterns on a string and its ticket and merge request under it.",
+              "page": "top/05-post-rest.html",
+              "at": "2026-10-30T20:56:08.706Z"
+            }
+          ]
+        },
+        {
+          "ask": "small, crisp, spread out",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "06",
+              "name": "the rail",
+              "image": "top/06-rail.png",
+              "variants": [],
+              "said": "The rule under the bar becomes a thin rail; small signs ride along it, the one you're in pale, the rest dim with a seal when GitLab has news, the remainder folded into a count.",
+              "page": "top/06-rail.html",
+              "at": "2026-10-30T21:06:30.400Z"
+            },
+            {
+              "id": "07",
+              "name": "corner fingerpost",
+              "image": "top/07-corner-post.png",
+              "variants": [],
+              "said": "A small fingerpost in the corner where the wordmark was, its arms the workspaces; the session beside it, the model under the rack.",
+              "page": "top/07-corner-post.html",
+              "at": "2026-10-30T21:06:30.475Z"
+            },
+            {
+              "id": "08",
+              "name": "small crossroads on the rule",
+              "image": "top/08-milestone.png",
+              "variants": [],
+              "said": "His crossroads at a fraction of the size, standing on the rule: where you are and the one place that wants you, nothing else until pressed.",
+              "page": "top/08-milestone.html",
+              "at": "2026-10-30T21:06:30.553Z"
+            }
+          ]
+        },
+        {
+          "ask": "his post, picking sends it right",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "14b",
+              "name": "the road",
+              "image": "workspaces/kit/14b-rest.png",
+              "variants": [
+                {
+                  "name": "rest, top",
+                  "image": "workspaces/kit/14b-rest-crop.png"
+                },
+                {
+                  "name": "mid-journey",
+                  "image": "workspaces/kit/14b-mid.png"
+                },
+                {
+                  "name": "picked",
+                  "image": "workspaces/kit/14b-picked.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/kit/14b-point.png"
+                },
+                {
+                  "name": "15 workspaces",
+                  "image": "workspaces/kit/14b-many.png"
+                },
+                {
+                  "name": "open",
+                  "image": "workspaces/kit/14b-open.png"
+                }
+              ],
+              "said": "His post on the left holds the other workspaces; a road runs right to where you stand, with the crown, your arms, the ticket sign and the merge request as a gate; picking one has a helper carry its arm down the road while the old one is carried back.",
+              "page": "workspaces/kit/14b-top.html",
+              "at": "2026-10-30T21:24:55.945Z"
+            },
+            {
+              "id": "14c",
+              "name": "the push",
+              "image": "workspaces/kit/14c-rest.png",
+              "variants": [
+                {
+                  "name": "rest, top",
+                  "image": "workspaces/kit/14c-rest-crop.png"
+                },
+                {
+                  "name": "mid-push",
+                  "image": "workspaces/kit/14c-mid2.png"
+                },
+                {
+                  "name": "picked",
+                  "image": "workspaces/kit/14c-picked.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/kit/14c-point.png"
+                },
+                {
+                  "name": "15 workspaces",
+                  "image": "workspaces/kit/14c-many.png"
+                },
+                {
+                  "name": "open",
+                  "image": "workspaces/kit/14c-open.png"
+                }
+              ],
+              "said": "Post a third of the way across; the one you're in is the right arm, with a rope off its tip carrying the ticket and only what's wrong in GitLab over the hills; picking shoots an arm right through the post and shoves the whole left stack over.",
+              "page": "workspaces/kit/14c-top.html",
+              "at": "2026-10-30T21:24:56.025Z"
+            },
+            {
+              "id": "14a2",
+              "name": "the turnstile",
+              "image": "workspaces/drafts/14a2-rest.png",
+              "variants": [
+                {
+                  "name": "rest, top",
+                  "image": "workspaces/drafts/14a2-rest-crop.png"
+                },
+                {
+                  "name": "mid-swing",
+                  "image": "workspaces/drafts/14a2-mid.png"
+                },
+                {
+                  "name": "picked",
+                  "image": "workspaces/drafts/14a2-picked.png"
+                },
+                {
+                  "name": "pointing",
+                  "image": "workspaces/drafts/14a2-point.png"
+                },
+                {
+                  "name": "15 workspaces",
+                  "image": "workspaces/drafts/14a2-many.png"
+                },
+                {
+                  "name": "open",
+                  "image": "workspaces/drafts/14a2-open.png"
+                },
+                {
+                  "name": "first draft (busier)",
+                  "image": "workspaces/drafts/14a-rest.png"
+                }
+              ],
+              "said": "His post where it stood; choices on the left arms, the one you're in is the long right arm into the hills, its ticket a notice board and its merge request a gate further out; picking swings an arm round the post to the right.",
+              "page": "workspaces/kit/14a2-top.html",
+              "at": "2026-10-30T21:25:34.784Z"
+            }
+          ]
+        }
+      ],
+      "never": [],
+      "notes": [],
+      "brief": ""
     }
   ]
 }

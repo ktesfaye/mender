@@ -1,0 +1,140 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-600-normal.woff2); font-weight: 600; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'MenderHand'; src: url(fonts/pretty-neat-400-normal.woff2); }
+@font-face { font-family: 'MenderHand'; font-weight: 700; src: url(fonts/pretty-neat-700-normal.woff2); }
+@font-face { font-family: 'Silk'; src: url(fonts/silkscreen-400-normal.woff2); }
+html,body{margin:0;width:1480px;height:1020px;overflow:hidden;background:#000 url(13-bg.png) 0 0/1480px 1020px no-repeat}
+img{position:absolute;image-rendering:pixelated;display:block}
+.a{position:absolute}
+.ink,.burn,.burn2,.paper{position:absolute}
+.ink{font:400 13px/24px MenderHand;color:#2a1608;text-shadow:0 1px 0 rgba(255,232,190,.2);white-space:nowrap}
+.ink i{font:600 8.5px 'Josefin Sans';font-style:normal;letter-spacing:.14em;margin-right:6px;opacity:.75;position:relative;top:-1px}
+.glow{position:absolute;border-radius:50%;mix-blend-mode:screen;pointer-events:none}
+.burn{font:600 12px 'Josefin Sans';letter-spacing:.24em;color:#e8b95a;text-shadow:0 0 6px rgba(255,150,40,.55),0 1px 0 #2a1408;white-space:nowrap}
+.burn2{font:400 8px 'Courier Prime';letter-spacing:.01em;color:#1c0e04;opacity:.95;white-space:nowrap}
+.paper{font-family:MenderHand;color:#2d1a0a}
+</style></head><body>
+<div id="r"></div>
+<script>
+const Q=new URLSearchParams(location.search).get('s')||'';
+const pt=Q==='point', open=Q==='open';
+const R=document.getElementById('r');
+const P='13-parts/';
+function im(src,x,y,w,h,st=''){const e=document.createElement('img');e.src=P+src;e.style.cssText=`left:${x}px;top:${y}px;width:${w*2}px;height:${h*2}px;${st}`;R.appendChild(e);return e}
+function div(cls,x,y,st,html=''){const e=document.createElement('div');e.className=cls;e.style.cssText=`left:${x}px;top:${y}px;${st}`;e.innerHTML=html;R.appendChild(e);return e}
+const SX=270;                       // stem centre
+const dimF=b=>`filter:brightness(${b}) saturate(.9)`;
+const ST={work:{f:'hue-rotate(-8deg) saturate(1.15)',g:'255,160,60'},ask:{f:'hue-rotate(-22deg) saturate(1.7) brightness(1.05)',g:'255,120,40'},done:{f:'hue-rotate(62deg) saturate(1.2)',g:'120,220,110'},broke:{f:'hue-rotate(-48deg) saturate(1.9) brightness(.95)',g:'230,50,40'}};
+const base=pt?.95:.34;
+
+// ---- the post
+im('stem.png',SX-6,8,6,112,dimF(pt?.8:.6));
+im('foot.png',SX-14,8+224-2,14,4,dimF(.5));
+im('crook.png',SX-6-90+12,8,50,10,dimF(pt?.9:.75));
+// lantern (the session's own state: working)
+const lx=176, ly=16;
+const lant=im('props-tx-village-props-lantern-01-on-png-x1.png',lx,ly,11,19,`filter:${ST.work.f} brightness(${pt?1.1:1})`);
+div('a',lx+2,ly+10,'width:18px;height:6px;background:linear-gradient(#150b04e6,#150b04b0);',''); // oil used (context 35%)
+// cap board
+im('cap.png',SX-70,18,70,16,dimF(pt?.95:.8));
+div('burn',SX-70+16,22,'');
+document.querySelector('#r').lastChild.innerHTML='INVEST-WEB';
+div('burn2',SX-70+14,40,'','opus 5.5 · medium · auto');
+// ---- arms
+function arm(side,row,W,txt,key,br,extra=''){
+  const y=56+row*26;
+  const x=side==='R'?SX-8:SX+8-2*W;
+  const e=im(`arm${side}-${W}.png`,x,y,W,12,dimF(br)+extra);
+  const tx=side==='R'?x+18:x+16;
+  const d=div('ink',tx,y,`filter:brightness(${br})${extra.replace(';filter:','')}`,(key?`<i>${key}</i>`:'')+txt);
+  if(side==='L'){const lo=x+16, hi=SX-12; d.style.left=lo+'px'; d.style.width=(hi-lo)+'px'; d.style.textAlign='center'; d.style.overflow='hidden'}
+  return {x,y,W};
+}
+function lamp(a,kind,side){
+  const lx2=side==='L'?a.x+4:a.x+2*a.W-26;
+  const e=im('props-tx-village-props-lantern-02-on-png-x1.png',lx2,a.y+22,9,17,`filter:${ST[kind].f}`);
+  div('glow',lx2-34,a.y+22-30,`width:86px;height:86px;background:radial-gradient(circle,rgba(${ST[kind].g},.42),rgba(${ST[kind].g},0) 68%)`);
+}
+// left side
+const home=arm('L',0,70,'home','',pt?.95:.62);
+im('house.png',home.x+16,home.y+1,11,11,dimF(pt?.95:.65));
+home.x; {const e=document.querySelectorAll('.ink')[0];e.style.left=(home.x+54)+'px';e.style.textAlign='left'}
+const a1=arm('L',1,104,'Cost basis, split day','71880',pt?.95:.92); lamp(a1,'ask','L');
+const a2=arm('L',2,86,'Q4 tax banner','72011',pt?.95:.92); lamp(a2,'done','L');
+const a3=arm('L',3,68,'Flaky e2e','71702',pt?.95:.9); lamp(a3,'broke','L');
+// right side
+const cur=arm('R',0,94,'Reason line under each loss','',pt?.95:.95);
+arm('R',1,84,'Dividend reinvest','71990',base);
+arm('R',2,60,'chart spike','',base);
+const cut=arm('R',3,72,'gift lots <b style="font-weight:400" id=cn>0s</b>','72040',pt?1.2:1.3,';filter:saturate(.5) sepia(.25)');
+// the arm still being nailed on: pale new timber, bright nails
+{ const e=R.children[R.children.length-2]; e.style.filter='brightness(1.35) saturate(.45) sepia(.2)';
+  R.children[R.children.length-1].style.filter='none';
+  div('a',cut.x+8,cut.y+3,'width:4px;height:4px;background:#f1e7cf');div('a',cut.x+8,cut.y+17,'width:4px;height:4px;background:#f1e7cf');
+  div('a',cut.x+2*cut.W-34,cut.y+28,'width:2px;height:2px;background:#e9d9b0');div('a',cut.x+2*cut.W-52,cut.y+34,'width:2px;height:2px;background:#e9d9b0');
+}
+document.getElementById('cn').textContent='14s';
+// peg
+im('peg.png',SX-6-16,158,8,5,dimF(pt?.95:.5));
+if(pt) div('a',SX-6-16-4,160,'width:4px;height:4px;background:#f2c66d;opacity:.9');
+// ---- the notice, nailed under the arms
+const nx=SX-64, ny=172, NX2=nx+104;
+if(!open){
+  im('slip.png',nx+92,ny-8,9,7);im('slip.png',nx+100,ny-10,9,7);im('slip.png',nx+108,ny-7,9,7);
+  im('notice.png',nx,ny,64,30,dimF(pt?.95:.88));
+  div('ink',nx+12,ny+6,'font:700 14px/16px MenderHand;color:#33200f;filter:brightness(.9)','INV-71924');
+  div('ink',nx+12,ny+23,'font:400 13px/16px MenderHand;color:#33200f','Wash sale info');
+  div('ink',nx+12,ny+38,'font:400 11px/14px MenderHand;color:#6a4c26','in progress');
+  im('nail.png',NX2,ny+4,3,3);
+  im('seal-empty.png',SX-30,ny+52,9,9,'filter:brightness(1.5)');im('seal-empty.png',SX+4,ny+52,9,9,'filter:brightness(1.5)');
+}else{
+  im('nail.png',NX2,ny+4,3,3);
+}
+// the crow: ci has failed
+const cr=im('crow-hop-0-x1.png',SX+44,18-14,8,7,'filter:brightness(1.3)');
+// ---- light
+div('glow',lx-210,ly-170,`width:${pt?640:520}px;height:${pt?520:420}px;background:radial-gradient(ellipse,rgba(255,168,70,${pt?.30:.22}),rgba(255,140,50,.08) 45%,rgba(255,120,40,0) 70%)`);
+div('glow',lx-40,ly-20,'width:100px;height:100px;background:radial-gradient(circle,rgba(255,210,120,.55),rgba(255,170,70,0) 65%)');
+if(pt){
+  const t=im('armR-62.png',22,16,62,12,dimF(.95));
+  div('ink',38,16,'font:400 12px/24px MenderHand;color:#2a1608','room 35% · 5h 41%');
+}
+// ---- the ticket taken down to read
+if(open){
+  const sx=500, sy=160;
+  const sheet=(x,w)=>{im('sheet.png',x,sy,220,330,'filter:drop-shadow(0 10px 16px rgba(0,0,0,.4))');
+    [[x+14,sy+14],[x+w-24,sy+14],[x+14,sy+640],[x+w-24,sy+640]].forEach(p=>im('nail.png',p[0],p[1],3,3));};
+  sheet(sx,440); sheet(sx+470,440);
+  const A=sx+44,B=sx+470+44;
+  div('paper',A,sy+44,'font:600 11px "Josefin Sans";letter-spacing:.3em;color:#5a3d1c','INV-71924');
+  div('paper',A,sy+66,'font:400 14px MenderHand;color:#7a5a2e','story · high · in progress');
+  div('paper',A,sy+96,'font:700 25px/30px MenderHand;width:350px;color:#2d1a0a','FE: G/L wash sale info, explaining why a loss was disallowed');
+  div('a',A,sy+192,'width:340px;height:0;border-top:2px dotted rgba(70,44,20,.4)');
+  div('paper',A,sy+210,'font:400 16.5px/24px MenderHand;width:340px;color:#3a2410','When a loss is disallowed because of a wash sale, the page should say so, and name the lot that triggered it, right under the loss.');
+  div('paper',A,sy+330,'font:400 10px "Courier Prime";color:#6a4c26;letter-spacing:.04em','inv-71924-wash-sale-info');
+  div('paper',A,sy+372,'font:400 15px/22px MenderHand;width:340px;color:#3a2410','two are working in here:<br>Reason line under each loss, twelve minutes in<br>Lot link API, which wants you');
+  div('paper',A,sy+592,'font:400 15px MenderHand;color:#a4701a','open in jira');
+  // merge request
+  div('paper',B,sy+44,'font:600 11px "Josefin Sans";letter-spacing:.3em;color:#5a3d1c','MERGE REQUEST !482');
+  div('paper',B,sy+66,'font:700 21px/26px MenderHand;width:350px;color:#2d1a0a','FE: wash sale info on the G/L page');
+  div('paper',B,sy+112,'font:600 9.5px "Josefin Sans";letter-spacing:.3em;color:#7a5a2e','THE CHECKS');
+  div('paper',B,sy+130,'font:700 17px MenderHand;color:#a3321f','they failed');
+  div('paper',B,sy+154,'font:400 15px/21px MenderHand;width:350px;color:#3a2410','the job called lint stopped it: two errors in LossRow.tsx, four minutes ago');
+  div('paper',B,sy+222,'font:600 9.5px "Josefin Sans";letter-spacing:.3em;color:#7a5a2e','WHO HAS SAID YES');
+  im('seal-empty.png',B,sy+242,9,9,'filter:brightness(1.9)');im('seal-empty.png',B+28,sy+242,9,9,'filter:brightness(1.9)');
+  div('paper',B+62,sy+244,'font:400 15px MenderHand;color:#3a2410','nobody yet, it needs two');
+  div('paper',B,sy+290,'font:600 9.5px "Josefin Sans";letter-spacing:.3em;color:#7a5a2e','THREE TO ANSWER');
+  [['maya','should the page say disallowed, or deferred?'],['tom','the lot link needs the API first'],['sam','who writes the words in the tooltip?']].forEach((t,i)=>{
+    const y=sy+314+i*74;
+    im('slip.png',B,y+2,9,7);
+    div('paper',B+30,y,'font:600 10px "Josefin Sans";letter-spacing:.2em;color:#6a4c26',t[0].toUpperCase());
+    div('paper',B+30,y+18,'font:400 15px/21px MenderHand;width:320px;color:#3a2410',t[1]);
+  });
+  div('paper',B,sy+592,'font:400 15px MenderHand;color:#a4701a','open in gitlab');
+}
+// a few embers drifting off the lantern
+requestAnimationFrame(()=>document.body.dataset.ready=1);
+</script></body></html>

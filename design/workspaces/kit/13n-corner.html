@@ -1,0 +1,133 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-600-normal.woff2); font-weight: 600; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'MenderHand'; src: url(fonts/pretty-neat-400-normal.woff2); }
+@font-face { font-family: 'MenderHand'; font-weight: 700; src: url(fonts/pretty-neat-700-normal.woff2); }
+@font-face { font-family: 'Silk'; src: url(fonts/silkscreen-400-normal.woff2); }
+html,body{margin:0;width:1480px;height:1020px;overflow:hidden}
+img{position:absolute;image-rendering:pixelated;display:block}
+.a{position:absolute}
+.ink,.burn,.burn2,.paper{position:absolute}
+.ink{font:400 13px/24px MenderHand;color:#2a1608;text-shadow:0 1px 0 rgba(255,232,190,.2);white-space:nowrap}
+.ink i{font:600 8.5px 'Josefin Sans';font-style:normal;letter-spacing:.14em;margin-right:6px;opacity:.75;position:relative;top:-1px}
+.glow{position:absolute;border-radius:50%;mix-blend-mode:screen;pointer-events:none}
+.burn{font:600 12px 'Josefin Sans';letter-spacing:.24em;color:#e8b95a;text-shadow:0 0 6px rgba(255,150,40,.55),0 1px 0 #2a1408;white-space:nowrap}
+.burn2{font:400 8px 'Courier Prime';letter-spacing:.01em;color:#1c0e04;opacity:.95;white-space:nowrap}
+.paper{font-family:MenderHand;color:#2d1a0a}
+.breathe{animation:br 3.6s ease-in-out infinite}@keyframes br{50%{opacity:.7;transform:scale(.92)}}
+.ink i{font:600 8.5px 'Josefin Sans';font-style:normal;letter-spacing:.14em;margin-right:6px;opacity:.75;position:relative;top:-1px}
+.stamp{font:400 8px/10px Silk;letter-spacing:.04em;padding:2px 4px 1px;border:1px solid;border-radius:1px;opacity:.95;display:inline-block;flex:none}
+</style></head><body><div id="r"></div><script src="13x-lib.js"></script><script src="13k-lib.js"></script>
+<script>
+// pixel canvas: draw at art scale, shown at 2x
+function pix(x,y,w,h,fn,st=''){const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');fn(g,(px,py,col,ww=1,hh=1)=>{g.fillStyle=col;g.fillRect(px,py,ww,hh)});
+  const e=document.createElement('img');e.src=c.toDataURL();e.style.cssText=`left:${x}px;top:${y}px;width:${w*2}px;height:${h*2}px;${st}`;R.appendChild(e);return e}
+const C=Q.get('c')||'flag', IN=Q.get('in')||'inv';
+const SES=IN==='inv'?{name:'Reason line under each loss',model:'opus 5.5',effort:'medium',mode:'auto',used:10}
+                    :{name:'Why the download test times out',model:'sonnet 5.5',effort:'high',mode:'plan',used:72};
+const tone=u=>u>=85?'#e0563f':u>=65?'#e8913a':null;
+(async()=>{
+await document.fonts.load('14px MenderHand'); await document.fonts.load('8px Silk'); await document.fonts.load('8px "Courier Prime"');
+const fullW=(name,w)=>im(name+'.png',30,0,w,75,'filter:brightness(.72) saturate(.9);-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 124px,transparent 150px),linear-gradient(to right,transparent 0,#000 70px);-webkit-mask-composite:source-in;mask-composite:intersect');
+fullW('ground-j',725);
+flies(11,21,70,1470,24,132);
+dress(7,[['tuft',60,1470,60,146,66],['flower',200,470,70,130,16],['flower',500,1200,90,140,14],['flower',1190,1470,96,140,8],['rock',90,1200,110,142,8],['rock',1300,1470,128,142,3]]);
+nat('bush06',216,116,.62); nat('bush03',70,118,.6);
+nat('bush07',470,128,.62); nat('bush02',690,110,.6); nat('bush05',880,92,.55);
+// the "you are here" lantern: hangs off an iron bracket; only one ever lit
+function bracket(hx,hy,dir){div('a',dir<0?hx-16:hx,hy,'width:16px;height:4px;background:#2e2016;box-shadow:0 2px #4a3524');}
+function here(cx,hy){
+  for(let i=0;i<6;i+=3)div('a',cx-1,hy+4+i,'width:2px;height:2px;background:#6f5a44');
+  im(LAMP1,cx-11,hy+10,11,19,`filter:${ST.work.f}`);
+  pool(cx,hy+30,300,'255,168,70',.2);
+  div('glow breathe',cx-50,hy-20,'width:100px;height:100px;background:radial-gradient(circle,rgba(255,210,120,.5),rgba(255,170,70,0) 65%)');
+}
+// ---- the hill: the project's own post
+const BX=330, BB=118;
+post(BX,BB,56,0,.58);
+cap(BX-70,2,70,'INVEST-WEB',.8);
+bracket(BX+70,4,1);
+if(IN==='inv') here(BX+80,4);
+sign(IN==='inv'
+  ?{big:true,x:BX-6,y:76,title:'Explain why a wash-sale loss was disallowed',key:'INV-71924',side:'R',mr:[0,0],crow:true,slips:3}
+  :{x:BX-6,y:76,title:'Explain why a wash-sale loss was disallowed',key:'71924',side:'R',mr:[0,0],crow:true,slips:3,br:.8});
+{const px=96,pb=122; post(px,pb,22,0,.55); sign({x:px+6,y:80,side:'L',title:'home',W:44,home:true,quiet:true});}
+{const px=620,pb=112; post(px,pb,40,0,.6);
+ sign({x:px-6,y:32,title:'Cost basis',key:'71880',st:'ask',mr:[1,1],slips:1,side:'R'});
+ person('front-0',px+40,pb+4,{lamp:'ask',lampDx:-40,lampDy:46});}
+{const px=154,pb=118; post(px,pb,38,0,.6);
+ nat('flower1',px-22,pb+2,.78);nat('flower3',px+14,pb+4,.78);nat('flower0',px-40,pb,.78);
+ sign({x:px-6,y:40,title:'Q4 banner',key:'72011',st:'done',lamp:'done',side:'R'});}
+{const px=960,pb=104; post(px,pb,42,0,.52);
+ sign({x:px+6,y:20,title:'Dividend toggle',key:'71990',quiet:true,mr:[1,0],side:'L'});
+ sign({x:px-6,y:20,title:'chart spike',quiet:true,side:'R'});
+}
+{const px=1030,pb=134; post(px,pb,44,0,.55);
+ bracket(px+4,48,1);
+ if(IN==='flaky') here(px+20,48);
+ sign(IN==='flaky'
+  ?{big:true,x:px+6,y:72,title:'Flaky e2e on statements download',key:'INV-71702',st:'broke',lamp:'broke',side:'L'}
+  :{x:px+6,y:72,title:'Flaky e2e',key:'71702',st:'broke',lamp:'broke',side:'L',br:.9});
+ person('sit-0',px+52,pb+2,{gray:true});}
+{const px=1150,pb=70; post(px,pb,30,0,1.25,'filter:brightness(1.3) saturate(.5) sepia(.25)');
+ sign({x:px+6,y:2,title:'Gift lots',key:'72040',cut:true,side:'L'});
+ person('helper-side-0',px+34,pb+8,{});
+ im('k/hammer.png',px+22,pb-48,9,22,'');}
+{const px=880,pb=146; im('stem.png',px-6,pb-34,6,17,`filter:brightness(.7)`); im('foot.png',px-14,pb-4,14,4,'filter:brightness(.4)'); nat('coil',px-26,pb+2,.75);}
+pool(1390,100,200,'255,196,110',.06);
+
+// ================= the session corner =================
+const ink='#2a1608', S_=SES;
+const fable=/fable/.test(S_.model);
+if(C==='line'){
+  // a washing line: the session's name on the sheet, what it thinks with pegged beside it
+  const L0=1186,L1=1456,ty=48;
+  im('k2/lpost49.png',L0,ty,8,49,'filter:brightness(.62) saturate(.9)');
+  im('k2/rpost49.png',L1,ty,8,49,'filter:brightness(.62) saturate(.9)');
+  const rw=(L1-L0)/2-4, sag=6, X0=L0+12, Y0=ty+20;
+  const ry=x=>Math.round(sag*Math.sin(Math.PI*x/rw));
+  pix(X0,Y0,rw,10,(g,p)=>{for(let x=0;x<rw;x++){p(x,ry(x),'#7a5a3c');p(x,ry(x)+1,'#4e3522')}},'filter:brightness(.75)');
+  const cloth=(x0,wA,hA,base,hem,shadeA)=>pix(X0+x0*2,Y0+ry(x0)*2,wA,hA+sag,(g,p)=>{
+     for(let x=0;x<wA;x++){const top=ry(x0+x)-ry(x0);const bot=hA-1+top-((x*7)%3===0?1:0)-(x%5===2?1:0);
+       for(let y=top+1;y<=bot;y++)p(x,y,(x===0||x===wA-1||y===bot)?shadeA:base);
+       if(hem)for(const hy of [top+3,bot-3])p(x,hy,hem);}
+     for(const px of [1,wA-3]){p(px,ry(x0+px)-ry(x0)-1,'#5b3c22',2,3)}},'filter:brightness(.86)');
+  const at=(x0)=>[X0+x0*2,Y0+ry(x0)*2];
+  // mode: a dyed cloth
+  {const x0=24,w=20;cloth(x0,w,16,'#a0442c','#7c3220','#6a2a1a');const [x,y]=at(x0);
+   div('a',x,y+12,`width:${w*2}px;text-align:center;font:400 9px Silk;color:#f1e3c8;letter-spacing:.04em`,S_.mode);}
+  // what it thinks with, and how hard: two linen cloths
+  {const x0=50,w=34;cloth(x0,w,16,fable?'#b9a2e2':'#d9d3c3',null,fable?'#7a5ab8':'#9a9283');const [x,y]=at(x0);
+   div('a',x,y+9,`width:${w*2}px;text-align:center;font:400 14px/16px MenderHand;color:${fable?'#2c1650':ink}`,S_.model);}
+  {const x0=88,w=26;cloth(x0,w,16,'#d9d3c3',null,'#9a9283');const [x,y]=at(x0);
+   div('a',x,y+9,`width:${w*2}px;text-align:center;font:400 14px/16px MenderHand;color:${ink}`,S_.effort);}
+  // its peg bag hung on a nail on the far post, filling as its room goes
+  {const bw=10,bh=14,x=L1-20,y=ty+50;
+   div('a',L1-2,y-2,'width:6px;height:4px;background:#2e2016');div('a',x+8,y,'width:2px;height:6px;background:#4e3522');
+   pix(x,y+6,bw,bh,(g,p)=>{for(let yy=0;yy<bh;yy++)for(let xx=0;xx<bw;xx++){const edge=xx===0||xx===bw-1||yy===bh-1||yy===0;p(xx,yy,edge?'#6a5a40':'#cbbf9f')}
+     const f=Math.max(1,Math.round((bh-2)*S_.used/100));for(let yy=bh-1-f;yy<bh-1;yy++)for(let xx=1;xx<bw-1;xx++)p(xx,yy,tone(S_.used)||'#8a6a44');p(2,2,'#8a7a5a',6,1)},'filter:brightness(.85)');
+   div('ink',x-166,ty+88,`width:160px;text-align:right;font:400 12px/14px MenderHand;color:${tone(S_.used)||'#e8d9b8'};text-shadow:0 1px 0 rgba(0,0,0,.8)`,S_.used+'% of its room used');}
+}
+if(C==='flag'){
+  // its own flag on a pole, flying out under the rack; the rest tied round the pole
+  const PX=1290, top=60;
+  im('stem.png',PX-6,top,6,43,'filter:brightness(.62)'); im('foot.png',PX-14,142,14,4,'filter:brightness(.45)');
+  div('a',PX-8,top-6,'width:8px;height:8px;border-radius:50%;background:#6f5a44;box-shadow:inset -2px -2px #3e2c1c');
+  // ribbons tied round the pole under the flag, tails blowing the same way it flies
+  const rib=(y,col,txt,font,tcol,w)=>{div('a',PX-8,y,`width:10px;height:6px;background:${col};box-shadow:inset 0 -2px rgba(0,0,0,.25)`);
+     pix(PX,y,w/2,9,(g,p)=>{const W=w/2;for(let x=0;x<W;x++){const o=Math.round(Math.sin(x/5));const r=W-1-x;for(let yy=0;yy<7;yy++){if(r<4&&yy===3)continue;p(x,yy+1+o,yy===6?'rgba(0,0,0,.3)':col)}}});
+     div('a',PX+4,y+3,`width:${w-14}px;text-align:center;font:${font};color:${tcol};white-space:nowrap`,txt);};
+  rib(top+6,'#a0442c',S_.mode,'400 9px/12px Silk','#f1e3c8',50);
+  rib(top+26,fable?'#8f72c9':'#d9d3c3',S_.model,'400 13px/12px MenderHand',fable?'#1e0e3a':ink,90);rib(top+46,'#d9d3c3',S_.effort,'400 13px/12px MenderHand',ink,70);
+  // a candle in a jar under the flag's tail, burnt down by what it has used
+  const jx=1430,jb=144,jh=26, left=Math.max(2,Math.round((jh-6)*(100-S_.used)/100));
+  pix(jx,jb-jh*2,10,jh,(g,p)=>{for(let y=0;y<jh;y++)for(let x=0;x<10;x++){const edge=x===0||x===9||y===jh-1;if(edge)p(x,y,'rgba(190,210,220,.5)')}
+     for(let y=jh-1-left;y<jh-1;y++)for(let x=3;x<7;x++)p(x,y,x===3?'#efe2c0':'#d9c79c');
+     const fy2=jh-2-left;p(4,fy2-1,'#3a2a1a');p(4,fy2-3,'#ffcf6a',2,2);p(4,fy2-4,'#fff3c0',1,1)});
+  pool(jx+10,jb-left*2-6,70,'255,190,90',.4);
+  div('ink',jx-150,jb-24,`width:144px;text-align:right;font:400 12px/14px MenderHand;color:${tone(S_.used)||'#efe0bd'};text-shadow:0 1px 0 rgba(0,0,0,.8)`,S_.used+'% of its room burnt');
+}
+document.body.dataset.ready=1;
+})();
+</script></body></html>

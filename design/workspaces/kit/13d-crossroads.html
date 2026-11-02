@@ -1,0 +1,72 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-600-normal.woff2); font-weight: 600; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'MenderHand'; src: url(fonts/pretty-neat-400-normal.woff2); }
+@font-face { font-family: 'MenderHand'; font-weight: 700; src: url(fonts/pretty-neat-700-normal.woff2); }
+@font-face { font-family: 'Silk'; src: url(fonts/silkscreen-400-normal.woff2); }
+html,body{margin:0;width:1480px;height:1020px;overflow:hidden}
+img{position:absolute;image-rendering:pixelated;display:block}
+.a{position:absolute}
+.ink,.burn,.burn2,.paper{position:absolute}
+.ink{font:400 13px/24px MenderHand;color:#2a1608;text-shadow:0 1px 0 rgba(255,232,190,.2);white-space:nowrap}
+.ink i{font:600 8.5px 'Josefin Sans';font-style:normal;letter-spacing:.14em;margin-right:6px;opacity:.75;position:relative;top:-1px}
+.glow{position:absolute;border-radius:50%;mix-blend-mode:screen;pointer-events:none}
+.burn{font:600 12px 'Josefin Sans';letter-spacing:.24em;color:#e8b95a;text-shadow:0 0 6px rgba(255,150,40,.55),0 1px 0 #2a1408;white-space:nowrap}
+.burn2{font:400 8px 'Courier Prime';letter-spacing:.01em;color:#1c0e04;opacity:.95;white-space:nowrap}
+.paper{font-family:MenderHand;color:#2d1a0a}
+.breathe{animation:br 3.6s ease-in-out infinite}@keyframes br{50%{opacity:.7;transform:scale(.92)}}
+.ink i{font:600 8.5px 'Josefin Sans';font-style:normal;letter-spacing:.14em;margin-right:6px;opacity:.75;position:relative;top:-1px}
+</style></head><body><div id="r"></div><script src="13x-lib.js"></script>
+<script>
+hr();
+const SX=110, RY=46;
+// short post on the left, carrying the project
+stem(SX,8,62,pt?.8:.55);
+im('foot.png',SX-14,126,14,4,dim(.45));
+cap(SX-70,10,70,'INVEST-WEB',.78);
+// the run: one long fingerboard, home first, yours lit, then those that want you, then the quiet ones
+const SEG=[
+ {t:'home',k:'',W:44,br:pt?.95:.5,words:pt,home:true},
+ {t:'Reason line under each loss',k:'',W:130,br:.95,words:true,own:true},
+ {t:'Cost basis',k:'71880',W:46,br:.9,words:true,st:'ask'},
+ {t:'Q4 banner',k:'72011',W:46,br:.9,words:true,st:'done'},
+ {t:'Flaky e2e',k:'71702',W:46,br:.88,words:true,st:'broke'},
+ {t:'Dividend',k:'71990',W:46,br:pt?.95:.34,words:pt},
+ {t:'chart spike',k:'spike',W:46,br:pt?.95:.34,words:pt},
+ {t:'gift lots',k:'72040',W:46,br:1,words:pt,cut:true}];
+let x=SX-6; const pos=[];
+SEG.forEach(s=>{
+  const a=plank('R',x,RY,s.W,s.own?s.t:'',s.k,s.br,s.words,{});
+  if(s.home){im('house.png',x+14,RY+1,11,11,dim(pt?.95:.6));a.d.style.left=(x+40)+'px'}
+  if(s.cut){a.e.style.filter='brightness(1.3) saturate(.45) sepia(.2)';a.d.style.filter='none';a.d.style.opacity=1;a.d.innerHTML=pt?'<i>72040</i>14s':'<i>14s</i>';
+    div('a',x+8,RY+3,'width:4px;height:4px;background:#f1e7cf');div('a',x+8,RY+17,'width:4px;height:4px;background:#f1e7cf')}
+  if(s.st) hang(x+2*s.W-22,RY+24,s.st);
+  if(pt&&!s.own&&!s.home) div('ink',x+10,RY-20,'font:400 12px/16px MenderHand;color:#e2d0aa;text-shadow:0 1px 2px #000;white-space:nowrap',s.t);
+  pos.push([s,x]); x+=2*s.W;
+});
+const ownx=pos[1][1];
+// the session's lantern and the details that hang from its board
+const lx=ownx+30;
+div('a',lx+8,RY+24,'width:2px;height:8px;background:#2e2016');
+im(LAMP1,lx,RY+30,11,19,`filter:${ST.work.f}`);
+div('a',lx+2,RY+40,'width:18px;height:6px;background:linear-gradient(#150b04e6,#150b04b0)');
+div('glow breathe',lx-48,RY+30-34,'width:120px;height:120px;background:radial-gradient(circle,rgba(255,210,120,.5),rgba(255,170,70,0) 65%)');
+glowAt(lx+10,RY+36,pt?330:250,pt?.24:.17);
+let tcur=ownx+82;
+[['opus 5.5',36],['medium',36],['auto',26]].forEach((t,i)=>{
+  const tx=tcur; tcur+=t[1]*2+6;
+  div('a',tx+16,RY+24,'width:2px;height:8px;background:#2e2016');div('a',tx+t[1]*2-18,RY+24,'width:2px;height:8px;background:#2e2016');
+  im(`armR-${t[1]}.png`,tx,RY+32,t[1],12,dim(.82));
+  div('ink',tx+10,RY+32,`font:400 11px/24px MenderHand;width:${t[1]*2-22}px;text-align:center;filter:brightness(.82)`,t[0]);
+});
+if(pt) div('ink',lx-6,RY-20,'font:400 12px/16px MenderHand;color:#e2d0aa;text-shadow:0 1px 2px #000','room 35% · 5h 41%');
+// the second short post: the ticket and what GitLab says
+const px2=pos[6][1]+30;
+stem(px2,RY+24,29,pt?.8:.5);
+im('foot.png',px2-14,126,14,4,dim(.4));
+notice(px2-6-96,82);
+crowOn(px2-6-96+18,82-14);
+if(open) sheets();
+requestAnimationFrame(()=>document.body.dataset.ready=1);
+</script></body></html>

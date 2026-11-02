@@ -1,0 +1,172 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css">
+<style>
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-600-normal.woff2); font-weight: 600; }
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-700-normal.woff2); font-weight: 700; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-italic.woff2); font-weight: 400; font-style: italic; }
+@font-face { font-family: 'MenderHand'; src: url(fonts/pretty-neat-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'MenderHand'; src: url(fonts/pretty-neat-700-normal.woff2); font-weight: 700; }
+:root { --ink: #2c1e12; --ink2: #5b432a; --sore: #f08a72; --oxb: #a8342c; --gi: #9a6a10; }
+body { background: #000 url(15-board-bg.png) 0 0/1480px 1020px no-repeat; }
+img { image-rendering: pixelated; position: absolute; display: block; }
+#top { position: absolute; left: 0; top: 0; width: 1480px; height: 220px; }
+.abs { position: absolute; }
+
+
+.pw { position:absolute; width:16px; height:120px; top:14px; overflow:hidden; filter: brightness(.45) saturate(.8); } .pw img { position:absolute; left:0; top:0; width:16px; height:132px; image-rendering:pixelated; }
+#rope { position:absolute; left:0; top:0; width:1480px; height:220px; image-rendering:pixelated; }
+#plank { position:absolute; left:74px; top:14px; width:132px; height:20px; filter: brightness(.7); }
+#name { position: absolute; left: 74px; top: 14px; width: 132px; height: 20px; text-align: center; line-height: 19px; cursor: pointer; }
+#name b { font: 600 11.5px 'Josefin Sans'; letter-spacing: .34em; color: #f2c66d; text-shadow: 0 -1px 0 rgba(0,0,0,.75), 0 1px 0 rgba(255,214,150,.18); margin-right: -.34em; }
+.peg { position:absolute; width:6px; height:16px; background: linear-gradient(90deg,#b08a58 0 2px,#8a6a42 2px 4px,#5e4428 4px); box-shadow: 0 2px 0 rgba(0,0,0,.4); filter: brightness(.7); z-index:3; }
+.sw { position:absolute; transform-origin: 50% 0; animation: sway 6s ease-in-out infinite alternate; }
+@keyframes sway { from { transform: rotate(-1.2deg) } to { transform: rotate(1.2deg) } }
+.n { position: absolute; width: 80px; height: 66px; filter: brightness(.5) saturate(.85); }
+.n img.bg { left: 0; top: 0; width: 100%; height: 100%; }
+.n .k { position: absolute; left: 0; width: 100%; top: 10px; text-align: center; font: 700 10px 'Courier Prime'; color: #3a2616; }
+.n .t { position: absolute; left: 4px; right: 4px; top: 24px; text-align: center; font: 400 13px/13px 'MenderHand'; color: #2c1e12; }
+.n .more { position: absolute; left: 7px; width: 62px; top: 50px; text-align: left; font: 400 9px 'Courier Prime'; color: #5b432a; opacity: 0; white-space: nowrap; }
+body.point .n { filter: brightness(1.0) saturate(.95); }
+body.point .n .more { opacity: 1; } .n.broken .more { top: 42px; } .n.scrap .more { top: 38px; }
+.n.ask { filter: brightness(.8) saturate(1) sepia(.25); } .n.ask .k { color: #7a3a14; }
+.n.broken .k { color: #8a2c24; }
+.n.scrap { width: 76px; height: 58px; } .n.scrap .k { display:none; } .n.scrap .t { top: 14px; font-size: 15px; line-height: 14px; }
+.n.fresh { filter: brightness(.7) saturate(1.1); } .n.fresh .t { top: 20px; }
+.n.fresh .cnt { position: absolute; left: 0; width: 72px; top: 46px; text-align: center; font: 400 italic 10px 'Courier Prime'; color: #7a3a14; }
+.ribbon { width: 18px; height: 22px; object-fit: cover; object-position: top; filter: brightness(.7); }
+.glow { position: absolute; pointer-events: none; mix-blend-mode: screen; }
+#hero { position: absolute; width: 200px; height: 90px; filter: brightness(1.08) saturate(1.05) sepia(.18); }
+#hero .bg { left: 0; top: 0; width: 200px; height: 90px; }
+#hero::after { content:''; position:absolute; inset:0; pointer-events:none; background: linear-gradient(90deg, rgba(40,20,0,0) 0, rgba(30,14,0,.12) 45%, rgba(20,8,0,.5) 100%), radial-gradient(ellipse at 28% 45%, transparent 40%, rgba(20,10,0,.5) 100%); mix-blend-mode: multiply; }
+#hero .stamp { position: absolute; left: 12px; top: 8px; font: 700 10.5px 'Courier Prime'; letter-spacing: .08em; color: var(--oxb); border: 2px solid var(--oxb); padding: 0 4px; line-height: 12px; transform: rotate(-2deg); opacity: .85; mix-blend-mode: multiply; }
+#hero .st { position: absolute; right: 14px; top: 10px; font: 400 italic 9.5px 'Courier Prime'; color: var(--ink2); }
+#hero .t { position: absolute; left: 12px; top: 28px; width: 180px; font: 400 15px/15px 'MenderHand'; color: var(--ink); }
+#hero .rule { position: absolute; left: 12px; right: 14px; top: 61px; border-top: 2px dotted rgba(99,71,48,.55); }
+#hero .s { position: absolute; left: 12px; top: 65px; font: 400 9.5px 'Courier Prime'; color: var(--ink2); white-space: nowrap; }
+#hero .a { position: absolute; left: 12px; top: 77px; font: 400 italic 9px 'Courier Prime'; color: rgba(91,67,42,.75); }
+.seal { width: 18px; height: 18px; position:absolute; }
+.slip { width: 30px; height: 18px; filter: brightness(.95); }
+.crow { width: 16px; height: 14px; filter: brightness(1.9) saturate(.6); }
+.chain { position: absolute; width: 2px; background: repeating-linear-gradient(#3a3330 0 2px, #6c625a 2px 4px); }
+.iron { position: absolute; background: #2a2523; box-shadow: 0 2px 0 rgba(0,0,0,.4); }
+#slate { position: absolute; left: 826px; top: 94px; width: 180px; height: 34px; }
+#slate img { left: 0; top: 0; width: 180px; height: 34px; }
+#slate div { position: absolute; left: 12px; top: 6px; font: 400 12px/12px 'MenderHand'; color: rgba(238,230,208,.82); white-space: nowrap; }
+#slate div + div { top: 18px; color: rgba(238,230,208,.62); }
+body.point #slate div { color: rgba(250,244,226,.95); }
+#parch { position: absolute; left: 520px; top: 200px; width: 700px; height: 652px; display: none; filter: drop-shadow(0 22px 26px rgba(0,0,0,.55)) brightness(.93); }
+#parch .bg { left: 0; top: 0; width: 700px; height: 652px; }
+#parch > .c { position: absolute; color: var(--ink); }
+.hand { font-family: 'MenderHand'; } .cour { font-family: 'Courier Prime'; }
+.gi { color: var(--gi); font: 600 12px 'Josefin Sans'; letter-spacing: .28em; text-transform: uppercase; cursor: pointer; }
+body.open #parch { display: block; }
+</style></head><body>
+<div id="top">
+  <canvas id="rope" width="740" height="110"></canvas>
+  <div class="pw" style="left:82px"><img src="s15b/post.png"></div><div class="pw" style="left:794px"><img src="s15b/post.png"></div>
+  <img id="plank" src="s15b/plank.png"><div id="name"><b>INVEST-WEB</b></div>
+  <div id="notices"></div><div id="lanterns"></div><div id="glows"></div>
+  <div id="slate"><img src="s15b/slate.png"><div>auto · Opus 5.5 · medium</div><div>context 35% used</div></div>
+</div>
+<div id="parch"></div>
+<script>
+const q = new URLSearchParams(location.search).get('s') || '';
+if (q) document.body.classList.add(q);
+const open = q === 'open';
+const $ = (id) => document.getElementById(id);
+const im = (src, cls, st) => `<img src="s15b/${src}.png" class="${cls || ''}" style="${st || ''}">`;
+const ry = (x) => Math.round((36 + 12 * (1 - Math.pow((x - 446) / 356, 2))) / 2) * 2;
+// rope: a plaited pixel line, two rows thick, with a shadow row
+const cv = $('rope').getContext('2d');
+let prev = null;
+for (let x = 45; x <= 401; x++) {
+  const y = ry(x * 2) / 2;
+  const a = (x >> 1) % 2 ? '#d8b676' : '#b8935a', d = (x >> 1) % 2 ? '#8a6a40' : '#6d5030';
+  const y0 = prev === null ? y : Math.min(y, prev), y1 = prev === null ? y : Math.max(y, prev);
+  for (let yy = y0; yy <= y1; yy++) { cv.fillStyle = a; cv.fillRect(x, yy, 1, 2); cv.fillStyle = d; cv.fillRect(x, yy + 2, 1, 1); }
+  cv.fillStyle = 'rgba(0,0,0,.45)'; cv.fillRect(x, y1 + 3, 1, 1);
+  prev = y;
+}
+cv.fillStyle = '#2a2523'; [[43, 17], [400, 17]].forEach(([x, y]) => cv.fillRect(x, y, 4, 3));
+let h = '', swd = 0;
+const sw = (inner, x, y, w, hh, d, extra) => `<div class="sw" style="left:${x}px;top:${y}px;width:${w}px;height:${hh}px;animation-delay:${d}s;${extra || ''}">${inner}</div>`;
+const small = [
+  [136, 'scrap', '', 'chart spike', 'by hand', 'scrap'],
+  [208, 'torn', 'INV-72011', 'Tax banner', 'to do', 'done'],
+  [280, 'broken', 'INV-71702', 'Flaky e2e', 'in progress', 'broken'],
+  [608, 'small', 'INV-71990', 'Dividend toggle', 'in progress', 'work'],
+  [676, 'fresh', 'INV-72040', 'Gift lot', '', 'fresh'],
+  [744, 'small', 'INV-71880', 'Cost basis', 'in review', 'ask'],
+];
+small.forEach(([c, kind, key, title, extra, st], i) => {
+  const bg = { scrap: 'n-scrap', torn: 'n-torn', broken: 'n-broken', small: 'n-small', fresh: 'n-fresh' }[kind];
+  const w = kind === 'scrap' ? 76 : 80, top = ry(c) + 4 + (i % 2) * 4;
+  let n = `<div class="n ${st === 'ask' ? 'ask' : ''} ${kind === 'broken' ? 'broken' : ''} ${kind === 'scrap' ? 'scrap' : ''} ${kind === 'fresh' ? 'fresh' : ''}" style="left:0;top:0">
+    ${im(bg, 'bg')}<div class="k">${key}</div><div class="t">${title}</div>
+    ${kind === 'fresh' ? '<div class="cnt">pinning 9s</div>' : `<div class="more">${extra}</div>`}</div>`;
+  n += `<div class="peg" style="left:${w / 2 - 3}px;top:-6px;${st === 'work' ? 'box-shadow:0 0 8px #ff9a4a' : ''}"></div>`;
+  if (st === 'done') n += im('ribbon', 'ribbon', 'left:52px;top:-8px;height:16px');
+  h += sw(n, c - w / 2, top, w, 66, -i * 1.3);
+});
+if (!open) {
+  const top = ry(452) - 1;
+  const hero = `<div id="hero" style="left:0;top:0">${im('n-hero', 'bg')}
+    <div class="stamp">INV-71924</div><div class="st">in progress</div>
+    <div class="t">Explain why a loss was disallowed (wash sale)</div>
+    <div class="rule"></div><div class="s">Reason line under each loss</div><div class="a">Claude Code</div></div>
+    <div class="peg" style="left:30px;top:-6px"></div><div class="peg" style="left:164px;top:-6px"></div>
+    ${im('seal-empty', 'seal', 'left:166px;top:76px')}${im('seal-empty', 'seal', 'left:188px;top:76px')}
+    ${[[0, 12, 24], [1, 30, 30], [2, 48, 18]].map(([i, y]) => `<div style="position:absolute;left:186px;top:${y}px;width:30px;height:18px">${im('slip' + i, 'slip', 'left:0;top:0')}</div>`).join('')}`;
+  h += sw(hero, 352, top, 200, 90, -2, 'animation-duration:9s');
+  h += im('crow-hop-0', 'crow', `left:142px;top:0px`);
+} else h += `<div class="peg" style="left:449px;top:${ry(452) - 6}px"></div>`;
+h += im('nail', '', 'left:84px;top:104px;width:10px;height:24px;filter:brightness(.8)');
+$('notices').innerHTML = h;
+const lk = ry(336);
+$('lanterns').innerHTML =
+  `<div class="chain" style="left:335px;top:${lk}px;height:12px"></div>
+   <img src="sprites/props-tx-village-props-lantern-01-on-png-x1.png" style="left:324px;top:${lk + 10}px;width:22px;height:38px">
+   <div class="iron" style="left:806px;top:34px;width:30px;height:2px"></div><div class="chain" style="left:830px;top:36px;height:8px"></div>
+   <img src="sprites/props-tx-village-props-lantern-02-on-png-x1.png" style="left:821px;top:44px;width:18px;height:34px">
+   <div class="iron" style="left:806px;top:88px;width:196px;height:2px"></div><div class="chain" style="left:834px;top:90px;height:4px"></div><div class="chain" style="left:992px;top:90px;height:4px"></div>`;
+$('glows').innerHTML =
+  `<div class="glow" style="left:-50px;top:-210px;width:760px;height:620px;background:radial-gradient(circle at 385px 290px, rgba(255,150,64,.34) 0, rgba(255,132,50,.12) 30%, transparent 56%);"></div>
+   <div class="glow" style="left:690px;top:-60px;width:280px;height:280px;background:radial-gradient(circle at 140px 100px, rgba(255,132,50,.34) 0, rgba(255,120,40,.10) 36%, transparent 68%);"></div>`;
+// parchment
+if (open) {
+  const P = $('parch');
+  P.innerHTML = `${im('parch', 'bg')}
+  <div style="position:absolute;left:344px;top:10px;width:12px;height:12px;border-radius:50%;background:#3b2a18;box-shadow:inset 2px 2px 0 #1c130b"></div>
+  <div class="c cour" style="left:30px;top:36px;font-weight:700;font-size:15px;letter-spacing:.08em;color:var(--oxb);border:2px solid var(--oxb);padding:0 7px;line-height:20px;transform:rotate(-2deg);mix-blend-mode:multiply">INV-71924</div>
+  <div class="c cour" style="right:36px;top:40px;font-style:italic;font-size:12.5px;color:var(--ink2)">story · high · in progress</div>
+  <div class="c hand" style="left:32px;top:76px;width:640px;font-weight:700;font-size:28px;line-height:32px">FE: G/L wash sale info, explaining why a loss was disallowed</div>
+  <div class="c hand" style="left:32px;top:150px;width:630px;font-size:18px;line-height:24px;color:#33241a">When a loss is disallowed because of a wash sale, the gain/loss page only shows the smaller number and nobody can tell why. Put one line under each loss saying which repurchase caused it, and link to that lot.</div>
+  <div class="c cour" style="left:32px;top:238px;font-size:12px;color:var(--ink2)">inv-71924-wash-sale-info &nbsp;·&nbsp; 3 ahead &nbsp;·&nbsp; 2 uncommitted &nbsp;·&nbsp; Reason line under each loss</div>
+  <div class="c gi" style="left:32px;top:268px">open in jira</div>
+  <div class="c" style="left:32px;right:32px;top:306px;border-top:2px dotted rgba(99,71,48,.6)"></div>
+  <div class="c hand" style="left:32px;top:322px;font-weight:700;font-size:21px;line-height:24px">merge request !482</div>
+  <div class="c cour" style="left:230px;top:328px;font-size:12px;color:var(--ink2);font-style:italic">Wash sale reason line, ready for review</div>
+
+  <div class="c" style="left:32px;top:372px;width:20px;height:20px"><svg viewBox="0 0 9 9" width="22" height="22" shape-rendering="crispEdges" fill="#a8342c"><path d="M1 1h2v1h1v1h1V2h1V1h2v2H7v1H6v1h1v1h1v2H6V7H5V6H4v1H3v1H1V6h1V5h1V4H2V3H1z" transform="translate(0,0)"/></svg></div>
+  <div class="c hand" style="left:66px;top:368px;font-weight:700;font-size:21px;color:#9a2f26">ci failed</div>
+  <div class="c cour" style="left:66px;top:394px;font-size:12px;color:var(--ink2)">job lint stopped it: 5 errors in 2 files. Build and test never ran.</div>
+
+  ${im('seal-empty', '', 'left:30px;top:442px;width:30px;height:30px')}${im('seal-empty', '', 'left:62px;top:442px;width:30px;height:30px')}
+  <div class="c hand" style="left:106px;top:441px;font-weight:700;font-size:21px">needs 2 approvals</div>
+  <div class="c cour" style="left:106px;top:467px;font-size:12px;color:var(--ink2)">asked: Mara Kovacs, Idris Ofori. Nobody has looked yet.</div>
+
+  <div class="c hand" style="left:32px;top:512px;font-weight:700;font-size:21px">3 comments to answer</div>
+  ${[['Mara', 'WashSaleNote.tsx:48', 'Trade date or settlement date for the repurchase?'],
+     ['Mara', 'lots.ts:112', 'This falls over for a lot bought on a split day.'],
+     ['Idris', 'WashSaleNote.test.tsx:20', 'Add a case for a loss that is only partly disallowed.']].map(([a, f, t], i) =>
+    `<div class="c" style="left:${32 + i * 2}px;top:${544 + i * 30}px;width:636px;font:400 14.5px/17px MenderHand;color:#33241a"><span class="cour" style="font-size:11px;color:var(--ink2)">${a} · ${f}</span> &nbsp; ${t}</div>`).join('')}
+  <div class="c gi" style="left:32px;top:628px;display:none">open in gitlab</div>
+  <div class="c gi" style="right:36px;top:34px;display:none"></div>
+  `;
+  // gitlab link sits at the foot of the parchment
+  P.insertAdjacentHTML('beforeend', `<div class="c gi" style="position:absolute;left:32px;top:622px;display:none">x</div>`);
+}
+document.fonts.ready.then(() => { document.body.dataset.ready = 1; });
+
+</script></body></html>

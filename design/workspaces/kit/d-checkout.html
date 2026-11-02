@@ -1,0 +1,83 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css"><style>.lg::before{display:none}.lg{box-shadow:0 24px 60px rgba(0,0,0,.35)!important}</style>
+<style>
+.win { left: 452px; top: 168px; width: 990px; height: 640px; padding: 30px 34px; }
+.top { display: flex; align-items: flex-end; justify-content: space-between; }
+h1 { font-size: 38px; font-weight: 500; line-height: 1; margin-top: 14px; letter-spacing: -0.01em; }
+.where { margin-top: 10px; display: flex; gap: 10px; align-items: center; font-size: 13.5px; }
+.where .mono { font-size: 12.5px; }
+.branch { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  background: rgba(155, 210, 138, 0.12); box-shadow: inset 0 0 0 1px rgba(155, 210, 138, 0.25); color: #cfeac4; }
+.state { display: flex; gap: 8px; }
+.grid { margin-top: 26px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.tile { border-radius: 18px; padding: 14px 14px 13px; background: rgba(255, 240, 215, 0.05); box-shadow: inset 0 0 0 1px var(--hair), inset 0 1px 0 rgba(255,255,255,0.05); }
+.tile.hot { background: linear-gradient(180deg, rgba(242, 198, 109, 0.2), rgba(242, 198, 109, 0.08)); box-shadow: inset 0 0 0 1px rgba(242, 198, 109, 0.35), inset 0 1px 0 rgba(255,255,255,0.12); }
+.tile .ic { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: rgba(0, 0, 0, 0.22); margin-bottom: 12px; }
+.tile b { display: block; color: var(--gold); font-size: 14px; font-weight: 650; }
+.tile span .kc{display:inline-grid} .tile > span { display: block; margin-top: 3px; font-size: 12px; color: var(--ink-3); line-height: 1.35; }
+.cols { margin-top: 26px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 18px; }
+.card { border-radius: 20px; background: rgba(255, 240, 215, 0.04); box-shadow: inset 0 0 0 1px var(--hair); padding: 8px; }
+.row { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 13px; font-size: 14.5px; }
+.row.on { background: rgba(255, 240, 215, 0.08); }
+.row .f { color: var(--gold); font-weight: 600; }
+.row .d { margin-left: auto; font-size: 12px; }
+.badge { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font: 700 11px 'Figtree'; }
+.badge.new { background: rgba(155, 210, 138, 0.16); color: var(--moss); }
+.badge.mod { background: rgba(242, 198, 109, 0.16); color: var(--gold); }
+.add { color: #7fcf6e; } .del { color: var(--sore); }
+.foot { display: flex; align-items: center; justify-content: space-between; padding: 10px 6px 4px 12px; }
+.tl { position: relative; padding: 6px 12px 6px 34px; }
+.tl::before { content: ''; position: absolute; left: 21px; top: 22px; bottom: 22px; width: 2px; background: linear-gradient(180deg, rgba(122, 170, 255, 0.5), rgba(122, 170, 255, 0.05)); border-radius: 2px; }
+.c { position: relative; padding: 9px 0; }
+.c::before { content: ''; position: absolute; left: -18px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: #0e0c0a; box-shadow: inset 0 0 0 2px #7aaaff; }
+.c .m { color: var(--gold); font-weight: 600; font-size: 14.5px; }
+.c .w { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+.c.ahead::before { background: #7aaaff; box-shadow: 0 0 10px rgba(122, 170, 255, 0.7); }
+</style></head><body>
+<div class="lg win" data-lg='{"tint":[12,12,14,0.24],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":28}'>
+  <div class="x">×</div>
+  <div class="crumbs"><span class="gold">yard</span><span class="faint">›</span><span class="mute">the checkout</span></div>
+  <div class="top">
+    <div>
+      <h1 class="serif">popup test</h1>
+      <div class="where">
+        <span class="branch"><i data-px="merge" data-s="13" data-c="#9bd28a"></i>mender/popup-test</span>
+        <span class="mono faint">~/mender/worktrees/repo/mender-popup-test</span>
+      </div>
+    </div>
+    <div class="state">
+      <span class="chip"><span class="dot" style="background:#f2c66d"></span>2 uncommitted</span>
+      <span class="chip"><span class="dot" style="background:#7aaaff"></span>1 not sent up</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="tile hot"><div class="ic"><i data-px="up" data-c="#f2c66d"></i></div><b>Send it up</b><span>publish this branch, nobody has seen it</span></div>
+    <div class="tile"><div class="ic"><i data-px="down" data-c="#f2c66d"></i></div><b>Bring master in</b><span>it moved 3 commits since</span></div>
+    <div class="tile"><div class="ic"><i data-px="land" data-c="#f2c66d"></i></div><b>Land it on master</b><span>right here on disk, no remote</span></div>
+    <div class="tile"><div class="ic"><i data-px="diff" data-c="#f2c66d"></i></div><b>Everything it changed</b><span>the whole branch, file by file</span></div>
+    <div class="tile"><div class="ic"><i data-px="shell" data-c="#f2c66d"></i></div><b>Open a shell</b><span>a second one beside it too</span></div>
+    <div class="tile"><div class="ic"><i data-px="find" data-c="#f2c66d"></i></div><b>Find a file</b><span>by name or by what's in it</span></div>
+    <div class="tile"><div class="ic"><i data-px="pr" data-c="#f2c66d"></i></div><b>What's open for it</b><span>no pull request yet</span></div>
+    <div class="tile"><div class="ic"><i data-px="page" data-c="#f2c66d"></i></div><b>Walk the folder</b><span>show in Finder, open in editor</span></div>
+  </div>
+
+  <div class="cols">
+    <div>
+      <div class="pix label">uncommitted</div>
+      <div class="card">
+        <div class="row on"><span class="badge new">N</span><span class="f">README.md</span><span class="d mono"><span class="add">+24</span></span></div>
+        <div class="row"><span class="badge mod">M</span><span class="f">notes.txt</span><span class="d mono"><span class="add">+3</span> <span class="del">−1</span></span></div>
+        <div class="foot" style="justify-content:flex-end"><span class="pill"><i data-px="pen" data-s="14" data-c="#2a1b09"></i>Write a commit</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="pix label">committed here</div>
+      <div class="card tl">
+        <div class="c ahead"><div class="m">Make x two and add y</div><div class="w">just now · you · not sent up</div></div>
+        <div class="c"><div class="m">init</div><div class="w">2 hours ago · you</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="px.js"></script><script src="liquid-shaders.js"></script><script src="liquid.js"></script>
+<script>liquid('bg-busy.png', { blur: 28, lift: 1, refThickness: 28, refDistance: 0.12, refFactor: 1.5, refDispersion: 12, glareConvergence: 0.95, glareRange: 26, glareHardness: 0.05, glareOpposite: 0, fresnelRange: 20 }).catch(e=>{document.body.dataset.err=e.message;document.body.dataset.ready=1})</script></body></html>

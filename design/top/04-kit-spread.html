@@ -1,0 +1,76 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="lib.css">
+<style>
+.carve { font-family: Said; font-size: 16px; color: #24140a; text-shadow: 0 1px 0 rgba(255,235,200,.18); }
+.carve.lit { color: #3a1e06; }
+.carveNo { font-family: Cour; font-size: 10px; color: #2e1c0e; opacity: .7; }
+.carveCaps { font-family: Jos; font-size: 13px; letter-spacing: 4px; color: #3a2414; }
+</style>
+<div class="win"><div class="top" id="t"></div></div>
+<script src="lib.js"></script>
+<script src="kit.js"></script>
+<script>
+loadKit().then(() => {
+const t = document.getElementById('t');
+const g = makeCanvas(t, 3);
+const ground = 46;
+const rule = (x0, x1) => { const d = document.createElement('div'); d.style.cssText = `position:absolute;left:${x0*S}px;width:${(x1-x0)*S}px;top:${ground*S+1}px;height:1px;background:rgba(201,162,106,.18)`; t.appendChild(d); };
+rule(5, 595);
+
+// one road sign: post at px, board of width w pointing dir, board top at by
+function sign(postX, w, dir, by, look, label, no) {
+  kitPost(g, postX, by - 3, ground);
+  const b = shade(arrowBoard(w, dir), look);
+  const bx = dir === 'r' ? postX - 9 : postX + 15 - w;
+  shadowUnder(g, bx, by + 12, w);
+  g.drawImage(b, bx, by);
+  const textX = dir === 'r' ? bx + 4 : bx + 9;
+  if (no) { txt(t, textX, by + 1.3, no, 'carveNo', `height:${11*S}px;line-height:${11*S}px`); }
+  txt(t, textX + (no ? 11 : 0), by + 1.1, label, look === 'lit' ? 'carve lit' : 'carve', `height:${11*S}px;line-height:${11*S}px`);
+  return bx;
+}
+function grass(x) { tuft(g, x - 3, ground); tuft(g, x + 7, ground); }
+
+// home: the project's own double board
+const hx = 18, hw = 66;
+kitPost(g, hx + hw / 2 - 3, 13, ground);
+const hb = shade(doubleBoard(hw), 'night');
+shadowUnder(g, hx, 36, hw);
+g.drawImage(hb, hx, 16);
+txt(t, hx, 16.6, 'INVEST-WEB', 'carveCaps', `width:${hw*S}px;text-align:center;height:${9*S}px;line-height:${9*S}px;padding-left:4px`);
+house(g, hx + 18, 28, '#3a2414');
+txt(t, hx + 27, 25.5, 'main', 'carve', `height:${10*S}px;line-height:${10*S}px;font-size:15px`);
+grass(hx + hw / 2);
+
+// the others, each on its own post, pointing away from where you are
+sign(186, 86, 'l', 22, 'night', 'Cost basis, split day', '71880'); grass(186);
+sign(266, 64, 'l', 22, 'night', 'Q4 tax banner', '72011'); grass(266);
+glow(t, 244, 47, 13, '#7fd36a', .45);
+
+// where you are
+const cx = 318;
+const cb = sign(cx, 104, 'r', 22, 'lit', 'Reason line under each loss');
+grass(cx);
+// lantern hung under the board's tip on a short chain
+g.drawImage(KIT['lantern-01-on'], cx - 23, ground - 19);
+glow(t, cx - 17.5, 36, 26, '#ffb347', .55);
+glow(t, cx + 40, 28, 40, '#ffc060', .22);
+txt(t, cx - 9, 3.4, 'Reason line under each loss', 'said', 'font-size:22px');
+txt(t, cx - 8.6, 12.6, 'reason-line<span class="s">·</span>Claude Code<span class="s">·</span>14s<span class="s">·</span>3 turns', 'meta', 'font-size:11px');
+
+sign(446, 62, 'r', 22, 'warm', 'Flaky e2e', '71702'); grass(446);
+txt(t, 446 + 41, 23.3, '14s', 'timer', `height:${11*S}px;line-height:${11*S}px;font-size:10px;color:#a8460c`);
+glow(t, 470, 47, 15, '#ff9a3a', .55);
+
+// a bare stake for a new one
+kitPost(g, 510, 33, ground);
+const nb = shade(arrowBoard(16, 'r'), 'bare');
+g.drawImage(nb, 505, 35);
+txt(t, 509, 35, '+', 'carve', `height:${11*S}px;line-height:${11*S}px;font-size:18px;color:#8a7a68`);
+
+// what it thinks with, under the rack
+txt(t, 524, 31.5, 'opus 5.5 · medium · auto', 'meta', `font-size:11px;color:#e8cf9f;text-align:right;width:${72*S}px`);
+txt(t, 524, 36.5, '45% full', 'meta', `font-size:11px;color:#9c8462;text-align:right;width:${72*S}px`);
+});
+</script>

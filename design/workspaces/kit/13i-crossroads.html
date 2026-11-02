@@ -1,0 +1,92 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-600-normal.woff2); font-weight: 600; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'MenderHand'; src: url(fonts/pretty-neat-400-normal.woff2); }
+@font-face { font-family: 'MenderHand'; font-weight: 700; src: url(fonts/pretty-neat-700-normal.woff2); }
+@font-face { font-family: 'Silk'; src: url(fonts/silkscreen-400-normal.woff2); }
+html,body{margin:0;width:1480px;height:1020px;overflow:hidden}
+img{position:absolute;image-rendering:pixelated;display:block}
+.a{position:absolute}
+.ink,.burn,.burn2,.paper{position:absolute}
+.ink{font:400 13px/24px MenderHand;color:#2a1608;text-shadow:0 1px 0 rgba(255,232,190,.2);white-space:nowrap}
+.ink i{font:600 8.5px 'Josefin Sans';font-style:normal;letter-spacing:.14em;margin-right:6px;opacity:.75;position:relative;top:-1px}
+.glow{position:absolute;border-radius:50%;mix-blend-mode:screen;pointer-events:none}
+.burn{font:600 12px 'Josefin Sans';letter-spacing:.24em;color:#e8b95a;text-shadow:0 0 6px rgba(255,150,40,.55),0 1px 0 #2a1408;white-space:nowrap}
+.burn2{font:400 8px 'Courier Prime';letter-spacing:.01em;color:#1c0e04;opacity:.95;white-space:nowrap}
+.paper{font-family:MenderHand;color:#2d1a0a}
+.breathe{animation:br 3.6s ease-in-out infinite}@keyframes br{50%{opacity:.7;transform:scale(.92)}}
+.ink i{font:600 8.5px 'Josefin Sans';font-style:normal;letter-spacing:.14em;margin-right:6px;opacity:.75;position:relative;top:-1px}
+.stamp{font:400 8px/10px Silk;letter-spacing:.04em;padding:2px 4px 1px;border:1px solid;border-radius:1px;opacity:.95;display:inline-block;flex:none}
+</style></head><body><div id="r"></div><script src="13x-lib.js"></script><script src="13y-lib.js"></script>
+<script>
+(async()=>{
+await document.fonts.load('14px MenderHand'); await document.fonts.load('8px Silk');
+const AT=Q.get('at')||'d', hot=id=>pt&&AT===id;
+ground('ground-i');
+flies(10,21,70,1220,24,132);
+// the meadow: a ring of bushes and stones round the hill, flowers up its slopes
+dress(7,[['tuft',60,1230,60,146,52],['flower',200,470,70,130,16],['flower',500,1200,90,140,14],['rock',90,1200,110,142,8]]);
+nat('bush06',216,116,.62); nat('bush07',470,128,.62); nat('bush03',70,118,.6); nat('bush02',690,110,.6); nat('bush05',880,92,.55); nat('bush04',1180,100,.6);
+// ---- your signpost, on top of the hill
+const BX=330, BB=118;
+post(BX,BB,56,0,.58);
+cap(BX-70,2,70,'INVEST-WEB',.8);
+[BX-54,BX+34].forEach(cx=>div('a',cx,34,'width:2px;height:6px;background:#2e2016'));
+im('cap84.png',BX-84,38,84,16,dim(.85));
+div('ink',BX-84+14,42,'width:140px;font:400 12px/15px MenderHand;color:#2d1608;filter:brightness(.9);text-align:center','Reason line under each loss');
+div('ink',BX-84+14,58,'width:140px;font:400 8px/10px "Courier Prime";color:#1c0e04;opacity:.9;text-align:center','opus 5.5 · medium · auto');
+const lx=BX+76,ly=2;
+div('a',lx-2,ly-1,'width:14px;height:3px;background:#2e2016');
+im(LAMP1,lx,ly+2,11,19,`filter:${ST.work.f}`);
+div('a',lx+2,ly+12,'width:18px;height:6px;background:linear-gradient(#150b04e6,#150b04b0)');
+pool(lx+10,ly+14,pt?300:250,'255,168,70',pt?.2:.16);
+div('glow breathe',lx-40,ly-20,'width:100px;height:100px;background:radial-gradient(circle,rgba(255,210,120,.5),rgba(255,170,70,0) 65%)');
+const own=sign({own:true,x:BX-6,y:76,title:'Explain why a wash-sale loss was disallowed',key:'INV-71924',side:'R'});
+// home: a small post down the western path
+{const px=150,pb=122; post(px,pb,22,0,.55); sign({x:px+6,y:80,side:'L',title:'home',W:44,home:true,quiet:true})}
+// A: asking, a villager holds the orange lantern
+{const px=620,pb=112; post(px,pb,40,0,.6);
+ sign({x:px-6,y:32,title:'Cost basis',key:'71880',st:'ask',mr:[1,1],slips:1,side:'R'});
+ person('front-0',px+40,pb+4,{lamp:'ask',lampDx:-40,lampDy:46});
+}
+// B: finished; a ribbon, flowers at its foot
+{const px=770,pb=136; post(px,pb,23,0,.6);
+ nat('flower1',px-22,pb+2,.78);nat('flower3',px+20,pb+4,.78);nat('flower0',px-40,pb,.78);nat('flower2',px+40,pb-2,.78);
+ sign({x:px-6,y:92,title:'Q4 banner',key:'72011',st:'done',lamp:'done',side:'R'});
+}
+// C: one post two ways, in front of a fence stub
+{const px=998,pb=118; post(px,pb,44,0,.52);
+ sign({x:px+6,y:30,title:'Dividend toggle',key:'71990',quiet:true,mr:[1,0],side:'L'});
+ sign({x:px-6,y:30,title:'chart spike',quiet:true,side:'R'});
+ nat('fence0',px-4,pb+6,.55);
+}
+// D: leaning, a cracked plank, a grey villager sitting by it
+{const px=1068,pb=134; post(px,pb,28,-1,.55);
+ sign({x:px-12,y:84,title:'Flaky e2e',key:'71702',st:'broke',lamp:'broke',side:'R',br:hot('d')?1:.9});
+ person('sit-0',px-48,pb+2,{gray:true});
+}
+// E: far back, a fresh pale post and a helper hammering
+{const px=1150,pb=70; post(px,pb,30,0,1.25,'filter:brightness(1.3) saturate(.5) sepia(.25)');
+ sign({x:px+6,y:2,title:'Gift lots',key:'72040',cut:true,side:'L'});
+ person('helper-side-0',px+34,pb+8,{});
+ im('k/hammer.png',px+22,pb-48,9,22,'');
+}
+// the new place: a bare stake and a coil of rope at the end of the path
+{const px=1234,pb=122; im('stem.png',px-6,pb-48,6,24,`filter:brightness(.7)`); im('foot.png',px-14,pb-4,14,4,'filter:brightness(.4)');
+ nat('coil',px-26,pb+2,.75); if(pt)div('a',px-4,pb-52,'width:6px;height:4px;background:#f2c66d')}
+if(pt){
+ const TAGS={d:['Flaky e2e on statements download','in progress · no merge request yet · 1 session broken']};
+ const t=TAGS[AT]; const tx=Math.min(1068-6,1236-340);
+ im('tag170s.png',tx,1,170,17,'filter:brightness(.85) sepia(.2)');
+ div('ink',tx+16,5,'font:700 12.5px/14px MenderHand;color:#33200f;white-space:nowrap',t[0]);
+ div('ink',tx+16,20,'font:400 11px/13px MenderHand;color:#5a3d1c;white-space:nowrap',t[1]);
+}
+if(open){
+ const sx=own.x-8, sy=172;
+ [own.x+20,own.right-24].forEach(cx=>{for(let y=own.y+40;y<sy+4;y+=6)div('a',cx,y,'width:2px;height:4px;background:'+(y%12?'#6f5a44':'#2e2016'))});
+ sheets(sx,sy);
+}
+document.body.dataset.ready=1;
+})();
+</script></body></html>

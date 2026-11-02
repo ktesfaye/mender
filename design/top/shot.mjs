@@ -1,0 +1,10 @@
+import { chromium } from '/Users/kirubel/Documents/dev/mender/node_modules/playwright/index.mjs';
+const [,, name, h = '420'] = process.argv;
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1800, height: 1048 }, deviceScaleFactor: 2 });
+await p.goto('file://' + process.cwd() + '/' + name + '.html');
+await p.evaluate(() => document.fonts.ready);
+await p.waitForTimeout(300);
+await p.screenshot({ path: name + '.png', clip: { x: 0, y: 0, width: 1800, height: +h } });
+await p.screenshot({ path: 'drafts/' + name + '-full.png' });
+await b.close();

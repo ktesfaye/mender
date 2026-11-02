@@ -1,0 +1,255 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css">
+<style>
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-700-normal.woff2); font-weight: 700; }
+.lg::before { display: none } .lg { box-shadow: 0 24px 60px rgba(0,0,0,.35) !important }
+:root { --ask: #ff7a3a; --work: #f0a65a; --done: #9bd28a; --broke: #f08a72; }
+html, body { background: #000 }
+body.m-scene { background: #000 url(11-head-bg.png) 0 0/1480px 1020px }
+body.m-glass .scene { visibility: hidden }
+.abs { position: absolute }
+.cr { font-family: 'Courier Prime', monospace }
+
+/* ---- rail (the current workspace's sessions only) ---- */
+.rl { position: absolute; top: 903px }
+.rl .cord { position: absolute; left: 10px; top: 0; width: 1px; height: 16px; background: rgba(160,116,56,.65) }
+.rl img { position: absolute; left: 0; top: 14px; width: 22px; height: 38px; image-rendering: pixelated }
+.rl .gl { position: absolute; left: -30px; top: -4px; width: 190px; height: 76px; background: radial-gradient(closest-side, var(--c), transparent); opacity: .22 }
+.rl.ask .gl { opacity: .3 } .rl.off .gl { display: none }
+.rl .nm { position: absolute; left: 34px; top: 17px; font: 12.5px 'Courier Prime', monospace; color: #f6ecdb; white-space: nowrap }
+.rl .sub { position: absolute; left: 34px; top: 35px; font: 11.5px 'Courier Prime', monospace; white-space: nowrap }
+.railkey { position: absolute; right: 40px; top: 911px; display: flex; align-items: center; gap: 8px; font: 11px 'Courier Prime', monospace; color: rgba(246,236,219,.38); letter-spacing: .06em }
+.hue-ask { filter: hue-rotate(-14deg) saturate(1.5) } .hue-done { filter: hue-rotate(74deg) saturate(.75) brightness(.9) } .hue-broke { filter: hue-rotate(-30deg) saturate(1.1) brightness(.92) }
+
+/* ---- the head ---- */
+.head { left: 24px; top: 6px; width: 1140px; height: 128px; border-radius: 28px; transition: none }
+body.s-open .head { height: 716px }
+.head > * { position: absolute }
+.crumbs { left: 28px; top: 13px; width: 604px; display: flex; align-items: center; gap: 8px; font-size: 12.5px; height: 24px }
+.crumbs .c1 { font-weight: 650; letter-spacing: .08em; color: var(--gold); font-size: 12px }
+.crumbs .c2 { font-weight: 600; color: var(--gold) }
+.crumbs .c3 { font-weight: 650; color: var(--ink-2); font-family: 'Courier Prime', monospace; font-size: 12.5px }
+.crumbs .sp { flex: 1 }
+  .ghost { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px 4px 9px; border-radius: 999px; color: var(--gold); font-weight: 650; font-size: 11.5px; background: var(--gold-soft); box-shadow: inset 0 0 0 1px rgba(242,198,109,.26) }
+.ttl { left: 28px; top: 35px; width: 604px; font: 500 22px/1.15 'Fraunces', serif; font-variation-settings: 'SOFT' 100, 'WONK' 0, 'opsz' 60; letter-spacing: -.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.chips { left: 28px; top: 67px; width: 604px; align-items: center; display: flex; gap: 5px; align-items: center }
+.ch { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px 0 8px; border-radius: 999px; font: 600 11px 'Figtree'; white-space: nowrap; background: rgba(255,240,215,.07); box-shadow: inset 0 0 0 1px var(--hair); color: var(--ink-2) }
+.ch.moss { background: rgba(155,210,138,.12); box-shadow: inset 0 0 0 1px rgba(155,210,138,.25); color: #cfeac4 }
+.ch.sore { background: rgba(240,138,114,.13); box-shadow: inset 0 0 0 1px rgba(240,138,114,.32); color: var(--sore) }
+.ch.ask { background: rgba(255,122,58,.12); box-shadow: inset 0 0 0 1px rgba(255,122,58,.3); color: #ff9a62 }
+.ch.sm { padding: 0 10px 0 7px }
+.meta { left: 28px; top: 95px; width: 604px; display: flex; align-items: center; gap: 14px; font-size: 11.5px; color: var(--ink-3); height: 26px; white-space: nowrap }
+.meta .d { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font: italic 400 12.5px 'Fraunces', serif; font-variation-settings: 'SOFT' 100, 'opsz' 14; color: var(--ink-2); opacity: .8 }
+.meta .m { flex: none }
+.vr { left: 646px; top: 18px; width: 1px; height: 84px; background: linear-gradient(180deg, transparent, var(--hair) 18%, var(--hair) 82%, transparent) }
+
+/* the other workspaces */
+.others { left: 666px; top: 16px; width: 450px; display: grid; grid-template-columns: repeat(4, 108px); grid-auto-rows: 44px; gap: 10px 6px }
+.wc { position: relative; display: grid; grid-template-columns: 19px 1fr; align-items: center; height: 44px; padding: 0 9px 0 10px; border-radius: 999px; background: rgba(255,240,215,.055); box-shadow: inset 0 0 0 1px var(--hair), inset 0 1px 0 rgba(255,255,255,.05) }
+.wc.hov { background: rgba(255,240,215,.13); box-shadow: inset 0 0 0 1px rgba(255,238,210,.2), inset 0 1px 0 rgba(255,255,255,.1) }
+.wc .lz { position: relative; width: 20px; height: 26px; display: grid; place-items: center }
+.wc .lz img { position: relative; z-index: 1; width: 11px; height: 19px; image-rendering: pixelated }
+.wc .lz .gl { position: absolute; inset: -6px -8px; background: radial-gradient(closest-side, var(--c), transparent 80%); opacity: .5 }
+.wc .lz.off img { opacity: .65 }
+.wc .t1 { display: flex; align-items: center; gap: 4px; font: 700 10px 'Courier Prime', monospace; color: var(--ink-3); letter-spacing: -.01em; height: 15px; white-space: nowrap }
+.wc .t1 .sg { margin-left: auto; display: inline-flex }
+.wc .t2 { font: 600 12.5px 'Figtree'; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0; line-height: 16px; display: flex; gap: 5px }
+  .wc .t2 .s { margin-left: auto; font: 400 9.5px 'Courier Prime', monospace; color: var(--ink-3) }
+.wc .bd { min-width: 0 }
+.wc.home .t2 { color: #cfe5c3 } .wc.home .t1 { color: rgba(185,211,168,.55) }
+.wc.hov .t2 { color: var(--ink) }
+.wc.add { background: transparent; box-shadow: inset 0 0 0 1px rgba(242,198,109,.3); border: 0; outline: 1px dashed transparent; display: flex; justify-content: center; gap: 7px; color: var(--gold); font: 650 11.5px 'Figtree' }
+.wc .bar { position: absolute; left: 31px; right: 18px; bottom: 3px; height: 2px; background: repeating-linear-gradient(90deg, rgba(246,236,219,.16) 0 4px, transparent 4px 5px) }
+.wc .bar::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 46%; background: repeating-linear-gradient(90deg, var(--work) 0 4px, transparent 4px 5px); box-shadow: 0 0 6px rgba(240,166,90,.5) }
+.mtr { display: inline-flex; gap: 1px; align-items: center }
+.mtr b { width: 3px; height: 7px; background: rgba(246,236,219,.16) } .mtr b.f { background: var(--work); box-shadow: 0 0 6px rgba(240,166,90,.55) }
+
+/* popover */
+.tip { width: 412px; border-radius: 26px; padding: 18px 18px 16px; left: 770px; top: 142px }
+.tip .t1 { display: flex; align-items: center; gap: 8px }
+.tip .key { font: 700 12.5px 'Courier Prime', monospace; color: var(--ink-2) }
+.tip h4 { margin-top: 10px; text-wrap: balance; font: 500 21px/1.14 'Fraunces', serif; font-variation-settings: 'SOFT' 100, 'opsz' 40 }
+.card { border-radius: 18px; background: rgba(255,240,215,.045); box-shadow: inset 0 0 0 1px var(--hair) }
+.tip .ses { margin-top: 12px; padding: 9px 12px; display: flex; align-items: center; gap: 10px; font-size: 13px }
+.tip .ses .t { font-weight: 600 } .tip .ses .w { margin-left: auto; font-weight: 650; color: var(--ask); white-space: nowrap }
+.tip .mr { margin-top: 8px; padding: 11px 12px 12px }
+.tip .mr .h { display: flex; align-items: center; gap: 8px; font-size: 13px }
+.tip .mr .h .id { font: 700 12.5px 'Courier Prime', monospace; color: var(--ink-2) }
+.tip .mr .f { margin-top: 9px; display: flex; gap: 6px; flex-wrap: wrap }
+.tip .bot { margin-top: 12px; display: flex; align-items: center; gap: 8px; font: 11.5px 'Courier Prime', monospace; color: var(--ink-3) }
+
+/* open: ticket + merge request */
+.open { left: 28px; top: 128px; right: 28px; bottom: 26px }
+.open .rule { position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--hair) }
+.open .col { position: absolute; top: 22px; bottom: 0 }
+.open .lab { margin: 0 0 10px 4px }
+.desc { padding: 16px 18px 16px; font-size: 14.5px; line-height: 1.5; color: var(--ink-2) }
+.desc p + p { margin-top: 8px }
+.desc b { color: var(--ink); font-weight: 650 }
+.flds { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
+.fld { border-radius: 16px; padding: 11px 13px 12px; background: rgba(255,240,215,.045); box-shadow: inset 0 0 0 1px var(--hair), inset 0 1px 0 rgba(255,255,255,.04); height: 66px }
+.fld .pix { font-size: 9px }
+.fld .v { margin-top: 8px; display: flex; align-items: center; gap: 8px; font: 600 14px 'Figtree'; white-space: nowrap }
+.av { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 11px 'Figtree'; color: #1a1612 }
+.mrh { padding: 16px 18px 14px }
+.mrh .a { display: flex; align-items: center; gap: 9px }
+.mrh .id { font: 700 13px 'Courier Prime', monospace; color: var(--ink-2) }
+.mrh h5 { margin-top: 9px; font: 500 19px/1.18 'Fraunces', serif; font-variation-settings: 'SOFT' 100, 'opsz' 40 }
+.mrh .br { margin-top: 9px; display: flex; align-items: center; gap: 7px; font: 11.5px 'Courier Prime', monospace; color: var(--ink-3) }
+.jobs { margin-top: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px }
+.job { border-radius: 14px; padding: 9px 10px 9px; background: rgba(255,240,215,.045); box-shadow: inset 0 0 0 1px var(--hair); height: 58px }
+.job .n { display: flex; align-items: center; gap: 6px; font: 650 12.5px 'Figtree' }
+.job .s { margin-top: 5px; font: 11px 'Courier Prime', monospace; color: var(--ink-3) }
+.job.bad { background: rgba(240,138,114,.12); box-shadow: inset 0 0 0 1px rgba(240,138,114,.34) } .job.bad .n { color: var(--sore) } .job.bad .s { color: rgba(240,138,114,.8) }
+.job.ok .n { color: #cfeac4 }
+.job.wait .n { color: var(--ink-3) }
+.appr { margin-top: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px }
+.slot { width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgba(246,236,219,.28); display: grid; place-items: center; font: 700 11px 'Figtree'; color: var(--ink-3); background: rgba(0,0,0,.18) }
+.srow { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px; border-radius: 13px; font-size: 14px; font-weight: 600 }
+.srow + .srow { box-shadow: 0 -1px 0 var(--hair) }
+.lz2 { position: relative; width: 20px; height: 26px; display: grid; place-items: center }
+.lz2 img { position: relative; z-index: 1; width: 11px; height: 19px; image-rendering: pixelated }
+.lz2::before { content: ''; position: absolute; inset: -6px -8px; background: radial-gradient(closest-side, var(--c), transparent 80%); opacity: .5 }
+.thr { margin-top: 12px; padding: 4px 6px }
+.th { display: flex; align-items: flex-start; gap: 11px; padding: 9px 8px; border-radius: 13px }
+.th + .th { box-shadow: 0 -1px 0 var(--hair) }
+.th .q { font-size: 13px; line-height: 1.35; color: var(--ink) }
+.th .w { margin-top: 2px; font: 11px 'Courier Prime', monospace; color: var(--ink-3) }
+</style></head><body>
+<div class="scene" id="scene"></div>
+<div id="glass"></div>
+<script src="px.js"></script>
+<script>
+Object.assign(PX, {
+  cross: ['.........', '.##...##.', '..##.##..', '...###...', '....#....', '...###...', '..##.##..', '.##...##.', '.........'],
+  check: ['.........', '.......#.', '......##.', '.#...##..', '.##.##...', '..###....', '...#.....', '.........', '.........'],
+  chat: ['.#######.', '#.......#', '#.......#', '#.......#', '.#######.', '..##.....', '...#.....', '.........', '.........'],
+  person: ['...###...', '..#...#..', '..#...#..', '...###...', '.........', '.#######.', '#.......#', '#.......#', '.........'],
+  clock: ['..#####..', '.#..#..#.', '#...#...#', '#...###.#', '#.......#', '#.......#', '.#.....#.', '..#####..', '.........'],
+  house: ['....#....', '...###...', '..#####..', '.#######.', '.##...##.', '.##.#.##.', '.##.#.##.', '.#######.', '.........'],
+  story: ['.#####...', '.#...#...', '.#...#...', '.#...#...', '.#...#...', '.#.#.#...', '.##.##...', '.#...#...', '.........'],
+  bug: ['..#...#..', '...#.#...', '..#####..', '.#######.', '#.#####.#', '..#####..', '.#.###.#.', '#..###..#', '.........'],
+  task: ['.#######.', '#.......#', '#.##....#', '#..##..##', '#...####.', '#.......#', '#.......#', '.#######.', '.........'],
+  arrow: ['....#....', '...###...', '..#####..', '.#######.', '....#....', '....#....', '....#....', '.........', '.........'],
+  branch: ['.#.......', '.#....##.', '.#...#..#', '.#...#..#', '.##..##..', '.#.##....', '.#.......', '.#.......', '.........'],
+  skip: ['.........', '.#.......', '.##......', '.###.#...', '.####.#..', '.###.#...', '.##......', '.#.......', '.........'],
+});
+const Q = new URLSearchParams(location.search);
+const S = Q.get('s') || 'rest', M = Q.get('m') || 'glass';
+document.body.className = 'm-' + M + ' s-' + S;
+const ic = (n, c, s = 9) => `<i data-px="${n}" data-c="${c}" data-s="${s}"></i>`;
+const tone = { ask: '#ff7a3a', work: '#f0a65a', done: '#9bd28a', broke: '#f08a72' };
+const hue = (p) => ({ ask: 'hue-ask', done: 'hue-done', broke: 'hue-broke' }[p] || '');
+
+/* ---------- scene: bg + the rail ---------- */
+const rl = (x, nm, p, sub) => `<div class="rl ${p === 'ask' ? 'ask' : ''}" style="left:${x}px;--c:${tone[p]}"><div class="gl"></div><div class="cord"></div><img class="${hue(p)}" src="lantern.png"><div class="nm">${nm}</div><div class="sub" style="color:${tone[p]}">${sub}</div></div>`;
+document.getElementById('scene').innerHTML =
+  rl(40, 'Reason line under each loss', 'work', 'working · 12m') + rl(330, 'Lot link API', 'ask', 'wants you · 4m') +
+  `<div class="rl off" style="left:588px"><div class="cord"></div><img src="lanternoff.png" style="opacity:.8"></div>` +
+  `<div class="railkey"><span>INV-71924</span><span style="opacity:.6">·</span><span>2 sessions</span></div>`;
+
+/* ---------- glass ---------- */
+const W = [
+ { home: 1, key: 'main', t: 'own folder', post: 'idle' },
+ { id: 'b', key: 'INV-71880', t: 'cost basis', post: 'ask', sign: ['chat', '#ff7a3a'] },
+ { key: 'INV-72011', t: 'Q4 banner', post: 'done' },
+ { key: 'INV-71990', t: 'drip toggle', post: 'work', sign: ['person', '#ff7a3a'] },
+ { key: 'INV-71702', t: 'flaky e2e', post: 'broke', sign: ['cross', '#f08a72'] },
+ { hand: 1, key: 'by hand', t: 'chart spike', post: 'idle' },
+ { key: 'INV-72040', t: 'gift lot', cut: 14 },
+];
+const cell = (w) => {
+  const hov = S === 'hover' && w.id === 'b' ? ' hov' : '';
+  if (w.home) return `<div class="wc home${hov}"><div class="lz off">${ic('house', '#9bd28a', 17)}</div><div class="bd"><div class="t1">${w.key}</div><div class="t2">${w.t}</div></div></div>`;
+  const c = tone[w.post];
+  const lz = `<div class="lz${c ? '' : ' off'}" style="--c:${c || '#000'}">${c ? '<div class="gl"></div>' : ''}<img class="${hue(w.post)}" src="${c ? 'lantern.png' : 'lanternoff.png'}"></div>`;
+  let sg = w.sign ? `<span class="sg">${ic(w.sign[0], w.sign[1], 10)}</span>` : '';
+  let key = w.key;
+  if (w.hand) key = `${ic('pen', 'rgba(246,236,219,.5)', 8)}${w.key}`;
+  let t2 = w.t;
+  if (w.cut) { sg = ''; t2 = `${w.t}<span class="s" style="color:var(--work);font-weight:700">${w.cut}s</span><span class="bar"></span>`; }
+  return `<div class="wc${hov}">${lz}<div class="bd"><div class="t1">${key}${sg}</div><div class="t2">${t2}</div></div></div>`;
+};
+let g = `<div class="lg head" data-lg='{"tint":[14,15,18,0.42],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":24}'>
+  <div class="crumbs"><span class="c1">INVEST-WEB</span><span class="faint">›</span><span class="c2">workspaces</span><span class="faint">›</span><span class="c3" style="display:inline-flex;gap:6px;align-items:center">${ic('story', '#f6ecdb', 10)}INV-71924</span><span class="faint">›</span><span style="font-weight:600;font-size:12.5px;color:var(--ink);white-space:nowrap">Reason line under each loss</span></div>
+  <div class="ttl">G/L wash sale info, explaining why a loss was disallowed</div>
+  <div class="chips">
+    <span class="ch sm"><span class="dot" style="background:#f0a65a;box-shadow:0 0 8px rgba(240,166,90,.7)"></span>In Progress</span>
+    <span class="ch sore">${ic('cross', '#f08a72', 10)}ci failed · lint</span>
+    <span class="ch ask">${ic('person', '#ff9a62', 10)}0 of 2 approvals</span>
+    <span class="ch ask">${ic('chat', '#ff9a62', 10)}3 comments</span>
+    <span class="faint" style="margin-left:10px;font-size:11.5px;white-space:nowrap">Claude Code · 12m · 4 turns</span>
+  </div>
+  <div class="meta"><span class="d">A loss added back by a rebuy says so under its row, and names the lot it moved to.</span><span class="ghost">${ic('page', '#f2c66d', 11)}open in jira</span><span class="ghost">${ic('pr', '#f2c66d', 11)}open in gitlab</span></div>
+  <div class="vr"></div>
+  <div class="others">${W.map(cell).join('')}<div class="wc add">${ic('plus', '#f2c66d', 12)}new</div></div>`;
+if (S === 'open') {
+  const fld = (l, v) => `<div class="fld"><div class="pix">${l}</div><div class="v">${v}</div></div>`;
+  const lab = (t, c) => `<span class="ch sm" style="height:20px;font-size:10.5px;padding:0 8px;${c || ''}">${t}</span>`;
+  g += `<div class="open"><div class="rule"></div>
+   <div class="col" style="left:0;width:560px">
+    <div class="pix lab">the ticket</div>
+    <div class="card desc"><p><b>A loss that is added back by a rebuy vanishes from the gains and losses page</b> with no word why, and people write in.</p>
+      <p>Under each disallowed loss, say what triggered it, and link to the lot it moved to.</p>
+      <p class="faint" style="font-size:13px">Done when every disallowed row carries a reason, and the reason links to the replacement lot.</p></div>
+    <div class="flds">
+     ${fld('status', '<span class="dot" style="background:#f0a65a;box-shadow:0 0 8px rgba(240,166,90,.7)"></span>In Progress')}
+     ${fld('priority', ic('up', '#ff9a4a', 12) + 'High')}
+     ${fld('assignee', '<span class="av" style="background:#e3a947">K</span>Kirubel')}
+     ${fld('reporter', '<span class="av" style="background:#9bd28a">D</span>Dana Reyes')}
+     ${fld('sprint', 'Sprint 42<span class="faint" style="font-weight:500;font-size:12px">day 6 of 10</span>')}
+     ${fld('estimate', '5 points')}
+     ${fld('epic', 'Tax-lot clarity')}
+     ${fld('fix version', '2026.11')}
+     ${fld('labels', lab('tax') + lab('ui'))}
+    </div>
+    <div class="pix lab" style="margin-top:16px;display:flex;align-items:center;gap:10px"><span>working in here</span><span class="ch moss" style="height:20px;font-size:10.5px;padding:0 8px;text-transform:none;letter-spacing:0;font-family:Figtree">${ic('branch', '#9bd28a', 10)}inv-71924-wash-sale-info</span><span class="faint" style="text-transform:none;letter-spacing:0;font:500 11.5px Figtree">4 ahead · 2 uncommitted</span></div>
+    <div class="card" style="padding:6px">
+     <div class="srow"><span class="lz2" style="--c:#f0a65a"><img src="lantern.png"></span><span class="sn">Reason line under each loss</span><span style="margin-left:auto;font-weight:650;font-size:12.5px;color:var(--work)">working · 12m</span></div>
+     <div class="srow"><span class="lz2" style="--c:#ff7a3a"><img class="hue-ask" src="lantern.png"></span><span class="sn">Lot link API</span><span style="margin-left:auto;font-weight:650;font-size:12.5px;color:var(--ask)">wants you · 4m</span></div>
+    </div>
+   </div>
+   <div class="col" style="left:586px;right:0">
+    <div class="pix lab">the merge request</div>
+    <div class="card mrh">
+     <div class="a">${ic('pr', '#7aaaff', 13)}<span class="id">!482</span><span class="ch sore" style="height:22px;margin-left:auto">${ic('cross', '#f08a72', 9)}ci failed</span></div>
+     <h5>Explain disallowed losses on gains and losses</h5>
+     <div class="br"><span style="color:#7aaaff">inv-71924-wash-sale-info</span><span>›</span><span>main</span><span style="margin-left:auto">4 commits</span></div>
+     <div class="jobs">
+      <div class="job ok"><div class="n">${ic('check', '#9bd28a', 11)}build</div><div class="s">41s</div></div>
+      <div class="job ok"><div class="n">${ic('check', '#9bd28a', 11)}unit</div><div class="s">1m 12s</div></div>
+      <div class="job bad"><div class="n">${ic('cross', '#f08a72', 11)}lint</div><div class="s">3 errors</div></div>
+      <div class="job wait"><div class="n">${ic('skip', 'rgba(246,236,219,.42)', 11)}e2e</div><div class="s">not run</div></div>
+     </div>
+     <div class="card appr"><div style="display:flex;gap:-4px"><span class="slot">P</span><span class="slot" style="margin-left:-6px">J</span></div>
+       <div style="flex:1"><div style="font-weight:650;font-size:14px;color:#ff9a62">0 of 2 approvals</div><div class="faint" style="font-size:12px;margin-top:2px">nobody yet · Priya and Jonas were asked</div></div></div>
+    </div>
+    <div class="pix lab" style="margin-top:16px">comments to answer · 3</div>
+    <div class="card thr">
+     <div class="th">${ic('chat', '#ff9a62', 12)}<div><div class="q">Should this link to the lot, not just name it?</div><div class="w">Priya · WashSaleNote.tsx:48</div></div></div>
+     <div class="th">${ic('chat', '#ff9a62', 12)}<div><div class="q">Thirty-one days, not thirty, on the last day of a month.</div><div class="w">Jonas · washSale.ts:112</div></div></div>
+     <div class="th">${ic('chat', '#ff9a62', 12)}<div><div class="q">Copy: "added back" reads odd to customers.</div><div class="w">Dana · en.json:310</div></div></div>
+    </div>
+   </div>
+  </div>`;
+}
+g += `</div>`;
+if (S === 'hover') {
+  g += `<div class="lg tip" data-lg='{"tint":[14,15,18,0.4],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":22}'>
+   <div class="t1"><span class="key">INV-71880</span><span class="ch sm" style="height:22px">${ic('bug', '#f6ecdb', 10)}bug</span><span class="ch sm" style="height:22px"><span class="dot" style="background:#7aaaff"></span>In Review</span><span style="margin-left:auto;font-size:11.5px;font-weight:650;color:var(--ask)">wants you</span></div>
+   <h4>Cost basis export drops lots bought on a split day</h4>
+   <div class="card ses"><span>${ic('flame', '#ff7a3a', 11)}</span><span class="t">Split-day lots fix</span><span class="w">wants you · 7m</span></div>
+   <div class="card mr"><div class="h">${ic('pr', '#7aaaff', 12)}<span class="id">!477</span><span style="font-weight:600">Keep split-day lots in the export</span></div>
+     <div class="f"><span class="ch moss">${ic('check', '#9bd28a', 10)}ci passed</span><span class="ch moss">${ic('person', '#9bd28a', 10)}2 of 2 approved</span><span class="ch ask">${ic('chat', '#ff9a62', 10)}1 comment</span></div></div>
+   <div class="bot">${ic('branch', 'rgba(246,236,219,.42)', 10)}inv-71880-split-day-lots · 2 ahead</div></div>`;
+}
+document.getElementById('glass').innerHTML = g;
+document.querySelectorAll('i[data-px]').forEach((el) => { el.innerHTML = pxIcon(el.dataset.px, el.dataset.c || 'currentColor', +(el.dataset.s || 18)); });
+</script>
+<script src="liquid-shaders.js"></script><script src="liquid.js"></script>
+<script>
+document.fonts.ready.then(() => {
+  if (M === 'glass') liquid('11b-head-scene.png', { blur: 26, lift: 1, refThickness: 24, refDistance: 0.12, refFactor: 1.5, refDispersion: 12, glareConvergence: 0.95, glareRange: 26, glareHardness: 0.05, glareOpposite: 0, fresnelRange: 20 }).catch(e => { document.body.dataset.err = e.message; document.body.dataset.ready = 1 });
+  else setTimeout(() => document.body.dataset.ready = 1, 400);
+});
+</script></body></html>

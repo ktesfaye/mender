@@ -1,0 +1,12 @@
+import { chromium } from '/Users/kirubel/Documents/dev/mender/node_modules/playwright-core/index.mjs';
+const b = await chromium.launch({ args: ['--allow-file-access-from-files'] });
+const p = await b.newPage({ viewport: { width: 1480, height: 1020 }, deviceScaleFactor: 1 });
+p.on('pageerror', e => console.log('err', e.message));
+await p.goto('file://' + process.cwd() + '/kit/14b-top.html');
+await p.waitForSelector('body[data-ready]');
+await p.mouse.move(150,92); await p.waitForTimeout(100);
+await p.mouse.click(150,92);
+await p.waitForTimeout(1500); await p.screenshot({path:'/tmp/live1.png',clip:{x:0,y:0,width:1480,height:200}});
+await p.waitForTimeout(1500); console.log(await p.evaluate(()=>document.body.dataset.cur));
+await p.screenshot({path:'/tmp/live2.png',clip:{x:0,y:0,width:1480,height:200}});
+await b.close();

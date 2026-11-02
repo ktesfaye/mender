@@ -1,0 +1,190 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css">
+<style>
+@font-face{font-family:'Courier Prime';src:url(fonts/courier-prime-400-normal.woff2)}
+.lg::before{display:none}
+.lg{box-shadow:0 24px 60px rgba(0,0,0,.35)!important}
+.p-work{--c:255,154,74}.p-ask{--c:255,108,52}.p-done{--c:155,210,138}.p-broken{--c:240,138,114}.p-limit{--c:200,70,60}
+#band{left:24px;top:18px;width:1200px;height:156px}
+#row{position:absolute;left:12px;top:8px;right:12px;bottom:8px;display:flex;gap:8px;align-items:stretch}
+.w{position:relative;flex:0 0 108px;border-radius:16px 16px 7px 7px;overflow:hidden;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,rgba(8,9,12,.55),rgba(8,9,12,.38));
+  box-shadow:inset 0 0 0 1px rgba(255,238,210,.08),inset 0 1px 0 rgba(255,246,228,.1)}
+.w::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.07) 0,rgba(255,255,255,0) 30%,rgba(255,255,255,0) 62%,rgba(255,255,255,.035) 80%,rgba(255,255,255,0) 100%)}
+.w[class*="p-"]{background:
+  radial-gradient(95% 70% at 50% 100%,rgba(var(--c),.6),rgba(var(--c),.2) 62%,rgba(var(--c),.07)),
+  linear-gradient(180deg,rgba(8,9,12,.5),rgba(8,9,12,.15));
+  box-shadow:inset 0 0 0 1px rgba(var(--c),.4),inset 0 0 26px rgba(var(--c),.28),0 0 22px rgba(var(--c),.22)}
+.w .top{display:flex;align-items:center;gap:5px;padding:9px 9px 0;height:22px}
+.key{font:400 9px 'Silkscreen';letter-spacing:.06em;color:var(--gold);text-shadow:0 0 8px rgba(242,198,109,.35)}
+.jd{margin-left:auto;display:inline-grid}
+.ty{opacity:.6;display:inline-grid}
+.ttl{font-family:'Fraunces',serif;font-variation-settings:'SOFT' 100,'opsz' 40;font-weight:500;font-size:12.5px;line-height:1.14;color:#f6ecdb;padding:5px 9px 0;text-shadow:0 1px 2px rgba(0,0,0,.7);letter-spacing:.002em;height:36px;overflow:hidden}
+.scene{flex:1;position:relative;display:flex;align-items:flex-end;gap:2px;padding:0 8px 4px}
+.sess{display:flex;align-items:flex-end;gap:1px}
+.fig{display:inline-grid;filter:drop-shadow(0 0 3px rgba(0,0,0,.35))}
+.lant{width:22px;height:38px;image-rendering:pixelated;display:block;margin-bottom:0}
+.lant.work{filter:drop-shadow(0 0 7px rgba(255,154,74,.9))}
+.lant.ask{filter:hue-rotate(-18deg) saturate(1.5) drop-shadow(0 0 7px rgba(255,108,52,.95))}
+.lant.done{filter:hue-rotate(62deg) drop-shadow(0 0 7px rgba(155,210,138,.9))}
+.lant.broken{filter:hue-rotate(-34deg) saturate(.9) brightness(.95) drop-shadow(0 0 7px rgba(240,138,114,.9))}
+.lant.off{opacity:.7}
+.nums{font:600 9.5px 'Figtree';color:var(--ink-3);display:flex;gap:6px}
+.nums .a{color:#7aaaff}
+.sill{height:21px;display:flex;align-items:center;gap:6px;padding:0 9px;background:linear-gradient(180deg,rgba(0,0,0,.34),rgba(0,0,0,.2));box-shadow:inset 0 1px 0 rgba(255,240,215,.1)}
+.etch{font:400 8px 'Silkscreen';letter-spacing:.09em;text-transform:uppercase;color:rgba(246,236,219,.55);text-shadow:0 1px 0 rgba(255,255,255,.1),0 -1px 0 rgba(0,0,0,.6)}
+.br{font:400 9px 'Courier Prime',monospace;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brl{padding:3px 9px 0;height:15px;display:flex;gap:6px;align-items:center}.brl .bn{flex:1;overflow:hidden;text-overflow:ellipsis}
+/* home */
+.home{flex-basis:92px;border-radius:46px 46px 7px 7px;background:linear-gradient(180deg,rgba(155,210,138,.13),rgba(155,210,138,.04) 55%,rgba(8,9,12,.3));
+  box-shadow:inset 0 0 0 1.5px rgba(155,210,138,.4),inset 0 0 24px rgba(155,210,138,.1)}
+.home .top{justify-content:center;padding-top:15px}
+.home .ttl{text-align:center;font-size:14px;height:22px;padding-top:4px}
+.home .etch{color:rgba(190,230,175,.7)}
+.home .scene{justify-content:center}
+.home .sill{justify-content:center;background:linear-gradient(180deg,rgba(155,210,138,.16),rgba(155,210,138,.07))}
+/* own */
+.own .ttl{font-style:italic;font-size:15px;padding-top:11px;height:36px}
+/* current */
+.cur{flex:0 0 330px;border-radius:20px 20px 8px 8px;box-shadow:inset 0 0 0 1.5px rgba(var(--c),.85),inset 0 0 40px rgba(var(--c),.4),0 0 40px rgba(var(--c),.4);
+  background:radial-gradient(80% 90% at 82% 100%,rgba(var(--c),.78),rgba(var(--c),.3) 58%,rgba(var(--c),.12)),linear-gradient(180deg,rgba(8,9,12,.55),rgba(8,9,12,.2))}
+.cur .cols{flex:1;display:flex;min-height:0}
+.cur .txt{flex:0 0 196px;padding:0}
+.cur .top{padding-left:12px;padding-top:7px;height:19px}
+.cur .ttl{font-size:15px;line-height:1.12;height:54px;padding:4px 6px 0 12px;font-weight:540}
+.desc{padding:4px 8px 0 12px;font-size:11px;line-height:1.35;color:rgba(246,236,219,.78);text-shadow:0 1px 2px rgba(0,0,0,.7);height:20px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font-size:11px;line-height:1.3}
+.cur .scene{flex:1;padding:0 6px 6px 0;justify-content:center;gap:4px}
+.cur .sess{flex-direction:column;align-items:center;gap:2px;width:60px}
+.cur .sess .pair{display:flex;align-items:flex-end}
+.cur .lant{width:25px;height:43px}
+.sn{font:500 10px 'Figtree';color:rgba(246,236,219,.82);text-align:center;line-height:1.15;text-shadow:0 1px 2px rgba(0,0,0,.7);max-width:68px}
+.sn i{display:block;font-style:normal;font:400 7.5px 'Silkscreen';letter-spacing:.06em;color:rgba(246,236,219,.55);margin-top:1px;text-transform:uppercase}
+.cur .sill{height:24px}
+.cur .br{font-size:10px;color:rgba(246,236,219,.6)}
+.cur .etch{font-size:8.5px}
+.pri{display:inline-grid;opacity:.75}
+/* setting up */
+.glaze{background:repeating-linear-gradient(135deg,rgba(255,240,215,.05) 0 3px,transparent 3px 8px),linear-gradient(180deg,rgba(8,9,12,.5),rgba(8,9,12,.3));
+  box-shadow:inset 0 0 0 1px rgba(255,238,210,.14)}
+.glaze .fill{position:absolute;left:0;right:0;bottom:21px;height:34%;background:linear-gradient(0deg,rgba(255,225,170,.28),rgba(255,225,170,.06));box-shadow:inset 0 1px 0 rgba(255,235,200,.3)}
+.glaze .bar{position:absolute;left:50%;top:62px;bottom:21px;width:2px;background:repeating-linear-gradient(180deg,rgba(255,236,200,.4) 0 5px,transparent 5px 9px)}
+.glaze .barh{position:absolute;left:0;right:0;top:calc(62px + (100% - 83px)*.5);height:2px;background:repeating-linear-gradient(90deg,rgba(255,236,200,.4) 0 5px,transparent 5px 9px)}
+.glaze .cnt{position:absolute;left:0;right:0;bottom:30px;text-align:center;font:500 22px 'Fraunces';font-variation-settings:'SOFT' 100,'opsz' 60;color:#f6ecdb;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.glaze .cnt small{font:400 9px 'Silkscreen';letter-spacing:.08em;margin-left:1px}
+.glaze .ttl{position:relative;z-index:1}
+.glaze .top,.glaze .sill{position:relative;z-index:1}
+.glaze .key{color:var(--ink-3);text-shadow:none}
+.plus{flex:0 0 38px;border-radius:14px 14px 7px 7px;display:grid;place-items:center;background:rgba(8,9,12,.16);box-shadow:inset 0 0 0 1px rgba(255,238,210,.1)}
+.plus:after{display:none}
+/* hovered */
+.hov{transform:translateY(-1px);box-shadow:inset 0 0 0 1px rgba(var(--c),.8),inset 0 0 28px rgba(var(--c),.36),0 0 28px rgba(var(--c),.4)}
+.grip{display:none;position:absolute;top:4px;left:50%;margin-left:-9px;width:18px;height:4px;background:radial-gradient(circle,rgba(246,236,219,.55) 1px,transparent 1.5px) 0 0/6px 4px}
+.hov .grip{display:block}
+/* yard */
+.chd{position:absolute;font:500 11px 'Figtree';letter-spacing:.22em;text-transform:uppercase;color:rgba(246,236,219,.42)}
+.note{position:absolute;left:62px;top:232px;width:262px;padding:14px 14px 16px;background:#fbefc6;color:#2b2113;border-radius:3px;box-shadow:0 8px 22px rgba(0,0,0,.4);font:400 15px/1.35 'Grunell','Figtree';font-family:'Figtree'}
+.note small{display:block;font:400 9px 'Silkscreen';letter-spacing:.1em;color:#a0581c;margin-bottom:6px;text-transform:uppercase}
+.said{position:absolute;left:471px;top:232px;width:600px;font:400 17px/1.7 'Figtree';color:rgba(246,236,219,.82)}
+.said .sm{font-size:12.5px;color:var(--ink-3);display:block;margin:6px 0}
+.after{position:absolute;left:1158px;top:228px;width:282px;font-size:17px;line-height:1.35;color:#f6ecdb}
+.rt{position:absolute;right:40px;top:104px;text-align:right;font:400 12px 'Courier Prime',monospace;color:var(--ink-3)}
+.rt b{display:block;font:400 11px 'Silkscreen';letter-spacing:.14em;color:var(--ember);margin-bottom:12px}
+/* the light */
+#pourw{position:absolute;inset:0;pointer-events:none;filter:blur(16px)}#pour{position:absolute;left:0;top:0;width:1480px;height:1020px;
+  background:linear-gradient(180deg,rgba(255,108,52,0) 0,rgba(255,108,52,.06) 40%,rgba(255,120,56,.2) 100%);
+  clip-path:polygon(150px 168px,490px 168px,640px 920px,24px 920px)}
+#pool{position:absolute;left:24px;top:880px;width:640px;height:120px;pointer-events:none;background:radial-gradient(60% 70% at 38% 40%,rgba(255,124,56,.28),transparent 70%)}
+#plank{position:absolute;left:40px;top:903px;width:1400px;height:2px;background:linear-gradient(90deg,rgba(255,140,60,.9) 0,rgba(255,140,60,.75) 520px,rgba(246,236,219,.12) 640px,rgba(246,236,219,.08) 100%)}
+.rl{position:absolute;top:905px;display:flex;align-items:flex-start;gap:8px}
+.rl .cord{position:absolute;left:11px;top:-2px;width:1px;height:6px;background:rgba(255,160,80,.6)}
+.rl img{width:22px;height:38px;image-rendering:pixelated;margin-top:6px}
+.rl .t{margin-top:12px;font:400 12px 'Courier Prime',monospace;color:#f6ecdb;line-height:1.35}
+.rl .t i{display:block;font-style:normal;color:rgba(246,236,219,.55);font-size:11.5px}
+.plate{position:absolute;left:40px;top:884px;font:400 8.5px 'Silkscreen';letter-spacing:.12em;color:rgba(255,200,150,.8);text-shadow:0 0 8px rgba(255,120,56,.5)}
+/* hover slab */
+#slab{left:466px;top:186px;width:372px;height:218px;padding:18px 20px;border-radius:26px;backdrop-filter:blur(18px);background:rgba(14,15,18,.5)}
+#slab h2{font:500 19px/1.2 'Fraunces';font-variation-settings:'SOFT' 100,'opsz' 50;margin:8px 0 6px}
+.sr{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border-radius:14px;background:rgba(255,240,215,.05);box-shadow:inset 0 0 0 1px var(--hair);margin-top:7px}
+.sr img{width:20px;height:34px;image-rendering:pixelated;flex:none;filter:hue-rotate(-18deg) saturate(1.5) drop-shadow(0 0 6px rgba(255,108,52,.9))}
+.sr b{font-weight:600;font-size:13.5px;display:block}
+.sr span{font-size:12px;color:var(--ink-2);display:block;line-height:1.3;margin-top:1px}
+.sr em{font:400 8px 'Silkscreen';font-style:normal;letter-spacing:.08em;color:#ff8a5a;text-transform:uppercase;margin-left:6px}
+#menu{left:500px;top:186px;width:200px;padding:10px;border-radius:22px;backdrop-filter:blur(18px);background:rgba(14,15,18,.5)}
+#menu div{padding:10px 12px;border-radius:12px;font-size:14px;font-weight:600;color:var(--gold);display:flex;gap:10px;align-items:center}
+#menu div.s{color:var(--sore)}
+</style></head><body>
+<div id="pourw"><div id="pour"></div></div><div id="pool"></div>
+
+<div class="rt"><b>AUTO</b>context 47% · opus 5.5</div>
+
+<div class="chd" style="left:40px;top:200px">What you asked</div>
+<div class="note"><small>just now · working on it</small>Show the reason a loss was disallowed under each loss line, and a link to the lots behind it.</div>
+<div class="chd" style="left:471px;top:200px">What it said</div>
+<div class="said"><span class="sm">so far · just now</span>The wash sale rule matches a loss to a repurchase inside thirty days either side, so the reason line has to name that purchase. I am reading the lots the page already loads and adding the line under each loss.<span class="sm">read 3 files and searched twice</span></div>
+<div class="chd" style="left:1158px;top:200px">What it's after</div>
+<div class="after serif it" style="top:228px">Say why each loss was disallowed, right under it.</div>
+
+<div id="plank"></div><div class="plate">INV-71924</div>
+<div id="rail"></div>
+
+<div class="lg" id="band" data-lg='{"tint":[14,15,18,0.5],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":28}'><div id="row"></div></div>
+<template id="tpl-slab"><div class="lg" id="slab" data-lg='{"tint":[14,15,18,0.55],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":24,"blur":22}'>
+  <div class="pix">in there</div>
+  <h2>Cost basis export drops lots bought on a split day</h2>
+  <div class="mono faint" style="font-size:11px">inv-71880-split-day-lots</div>
+  <div class="sr"><img src="lantern.png"><div><b>Split-day lot check<em>wants you</em></b><span>asking which lot to keep when two share a date, 4m</span></div></div>
+  <div style="display:flex;gap:8px;margin-top:10px"><span class="chip"><span class="dot" style="background:#7aaaff"></span>1 ahead</span><span class="chip"><span class="dot" style="background:#f2c66d"></span>2 uncommitted</span><span class="chip">in review</span></div>
+</div></template>
+<template id="tpl-menu"><div class="lg" id="menu" data-lg='{"tint":[14,15,18,0.55],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":22,"blur":22}'>
+  <div><i data-px="pen" data-s="14" data-c="#f2c66d"></i>rename it</div><div class="s"><i data-px="down" data-s="14" data-c="#f08a72"></i>take it down</div>
+</div></template>
+
+<script>
+window.PX_EXTRA={
+ folk:['....#....','...###...','...###...','..#####..','.#######.','.#.###.#.','...###...','...#.#...','..##.##..'],
+ hearth:['..#####..','.#.....#.','#...#...#','#..###..#','#.#####.#','#.#####.#','#.......#','#########','.........'],
+ dia:['....#....','...###...','..#####..','.#######.','#########','.#######.','..#####..','...###...','....#....'],
+ story:['..#####..','..#...#..','..#...#..','..#...#..','..#...#..','..#...#..','..##.##..','..#.#.#..','..###.###'.slice(0,9)],
+ bug:['.#.....#.','..#...#..','...###...','.#######.','#.#####.#','..#####..','.#.###.#.','#...#...#','....#....'],
+ task:['.........','.......#.','......##.','#....##..','##..##...','.####....','..##.....','.........','.........'],
+ plus2:['....#....','....#....','....#....','#########','....#....','....#....','....#....','.........','.........']
+};
+const px=(n,c,s)=>`<i data-px="${n}" data-s="${s}" data-c="${c}"></i>`;
+const lan=(k)=>`<img class="lant ${k}" src="${k==='off'?'lanternoff':'lantern'}.png">`;
+const sess=(k)=>`<span class="sess"><span class="fig">${px('folk',k==='off'?'rgba(10,10,13,.55)':'rgba(10,9,12,.92)',20)}</span>${lan(k)}</span>`;
+const stat=(t,ic)=>`<div class="sill">${px(ic,'rgba(246,236,219,.6)',10)}<span class="etch">${t}</span></div>`;
+const W=(o)=>`<div class="w ${o.cls||''}" ${o.id?`id="${o.id}"`:''}><div class="grip"></div>
+ <div class="top"><span class="key">${o.key}</span><span class="jd">${px('dia','#4c8cff',11)}</span></div>
+ <div class="ttl">${o.title}</div>
+ <div class="scene">${o.s.map(sess).join('')}</div>
+ <div class="brl br"><span class="bn">${o.br}</span><span class="nums">${o.ah?`<span class="a">↑${o.ah}</span>`:''}${o.un?`<span>${o.un}±</span>`:''}</span></div>${stat(o.st,o.ty)}</div>`;
+const row=document.getElementById('row');
+row.innerHTML=
+`<div class="w home"><div class="top">${px('hearth','#9bd28a',20)}</div><div class="ttl">invest-web</div>
+ <div class="scene">${sess('off')}</div><div class="brl br" style="text-align:center">main</div><div class="sill"><span class="etch">the folder</span></div></div>`+
+`<div class="w cur p-ask"><div class="cols"><div class="txt">
+  <div class="top"><span class="key">INV-71924</span>${px('dia','#4c8cff',11)}<span class="ty" style="margin-left:4px">${px('story','#f6ecdb',11)}</span><span class="pri" title="high">${px('up','#f6ecdb',10)}</span></div>
+  <div class="ttl">FE: G/L wash sale info, explaining why a loss was disallowed</div>
+  <div class="desc">Show the user why a realised loss was disallowed, naming the repurchase that triggered the wash sale rule.</div></div>
+  <div class="scene">
+   <div class="sess"><div class="pair"><span class="fig">${px('folk','rgba(10,9,12,.93)',28)}</span>${lan('work')}</div><div class="sn">Reason line<i>working 12m</i></div></div>
+   <div class="sess"><div class="pair"><span class="fig">${px('folk','rgba(10,9,12,.93)',28)}</span>${lan('ask')}</div><div class="sn">Lot link API<i>wants you</i></div></div>
+  </div></div>
+  <div class="sill">${px('merge','#7aaaff',10)}<span class="br" style="flex:1">inv-71924-wash-sale-info</span><span class="nums" style="position:static"><span class="a">↑4</span><span>3±</span></span><span class="etch">in progress</span></div></div>`+
+W({cls:'p-ask',id:'w71880',key:'INV-71880',title:'Split-day lots in export',s:['ask'],ah:1,un:2,br:'inv-71880-split-day-lots',st:'in review',ty:'bug'})+
+W({cls:'p-done',key:'INV-72011',title:'Tax doc banner, Q4',s:['done'],ah:1,un:0,br:'inv-72011-q4-banner',st:'to do',ty:'task'})+
+W({cls:'p-work',key:'INV-71990',title:'Dividend reinvest',s:['work','off'],ah:2,un:1,br:'inv-71990-drip-toggle',st:'in progress',ty:'story'})+
+W({cls:'p-broken',key:'INV-71702',title:'Flaky statements e2e',s:['broken'],ah:0,un:4,br:'inv-71702-flaky-e2e',st:'in progress',ty:'bug'})+
+`<div class="w own"><div class="top" style="justify-content:flex-end;height:22px"></div><div class="ttl">chart spike</div>
+ <div class="scene">${sess('off')}</div><div class="brl br"><span class="bn">mender/chart-spike</span><span class="nums"><span>1±</span></span></div>${stat('own copy','merge')}</div>`+
+`<div class="w glaze"><div class="bar"></div><div class="barh"></div><div class="fill"></div><div class="top"><span class="key">INV-72040</span></div><div class="ttl">Gift lot holding</div><div class="cnt">14<small>s</small></div><div style="flex:1"></div><div class="sill"><span class="etch">cutting a copy</span></div></div>`+
+`<div class="plus">${px('plus2','#f2c66d',18)}</div>`;
+document.getElementById('rail').innerHTML=
+`<div class="rl" style="left:40px"><span class="cord"></span><img src="lantern.png" style="filter:drop-shadow(0 0 9px rgba(255,154,74,.95))"><div class="t">Reason line under each loss<i>running something · 12m</i></div></div>
+ <div class="rl" style="left:320px"><span class="cord"></span><img src="lantern.png" style="filter:hue-rotate(-18deg) saturate(1.5) drop-shadow(0 0 9px rgba(255,108,52,.95))"><div class="t">Lot link API<i>wants you · 4m</i></div></div>
+ <div class="rl" style="left:560px"><span class="cord"></span><img src="lanternoff.png" style="opacity:.8"></div>`;
+const B=document.body.className;
+if(B.includes('hover')){document.getElementById('w71880').classList.add('hov');document.body.insertAdjacentHTML('beforeend',document.getElementById('tpl-slab').innerHTML)}
+if(B.includes('open')){document.getElementById('w71880').classList.add('hov');document.body.insertAdjacentHTML('beforeend',document.getElementById('tpl-menu').innerHTML)}
+</script>
+<script src="px.js"></script><script src="liquid-shaders.js"></script><script src="liquid.js"></script>
+<script>liquid('01-bg.png', { blur: 28, lift: 1, refThickness: 28, refDistance: 0.12, refFactor: 1.5, refDispersion: 12, glareConvergence: 0.95, glareRange: 26, glareHardness: 0.05, glareOpposite: 0, fresnelRange: 20 }).catch(e=>{document.body.dataset.err=e.message;document.body.dataset.ready=1})</script></body></html>

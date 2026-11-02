@@ -1,0 +1,58 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="lib.css">
+<div class="win"><div class="top" id="t"></div></div>
+<script src="lib.js"></script>
+<script>
+const t = document.getElementById('t');
+const g = makeCanvas(t, 3);
+const ground = 46;
+
+// the rack's own beam rests on this post, so it is one structure
+const PX = 476;
+post(g, PX, 7, ground - 7, 6);
+// a bracing strut up to the beam
+for (let i = 0; i < 9; i++) { px(g, PX + 6 + i, 9 - i, 2, 1, C.ink); px(g, PX + 6 + i, 8 - i, 1, 1, C.wood); }
+// foot
+stone(g, PX - 3, ground + 1, 5, 3); stone(g, PX + 5, ground + 1, 6, 2);
+tuft(g, PX - 7, ground); tuft(g, PX + 11, ground);
+const rule = (x0, x1, a = .2) => { const d = document.createElement('div'); d.style.cssText = `position:absolute;left:${x0*S}px;width:${(x1-x0)*S}px;top:${ground*S+1}px;height:1px;background:rgba(201,162,106,${a})`; t.appendChild(d); };
+rule(5, PX - 10); rule(PX + 16, 595);
+
+const L = (w, y, tone, seed) => plank(g, PX - w, y, w, 8, { point: 'l', tone, seed });
+const R = (w, y, tone, seed) => plank(g, PX + 6, y, w, 8, { point: 'r', tone, seed });
+const ink = 'font-size:15px;color:#f1dfbd;text-shadow:0 1px 0 rgba(0,0,0,.35)';
+const no = 'color:#e2c79a;font-size:10px;opacity:.8';
+
+L(58, 4, 'pale', 31);
+house(g, PX - 48, 5, '#3e2716');
+label(t, PX - 39, 4, 8, 'invest-web', 'sign', 'font-size:15px');
+
+L(102, 15, 'gold', 32);
+label(t, PX - 92, 15, 8, 'Reason line under each loss', 'sign lit', 'font-size:15px');
+glow(t, PX - 50, 20, 40, '#ffc95a', .3);
+
+L(88, 26, 'wood', 33);
+label(t, PX - 78, 26, 8, '71880', 'num', no);
+label(t, PX - 66, 26, 8, 'Cost basis, split day', 'sign', ink);
+
+L(68, 37, 'wood', 34);
+label(t, PX - 58, 37, 8, '72011', 'num', no);
+label(t, PX - 46, 37, 8, 'Q4 tax banner', 'sign', ink);
+glow(t, PX - 32, 48, 14, '#7fd36a', .4);
+
+R(62, 31, 'wood', 35);
+label(t, PX + 12, 31, 8, '71702', 'num', no);
+label(t, PX + 24, 31, 8, 'Flaky e2e', 'sign', ink);
+label(t, PX + 54, 31, 8, '14s', 'timer', 'font-size:10px');
+glow(t, PX + 38, 42, 16, '#ff9a3a', .5);
+
+R(18, 40, 'grey', 36);
+label(t, PX + 12, 39.6, 8, '+', 'sign', 'font-size:18px;color:#2a221c');
+
+// the session, alone in the open on the left
+txt(t, 14, 12, 'INVEST-WEB', 'caps', 'font-size:12px;letter-spacing:5px;opacity:.85');
+txt(t, 14, 17, 'Reason line under each loss', 'said', 'font-size:26px');
+txt(t, 14.3, 28.5, 'reason-line<span class="s">·</span>Claude Code<span class="s">·</span>14s<span class="s">·</span>3 turns', 'meta');
+txt(t, 14.3, 34, 'opus 5.5 · medium · auto<span class="s">·</span><span style="color:#9c8462">45% full</span>', 'meta', 'color:#e8cf9f');
+</script>

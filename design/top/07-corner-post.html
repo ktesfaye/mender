@@ -1,0 +1,26 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="lib.css">
+<div class="win"><div class="top" id="t"></div></div>
+<script src="lib2.js"></script><script src="kit.js"></script><script src="small.js"></script>
+<script>
+loadKit().then(() => {
+const t = document.getElementById('t');
+const g = makeCanvas(t, 3);
+ruleLine(t, 18, 882, 69);
+// a small fingerpost standing in the corner, the workspaces its arms
+const PX = 26;
+kitPost(g, PX, 22, 69);
+board(g, t, PX - 4, 26, 92, 'r', 'pale', 'invest-web', { style: 'padding-left:27px' });
+house(g, PX + 2, 28.5, '#2a1708');
+glow(t, PX + 30, 32, 26, '#ffc060', .22);
+board(g, t, PX - 4, 40, 76, 'r', 'dim', NUM('71702') + 'Flaky e2e');
+sealS(g, PX - 4 + 76 - 12, 44, '#d0473a');
+txt(t, PX + 46, 40.2, '14s', 'timer', `height:${11*S}px;line-height:${11*S}px;font-size:9.5px;color:#ffb04a`);
+board(g, t, PX - 4, 54, 44, 'r', 'empty', '+3', { ink: '#bba27c', size: 12 });
+// the session, beside the post
+txt(t, 130, 26, 'Reason line under each loss', 'said', 'font-size:24px');
+txt(t, 130.3, 42, 'reason-line<span class="s">·</span>Claude Code<span class="s">·</span>14s<span class="s">·</span>3 turns', 'meta', 'font-size:11.5px');
+model(t, 880, 40);
+});
+</script>

@@ -1,0 +1,43 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="lib.css">
+<style>
+.tag { position:absolute; z-index:6; font-family:Said; font-size:14px; color:#2a1708; white-space:nowrap; }
+.det { font-family:Cour; font-size:12px; color:#d9c39a; }
+.det .g { color:#f0c45a; }
+.det .ok { color:#9fd18a; } .det .bad { color:#e0675a; } .det .q { color:#8d785a; }
+</style>
+<div class="win"><div id="shade"></div><div class="top" id="t"></div></div>
+<script src="lib.js"></script><script src="kit.js"></script><script src="post.js"></script>
+<script>
+// the yard steps back a little behind the dropped post: no box, just the light going down round it
+const sh = document.getElementById('shade');
+sh.style.cssText = 'position:absolute;left:0;top:0;width:1800px;height:1048px;z-index:1;pointer-events:none;backdrop-filter:blur(3px);background:radial-gradient(900px 520px at 900px 160px, rgba(8,5,3,.9) 0%, rgba(8,5,3,.78) 60%, rgba(8,5,3,.62) 100%)';
+function paperTag(g, x, y, w) {
+  // a cream slip with a punched hole, hung on a string
+  px(g, x - 1, y, w + 2, 9, '#2a1708');
+  px(g, x, y + 1, w, 7, '#e8d5ae'); px(g, x, y + 1, w, 1, '#f6e8c8'); px(g, x, y + 7, w, 1, '#c9b083');
+}
+function detail(t, g, PX, y, rw) {
+  // right: the sessions in there, a bundle of tags on one string off the board
+  const bx = PX + 30;
+  for (let j = 0; j < 12; j++) px(g, bx, y + 12 + j, 1, 1, j % 2 ? '#b89a72' : '#7a6046');
+  const tags = [['Split-day lot matching', '#ffb347', 'working · 2m'], ['Rounding in the report', '#7fd36a', 'done · 1h ago']];
+  tags.forEach(([name, lamp, st], k) => {
+    const ty = y + 15 + k * 9;
+    // a small lantern tied on the string, the session's own colour in its glass
+    px(g, bx - 2, ty, 5, 1, '#2a2a30');
+    px(g, bx - 2, ty + 1, 5, 6, '#1c120b'); px(g, bx - 1, ty + 2, 3, 4, lamp); px(g, bx, ty + 2, 1, 4, '#1c120b');
+    px(g, bx - 2, ty + 7, 5, 1, '#2a2a30');
+    if (lamp === '#ffb347') glow(t, bx + .5, ty + 4, 9, lamp, .55);
+    txt(t, bx + 6, ty + 0.4, `${name}<span style="font-family:Cour;font-size:11px;color:#9c8462;margin-left:10px">${st}</span>`, 'tag', `height:${8*S}px;line-height:${8*S}px;color:#efdcb6;font-size:15px`);
+  });
+  if (rw > 40) {}
+  // left: the ticket and the merge request, written on the dark under the place
+  const L = PX - 104;
+  txt(t, L, y + 15.5, '<span class="g">71880</span><span class="q">  ·  </span>In progress<span class="q">  ·  </span><span class="g">open in Jira</span>', 'det');
+  txt(t, L, y + 21.5, '<span class="g">!412</span><span class="q">  ·  </span><span class="ok">pipeline passed</span><span class="q">  ·  </span>1 of 2 approved', 'det');
+  txt(t, L, y + 27.5, '<span class="g">3 new comments</span><span class="q">  ·  </span>last from Dana, 20m ago', 'det');
+}
+loadKit().then(() => drawPost(document.getElementById('t'), 'open', { sel: 2, detail, room: 36 }));
+</script>

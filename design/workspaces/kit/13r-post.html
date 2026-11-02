@@ -1,0 +1,126 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-600-normal.woff2); font-weight: 600; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'MenderHand'; src: url(fonts/pretty-neat-400-normal.woff2); }
+@font-face { font-family: 'MenderHand'; font-weight: 700; src: url(fonts/pretty-neat-700-normal.woff2); }
+@font-face { font-family: 'Silk'; src: url(fonts/silkscreen-400-normal.woff2); }
+html,body{margin:0;width:1480px;height:1020px;overflow:hidden}
+img{position:absolute;image-rendering:pixelated;display:block}
+.a{position:absolute}
+.ink,.burn,.burn2,.paper{position:absolute}
+.ink{font:400 13px/24px MenderHand;color:#2a1608;text-shadow:0 1px 0 rgba(255,232,190,.2);white-space:nowrap}
+.ink i{font:600 8.5px 'Josefin Sans';font-style:normal;letter-spacing:.14em;margin-right:6px;opacity:.75;position:relative;top:-1px}
+.glow{position:absolute;border-radius:50%;mix-blend-mode:screen;pointer-events:none}
+.burn{font:600 12px 'Josefin Sans';letter-spacing:.24em;color:#e8b95a;text-shadow:0 0 6px rgba(255,150,40,.55),0 1px 0 #2a1408;white-space:nowrap}
+.burn2{font:400 8px 'Courier Prime';letter-spacing:.01em;color:#1c0e04;opacity:.95;white-space:nowrap}
+.paper{font-family:MenderHand;color:#2d1a0a}
+.breathe{animation:br 3.6s ease-in-out infinite}@keyframes br{50%{opacity:.7;transform:scale(.92)}}
+.ink i{font:600 8.5px 'Josefin Sans';font-style:normal;letter-spacing:.14em;margin-right:6px;opacity:.75;position:relative;top:-1px}
+.stamp{font:400 8px/10px Silk;letter-spacing:.04em;padding:2px 4px 1px;border:1px solid;border-radius:1px;opacity:.95;display:inline-block;flex:none}
+</style></head><body><div id="r"></div><script src="13x-lib.js"></script><script src="13q-lib.js"></script>
+<script>
+function pix(x,y,w,h,fn,st=''){const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');fn(g,(px,py,col,ww=1,hh=1)=>{g.fillStyle=col;g.fillRect(px,py,ww,hh)});
+  const e=document.createElement('img');e.src=c.toDataURL();e.style.cssText=`left:${x}px;top:${y}px;width:${w*2}px;height:${h*2}px;${st}`;R.appendChild(e);return e}
+const V=Q.get('v')||'inv';            // inv | flaky | many | none
+const PT=Q.get('s')==='point', OPEN=Q.get('s')==='open';
+(async()=>{
+await document.fonts.load('14px MenderHand'); await document.fonts.load('8px Silk'); await document.fonts.load('8px "Courier Prime"');
+const fullW=(name,w)=>im(name+'.png',30,0,w,75,'filter:brightness(.72) saturate(.9);-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 124px,transparent 150px),linear-gradient(to right,transparent 0,#000 70px);-webkit-mask-composite:source-in;mask-composite:intersect');
+fullW('ground-j',725);
+flies(5,21,560,1470,30,132);
+dress(7,[['tuft',60,1470,96,146,26],['flower',640,1200,110,140,4],['rock',700,1300,128,142,2]]);
+nat('bush06',140,116,.55); nat('bush03',60,118,.55); nat('bush07',1000,120,.6); nat('bush04',1150,112,.5); nat('bush05',1260,108,.5); nat('bush02',250,124,.5);
+const SX=600, Y0=50, PITCH=24, ink='#2a1608';
+// workspaces and what each wants
+const WS={
+ inv:  {key:'INV-71924',title:'Explain why a wash-sale loss was disallowed',ci:'ci failed',ap:'needs 2 approvals',cm:'3 comments',mr:[0,0],crow:true,slips:3,session:'Reason line under each loss',lamp:'work'},
+ cost: {key:'INV-71880',short:'Cost basis, split day',st:'ask'},
+ q4:   {key:'INV-72011',short:'Q4 tax banner',st:'done'},
+ flaky:{key:'INV-71702',short:'Flaky e2e',title:'Flaky e2e on statements download',ci:'ci failed',ap:'no merge request yet',cm:'',mr:null,crow:true,slips:0,session:'Why the download test times out',st:'broke',lamp:'broke'},
+ div:  {key:'INV-71990',short:'Dividend toggle'},
+ spike:{key:'',short:'chart spike'},
+ gift: {key:'INV-72040',short:'Gift lots',cut:true},
+};
+let here, away;
+if(V==='inv'){here=WS.inv; away=[WS.cost,WS.q4,WS.flaky,WS.div,WS.spike,WS.gift];}
+if(V==='flaky'){here=WS.flaky; away=[WS.cost,WS.q4,{...WS.inv,short:'Wash-sale loss explained'},WS.div,WS.spike,WS.gift];}
+if(V==='many'){here=WS.inv; away=[WS.cost,WS.q4,WS.flaky,WS.div,WS.spike,WS.gift,{key:'INV-71655',short:'Export to CSV'},{key:'INV-71601',short:'Lot picker a11y'},{key:'',short:'try new chart lib'},{key:'INV-71588',short:'Tax year switch'}];}
+if(V==='none'){here={home:true,session:'Reason line under each loss',lamp:'work'}; away=[];}
+const loud=away.filter(w=>w.st), quiet=away.filter(w=>!w.st);
+if(PT&&away.length>3) div('a',0,150,'width:1480px;height:870px;background:linear-gradient(rgba(6,4,2,.0),rgba(6,4,2,.72) 30px,rgba(6,4,2,.72))');
+// ---- the post
+const postH=PT&&away.length>4?120:58;
+im('stem.png',SX-6,8,6,postH,dim(.55));
+im('foot.png',SX-14,8+postH*2-2,14,4,dim(.45));
+im('crook.png',SX-6-90+12,8,50,10,dim(.7));
+const lx=SX-94, ly=12;
+im(LAMP1,lx,ly,11,19,`filter:${ST[here.lamp||'work'].f}`);
+div('a',lx+2,ly+10,'width:18px;height:6px;background:linear-gradient(#150b04e6,#150b04b0);');
+im('cap.png',SX-70,14,70,16,dim(.8));
+div('burn',SX-70+16,18,'','INVEST-WEB');
+div('ink',SX-70,33,'width:140px;text-align:center;font:400 11px/12px MenderHand;color:#e8c98a;text-shadow:0 1px 0 #2a1408','opus 5.5 · medium · auto');
+div('glow',lx-210,ly-170,`width:620px;height:460px;background:radial-gradient(ellipse,rgba(${ST[here.lamp||'work'].g},.2),rgba(255,140,50,.06) 45%,rgba(255,120,40,0) 70%)`);
+div('glow breathe',lx-40,ly-20,'width:100px;height:100px;background:radial-gradient(circle,rgba(255,210,120,.5),rgba(255,170,70,0) 65%)');
+// an arm: text sized, pointing L or R from the post
+function arm(side,y,txt,key,br,o={}){
+  const kw=key?(key.length*6.4+14):0;
+  const W=Math.max(30,Math.min(166,Math.ceil((tw(txt,14)+kw+(o.house?24:0)+58)/4)*2));
+  const x=side==='R'?SX-8:SX+8-2*W;
+  const e=im(`arm${side}-${W}.png`,x,y,W,12,`filter:brightness(${br}) saturate(.9)`);
+  if(o.cut){e.style.filter='brightness(1.25) saturate(.45) sepia(.2)';}
+  const stamp=key?`<span class="stamp" style="border-color:rgba(70,32,14,.7);margin-right:7px">${key.replace('INV-','')}</span>`:'';
+  const lo=side==='R'?x+16:x+16+(o.house?24:0), hi=side==='R'?x+2*W-18:SX-12;
+  div('ink',lo,y,`width:${hi-lo}px;height:24px;display:flex;align-items:center;${side==='L'?'justify-content:flex-end;':''}font:400 14px/24px MenderHand;color:${o.light?'#eadfc6':ink};${o.light?'text-shadow:0 1px 0 rgba(0,0,0,.6)':''}`,stamp+txt+(o.cut?'<span style="font-size:12px;opacity:.8;margin-left:6px">14s</span>':''));
+  if(o.house) im('house.png',x+16,y+1,11,11,dim(.75));
+  return {x,y,W,right:x+2*W};
+}
+function lampAt(a,kind){const cx=a.x-4;
+  div('a',cx-2,a.y+4,'width:8px;height:3px;background:#2e2016');div('a',cx-1,a.y+7,'width:2px;height:3px;background:#2e2016');
+  im(LAMP,cx-9,a.y+9,9,17,`filter:${ST[kind].f}`);
+  div('glow breathe',cx-30,a.y-4,`width:60px;height:60px;background:radial-gradient(circle,rgba(${ST[kind].g},.34),rgba(${ST[kind].g},0) 66%)`);}
+// left: home first, then whoever wants you, longest first so their lanterns hang clear
+let row=0;
+const rows=[];
+if(!here.home) rows.push({txt:'home',key:'',house:true,br:.62});
+const MAXL=3-(here.home?0:1)+1;
+const shownLoud=PT?loud:loud.slice(0,Math.max(0,MAXL-1)), hidden=PT?[]:[...loud.slice(shownLoud.length),...quiet];
+(PT?[...loud,...quiet]:shownLoud).forEach(w=>rows.push({txt:w.short,key:w.key,st:w.st,cut:w.cut,br:w.st?.92:(w.cut?1:.6)}));
+if(hidden.length){const hl=hidden.filter(w=>w.st);rows.push({txt:hidden.length+' more'+(hl.length?', '+hl.length+' wants you':''),key:'',br:.5,light:true,more:true,st:hl.length?hl[0].st:null});}
+// order: home on top, then by length so lanterns clear the arms under them
+const head=rows.filter(r=>r.house), rest=rows.filter(r=>!r.house&&!r.more), more=rows.filter(r=>r.more);
+rest.sort((a,b)=>(b.st?1:0)-(a.st?1:0)||0);
+const loudRows=rest.filter(r=>r.st).sort((a,b)=>tw(b.txt)-tw(a.txt)), quietRows=rest.filter(r=>!r.st);
+[...head,...loudRows,...quietRows,...more].forEach((r,i)=>{
+  const a=arm('L',Y0+i*PITCH,r.txt,r.key,r.br,{house:r.house,cut:r.cut,light:r.more||(!r.st&&!r.cut&&!r.house&&r.br<.7)});
+  if(r.st) lampAt(a,r.st);
+  if(r.more){for(let k=1;k<=2;k++)im('armL-'+(a.W-6*k)+'.png',a.x+12*k,a.y+3*k,a.W-6*k,12,'filter:brightness(.32) saturate(.8);z-index:-1');}
+});
+// right: the session you are in, pointing into the yard
+const sa=arm('R',Y0,here.session,'',1.02);
+// the notice: where you are standing, nailed to the post under the session's arm
+const nx=SX+2, ny=Y0+28;
+if(here.home){
+  pix(nx,ny,84,20,(g,p)=>{for(let x=0;x<84;x++)for(let y=0;y<20;y++){const e=x===0||x===83||y===0||y===19;p(x,y,e?'#8a7a58':(y<2?'#f4e9cf':'#e8dcbf'))}});
+  im('house.png',nx+10,ny+9,11,11,'filter:brightness(.55)');
+  div('ink',nx+38,ny+4,'font:400 14px/16px MenderHand;color:#2d1a0a','home');
+  div('ink',nx+38,ny+20,'font:400 11px/13px MenderHand;color:#6a4c26','the project’s own folder');
+}else{
+  const NW=164,NH=32;
+  for(let i=0;i<(here.slips||0);i++) im('slip'+['L','M','R'][i%3]+'.png',nx+NW*2-58+i*15,ny-8+(i===1?-3:0),10,10,'filter:brightness(.9)');
+  pix(nx,ny,NW,NH,(g,p)=>{for(let x=0;x<NW;x++)for(let y=0;y<NH;y++){const torn=(y===NH-1&&x%4===1)||(x===NW-1&&y%5===3);if(torn)continue;const e=x===0||x===NW-1||y===0||y===NH-1;p(x,y,e?'#8a7a58':(y<2?'#f4e9cf':((x*7+y*3)%23===0?'#ddd0b0':'#e8dcbf')))}});
+  im('nail.png',nx+6,ny+4,3,3); im('nail.png',nx+NW*2-12,ny+4,3,3);
+  div('ink',nx+14,ny+6,'',`<span class="stamp" style="border-color:rgba(70,32,14,.7)">${here.key}</span>`);
+  div('ink',nx+14,ny+22,`width:${NW*2-28}px;font:400 14px/16px MenderHand;color:#2d1a0a;white-space:nowrap`,here.title);
+  const bits=[here.ci&&`<span style="color:#a3321e">${here.ci}</span>`,here.ap,here.cm].filter(Boolean).join(' · ');
+  div('ink',nx+14,ny+NH*2-20,`width:${NW*2-28}px;font:400 11px/13px MenderHand;color:#6a4c26;white-space:nowrap`,bits);
+  if(here.crow) im('crow-rim.png',nx+NW*2-34,ny-16,14,11,'');
+  if(here.mr) here.mr.forEach((g,i)=>{const cx=nx+20+i*22;div('a',cx+6,ny+NH*2-1,'width:2px;height:6px;background:#b89d6a');im(`seal7-${g?'f':'e'}.png`,cx,ny+NH*2+4,7,7,'')});
+  div('a',nx,ny,`width:${NW*2}px;height:${NH*2}px;background:radial-gradient(ellipse at 10% 0%,rgba(0,0,0,0) 30%,rgba(6,3,0,.35) 100%)`);
+}
+// the peg a new workspace hangs on
+im('peg.png',SX-6-16,8+postH*2-30,8,5,dim(.5));
+if(OPEN) sheets(SX+250,172);
+document.body.dataset.ready=1;
+})();
+</script></body></html>

@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="lib.css">
+<div class="win"><div class="top" id="t"></div></div>
+<script src="lib2.js"></script><script src="kit.js"></script><script src="small.js"></script>
+<script>
+loadKit().then(() => {
+const t = document.getElementById('t');
+const g = makeCanvas(t, 3);
+// the rule under the bar becomes a thin rail the workspaces are nailed along
+const RY = 66;
+px(g, 18, RY, 864, 1, '#1c120b'); px(g, 18, RY + 1, 864, 2, '#4e3520'); px(g, 18, RY + 1, 864, 1, '#64462b'); px(g, 18, RY + 3, 864, 1, '#1c120b');
+for (let x = 30; x < 880; x += 37) px(g, x, RY + 1, 1, 2, '#4e341f');
+g.globalAlpha = .55; px(g, 18, RY + 4, 864, 1, '#000'); g.globalAlpha = 1;
+
+title(t, 20, 22);
+model(t, 880, 40);
+
+// pegs + boards sitting on the rail
+function onRail(x, w, tone, html, o) { px(g, x + 6, RY - 2, 2, 2, '#1c120b'); px(g, x + w - 12, RY - 2, 2, 2, '#1c120b'); board(g, t, x, RY - 14, w, 'r', tone, html, o); }
+onRail(300, 30, 'pale', '');
+house(g, 306, RY - 11, '#2a1708');
+glow(t, 315, RY - 8, 16, '#ffc060', .3);
+onRail(352, 74, 'dim', NUM('71702') + 'Flaky e2e');
+sealS(g, 352 + 74 - 12, RY - 10, '#d0473a');
+txt(t, 352 + 50, RY - 13.7, '14s', 'timer', `height:${11*S}px;line-height:${11*S}px;font-size:9.5px;color:#ffb04a`);
+onRail(446, 104, 'dim', NUM('71880') + 'Cost basis, split day');
+sealS(g, 446 + 104 - 12, RY - 10, '#f3c75e');
+onRail(570, 30, 'empty', '+2', { ink: '#bba27c', size: 12 });
+});
+</script>

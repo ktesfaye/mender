@@ -1,0 +1,109 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css">
+<style>
+.lg::before { display: none; }
+.win { left: 230px; top: 140px; width: 1020px; height: 724px; display: grid; grid-template-columns: 250px 1fr; border-radius: 32px; }
+.rail { padding: 26px 14px; border-right: 1px solid var(--hair); display: flex; flex-direction: column; gap: 4px; }
+.me { display: flex; gap: 12px; align-items: center; padding: 4px 10px 22px; }
+.me .ic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, rgba(255, 200, 120, .35), rgba(0,0,0,.2) 75%); box-shadow: inset 0 0 0 1px var(--hair); }
+.me .ic img { width: 40px; }
+.me b { font: 500 22px 'Fraunces'; display: block; }
+.me span { font-size: 12px; color: var(--ink-3); }
+.pg { display: flex; gap: 12px; align-items: center; padding: 11px 12px; border-radius: 14px; }
+.pg .i { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: rgba(0,0,0,.2); }
+.pg b { display: block; font-size: 14.5px; font-weight: 650; }
+.pg span { display: block; font-size: 12px; color: var(--ink-3); margin-top: 1px; }
+.pg.on { background: rgba(255, 240, 215, 0.1); box-shadow: inset 0 0 0 1px var(--hair), inset 0 1px 0 rgba(255,255,255,.08); }
+.pg .dot { margin-left: auto; }
+.rail .bottom { margin-top: auto; padding: 0 12px; font-size: 12px; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
+.main { padding: 30px 36px; overflow: hidden; position: relative; }
+.main h2 { font: 500 30px 'Fraunces'; }
+.main .lead { margin-top: 4px; font-size: 14px; color: var(--ink-2); }
+.hero { margin-top: 22px; display: grid; grid-template-columns: 300px 1fr; gap: 18px; }
+.stage { position: relative; height: 210px; border-radius: 22px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--hair); background: url(bg-island.png) -560px -520px / 1480px 1020px; image-rendering: pixelated; }
+.stage::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,.55)); }
+.stage .cap { position: absolute; left: 14px; bottom: 12px; z-index: 1; font-size: 12px; color: var(--ink-2); }
+.pole { position: absolute; left: 60px; top: 46px; width: 4px; height: 112px; background: linear-gradient(90deg,#5b3a1e,#8a5a2e); border-radius: 2px; z-index: 1; }
+.cloth { position: absolute; left: 64px; top: 50px; width: 96px; height: 62px; z-index: 1; background: #3d6ea8; clip-path: polygon(0 0, 100% 50%, 0 100%); display: grid; align-items: center; }
+.cloth img { width: 30px; margin-left: 10px; image-rendering: pixelated; }
+.board { position: absolute; right: 34px; top: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; }
+.board .chain { display: flex; gap: 34px; } .board .chain i { width: 2px; height: 34px; background: repeating-linear-gradient(180deg,#c9b38a 0 3px,transparent 3px 5px); }
+.board .plank { width: 64px; height: 64px; border-radius: 6px; background: linear-gradient(180deg,#a8743e,#7b4f27); box-shadow: inset 0 0 0 3px #5a3519, 0 6px 14px rgba(0,0,0,.4); display: grid; place-items: center; }
+.board .plank img { width: 42px; image-rendering: pixelated; }
+.pick .label { margin-bottom: 10px; }
+.thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.th { aspect-ratio: 1; border-radius: 16px; display: grid; place-items: center; background: rgba(0,0,0,.2); box-shadow: inset 0 0 0 1px var(--hair); position: relative; }
+.th img { max-width: 46%; max-height: 46%; margin-bottom: 14px; image-rendering: pixelated; }
+.th small { position: absolute; bottom: 6px; font-size: 10.5px; color: var(--ink-3); }
+.th.on { box-shadow: inset 0 0 0 2px var(--gold), 0 0 0 5px rgba(242,198,109,.13); }
+.th.add { color: var(--gold); font-size: 13px; font-weight: 650; text-align: center; line-height: 1.3; background: rgba(242,198,109,.06); box-shadow: inset 0 0 0 1px rgba(242,198,109,.3); }
+.th.add em { font-style: normal; font-size: 24px; display: block; }
+.sec { margin-top: 26px; }
+.field { border-radius: 18px; background: rgba(255,240,215,.045); box-shadow: inset 0 0 0 1px var(--hair); }
+.f { display: flex; align-items: center; gap: 20px; padding: 16px 20px; }
+.f + .f { border-top: 1px solid var(--hair); }
+.f .k { width: 180px; flex: none; }
+.f .k b { display: block; font-size: 14.5px; font-weight: 650; }
+.f .k span { display: block; font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+.f .v { flex: 1; }
+.name { font: 500 22px 'Fraunces'; padding: 6px 12px; border-radius: 10px; background: rgba(0,0,0,.2); box-shadow: inset 0 0 0 1px rgba(242,198,109,.45); display: inline-flex; align-items: center; gap: 2px; }
+.name i.c { display: inline-block; width: 2px; height: 22px; background: var(--gold); }
+.tokens { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tok { padding: 6px 8px 6px 12px; border-radius: 10px; font: 13px ui-monospace, 'SF Mono', monospace; background: rgba(0,0,0,.25); box-shadow: inset 0 0 0 1px var(--hair); display: inline-flex; gap: 8px; align-items: center; }
+.tok b { color: var(--ink-3); font: 600 12px 'Figtree'; }
+.tok.ghost { color: var(--ink-3); background: none; box-shadow: inset 0 0 0 1px dashed; border: 1px dashed rgba(255,240,215,.18); box-shadow: none; }
+.tok.add { color: var(--gold); font-family: 'Figtree'; font-weight: 650; background: none; border: 1px dashed rgba(242,198,109,.4); box-shadow: none; padding: 6px 12px; }
+.where { display: flex; gap: 14px; align-items: center; font-size: 13px; }
+.where .mono { color: var(--ink-2); font-size: 12.5px; }
+.danger { margin-top: 18px; display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-radius: 18px; background: rgba(240,138,114,.06); box-shadow: inset 0 0 0 1px rgba(240,138,114,.18); }
+.danger b { color: var(--sore); font-size: 14.5px; font-weight: 650; }
+.danger span { font-size: 12.5px; color: var(--ink-3); }
+.danger .go { margin-left: auto; color: var(--gold); font-weight: 650; font-size: 13.5px; }
+.saved { position: absolute; top: 34px; right: 74px; display: flex; gap: 7px; align-items: center; font-size: 12.5px; color: var(--ink-3); }
+</style></head><body>
+<div class="lg win" data-lg='{"tint":[16,18,22,0.6],"glareFactor":0.8,"fresnelFactor":0.25}'>
+  <div class="rail">
+    <div class="me"><div class="ic"><img src="anvil.png"></div><div><b>Demo</b><span>3 sessions · on master</span></div></div>
+    <div class="pg on"><span class="i"><i data-px="gem" data-c="#f2c66d" data-s="16"></i></span><div><b>General</b><span>its face, its name</span></div></div>
+    <div class="pg"><span class="i"><i data-px="flame" data-c="#f2c66d" data-s="16"></i></span><div><b>Sessions</b><span>forgotten when they end</span></div></div>
+    <div class="pg"><span class="i"><i data-px="merge" data-c="#f2c66d" data-s="16"></i></span><div><b>Own copies</b><span>setup runs on each</span></div><span class="dot" style="background:#9bd28a"></span></div>
+    <div class="pg"><span class="i"><i data-px="spark" data-c="#f2c66d" data-s="16"></i></span><div><b>Timetable</b><span>nothing scheduled</span></div></div>
+    <div class="pg"><span class="i"><i data-px="ring" data-c="#f2c66d" data-s="16"></i></span><div><b>Git</b><span>GitHub as ktesfaye</span></div></div>
+  </div>
+  <div class="main">
+    <div class="x">×</div>
+    <div class="saved"><span class="dot" style="background:#9bd28a;box-shadow:0 0 8px #9bd28a"></span>saved</div>
+    <h2>General</h2>
+    <div class="lead">How Demo looks from the water and on the rack.</div>
+
+    <div class="hero">
+      <div class="stage">
+        <div class="pole"></div><div class="cloth"><img src="anvil.png"></div>
+        <div class="board"><div class="chain"><i></i><i></i></div><div class="plank"><img src="anvil.png"></div></div>
+        <div class="cap">its flag and its board, as they'll look</div>
+      </div>
+      <div class="pick">
+        <div class="pix label">its face · found in the checkout</div>
+        <div class="thumbs">
+          <div class="th on"><img src="anvil.png"><small>default</small></div>
+          <div class="th"><img src="crate.png"><small>icon.png</small></div>
+          <div class="th"><img src="barrel.png"><small>logo.svg</small></div>
+          <div class="th"><img src="pot.png"><small>favicon</small></div>
+          <div class="th"><img src="well.png"><small>og.png</small></div>
+          <div class="th"><img src="cart.png"><small>splash</small></div>
+          <div class="th"><img src="lantern.png"><small>mark.png</small></div>
+          <div class="th add"><div><em>+</em>from<br>anywhere</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec field">
+      <div class="f"><div class="k"><b>Name</b><span>on the rack and its flag</span></div><div class="v"><span class="name">Demo<i class="c"></i></span></div></div>
+      <div class="f"><div class="k"><b>Where it lives</b><span>the checkout</span></div><div class="v where"><span class="mono">~/mender-scratch/popups/repo</span><span class="gold" style="font-weight:650">Show in Finder</span><span class="gold" style="font-weight:650">Open in Cursor</span></div></div>
+      <div class="f"><div class="k"><b>Left out of search</b><span>on top of node_modules and the usual</span></div><div class="v tokens"><span class="tok">*.log<b>×</b></span><span class="tok">dist/<b>×</b></span><span class="tok">coverage/<b>×</b></span><span class="tok add">+ a glob</span></div></div>
+    </div>
+
+    <div class="danger"><i data-px="spark" data-c="#f08a72" data-s="16"></i><div><b>Take it off the island</b><br><span>Its 3 sessions come down with it. The folder stays exactly where it is.</span></div><span class="go">Remove…</span></div>
+  </div>
+</div>
+<script src="px.js"></script><script src="liquid-shaders.js"></script><script src="liquid.js"></script>
+<script>liquid('bg-island.png', { blur: 26, refThickness: 30, refDistance: 0.14, refDispersion: 10, glareConvergence: 0.95, glareRange: 24, glareHardness: 0.05, glareOpposite: 0, fresnelRange: 20 }).catch(e=>{document.body.dataset.err=e.message;document.body.dataset.ready=1})</script></body></html>

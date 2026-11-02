@@ -1,0 +1,204 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css">
+<style>
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-400-normal.woff2); }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-700-normal.woff2); font-weight: 700; }
+.lg::before { display: none } .lg { box-shadow: 0 24px 60px rgba(0,0,0,.35) !important }
+:root { --ask: #ff7a3a; --work: #f0a65a; --done: #9bd28a; --broke: #f08a72; --pj: #e6b866; }
+html, body { background: #000 }
+.abs { position: absolute }
+body.m-scene .glass, body.m-glass .scene { display: none }
+body.m-glass .scene { visibility: hidden }
+body:not(.m-glass) { background: #000 url(08-bg.png) 0 0/1480px 1020px }
+body.m-scene, body.m-plain { background: #000 url(08-bg.png) 0 0/1480px 1020px }
+.cr { font-family: 'Courier Prime', monospace }
+
+/* ---- head: one line of path, lanterns hanging off its end, meta under ---- */
+.path { position: absolute; left: 40px; top: 33px; height: 36px; display: flex; align-items: baseline; white-space: nowrap; }
+.pj { font: 400 22px 'Josefin Sans'; letter-spacing: .26em; text-transform: uppercase; color: var(--pj); margin-right: 14px; position: relative; top: 3px }
+.sl { font: 400 16px 'Courier Prime', monospace; color: rgba(246,236,219,.3); margin: 0 12px 0 0 }
+.ws { font: 400 16px 'Courier Prime', monospace; color: rgba(246,236,219,.78); margin-right: 12px; }
+.ws .k { color: rgba(246,236,219,.4); margin-right: 8px; font-size: 15px }
+body.s-open .ws { color: #f6ecdb }
+body.s-open .ws .k { color: rgba(246,236,219,.62) }
+.sn { font: 700 17px 'Courier Prime', monospace; color: #f6ecdb }
+.lants { position: absolute; top: 0; height: 70px; }
+.ln { position: absolute; top: 0; width: 17px; height: 70px; }
+.ln .cord { position: absolute; left: 8px; top: 27px; width: 1px; height: 9px; background: rgba(160,116,56,.6) }
+.ln img { position: absolute; left: 0; top: 36px; width: 16.5px; height: 28.5px; image-rendering: pixelated; }
+.ln .gl { position: absolute; left: -17px; top: 24px; width: 50px; height: 56px; background: radial-gradient(closest-side, var(--c), transparent 80%); opacity: .38; }
+.ln.ask .gl { opacity: .55 }
+.ln.off .gl { display: none }
+.hue-ask { filter: hue-rotate(-14deg) saturate(1.5) }
+.hue-done { filter: hue-rotate(74deg) saturate(.75) brightness(.9) }
+.hue-broke { filter: hue-rotate(-30deg) saturate(1.1) brightness(.92) }
+.ln.hov .gl { opacity: .85; left: -21px; width: 58px; top: 22px; height: 62px }
+.cutn { position: absolute; top: 49px; font: 10px 'Courier Prime', monospace; color: rgba(246,236,219,.4); white-space: nowrap }
+.meta { position: absolute; left: 42px; top: 82px; font: 12px 'Courier Prime', monospace; color: rgba(246,236,219,.42); white-space: nowrap }
+.meta .d { margin: 0 7px }
+.meta .bad { color: var(--broke) } .meta .need { color: var(--ask) }
+.meta .br { color: rgba(246,236,219,.5) }
+
+/* ---- rail ---- */
+.rail-line { left: 40px; right: 40px; top: 903px; height: 1px; background: rgba(160,110,50,.55) }
+.rl { position: absolute; top: 903px; }
+.rl .cord { position: absolute; left: 10px; top: 0; width: 1px; height: 16px; background: rgba(160,116,56,.65) }
+.rl img { position: absolute; left: 0; top: 14px; width: 22px; height: 38px; image-rendering: pixelated }
+.rl .gl { position: absolute; left: -30px; top: -4px; width: 190px; height: 76px; background: radial-gradient(closest-side, var(--c), transparent); opacity: .22 }
+.rl.ask .gl { opacity: .3 }
+.rl .nm { position: absolute; left: 34px; top: 17px; font: 12.5px 'Courier Prime', monospace; color: #f6ecdb; white-space: nowrap }
+.rl .sub { position: absolute; left: 34px; top: 35px; font: 11.5px 'Courier Prime', monospace; white-space: nowrap }
+.rl.off .gl { display: none }
+.railkey { position: absolute; right: 40px; top: 911px; font: 9.5px 'Josefin Sans'; letter-spacing: .26em; text-transform: uppercase; color: rgba(246,236,219,.3) }
+
+/* ---- glass ---- */
+.pop { left: 252px; top: 108px; width: 830px; border-radius: 26px; padding: 14px 14px 14px }
+.pop .row { position: relative; display: flex; align-items: center; height: 52px; padding: 0 14px 0 12px; border-radius: 14px; gap: 12px }
+.pop .row.on { background: rgba(255,240,215,.08); box-shadow: inset 0 0 0 1px var(--hair) }
+.pop .lz { position: relative; width: 26px; height: 36px; flex: none }
+.pop .lz img { position: absolute; left: 3px; top: 3px; width: 16.5px; height: 28.5px; image-rendering: pixelated; }
+.pop .lz .gl { position: absolute; left: -10px; top: -6px; width: 46px; height: 50px; background: radial-gradient(closest-side, var(--c), transparent 80%); opacity: .45 }
+.pop .lz.off .gl { display: none }
+.pop .lz .hs { position: absolute; left: 1px; top: 8px }
+.pop .what { flex: 1; min-width: 0 }
+.pop .l1 { display: flex; align-items: baseline; gap: 9px; white-space: nowrap }
+.pop .key { font: 700 12.5px 'Courier Prime', monospace; color: rgba(246,236,219,.5) }
+.pop .row.on .key { color: var(--ink) }
+.pop .ttl { font: 600 14.5px 'Figtree'; color: var(--ink); overflow: hidden; text-overflow: ellipsis }
+.pop .l2 { margin-top: 3px; font: 11.5px 'Courier Prime', monospace; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.pop .post { width: 150px; font: 600 12px 'Figtree'; white-space: nowrap; text-align: right; flex: none }
+.pop .fx { width: 168px; flex: none; display: flex; gap: 12px; justify-content: flex-start; align-items: center; font: 600 12px 'Figtree'; color: var(--ink-3); white-space: nowrap }
+.pop .fx span { display: inline-flex; align-items: center; gap: 5px; width: 50px }
+.pop .fx .none { width: auto; font-weight: 500; color: var(--ink-3); opacity: .8 }
+.pop .fx .q { color: var(--ink-3) } .pop .fx .b { color: var(--broke) } .pop .fx .n { color: var(--ask) } .pop .fx .g { color: var(--done); opacity: .75 } .pop .fx .w { color: var(--work) }
+.pop .foot { display: flex; align-items: center; padding: 12px 6px 2px 12px; margin-top: 4px; border-top: 1px solid var(--hair) }
+.ghost { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 11px; border-radius: 999px; color: var(--gold); font-weight: 650; font-size: 13px; background: var(--gold-soft); box-shadow: inset 0 0 0 1px rgba(242,198,109,.28) }
+.pop .hd { display: flex; align-items: center; padding: 2px 12px 8px; }
+.pop .hd .pix { flex: 1 }
+
+.tip { width: 424px; border-radius: 22px; padding: 14px 16px 14px }
+.tip .t1 { display: flex; align-items: center; gap: 8px }
+.tip .ty { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; color: var(--ink-2) }
+.tip .st { margin-left: auto; font-size: 11.5px; font-weight: 650; padding: 2px 9px; border-radius: 999px; background: rgba(255,240,215,.07); box-shadow: inset 0 0 0 1px var(--hair); color: var(--ink) }
+.tip h4 { text-wrap: balance; font: 500 18px/1.12 'Fraunces', serif; font-variation-settings: 'SOFT' 100,'opsz' 40; margin-top: 8px }
+.tip .ses { margin-top: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(255,240,215,.045); box-shadow: inset 0 0 0 1px var(--hair); font-size: 12.5px; display: flex; align-items: center; gap: 9px }
+.tip .ses .t { color: var(--ink); font-weight: 600 } .tip .ses .w { margin-left: auto; font-weight: 600; color: var(--ask); white-space: nowrap }
+.tip .mr { margin-top: 10px; display: flex; gap: 12px; align-items: center; font: 600 12.5px 'Figtree'; color: var(--ink-3) }
+.tip .mr .id { font: 700 12px 'Courier Prime', monospace; color: var(--ink-2) }
+.tip .mr span { white-space: nowrap; display: inline-flex; gap: 5px; align-items: center }
+.tip .mr .n { color: var(--ask) } .tip .mr .g { color: var(--done); opacity: .75 }
+.tip .br { margin-top: 9px; font: 11.5px 'Courier Prime', monospace; color: var(--ink-3) }
+.det { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px }
+</style>
+</head><body>
+<div class="scene" id="scene"></div>
+<div class="glass" id="glass"></div>
+<script src="px.js"></script>
+<script>
+window.PX_EXTRA = {
+  cross: ['.........', '.##...##.', '..##.##..', '...###...', '....#....', '...###...', '..##.##..', '.##...##.', '.........'],
+  check: ['.........', '.......#.', '......##.', '.#...##..', '.##.##...', '..###....', '...#.....', '.........', '.........'],
+  chat: ['.#######.', '#.......#', '#.......#', '#.......#', '.#######.', '..##.....', '...#.....', '.........', '.........'],
+  person: ['...###...', '..#...#..', '..#...#..', '...###...', '.........', '.#######.', '#.......#', '#.......#', '.........'],
+  clock: ['..#####..', '.#..#..#.', '#...#...#', '#...###.#', '#.......#', '#.......#', '.#.....#.', '..#####..', '.........'],
+  house: ['....#....', '...###...', '..#####..', '.#######.', '.##...##.', '.##.#.##.', '.##.#.##.', '.#######.', '.........'],
+  pen: ['......##.', '.....#.#.', '....#.#..', '...#.#...', '..#.#....', '.##.#....', '.###.....', '.........', '.........'],
+  story: ['.#####...', '.#...#...', '.#...#...', '.#...#...', '.#...#...', '.#.#.#...', '.##.##...', '.#...#...', '.........'],
+  bug: ['..#...#..', '...#.#...', '..#####..', '.#######.', '#.#####.#', '..#####..', '.#.###.#.', '#..###..#', '.........'],
+  task: ['.#######.', '#.......#', '#.##....#', '#..##..##', '#...####.', '#.......#', '#.......#', '.#######.', '.........'],
+};
+Object.assign(PX, window.PX_EXTRA);
+const Q = new URLSearchParams(location.search);
+const S = Q.get('s') || 'rest', M = Q.get('m') || 'plain';
+document.body.className = 'm-' + M + ' s-' + S;
+const SES = { ask: ['wants you', 'var(--ask)'], work: ['working', 'var(--work)'], done: ['done · unseen', 'var(--done)'], broke: ['broken', 'var(--broke)'], idle: ['idle', 'rgba(246,236,219,.42)'] };
+const W = [
+ { id: 'home', key: 'invest-web', ty: 'house', title: "the project's own folder", branch: 'main', ahead: 0, unc: 0, post: 'idle', ses: [['claude', 'idle', '']], mr: null, home: true },
+ { id: 'a', key: 'INV-71924', short: 'wash sale info', title: 'wash sale info', full: 'FE: G/L wash sale info, explaining why a loss was disallowed', type: 'story', status: 'In Progress', branch: 'inv-71924-wash-sale-info', ahead: 4, unc: 2, post: 'ask', pt: '4m', here: true,
+   ses: [['Reason line under each loss', 'work', '12m'], ['Lot link API', 'ask', '4m']], mr: { n: 482, ci: 'fail', job: 'lint', ap: 0, need: 2, cm: 3 } },
+ { id: 'b', key: 'INV-71880', title: 'cost basis export, split days', type: 'bug', status: 'In Review', branch: 'inv-71880-split-day-lots', ahead: 2, unc: 0, post: 'ask', pt: '7m',
+   ses: [['Split-day lots fix', 'ask', '7m']], mr: { n: 477, ci: 'pass', ap: 2, need: 2, cm: 1 }, tipTitle: 'Cost basis export drops lots bought on a split day' },
+ { id: 'c', key: 'INV-72011', title: 'Q4 tax doc banner copy', type: 'task', status: 'To Do', branch: 'inv-72011-q4-banner', ahead: 1, unc: 0, post: 'done', pt: '22m ago', ses: [['Banner copy', 'done', '22m ago']], mr: null },
+ { id: 'd', key: 'INV-71990', title: 'dividend reinvest toggle', type: 'story', status: 'In Progress', branch: 'inv-71990-drip-toggle', ahead: 6, unc: 3, post: 'work', pt: '5m',
+   ses: [['Toggle on account page', 'work', '5m'], ['Copy review', 'idle', '']], mr: { n: 485, draft: 1, ci: 'run', run: '2m', ap: 1, need: 2, cm: 0 } },
+ { id: 'e', key: 'INV-71702', title: 'flaky statements e2e', type: 'bug', status: 'In Progress', branch: 'inv-71702-flaky-statements', ahead: 3, unc: 1, post: 'broke', pt: '31m', ses: [['Statements e2e', 'broke', '31m']], mr: null },
+ { id: 'f', key: '', title: 'chart spike', hand: 1, branch: 'mender/chart-spike', ahead: 2, unc: 4, post: 'idle', ses: [['Chart spike', 'idle', '']], mr: null },
+ { id: 'g', key: 'INV-72040', title: 'gift lot holding period', cutting: 14, branch: 'inv-72040-gift-lot-holding', post: 'cut', ses: [], mr: null },
+];
+const ic = (n, c, s = 9) => `<i data-px="${n}" data-c="${c}" data-s="${s}"></i>`;
+const tone = { ask: '#ff7a3a', work: '#f0a65a', done: '#9bd28a', broke: '#f08a72' };
+const hue = (p) => ({ ask: "hue-ask", done: "hue-done", broke: "hue-broke" }[p] || "");
+const img = (p) => p === 'idle' || p === 'cut' ? 'lanternoff.png' : 'lantern.png';
+
+/* ---------- scene ---------- */
+const cur = W[1], mr = cur.mr;
+let h = '';
+h += `<div class="path"><span class="pj">invest-web</span><span class="sl">/</span><span class="ws"><span class="k">${cur.key}</span>${cur.short}</span><span class="sl">/</span><span class="sn">Reason line under each loss</span></div>`;
+h += `<div class="lants" id="lants"></div>`;
+h += `<div class="meta"><span class="br">${cur.branch}</span><span class="d">·</span>4 ahead<span class="d">·</span>2 uncommitted<span class="d">·</span><span class="bad">ci failed on lint</span><span class="d">·</span><span class="need">needs 2 approvals</span><span class="d">·</span><span class="need">3 comments to answer</span></div>`;
+// rail
+h += `<div class="abs rail-line"></div><div class="railkey">inv-71924</div>`;
+const rl = (x, nm, p, pt, hl) => `<div class="rl ${p === 'ask' ? 'ask' : ''}" style="left:${x}px;--c:${tone[p]}"><div class="gl"></div><div class="cord"></div><img class="${hue(p)}" src="lantern.png"><div class="nm">${nm}</div><div class="sub" style="color:${tone[p]}">${SES[p][0]} · ${pt}</div></div>`;
+h += rl(40, 'Reason line under each loss', 'work', '12m');
+h += rl(330, 'Lot link API', 'ask', '4m');
+h += `<div class="rl off" style="left:588px"><div class="cord"></div><img src="lanternoff.png" style="opacity:.8"></div>`;
+document.getElementById('scene').innerHTML = h;
+
+const others = W.filter((w) => !w.here);
+const hovId = S === 'hover' ? 'b' : null;
+// lantern row x
+const row = document.getElementById('lants');
+const startX = 862;
+let lh = '';
+others.forEach((w, i) => {
+  const x = startX + i * 31;
+  const c = tone[w.post] || '#000';
+  const lit = tone[w.post] ? '' : ' off';
+  w._x = x;
+  lh += `<div class="ln${lit}${w.post === 'ask' ? ' ask' : ''}${w.id === hovId ? ' hov' : ''}" style="left:${x}px;--c:${c}"><div class="gl"></div><div class="cord"></div><img class="${hue(w.post)}" src="${img(w.post)}"></div>`;
+  if (w.cutting) lh += `<div class="cutn" style="left:${x + 22}px">${w.cutting}s</div>`;
+});
+row.innerHTML = lh;
+
+/* ---------- glass ---------- */
+function facts(w) {
+  const m = w.mr;
+  if (w.cutting) return `<span class="none">cutting the copy</span>`;
+  if (!m) return `<span class="none">${w.home ? 'no merge request' : 'no merge request yet'}</span>`;
+  let ci = m.ci === 'fail' ? `<span class="b">${ic('cross', '#f08a72', 13.5)}${m.job}</span>` : m.ci === 'pass' ? `<span class="g">${ic('check', '#9bd28a', 13.5)}</span>` : `<span class="w">${ic('clock', '#f0a65a', 13.5)}${m.run}</span>`;
+  let ap = m.ap >= m.need ? `<span class="g">${ic('person', '#9bd28a', 13.5)}${m.ap}/${m.need}</span>` : `<span class="n">${ic('person', '#ff7a3a', 13.5)}${m.ap}/${m.need}</span>`;
+  let cm = m.cm ? `<span class="n">${ic('chat', '#ff7a3a', 13.5)}${m.cm}</span>` : `<span class="q"></span>`;
+  return ci + ap + cm;
+}
+function popRow(w) {
+  const c = tone[w.post], p = w.post;
+  const lz = w.home ? `<div class="lz off"><span class="hs">${ic('house', '#9bd28a', 18)}</span></div>`
+    : `<div class="lz${c ? '' : ' off'}" style="--c:${c || '#000'}"><div class="gl"></div><img class="${hue(p)}" src="${img(p)}"></div>`;
+  let key = w.home ? 'invest-web' : w.key || ic('pen', 'rgba(246,236,219,.5)', 9);
+  let post = w.cutting ? `<span style="color:rgba(246,236,219,.62)">being set up · ${w.cutting}s</span>` : `<span style="color:${SES[p][1]}">${SES[p][0]}${w.pt && p !== 'idle' ? ' · ' + w.pt : ''}</span>`;
+  const sub = w.cutting ? w.branch : `${w.branch}${w.ahead ? ' · ' + w.ahead + ' ahead' : ''}${w.unc ? ' · ' + w.unc + ' uncommitted' : ''}`;
+  return `<div class="row${w.here ? ' on' : ''}">${lz}<div class="what"><div class="l1"><span class="key">${key}</span><span class="ttl">${w.title}</span></div><div class="l2">${sub}</div></div><div class="post">${post}</div><div class="fx">${facts(w)}</div></div>`;
+}
+let g = '';
+if (S === 'open') {
+  g += `<div class="lg pop" data-lg='{"tint":[14,15,18,0.4],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":24}'>`;
+  W.forEach((w) => (g += popRow(w)));
+  g += `<div class="foot"><span class="ghost">${ic('plus', '#f2c66d', 13.5)}a new workspace</span></div></div>`;
+}
+if (S === 'hover') {
+  const w = W[2], m = w.mr, x = w._x - 26;
+  g += `<div class="lg tip abs" style="left:${x}px;top:76px" data-lg='{"tint":[14,15,18,0.4],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":20}'>
+   <div class="t1"><span class="cr" style="font-weight:700;font-size:12.5px;color:var(--ink-2)">${w.key}</span><span class="ty">${ic('bug', '#f6ecdb', 9)}bug</span><span class="st">In Review</span></div>
+   <h4>${w.tipTitle}</h4>
+   <div class="ses"><span style="color:#ff7a3a">${ic('flame', '#ff7a3a', 9)}</span><span class="t">Split-day lots fix</span><span class="w">wants you · 7m</span></div>
+   <div class="mr"><span class="id">!${m.n}</span><span class="g">${ic('check', '#9bd28a', 13.5)}ci passed</span><span class="g">${ic('person', '#9bd28a', 13.5)}2 of 2 approved</span><span class="n">${ic('chat', '#ff7a3a', 13.5)}1 to answer</span></div>
+   <div class="br">${w.branch} · ${w.ahead} ahead</div></div>`;
+}
+document.getElementById('glass').innerHTML = g;
+if (typeof pxRefresh === 'undefined') document.querySelectorAll('i[data-px]').forEach((el) => { el.innerHTML = pxIcon(el.dataset.px, el.dataset.c || 'currentColor', +(el.dataset.s || 18)); });
+</script>
+<script src="liquid-shaders.js"></script><script src="liquid.js"></script>
+<script>
+if (M === 'glass') liquid('08-head-' + S + '-scene.png', { blur: 24, lift: 1, refThickness: 24, refDistance: 0.12, refFactor: 1.5, refDispersion: 12, glareConvergence: 0.95, glareRange: 26, glareHardness: 0.05, glareOpposite: 0, fresnelRange: 20 }).catch(e => { document.body.dataset.err = e.message; document.body.dataset.ready = 1 });
+else setTimeout(() => document.body.dataset.ready = 1, 400);
+</script></body></html>

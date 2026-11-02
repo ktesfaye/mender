@@ -1,0 +1,258 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css">
+<style>
+@font-face { font-family: 'MenderHand'; src: url(fonts/pretty-neat-400-normal.woff2); }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); }
+.lg::before { display: none }
+.lg { box-shadow: 0 24px 60px rgba(0,0,0,.35) !important }
+:root { --asking: #ff6a2a; --working: #ff9a4a; --done: #9bd28a; --broken: #f08a72; }
+.cr { font-family: 'Courier Prime', monospace; }
+
+/* ---------- the face-up ticket ---------- */
+.face { left: 40px; top: 18px; width: 548px; height: 136px; border-radius: 26px; z-index: 5; transition: none; }
+.face .body { position: absolute; left: 0; top: 0; width: 380px; height: 136px; padding: 13px 18px 0 24px; }
+.r1 { display: flex; align-items: center; gap: 8px; height: 24px; }
+.tsign { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: rgba(255,240,215,.08); box-shadow: inset 0 0 0 1px var(--hair); color: var(--ink-2); }
+.st { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; background: rgba(255,240,215,.07); box-shadow: inset 0 0 0 1px var(--hair); color: var(--ink); }
+.pr { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-2); font-weight: 600; }
+.oj { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--gold); font-weight: 650; font-size: 12.5px; }
+.title { font-size: 25px; font-weight: 500; line-height: 1.1; margin-top: 5px; letter-spacing: -.012em; white-space: nowrap; }
+.full { margin-top: 3px; font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.desc { margin-top: 5px; font-size: 13px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tear { position: absolute; left: 380px; top: 16px; height: 104px; width: 4px; margin-left: -2px;
+  background: radial-gradient(circle, rgba(246,236,219,.45) 1.3px, transparent 1.8px) 0 0/4px 8px repeat-y; }
+.stub { position: absolute; left: 381px; top: 0; width: 167px; height: 136px; padding: 13px 14px 0 16px; }
+.num { display: flex; align-items: baseline; gap: 4px; font-family: 'Courier Prime', monospace; font-weight: 700; letter-spacing: .04em; }
+.num small { font-size: 11px; color: var(--ink-3); font-weight: 400; letter-spacing: .12em }
+.num b { font-size: 25px; font-weight: 700; color: var(--ink); line-height: 1 }
+.people { display: flex; gap: 12px; margin-top: 7px; height: 40px; align-items: flex-end; }
+.lan { position: relative; width: 22px; height: 38px; }
+.lan img { width: 22px; height: 38px; position: relative; z-index: 1; }
+.lan::before { content: ''; position: absolute; inset: -10px -12px; background: radial-gradient(closest-side, var(--lc), transparent 78%); opacity: .55; }
+.lan.off img { opacity: .55 }
+.lan.off::before { display: none }
+.br { margin-top: 6px; font: 9.5px 'Courier Prime', monospace; color: var(--ink-2); white-space: nowrap }
+.ah { margin-top: 3px; font-size: 11px; color: var(--ink-3); white-space: nowrap }
+.cut { position: absolute; width: 18px; height: 18px; border-radius: 50%; background-size: 1480px 1020px; box-shadow: inset 0 0 0 1px rgba(255,238,210,.14), inset 0 2px 5px rgba(0,0,0,.5); z-index: 3 }
+.underglow { position: absolute; left: 70px; width: 470px; top: 130px; height: 20px; z-index: 4; pointer-events: none;
+  background: radial-gradient(closest-side, var(--asking), transparent); opacity: .5; filter: blur(5px); }
+.edgeline { position: absolute; left: 64px; width: 500px; top: 152px; height: 2px; z-index: 6; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--asking) 18%, var(--asking) 82%, transparent); box-shadow: 0 0 14px 2px rgba(255,106,42,.55); }
+
+/* ---------- the hand ---------- */
+.fan { position: absolute; left: 0; top: 0; width: 1480px; height: 160px; z-index: 4; pointer-events: none }
+.c { position: absolute; top: 32px; width: 150px; height: 112px; transform-origin: 50% 230%; }
+.c .glow { position: absolute; left: -3px; top: 8px; bottom: 8px; width: 5px; border-radius: 4px; background: var(--c); filter: blur(2.5px); z-index: 2; }
+.c .spill { position: absolute; left: -38px; top: -4px; bottom: -4px; width: 60px; background: radial-gradient(closest-side at 100% 50%, var(--c), transparent); opacity: .5; z-index: 0; filter: blur(4px) }
+.c .under { position: absolute; left: 6px; right: 6px; bottom: -8px; height: 14px; background: radial-gradient(closest-side, var(--c), transparent); opacity: .55; filter: blur(4px); z-index: 0 }
+.c .f { position: absolute; inset: 0; border-radius: 16px; z-index: 1; overflow: hidden;
+  background: linear-gradient(180deg, rgba(40,41,47,.86), rgba(20,20,24,.9)); backdrop-filter: blur(10px) brightness(1.1);
+  box-shadow: inset 0 0 0 1px var(--hair), inset 1px 0 0 rgba(255,255,255,.07), -8px 0 18px rgba(0,0,0,.45);
+  -webkit-mask-image: radial-gradient(circle at 0 50%, transparent 7px, #000 7.6px); }
+.c .f::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 40px; background: linear-gradient(90deg, var(--c), transparent); opacity: .28; }
+.c .in { position: absolute; left: 16px; top: 10px; width: 62px; }
+.c .k { font: 700 9.5px 'Courier Prime', monospace; letter-spacing: .02em; color: var(--ink-2); white-space: nowrap }
+.c .t { margin-top: 5px; font-size: 11px; line-height: 1.17; font-weight: 650; color: var(--ink); }
+.c .sg { position: absolute; left: 16px; bottom: 9px; display: flex; align-items: center; gap: 5px; color: var(--ink-3); font: 8px 'Silkscreen'; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap }
+.c .rest { position: absolute; left: 92px; top: 0; bottom: 0; right: 0; opacity: 0 }
+.c .st { display: none }
+.c.up .st { display: inline-flex }
+.c.no .glow, .c.no .spill, .c.no .under { display: none }
+.c.no .f::before { display: none }
+.c.home .f { background: linear-gradient(180deg, rgba(76,104,64,.7), rgba(34,48,32,.88)); }
+.c.home { --c: #9bd28a }
+.c.home .f::before { display: none }
+.c.home .t { font-family: 'Fraunces', serif; font-size: 13.5px; font-weight: 500; font-variation-settings: 'SOFT' 100, 'opsz' 40; color: #e6f3dc; line-height: 1.1 }
+.c.home .k { color: #b5d9a8; font-size: 9.5px }
+.c.hand .f { background: linear-gradient(180deg, rgba(120,126,140,.34), rgba(70,74,86,.46)); }
+.c.hand .f::after { content: ''; position: absolute; left: 12px; right: 0; top: 0; bottom: 0; background: repeating-linear-gradient(180deg, transparent 0 21px, rgba(246,236,219,.07) 21px 22px); }
+.c.hand .nm { position: absolute; left: 17px; top: 17px; width: 64px; font: 25px/1 'MenderHand'; color: #f1ebdf; transform: rotate(-5deg); transform-origin: left top; z-index: 1 }
+.c.hand .sg { z-index: 1 }
+.c.print { top: 42px; }
+.c.print .f { background: linear-gradient(180deg, rgba(40,41,47,.55), rgba(20,20,24,.6)); box-shadow: inset 0 0 0 1px rgba(246,236,219,.22); border: 1.5px dashed rgba(246,236,219,.35) }
+.c.print .in { -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent 78%); }
+.c.print .cnt { position: absolute; left: 16px; bottom: 8px; line-height: 1.5; font: 7.5px 'Silkscreen'; letter-spacing: .04em; color: var(--ink-2); white-space: nowrap }
+.c.print .slot { position: absolute; left: 4px; right: 0; top: -14px; height: 12px; border-radius: 6px; background: rgba(0,0,0,.55); box-shadow: inset 0 0 0 1px var(--hair); }
+.c.deck { width: 70px; }
+.c.deck .f { background: repeating-linear-gradient(135deg, rgba(60,62,72,.82) 0 6px, rgba(40,42,50,.86) 6px 12px); -webkit-mask-image: none; }
+.c.deck .plus { position: absolute; left: 20px; top: 40px; }
+.c.deck .f::after { content: ''; position: absolute; inset: 7px; border-radius: 11px; box-shadow: inset 0 0 0 1px rgba(246,236,219,.15); }
+
+/* lifted */
+.c.up { transform: translateY(-9px) rotate(0deg) !important; z-index: 40 !important; }
+.c.up .rest { opacity: 1 }
+.c.up { width: 120px }
+.c.up .in { width: 96px }
+.c.up .t { font-family: 'Fraunces', serif; font-size: 14.5px; font-weight: 500; line-height: 1.12; margin-top: 4px; font-variation-settings: 'SOFT' 100, 'opsz' 40 }
+.c.up .f { -webkit-mask-image: radial-gradient(circle at 0 50%, transparent 7px, #000 7.6px) }
+.c.up .st { position: absolute; left: 16px; bottom: 8px; padding: 2px 9px 2px 7px; font-size: 11px }
+.c.up .sg { display: none }
+.c.up .spill { opacity: .8; left: -50px; width: 80px }
+
+/* ---------- the rail ---------- */
+.rail { position: absolute; left: 40px; right: 40px; top: 901px; height: 3px; border-radius: 2px; z-index: 3;
+  background: linear-gradient(90deg, var(--asking) 0, rgba(255,106,42,.8) 140px, rgba(255,106,42,.18) 520px, rgba(120,84,40,.35) 900px, rgba(120,84,40,.35)); box-shadow: 0 0 16px 1px rgba(255,106,42,.35); }
+.railwash { position: absolute; left: 20px; top: 904px; width: 640px; height: 90px; z-index: 2; background: radial-gradient(70% 100% at 18% 0, rgba(255,106,42,.16), transparent); }
+.tag { position: absolute; left: 40px; top: 908px; width: 214px; height: 50px; z-index: 4; border-radius: 12px 8px 8px 12px;
+  background: linear-gradient(180deg, rgba(48,44,44,.78), rgba(22,20,22,.86)); backdrop-filter: blur(10px);
+  box-shadow: inset 0 0 0 1px rgba(255,106,42,.35), 0 0 24px rgba(255,106,42,.2); padding: 8px 12px 0 24px;
+  -webkit-mask-image: radial-gradient(circle at 0 50%, transparent 6px, #000 6.6px); }
+.tag .k { font: 700 11.5px 'Courier Prime', monospace; letter-spacing: .06em; color: var(--ink) }
+.tag .t { margin-top: 3px; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.tag::after { content: ''; position: absolute; right: 22px; top: 8px; bottom: 8px; width: 2px; background: radial-gradient(circle, rgba(246,236,219,.4) 1px, transparent 1.4px) 0 0/2px 6px repeat-y }
+.rl { position: absolute; top: 904px; z-index: 4; display: flex; gap: 12px; align-items: flex-start; }
+.rl .cord { position: absolute; left: 10px; top: -3px; width: 1px; height: 18px; background: rgba(160,116,56,.7) }
+.rl .lan { margin-top: 12px; width: 22px; height: 38px }
+.rl .nm { margin-top: 18px; font: 12.5px 'Courier Prime', monospace; color: var(--ink); white-space: nowrap }
+.rl .sub { margin-top: 3px; font: 11.5px 'Courier Prime', monospace; color: var(--ink-3); white-space: nowrap }
+.rl.here .nm { font-weight: 700 }
+.rl .halo { position: absolute; left: -26px; top: 10px; width: 330px; height: 62px; background: radial-gradient(closest-side, rgba(255,154,74,.34), transparent); z-index: -1 }
+
+/* ---------- hover popover & open ---------- */
+.pop { left: 640px; top: 166px; width: 380px; height: 150px; border-radius: 24px; z-index: 50; padding: 16px 20px; display: none }
+.pop .row { display: flex; gap: 14px; align-items: center; padding: 8px 0 }
+.pop .nm { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 500; font-variation-settings: 'SOFT' 100, 'opsz' 40 }
+.pop .sb { font-size: 12.5px; color: var(--ink-2); margin-top: 2px }
+body.hover .pop { display: block }
+.more { display: none }
+body.open .face { height: 660px }
+body.open .more { display: block }
+.more { position: absolute; left: 0; right: 0; top: 136px; padding: 24px 28px 0 28px; }
+.fold { position: absolute; left: 20px; right: 20px; top: 135px; height: 2px; background: radial-gradient(circle, rgba(246,236,219,.4) 1.2px, transparent 1.7px) 0 0/8px 2px repeat-x }
+.sec { margin: 0 0 10px 0 }
+.more p { font-size: 13.5px; line-height: 1.5; color: var(--ink-2); max-width: 470px; margin-bottom: 8px }
+.more ul { list-style: none; margin: 4px 0 0; }
+.more li { display: flex; gap: 10px; font-size: 13.5px; color: var(--ink-2); padding: 3px 0 }
+.more li::before { content: ''; width: 7px; height: 7px; margin-top: 6px; background: var(--ember); flex: none; opacity: .0 }
+.more li i { margin-top: 3px }
+.fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px }
+.fd { border-radius: 14px; padding: 9px 12px 10px; background: rgba(255,240,215,.045); box-shadow: inset 0 0 0 1px var(--hair) }
+.fd .l { font: 9px 'Silkscreen'; letter-spacing: .12em; color: var(--ink-3); text-transform: uppercase }
+.fd .v { margin-top: 5px; font-size: 13.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.fd .v.s { font-weight: 500; color: var(--ink-2) }
+.foot { display: flex; align-items: center; justify-content: space-between; margin-top: 16px }
+.ghost { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; color: var(--gold); font-weight: 650; font-size: 13.5px; box-shadow: inset 0 0 0 1px rgba(242,198,109,.4); background: rgba(242,198,109,.08) }
+body.open .full { white-space: normal }
+</style></head><body>
+<script>
+window.PX_EXTRA = {
+  story: ['.#######.','.#.....#.','.#.....#.','.#.....#.','.#.....#.','.#.....#.','.#..#..#.','.#.#.#.#.','.##...##.'],
+  bug: ['..#...#..','...###...','..#####..','#.#####.#','..#####..','#.#####.#','..#####..','...###...','.........'],
+  task: ['.#######.','.#.....#.','.#....##.','.##..##..','.#.###...','.#..#....','.#.......','.#######.','.........'],
+  home: ['....#....','...###...','..#####..','.#######.','.##...##.','.##.#.##.','.##.#.##.','.#######.','.........'],
+  ext: ['...######','.......##','......#.#','.....#..#','....#....','...#.....','..#......','.#.......','.........'],
+  half: ['...###...','..##.##..','.##..###.','.##..###.','.##..###.','.##..###.','..##.##..','...###...','.........'],
+  eye: ['.........','..#####..','.#..#..#.','#..###..#','.#..#..#.','..#####..','.........','.........','.........'],
+  uparr: ['....#....','...###...','..#.#.#..','....#....','....#....','....#....','.........','.........','.........'],
+};
+</script>
+<div class="cr" style="position:absolute;left:0;top:0;width:0;height:0"></div>
+
+<div class="fan" id="fan"></div>
+
+<div class="railwash"></div>
+<div class="rail"></div>
+<div class="tag"><div class="k">INV-71924</div><div class="t">Why a loss was disallowed</div></div>
+<div class="rl here" style="left:282px"><div class="cord"></div><div class="halo"></div><div class="lan" style="--lc:#ff9a4a"><img class="sprite" src="lantern.png"></div><div><div class="nm">Reason line under each loss</div><div class="sub">thinking &middot; 12m</div></div></div>
+<div class="rl" style="left:622px"><div class="cord"></div><div class="lan" style="--lc:#ff6a2a"><img class="sprite" src="lantern.png"></div><div><div class="nm">Lot link API</div><div class="sub" style="color:#ff9a6a">wants you &middot; a question</div></div></div>
+<div class="rl" style="left:900px"><div class="cord"></div><div class="lan off"><img class="sprite" src="lanternoff.png"></div></div>
+
+<div class="lg face" data-lg='{"tint":[14,15,18,0.42],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":22}'>
+  <div class="body">
+    <div class="r1">
+      <span class="tsign"><i data-px="story" data-s="13"></i></span>
+      <span class="st"><i data-px="half" data-s="12" data-c="#f6ecdb"></i>In progress</span>
+      <span class="pr"><i data-px="uparr" data-s="12" data-c="#f6ecdb"></i>high</span>
+      <span class="oj">open in jira<i data-px="ext" data-s="11" data-c="#f2c66d"></i></span>
+    </div>
+    <div class="title serif">Why a loss was disallowed</div>
+    <div class="full">FE: G/L wash sale info, explaining why a loss was disallowed</div>
+    <div class="desc">Under each G/L loss, say why it was disallowed.</div>
+  </div>
+  <div class="tear"></div>
+  <div class="stub">
+    <div class="num"><small>INV-</small><b>71924</b></div>
+    <div class="people"><div class="lan" style="--lc:#ff9a4a"><img class="sprite" src="lantern.png"></div><div class="lan" style="--lc:#ff6a2a"><img class="sprite" src="lantern.png"></div></div>
+    <div class="br">inv-71924-wash-sale-info</div>
+    <div class="ah">3 ahead &middot; 2 uncommitted</div>
+  </div>
+  <div class="more">
+    <div class="pix sec">what it is</div>
+    <p>Users who sold at a loss see the loss on the G/L page, but not why part of it was disallowed. Add a reason line under each loss row that says the sale fell inside a wash sale window.</p>
+    <p>The reason links the replacement lot, so a tax preparer can follow it without opening the lots table.</p>
+    <ul>
+      <li><i data-px="ring" data-s="11" data-c="#f6ecdb"></i>Reason line shows only on disallowed or partly disallowed losses</li>
+      <li><i data-px="ring" data-s="11" data-c="#f6ecdb"></i>Replacement lot is a link, with its purchase date</li>
+      <li><i data-px="ring" data-s="11" data-c="#f6ecdb"></i>Export to CSV carries the same wording</li>
+    </ul>
+    <div class="pix sec" style="margin-top:20px">from jira</div>
+    <div class="fields">
+      <div class="fd"><div class="l">assignee</div><div class="v">Kirubel</div></div>
+      <div class="fd"><div class="l">reporter</div><div class="v">Marisol Ade</div></div>
+      <div class="fd"><div class="l">sprint</div><div class="v">Sprint 41</div></div>
+      <div class="fd"><div class="l">epic</div><div class="v">Disallowed losses</div></div>
+      <div class="fd"><div class="l">story points</div><div class="v">5</div></div>
+      <div class="fd"><div class="l">fix version</div><div class="v">2026.11</div></div>
+      <div class="fd"><div class="l">labels</div><div class="v s">tax, frontend</div></div>
+      <div class="fd"><div class="l">linked</div><div class="v s">relates to INV-71880</div></div>
+      <div class="fd"><div class="l">updated</div><div class="v s">2 hours ago</div></div>
+    </div>
+    <div class="foot"><span class="ghost">open in jira<i data-px="ext" data-s="12" data-c="#f2c66d"></i></span><span class="mono faint" style="font-size:11.5px">3 ahead &middot; 2 uncommitted &middot; inv-71924-wash-sale-info</span></div>
+  </div>
+</div>
+<div class="underglow" style="left:70px"></div>
+<div class="edgeline"></div>
+
+<div class="lg pop" data-lg='{"tint":[14,15,18,0.5],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":22}'>
+  <div class="pix" style="margin-bottom:4px">in INV-71880 &middot; 1 session</div>
+  <div class="row"><div class="lan" style="--lc:#ff6a2a;width:22px;height:38px"><img class="sprite" src="lantern.png" style="width:22px;height:38px"></div>
+    <div><div class="nm">Split-day lots</div><div class="sb">wants you &middot; which lot a split-day buy belongs to</div></div></div>
+  <div class="mono" style="font-size:11px;color:var(--ink-3);margin-top:6px">fix/inv-71880-cost-basis-split &middot; 1 ahead &middot; 0 uncommitted</div>
+</div>
+
+<script src="px.js"></script><script src="liquid-shaders.js"></script><script src="liquid.js"></script>
+<script>
+const S = new URLSearchParams(location.search).get('s') || '';
+if (S) document.body.classList.add(S);
+const IC = (n, c, s) => `<i data-px="${n}" data-s="${s}" data-c="${c}"></i>`;
+const cards = [
+  { cls: 'home no', k: 'THE FOLDER', t: 'invest-web', sg: 'main', home: 1 },
+  { k: 'INV-71880', t: 'Cost basis export', ty: 'bug', sg: 'review', c: 'var(--asking)', st: ['eye', 'In review'], hov: 1 },
+  { k: 'INV-72011', t: 'Q4 tax banner copy', ty: 'task', sg: 'to do', c: 'var(--done)', st: ['ring', 'To Do'] },
+  { k: 'INV-71990', t: 'Dividend reinvest toggle', ty: 'story', sg: 'doing', c: 'var(--working)', st: ['half', 'In progress'] },
+  { k: 'INV-71702', t: 'Flaky e2e on statements', ty: 'bug', sg: 'doing', c: 'var(--broken)', st: ['half', 'In progress'] },
+  { cls: 'hand no', hand: 'chart spike', sg: 'no ticket' },
+  { cls: 'print no', k: 'INV-72040', t: 'Gift lot holding period', print: 1 },
+  { cls: 'deck no', deck: 1 },
+];
+const fan = document.getElementById('fan');
+cards.forEach((d, i) => {
+  const el = document.createElement('div');
+  el.className = 'c ' + (d.cls || '') + (S === 'hover' && d.hov ? ' up' : '');
+  const x = 606 + i * 78 + (S === 'hover' && i > 1 ? 30 : 0);
+  el.style.left = x + 'px';
+  el.style.zIndex = 10 + i;
+  el.style.setProperty('--c', d.c || 'transparent');
+  if (!d.c && !d.cls) el.classList.add('no');
+  const rot = (i - 3.5) * 0.7;
+  if (!(S === 'hover' && d.hov)) el.style.transform = `rotate(${rot}deg)`;
+  let h = `<div class="spill"></div><div class="under"></div><div class="glow"></div><div class="f">`;
+  if (d.home) h += `<div class="in"><i data-px="home" data-s="16" data-c="#cfeac4"></i><div class="t" style="margin-top:4px">${d.t}</div><div class="k" style="margin-top:3px">${d.sg}</div></div>`;
+  else if (d.hand) h += `<div class="nm">${d.hand}</div><div class="sg">${d.sg}</div>`;
+  else if (d.print) h += `<div class="in"><div class="k">${d.k}</div><div class="t">${d.t}</div></div><div class="cnt">setting up<br><span style="font-size:13px;color:var(--ink)">14s</span></div>`;
+  else if (d.deck) h += `<div class="plus"><i data-px="plus" data-s="30" data-c="#f2c66d"></i></div>`;
+  else h += `<div class="in"><div class="k">${d.k}</div><div class="t">${d.t}</div></div><div class="sg">${IC(d.ty === 'bug' ? 'bug' : d.ty === 'task' ? 'task' : 'story', '#f6ecdb', 10)}${d.sg}</div><span class="st">${IC(d.st[0], '#f6ecdb', 11)}${d.st[1]}</span>`;
+  h += `</div>`;
+  if (d.print) h += `<div class="slot"></div>`;
+  el.innerHTML = h;
+  fan.appendChild(el);
+});
+// notches cut into the face-up ticket show the yard itself
+const face = document.querySelector('.face');
+function notch(x, y) { const n = document.createElement('div'); n.className = 'cut'; n.style.left = (x - 9) + 'px'; n.style.top = (y - 9) + 'px'; face.appendChild(n); return n; }
+const ns = [notch(380, 0), notch(380, 136)];
+if (S === 'open') { ns.push(notch(0, 136), notch(548, 136)); const f = document.createElement('div'); f.className = 'fold'; face.appendChild(f); }
+document.querySelectorAll('i[data-px]').forEach((el) => { if (!el.innerHTML) el.innerHTML = pxIcon(el.dataset.px, el.dataset.c || 'currentColor', +(el.dataset.s || 18)); });
+liquid('02-hand-bg.png', { blur: 28, lift: 1, refThickness: 22, refDistance: 0.12, refFactor: 1.5, refDispersion: 12, glareConvergence: 0.95, glareRange: 26, glareHardness: 0.05, glareOpposite: 0, fresnelRange: 20 })
+ .then(() => { const bg = new URL('02-hand-bg.png', location.href).href; ns.forEach((n) => { const r = n.getBoundingClientRect(); n.style.backgroundImage = `url(${bg})`; n.style.backgroundPosition = `${-r.left}px ${-r.top}px`; }); })
+ .catch(e => { document.body.dataset.err = e.message; document.body.dataset.ready = 1 });
+</script></body></html>

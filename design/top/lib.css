@@ -1,0 +1,24 @@
+@font-face { font-family: Said; src: url(grunell-400-normal.otf); }
+@font-face { font-family: Jos; src: url(josefin-sans-600-normal.woff2); }
+@font-face { font-family: Cour; src: url(courier-prime-400-normal.woff2); }
+@font-face { font-family: Cour; font-weight: 700; src: url(courier-prime-700-normal.woff2); }
+@font-face { font-family: Pix; src: url(silkscreen-400-normal.woff2); }
+@font-face { font-family: Corm; font-style: italic; src: url(cormorant-garamond-500-italic.woff2); }
+html, body { margin: 0; background: #120d08; }
+.win { position: relative; width: 1800px; height: 1048px; background: url(bg.png) 0 0 / 1800px auto no-repeat; overflow: hidden; border-radius: 10px; }
+.top { position: absolute; left: 0; top: 0; width: 1800px; height: 180px; }
+.rack { position: absolute; right: 0; top: 0; width: 380px; height: 87.5px; background: url(rack-real.png) 0 0 / 380px auto no-repeat; z-index: 6; }
+.sign { font-family: Said; font-size: 17px; color: #2a1a0e; letter-spacing: 0.1px; }
+.sign.lit { color: #3a2208; }
+.sign.dim { color: #2a1a0e; opacity: .8; }
+.num { font-family: Cour; font-size: 11px; color: #4a2f18; }
+.caps { font-family: Jos; font-size: 17px; letter-spacing: 6px; color: #f0c45a; }
+.capsInk { font-family: Jos; font-size: 15px; letter-spacing: 5px; color: #3a2208; }
+.meta { font-family: Cour; font-size: 12.5px; color: #c9a26a; }
+.meta .g { color: #e9b84f; }
+.meta .s { color: #7d6448; padding: 0 6px; }
+.title { font-family: Cour; font-weight: 700; font-size: 21px; color: #f3e6cc; }
+.said { font-family: Said; font-size: 24px; color: #f3e6cc; }
+.ital { font-family: Corm; font-style: italic; font-size: 22px; color: #f3e6cc; }
+.pix { font-family: Pix; font-size: 10px; letter-spacing: 2px; color: #e9b84f; }
+.timer { font-family: Cour; font-size: 11px; color: #ffb347; }

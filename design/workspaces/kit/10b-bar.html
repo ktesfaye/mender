@@ -1,0 +1,211 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css">
+<style>
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-400-normal.woff2); }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-700-normal.woff2); font-weight: 700; }
+:root { --ask: #ff7a3a; --work: #f0a65a; --done: #9bd28a; --broke: #f08a72; --pj: #e6b866; }
+html, body { background: #000 }
+body.m-scene { background: #000 url(10b-bar-bg.png) 0 0/1480px 1020px }
+body.m-glass .scene { visibility: hidden }
+.abs { position: absolute }
+.cr { font-family: 'Courier Prime', monospace }
+.lg::before { display: none }
+
+/* head: the yard's own two lines */
+.path { position: absolute; left: 40px; top: 30px; display: flex; align-items: baseline; white-space: nowrap }
+.pj { font: 400 22px 'Josefin Sans'; letter-spacing: .26em; text-transform: uppercase; color: var(--pj); margin-right: 14px; position: relative; top: 3px }
+.sl { font: 400 16px 'Courier Prime', monospace; color: rgba(246,236,219,.3); margin: 0 12px 0 0 }
+.sn { font: 700 17px 'Courier Prime', monospace; color: #f6ecdb }
+.meta { position: absolute; left: 42px; top: 64px; font: 12px 'Courier Prime', monospace; color: rgba(246,236,219,.42); white-space: nowrap }
+.meta .d { margin: 0 7px } .meta .tt { color: rgba(246,236,219,.62) } .meta .bad { color: var(--broke) } .meta .need { color: var(--ask) }
+.hrule { position: absolute; left: 40px; right: 40px; top: 150px; height: 1px; background: rgba(160,110,50,.4) }
+
+/* rail */
+.rl { position: absolute; top: 903px }
+.rl .cord { position: absolute; left: 10px; top: 0; width: 1px; height: 16px; background: rgba(160,116,56,.65) }
+.rl img { position: absolute; left: 0; top: 14px; width: 22px; height: 38px; image-rendering: pixelated }
+.rl .gl { position: absolute; left: -30px; top: -4px; width: 190px; height: 76px; background: radial-gradient(closest-side, var(--c), transparent); opacity: .22 }
+.rl.ask .gl { opacity: .3 }
+.rl .nm { position: absolute; left: 34px; top: 17px; font: 12.5px 'Courier Prime', monospace; color: #f6ecdb; white-space: nowrap }
+.rl .sub { position: absolute; left: 34px; top: 35px; font: 11.5px 'Courier Prime', monospace; white-space: nowrap }
+.railkey { position: absolute; right: 40px; top: 911px; display: flex; gap: 10px; align-items: center; font: 9.5px 'Josefin Sans'; letter-spacing: .26em; text-transform: uppercase; color: rgba(246,236,219,.34) }
+.railkey b { font-weight: 400; color: rgba(242,198,109,.0) }
+.hue-ask { filter: hue-rotate(-14deg) saturate(1.5) }
+.hue-done { filter: hue-rotate(74deg) saturate(.75) brightness(.9) }
+.hue-broke { filter: hue-rotate(-30deg) saturate(1.1) brightness(.92) }
+
+/* ---------- the glass bar ---------- */
+.bar { left: 40px; top: 92px; width: 1256px; height: 50px; border-radius: 25px; display: flex; align-items: center; padding: 0 6px; gap: 0; box-shadow: 0 18px 44px rgba(0,0,0,.35) !important }
+.bar > * { position: relative; z-index: 2 }
+.seg { position: relative; height: 42px; border-radius: 21px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 8px; flex: none; z-index: 2 }
+.seg.hov { background: rgba(255,240,215,.075); box-shadow: inset 0 0 0 1px var(--hair), inset 0 1px 0 rgba(255,255,255,.07) }
+.lz { position: relative; width: 17px; height: 29px; flex: none }
+.lz img { position: absolute; left: 0; top: 0; width: 16.5px; height: 28.5px; image-rendering: pixelated }
+.lz .gl { position: absolute; left: -14px; top: -8px; width: 46px; height: 46px; background: radial-gradient(closest-side, var(--c), transparent 80%); opacity: .34 }
+.lz.ask .gl { opacity: .5 }
+.lz.hs { width: 18px; display: grid; place-items: center }
+.tx { min-width: 0; flex: 1 }
+.k { display: flex; justify-content: space-between; align-items: center; gap: 6px; font: 700 11px 'Courier Prime', monospace; color: rgba(246,236,219,.42); white-space: nowrap; line-height: 12px; width: 100% }
+.t { font: 650 13.5px 'Figtree'; color: rgba(246,236,219,.86); white-space: nowrap; line-height: 16px; margin-top: 1px }
+.sg { display: flex; gap: 6px; align-items: center; flex: none }
+.sg span { display: inline-flex; gap: 3px; align-items: center; font: 650 11.5px 'Figtree'; white-space: nowrap }
+.sg .b { color: var(--broke) } .sg .n { color: var(--ask) }
+.divider { width: 1px; height: 26px; background: var(--hair); margin: 0 6px 0 4px; flex: none; box-shadow: 1px 0 0 rgba(0,0,0,.25) }
+.seg.home .t { color: rgba(246,236,219,.86) }
+.meter { display: inline-flex; gap: 2px; align-items: center }
+.meter i { width: 5px; height: 6px; background: rgba(246,236,219,.16) } .meter i.on { background: var(--work); box-shadow: 0 0 5px rgba(240,166,90,.6) }
+.cutn { font: 650 10.5px 'Figtree'; color: rgba(246,236,219,.7); margin-left: 6px }
+.mrow { display: flex; align-items: center; margin-top: 3px; height: 7px }
+/* the one you're standing in: a raised lens inside the bar */
+.lens { position: relative !important; height: 42px; border-radius: 21px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 12px; z-index: 2; box-shadow: 0 6px 18px rgba(0,0,0,.28) !important }
+.lens::before { display: block; content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(90% 120% at 22% -30%, rgba(255,196,120,.26), transparent 62%), linear-gradient(180deg, rgba(255,246,228,.12), rgba(255,240,215,.03) 55%); box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 0 0 1px rgba(255,238,210,.07) }
+.lens > * { position: relative }
+.lens .k { color: rgba(246,236,219,.6) }
+.lens .t { font-size: 14px; color: #f6ecdb; line-height: 17px }
+.lens .lk { font: 700 11px 'Courier Prime', monospace; color: rgba(246,236,219,.55); margin-right: 8px }
+.lens .q { font: 500 12px 'Figtree'; line-height: 13px; margin-top: 1px; white-space: nowrap; color: rgba(246,236,219,.62) }
+.add { width: 36px; height: 36px; border-radius: 50%; flex: none; margin-left: auto; display: grid; place-items: center; background: rgba(255,240,215,.07); box-shadow: inset 0 0 0 1px var(--hair), inset 0 1px 0 rgba(255,255,255,.08) }
+
+/* ---------- popovers ---------- */
+.pop { border-radius: 26px; padding: 18px 18px 16px; box-shadow: 0 24px 60px rgba(0,0,0,.4) !important }
+.pop > * { position: relative }
+.ph { display: flex; align-items: center; gap: 8px }
+.ph .id { font: 700 12.5px 'Courier Prime', monospace; color: var(--ink-2); margin-right: 2px }
+.chip .dot { width: 7px; height: 7px }
+.pop h3 { font: 500 24px/1.12 'Fraunces', serif; font-variation-settings: 'SOFT' 100,'opsz' 60; letter-spacing: -.005em; margin-top: 12px; text-wrap: balance }
+.pop .desc { margin-top: 8px; font-size: 13.5px; line-height: 1.4; color: var(--ink-2) }
+.pop .br { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 5px 12px 5px 10px; border-radius: 999px; font: 600 12.5px 'Figtree'; background: rgba(122,170,255,.1); box-shadow: inset 0 0 0 1px rgba(122,170,255,.25); color: #c4d7ff }
+.card { margin-top: 14px; border-radius: 18px; background: rgba(255,240,215,.045); box-shadow: inset 0 0 0 1px var(--hair); padding: 6px }
+.card .hd { display: flex; align-items: center; padding: 8px 10px 6px }
+.card .hd .pix { flex: 1 }
+.card .hd .mid { font: 700 12px 'Courier Prime', monospace; color: var(--ink-2) }
+.fr { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 13px }
+.fr .ic { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: rgba(0,0,0,.22); flex: none }
+.fr b { display: block; font-size: 14px; font-weight: 650 }
+.fr span.s { display: block; font-size: 12px; color: var(--ink-3); margin-top: 1px }
+.fr .r { margin-left: auto; font-size: 12px; font-weight: 600; white-space: nowrap }
+.b { color: var(--broke) } .n { color: var(--ask) } .g { color: var(--done) } .w { color: var(--work) }
+.ses { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 13px }
+.ses .lz { width: 17px; height: 29px }
+.ses b { font-size: 14px; font-weight: 650; display: block }
+.ses .s { font-size: 12px; color: var(--ink-3); margin-top: 1px; display: block }
+.ses .r { margin-left: auto; font-size: 12.5px; font-weight: 650; white-space: nowrap }
+.btns { display: flex; gap: 10px; margin-top: 14px; align-items: center }
+.ghost { display: inline-flex; align-items: center; gap: 8px; padding: 8px 15px 8px 12px; border-radius: 999px; color: var(--gold); font-weight: 650; font-size: 13px; background: var(--gold-soft); box-shadow: inset 0 0 0 1px rgba(242,198,109,.28) }
+.tok { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,.25); box-shadow: inset 0 0 0 1px var(--hair) }
+</style></head><body>
+<div class="scene" id="scene"></div>
+<div id="glass"></div>
+<script src="px.js"></script>
+<script>
+window.PX_EXTRA = {
+  cross: ['.........', '.##...##.', '..##.##..', '...###...', '....#....', '...###...', '..##.##..', '.##...##.', '.........'],
+  check: ['.........', '.......#.', '......##.', '.#...##..', '.##.##...', '..###....', '...#.....', '.........', '.........'],
+  chat: ['.#######.', '#.......#', '#.......#', '#.......#', '.#######.', '..##.....', '...#.....', '.........', '.........'],
+  person: ['...###...', '..#...#..', '..#...#..', '...###...', '.........', '.#######.', '#.......#', '#.......#', '.........'],
+  clock: ['..#####..', '.#..#..#.', '#...#...#', '#...###.#', '#.......#', '#.......#', '.#.....#.', '..#####..', '.........'],
+  house: ['....#....', '...###...', '..#####..', '.#######.', '.##...##.', '.##.#.##.', '.##.#.##.', '.#######.', '.........'],
+  story: ['.#####...', '.#...#...', '.#...#...', '.#...#...', '.#...#...', '.#.#.#...', '.##.##...', '.#...#...', '.........'],
+  bug: ['..#...#..', '...#.#...', '..#####..', '.#######.', '#.#####.#', '..#####..', '.#.###.#.', '#..###..#', '.........'],
+  task: ['.#######.', '#.......#', '#.##....#', '#..##..##', '#...####.', '#.......#', '#.......#', '.#######.', '.........'],
+  hi: ['....#....', '...###...', '..#.#.#..', '....#....', '....#....', '....#....', '.........', '.........', '.........'],
+};
+Object.assign(PX, window.PX_EXTRA);
+const Q = new URLSearchParams(location.search);
+const S = Q.get('s') || 'rest', M = Q.get('m') || 'scene';
+document.body.className = 'm-' + M;
+const ic = (n, c, s = 9) => `<i data-px="${n}" data-c="${c}" data-s="${s}"></i>`;
+const tone = { ask: '#ff7a3a', work: '#f0a65a', done: '#9bd28a', broke: '#f08a72' };
+const words = { ask: 'wants you', work: 'working', done: 'done, unseen', broke: 'broken', idle: 'idle' };
+const hue = (p) => ({ ask: 'hue-ask', done: 'hue-done', broke: 'hue-broke' }[p] || '');
+const img = (p) => (tone[p] ? 'lantern.png' : 'lanternoff.png');
+const lz = (p, extra = '') => `<span class="lz ${p === 'ask' ? 'ask' : ''}" style="--c:${tone[p] || '#000'}">${tone[p] ? '<span class="gl"></span>' : ''}<img class="${hue(p)}" src="${img(p)}"></span>`;
+const SOREC = '#f08a72', ASKC = '#ff7a3a', MOSS = '#9bd28a';
+
+const SEG = [
+  { id: 'a', here: 1, key: 'INV-71924', t: 'Wash sale info', post: 'ask', sg: [['cross', 'b', 'lint'], ['person', 'n', '0/2'], ['chat', 'n', '3']] },
+  { id: 'b', key: 'INV-71880', t: 'Cost basis export', post: 'ask', sg: [['chat', 'n', '1']], w: 154 },
+  { id: 'c', key: 'INV-72011', t: 'Q4 banner', post: 'done', sg: [], w: 118 },
+  { id: 'd', key: 'INV-71990', t: 'Dividend toggle', post: 'work', sg: [['person', 'n', '1/2']], w: 144 },
+  { id: 'e', key: 'INV-71702', t: 'Flaky e2e', post: 'broke', sg: [], w: 118 },
+  { id: 'f', hand: 1, t: 'Chart spike', post: 'idle', sg: [], w: 118 },
+  { id: 'g', key: 'INV-72040', t: 'Gift lots', cut: 14, post: 'idle', sg: [], w: 118 },
+];
+function bar() {
+  let h = `<div class="lg bar" data-lg='{"tint":[14,15,18,0.46],"glareFactor":0.7,"fresnelFactor":0.22,"refThickness":20}'>`;
+  h += `<div class="seg home" style="width:84px"><span class="lz hs">${ic('house', MOSS, 16)}</span><div class="tx"><div class="k">main</div><div class="t">home</div></div></div><span class="divider"></span>`;
+  SEG.forEach((s) => {
+    const sg = s.sg.map(([i, c, v]) => `<span class="${c}">${ic(i, c === 'b' ? SOREC : ASKC, 11)}${v}</span>`).join('');
+    if (s.here) {
+      h += `<div class="lg lens" style="width:340px" data-lg='{"tint":[96,90,82,0.2],"glareFactor":0.9,"fresnelFactor":0.3,"refThickness":15}'>${lz(s.post)}<div class="tx"><div class="t">${s.t}</div><div class="q"><span class="lk">${s.key}</span>In Progress</div></div><div class="sg" style="margin-left:auto">${sg}</div></div>`;
+      return;
+    }
+    const meter = '<div class="mrow"><span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="cutn">' + s.cut + 's</span></div>';
+    const keyL = s.hand ? `<span>${ic('pen', 'rgba(246,236,219,.42)', 9)} by hand</span>` : `<span>${s.key}</span>`;
+    const keyrow = keyL + (sg ? `<span class="sg">${sg}</span>` : '');
+    h += `<div class="seg${S === 'hover' && s.id === 'b' ? ' hov' : ''}" id="seg-${s.id}" style="width:${s.w}px">${s.cut ? '<span class="lz"><img src="lanternoff.png" style="opacity:.6"></span>' : lz(s.post)}<div class="tx"><div class="k">${keyrow}</div><div class="t">${s.t}</div>${s.cut ? meter : ''}</div></div>`;
+  });
+  h += `<span class="add">${ic('plus', '#f2c66d', 15)}</span></div>`;
+  return h;
+}
+function fixLens() {}
+/* lens quiet line, added after build so it is inside the .tx */
+let g = bar();
+
+const mrRow = (i, c, bt, st, r, rc) => `<div class="fr"><span class="ic">${ic(i, c, 15)}</span><div><b>${bt}</b><span class="s">${st}</span></div><span class="r ${rc}">${r}</span></div>`;
+const lantRow = (p, nm, st, r) => `<div class="ses">${lz(p)}<div><b>${nm}</b><span class="s">${st}</span></div><span class="r" style="color:${tone[p] || 'var(--ink-3)'}">${r}</span></div>`;
+
+if (S === 'hover') {
+  g += `<div class="lg pop" style="left:466px;top:152px;width:438px" data-lg='{"tint":[14,15,18,0.4],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":22}'>
+  <div class="ph"><span class="id">INV-71880</span><span class="chip">${ic('bug', '#f6ecdb', 11)}bug</span><span class="chip"><span class="dot" style="background:#7aaaff"></span>In Review</span></div>
+  <h3>Cost basis export drops lots bought on a split day</h3>
+  <span class="br">${ic('merge', '#7aaaff', 13)}inv-71880-split-day-lots</span>
+  <div class="card"><div class="hd"><span class="pix">its merge request</span><span class="mid">!477</span></div>
+   ${mrRow('check', MOSS, 'ci passed', 'every job green', 'all good', 'g')}
+   ${mrRow('person', MOSS, '2 of 2 approved', 'mina, tomas', 'enough', 'g')}
+   ${mrRow('chat', ASKC, '1 comment to answer', 'on the split-day query', 'yours', 'n')}
+  </div>
+  <div class="card"><div class="hd"><span class="pix">in there</span></div>
+   ${lantRow('ask', 'Split-day lots fix', 'asking about the lot order', 'wants you · 7m')}
+  </div>
+  <div class="btns"><span class="ghost">${ic('story', '#f2c66d', 13)}open in jira</span><span class="ghost">${ic('merge', '#f2c66d', 13)}open in gitlab</span></div></div>`;
+}
+if (S === 'open') {
+  g += `<div class="lg pop" style="left:56px;top:152px;width:690px" data-lg='{"tint":[14,15,18,0.4],"glareFactor":0.7,"fresnelFactor":0.25,"refThickness":22}'>
+  <div class="ph"><span class="id">INV-71924</span><span class="chip">${ic('story', '#f6ecdb', 11)}story</span><span class="chip"><span class="dot" style="background:#7aaaff"></span>In Progress</span><span class="chip">${ic('hi', '#ff9a4a', 11)}high</span>
+   <span style="margin-left:auto" class="chip"><span class="dot" style="background:#9bd28a"></span>you are here</span></div>
+  <h3 style="font-size:27px">FE: G/L wash sale info, explaining why a loss was disallowed</h3>
+  <div class="desc">Under each loss in the G/L report, say in a line why it was disallowed: the sale, the repurchase inside thirty days, and how much carries into the new lot.</div>
+  <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><span class="br" style="margin-top:0">${ic('merge', '#7aaaff', 13)}inv-71924-wash-sale-info</span><span class="chip">4 ahead</span><span class="chip"><span class="dot" style="background:#f2c66d"></span>2 uncommitted</span></div>
+  <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:14px">
+   <div class="card"><div class="hd"><span class="pix">its merge request</span><span class="mid">!482</span></div>
+    ${mrRow('cross', SOREC, 'ci failed', 'the lint job: 2 errors in WashSaleNote', 'lint', 'b')}
+    ${mrRow('person', ASKC, 'needs 2 approvals', 'nobody has looked yet', '0 of 2', 'n')}
+    ${mrRow('chat', ASKC, '3 comments to answer', '2 on the lot link, 1 on the copy', 'yours', 'n')}
+   </div>
+   <div class="card"><div class="hd"><span class="pix">in there</span></div>
+    ${lantRow('work', 'Reason line under each loss', 'writing the line', '12m')}
+    ${lantRow('ask', 'Lot link API', 'which lot to link to?', 'wants you · 4m')}
+   </div>
+  </div>
+  <div class="btns"><span class="ghost">${ic('story', '#f2c66d', 13)}open in jira</span><span class="ghost">${ic('merge', '#f2c66d', 13)}open in gitlab</span></div></div>`;
+}
+
+/* ---------- scene ---------- */
+let h = `<div class="path"><span class="pj">invest-web</span><span class="sl">/</span><span class="sn">Reason line under each loss</span></div>`;
+h += `<div class="meta">Claude Code<span class="d">·</span>12m<span class="d">·</span>4 turns</div>`;
+h += `<div class="hrule"></div>`;
+const rl = (x, nm, p, pt) => `<div class="rl ${p === 'ask' ? 'ask' : ''}" style="left:${x}px;--c:${tone[p]}"><div class="gl"></div><div class="cord"></div><img class="${hue(p)}" src="lantern.png"><div class="nm">${nm}</div><div class="sub" style="color:${tone[p]}">${words[p]} · ${pt}</div></div>`;
+h += rl(40, 'Reason line under each loss', 'work', '12m') + rl(330, 'Lot link API', 'ask', '4m');
+h += `<div class="rl" style="left:588px"><div class="cord"></div><img src="lanternoff.png" style="opacity:.8"></div>`;
+h += `<div class="railkey">inv-71924 · wash sale info</div>`;
+document.getElementById('scene').innerHTML = h;
+document.getElementById('glass').innerHTML = M === 'glass' ? g : '';
+document.querySelectorAll('i[data-px]').forEach((el) => { el.innerHTML = pxIcon(el.dataset.px, el.dataset.c || 'currentColor', +(el.dataset.s || 18)); });
+</script>
+<script src="liquid-shaders.js"></script><script src="liquid.js"></script>
+<script>
+if (M === 'glass') liquid('10b-bar-scene.png', { blur: 26, lift: 1, refThickness: 20, refDistance: 0.12, refFactor: 1.5, refDispersion: 12, glareConvergence: 0.95, glareRange: 26, glareHardness: 0.05, glareOpposite: 0, fresnelRange: 20 }).catch(e => { document.body.dataset.err = e.message; document.body.dataset.ready = 1 });
+else setTimeout(() => document.body.dataset.ready = 1, 500);
+</script></body></html>

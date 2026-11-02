@@ -1,0 +1,127 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="theme.css">
+<style>
+.lg::before { display: none; }
+.win { left: 452px; top: 150px; width: 990px; height: 680px; padding: 28px 32px; }
+.head { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+.av { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; background: radial-gradient(circle at 50% 35%, rgba(217,119,87,.55), rgba(217,119,87,.08) 75%); box-shadow: inset 0 0 0 1px rgba(255,200,170,.25); }
+.head h1 { font: 500 32px 'Fraunces'; line-height: 1; }
+.head .sub { margin-top: 7px; display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--ink-2); }
+.head .acts { margin-left: auto; display: flex; gap: 8px; }
+.ghost { padding: 9px 14px; border-radius: 999px; color: var(--gold); font-weight: 650; font-size: 13.5px; background: rgba(242,198,109,.08); box-shadow: inset 0 0 0 1px rgba(242,198,109,.25); display: inline-flex; gap: 8px; align-items: center; }
+.ghost.plain { background: none; box-shadow: none; }
+.sec { margin-top: 24px; }
+.sec .label { display: flex; justify-content: space-between; align-items: baseline; }
+.sec .label em { font: 12px 'Figtree'; letter-spacing: 0; text-transform: none; font-style: normal; color: var(--ink-3); }
+.models { display: grid; grid-template-columns: repeat(4, 1fr) 110px; gap: 10px; }
+.m { position: relative; padding: 14px 14px 12px; border-radius: 18px; background: rgba(255,240,215,.045); box-shadow: inset 0 0 0 1px var(--hair); }
+.m b { display: block; font-size: 16px; font-weight: 650; color: var(--gold); }
+.m span { display: block; margin-top: 3px; font-size: 12px; color: var(--ink-3); line-height: 1.3; }
+.m .cost { margin-top: 12px; display: flex; gap: 3px; align-items: center; }
+.m .cost i { width: 10px; height: 6px; border-radius: 1px; background: rgba(255,240,215,.12); }
+.m .cost i.f { background: var(--ember); }
+.m .cost small { margin-left: 6px; font-size: 11px; color: var(--ink-3); }
+.m.on { background: linear-gradient(180deg, rgba(242,198,109,.2), rgba(242,198,109,.07)); box-shadow: inset 0 0 0 1.5px rgba(242,198,109,.55); }
+.m.on::after { content: '✓'; position: absolute; top: 12px; right: 14px; color: var(--gold); font-weight: 800; font-size: 13px; }
+.m.fable { background: linear-gradient(180deg, rgba(167,128,255,.16), rgba(167,128,255,.05)); box-shadow: inset 0 0 0 1px rgba(167,128,255,.35); }
+.m.fable b { color: #c9b2ff; display: flex; gap: 7px; align-items: center; }
+.m.fable .cost i.f { background: #a780ff; }
+.m.more { display: grid; place-items: center; text-align: center; color: var(--gold); font-weight: 650; font-size: 13px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.seg { display: flex; padding: 4px; border-radius: 14px; background: rgba(0,0,0,.22); box-shadow: inset 0 0 0 1px var(--hair); }
+.seg span { flex: 1; text-align: center; padding: 9px 4px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--gold); }
+.seg span small { display: block; font-size: 10.5px; color: var(--ink-3); font-weight: 500; margin-top: 1px; }
+.seg span.on { background: rgba(255,240,215,.12); color: var(--ink); box-shadow: inset 0 1px 0 rgba(255,255,255,.1); }
+.flames { display: flex; gap: 2px; justify-content: center; margin-bottom: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.cp { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--gold); background: rgba(255,240,215,.05); box-shadow: inset 0 0 0 1px var(--hair); }
+.cp .dot { width: 6px; height: 6px; }
+.cp.add { border: 1px dashed rgba(242,198,109,.4); box-shadow: none; background: none; }
+.foot { position: absolute; left: 32px; right: 32px; bottom: 22px; display: flex; align-items: center; gap: 10px; padding-top: 16px; border-top: 1px solid var(--hair); }
+.foot .note { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+.others { display: flex; gap: 8px; align-items: center; }
+.hand { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: rgba(255,240,215,.05); box-shadow: inset 0 0 0 1px var(--hair); font-size: 13px; font-weight: 600; color: var(--gold); }
+.hand i.b { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.3); }
+</style></head><body>
+<div class="lg win" data-lg='{"tint":[14,15,18,0.42],"glareFactor":0.7,"fresnelFactor":0.22}'>
+  <div class="x">×</div>
+  <div class="crumbs"><span class="gold">yard</span><span class="faint">›</span><span class="mute">who works here</span></div>
+
+  <div class="head">
+    <div class="av"><i data-px="spark" data-c="#ffd2bf" data-s="30"></i></div>
+    <div>
+      <h1>Claude Code</h1>
+      <div class="sub"><span class="chip" style="padding:3px 9px"><span class="dot" style="background:#9bd28a"></span>up to date</span>working in popup test · signed in</div>
+    </div>
+    <div class="acts">
+      <span class="ghost plain">Bring it up to date</span>
+      <span class="ghost">Swap who works here</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="pix label">thinking with <em>for this session only</em></div>
+    <div class="models">
+      <div class="m on"><b>Opus 5.5</b><span>complex work and everyday tasks</span><div class="cost"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><small>steady</small></div></div>
+      <div class="m fable"><b><i data-px="gem" data-c="#c9b2ff" data-s="14"></i>Fable 5.1</b><span>your toughest challenges</span><div class="cost"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><small>dearest</small></div></div>
+      <div class="m"><b>Sonnet 5.5</b><span>efficient, for simpler tasks</span><div class="cost"><i class="f"></i><i class="f"></i><i></i><i></i><small>light</small></div></div>
+      <div class="m"><b>Haiku 4.5</b><span>fastest, quick answers</span><div class="cost"><i class="f"></i><i></i><i></i><i></i><small>lightest</small></div></div>
+      <div class="m more"><div>8 older<br><span style="color:var(--ink-3);font-weight:500;font-size:11.5px;margin-top:3px;display:block">Opus 5 and back</span></div></div>
+    </div>
+  </div>
+
+  <div class="sec two">
+    <div>
+      <div class="pix label">how hard it thinks</div>
+      <div class="seg">
+        <span><div class="flames"><i data-px="flame" data-c="#ff9a4a" data-s="12"></i></div>low</span>
+        <span class="on"><div class="flames"><i data-px="flame" data-c="#ff9a4a" data-s="12"></i><i data-px="flame" data-c="#ff9a4a" data-s="12"></i></div>medium</span>
+        <span><div class="flames"><i data-px="flame" data-c="#ff9a4a" data-s="12"></i><i data-px="flame" data-c="#ff9a4a" data-s="12"></i><i data-px="flame" data-c="#ff9a4a" data-s="12"></i></div>high</span>
+        <span><div class="flames"><i data-px="flame" data-c="#ff9a4a" data-s="12"></i><i data-px="flame" data-c="#ff9a4a" data-s="12"></i><i data-px="flame" data-c="#ff9a4a" data-s="12"></i><i data-px="flame" data-c="#ff9a4a" data-s="12"></i></div>max</span>
+      </div>
+    </div>
+    <div>
+      <div class="pix label">how it works</div>
+      <div class="seg">
+        <span>asks first<small>every edit</small></span>
+        <span class="on">auto<small>decides itself</small></span>
+        <span>plans<small>reads only</small></span>
+        <span>anything<small>no asking</small></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec two">
+    <div>
+      <div class="pix label">what it can reach <em>3 servers</em></div>
+      <div class="chips">
+        <span class="cp"><span class="dot" style="background:#9bd28a"></span>github</span>
+        <span class="cp"><span class="dot" style="background:#9bd28a"></span>playwright</span>
+        <span class="cp"><span class="dot" style="background:#f08a72"></span>linear<span style="color:var(--sore);font-weight:500;font-size:11.5px">won't start</span></span>
+        <span class="cp add">+ add one</span>
+      </div>
+    </div>
+    <div>
+      <div class="pix label">what it's been taught <em>5 skills</em></div>
+      <div class="chips">
+        <span class="cp">mockup</span><span class="cp">brainstorming</span><span class="cp">scrapling</span><span class="cp">homework</span><span class="cp">dataviz</span>
+        <span class="cp add">+ teach one</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="pix label">also on this machine</div>
+    <div class="others">
+      <span class="hand"><i class="b"><i data-px="ring" data-c="#f2c66d" data-s="14"></i></i>Codex</span>
+      <span class="hand"><i class="b"><i data-px="plus" data-c="#f2c66d" data-s="14"></i></i>21 more could work here</span>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span class="ghost plain" style="padding-left:0"><i data-px="down" data-c="#f2c66d" data-s="13"></i>Write it all out to Downloads</span>
+    <span class="ghost plain"><i data-px="shell" data-c="#f2c66d" data-s="13"></i>Start one like this in a terminal</span>
+    <span class="note">swapping sends this one home</span>
+  </div>
+</div>
+<script src="px.js"></script><script src="liquid-shaders.js"></script><script src="liquid.js"></script>
+<script>liquid('bg-busy.png', { blur: 30, refThickness: 28, refDistance: 0.12, refDispersion: 10, glareConvergence: 0.95, glareRange: 24, glareHardness: 0.05, glareOpposite: 0, fresnelRange: 20 }).catch(e=>{document.body.dataset.err=e.message;document.body.dataset.ready=1})</script></body></html>

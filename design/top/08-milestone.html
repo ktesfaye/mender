@@ -1,0 +1,25 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="lib.css">
+<div class="win"><div class="top" id="t"></div></div>
+<script src="lib2.js"></script><script src="kit.js"></script><script src="small.js"></script>
+<script>
+loadKit().then(() => {
+const t = document.getElementById('t');
+const g = makeCanvas(t, 3);
+ruleLine(t, 18, 882, 69);
+// a small crossroads standing on the rule: where you are, and the one place that wants you
+const PX = 447;
+kitPost(g, PX, 30, 70);
+board(g, t, PX + 4 - 46, 34, 46, 'l', 'pale', '');
+house(g, PX - 20, 36.5, '#2a1708');
+board(g, t, PX + 2, 34, 30, 'r', 'pale', '');
+glow(t, PX + 3, 40, 34, '#ffc060', .2);
+board(g, t, PX + 4 - 82, 48, 82, 'l', 'dim', NUM('71702') + 'Flaky e2e', { style: 'padding-left:4px' });
+board(g, t, PX + 2, 48, 40, 'r', 'dim', '14s', { ink: '#ffb04a', size: 12 });
+sealS(g, PX + 2 + 40 - 12, 52, '#d0473a');
+// the session on the left, what it thinks with on the right, both as before but quieter
+title(t, 20, 22);
+model(t, 880, 40);
+});
+</script>
