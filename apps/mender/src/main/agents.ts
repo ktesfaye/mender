@@ -858,10 +858,8 @@ export function createAgents(
     noteGoing();
     /* Which of Claude's own conversations each session is, or the pick-up
        starts a new one with none of what came before. */
-    if (pickingUp.size) {
-      await index.ready;
-      records = index.current();
-    }
+    await index.ready;
+    records = index.current();
     for (const [task, cut] of pickingUp) {
       log.info('agents: picking back up', {
         area: 'agents',
@@ -1185,6 +1183,11 @@ export function createAgents(
     if (!said && !carrying?.length && !hidden?.trim())
       return { success: false, error: { kind: 'nothing' } };
     await loaded;
+    /* A carry-on armed before a restart fires the instant the village opens;
+       launching before the index has said which of Claude's conversations
+       this is would start a blank one and overwrite the link to the real one. */
+    await index.ready;
+    records = index.current();
     const record = (await tasks.list()).find((candidate) => candidate.id === task);
     if (!record) return { success: false, error: { kind: 'no-such-task' } };
 
@@ -1367,6 +1370,8 @@ export function createAgents(
 
   const wake = async (task: string): Promise<Told> => {
     await loaded;
+    await index.ready;
+    records = index.current();
     unlooked.delete(task);
     const record = (await tasks.list()).find((candidate) => candidate.id === task);
     if (!record) return { success: false, error: { kind: 'no-such-task' } };
