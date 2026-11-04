@@ -11,9 +11,11 @@ import {
   type Grip,
   type MenuCommand,
   type TableAsk,
+  type Vitals,
   type Watching,
 } from '@shared/channels';
 import { menderWireContract, type menderDomainContracts } from '@shared/contract';
+import { wireFlight } from './flight';
 
 declare global {
   interface Window {
@@ -33,6 +35,8 @@ declare global {
       table: (to: (ask: TableAsk) => void) => void;
       /** How many villagers are still lit, named before a quit happens. */
       quitCost: (to: (n: number) => void) => void;
+      /** The page saying it is alive, for the host to keep the clock on. */
+      vitals: (now: Vitals) => void;
       /** The second press: quit anyway. */
       confirmQuit: () => void;
       /** What the native app menu asked for. */
@@ -74,7 +78,9 @@ export function wire(): Promise<MenderClient> {
   cached ??= (async () => {
     const portPromise = awaitWirePort(window, { channel: MENDER_WIRE_CHANNEL });
     await window.mender.requestWirePort();
-    const connection = connect(domPortTransport((await portPromise) as DomPortLike));
+    const connection = connect(domPortTransport((await portPromise) as DomPortLike), {
+      instrumentation: wireFlight,
+    });
     return client(menderWireContract, connection);
   })();
   return cached;

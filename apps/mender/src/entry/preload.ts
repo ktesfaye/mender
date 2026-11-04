@@ -13,12 +13,14 @@ import {
   MENDER_QUIT_COST_CHANNEL,
   MENDER_PICK_FOLDER_CHANNEL,
   MENDER_START_DRAG_CHANNEL,
+  MENDER_VITALS_CHANNEL,
   MENDER_TABLE_CHANNEL,
   MENDER_WATCH_CHANNEL,
   MENDER_WIRE_CHANNEL,
   type Grip,
   type MenuCommand,
   type TableAsk,
+  type Vitals,
   type Watching,
 } from '../shared/channels';
 
@@ -171,6 +173,8 @@ contextBridge.exposeInMainWorld('mender', {
     quitCost = to;
   },
   confirmQuit: () => ipcRenderer.send(MENDER_CONFIRM_QUIT_CHANNEL),
+  /* The page saying it is alive, for the host to keep the clock on. */
+  vitals: (now: Vitals) => ipcRenderer.send(MENDER_VITALS_CHANNEL, now),
   /* What the native app menu asked for. */
   menu: (to: (command: MenuCommand) => void) => {
     menued = to;

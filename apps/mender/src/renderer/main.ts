@@ -1,3 +1,4 @@
+import { note as flightNote, startFlight, trouble as flightTrouble } from './flight';
 import { FILE_SCHEME } from './yard/prose';
 import type { HostDependencyView } from '@emdash/core/primitives/host-dependencies/api';
 import {
@@ -164,6 +165,7 @@ function stamp(): string {
  * it, and everything it has to say arrives on one wooden board.
  */
 async function boot(): Promise<void> {
+  startFlight();
   const pixi = new Application();
   await pixi.init({
     width: Math.round(window.innerWidth * pageZoom()),
@@ -5263,7 +5265,15 @@ async function boot(): Promise<void> {
     const tell = async (said: string): Promise<void> => {
       const task = inside;
       const saying = watching;
-      if (!task || !saying || cutting.has(task.id)) return;
+      if (!task || !saying || cutting.has(task.id)) {
+        flightTrouble('send dropped before it left', {
+          chars: said.length,
+          standingIn: task?.id ?? null,
+          boardOpen: Boolean(saying),
+          beingCutDown: task ? cutting.has(task.id) : false,
+        });
+        return;
+      }
       const carrying = [...saying.carrying()];
       const notes = [...saying.notes()];
       /* Every pinned note rides in with what is actually said, file and line
@@ -5289,13 +5299,25 @@ async function boot(): Promise<void> {
       draftTimers.delete(task.id);
       drafts.delete(task.id);
       void client.agents.setDraft({ task: task.id, text: '' });
+      const sentAt = performance.now();
+      flightNote('send: leaving the board', {
+        task: task.id,
+        chars: text.length,
+        carrying: carrying.length,
+        notes: notes.length,
+        working: saying.working(),
+      });
       const heard = await client.agents.tell(
         { task: task.id, text, ...(carrying.length ? { carrying } : {}) },
         { timeoutMs: 0 }
       );
+      const took = Math.round(performance.now() - sentAt);
       if (!heard.success) {
+        flightTrouble('send: refused', { task: task.id, ms: took, kind: heard.error.kind });
         say(heard.error.kind === 'refused' ? heard.error.because : 'nobody heard that.', 6000);
+        return;
       }
+      flightNote('send: host took it', { task: task.id, ms: took });
     };
 
     const answered = async (optionId: string, requestId?: string): Promise<void> => {

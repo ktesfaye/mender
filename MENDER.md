@@ -53,7 +53,7 @@ tab strip.
 
 | | |
 |---|---|
-| `~/Library/Application Support/Mender/logs/` | what the app, every worker, every agent's CLI and the window said, one JSON-lines file a day, a month kept. Not for him: read it first when something went wrong. Mood changes, what was said to a session and whether it queued, every failure the agent reported and when it cleared |
+| `~/Library/Application Support/Mender/logs/` | what the app, every worker, every agent's CLI and the window said, one JSON-lines file a day, a month kept. Not for him: read it first when something went wrong. Mood changes, what was said to a session and whether it queued, every failure the agent reported and when it cleared. Also the window's own flight recorder: `grep 'flight:'` for every send leaving the board and the host taking it (same call id on both sides), calls that never came back, the page unable to draw or answer (with the script that held it), stuck slides, graphics loss, and `area":"vitals"` for sleep, wake, lock, a page that stopped answering and the numbers every five minutes |
 | `docs/mender/STATE.md` | how far along this actually is: every ledger row's state and the wave it belongs to. The only thing allowed to answer "how much is left" |
 | `docs/mender/BUILD-CATALOG.md` | the feature ledger, the open design questions, the build list, the art list, the risks |
 | `docs/mender/catalog/` | the nine source audits that document was built from |

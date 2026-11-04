@@ -47,6 +47,7 @@ import { restoreTextSize } from './text-size';
 import { createTuiSessions, mergedMoods } from './tui-sessions';
 import { createUpdates } from './updates';
 import { createVillageController } from './village';
+import { watchVitals } from './vitals';
 import { restoredBounds, watchWindowBounds } from './window-state';
 import { installWire } from './wire';
 
@@ -234,6 +235,7 @@ async function openVillageWindow(): Promise<BrowserWindow> {
     process.stdout.write(`[renderer] ${message} (${source}:${line})\n`);
   });
   logWindow(window.webContents);
+  watchVitals(window);
   window.webContents.on('render-process-gone', (_event, details) => {
     process.stdout.write(`[renderer] gone: ${details.reason}\n`);
   });

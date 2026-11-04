@@ -85,3 +85,23 @@ export const MENDER_PICK_FOLDER_CHANNEL = 'mender:pick-folder';
  */
 export const MENDER_GRIP_CHANNEL = 'mender:grip';
 export type Grip = 'start' | 'move' | 'double';
+
+/**
+ * Channel the page uses to say it is alive, and how it is doing. The host keeps
+ * the clock on it: a page that stops saying so while its window is on screen is
+ * frozen, and that is only ever visible from outside the page.
+ */
+export const MENDER_VITALS_CHANNEL = 'mender:vitals';
+export type Vitals = {
+  /** The page's own clock, so a beat that arrived late can be told from one sent late. */
+  at: number;
+  looking: Watching;
+  /** Bytes of the page's script heap in use. */
+  heap: number;
+  /** Elements in the document. A number that only climbs is a leak. */
+  nodes: number;
+  /** Wire calls issued and not yet answered. */
+  waiting: number;
+  /** The oldest of them, and how long it has been waiting. */
+  oldest: { path: string; ms: number } | null;
+};

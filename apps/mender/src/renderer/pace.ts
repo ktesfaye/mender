@@ -137,6 +137,11 @@ function everyMs(): number {
   return 1000 / (falling ? FALLING : RESTING);
 }
 
+/** What the host last said about whether anybody is looking. */
+export function lookingNow(): Watching {
+  return watch;
+}
+
 /** Whether anybody is looking, which the main process is the one to know. */
 export function watched(now: Watching): void {
   if (now === watch) return;
