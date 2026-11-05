@@ -3945,19 +3945,27 @@ async function boot(): Promise<void> {
        drawn has neither. Looked at again every few seconds, since a session
        can pin its first design at any moment. */
     let toolsAsked = 0;
+    /* What each checkout's board said last, by when its file last changed, so
+       the look every few seconds asks only whether it has, rather than having
+       the whole board read and sent over again. */
+    const tablesSeen = new Map<string, { stamp: number; drawn: boolean }>();
     refreshTools = () => {
       const project = open ? projectOn(open.district) : undefined;
       if (!project) return;
       const asked = ++toolsAsked;
+      const seen = tablesSeen.get(project.path);
       void Promise.all([
         client.jira.linkOf({ project: project.id }).catch(() => null),
-        client.drafting.read({ path: project.path, stamp: 0 }).catch(() => null),
+        client.drafting.read({ path: project.path, stamp: seen?.stamp ?? 0 }).catch(() => null),
       ]).then(([link, table]) => {
+        const drawn =
+          table?.same && seen ? seen.drawn : Boolean(table && (table.board || table.trouble));
+        if (table) tablesSeen.set(project.path, { stamp: table.stamp, drawn });
         const now = open ? projectOn(open.district) : undefined;
         if (asked !== toolsAsked || now?.id !== project.id) return;
         shelf.setTools({
           jira: Boolean(link) || quest?.project.id === project.id,
-          drafting: Boolean(table && (table.board || table.trouble)) || tableOf?.id === project.id,
+          drafting: drawn || tableOf?.id === project.id,
         });
       });
     };

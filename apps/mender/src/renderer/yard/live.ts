@@ -209,9 +209,26 @@ export async function openYard(
      session on it, then one with no checkout, then the real one, and every
      one of those was a redraw that read as the place reloading. */
   let ready = false;
-  const again = (): void => {
-    if (ready) changed(build());
+  /* Drawn once a frame however many changes came in it: a session waking
+     replays its whole history a change at a time, and rebuilding the board
+     for each of them was hundreds of boards nobody saw. */
+  let pending = 0;
+  let gone = false;
+  const draw = (): void => {
+    if (!pending) return;
+    window.cancelAnimationFrame(pending);
+    pending = 0;
+    if (ready && !gone) changed(build());
   };
+  const again = (): void => {
+    if (!ready || pending) return;
+    pending = window.requestAnimationFrame(draw);
+    window.setTimeout(draw, 250);
+  };
+  shut.push(async () => {
+    gone = true;
+    if (pending) window.cancelAnimationFrame(pending);
+  });
 
   /* Pictures coming back onto the line, either off a turn called off before
      anything came of it or left there when the yard was last walked out of. */

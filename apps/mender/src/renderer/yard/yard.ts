@@ -21,6 +21,8 @@
 import type { Drew } from '@shared/building';
 import { sessionLine } from '@shared/five-hours';
 import type { Offer } from '../board/offer';
+import { askKey, gate } from '../glass/asks';
+import { columnMenu, lanternMenu, signCardPane, workspaceMenu } from '../glass/slabs';
 import {
   arrange,
   arrangement,
@@ -63,14 +65,13 @@ import {
 } from './motion';
 import { packed } from './pack';
 import { holdUp } from './picture-view';
-import { askKey, gate } from '../glass/asks';
 import { larger, onThisMachine } from './pictures';
 import { pressing } from './press';
 import { prose } from './prose';
 import { makeScrim, type Reading } from './scrim';
 import { KIT_NAMES, emberLantern, greenLantern, sprite } from './sprite';
 import { stand as standAsking } from './standing';
-import { columnMenu, lanternMenu, signCardPane, workspaceMenu } from '../glass/slabs';
+import { stretches } from './stretch';
 import { astop, walking, type Walking } from './walk';
 import type {
   Chapter,
@@ -89,7 +90,6 @@ import type {
 } from './what';
 import { hiddenCount, revealMore, windowStart } from './window';
 import { box, exact, firelight, folk, label, row, rule, said, stack } from './write';
-import { stretches } from './stretch';
 
 /*
  * On a Mac the window's own three buttons float over the top left corner of
@@ -1192,10 +1192,12 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const near = (ids: string[]): string => {
       const left = rail.filter((one) => !ids.includes(one.id));
       return (
-        left.find((one) => one.id === id) ??
-        left.find((one) => rail.indexOf(one) >= at) ??
-        left.at(-1)
-      )?.id ?? '';
+        (
+          left.find((one) => one.id === id) ??
+          left.find((one) => rail.indexOf(one) >= at) ??
+          left.at(-1)
+        )?.id ?? ''
+      );
     };
     /* Standing on the beam over the lantern it is about, so the names on
        the rail stay readable under it. */
@@ -1271,7 +1273,11 @@ export function makeYard(layer: Layer, does: Doings): Standing {
     const it = columnMenu(
       offers.map((offer) => ({
         said: offer.said.replace(/^./, (c) => c.toUpperCase()),
-        kind: offer.said.startsWith('put the dividers') ? 'rules' : offer.said.startsWith('bring') ? 'back' : 'away',
+        kind: offer.said.startsWith('put the dividers')
+          ? 'rules'
+          : offer.said.startsWith('bring')
+            ? 'back'
+            : 'away',
         small: offer.said.startsWith('put the dividers')
           ? 'the columns and rows where they started'
           : offer.said.startsWith('bring')
@@ -1386,7 +1392,8 @@ export function makeYard(layer: Layer, does: Doings): Standing {
          stays shut and the next up goes on to the one before it. */
       if (holdsRecalled()) offers = [];
       offers = newestModels(offers);
-      onlyUsual = offers.length > 0 && offers.every((one) => one.section === 'recently used' || one.held);
+      onlyUsual =
+        offers.length > 0 && offers.every((one) => one.section === 'recently used' || one.held);
       lastUsual = offers[offers.length - 1]?.pick;
       /* Asked before the lines are replaced, because afterwards there is
          nothing left to ask about. */
@@ -1404,7 +1411,9 @@ export function makeYard(layer: Layer, does: Doings): Standing {
       const now = offers.map((one) => one.pick).join('\u0000');
       const moved = now !== lastNarrowed;
       lastNarrowed = now;
-      const after = opening ? offers[offers.findIndex((one) => one.pick === opening) + 1]?.pick : undefined;
+      const after = opening
+        ? offers[offers.findIndex((one) => one.pick === opening) + 1]?.pick
+        : undefined;
       opening = undefined;
       const first = after ?? offers[0]?.pick;
       if (first && (moved || !standingInOverlay())) {
@@ -2585,7 +2594,12 @@ function handed(on: HTMLElement, note: Note, tone?: string): void {
   const seen = note.seen ?? [];
   if (seen.length) {
     line.style.alignSelf = 'flex-start';
-    line.addEventListener('mouseenter', () => preview(line, seen.map(onThisMachine)));
+    line.addEventListener('mouseenter', () =>
+      preview(
+        line,
+        seen.map((one) => onThisMachine(one))
+      )
+    );
     line.addEventListener('mouseleave', unpreview);
   }
   on.appendChild(line);
@@ -3681,8 +3695,7 @@ function built(session: Session, building: Building, wide: number, does: Doings)
 
   const about = document.createElement('div');
   about.className = 'building-about';
-  const ago =
-    since < 60_000 ? 'just now' : `${longFor(since)} ago`;
+  const ago = since < 60_000 ? 'just now' : `${longFor(since)} ago`;
   const looks = building.looks.length;
   about.textContent = [
     building.page.name,
@@ -4046,6 +4059,9 @@ function carted(wide: number, made: Session['made'], does: Doings): HTMLElement 
   return it;
 }
 
+/** Wide enough for a grid square to stay sharp on a retina screen, zoomed in. */
+const THUMB_WIDTH = 400;
+
 /**
  * The pictures it made, laid out as a grid of what they look like rather than
  * a list of what they are called. Pressing one holds it up, and the arrows
@@ -4055,7 +4071,7 @@ function madePictures(wide: number, pictures: Session['made'], does: Doings): HT
   const grid = document.createElement('div');
   const columns = Math.max(2, Math.min(4, Math.floor(wide / 110)));
   grid.style.cssText = `display:grid;grid-template-columns:repeat(${columns},1fr);gap:6px;margin-top:12px;max-width:${wide}px`;
-  const shown = pictures.map((one) => onThisMachine(one.picture!));
+  const shown = pictures.map((one) => onThisMachine(one.picture!, THUMB_WIDTH));
   pictures.forEach((one, i) => {
     const picture = one.picture!;
     const cell = document.createElement('div');
@@ -4084,7 +4100,13 @@ function madePictures(wide: number, pictures: Session['made'], does: Doings): HT
           does.press(one.pick);
           return;
         }
-        holdUp(src, one.what, larger(picture), siblings, siblings.findIndex((s) => s.src === src));
+        holdUp(
+          src,
+          one.what,
+          larger(picture),
+          siblings,
+          siblings.findIndex((s) => s.src === src)
+        );
       });
     });
     grid.appendChild(cell);

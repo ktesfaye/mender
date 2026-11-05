@@ -214,8 +214,11 @@ function image(one: Picture, it: HTMLElement): HTMLImageElement {
   return picture;
 }
 
-/** A picture on this machine, read once, as something an `<img>` can draw. */
-export function onThisMachine(url: string): Promise<string | null> {
+/** A picture on this machine, read once at a size, as something an `<img>` can
+    draw. A thumbnail asks for a thumbnail's worth: every picture is held as
+    long as the window is open, and full size for a square in a grid was a
+    window several times heavier than anything it showed. */
+export function onThisMachine(url: string, width = 1280): Promise<string | null> {
   let path = url;
   if (path.startsWith('file://')) {
     try {
@@ -224,10 +227,11 @@ export function onThisMachine(url: string): Promise<string | null> {
       return Promise.resolve(null);
     }
   }
-  let one = read.get(path);
+  const key = `${width}|${path}`;
+  let one = read.get(key);
   if (!one) {
-    one = local ? local(path, 1280).catch(() => null) : Promise.resolve(null);
-    read.set(path, one);
+    one = local ? local(path, width).catch(() => null) : Promise.resolve(null);
+    read.set(key, one);
   }
   return one;
 }
