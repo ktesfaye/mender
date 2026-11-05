@@ -22,6 +22,8 @@ export interface Sibling {
   src: string;
   name: string;
   sharper?: () => Promise<string | null> | undefined;
+  /** Where the film is, when this is the still of one: held up it plays. */
+  film?: string;
 }
 
 export function holdUp(
@@ -29,7 +31,8 @@ export function holdUp(
   name: string,
   sharper?: Promise<string | null>,
   siblings: readonly Sibling[] = [],
-  at = 0
+  at = 0,
+  film?: string
 ): void {
   open?.();
   const all: Sibling[] = siblings.length > 1 ? [...siblings] : [];
@@ -42,14 +45,57 @@ export function holdUp(
   picture.alt = name;
   picture.draggable = false;
   picture.referrerPolicy = 'no-referrer';
+  let reel: HTMLElement | null = null;
   const better = (later?: Promise<string | null>): void => {
     const shown = picture.alt;
     void later?.then((sharp) => {
-      if (sharp && picture.alt === shown) picture.src = sharp;
+      if (sharp && picture.alt === shown && !reel) picture.src = sharp;
     });
   };
   better(sharper);
   stage.appendChild(picture);
+  const play = (where?: string): void => {
+    reel?.remove();
+    reel = null;
+    picture.style.display = where ? 'none' : '';
+    if (!where) return;
+    const path = where.startsWith('file://')
+      ? where
+      : `file://${where.split('/').map(encodeURIComponent).join('/')}`;
+    const el = document.createElement('webview') as HTMLElement & {
+      executeJavaScript(code: string): Promise<unknown>;
+    };
+    el.setAttribute('src', /^https?:/.test(where) ? where : path);
+    el.setAttribute('partition', 'mender-drafting');
+    el.className = 'gr-pv-film';
+    el.addEventListener('dom-ready', () => {
+      void el
+        .executeJavaScript(
+          `document.body.style.cssText = 'margin:0;background:transparent;overflow:hidden';
+           (() => { let n = 0; const t = setInterval(() => {
+             const v = document.querySelector('video');
+             if (!v && ++n < 50) return;
+             clearInterval(t);
+             if (!v) return;
+             v.loop = true; v.controls = true;
+             v.style.cssText = 'width:100%;height:100%;object-fit:contain;background:transparent';
+             v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+           }, 100); })();
+           window.addEventListener('keydown', (e) => {
+             if (['Escape', 'ArrowLeft', 'ArrowRight'].includes(e.key)) console.log('mender-key:' + e.key);
+           }, true);`
+        )
+        .catch(() => undefined);
+    });
+    el.addEventListener('console-message', (event) => {
+      const said = (event as Event & { message?: string }).message ?? '';
+      if (said.startsWith('mender-key:'))
+        keys(new KeyboardEvent('keydown', { key: said.slice('mender-key:'.length) }));
+    });
+    reel = el;
+    stage.insertBefore(el, picture);
+    zoomBar.style.visibility = 'hidden';
+  };
   const shut = h('div', 'g-x gr-pv-x', '×');
   shut.style.background = 'rgba(14,15,18,.6)';
   const thumbs = h('div', 'gr-pv-th');
@@ -89,7 +135,7 @@ export function holdUp(
   const words = (label: string): void => {
     const place = all.length ? `${index + 1} of ${all.length}` : '';
     title.textContent = label;
-    sub.textContent = [place, size()].filter(Boolean).join(' · ');
+    sub.textContent = [place, reel ? '' : size()].filter(Boolean).join(' · ');
     said.style.visibility = label ? '' : 'hidden';
     [...thumbs.children].forEach((el, i) => {
       el.classList.toggle('on', i === index);
@@ -110,12 +156,14 @@ export function holdUp(
     thumbs.appendChild(t);
   });
   const left = all.length ? nav(-1) : null;
+  const filmAt = (i: number): string | undefined => (all.length ? all[i]?.film : film);
   const right = all.length ? nav(1) : null;
   stage.append(shut, ...(left && right ? [left, right] : []));
   edges();
   bar.append(said, thumbs, zoomBar);
   wash.append(stage, bar);
   words(name);
+  play(filmAt(index));
 
   let scale = 1;
   let x = 0;
@@ -221,6 +269,8 @@ export function holdUp(
     const next = all[index]!;
     picture.alt = next.name;
     picture.src = next.src;
+    zoomBar.style.visibility = '';
+    play(next.film);
     scale = 1;
     x = 0;
     y = 0;
@@ -239,6 +289,7 @@ export function holdUp(
 
   const keys = (event: KeyboardEvent): void => {
     if (event.metaKey && event.key !== 'Escape') return;
+    if (reel && ['+', '=', '-', '_', '0', '1'].includes(event.key)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if (event.key === 'Escape') close();

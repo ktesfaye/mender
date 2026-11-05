@@ -15,6 +15,8 @@
 
 import { holdUp, type Sibling } from './picture-view';
 
+const FILM = /\.(mp4|webm|mov|m4v)$/i;
+
 export interface Picture {
   name: string;
   url: string;
@@ -133,7 +135,10 @@ export function figure(one: Picture): HTMLElement {
   /* A linked one is an anchor round the picture, so pressing it is the same
      press any link in the answer is, heard one level up. */
   const holder = one.href
-    ? Object.assign(document.createElement('a'), { className: 'prose-picture-link', href: one.href })
+    ? Object.assign(document.createElement('a'), {
+        className: 'prose-picture-link',
+        href: one.href,
+      })
     : it;
   if (holder !== it) {
     holder.addEventListener('click', (event) => event.preventDefault());
@@ -146,6 +151,7 @@ export function figure(one: Picture): HTMLElement {
   } else {
     it.hidden = !kept;
     if (!kept) it.classList.add('prose-picture-new');
+    if (FILM.test(one.url)) it.classList.add('prose-picture-film');
     holder.appendChild(image(one, it));
   }
   if (one.name) {
@@ -186,9 +192,17 @@ function image(one: Picture, it: HTMLElement): HTMLImageElement {
     const siblings: Sibling[] = everyone.map((other) => ({
       src: other.currentSrc,
       name: other.alt,
+      film: other.dataset.url && FILM.test(other.dataset.url) ? other.dataset.url : undefined,
       sharper: () => (other.dataset.url ? larger(other.dataset.url) : undefined),
     }));
-    holdUp(picture.currentSrc, picture.alt, larger(one.url), siblings, everyone.indexOf(picture));
+    holdUp(
+      picture.currentSrc,
+      picture.alt,
+      larger(one.url),
+      siblings,
+      everyone.indexOf(picture),
+      FILM.test(one.url) ? one.url : undefined
+    );
   });
   if (/^https?:\/\//.test(one.url)) picture.src = one.url;
   else {

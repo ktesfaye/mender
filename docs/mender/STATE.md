@@ -244,6 +244,13 @@ sites name no preview, and the review sites refuse to answer. Driven: asked a
 fresh session for three New Orleans restaurants, and it came back with a
 real photo of each, in a row, captioned.
 
+A film in an answer plays. `![clip](/path/x.mp4)` (or webm, mov, m4v) stands
+in the answer as its still with a small play mark on it, and pressing it holds
+it up over the window as the real video, looping, with its own controls, in a
+webview like the drafting table's. It sits in the same row of pictures, so the
+arrows step between films and stills. Driven in a dev copy against a real mp4:
+the still and mark drew, pressing it opened a playing video, Escape put it away.
+
 The first wording only let it add a picture when it happened to have one, and
 asked for restaurants near him it searched once and had none. It is now told
 to go and get them for anything worth seeing, not only places: a real page
