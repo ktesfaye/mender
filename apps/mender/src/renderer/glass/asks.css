@@ -45,6 +45,16 @@
   box-shadow: inset 0 0 0 1px rgba(240, 138, 114, 0.32);
   color: var(--g-sore);
 }
+.ga-tag.held {
+  background: rgba(255, 154, 74, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 154, 74, 0.3);
+  color: var(--g-ember);
+}
+.gl-fire[data-held='yes'] {
+  background:
+    radial-gradient(70% 70% at 50% 60%, rgba(255, 154, 74, 0.26), rgba(255, 154, 74, 0) 75%),
+    rgba(0, 0, 0, 0.22);
+}
 .ga-tag.moss {
   background: rgba(155, 210, 138, 0.12);
   box-shadow: inset 0 0 0 1px rgba(155, 210, 138, 0.28);

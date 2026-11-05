@@ -317,6 +317,7 @@ function sessionOf(
             ...(from.carryOn ? { carryOnAt: from.carryOn } : {}),
             ...(from.failure.kind ? { kind: from.failure.kind } : {}),
             ...(from.failure.untilOnline ? { untilOnline: true } : {}),
+            ...(from.failure.gate ? { gate: from.failure.gate } : {}),
             ...(from.failure.since !== undefined ? { since: from.failure.since } : {}),
             ...(from.failure.resetAt !== undefined ? { resetAt: from.failure.resetAt } : {}),
           },
@@ -956,6 +957,14 @@ export function stateOf(
     case 'resting': {
       if (glance?.waiting) {
         const { kind, resetAt, carryOn, untilOnline } = glance.waiting;
+        /* A request cap is a breath, not a stop: it goes again on its own
+           at the top of the minute, so it stays lit and says why it paused. */
+        if (kind === 'throttle')
+          return {
+            posture: 'working',
+            saying: carryOn ? `request cap · again ${clockOf(carryOn)}` : 'request cap',
+            lit: true,
+          };
         if (kind === 'limit') {
           const saying = carryOn
             ? `limit · back ${clockOf(carryOn)}`

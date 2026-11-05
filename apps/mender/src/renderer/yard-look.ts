@@ -129,7 +129,10 @@ async function boot(): Promise<void> {
   const bare = query.has('bare');
   yard.show(
     query.has('ask') || query.has('limit')
-      ? askSample(query.get('ask') ?? (query.has('armed') ? 'limit-armed' : 'limit'))
+      ? askSample(
+          query.get('ask') ??
+            `${query.get('limit') || 'limit'}${query.has('armed') ? '-armed' : ''}`
+        )
       : query.has('rich')
         ? richSample(query.has('live'))
         : bare && SAMPLE.session

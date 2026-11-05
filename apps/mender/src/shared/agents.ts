@@ -180,9 +180,12 @@ export const failureSchema = z.object({
   /** When it was hit, so the wait can be drawn as how much of it is behind. */
   since: z.number().optional(),
   /** Which kind of wait, so the board can draw it rather than say it. */
-  kind: z.enum(['limit', 'service', 'connection']).optional(),
+  kind: z.enum(['limit', 'throttle', 'service', 'connection']).optional(),
   /** It goes again by itself the moment this machine can reach the agent. */
   untilOnline: z.boolean().optional(),
+  /** The gateway Claude goes through here, by host, when it is not Anthropic,
+   *  so a request cap says whose cap it is. */
+  gate: z.string().optional(),
 });
 export type Failure = z.infer<typeof failureSchema>;
 
@@ -201,7 +204,7 @@ export const glanceSchema = z.object({
   /** A wait with a next move: a limit, a rough patch, a dropped line. */
   waiting: z
     .object({
-      kind: z.enum(['limit', 'service', 'connection']),
+      kind: z.enum(['limit', 'throttle', 'service', 'connection']),
       resetAt: z.number().optional(),
       /** When it was hit, so how much of the wait is behind it can be drawn. */
       since: z.number().optional(),

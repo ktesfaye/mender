@@ -50,13 +50,14 @@ import type {
 import { isDear } from '@shared/hungry';
 import { carried, packExpect, piecesOf, USUAL_PACK } from '@shared/packing';
 import { PICK_UP_SAID } from '@shared/pick-up';
-import { apiError, reread } from './api-error';
+import { apiError, reread, throttled, throttleLifts } from './api-error';
 import { wantsAnswer } from './asked-you';
 import { forgetClaudeSession } from './claude-cli-history';
 import { clockOf, readDated, sizeOf, type Dated } from './claude-clock';
 import { goingIn, pickUpNote, type CutOff } from './cut-off';
 import { howItFailed } from './failed-command';
 import { questionsOf, type FormQuestion, type FormValue } from './form';
+import { gateHost } from './gate';
 import {
   helperTrail,
   holdAway,
@@ -795,6 +796,21 @@ export function createAgents(
              does, without anybody having to ask for it. One read back after
              a restart does too, if it is from today rather than last week. */
           const recent = live || now - at < 12 * 3_600_000;
+          /* A request cap opens again at the top of the minute, so it goes
+             again a breath after, a few times running before it leaves it. */
+          if (recent && failure.severity === 'error' && throttled(failure)) {
+            const lifts = throttleLifts(failure, at);
+            const had = throttles.get(task);
+            const n = had && now - had.at < 10 * 60_000 ? had.n : 0;
+            if (n < THROTTLE_TRIES) {
+              throttles.set(task, { n: n + 1, at: now });
+              setTimeout(() => {
+                if (carryOnTimers.has(task)) return;
+                armCarryOn(task, Math.max(lifts + 2_000, Date.now() + 2_000));
+              }, 0);
+            }
+            return at;
+          }
           if (recent && failure.category === 'limit' && failure.severity === 'error') {
             const lifts = failure.resetAt ?? resetFrom(liftText(failure), at);
             if (lifts !== undefined) {
@@ -1097,6 +1113,9 @@ export function createAgents(
     onlineWatches.delete(task);
     houses.get(task)?.waitOnline(false);
   };
+
+  /** How many times running a request cap has sent it again by itself. */
+  const throttles = new Map<string, { n: number; at: number }>();
 
   /** How many times in a row it has gone again by itself, so a line that
    *  looks up from here but still fails for Claude cannot go round forever. */
@@ -2398,7 +2417,9 @@ class House {
     /* One read back rather than watched happening was hit whenever Claude
        wrote it down, not whenever the village happened to open on it. */
     const since = this.banked(failure, live, live ? undefined : this.limitWrittenAt(failure));
-    const resetAt = failure.resetAt ?? resetFrom(liftText(failure), since);
+    const resetAt =
+      failure.resetAt ??
+      (throttled(failure) ? throttleLifts(failure, since) : resetFrom(liftText(failure), since));
     return { ...failure, since, ...(resetAt !== undefined ? { resetAt } : {}) };
   }
 
@@ -2548,7 +2569,9 @@ class House {
     const failure = this.failureNow();
     if (failure && state.mood === 'resting' && bankable(failure.category)) {
       glance.waiting = {
-        kind: failure.category as 'limit' | 'service' | 'connection',
+        kind: throttled(failure)
+          ? 'throttle'
+          : (failure.category as 'limit' | 'service' | 'connection'),
         ...(failure.resetAt !== undefined ? { resetAt: failure.resetAt } : {}),
         since: failure.since,
         ...(this.carryOnAt !== null ? { carryOn: this.carryOnAt } : {}),
@@ -2941,6 +2964,9 @@ function bankable(category: SessionFailure['category']): boolean {
   return category === 'limit' || category === 'service' || category === 'connection';
 }
 
+/** How many times running a request cap sends it again by itself. */
+const THROTTLE_TRIES = 5;
+
 /** How often a session cut off by the line out looks for it again. */
 const ONLINE_EVERY_MS = 10_000;
 /** Minutes before each try again at the other end's trouble, then it stops. */
@@ -2972,6 +2998,12 @@ function liftText(failure: SessionFailure): string {
 /** The doing-line for a typed session failure, said the way the fire itself
  *  would say it — what kind of wait it is, and when it lifts, in local time. */
 function failureDoing(failure: SessionFailure, carryOn?: number | null, online = false): string {
+  if (throttled(failure) && failure.severity !== 'warning') {
+    const who = gateHost() ? 'the gateway' : 'Claude';
+    if (carryOn)
+      return `${who} turned it away for asking too often. going again at ${localClock(carryOn)}.`;
+    return `${who} turned it away for asking too often. it lets requests through again shortly.`;
+  }
   if (failure.category === 'limit' && failure.severity !== 'warning') {
     if (carryOn) return `out of usage, carrying on by itself at ${localClock(carryOn)}.`;
     if (failure.resetAt && failure.resetAt <= Date.now()) return 'the limit has lifted.';
@@ -3015,9 +3047,18 @@ function failureViewOf(failure: SessionFailure & { since?: number }, bankable: b
   return {
     bankable,
     ...(failure.since !== undefined ? { since: failure.since } : {}),
-    ...(bankable ? { kind: failure.category as 'limit' | 'service' | 'connection' } : {}),
+    ...(bankable
+      ? {
+          kind: throttled(failure)
+            ? ('throttle' as const)
+            : (failure.category as 'limit' | 'service' | 'connection'),
+        }
+      : {}),
+    ...(throttled(failure) && gateHost() ? { gate: gateHost() } : {}),
     doing: failureDoing(failure),
-    canRetry: bankable && (failure.category === 'service' || failure.category === 'connection'),
+    canRetry:
+      bankable &&
+      (failure.category === 'service' || failure.category === 'connection' || throttled(failure)),
     ...(failure.resetAt !== undefined ? { resetAt: failure.resetAt } : {}),
   };
 }

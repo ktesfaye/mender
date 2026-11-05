@@ -534,6 +534,27 @@ export function askSample(kind: string): Yard {
       ],
     },
   } as const;
+  if (kind === 'throttle' || kind === 'throttle-armed') {
+    const top = Math.floor(Date.now() / min) * min + min;
+    return session
+      ? {
+          ...base,
+          session: {
+            ...session,
+            failure: {
+              doing: 'the gateway turned it away for asking too often.',
+              canRetry: true,
+              canCarryOn: kind === 'throttle',
+              kind: 'throttle',
+              gate: 'llm-proxy.example.com',
+              since: Math.max(top - 60_000, Date.now() - 20_000),
+              resetAt: top,
+              ...(kind === 'throttle-armed' ? { carryOnAt: top + 2_000 } : {}),
+            },
+          },
+        }
+      : base;
+  }
   if (kind === 'limit' || kind === 'limit-armed') {
     return session
       ? { ...base, session: { ...session, failure: failure(kind === 'limit-armed') } }

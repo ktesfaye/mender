@@ -254,9 +254,11 @@ export interface FailureView {
    *  pressing the line again (or Escape) cancels it. */
   carryOnAt?: number;
   /** Which kind of wait, so it is drawn rather than said. */
-  kind?: 'limit' | 'service' | 'connection';
+  kind?: 'limit' | 'throttle' | 'service' | 'connection';
   /** It goes again by itself once this machine is back online. */
   untilOnline?: boolean;
+  /** The gateway Claude goes through, when it is not Anthropic. */
+  gate?: string;
   /** When it was hit, and when it lifts, where those are known. */
   since?: number;
   resetAt?: number;

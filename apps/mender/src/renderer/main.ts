@@ -1,5 +1,3 @@
-import { note as flightNote, startFlight, trouble as flightTrouble } from './flight';
-import { FILE_SCHEME } from './yard/prose';
 import type { HostDependencyView } from '@emdash/core/primitives/host-dependencies/api';
 import {
   formatAbsolute,
@@ -78,6 +76,7 @@ import { openTuiTerminal, type LiveTuiTerminal } from './board/tui-terminal';
 import { watchBuild, type WatchingBuild } from './board/watch-build';
 import { answerFor, SEND_ALL } from './board/work';
 import { makeDraftingSurface, type DraftingSurface } from './drafting/surface';
+import { note as flightNote, startFlight, trouble as flightTrouble } from './flight';
 import { rackMenuPane, waterMenu } from './glass/island-menus';
 import { watchGrip } from './grip';
 import { JiraFailed } from './jira/data';
@@ -99,8 +98,8 @@ import {
   type Extent,
 } from './village/camera';
 import { Crowd, type Life } from './village/crowd';
-import './yard/tokens.css';
 import { Editing } from './village/editing';
+import './yard/tokens.css';
 import { Folk, loadFolk, type Look, type Standing } from './village/folk';
 import { districtBounds, Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
@@ -121,11 +120,13 @@ import { openYard, type Watching } from './yard/live';
 import { showMissed } from './yard/missed';
 import { openNewSession, type NewSessionSign } from './yard/new-session';
 import { seedLocalPictures } from './yard/pictures';
+import { FILE_SCHEME } from './yard/prose';
 import { showQuitCost } from './yard/quit';
 import { FACES, openSettings, type Settings, type SettingsState } from './yard/settings';
 import { makeShelf, type Want } from './yard/shelf';
 import { loadCuts } from './yard/sprite';
 import { stand } from './yard/standing';
+import { stretches } from './yard/stretch';
 import type { Signboard } from './yard/what';
 import {
   keepsBranch,
@@ -137,7 +138,6 @@ import {
   type Windmill,
 } from './yard/windmill';
 import { inBeamOrder, makeYard } from './yard/yard';
-import { stretches } from './yard/stretch';
 
 /** The kinds of picture an agent can actually be shown. */
 const CARRIED = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -1437,7 +1437,9 @@ async function boot(): Promise<void> {
         else if (mood === 'resting') {
           /* Out of usage only glows low: nothing to do but wait, yet a project
              whose work has stopped should not look like one at rest. */
-          if (glances[task.id]?.waiting?.kind === 'limit') raise('limited');
+          const wait = glances[task.id]?.waiting?.kind;
+          if (wait === 'limit') raise('limited');
+          else if (wait === 'throttle') raise('working');
           else if (unseen.has(task.id)) raise('done');
         }
       }
@@ -5941,7 +5943,9 @@ async function boot(): Promise<void> {
       if (pick.startsWith(`link:${FILE_SCHEME}`)) {
         const said = pick.slice(5 + FILE_SCHEME.length);
         const home = window.mender.home;
-        void openFile(said.startsWith('~/') ? `${home}${said.slice(1)}` : said.replace(/^\.\//, ''));
+        void openFile(
+          said.startsWith('~/') ? `${home}${said.slice(1)}` : said.replace(/^\.\//, '')
+        );
         return;
       }
       if (pick.startsWith('link:')) {

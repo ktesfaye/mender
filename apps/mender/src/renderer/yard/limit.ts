@@ -16,6 +16,12 @@ import type { FailureView } from './what';
  * Under it are the ways on, each a tile of its own. A wait with no end Claude
  * would name keeps the hearth and drops the strip, since there is nothing to
  * measure.
+ *
+ * A request cap is drawn as what it is instead: not a plan run dry but a
+ * gate letting only so many through a minute. The fire is held rather than
+ * banked, amber rather than sore, and the strip is the one minute it is
+ * waiting out, a cell a second, up to the top of the minute when the gate
+ * counts afresh and it goes again by itself.
  */
 
 const CELLS = 48;
@@ -23,6 +29,8 @@ const TALL = 18;
 const COLD = 'rgba(255,240,215,.1)';
 const SPENT = 'rgba(240,138,114,.42)';
 const LIFTED = 'rgba(155,210,138,.55)';
+/** A second already waited out under a request cap. */
+const HELD = 'rgba(255,154,74,.34)';
 
 export interface WaitDoings {
   press(what: string): void;
@@ -88,7 +96,9 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
   it.appendChild(body);
   const fire = document.createElement('div');
   fire.className = 'gl-fire';
-  fire.appendChild(hearth());
+  const throttle = failure.kind === 'throttle';
+  if (throttle) fire.dataset.held = 'yes';
+  fire.appendChild(hearth(throttle));
   body.appendChild(fire);
   const right = document.createElement('div');
   body.appendChild(right);
@@ -116,7 +126,8 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
     }
     const row = document.createElement('div');
     row.className = 'gl-cells';
-    for (let i = 0; i < CELLS; i += 1) {
+    const many = throttle ? throttleCells(since, reset) : CELLS;
+    for (let i = 0; i < many; i += 1) {
       const cell = document.createElement('i');
       /* The front fills from the bottom as the minutes go, so the strip is
          seen moving within a cell and not only once a cell is spent. */
@@ -157,27 +168,32 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
     words.textContent = headline(failure, done);
     /* Lifted, the fire catches again. */
     fire.dataset.lifted = done ? 'yes' : '';
-    tagEl.className = `ga-tag ${armed ? 'moss' : 'sore'}`;
+    tagEl.className = `ga-tag ${armed ? 'moss' : throttle ? 'held' : 'sore'}`;
     tagEl.replaceChildren(
       px(armed ? 'check' : 'hourglass', 'currentColor', 11),
       Object.assign(tagText, {
         textContent: armed
           ? failure.carryOnAt !== undefined
-            ? `armed · carries on at ${clockOf(failure.carryOnAt)}`
+            ? throttle
+              ? `armed · goes again at ${secondsOf(failure.carryOnAt)}`
+              : `armed · carries on at ${clockOf(failure.carryOnAt)}`
             : 'armed · carries on once you are back online'
-          : limit
-            ? 'out of usage'
-            : failure.kind === 'connection'
-              ? 'no connection'
-              : 'trouble at the other end',
+          : throttle
+            ? 'request cap'
+            : limit
+              ? 'out of usage'
+              : failure.kind === 'connection'
+                ? 'no connection'
+                : 'trouble at the other end',
       })
     );
 
     if (reset !== undefined) {
       const span = Math.max(1, reset - since);
       const part = Math.min(1, Math.max(0, (now - since) / span));
-      const exact = part * CELLS;
-      const front = Math.min(CELLS - 1, Math.floor(exact));
+      const count = cells.length;
+      const exact = part * count;
+      const front = Math.min(count - 1, Math.floor(exact));
       const within = exact - front;
       cells.forEach((cell, i) => {
         const glow = glows[i]!;
@@ -189,7 +205,7 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
           tone = LIFTED;
           motion = going ? `yard-pack-wait 1.2s ease-in-out ${-i * 0.04}s infinite` : '';
         } else if (i < front) {
-          tone = SPENT;
+          tone = throttle ? HELD : SPENT;
         } else if (i === front) {
           tone = 'rgba(255,154,74,.3)';
           fill = Math.max(0.15, within);
@@ -201,17 +217,28 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
         if (cell.style.animation !== motion) cell.style.animation = motion;
         glow.style.height = `${Math.round(fill * TALL)}px`;
       });
-      labels[0]!.textContent = `${limit ? 'hit' : 'since'} ${clockOf(since)}`;
-      labels[1]!.textContent = done ? '' : `now ${clockOf(now)}`;
-      labels[2]!.textContent = `${done ? 'lifted' : 'lifts'} ${clockOf(reset)}`;
-      big.style.color = done ? '#cfeac4' : '#ffb49a';
+      const at = throttle ? secondsOf : clockOf;
+      labels[0]!.textContent = throttle
+        ? `turned away ${at(since)}`
+        : `${limit ? 'hit' : 'since'} ${at(since)}`;
+      labels[1]!.textContent = done ? '' : `now ${at(now)}`;
+      labels[2]!.textContent = throttle
+        ? `${done ? 'opened' : 'opens again'} ${at(reset)}`
+        : `${done ? 'lifted' : 'lifts'} ${at(reset)}`;
+      big.style.color = done ? '#cfeac4' : throttle ? '#ffc08a' : '#ffb49a';
       if (goes !== undefined && goes > now) {
         num.textContent = leftFor(goes - now);
         unit.textContent =
-          failure.carryOnAt !== undefined ? 'until it carries on' : 'until it lifts';
+          failure.carryOnAt !== undefined
+            ? throttle
+              ? 'until it goes again'
+              : 'until it carries on'
+            : throttle
+              ? 'until the gate opens'
+              : 'until it lifts';
       } else {
         num.textContent = done ? 'now' : leftFor(reset - now);
-        unit.textContent = done ? '' : 'until it lifts';
+        unit.textContent = done ? '' : throttle ? 'until the gate opens' : 'until it lifts';
       }
     } else {
       big.style.display = 'none';
@@ -219,13 +246,17 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
     }
 
     const parts: string[] = [];
+    if (throttle && !going)
+      parts.push(
+        `not your plan running out. ${failure.gate ? `the gateway at ${failure.gate}` : 'Claude'} only lets so many requests through a minute, and this went over`
+      );
     if (reset === undefined && failure.since !== undefined)
       parts.push(`${limit ? 'hit' : 'since'} ${clockOf(failure.since)}`);
     if (going) parts.push('carrying on');
     else if (failure.untilOnline) parts.push("carries on by itself once you're back online");
-    else if (failure.carryOnAt !== undefined)
+    else if (failure.carryOnAt !== undefined && !throttle)
       parts.push(
-        `${limit ? 'carries on' : 'tries again'} by itself at ${clockOf(failure.carryOnAt)}`
+        `${limit ? 'carries on' : 'tries again'} by itself at ${(throttle ? secondsOf : clockOf)(failure.carryOnAt)}`
       );
     else if (reset === undefined && limit) parts.push("Claude didn't say when it lifts");
     meta.textContent = parts.join(' · ');
@@ -253,7 +284,11 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
             pressing(done ? 'carry on now' : 'try again now', () => does.press('failure:retry')),
             'failure:retry'
           ),
-          done ? 'it picks up where it stopped' : 'sends it again straight away'
+          done
+            ? 'it picks up where it stopped'
+            : throttle
+              ? 'sends it now, and the gate may turn it away again'
+              : 'sends it again straight away'
         )
       );
     } else {
@@ -277,7 +312,9 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
           textContent: 'carrying on by itself',
         }),
         failure.carryOnAt !== undefined
-          ? `at ${clockOf(failure.carryOnAt)} it is told to carry on, and does`
+          ? throttle
+            ? `at ${secondsOf(failure.carryOnAt)}, once the gate counts afresh, it goes again`
+            : `at ${clockOf(failure.carryOnAt)} it is told to carry on, and does`
           : "once you're back online it carries on"
       );
       const off = astop(
@@ -297,13 +334,19 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
           '#f2c66d',
           'hot',
           astop(
-            pressing('carry on when it lifts', () => does.press('failure:carryon')),
+            pressing(throttle ? 'go again when it opens' : 'carry on when it lifts', () =>
+              does.press('failure:carryon')
+            ),
             'failure:carryon'
           ),
-          `tells it to carry on, by itself, at ${clockOf(reset!)}`
+          throttle
+            ? `sends it again, by itself, at ${secondsOf(reset!)}`
+            : `tells it to carry on, by itself, at ${clockOf(reset!)}`
         )
       );
     }
+    /* Starting over never gets past a gate that only wants a breath. */
+    if (throttle) return;
     tiles.appendChild(
       tile(
         'back',
@@ -331,6 +374,11 @@ export function waitOut(failure: FailureView, does: WaitDoings): HTMLElement {
 }
 
 function headline(failure: FailureView, done: boolean): string {
+  if (failure.kind === 'throttle') {
+    if (done)
+      return failure.carryOnAt !== undefined ? 'The gate is open, going again' : 'The gate is open';
+    return `${failure.gate ?? 'Claude'} turned it away for asking too often`;
+  }
   if (failure.kind === 'service') {
     return done ? "Claude's servers should be back" : "Claude's servers are having a rough patch";
   }
@@ -342,18 +390,17 @@ function headline(failure: FailureView, done: boolean): string {
   return 'Out of usage';
 }
 
-/** The banked hearth: the fire, low and red, with the odd spark still going up. */
-function hearth(): HTMLElement {
+/** The banked hearth: the fire, low and red, with the odd spark still going up.
+ *  Held, under a request cap, it keeps its own colour and only burns low. */
+function hearth(held = false): HTMLElement {
   const it = document.createElement('div');
   it.style.cssText = 'position:relative;width:80px;height:64px;flex:none;margin-top:4px';
   const glow = document.createElement('div');
-  glow.style.cssText =
-    'position:absolute;left:-28px;top:-30px;width:120px;height:120px;pointer-events:none;background:radial-gradient(circle at 50% 50%,rgba(242,102,90,.42),rgba(0,0,0,0) 60%);animation:yard-banked 3.2s ease-in-out infinite';
+  glow.style.cssText = `position:absolute;left:-28px;top:-30px;width:120px;height:120px;pointer-events:none;background:radial-gradient(circle at 50% 50%,${held ? 'rgba(255,154,74,.4)' : 'rgba(242,102,90,.42)'},rgba(0,0,0,0) 60%);animation:yard-banked 3.2s ease-in-out infinite`;
   it.appendChild(glow);
   const fire = sprite(KIT_NAMES.fire, 2);
   fire.classList.add('banked-fire');
-  fire.style.cssText +=
-    ';left:0;top:0;filter:saturate(1.3) brightness(.9) hue-rotate(-16deg);animation:yard-banked 3.2s ease-in-out infinite';
+  fire.style.cssText += `;left:0;top:0;filter:${held ? 'brightness(.95)' : 'saturate(1.3) brightness(.9) hue-rotate(-16deg)'};animation:yard-banked ${held ? '1.6s' : '3.2s'} ease-in-out infinite`;
   it.appendChild(fire);
   /* Coals catching and dimming under the ash, each on its own clock. */
   for (let i = 0; i < 3; i += 1) {
@@ -387,6 +434,21 @@ function leftFor(ms: number): string {
   if (hours) return `${hours}h ${two(minutes)}m ${two(seconds)}s`;
   if (minutes) return `${minutes}m ${two(seconds)}s`;
   return `${seconds}s`;
+}
+
+/** One cell a second for a wait under a minute or so, never fewer than a
+ *  handful nor more than the strip has room for. */
+function throttleCells(since: number, reset: number | undefined): number {
+  if (reset === undefined) return CELLS;
+  return Math.max(6, Math.min(60, Math.round((reset - since) / 1000)));
+}
+
+/** A clock time to the second, for a wait counted in seconds: `2:14:07pm`. */
+function secondsOf(at: number): string {
+  return new Date(at)
+    .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })
+    .toLowerCase()
+    .replace(/\s+/g, '');
 }
 
 function clockOf(at: number): string {

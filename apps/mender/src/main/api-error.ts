@@ -39,3 +39,41 @@ export function apiError(text: string): string | undefined {
   const rest = trimmed.replace(/^API Error:?\s*/, '');
   return rest ? `Claude sent back an error: ${rest}` : 'Claude sent back an error.';
 }
+
+/** How a plan's own usage limit begins, folded to lower case. */
+const PLAN_LIMIT =
+  /^you(?:'ve| have) (?:hit|reached) your|^you're out of (?:usage|extra usage)|usage limit|quota|billing/;
+
+/**
+ * A request cap rather than an empty plan: the other end, or a gateway in
+ * front of it, turning requests away for coming too often.
+ *
+ * Claude's adapter files a 429 under the same "limit" as having used the
+ * plan up, telling them apart only by offering a retry on the first, so
+ * a company proxy capped at so many requests a minute read as out of usage
+ * for hours when it lifted at the top of the next minute.
+ */
+export function throttled(failure: SessionFailure): boolean {
+  if (failure.category !== 'limit') return false;
+  const said = `${failure.title} ${failure.details ?? ''}`.trim().toLowerCase();
+  if (PLAN_LIMIT.test(said)) return false;
+  return (
+    failure.actions.includes('retry') ||
+    /\b429\b|rate.?limit|too many requests|requests? per (?:minute|second)|throttl/.test(said)
+  );
+}
+
+/**
+ * When a request cap lets requests through again: what the refusal itself
+ * says when it names a wait, otherwise the top of the minute after it was
+ * hit, which is when a per-minute cap starts counting afresh.
+ */
+export function throttleLifts(failure: SessionFailure, hitAt: number): number {
+  const said = `${failure.title} ${failure.details ?? ''}`;
+  const after = /retry[- ]after\D{0,4}(\d+)\s*(s|sec|seconds?|m|min|minutes?)?\b/i.exec(said);
+  if (after) {
+    const minutes = after[2]?.toLowerCase().startsWith('m');
+    return hitAt + Number(after[1]) * (minutes ? 60_000 : 1000);
+  }
+  return Math.floor(hitAt / 60_000) * 60_000 + 60_000;
+}
