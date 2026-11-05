@@ -1407,6 +1407,17 @@ session a shell command with a few seconds of work in it and watched
 process while it ran, then confirmed the assertion was gone once the turn
 was cancelled — the actual macOS power state, not a mocked call.
 
+And what a finished session left running is taken down
+(`apps/mender/src/main/strays.ts`): a dev server, a dev copy of the village or
+a static server a Claude session started and then ended without stopping is
+left to launchd, windowless, holding memory for days. A minute after launch and
+every quarter hour after, anything orphaned like that, started from inside
+Claude Code and up for over an hour, goes with everything under it; apps a
+session opened for him, tmux, adb and agents are never touched. Found on
+2026-11-05 with a five-day-old dev village, two Aurio vites and a dozen
+`http.server`s still up; the classifier was run against the real process table
+and picked exactly those and none of his apps.
+
 And the window reopens exactly where and at whatever size he last left it,
 rather than the fixed 1480×1020 it always opened at before. A moment after it
 stops being moved or resized it is written down
