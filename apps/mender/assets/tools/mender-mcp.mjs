@@ -254,7 +254,8 @@ const TOOLS = [
         agent: { type: 'string', description: 'Agent id to work in it (e.g. "claude"). Defaults to the person\'s usual one.' },
         isolated: { type: 'boolean', description: 'Give it its own worktree on a branch of its own.' },
         terminal: { type: 'boolean', description: 'Open it as a plain shell and run `what` as its first command, instead of a chat. Only for a real shell command; needs `show` left on.' },
-        show: { type: 'boolean', description: 'Walk the person into it. Default true; false keeps them where they are.' },
+        show: { type: 'boolean', description: 'Walk the person into it. Default true; false keeps them where they are. Set false when you start several, so they are not dragged from one to the next.' },
+        workspace: { type: 'string', description: 'A workspace to start it in, by name or id (see list_workspaces), or "project" for the project\'s own folder. Without it, it starts where you stand.' },
       },
       required: ['what'],
       additionalProperties: false,
@@ -281,6 +282,53 @@ const TOOLS = [
       'Lists the other sessions in this project: their names, ids and what each is doing right now (working, asking, resting, hurt). Use it to find who you can tell, read or stop.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     run: () => knock({}, '/sessions'),
+  },
+  {
+    name: 'list_workspaces',
+    description:
+      'Lists this project\'s workspaces: the project\'s own folder and every isolated copy, each with its branch, how much is uncommitted or unpushed in it, and who is in it with what they are doing right now. This is the overview for watching work you have handed out.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    run: () => knock({}, '/workspaces'),
+  },
+  {
+    name: 'create_workspace',
+    description:
+      'Cuts a new isolated workspace in this project: a worktree of its own on a branch of its own, with nobody in it. It hangs on the beam for the person to see. Then put sessions in it with start_session and `workspace`. It takes a moment while the copy and its setup are made.',
+    inputSchema: {
+      type: 'object',
+      properties: { name: { type: 'string', description: 'What it is for, short. Becomes its signboard and, tidied, its branch. Left out, it is named like a second copy of the folder.' } },
+      additionalProperties: false,
+    },
+    run: (a) => knock({ name: a.name }, '/workspace-new'),
+  },
+  {
+    name: 'rename_workspace',
+    description: 'Writes something else on a workspace\'s signboard. Its branch keeps its name.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workspace: { type: 'string', description: 'The workspace\'s name or id, from list_workspaces.' },
+        name: { type: 'string', description: 'The new name.' },
+      },
+      required: ['workspace', 'name'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ workspace: a.workspace, name: a.name }, '/workspace-rename'),
+  },
+  {
+    name: 'delete_workspace',
+    description:
+      'Deletes a workspace entirely: its folder, its branch and every session in it. Irreversible. Refuses, saying what would be lost, if anybody in it is still working or asking, if files are uncommitted, or if commits exist nowhere else; so merge or commit what matters first (or ask the session to) and only use `force` when told to throw the work away. You cannot delete the workspace you are standing in, nor the project\'s own folder. Only delete workspaces you were asked to, or whose work is plainly landed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        workspace: { type: 'string', description: 'The workspace\'s name or id, from list_workspaces.' },
+        force: { type: 'boolean', description: 'Delete it even though that loses work.' },
+      },
+      required: ['workspace'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ workspace: a.workspace, force: a.force }, '/workspace-delete'),
   },
   {
     name: 'tell_session',

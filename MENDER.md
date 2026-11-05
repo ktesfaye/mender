@@ -103,6 +103,8 @@ existing branch implies it. Taking a shared session down leaves every file
 where it is, since the folder was never its to take. Nothing about any of it
 is a stand-in.
 
+**A session can run workspaces, like a tech lead.** Through the village's tools a session can cut a workspace, rename one, start sessions in a named one, see every workspace with its branch, what is uncommitted in it and who is in it doing what, and delete one when its work has landed. Deleting refuses, saying what would be lost, while anybody in it is working, files are uncommitted or commits exist nowhere else, and a session can never delete the one it stands in. Told to be a lead, it hands strands out to workspaces, checks in on them in short steps and reports back.
+
 **A copy of its own is a workspace, and workspaces hang from a beam.** That
 worktree on its own branch is not one session's but a place several can work
 in, or nobody, and it stands until it is taken down on purpose. Once a project

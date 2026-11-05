@@ -8,7 +8,7 @@ import { app, BrowserWindow } from 'electron';
 import { MENDER_ATTEND_CHANNEL, MENDER_TABLE_CHANNEL } from '@shared/channels';
 import type { Agents } from './agents';
 import type { Projects } from './projects';
-import type { Tasks } from './tasks';
+import type { Tasks, Workspace } from './tasks';
 
 /**
  * How a session starts another, in the village where he can watch it.
@@ -28,6 +28,9 @@ interface Start {
   isolated?: boolean;
   terminal?: boolean;
   show?: boolean;
+  /** A workspace by name or id to start in, or "project" for the project's
+      own folder. Without it the new session starts where the asker stands. */
+  workspace?: string;
 }
 
 /** Which part of the drafting table to lay over the village. `path` is the
@@ -69,12 +72,39 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
     return best;
   };
 
+  /** A workspace of one project, by name, id or the front of either. */
+  const findWorkspace = async (
+    project: string,
+    which: string
+  ): Promise<{ workspace: Workspace } | { text: string }> => {
+    const want = which.trim().toLowerCase();
+    if (!want) return { text: 'say which workspace.' };
+    const all = await tasks.workspaces(project);
+    const exact = all.filter(
+      (each) => each.id === which || each.id.startsWith(which) || each.name.toLowerCase() === want
+    );
+    const hits = exact.length ? exact : all.filter((each) => each.name.toLowerCase().includes(want));
+    if (hits.length === 1) return { workspace: hits[0] };
+    if (!hits.length) return { text: `no workspace like "${which}" in this project.` };
+    return { text: `"${which}" matches more than one: ${hits.map((each) => each.name).join(', ')}.` };
+  };
+
   const start = async (body: Start): Promise<{ ok: boolean; text: string }> => {
     const what = String(body.what ?? '').trim();
     if (!what) return { ok: false, text: 'say what the new session is for.' };
     const here = await whereIs(String(body.cwd ?? ''));
     if (!here) return { ok: false, text: 'that folder is not one of the village’s projects.' };
 
+    let into = here.workspace;
+    if (body.workspace !== undefined) {
+      if (body.workspace.trim().toLowerCase() === 'project') {
+        into = undefined;
+      } else {
+        const found = await findWorkspace(here.project, body.workspace);
+        if ('text' in found) return { ok: false, text: found.text };
+        into = found.workspace.id;
+      }
+    }
     const made = await tasks.begin(
       here.project,
       what,
@@ -82,7 +112,7 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
       body.terminal ? 'shell' : undefined,
       undefined,
       body.isolated ? true : undefined,
-      body.isolated ? undefined : here.workspace
+      body.isolated ? undefined : into
     );
     if (!made.success) {
       return { ok: false, text: `could not start it: ${JSON.stringify(made.error)}` };
@@ -109,7 +139,7 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
     }
     return {
       ok: true,
-      text: `started "${made.data.title}" in ${body.isolated ? 'its own copy' : here.workspace ? 'this workspace' : 'the project folder'}; its lantern is on the rail.`,
+      text: `started "${made.data.title}" [${id}] in ${body.isolated ? 'its own copy' : into ? 'the workspace' : 'the project folder'}; its lantern is on the rail.`,
     };
   };
 
@@ -160,10 +190,12 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
   const sessions = async (body: { cwd?: string; conversation?: string }) => {
     const near = await neighbours(body);
     if (!near) return { ok: false, text: 'that folder is not one of the village’s projects.' };
+    const names = new Map((await tasks.workspaces(near.project)).map((each) => [each.id, each.name]));
     const lines = near.all.map((each) => {
       const state = peek(agents.working(each.id));
       const mood = state?.mood ?? 'empty';
-      return `${each.id === near.me ? '(you) ' : ''}${each.title} [${each.id}] ${mood}${state?.doing ? `: ${state.doing}` : ''}`;
+      const where = each.workspace ? (names.get(each.workspace) ?? 'a workspace') : 'project folder';
+      return `${each.id === near.me ? '(you) ' : ''}${each.title} [${each.id}] in ${where}, ${mood}${state?.doing ? `: ${state.doing}` : ''}`;
     });
     return { ok: true, text: lines.length ? lines.join('\n') : 'no sessions in this project.' };
   };
@@ -242,6 +274,128 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
     return agents.switchModel(conversation, String(body.model ?? ''));
   };
 
+  const workspacesOf = async (body: { cwd?: string; conversation?: string }) => {
+    const near = await neighbours(body);
+    if (!near) return null;
+    return { ...near, here: await whereIs(String(body.cwd ?? '')) };
+  };
+
+  const moodsIn = (all: Awaited<ReturnType<typeof tasks.list>>) =>
+    all.map((each) => {
+      const state = peek(agents.working(each.id));
+      return { task: each, mood: state?.mood ?? 'empty', doing: state?.doing ?? '' };
+    });
+
+  const listWorkspaces = async (body: { cwd?: string; conversation?: string }) => {
+    const near = await workspacesOf(body);
+    if (!near) return { ok: false, text: 'that folder is not one of the village’s projects.' };
+    const standing = await tasks.workspaces(near.project);
+    const blocks: string[] = [];
+    const describe = async (name: string, id: string | null, branch: string, mine: boolean) => {
+      const inside = moodsIn(near.all.filter((each) => (id ? each.workspace === id : !each.workspace)));
+      const cost = id ? await tasks.dropCost(id) : null;
+      const lines = [
+        `${mine ? '(you are here) ' : ''}${name}${id ? ` [${id}]` : ''}${branch ? ` on ${branch}` : ''}`,
+      ];
+      if (cost) {
+        lines.push(
+          `  ${cost.uncommitted} uncommitted file${cost.uncommitted === 1 ? '' : 's'}, ${cost.unshared} commit${cost.unshared === 1 ? '' : 's'} not pushed anywhere`
+        );
+      }
+      if (!inside.length) lines.push('  nobody in it');
+      for (const each of inside) {
+        lines.push(
+          `  ${each.task.title} [${each.task.id}] ${each.mood}${each.doing ? `: ${each.doing.replace(/\.$/, '')}` : ''}`
+        );
+      }
+      blocks.push(lines.join('\n'));
+    };
+    await describe(
+      'the project folder',
+      null,
+      '',
+      !near.here?.workspace
+    );
+    for (const each of standing) {
+      await describe(each.name, each.id, each.branch, near.here?.workspace === each.id);
+    }
+    return { ok: true, text: blocks.join('\n\n') };
+  };
+
+  const makeWorkspace = async (body: { cwd?: string; conversation?: string; name?: string }) => {
+    const near = await workspacesOf(body);
+    if (!near) return { ok: false, text: 'that folder is not one of the village’s projects.' };
+    const made = await tasks.cutWorkspace(near.project, body.name);
+    if (!made.success) {
+      return {
+        ok: false,
+        text:
+          made.error.kind === 'already-here'
+            ? `there is already a workspace called "${made.error.name}".`
+            : `could not cut it: ${JSON.stringify(made.error)}`,
+      };
+    }
+    return {
+      ok: true,
+      text: `cut the workspace "${made.data.name}" [${made.data.id}] on ${made.data.branch}, with nobody in it. Start sessions in it with start_session and workspace set to its name.`,
+    };
+  };
+
+  const renameWorkspace = async (body: {
+    cwd?: string;
+    conversation?: string;
+    workspace?: string;
+    name?: string;
+  }) => {
+    const near = await workspacesOf(body);
+    if (!near) return { ok: false, text: 'that folder is not one of the village’s projects.' };
+    const written = String(body.name ?? '').trim();
+    if (!written) return { ok: false, text: 'say what to call it.' };
+    const found = await findWorkspace(near.project, String(body.workspace ?? ''));
+    if ('text' in found) return { ok: false, text: found.text };
+    const clash = (await tasks.workspaces(near.project)).find(
+      (each) => each.id !== found.workspace.id && each.name === written
+    );
+    if (clash) return { ok: false, text: `there is already a workspace called "${written}".` };
+    await tasks.renameWorkspace(found.workspace.id, written);
+    return { ok: true, text: `"${found.workspace.name}" is now "${written}". Its branch keeps its name.` };
+  };
+
+  const deleteWorkspace = async (body: {
+    cwd?: string;
+    conversation?: string;
+    workspace?: string;
+    force?: boolean;
+  }) => {
+    const near = await workspacesOf(body);
+    if (!near) return { ok: false, text: 'that folder is not one of the village’s projects.' };
+    const found = await findWorkspace(near.project, String(body.workspace ?? ''));
+    if ('text' in found) return { ok: false, text: found.text };
+    const { workspace } = found;
+    if (near.here?.workspace === workspace.id) {
+      return { ok: false, text: 'you are standing in that workspace; it cannot be deleted from inside.' };
+    }
+    const cost = await tasks.dropCost(workspace.id);
+    const busy = moodsIn(near.all.filter((each) => each.workspace === workspace.id)).filter(
+      (each) => each.mood === 'working' || each.mood === 'asking'
+    );
+    const risks: string[] = [];
+    if (busy.length) risks.push(`${busy.map((each) => `"${each.task.title}"`).join(', ')} still working or asking`);
+    if (cost.uncommitted) risks.push(`${cost.uncommitted} uncommitted file${cost.uncommitted === 1 ? '' : 's'}`);
+    if (cost.unshared) risks.push(`${cost.unshared} commit${cost.unshared === 1 ? '' : 's'} that exist nowhere else`);
+    if (risks.length && !body.force) {
+      return {
+        ok: false,
+        text: `not deleted. "${workspace.name}" has ${risks.join(', ')}. Deleting takes its folder, its branch and every session in it. Commit or merge what matters and stop whoever is working, or delete with force if you mean to lose it.`,
+      };
+    }
+    await tasks.dropWorkspace(workspace.id);
+    return {
+      ok: true,
+      text: `deleted "${workspace.name}": its folder, its branch ${workspace.branch} and ${cost.sessions} session${cost.sessions === 1 ? '' : 's'}.`,
+    };
+  };
+
   const routes: Record<string, (body: never) => Promise<{ ok: boolean; text: string }>> = {
     '/start': start as never,
     '/table': table as never,
@@ -252,6 +406,10 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
     '/stop': stop as never,
     '/close': close as never,
     '/model-of': setModel as never,
+    '/workspaces': listWorkspaces as never,
+    '/workspace-new': makeWorkspace as never,
+    '/workspace-rename': renameWorkspace as never,
+    '/workspace-delete': deleteWorkspace as never,
   };
 
   const server = createServer((request, response) => {

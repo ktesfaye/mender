@@ -123,6 +123,13 @@ const SESSIONS = [
   'is there, tell_session to say something to one, read_session to see what it said and whether it is',
   'asking, stop_session to stop it, close_session to close a finished one, set_session_model to change what it thinks with. Tell, then check',
   'back in short steps; never sit waiting on one in a loop. Start new ones with start_session.',
+  'You can also run workspaces, the isolated copies on the beam: list_workspaces shows each with its branch,',
+  'what is uncommitted in it and who is in it doing what; create_workspace cuts one, start_session with',
+  '`workspace` puts a session in it (pass show false when starting several so the person is not dragged',
+  'between them), rename_workspace renames, delete_workspace deletes one with everything in it and refuses',
+  'while anything would be lost. To lead a piece of work: cut a workspace per strand, start a session in each,',
+  'then check on them with list_workspaces and read_session in short steps, tell the person how it is going,',
+  'and delete a workspace only when its work has landed or you were asked to.',
 ].join(' ');
 
 const MODEL = [
