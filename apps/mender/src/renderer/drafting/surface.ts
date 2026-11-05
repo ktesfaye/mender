@@ -157,6 +157,8 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
 
   const abs = (rel: string): string => (rel.startsWith('/') ? rel : `${root}/${rel}`);
 
+  const isVideo = (rel: string | undefined): boolean => !!rel && /\.(mp4|webm|mov|m4v)$/i.test(rel);
+
   /** A pass's looks: as drawn, each variant, and the page it was drawn as. */
   const looksOf = (pass: DraftPass): { name: string; image?: string; page?: string }[] => [
     { name: pass.name || 'as drawn', image: pass.image },
@@ -179,10 +181,15 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     el.setAttribute('src', `file://${path.split('/').map(encodeURIComponent).join('/')}`);
     el.setAttribute('partition', 'mender-drafting');
     el.className = 'dt-page';
+    const film = isVideo(rel);
     el.addEventListener('dom-ready', () => {
       void el
         .executeJavaScript(
-          `window.addEventListener('keydown', (e) => {
+          `${
+            film
+              ? `(() => { let n = 0; const t = setInterval(() => { const v = document.querySelector('video'); if (!v && ++n < 50) return; clearInterval(t); if (!v) return; v.loop = true; v.muted = true; v.controls = true; v.play().catch(() => v.addEventListener('canplay', () => v.play().catch(() => {}), { once: true })); }, 100); })();`
+              : ''
+          }window.addEventListener('keydown', (e) => {
             const t = e.target && e.target.closest && e.target.closest('input,textarea,[contenteditable="true"]');
             if (!t && ['Escape', 'ArrowLeft', 'ArrowRight'].includes(e.key)) console.log('mender-key:' + e.key);
           }, true);`
@@ -848,7 +855,11 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     const stage = h(
       'div',
       'dt-stage',
-      showing.page ? livePage(showing.page) : pic(showing.image, 1600, 'dt-big')
+      showing.page
+        ? livePage(showing.page)
+        : isVideo(showing.image)
+          ? livePage(showing.image!)
+          : pic(showing.image, 1600, 'dt-big')
     );
     const info = h('div', 'dt-info');
     const picked = question.picked.includes(pass.id);
@@ -885,6 +896,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
           'div',
           `dt-look${i === at ? ' on' : ''}`,
           one.page ? h('div', 'dt-look-page', 'live') : pic(one.image, 160),
+          isVideo(one.image) ? h('div', 'dt-look-play', '▶') : null,
           h('span', '', one.name)
         );
         cell.addEventListener('click', () => hold(room, question, pass, i));
