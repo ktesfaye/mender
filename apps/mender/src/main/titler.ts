@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import type { ShellEnvManager } from '@emdash/core/services/shell-env/node';
 import type { Story, Told } from '../shared/agents';
 import { PICK_UP_SAID } from '@shared/pick-up';
+import { noteCaught } from './ops';
 
 type EnvSource = Pick<ShellEnvManager, 'current'>;
 
@@ -204,7 +205,8 @@ export function storyOf(out: string, asks: readonly { note: { id: string } }[], 
   let raw: unknown;
   try {
     raw = JSON.parse(body);
-  } catch {
+  } catch (caught) {
+    noteCaught('titler.ts:207', caught);
     return null;
   }
   if (!raw || typeof raw !== 'object') return null;
@@ -298,7 +300,8 @@ async function ask(env: EnvSource, prompt: string, session: string): Promise<str
         try {
           const parsed = JSON.parse(stdout) as { result?: unknown; is_error?: boolean };
           resolve(!parsed.is_error && typeof parsed.result === 'string' ? parsed.result : null);
-        } catch {
+        } catch (caught) {
+          noteCaught('titler.ts:301', caught);
           resolve(null);
         }
       }

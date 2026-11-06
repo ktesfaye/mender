@@ -1,4 +1,4 @@
-import { noopLogger, type Logger } from '@emdash/shared/logger';
+import { noopLogger, startOp, trackOp, type Logger, type Op } from '@emdash/shared/logger';
 import { systemClock, type Clock } from '@emdash/shared/scheduling';
 import { type EmdashScriptsConfig } from '#primitives/emdash-config/api';
 import type { WorkspaceRuntimeOverlay } from '../api/schemas';
@@ -127,7 +127,13 @@ export class WorkspaceActivationManager {
   /** Resolves when prepare completes; setup/run continue in the background. */
   async activate(id: string, workspacePath: string): Promise<void> {
     if (this.active.has(id)) return;
+    await trackOp(this.logger, 'workspace.activate', {}, (op) =>
+      this.activateTracked(id, workspacePath, op)
+    );
+  }
 
+  private async activateTracked(id: string, workspacePath: string, op: Op): Promise<void> {
+    op.stage('resolve-config');
     const policy = await this.resolveLifecycleConfig(id, workspacePath);
     const scripts: EmdashScriptsConfig = {
       ...policy.scripts,
@@ -163,9 +169,13 @@ export class WorkspaceActivationManager {
       // Prepare chains after the artifact copy (spec: copy-artifacts → prepare →
       // active), so a dep-installing prepare runs against cloned node_modules. A
       // terminal clone failure resolves the gate — prepare degrades to a real install.
+      op.stage('await-artifacts');
       await this.awaitArtifacts(id);
       if (!this.isCurrent(id, state)) return;
-      const outcome = await this.runScript(id, state, 'prepare', scripts.prepare);
+      op.stage('prepare');
+      const outcome = await this.runScript(id, state, 'prepare', scripts.prepare, {
+        parentOpId: op.opId,
+      });
       if (!this.isCurrent(id, state)) return;
       state.activation.scripts.prepare = outcome === 'succeeded' ? 'succeeded' : 'failed';
     }
@@ -174,9 +184,10 @@ export class WorkspaceActivationManager {
     state.activation.phase = 'active';
     state.activation.activatedAt = activatedAt;
     this.publish(id, state);
+    op.stage('record-activated');
     await this.options.recordActivated(id, activatedAt);
 
-    state.background = this.runBackgroundChain(id, state, scripts).catch((error) => {
+    state.background = this.runBackgroundChain(id, state, scripts, op.opId).catch((error) => {
       this.logger.warn?.(`background activation scripts for '${id}' failed unexpectedly`, {
         error,
       });
@@ -202,14 +213,29 @@ export class WorkspaceActivationManager {
     const policy = await this.resolveLifecycleConfig(id, state.workspacePath);
     const scripts = policy.scripts;
     if (scripts.teardown) {
-      const outcome = await this.runner.run({
-        id: 'teardown',
-        command: scripts.teardown,
-        shellSetup: policy.shellSetup,
-        env: policy.env,
-        cwd: state.workspacePath,
-        timeoutMs: this.teardownTimeoutMs,
-      });
+      const teardownOp = startOp(this.logger, 'workspace.script', { script: 'teardown' });
+      const outcome = await this.runner
+        .run({
+          id: 'teardown',
+          command: scripts.teardown,
+          shellSetup: policy.shellSetup,
+          env: policy.env,
+          cwd: state.workspacePath,
+          timeoutMs: this.teardownTimeoutMs,
+        })
+        .catch((error: unknown) => {
+          teardownOp.fail(error);
+          throw error;
+        });
+      if (outcome.status === 'failed') {
+        teardownOp.end({
+          outcome: 'failed',
+          errorKind: 'ScriptFailed',
+          errorMessage: outcome.message,
+        });
+      } else {
+        teardownOp.end({ stage: outcome.status });
+      }
       if (outcome.status === 'succeeded') {
         this.options.clearNotice(id, 'teardown');
       } else {
@@ -232,7 +258,8 @@ export class WorkspaceActivationManager {
   private async runBackgroundChain(
     id: string,
     state: ActiveState,
-    scripts: EmdashScriptsConfig
+    scripts: EmdashScriptsConfig,
+    parentOpId: string
   ): Promise<void> {
     if (scripts.setup || scripts.run) {
       // Setup and run (dev servers) consume dependencies: wait for the artifact copy
@@ -244,7 +271,7 @@ export class WorkspaceActivationManager {
     if (scripts.setup) {
       state.activation.scripts.setup = 'running';
       this.publish(id, state);
-      const outcome = await this.runScript(id, state, 'setup', scripts.setup);
+      const outcome = await this.runScript(id, state, 'setup', scripts.setup, { parentOpId });
       if (!this.isCurrent(id, state)) return;
       setupSucceeded = outcome === 'succeeded';
       state.activation.scripts.setup = setupSucceeded ? 'succeeded' : 'failed';
@@ -264,7 +291,7 @@ export class WorkspaceActivationManager {
     }
     state.activation.scripts.run = 'running';
     this.publish(id, state);
-    const outcome = await this.runScript(id, state, 'run', scripts.run, { longRunning: true });
+    const outcome = await this.runScript(id, state, 'run', scripts.run, { longRunning: true, parentOpId });
     if (!this.isCurrent(id, state)) return;
     state.activation.scripts.run = outcome === 'succeeded' ? 'exited' : 'failed';
     this.publish(id, state);
@@ -275,21 +302,35 @@ export class WorkspaceActivationManager {
     state: ActiveState,
     script: ScriptStepScript,
     command: string,
-    options: { longRunning?: boolean } = {}
+    options: { longRunning?: boolean; parentOpId?: string } = {}
   ): Promise<'succeeded' | 'failed' | 'cancelled'> {
     // The run's durable step transitions come from observation, not from here: the
     // outcome below drives only sequencing (control flow) and notices.
-    const outcome = await this.runner.run({
-      id: script,
-      command,
-      shellSetup: state.shellSetup,
-      env: state.env,
-      cwd: state.workspacePath,
-      signal: state.controller.signal,
-      // Run scripts are dev-server-shaped: bounded only by deactivation, not a timeout.
-      // 2^31-1 ms is Node's max timer value (~24 days), the closest thing to "never".
-      ...(options.longRunning ? { timeoutMs: 2 ** 31 - 1 } : {}),
+    const op = startOp(this.logger, 'workspace.script', {
+      script,
+      parentOpId: options.parentOpId,
     });
+    const outcome = await this.runner
+      .run({
+        id: script,
+        command,
+        shellSetup: state.shellSetup,
+        env: state.env,
+        cwd: state.workspacePath,
+        signal: state.controller.signal,
+        // Run scripts are dev-server-shaped: bounded only by deactivation, not a timeout.
+        // 2^31-1 ms is Node's max timer value (~24 days), the closest thing to "never".
+        ...(options.longRunning ? { timeoutMs: 2 ** 31 - 1 } : {}),
+      })
+      .catch((error: unknown) => {
+        op.fail(error);
+        throw error;
+      });
+    if (outcome.status === 'failed') {
+      op.end({ outcome: 'failed', errorKind: 'ScriptFailed', errorMessage: outcome.message });
+    } else {
+      op.end({ stage: outcome.status });
+    }
     if (outcome.status === 'succeeded') {
       this.options.clearNotice(id, script);
       return 'succeeded';

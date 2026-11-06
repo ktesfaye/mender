@@ -3,6 +3,7 @@ import { createJsonFileKeyValueStore } from '@emdash/core/primitives/kv/node';
 import { app, session, shell, type WebContents } from 'electron';
 import { JIRA_PARTITION } from '../shared/jira';
 import { readToken } from './jira-keychain';
+import { noteCaught } from './ops';
 
 /**
  * Jira's own site, in the village's own window.
@@ -82,7 +83,8 @@ const jiraSite = (url: string): boolean => {
   try {
     const { protocol, host } = new URL(url);
     return protocol === 'https:' && /\.atlassian\.net$/.test(host) && host !== 'id.atlassian.net';
-  } catch {
+  } catch (caught) {
+    noteCaught('jira-web.ts:85', caught);
     return false;
   }
 };
@@ -98,7 +100,8 @@ const signingIn = (url: string): boolean =>
       try {
         const { host, pathname } = new URL(url);
         return host + pathname;
-      } catch {
+      } catch (caught) {
+        noteCaught('jira-web.ts:101', caught);
         return '';
       }
     })()
@@ -111,7 +114,8 @@ function keepInJira(contents: WebContents): void {
     const site = (() => {
       try {
         return new URL(here).host;
-      } catch {
+      } catch (caught) {
+        noteCaught('jira-web.ts:114', caught);
         return '';
       }
     })();

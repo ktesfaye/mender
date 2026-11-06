@@ -13,6 +13,7 @@
  * both.
  */
 
+import { soft } from '../watch/caught';
 import '../glass/slabs.css';
 import { glaze } from '../glass/glass';
 import { px } from '../glass/px';
@@ -266,7 +267,7 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
     }, 1000);
     return hooks
       .told(session)
-      .catch(() => ({ turns: 0, did: null }))
+      .catch(soft('past-session.269', { turns: 0, did: null }))
       .then((answer) => {
         if (closed) return;
         told.set(session.id, answer);
@@ -361,14 +362,14 @@ export function openPastSession(hooks: PastSessionHooks): PastSessionBoard {
   search.focus();
   void hooks
     .history()
-    .catch(() => [])
+    .catch(soft('past-session.364', []))
     .then((found) => {
       if (closed) return;
       sessions = found;
       filter();
       void hooks
         .elsewhere()
-        .catch(() => [])
+        .catch(soft('past-session.371', []))
         .then((away) => {
           if (closed) return;
           others = away;

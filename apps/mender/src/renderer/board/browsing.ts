@@ -1,3 +1,4 @@
+import { swallowed } from '../watch/caught';
 import type { Row } from './row';
 
 /**
@@ -40,7 +41,7 @@ export function safe(url: string): boolean {
       (at.protocol === 'http:' || at.protocol === 'https:') &&
       (at.hostname === 'localhost' || at.hostname === '127.0.0.1')
     );
-  } catch {
+  } catch (caught) { swallowed('browsing.43', caught);
     return false;
   }
 }

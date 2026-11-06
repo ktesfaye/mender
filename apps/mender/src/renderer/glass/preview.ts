@@ -7,6 +7,7 @@
  * left as the words it is.
  */
 
+import { soft } from '../watch/caught';
 import { figure } from '../yard/pictures';
 
 const MEDIA =
@@ -27,7 +28,7 @@ function inWebview(path: string, after: string): HTMLElement {
   el.setAttribute('partition', 'mender-drafting');
   el.className = 'ga-prev-web';
   el.addEventListener('dom-ready', () => {
-    void el.executeJavaScript(after).catch(() => undefined);
+    void el.executeJavaScript(after).catch(soft('preview.30', undefined));
   });
   return el;
 }
@@ -37,7 +38,7 @@ const PLAY = `
   document.querySelectorAll('video').forEach((v) => {
     v.loop = true; v.muted = true; v.controls = false;
     v.style.cssText = 'width:100%;height:100%;object-fit:contain;background:transparent';
-    v.play().catch(() => {});
+    v.play().catch(soft('preview.40', {}));
   });
   document.querySelectorAll('img').forEach((i) => {
     i.style.cssText = 'width:100%;height:100%;object-fit:contain;image-rendering:auto';

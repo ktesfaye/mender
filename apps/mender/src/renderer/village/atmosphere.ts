@@ -1,3 +1,4 @@
+import { swallowed } from '../watch/caught';
 import { CELL, type District, type Layout, type Linked } from '@mender/village';
 import {
   BufferImageSource,
@@ -46,7 +47,7 @@ export async function loadEmitters(): Promise<void> {
   if (emitters) return;
   try {
     emitters = (await (await fetch('./village/emitters.json')).json()) as Record<string, Emitters>;
-  } catch {
+  } catch (caught) { swallowed('atmosphere.49', caught);
     emitters = {};
   }
 }

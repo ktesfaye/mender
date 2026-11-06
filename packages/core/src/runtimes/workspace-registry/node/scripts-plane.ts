@@ -1,5 +1,5 @@
 import { createScope, type Scope } from '@emdash/shared/concurrency';
-import { noopLogger, type Logger } from '@emdash/shared/logger';
+import { noopLogger, startOp, type Logger } from '@emdash/shared/logger';
 import type { ContractClient } from '@emdash/wire/rpc';
 import { observe, remote, type RemoteModel } from '@emdash/wire/state';
 import { nativePathIdentityKey } from '#primitives/path/api';
@@ -87,7 +87,18 @@ export function createScriptsPlaneRunner(options: {
           logger.warn?.(`stopping script '${script}' failed`, { error });
         });
       };
+      const op = startOp(logger, 'scripts.plane', { script });
+      try {
+        return await runPlane();
+      } catch (error) {
+        op.fail(error);
+        throw error;
+      }
+
+      async function runPlane(): Promise<WorkspaceScriptRunOutcome> {
+      op.stage('facts');
       const facts = await options.factsFor(input.cwd);
+      op.stage('start');
       input.signal?.addEventListener('abort', stop, { once: true });
       try {
         const started = await options.client.start({
@@ -100,6 +111,7 @@ export function createScriptsPlaneRunner(options: {
           timeoutMs: input.timeoutMs ?? DEFAULT_SCRIPT_TIMEOUT_MS,
         });
         if (!started.success) {
+          op.end({ outcome: 'failed', errorKind: started.error.type ?? 'StartFailed' });
           return {
             status: 'failed',
             message: started.error.message,
@@ -108,13 +120,19 @@ export function createScriptsPlaneRunner(options: {
         }
         // The abort may have landed between start and the listener firing.
         if (input.signal?.aborted) stop();
+        op.stage('wait');
         const settled = await options.client.wait({ ...key, runId: started.data.runId });
         if (!settled.success) {
+          op.end({ outcome: 'failed', errorKind: settled.error.type ?? 'WaitFailed' });
           return { status: 'failed', message: settled.error.message, outputTail: '' };
         }
-        return toRunnerOutcome(script, settled.data);
+        const outcome = toRunnerOutcome(script, settled.data);
+        if (outcome.status === 'succeeded') op.end();
+        else op.end({ outcome: 'failed', errorKind: outcome.status });
+        return outcome;
       } finally {
         input.signal?.removeEventListener('abort', stop);
+      }
       }
     },
   };

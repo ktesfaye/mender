@@ -1,7 +1,8 @@
 import { createScope } from '@emdash/shared/concurrency';
-import type { Logger } from '@emdash/shared/logger';
+import { getCurrentLogger, startOp, type Logger } from '@emdash/shared/logger';
 import { connect } from '../api/connect';
 import type { ContractDefinitions } from '../api/define';
+import type { Controller } from '../api/controller';
 import { serve } from '../api/serve';
 import { client } from '../rpc/client';
 import {
@@ -99,7 +100,7 @@ export async function runWireComponentWorker<
     if (exitRequested) return;
     const stopServing = serve(
       parentPortChannelTransport(port, RUNTIME_CHANNEL),
-      instance[componentControllerSymbol]
+      withOpLogging(instance[componentControllerSymbol], component.id, options.logger)
     );
     scope.add(stopServing);
     port.send(WORKER_READY_SIGNAL);
@@ -113,6 +114,58 @@ export async function runWireComponentWorker<
     });
     exit(1);
   }
+}
+
+function withOpLogging(controller: Controller, componentId: string, logger?: Logger): Controller {
+  return {
+    ...controller,
+    async call(path, input, meta) {
+      const op = startOp(logger ?? getCurrentLogger(), 'wire.call', {
+        procedure: path,
+        component: componentId,
+      });
+      try {
+        const result = await controller.call(path, input, meta);
+        const failure = resultFailure(result);
+        if (failure) op.end({ outcome: 'failed', ...failure });
+        else op.end();
+        return result;
+      } catch (error) {
+        op.fail(error);
+        throw error;
+      }
+    },
+    acquireLive(topic) {
+      const lease = controller.acquireLive(topic);
+      if (!lease) return lease;
+      const log = logger ?? getCurrentLogger();
+      const openedAt = Date.now();
+      log.debug('wire live open', { procedure: topic, component: componentId });
+      return {
+        ...lease,
+        release: async () => {
+          log.debug('wire live close', {
+            procedure: topic,
+            component: componentId,
+            durationMs: Date.now() - openedAt,
+          });
+          await lease.release();
+        },
+      };
+    },
+  };
+}
+
+function resultFailure(result: unknown): { errorKind: string; errorMessage?: string } | null {
+  if (typeof result !== 'object' || result === null) return null;
+  const record = result as { success?: unknown; error?: unknown };
+  if (record.success !== false) return null;
+  const error = record.error as { type?: unknown; code?: unknown; message?: unknown } | undefined;
+  const kind = error?.type ?? error?.code;
+  return {
+    errorKind: typeof kind === 'string' ? kind : 'ResultFailure',
+    ...(typeof error?.message === 'string' ? { errorMessage: error.message.slice(0, 300) } : {}),
+  };
 }
 
 function requestBootstrap(

@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { cp, rm } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { defineConfig } from 'electron-vite';
 import { menderWorkers } from './src/shared/workers';
@@ -56,6 +58,23 @@ function carryTheAdapters(): {
   };
 }
 
+/**
+ * The telemetry token is read here, at build time, and never committed: the
+ * repository is public. From the environment, else the developer's own key
+ * file; with neither, shipping is off.
+ */
+function axiom(): { token: string; dataset: string } {
+  let token = process.env.MENDER_AXIOM_TOKEN ?? '';
+  if (!token) {
+    try {
+      token = readFileSync(resolve(homedir(), 'Documents/dev/.axiom_ingest_token'), 'utf8').trim();
+    } catch {
+      token = '';
+    }
+  }
+  return { token, dataset: process.env.MENDER_AXIOM_DATASET || 'mender' };
+}
+
 function workerBuildInputs(): Record<string, string> {
   return Object.fromEntries(
     Object.entries(menderWorkers).map(([id, entry]) => [id, resolve(entry)])
@@ -67,6 +86,10 @@ export default defineConfig({
     root: 'src/main',
     envDir: resolve('.'),
     plugins: [carryTheAdapters()],
+    define: {
+      __MENDER_AXIOM_TOKEN__: JSON.stringify(axiom().token),
+      __MENDER_AXIOM_DATASET__: JSON.stringify(axiom().dataset),
+    },
     build: {
       externalizeDeps: { exclude: workspacePackages },
       rollupOptions: {

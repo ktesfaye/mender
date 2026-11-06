@@ -99,8 +99,8 @@ import {
 } from './village/camera';
 import { Crowd, type Life } from './village/crowd';
 import { Editing } from './village/editing';
-import './yard/tokens.css';
 import { Folk, loadFolk, type Look, type Standing } from './village/folk';
+import './yard/tokens.css';
 import { districtBounds, Ground, type Aim } from './village/ground';
 import { loadKit } from './village/kit';
 import { say } from './village/notice';
@@ -110,6 +110,19 @@ import { Sky } from './village/sky';
 import { keepOnScreen, skyPicture, skySlab } from './village/sky-slab';
 import { Paths, Walkers, type Walking } from './village/walkers';
 import { Water } from './village/water';
+import {
+  act,
+  lantern,
+  noteDrawn,
+  soft,
+  swallowed,
+  where as watchWhere,
+  startWatch,
+  timed,
+  untilPainted,
+  waiting as waitFor,
+  waitOn,
+} from './watch';
 import { wire, type MenderClient } from './wire';
 import { openFounding, type Founding } from './yard/founding';
 import { dim, makeLayer } from './yard/frame';
@@ -166,6 +179,7 @@ function stamp(): string {
  */
 async function boot(): Promise<void> {
   startFlight();
+  startWatch();
   const pixi = new Application();
   await pixi.init({
     width: Math.round(window.innerWidth * pageZoom()),
@@ -342,6 +356,7 @@ async function boot(): Promise<void> {
           const task = inside.id;
           rousing.add(task);
           const wake = client.agents.wake({ task }, { timeoutMs: 0 });
+          waitOn('waking', wake);
           watching.woke(wake);
           void wake.finally(() => rousing.delete(task));
         }
@@ -513,7 +528,9 @@ async function boot(): Promise<void> {
      * footnote to the work rather than the point of it, which is why it is
      * something you open rather than something the yard already says.
      */
-    const openCheckoutBoard = async (): Promise<void> => {
+    const openCheckoutBoard = (): Promise<void> =>
+      timed('open-checkout', () => openCheckoutBoardRaw());
+    const openCheckoutBoardRaw = async (): Promise<void> => {
       const aim = open;
       const project = aim ? projectOn(aim.district) : undefined;
       if (!aim || !project) return;
@@ -564,7 +581,7 @@ async function boot(): Promise<void> {
     const refreshGuide = async (aim: Aim, session: Task): Promise<void> => {
       const has = await client.appSettings
         .hasGuide({ dir: session.path }, { timeoutMs: 5000 })
-        .catch(() => true);
+        .catch(soft('main.571', true));
       if (open !== aim || inside !== session) return;
       guideMissing = !has;
       if (live && plainCheckout()) rewrite(live.rows());
@@ -784,7 +801,8 @@ async function boot(): Promise<void> {
       try {
         const kept = JSON.parse(localStorage.getItem('mender.rail-order') ?? '[]') as unknown;
         return Array.isArray(kept) ? kept.filter((id): id is string => typeof id === 'string') : [];
-      } catch {
+      } catch (caught) {
+        swallowed('main.791', caught);
         return [];
       }
     };
@@ -1273,8 +1291,13 @@ async function boot(): Promise<void> {
           : { kind: 'island' };
 
     const arrived = (): void => {
+      noteDrawn();
       if (looking) return;
       const now = spot();
+      watchWhere(
+        now.kind === 'task' && now.card ? 'card' : now.kind,
+        now.kind === 'task' ? now.id : undefined
+      );
       /* A spot remembered before sessions carried their project is the same
          spot, but once that session is gone it has nowhere to fall back to,
          so it is written again the moment it is stood in. */
@@ -1283,7 +1306,8 @@ async function boot(): Promise<void> {
         wasIn = now;
         try {
           localStorage.setItem('mender.lastIn', JSON.stringify(now));
-        } catch {
+        } catch (caught) {
+          swallowed('main.1292', caught);
           // Then it is only remembered until the window closes.
         }
       }
@@ -1295,7 +1319,8 @@ async function boot(): Promise<void> {
       // being finished with what was on the screen.
       try {
         localStorage.setItem('mender.where', JSON.stringify(now));
-      } catch {
+      } catch (caught) {
+        swallowed('main.1304', caught);
         // A window with no storage is a window that opens on the island.
       }
     };
@@ -1476,7 +1501,8 @@ async function boot(): Promise<void> {
         if (now?.kind === 'too-many-files') return 'more files than git will count';
         const many = Object.keys(now?.entries ?? {}).length;
         return many ? counted(many, 'file') : null;
-      } catch {
+      } catch (caught) {
+        swallowed('main.1485', caught);
         return null;
       } finally {
         void status.dispose();
@@ -1499,7 +1525,9 @@ async function boot(): Promise<void> {
      * its first, or, with nobody in it yet, a fresh one started on the spot,
      * the same as walking into a project nobody has worked in.
      */
-    const enterWorkspace = async (aim: Aim, workspace: string): Promise<void> => {
+    const enterWorkspace = (aim: Aim, workspace: string): Promise<void> =>
+      timed('switch-workspace', () => enterWorkspaceRaw(aim, workspace));
+    const enterWorkspaceRaw = async (aim: Aim, workspace: string): Promise<void> => {
       const project = projectOn(aim.district);
       if (!project) return;
       workspaceIn.set(project.id, workspace);
@@ -1598,6 +1626,7 @@ async function boot(): Promise<void> {
     };
 
     const go = (id: string): void => {
+      act(id, inside?.id);
       // The finder is a board like any other, so picking something on it is
       // picking that thing: it steps out of the way first and then answers.
       if (looking && id !== FIND) looking = null;
@@ -1977,6 +2006,7 @@ async function boot(): Promise<void> {
     /** The windmill: the app's own settings, reached the same way any other
         doing is until it has an island of its own to stand on. */
     const openTheWindmill = (): void => {
+      untilPainted('open-settings-windmill');
       windmill?.close();
       const state = {
         hand: null as string | null,
@@ -2125,7 +2155,7 @@ async function boot(): Promise<void> {
           setBoard: async (project, url) => {
             const done = await client.jira
               .setBoard({ project, url }, { timeoutMs: 60_000 })
-              .catch(() => null);
+              .catch(soft('main.2137', null));
             if (!done) return 'Jira took too long to answer.';
             if (!done.success) return jiraSaid(done.error);
             if (quest?.project.id === project)
@@ -2435,7 +2465,9 @@ async function boot(): Promise<void> {
       // `openTuiTask`, which calls `showYard` for the rail and gatepost and
       // then takes the board itself over.
       if (here && here.kind !== 'terminal' && here.kind !== 'shell') {
-        opened.woke(client.agents.wake({ task: here.id }, { timeoutMs: 0 }));
+        const waking = client.agents.wake({ task: here.id }, { timeoutMs: 0 });
+        waitOn('waking', waking);
+        opened.woke(waking);
         /* Whatever was half-written last time is still on the line. */
         const held = drafts.get(here.id);
         void (
@@ -2462,7 +2494,9 @@ async function boot(): Promise<void> {
        its land, aiming at the part of the window the board is about to leave,
        and the board comes in from the right with everything running in there
        written on it. Neither waits for the other. */
-    const openDistrict = async (aim: Aim): Promise<void> => {
+    const openDistrict = (aim: Aim): Promise<void> =>
+      timed('open-project', () => openDistrictRaw(aim));
+    const openDistrictRaw = async (aim: Aim): Promise<void> => {
       const project = projectOn(aim.district);
       /* A piece of an already-drawn district nobody has founded yet still
          glows under the pointer like any other place a press does something
@@ -2597,7 +2631,9 @@ async function boot(): Promise<void> {
      * does it, the same way it changes which session you are looking at. There
      * is still one board and it is still showing one thing.
      */
-    const showCard = async (aim: Aim, task: Task): Promise<void> => {
+    const showCard = (aim: Aim, task: Task): Promise<void> =>
+      timed('open-card', () => showCardRaw(aim, task));
+    const showCardRaw = async (aim: Aim, task: Task): Promise<void> => {
       const was = live;
       live = null;
       reading = null;
@@ -2640,6 +2676,7 @@ async function boot(): Promise<void> {
      * checkout answers, since reading every picture in it takes a moment.
      */
     const configure = (project: Project, fresh = false): void => {
+      untilPainted('open-settings');
       settings?.ui.close();
       const state: SettingsState = {
         project,
@@ -2843,7 +2880,9 @@ async function boot(): Promise<void> {
      * The checkout board stays open underneath and stays live: a change is
      * something you look at and step back out of, not somewhere you go.
      */
-    const openChange = async (path: string, at?: At): Promise<void> => {
+    const openChange = (path: string, at?: At): Promise<void> =>
+      timed('open-diff', () => openChangeRaw(path, at));
+    const openChangeRaw = async (path: string, at?: At): Promise<void> => {
       const aim = open;
       const checkout = inside?.path ?? (aim ? projectOn(aim.district)?.path : undefined);
       if (!aim || !checkout) return;
@@ -2944,7 +2983,8 @@ async function boot(): Promise<void> {
      * meet it, and the only difference is which two versions are being held up
      * against each other.
      */
-    const openMade = async (hash: string): Promise<void> => {
+    const openMade = (hash: string): Promise<void> => timed('open-commit', () => openMadeRaw(hash));
+    const openMadeRaw = async (hash: string): Promise<void> => {
       const aim = open;
       const place = inside ?? (aim ? projectOn(aim.district) : undefined);
       if (!aim || !place) return;
@@ -2991,7 +3031,9 @@ async function boot(): Promise<void> {
      * out of — not the commit it started from, but the commit it and the
      * base still share, since the base may well have moved on since.
      */
-    const openBranchMade = async (): Promise<void> => {
+    const openBranchMade = (): Promise<void> =>
+      timed('open-branch-diff', () => openBranchMadeRaw());
+    const openBranchMadeRaw = async (): Promise<void> => {
       const aim = open;
       const session = inside;
       if (!aim || !session?.base) return;
@@ -3136,7 +3178,8 @@ async function boot(): Promise<void> {
      * what is actually in the folder is one step further in: a place you go
      * rather than a tree propped open beside everything else.
      */
-    const walkIn = async (): Promise<void> => {
+    const walkIn = (): Promise<void> => timed('open-folder', () => walkInRaw());
+    const walkInRaw = async (): Promise<void> => {
       const place = inside ?? (open ? projectOn(open.district) : undefined);
       if (!place || !open) return;
       const aim = open;
@@ -3193,7 +3236,8 @@ async function boot(): Promise<void> {
         ? parseNativeAbsolute(path)
         : joinAbsolute(root, path as PortableRelativePath);
 
-    const openFile = async (path: string): Promise<void> => {
+    const openFile = (path: string): Promise<void> => timed('open-file', () => openFileRaw(path));
+    const openFileRaw = async (path: string): Promise<void> => {
       const place = inside ?? (open ? projectOn(open.district) : undefined);
       const parsed = place ? parseNativeAbsolute(place.path) : undefined;
       if (!parsed?.success) return;
@@ -3355,12 +3399,13 @@ async function boot(): Promise<void> {
       /* An install is a real command on a real machine and it can fall over in
          ways nothing here modelled. Whatever happens, the line that said it
          was happening has to stop saying it. */
-      const came = await client.agents
-        .fetch({ hand }, { timeoutMs: 0 })
-        .catch((error: unknown) => ({
+      const came = await client.agents.fetch({ hand }, { timeoutMs: 0 }).catch((error: unknown) => {
+        swallowed('main.agents.fetch', error);
+        return {
           success: false as const,
           error: { kind: 'refused' as const, because: String(error) },
-        }));
+        };
+      });
       if (!came.success) {
         say(whyNot(came.error), 8000);
         return;
@@ -3378,10 +3423,13 @@ async function boot(): Promise<void> {
       say('bringing them up to date…', 600000);
       const done = await client.agents
         .update({ hand }, { timeoutMs: 0 })
-        .catch((error: unknown) => ({
-          success: false as const,
-          error: { kind: 'refused' as const, because: String(error) },
-        }));
+        .catch((error: unknown) => {
+          swallowed('main.agents.update', error);
+          return {
+            success: false as const,
+            error: { kind: 'refused' as const, because: String(error) },
+          };
+        });
       if (!done.success) {
         say(whyNot(done.error), 8000);
         return;
@@ -3395,10 +3443,13 @@ async function boot(): Promise<void> {
       say('taking them off this machine…', 600000);
       const done = await client.agents
         .remove({ hand }, { timeoutMs: 0 })
-        .catch((error: unknown) => ({
-          success: false as const,
-          error: { kind: 'refused' as const, because: String(error) },
-        }));
+        .catch((error: unknown) => {
+          swallowed('main.agents.remove', error);
+          return {
+            success: false as const,
+            error: { kind: 'refused' as const, because: String(error) },
+          };
+        });
       if (!done.success) {
         say(whyNot(done.error), 8000);
         return;
@@ -3523,7 +3574,8 @@ async function boot(): Promise<void> {
       return { ...env, ...parseEnvLines(project?.env ?? '') };
     };
 
-    const talk = async (id = 'village'): Promise<void> => {
+    const talk = (id = 'village'): Promise<void> => timed('open-shell', () => talkRaw(id));
+    const talkRaw = async (id = 'village'): Promise<void> => {
       const place = onPlace();
       if (!place || !open) return;
       const aim = open;
@@ -3727,7 +3779,8 @@ async function boot(): Promise<void> {
       try {
         await fetch(url, { mode: 'no-cors', cache: 'no-store' });
         return true;
-      } catch {
+      } catch (caught) {
+        swallowed('main.3750', caught);
         return false;
       }
     };
@@ -3743,6 +3796,7 @@ async function boot(): Promise<void> {
 
     /** A browser, laid over the yard, showing one page. */
     const openBrowserBoard = (url: string): void => {
+      untilPainted('open-browser');
       stopWalking();
       stopTalking();
       hunt = null;
@@ -3878,7 +3932,8 @@ async function boot(): Promise<void> {
       jiraSurface?.close();
     };
 
-    const openQuest = async (): Promise<void> => {
+    const openQuest = (): Promise<void> => timed('open-jira', () => openQuestRaw());
+    const openQuestRaw = async (): Promise<void> => {
       const project = open ? projectOn(open.district) : undefined;
       if (!open || !project) return;
       stopWalking();
@@ -3933,6 +3988,7 @@ async function boot(): Promise<void> {
     };
     openTheTable = () => {
       if (tableOf) return closeTheTable();
+      untilPainted('open-drafting-table');
       const project = open ? projectOn(open.district) : undefined;
       if (!open || !project) return;
       if (quest) closeJira();
@@ -3955,8 +4011,10 @@ async function boot(): Promise<void> {
       const asked = ++toolsAsked;
       const seen = tablesSeen.get(project.path);
       void Promise.all([
-        client.jira.linkOf({ project: project.id }).catch(() => null),
-        client.drafting.read({ path: project.path, stamp: seen?.stamp ?? 0 }).catch(() => null),
+        client.jira.linkOf({ project: project.id }).catch(soft('main.3981', null)),
+        client.drafting
+          .read({ path: project.path, stamp: seen?.stamp ?? 0 })
+          .catch(soft('main.3982', null)),
       ]).then(([link, table]) => {
         const drawn =
           table?.same && seen ? seen.drawn : Boolean(table && (table.board || table.trouble));
@@ -4091,7 +4149,8 @@ async function boot(): Promise<void> {
      * the wood is the four things that decide whether it lands: what it is,
      * who has looked, what the machines think, and the way in.
      */
-    const openSent = async (): Promise<void> => {
+    const openSent = (): Promise<void> => timed('open-pull-request', () => openSentRaw());
+    const openSentRaw = async (): Promise<void> => {
       const place = onPlace();
       if (!place || !open) return;
       const aim = open;
@@ -4182,7 +4241,8 @@ async function boot(): Promise<void> {
     };
 
     /** Opening one, once it has been said what it is for. */
-    const openIt = async (): Promise<void> => {
+    const openIt = (): Promise<void> => timed('open-pull-request-now', () => openItRaw());
+    const openItRaw = async (): Promise<void> => {
       const mine = sending;
       if (!mine) return;
       const title = (mine.written ?? '').trim();
@@ -4429,7 +4489,7 @@ async function boot(): Promise<void> {
       /* Held on to so that whoever opens a tree next waits for this one to be
          gone. The model is keyed on the checkout and a subscribe that lands
          mid-release gets the session the release is about to take away. */
-      releasing = was.tree.close().catch(() => undefined);
+      releasing = was.tree.close().catch(soft('main.4457', undefined));
     };
     let releasing: Promise<unknown> | null = null;
 
@@ -4570,10 +4630,13 @@ async function boot(): Promise<void> {
           1000
         );
         const sent = await ran(gitContract.checkout.push, checkouts.push, { checkout }).catch(
-          (error: unknown) => ({
-            success: false as const,
-            error: { message: error instanceof Error ? error.message : String(error) },
-          })
+          (error: unknown) => {
+            swallowed('main.git.push', error);
+            return {
+              success: false as const,
+              error: { message: error instanceof Error ? error.message : String(error) },
+            };
+          }
         );
         clearInterval(tick);
         if (sent.success) {
@@ -4629,7 +4692,9 @@ async function boot(): Promise<void> {
      * A building with a task in it is that task's own checkout, and whoever is
      * working in it. The board opens at the bottom, because the bottom is now.
      */
-    const openTask = async (aim: Aim, task: Task): Promise<void> => {
+    const openTask = (aim: Aim, task: Task): Promise<void> =>
+      timed('walk-in', () => openTaskRaw(aim, task));
+    const openTaskRaw = async (aim: Aim, task: Task): Promise<void> => {
       const project = projects.find((one) => one.id === task.project);
       if (!project) return;
       if (task.kind === 'terminal') {
@@ -5078,6 +5143,7 @@ async function boot(): Promise<void> {
       // No deadline: a worktree on a big repository is minutes of copying, plus
       // whatever that project runs to make a checkout usable.
       let made: Awaited<ReturnType<typeof client.tasks.begin>>;
+      const doneSetup = waitFor('workspace-setup');
       try {
         made = await client.tasks.begin(
           {
@@ -5091,6 +5157,7 @@ async function boot(): Promise<void> {
           { timeoutMs: 0 }
         );
       } finally {
+        doneSetup();
         cutting.delete(draftId);
         syncCutting(project.id);
       }
@@ -5242,7 +5309,8 @@ async function boot(): Promise<void> {
       let path: string | undefined;
       try {
         path = await window.mender.saveExport(name, transcriptMarkdown(task, state.data.told));
-      } catch {
+      } catch (caught) {
+        swallowed('main.5273', caught);
         path = undefined;
       }
       if (card !== mine) return;
@@ -5317,10 +5385,10 @@ async function boot(): Promise<void> {
         notes: notes.length,
         working: saying.working(),
       });
-      const heard = await client.agents.tell(
-        { task: task.id, text, ...(carrying.length ? { carrying } : {}) },
-        { timeoutMs: 0 }
-      );
+      const doneTell = waitFor('prompt-ack');
+      const heard = await client.agents
+        .tell({ task: task.id, text, ...(carrying.length ? { carrying } : {}) }, { timeoutMs: 0 })
+        .finally(() => doneTell());
       const took = Math.round(performance.now() - sentAt);
       if (!heard.success) {
         flightTrouble('send: refused', { task: task.id, ms: took, kind: heard.error.kind });
@@ -5450,7 +5518,7 @@ async function boot(): Promise<void> {
       if (!session || session.room === undefined) return;
       const config = await client.appSettings
         .claudeConfig({ dir: null }, { timeoutMs: 0 })
-        .catch(() => null);
+        .catch(soft('main.5481', null));
       showHead(
         {
           room: session.room,
@@ -6296,6 +6364,7 @@ async function boot(): Promise<void> {
          it away to close a board nobody asked to close is the app taking
          something from you. */
       escaped: () => {
+        act('escape', inside?.id);
         if (looking) {
           if (looking.written) {
             wrote('');
@@ -6579,6 +6648,7 @@ async function boot(): Promise<void> {
          whatever is open closes, whoever is working keeps working, and the
          camera goes out to the island. */
       fled: () => {
+        act('escape-out', inside?.id);
         if (editing?.active) editing.stop();
         founding?.close();
         windmill?.close();
@@ -7244,6 +7314,8 @@ async function boot(): Promise<void> {
             } else stretches.delete(task);
           }
           for (const task of stretches.keys()) if (!(task in value)) stretches.delete(task);
+          for (const task of new Set([...Object.keys(seen), ...Object.keys(value)]))
+            lantern(task, seen[task], value[task]);
           const moved = JSON.stringify(seen) !== JSON.stringify(value);
           seen = value;
           people();
@@ -7293,6 +7365,7 @@ async function boot(): Promise<void> {
       step = 1;
     }
   } catch (error) {
+    swallowed('main.boot', error);
     say(error instanceof Error ? error.message : String(error));
     throw error;
   }
@@ -7580,7 +7653,8 @@ function lastly(key = 'mender.where'): Spot | null {
     if (!kept) return null;
     const read = JSON.parse(kept) as Spot;
     return read.kind === 'island' || read.kind === 'project' || read.kind === 'task' ? read : null;
-  } catch {
+  } catch (caught) {
+    swallowed('main.7615', caught);
     return null;
   }
 }

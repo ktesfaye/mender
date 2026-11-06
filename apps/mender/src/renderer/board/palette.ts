@@ -1,3 +1,4 @@
+import { swallowed } from '../watch/caught';
 import type { Choice, Kit } from '@shared/agents';
 import type { Prompt } from '@shared/prompts';
 import { rank, type Offer } from './offer';
@@ -163,7 +164,7 @@ const USED = 'mender.slashUsed';
 function usage(): Record<string, number> {
   try {
     return JSON.parse(localStorage.getItem(USED) ?? '{}') as Record<string, number>;
-  } catch {
+  } catch (caught) { swallowed('palette.166', caught);
     return {};
   }
 }
@@ -174,7 +175,7 @@ const LATELY = 'mender.slashLately';
 function lately(): string[] {
   try {
     return JSON.parse(localStorage.getItem(LATELY) ?? '[]') as string[];
-  } catch {
+  } catch (caught) { swallowed('palette.177', caught);
     return [];
   }
 }

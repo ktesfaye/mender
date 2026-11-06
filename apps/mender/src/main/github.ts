@@ -5,6 +5,7 @@ import { createController, type Controller } from '@emdash/wire/rpc';
 import { githubAuthContract } from '@upstream/services/pull-requests/api/github-auth-contract';
 import { shell } from 'electron';
 import { githubContract } from '../shared/github';
+import { noteCaught } from './ops';
 
 const ran = promisify(execFile);
 
@@ -66,7 +67,8 @@ async function tokenFor(host: string, env: EnvSource): Promise<string | null> {
     });
     const token = stdout.trim();
     return token || null;
-  } catch {
+  } catch (caught) {
+    noteCaught('github.ts:69', caught);
     return null;
   }
 }
@@ -152,7 +154,8 @@ async function signIn(): Promise<
         ['auth', 'login', '--hostname', 'github.com', '--git-protocol', 'https', '--web'],
         { stdio: ['ignore', 'pipe', 'pipe'] }
       );
-    } catch {
+    } catch (caught) {
+      noteCaught('github.ts:155', caught);
       resolve({ success: false, error: { kind: 'no-gh' } });
       return;
     }
@@ -197,7 +200,8 @@ function hostOf(url: string): string {
   if (ssh?.[1]) return ssh[1];
   try {
     return new URL(url).hostname || 'github.com';
-  } catch {
+  } catch (caught) {
+    noteCaught('github.ts:200', caught);
     return 'github.com';
   }
 }

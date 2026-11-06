@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { Logger } from '@emdash/shared/logger';
+import { noteCaught } from './ops';
 
 const run = promisify(execFile);
 
@@ -126,7 +127,8 @@ export function elapsed(etime: string): number {
 function signal(pid: number, sig: NodeJS.Signals): void {
   try {
     process.kill(pid, sig);
-  } catch {
+  } catch (caught) {
+    noteCaught('strays.ts:129', caught);
     /* already gone */
   }
 }

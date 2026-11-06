@@ -1,4 +1,5 @@
 import type { Unsubscribe } from '@emdash/shared';
+import { describeOpError, getCurrentLogger, type Logger } from '@emdash/shared/logger';
 import { createScope, type Scope } from '@emdash/shared/concurrency';
 import {
   retrySchedule,
@@ -9,6 +10,7 @@ import {
 import { WireError, type WireMessage, type WireTransport } from '../protocol';
 
 export type ReconnectingTransportOptions = {
+  logger?: Logger;
   backoffMs?: number[];
   clock?: Clock;
   retrySchedule?: RetrySchedule;
@@ -50,6 +52,7 @@ export function reconnectingTransport(
   options: ReconnectingTransportOptions = {}
 ): ReconnectingTransport {
   const clock = options.clock ?? systemClock;
+  const log = (): Logger => options.logger ?? getCurrentLogger();
   const scope: Scope = createScope({ label: 'reconnecting-transport', clock });
   const messageListeners = new Set<(message: WireMessage) => void>();
   const disconnectListeners = new Set<() => void>();
@@ -103,6 +106,13 @@ export function reconnectingTransport(
           return;
         } catch (error) {
           if (closed || signal.aborted) break;
+          log().warn('wire connect attempt failed', {
+            op: 'wire.reconnect',
+            count: attempt + 1,
+            stage: hasConnected ? 'reconnect' : 'connect',
+            outcome: 'failed',
+            ...describeOpError(error),
+          });
           const context = { attempt, isReconnect: hasConnected } satisfies ReconnectFailureContext;
           let delay: number | undefined;
           try {
@@ -166,6 +176,11 @@ export function reconnectingTransport(
   function failPermanently(error: unknown): void {
     terminal = true;
     terminalError = error;
+    log().error('wire reconnect abandoned', {
+      op: 'wire.reconnect',
+      outcome: 'failed',
+      ...describeOpError(error),
+    });
     readiness.reject(error);
     for (const listener of terminalFailureListeners) listener(error);
   }

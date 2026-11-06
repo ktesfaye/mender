@@ -38,6 +38,7 @@
  * that never really moved is still just a press.
  */
 
+import { swallowed } from '../watch/caught';
 import { glaze } from '../glass/glass';
 import { ISLAND_LOOK } from '../glass/island-look';
 import '../glass/island.css';
@@ -616,7 +617,7 @@ export function makeShelf(
       try {
         const raw = JSON.parse(localStorage.getItem(KEPT_KEY) ?? '[]') as unknown;
         return Array.isArray(raw) ? raw.filter((id): id is string => typeof id === 'string') : [];
-      } catch {
+      } catch (caught) { swallowed('shelf.619', caught);
         return [];
       }
     })()

@@ -9,6 +9,7 @@ import { MENDER_ATTEND_CHANNEL, MENDER_TABLE_CHANNEL } from '@shared/channels';
 import type { Agents } from './agents';
 import type { Projects } from './projects';
 import type { Tasks, Workspace } from './tasks';
+import { noteCaught, lost } from './ops';
 
 /**
  * How a session starts another, in the village where he can watch it.
@@ -429,7 +430,8 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
       let body: unknown;
       try {
         body = JSON.parse(raw);
-      } catch {
+      } catch (caught) {
+        noteCaught('session-door.ts:432', caught);
         return done(400, { ok: false, text: 'not json.' });
       }
       route(body as never).then(
@@ -445,7 +447,7 @@ export function openSessionDoor(tasks: Tasks, agents: Agents, projects: Projects
     if (!address || typeof address === 'string') return;
     void mkdir(dirname(file), { recursive: true })
       .then(() => writeFile(file, JSON.stringify({ port: address.port, token }), { mode: 0o600 }))
-      .catch(() => undefined);
+      .catch(lost('session-door.ts:448'));
   });
 
   return {

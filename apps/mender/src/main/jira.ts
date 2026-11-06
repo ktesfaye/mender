@@ -18,6 +18,7 @@ import {
 import { adfToMarkdown } from '../shared/jira-adf';
 import { forgetToken, readToken, writeToken } from './jira-keychain';
 import { boardLinkOf, hostOf } from './jira-link';
+import { noteCaught, lost } from './ops';
 
 /**
  * Jira, spoken to directly over its own REST API with an API token.
@@ -65,7 +66,7 @@ export function createJiraController(): Controller {
       await store.set(KEY, patched as unknown as never);
       return patched;
     });
-    queue = next.catch(() => undefined);
+    queue = next.catch(lost('jira.ts:68'));
     return next;
   };
 
@@ -81,7 +82,8 @@ export function createJiraController(): Controller {
     let token: string;
     try {
       token = safeStorage.decryptString(Buffer.from(known.sealed, 'base64'));
-    } catch {
+    } catch (caught) {
+      noteCaught('jira.ts:84', caught);
       return undefined;
     }
     if (await writeToken(known.site, token))
@@ -134,7 +136,8 @@ export function createJiraController(): Controller {
       return { success: false, error: { kind: 'refused', said: why(response, text) } };
     try {
       return { success: true, data: (text ? JSON.parse(text) : {}) as T };
-    } catch {
+    } catch (caught) {
+      noteCaught('jira.ts:137', caught);
       return {
         success: false,
         error: { kind: 'refused', said: 'Jira answered with something that is not JSON.' },
@@ -610,7 +613,8 @@ export function createJiraController(): Controller {
       let at: URL;
       try {
         at = new URL(url, `https://${site}`);
-      } catch {
+      } catch (caught) {
+        noteCaught('jira.ts:613', caught);
         return { success: false, error: { kind: 'refused', said: 'not an address.' } };
       }
       if (at.protocol !== 'https:')
@@ -717,7 +721,8 @@ function why(response: Response, text: string): string {
       .filter(Boolean)
       .join(' ');
     if (said) return said;
-  } catch {
+  } catch (caught) {
+    noteCaught('jira.ts:720', caught);
     /* not JSON, so say the status */
   }
   if (response.status === 401) return 'that email and token were not accepted.';

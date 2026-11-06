@@ -37,6 +37,12 @@ for nm in node_modules apps/*/node_modules packages/*/node_modules packages/*/*/
 done
 cp "$root"/apps/mender/build/icon.* "$work/apps/mender/build/" 2>/dev/null || true
 
+# The telemetry token is baked in at build time (electron.vite.config.ts), from
+# the environment or this file; without it the build ships no telemetry.
+[[ -z "${MENDER_AXIOM_TOKEN:-}" && -r ~/Documents/dev/.axiom_ingest_token ]] \
+  && export MENDER_AXIOM_TOKEN=$(<~/Documents/dev/.axiom_ingest_token)
+[[ -n "${MENDER_AXIOM_TOKEN:-}" ]] || echo "no telemetry token: this build will not report" >&2
+
 (cd "$work/apps/mender" && env -u ELECTRON_RUN_AS_NODE pnpm run package)
 
 app="$work/apps/mender/release/mac-arm64/Mender.app"

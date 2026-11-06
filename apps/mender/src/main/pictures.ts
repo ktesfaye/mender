@@ -4,6 +4,7 @@ import { basename, dirname, extname, isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
 import type { ShellEnvManager } from '@emdash/core/services/shell-env/node';
 import { nativeImage, type NativeImage } from 'electron';
+import { noteCaught } from './ops';
 
 const ran = promisify(execFile);
 
@@ -85,7 +86,8 @@ export async function load(path: string, size: number): Promise<NativeImage | nu
        an icns, a webp. It hands back a thumbnail already at the size asked. */
     try {
       image = await nativeImage.createThumbnailFromPath(path, { width: size, height: size });
-    } catch {
+    } catch (caught) {
+      noteCaught('pictures.ts:88', caught);
       return null;
     }
   }
@@ -139,7 +141,8 @@ export async function picturesIn(
       env: await env.current(),
     });
     listed = stdout.split('\0').filter((path) => IMAGE.test(path));
-  } catch {
+  } catch (caught) {
+    noteCaught('pictures.ts:142', caught);
     return { pictures: [], more: 0 };
   }
 
@@ -261,7 +264,8 @@ export async function keep(from: string, checkout: string, to: string): Promise<
 export async function shown(path: string): Promise<string | undefined> {
   try {
     return `data:image/png;base64,${(await readFile(path)).toString('base64')}`;
-  } catch {
+  } catch (caught) {
+    noteCaught('pictures.ts:264', caught);
     return undefined;
   }
 }

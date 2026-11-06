@@ -8,6 +8,7 @@ import type { LiveClientHandle } from '@emdash/wire/rpc';
 import { load } from './pictures';
 import type { MenderRuntimes } from './runtimes';
 import { versionsOf, type Version } from './versions';
+import { noteCaught } from './ops';
 
 const ran = promisify(execFile);
 
@@ -99,7 +100,8 @@ export function createBoard(runtimes: MenderRuntimes): Board {
         const name = stdout.trim().split('/').at(-1) ?? '';
         if (!name || SHELLLIKE.test(name)) return null;
         return name;
-      } catch {
+      } catch (caught) {
+        noteCaught('board.ts:102', caught);
         // No children, or the process is already gone — either way, there is
         // nothing under the shell itself to name.
         return null;
@@ -115,7 +117,8 @@ async function panePid(session: string): Promise<number | null> {
     const { stdout } = await ran('tmux', ['list-panes', '-t', session, '-F', '#{pane_pid}']);
     const pid = Number(stdout.trim().split('\n')[0]);
     return pid || null;
-  } catch {
+  } catch (caught) {
+    noteCaught('board.ts:118', caught);
     return null;
   }
 }

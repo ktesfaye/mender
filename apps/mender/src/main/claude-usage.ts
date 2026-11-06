@@ -1,6 +1,7 @@
 import { open, readdir, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
+import { noteCaught } from './ops';
 
 /**
  * What every Claude session on this machine has spent, read straight off
@@ -98,7 +99,8 @@ export function tallyLines(
     let one: Record<string, unknown>;
     try {
       one = JSON.parse(line) as Record<string, unknown>;
-    } catch {
+    } catch (caught) {
+      noteCaught('claude-usage.ts:101', caught);
       continue;
     }
     if (one.type === 'ai-title' && typeof one.aiTitle === 'string') {
@@ -270,7 +272,8 @@ export function createClaudeUsage(root = join(homedir(), '.claude', 'projects'))
     let dirs: string[];
     try {
       dirs = await readdir(root);
-    } catch {
+    } catch (caught) {
+      noteCaught('claude-usage.ts:273', caught);
       return found;
     }
     const cutoff = Date.now() - STALE_MS;
@@ -278,7 +281,8 @@ export function createClaudeUsage(root = join(homedir(), '.claude', 'projects'))
       let names: string[];
       try {
         names = await readdir(join(root, dir));
-      } catch {
+      } catch (caught) {
+        noteCaught('claude-usage.ts:281', caught);
         continue;
       }
       for (const name of names) {
@@ -294,7 +298,8 @@ export function createClaudeUsage(root = join(homedir(), '.claude', 'projects'))
         let inner: string[];
         try {
           inner = await readdir(helpers);
-        } catch {
+        } catch (caught) {
+          noteCaught('claude-usage.ts:297', caught);
           continue;
         }
         for (const helper of inner) {
@@ -346,7 +351,8 @@ export function createClaudeUsage(root = join(homedir(), '.claude', 'projects'))
     for (const file of found) {
       try {
         await readOn(file);
-      } catch {
+      } catch (caught) {
+        noteCaught('claude-usage.ts:349', caught);
         /* Half-written or gone; next time. */
       }
     }

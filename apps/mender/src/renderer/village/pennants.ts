@@ -1,3 +1,4 @@
+import { swallowed, soft } from '../watch/caught';
 import type { Viewport } from 'pixi-viewport';
 import { Container, Sprite, Texture } from 'pixi.js';
 import { pageZoom } from '../page-zoom';
@@ -107,7 +108,7 @@ function moved(): Record<string, [number, number]> {
   try {
     const raw = JSON.parse(localStorage.getItem(MOVED) ?? '{}') as unknown;
     return raw && typeof raw === 'object' ? (raw as Record<string, [number, number]>) : {};
-  } catch {
+  } catch (caught) { swallowed('pennants.110', caught);
     return {};
   }
 }
@@ -120,7 +121,7 @@ export function plantFlag(district: string, at: Foot, moored: Moored = [0, 0]): 
       MOVED,
       JSON.stringify({ ...moved(), [district]: [Math.round(foot.x), Math.round(foot.y)] })
     );
-  } catch {
+  } catch (caught) { swallowed('pennants.123', caught);
     // Only a convenience; the measured spot is still a good one.
   }
 }
@@ -136,7 +137,7 @@ export async function loadFeet(moored: Moored = [0, 0]): Promise<Map<string, Foo
       feet: Record<string, [number, number]>;
     };
     feet = read.feet;
-  } catch {
+  } catch (caught) { swallowed('pennants.139', caught);
     // No measured spots; only moved ones stand.
   }
   const all = { ...feet, ...moved() };
@@ -447,7 +448,7 @@ async function paint(
        and the letter sits in the cloth about as big as a logo's own mark
        does: at the design's 9px it landed between pixels and read as a
        smudge, and at three times it was fatter than the flag. */
-    await document.fonts.load("16px 'Silkscreen'").catch(() => undefined);
+    await document.fonts.load("16px 'Silkscreen'").catch(soft('pennants.450', undefined));
     const [letter, letterPen] = sheet();
     const initial = (one.name.trim()[0] ?? '?').toUpperCase();
     letterPen.font = "16px 'Silkscreen'";
@@ -497,7 +498,7 @@ function trimmed(
   let data: Uint8ClampedArray;
   try {
     data = pen.getImageData(0, 0, w, h).data;
-  } catch {
+  } catch (caught) { swallowed('pennants.500', caught);
     return { image: canvas, aspect: w / h, edge: OUTLINE };
   }
   const solid = (x: number, y: number): boolean => (data[(y * w + x) * 4 + 3] ?? 0) > 24;

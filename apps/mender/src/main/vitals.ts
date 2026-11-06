@@ -1,7 +1,9 @@
 import { freemem } from 'node:os';
+import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { app, ipcMain, powerMonitor, type BrowserWindow, type IpcMainEvent } from 'electron';
 import { MENDER_VITALS_CHANNEL, type Vitals } from '../shared/channels';
 import { logger } from './logging';
+import { beginWake } from './ops';
 
 /**
  * The host's side of the window's flight recorder.
@@ -127,14 +129,33 @@ export function watchVitals(window: BrowserWindow): void {
       freeMemMb: mb(freemem()),
       upMin: Math.round(process.uptime() / 60),
     });
+    for (const one of processes()) {
+      log.info('process numbers', {
+        kind: one.type.replace(/[^A-Za-z0-9_-]+/g, '-'),
+        rssMb: one.mb,
+        cpu: one.cpu,
+      });
+    }
   }, NUMBERS_EVERY_MS);
+
+  const loop = monitorEventLoopDelay({ resolution: 20 });
+  loop.enable();
+  const lag = setInterval(() => {
+    const p99Ms = Math.round(loop.percentile(99) / 1e6);
+    const lagMs = Math.round(loop.max / 1e6);
+    loop.reset();
+    if (p99Ms > 200) log.warn('main event loop lagging', { p99Ms, lagMs });
+  }, 30_000);
+  lag.unref();
 
   /* Sleep, lock and wake, each with where the window stood, then a look at
      whether the page is really answering a few seconds and a few more after.
      A wake that leaves the page silent is the whole of "frozen after sleep". */
+  let wakeId: string | undefined;
   const power = (what: string) => (): void => {
     if (window.isDestroyed()) return;
     log.info(`machine: ${what}`, {
+      ...(wakeId ? { op: 'wake', opId: wakeId } : {}),
       ...windowState(window),
       onBattery: powerMonitor.isOnBatteryPower(),
     });
@@ -142,6 +163,7 @@ export function watchVitals(window: BrowserWindow): void {
   const afterWake = (what: string) => (): void => {
     if (window.isDestroyed()) return;
     wokeAt = Date.now();
+    wakeId = beginWake();
     power(what)();
     for (const after of [3000, 10_000, 30_000]) {
       setTimeout(() => {
@@ -158,14 +180,33 @@ export function watchVitals(window: BrowserWindow): void {
       }, after).unref();
     }
   };
-  powerMonitor.on('suspend', power('going to sleep'));
+  powerMonitor.on('suspend', () => {
+    wakeId = undefined;
+    power('going to sleep')();
+  });
   powerMonitor.on('resume', afterWake('woke'));
   powerMonitor.on('lock-screen', power('screen locked'));
   powerMonitor.on('unlock-screen', afterWake('screen unlocked'));
   powerMonitor.on('shutdown', power('shutting down'));
 
+  let hiddenAt: number | null = null;
   const edge = (what: string) => (): void => {
-    if (!window.isDestroyed()) log.info(`window: ${what}`, windowState(window));
+    if (window.isDestroyed()) return;
+    log.info(`window: ${what}`, windowState(window));
+    if (what === 'hide' || what === 'minimize') hiddenAt = Date.now();
+    if ((what === 'show' || what === 'restore') && hiddenAt !== null) {
+      const hiddenMs = Date.now() - hiddenAt;
+      hiddenAt = null;
+      if (hiddenMs > 10 * 60_000) {
+        wakeId = beginWake();
+        log.info('window: back after a long absence', {
+          op: 'wake',
+          opId: wakeId,
+          elapsedMs: hiddenMs,
+          ...windowState(window),
+        });
+      }
+    }
   };
   window.on('focus', edge('focus'));
   window.on('blur', edge('blur'));
@@ -177,6 +218,8 @@ export function watchVitals(window: BrowserWindow): void {
   window.on('closed', () => {
     clearInterval(look);
     clearInterval(numbers);
+    clearInterval(lag);
+    loop.disable();
     ipcMain.removeAllListeners(MENDER_VITALS_CHANNEL);
   });
 }

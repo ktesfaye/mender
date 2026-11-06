@@ -1,3 +1,4 @@
+import { swallowed } from '../watch/caught';
 /**
  * Pressing things, and what happens after.
  *
@@ -28,7 +29,6 @@
  * knowing how long it will be in the way a spinner never is, and a wait short
  * enough not to notice says nothing at all.
  */
-
 import { stand } from './standing';
 
 /** How long a thing has to take before it is worth saying it is happening. */
@@ -110,6 +110,7 @@ async function carry(line: HTMLSpanElement, said: string, doing: Doing): Promise
   try {
     outcome = await doing.run();
   } catch (trouble) {
+    swallowed('press.action', trouble);
     outcome = { wrong: 'it would not', because: String(trouble) };
   }
 

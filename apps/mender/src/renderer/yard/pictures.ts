@@ -13,6 +13,7 @@
  * will not load is simply not there: a broken frame says less than nothing.
  */
 
+import { swallowed, soft } from '../watch/caught';
 import { holdUp, type Sibling } from './picture-view';
 
 const FILM = /\.(mp4|webm|mov|m4v)$/i;
@@ -223,14 +224,14 @@ export function onThisMachine(url: string, width = 1280): Promise<string | null>
   if (path.startsWith('file://')) {
     try {
       path = decodeURIComponent(new URL(path).pathname);
-    } catch {
+    } catch (caught) { swallowed('pictures.226', caught);
       return Promise.resolve(null);
     }
   }
   const key = `${width}|${path}`;
   let one = read.get(key);
   if (!one) {
-    one = local ? local(path, width).catch(() => null) : Promise.resolve(null);
+    one = local ? local(path, width).catch(soft('pictures.233', null)) : Promise.resolve(null);
     read.set(key, one);
   }
   return one;
@@ -243,9 +244,9 @@ export function larger(url: string): Promise<string | null> | undefined {
   if (path.startsWith('file://')) {
     try {
       path = decodeURIComponent(new URL(path).pathname);
-    } catch {
+    } catch (caught) { swallowed('pictures.246', caught);
       return undefined;
     }
   }
-  return local(path, 3200).catch(() => null);
+  return local(path, 3200).catch(soft('pictures.250', null));
 }

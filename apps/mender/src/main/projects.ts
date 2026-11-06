@@ -24,6 +24,7 @@ import type { AppSettings } from './app-settings';
 import { keep, picturesIn, shown, type Picture } from './pictures';
 import type { MenderRuntimes } from './runtimes';
 import { loadSubdistricts } from './village';
+import { noteCaught } from './ops';
 
 const ran = promisify(execFile);
 
@@ -857,7 +858,8 @@ async function ignoredIn(runtimes: MenderRuntimes, checkout: string): Promise<st
         return bare.split('/').length <= 4 && LOCAL.test(name);
       })
       .slice(0, 40);
-  } catch {
+  } catch (caught) {
+    noteCaught('projects.ts:860', caught);
     return [];
   }
 }

@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { noteCaught } from './ops';
 
 const ran = promisify(execFile);
 
@@ -196,7 +197,8 @@ async function manifestIn(checkout: string): Promise<(typeof MANIFESTS)[number] 
     try {
       const text = await readFile(join(checkout, one.file), 'utf8');
       if (text.split('\n').some((line) => one.line.test(line))) return one;
-    } catch {
+    } catch (caught) {
+      noteCaught('versions.ts:199', caught);
       // Not this kind of project.
     }
   }

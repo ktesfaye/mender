@@ -1,4 +1,5 @@
 import type { Unsubscribe } from '@emdash/shared';
+import { describeOpError, getCurrentLogger, type Logger } from '@emdash/shared/logger';
 import { systemClock, type Clock, type TimerHandle } from '@emdash/shared/scheduling';
 import {
   createBlobConsumer,
@@ -43,6 +44,7 @@ export type AttachOptions = {
 
 export type ConnectOptions = {
   instrumentation?: WireInstrumentation;
+  logger?: Logger;
   clock?: Clock;
   /**
    * Default deadline for calls and snapshot requests, spanning call-issued to
@@ -104,6 +106,8 @@ export function connect(transport: WireTransport, options: ConnectOptions = {}):
   const blobProducers = new Map<string, BlobProducer>();
   const disconnectListeners = new Set<() => void>();
   const instrumentation = options.instrumentation;
+  const log = (): Logger => options.logger ?? getCurrentLogger();
+  let disconnectedAt: number | null = null;
   const clock = options.clock ?? systemClock;
   const callTimeoutMs = options.callTimeoutMs ?? DEFAULT_CALL_TIMEOUT_MS;
   const maxHeldCalls = Math.max(0, options.maxHeldCalls ?? DEFAULT_MAX_HELD_CALLS);
@@ -143,6 +147,7 @@ export function connect(transport: WireTransport, options: ConnectOptions = {}):
     }
 
     if (message.kind === 'topic-gap') {
+      log().info('wire topic gap', { op: 'wire.topic', procedure: message.topic, stage: 'gap' });
       notifyReattached(attachments.get(message.topic));
       return;
     }
@@ -150,6 +155,13 @@ export function connect(transport: WireTransport, options: ConnectOptions = {}):
     if (message.kind === 'topic-error') {
       const entry = attachments.get(message.topic);
       const error = wireErrorFromSerialized(message.error);
+      log().warn('wire topic error', {
+        op: 'wire.topic',
+        procedure: message.topic,
+        stage: message.retrying ? 'retrying' : 'dropped',
+        outcome: 'failed',
+        ...describeOpError(error),
+      });
       notifyReattachError(entry, error, { retrying: message.retrying });
       if (!message.retrying) attachments.delete(message.topic);
       return;
@@ -191,6 +203,12 @@ export function connect(transport: WireTransport, options: ConnectOptions = {}):
     if (disposed) return;
     if (holdsWhileDisconnected) connected = false;
     instrumentation?.transport?.({ event: 'disconnect' });
+    disconnectedAt = Date.now();
+    log().warn('wire disconnected', {
+      op: 'wire.connection',
+      stage: 'disconnect',
+      count: pending.size,
+    });
     // In-flight calls lost their peer and reject; calls held while
     // disconnected stay held until reconnect or their deadline.
     for (const [id, pendingCall] of [...pending]) {
@@ -214,6 +232,13 @@ export function connect(transport: WireTransport, options: ConnectOptions = {}):
     if (disposed || terminal) return;
     connected = true;
     instrumentation?.transport?.({ event: 'reconnect' });
+    log().info('wire reconnected', {
+      op: 'wire.connection',
+      stage: 'reconnect',
+      durationMs: disconnectedAt === null ? undefined : Date.now() - disconnectedAt,
+      count: attachments.size,
+    });
+    disconnectedAt = null;
     const flushed = flushHeldCalls();
     if (!connected) return;
     for (const [topic, entry] of attachments) {
@@ -237,6 +262,12 @@ export function connect(transport: WireTransport, options: ConnectOptions = {}):
     terminal = true;
     terminalCause = cause;
     connected = false;
+    log().error('wire connection failed permanently', {
+      op: 'wire.connection',
+      stage: 'terminal',
+      outcome: 'failed',
+      ...describeOpError(cause),
+    });
     for (const pendingCall of pending.values()) {
       pendingCall.cleanup();
       pendingCall.reject(terminalFailureError(pendingCall.posted));
@@ -695,6 +726,13 @@ export function connect(transport: WireTransport, options: ConnectOptions = {}):
         const wireError = toWireError(error);
         if (notifyReattach) {
           const retrying = wireError.code === 'DISCONNECTED';
+          log().warn('wire reattach failed', {
+            op: 'wire.topic',
+            procedure: topic,
+            stage: retrying ? 'retrying' : 'dropped',
+            outcome: 'failed',
+            ...describeOpError(wireError),
+          });
           notifyReattachError(entry, wireError, { retrying });
           if (!retrying) attachments.delete(topic);
           return;

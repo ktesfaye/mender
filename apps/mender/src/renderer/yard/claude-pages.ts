@@ -1,11 +1,11 @@
+import type { Bucket, ClaudeConfig, ClaudeEdit } from '@shared/claude-config';
 /**
  * The windmill's four Claude Code pages: what its own /config, /permissions, /plugin and /hooks
  * used to print as text, drawn as things to press. All of it lives in Claude's own files, so a
  * terminal session sees exactly what is set here.
  */
-
-import type { Bucket, ClaudeConfig, ClaudeEdit } from '@shared/claude-config';
 import { px } from '../glass/px';
+import { swallowed } from '../watch/caught';
 import { chip, formRowSub, hintLine, input, pageOf, section } from './settings';
 
 export type ClaudePage = 'claude' | 'perms' | 'plugins' | 'hooks';
@@ -100,6 +100,7 @@ export function makeClaudePages(
       held = await does.edit(edit, edit.what === 'rule' || edit.what === 'mode' ? scope : null);
       failed = '';
     } catch (error) {
+      swallowed('claude-pages.write', error);
       failed = error instanceof Error ? error.message : 'could not write it';
     }
     took(part);
@@ -111,6 +112,7 @@ export function makeClaudePages(
     try {
       held = await does.config(showing === 'perms' ? scope : null);
     } catch (error) {
+      swallowed('claude-pages.read', error);
       failed = error instanceof Error ? error.message : 'could not read it';
     }
     rail();
@@ -159,7 +161,9 @@ export function makeClaudePages(
     const when = el('div', 'cc-when');
     const label = el('span', 'g-pix');
     label.textContent =
-      at === null ? 'auto, tuned for the model' : `packs at ${at >= WINDOW ? '1m' : `${at / 1000}k`} tokens`;
+      at === null
+        ? 'auto, tuned for the model'
+        : `packs at ${at >= WINDOW ? '1m' : `${at / 1000}k`} tokens`;
     when.append(meter, label);
     const seg = el('div', 'st-seg');
     for (const one of COMPACT_AT) {
@@ -217,7 +221,9 @@ export function makeClaudePages(
         );
         return card;
       })(),
-      hintLine('Left out on purpose: theme, vim mode and voice. The village has one look, one line to write on and no microphone.'),
+      hintLine(
+        'Left out on purpose: theme, vim mode and voice. The village has one look, one line to write on and no microphone.'
+      ),
     ]);
   }
 
@@ -242,7 +248,11 @@ export function makeClaudePages(
     const listed = MODES.some((one) => one.mode === config.mode);
     for (const one of MODES) {
       modes.appendChild(
-        chip(one.said, config.mode === one.mode, () => void write({ what: 'mode', mode: one.mode }, perms))
+        chip(
+          one.said,
+          config.mode === one.mode,
+          () => void write({ what: 'mode', mode: one.mode }, perms)
+        )
       );
     }
     if (!listed) modes.prepend(chip(config.mode, true, () => undefined));
@@ -269,7 +279,13 @@ export function makeClaudePages(
       box.appendChild(addRule(col.bucket));
       cols.appendChild(box);
     }
-    perms.fill([bar, cols, hintLine('Pressing "always allow" on a question at the gate lands here as a rule, so this is where you take one back.')]);
+    perms.fill([
+      bar,
+      cols,
+      hintLine(
+        'Pressing "always allow" on a question at the gate lands here as a rule, so this is where you take one back.'
+      ),
+    ]);
   }
 
   function ruleLine(rule: string, bucket: Bucket): HTMLElement {
@@ -284,7 +300,10 @@ export function makeClaudePages(
     gone.type = 'button';
     gone.textContent = '×';
     gone.setAttribute('aria-label', `Take back ${rule}`);
-    gone.addEventListener('click', () => void write({ what: 'rule', bucket, rule, add: false }, perms));
+    gone.addEventListener(
+      'click',
+      () => void write({ what: 'rule', bucket, rule, add: false }, perms)
+    );
     line.append(name, detail, gone);
     return line;
   }
@@ -320,9 +339,13 @@ export function makeClaudePages(
     for (const name of config.marketplaces) list.appendChild(formRowSub(name, '', el('span', '')));
     const add = input('', 'owner/repo on GitHub', async (value) => {
       const repo = value.trim();
-      if (/^[\w.-]+\/[\w.-]+$/.test(repo)) await write({ what: 'market', repo, add: true }, markets);
+      if (/^[\w.-]+\/[\w.-]+$/.test(repo))
+        await write({ what: 'market', repo, add: true }, markets);
     });
-    markets.fill([list, formRowSub('Add a marketplace', 'a GitHub repository that lists plugins', add)]);
+    markets.fill([
+      list,
+      formRowSub('Add a marketplace', 'a GitHub repository that lists plugins', add),
+    ]);
   }
 
   // ── hooks ────────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { toSerializedError, type Unsubscribe } from '@emdash/shared';
-import { getCurrentLogger, runWithLogger, type Logger } from '@emdash/shared/logger';
+import { describeOpError, getCurrentLogger, runWithLogger, type Logger } from '@emdash/shared/logger';
 import {
   createBlobConsumer,
   createBlobProducer,
@@ -306,6 +306,13 @@ export function serve(
                   onGap: () => post({ kind: 'topic-gap', topic: message.topic }),
                   signal,
                   onError: (error, context) => {
+                    (options.logger ?? getCurrentLogger()).warn('wire topic source error', {
+                      op: 'wire.topic',
+                      procedure: message.topic,
+                      stage: context.retrying ? 'retrying' : 'dropped',
+                      outcome: 'failed',
+                      ...describeOpError(error),
+                    });
                     post({
                       kind: 'topic-error',
                       topic: message.topic,

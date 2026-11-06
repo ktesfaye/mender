@@ -1,4 +1,5 @@
 import os from 'node:os';
+import { describeOpError, getCurrentLogger, startOp } from '@emdash/shared/logger';
 import { nativePathIdentityKey } from '#primitives/path/api';
 
 /**
@@ -64,7 +65,7 @@ export class GitSchedule {
     const repository = work.repository && pathIdentityKey(work.repository);
     if (gated) this.enterRepo(repository!);
     try {
-      await this.acquire(tier);
+      await this.acquire(tier, work.tier);
       try {
         return await task();
       } finally {
@@ -119,13 +120,24 @@ export class GitSchedule {
     return tier <= TIER_INDEX.activation ? this.capacity + this.headroom : this.capacity;
   }
 
-  private acquire(tier: number): Promise<void> {
+  private acquire(tier: number, tierName: GitWorkTier): Promise<void> {
     if (this.running < this.limitFor(tier)) {
       this.running += 1;
       return Promise.resolve();
     }
+    const wait = startOp(
+      getCurrentLogger(),
+      'git.slot.wait',
+      { tier: tierName, count: this.queues.reduce((total, queue) => total + queue.length, 0) + 1 },
+      { quiet: true }
+    );
     return new Promise((resolve) => {
-      this.queues[tier]!.push({ start: resolve });
+      this.queues[tier]!.push({
+        start: () => {
+          wait.end();
+          resolve();
+        },
+      });
     });
   }
 
@@ -177,7 +189,9 @@ export class WorktreeWriteLocks {
     });
     const chained = previous.then(() => held);
     this.writers.set(identity, chained);
+    const wait = startOp(getCurrentLogger(), 'worktree.lock.wait', {}, { quiet: true });
     await previous;
+    wait.end();
     try {
       return await task();
     } finally {
@@ -234,6 +248,12 @@ export async function retryTransientLock<T>(
       return await task();
     } catch (error) {
       if (attempt >= delays.length || !isTransientLockError(error)) throw error;
+      getCurrentLogger().warn('git lock collision; retrying', {
+        op: 'git.lock-retry',
+        count: attempt + 1,
+        durationMs: delays[attempt],
+        ...describeOpError(error),
+      });
       await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
     }
   }

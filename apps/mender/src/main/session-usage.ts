@@ -7,6 +7,7 @@ import { ReplicaState } from '@emdash/wire/live';
 import type { LiveClientHandle } from '@emdash/wire/rpc';
 import type { MenderRuntimes } from './runtimes';
 import type { Tasks } from './tasks';
+import { noteCaught } from './ops';
 
 const execFileAsync = promisify(execFile);
 
@@ -125,7 +126,8 @@ async function psFor(pids: number[]): Promise<Map<number, { cpuPercent: number; 
       const [pid, cpu, rss] = trimmed.split(/\s+/).map(Number);
       if (pid) map.set(pid, { cpuPercent: cpu || 0, memBytes: (rss || 0) * 1024 });
     }
-  } catch {
+  } catch (caught) {
+    noteCaught('session-usage.ts:128', caught);
     // A process that exited between listing and measuring says nothing,
     // which just means this sample leaves it out.
   }

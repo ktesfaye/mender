@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { noteCaught } from './ops';
 
 /**
  * The gateway Claude is sent through on this machine, by its host, or
@@ -18,7 +19,8 @@ export function gateHost(): string | undefined {
   let host: string | undefined;
   try {
     host = url ? new URL(url).hostname : undefined;
-  } catch {
+  } catch (caught) {
+    noteCaught('gate.ts:21', caught);
     host = undefined;
   }
   if (host && /(^|\.)anthropic\.com$/i.test(host)) host = undefined;
@@ -33,7 +35,8 @@ function fromSettings(): string | undefined {
     const settings = JSON.parse(readFileSync(join(homedir(), '.claude', 'settings.json'), 'utf8'));
     const url = settings?.env?.ANTHROPIC_BASE_URL;
     return typeof url === 'string' && url.trim() ? url.trim() : undefined;
-  } catch {
+  } catch (caught) {
+    noteCaught('gate.ts:36', caught);
     return undefined;
   }
 }

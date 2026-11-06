@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { err, ok, type Result } from '@emdash/shared';
-import { noopLogger, type Logger } from '@emdash/shared/logger';
+import { noopLogger, startOp, type Logger } from '@emdash/shared/logger';
 import { LiveLogSource } from '@emdash/wire/live';
 import type { LeasedLiveModelProvider, LiveSource } from '@emdash/wire/rpc';
 import { cell, expose, family, peek, type Cell } from '@emdash/wire/state';
@@ -133,6 +133,7 @@ export class ScriptsRuntime {
     log.reseed();
 
     const runId = crypto.randomUUID();
+    const op = startOp(this.logger, 'script.run', { script: input.script });
     let outputTail = '';
     let resolveSettled: (state: ScriptRunState) => void;
     const settled = new Promise<ScriptRunState>((resolve) => {
@@ -143,7 +144,9 @@ export class ScriptsRuntime {
     try {
       // User-shell env + the host-derived EMDASH_* vars; deliberately no CI=1
       // injection (spec: env parity — a documented breaking change).
+      op.stage('load-env');
       const baseEnv = await this.loadUserEnv();
+      op.stage('resolve-shell');
       const shellProfile = await resolveTerminalShell({
         intent: 'system',
         platform: this.platform,
@@ -156,6 +159,7 @@ export class ScriptsRuntime {
           ...buildScriptEnv(input.workspacePath, input.facts),
         },
       });
+      op.stage('spawn');
       session = await this.registry.create(
         runKey,
         spawnSpec({
@@ -208,6 +212,15 @@ export class ScriptsRuntime {
                         ? `Exited with signal ${info.signal}`
                         : `Exited with code ${info.exitCode ?? 'unknown'}`,
               };
+              const failed = next.status === 'failed' || next.status === 'timed-out';
+              op.end({
+                stage: next.status,
+                exitCode: info.exitCode ?? undefined,
+                signal: info.signal ?? undefined,
+                ...(failed
+                  ? { outcome: 'failed', outputTail: outputTail.split('\n').slice(-20).join('\n') }
+                  : {}),
+              });
               resolveSettled(next);
               return next;
             });
@@ -215,6 +228,7 @@ export class ScriptsRuntime {
         }
       );
     } catch (error) {
+      op.fail(error);
       return err({
         type: 'spawn-failed',
         message: error instanceof Error ? error.message : String(error),
@@ -232,10 +246,12 @@ export class ScriptsRuntime {
     if (input.timeoutMs !== undefined) {
       activeRun.timer = setTimeout(() => {
         activeRun.timedOut = true;
-        this.logger.info?.(
-          `script '${input.script}' timed out after ${input.timeoutMs}ms — killing`,
-          { workspacePath: input.workspacePath }
-        );
+        this.logger.warn('script timed out; killing', {
+          op: 'script.run',
+          opId: op.opId,
+          script: input.script,
+          durationMs: input.timeoutMs,
+        });
         session.kill();
       }, input.timeoutMs);
     }
@@ -285,6 +301,7 @@ export class ScriptsRuntime {
       });
     }
     active.stopRequested = true;
+    this.logger.info('script stop requested', { op: 'script.run', script: input.script });
     if (active.timer) clearTimeout(active.timer);
     active.kill();
     return ok(undefined);

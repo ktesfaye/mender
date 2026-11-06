@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import { cp, glob, lstat, mkdir, readlink, rename, rm, stat, symlink } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { getCurrentLogger, startOp, type Op } from '@emdash/shared/logger';
 import { EMDASH_CONFIG_FILE } from '#primitives/emdash-config/api';
 import type { RegistryGitContext } from './git-context';
 
@@ -15,6 +16,7 @@ export type CopyArtifactsInput = {
   worktreePath: string;
   /** The deliberate selection: gitignored files that ride into the new worktree. */
   preservePatterns: readonly string[];
+  parentOpId?: string;
 };
 
 export type CopyArtifactsOutcome =
@@ -45,6 +47,27 @@ const STAGING_SUFFIX = '.emdash-clone-tmp';
 export async function executeCopyArtifacts(
   input: CopyArtifactsInput
 ): Promise<CopyArtifactsOutcome> {
+  const op = startOp(getCurrentLogger(), 'copy-artifacts', {
+    parentOpId: input.parentOpId,
+    count: input.preservePatterns.length,
+  });
+  try {
+    const outcome = await copyArtifacts(input, op);
+    if (outcome.status === 'failed') {
+      op.end({ outcome: 'failed', errorKind: 'CopyArtifactsFailed', errorMessage: outcome.message });
+    } else if (outcome.status === 'succeeded') {
+      op.end({ count: outcome.entries, tier: outcome.engine });
+    } else {
+      op.end();
+    }
+    return outcome;
+  } catch (error) {
+    op.fail(error);
+    throw error;
+  }
+}
+
+async function copyArtifacts(input: CopyArtifactsInput, op: Op): Promise<CopyArtifactsOutcome> {
   if (input.preservePatterns.length === 0) {
     return { status: 'skipped', reason: 'No preservePatterns configured' };
   }
@@ -63,15 +86,19 @@ export async function executeCopyArtifacts(
   }
 
   let candidates: string[];
+  op.stage('resolve-patterns');
   try {
     candidates = await resolvePatternMatches(input.repositoryPath, safePatterns);
+    op.stage('resolved-patterns', { count: candidates.length });
   } catch (error) {
     return { status: 'failed', message: `Could not resolve preserve patterns: ${message(error)}` };
   }
 
   let accepted: string[];
+  op.stage('filter-ignored');
   try {
     accepted = await filterIgnored(input.git, input.repositoryPath, candidates);
+    op.stage('filtered-ignored', { count: accepted.length });
   } catch (error) {
     return { status: 'failed', message: `Could not filter preserved matches: ${message(error)}` };
   }
@@ -87,10 +114,25 @@ export async function executeCopyArtifacts(
     }
     // Each entry's copy subprocess takes a background-tier budget slot (spec: the
     // budget governs artifact-copy processes too).
-    const outcome = await input.git.schedule.run(
-      { tier: 'background', repository: input.repositoryPath },
-      () => cloneEntry(input.repositoryPath, input.worktreePath, entry)
+    const entryOp = startOp(
+      getCurrentLogger(),
+      'copy-artifacts.entry',
+      { parentOpId: op.opId },
+      { quiet: true }
     );
+    const outcome = await input.git.schedule
+      .run({ tier: 'background', repository: input.repositoryPath }, () =>
+        cloneEntry(input.repositoryPath, input.worktreePath, entry)
+      )
+      .catch((error: unknown) => {
+        entryOp.fail(error);
+        throw error;
+      });
+    if (outcome.status === 'failed-terminally') {
+      entryOp.end({ outcome: 'failed', errorKind: 'CloneFailed', errorMessage: outcome.message });
+    } else {
+      entryOp.end({ tier: outcome.status });
+    }
     if (outcome.status === 'failed-terminally') {
       errors.push({ entry, message: outcome.message });
       continue;

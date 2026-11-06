@@ -1,3 +1,4 @@
+import { swallowed } from '../watch/caught';
 /**
  * How the yard is arranged, as its reader left it.
  *
@@ -61,7 +62,7 @@ function load(): Arrangement {
       ...(typeof raw.changelog === 'number' ? { changelog: raw.changelog } : {}),
       ...(typeof raw.now === 'number' ? { now: raw.now } : {}),
     };
-  } catch {
+  } catch (caught) { swallowed('arrange.64', caught);
     return {};
   }
 }
@@ -84,7 +85,7 @@ export function arrange(patch: Partial<Arrangement>, keep = true): void {
 export function save(): void {
   try {
     localStorage.setItem(KEY, JSON.stringify({ ...now, drawn: DRAWN }));
-  } catch {
+  } catch (caught) { swallowed('arrange.87', caught);
     // Only a convenience; the arrangement still holds for this sitting.
   }
 }

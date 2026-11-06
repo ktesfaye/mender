@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Client, McpCapabilities } from '@agentclientprotocol/sdk';
 import { isErr, toSerializedError } from '@emdash/shared';
 import { createResourceCache, type ResourceCache, type Scope } from '@emdash/shared/concurrency';
-import type { Logger } from '@emdash/shared/logger';
+import { describeOpError, startOp, type Logger } from '@emdash/shared/logger';
 import type { Clock } from '@emdash/shared/scheduling';
 import { nativePathIdentityKey } from '#primitives/path/api';
 import { acpErr } from '#runtimes/acp/api';
@@ -71,9 +71,16 @@ export function createAcpConnectionSource(
         ++nextGeneration,
         scope,
         (routeKey, generation, exitCode) => {
+          deps.logger.warn('acp connection closed; invalidating', {
+            op: 'acp.provision',
+            program: key.providerId,
+            exitCode: exitCode ?? undefined,
+            count: generation,
+          });
           void source.invalidate(key).catch((error: unknown) => {
             deps.logger.warn('AcpConnectionSource: failed to invalidate closed connection', {
-              error: error instanceof Error ? error.message : String(error),
+              op: 'acp.provision',
+              ...describeOpError(error),
             });
           });
           deps.onClosed(routeKey, generation, exitCode);
@@ -82,7 +89,8 @@ export function createAcpConnectionSource(
     onError: (error, keyId) => {
       deps.logger.warn('AcpConnectionSource: provisioning failed', {
         key: keyId,
-        error: error instanceof Error ? error.message : String(error),
+        op: 'acp.provision',
+        ...describeOpError(error),
       });
     },
   });
@@ -125,11 +133,17 @@ async function provisionAcpConnection(
   }
 
   const routeKey = makeAcpConnectionKey(key.providerId, key.cwd);
+  const op = startOp(deps.logger, 'acp.provision', {
+    program: key.providerId,
+    count: generation,
+  });
+  op.stage('build-spawn');
   const spawn = await deps.agentHost.buildAcpSpawn(key.providerId, {
     cwd: key.cwd,
     env: key.env,
   });
   if (!spawn.success) {
+    op.end({ outcome: 'failed', errorKind: spawn.error.type });
     throw acpErr.spawnFailed(toSerializedError(new Error(agentHostErrorMessage(spawn.error))))
       .error;
   }
@@ -156,7 +170,11 @@ async function provisionAcpConnection(
       onClosed: (exitCode) => onClosed(routeKey, generation, exitCode),
     }
   );
-  if (isErr(connection)) throw connection.error;
+  if (isErr(connection)) {
+    op.end({ outcome: 'failed', errorKind: connection.error.type });
+    throw connection.error;
+  }
+  op.end();
 
   return {
     key: routeKey,

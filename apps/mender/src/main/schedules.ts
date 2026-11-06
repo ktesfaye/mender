@@ -8,6 +8,7 @@ import type { Schedule, ScheduleHand, ScheduleWhen } from '@shared/schedules';
 import type { Agents } from './agents';
 import type { Projects } from './projects';
 import type { Tasks } from './tasks';
+import { noteCaught } from './ops';
 
 const ran = promisify(execFile);
 
@@ -71,7 +72,8 @@ export function createSchedules(tasks: Tasks, agents: Agents, projects: Projects
     try {
       const { stdout } = await ran('git', ['rev-parse', 'HEAD'], { cwd: path });
       return stdout.trim();
-    } catch {
+    } catch (caught) {
+      noteCaught('schedules.ts:74', caught);
       return null;
     }
   };

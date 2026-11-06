@@ -8,6 +8,7 @@ import { skyContract, type Bustle, type RealWeather } from '@shared/sky';
 import { claudeProjectDirName } from './claude-cli-history';
 import type { Projects } from './projects';
 import type { Tasks } from './tasks';
+import { noteCaught } from './ops';
 
 const ran = promisify(execFile);
 
@@ -134,7 +135,8 @@ async function lastCommit(path: string): Promise<number | null> {
     });
     const seconds = Number(stdout.trim());
     return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null;
-  } catch {
+  } catch (caught) {
+    noteCaught('sky.ts:137', caught);
     return null;
   }
 }
@@ -152,7 +154,8 @@ async function lastTalk(paths: string[]): Promise<{ last: number; today: number 
       let names: string[];
       try {
         names = await readdir(dir);
-      } catch {
+      } catch (caught) {
+        noteCaught('sky.ts:155', caught);
         return;
       }
       await Promise.all(
@@ -163,7 +166,8 @@ async function lastTalk(paths: string[]): Promise<{ last: number; today: number 
               const { mtimeMs } = await stat(join(dir, name));
               newest = Math.max(newest, mtimeMs);
               if (mtimeMs > dayAgo) today++;
-            } catch {
+            } catch (caught) {
+              noteCaught('sky.ts:166', caught);
               // Gone between the listing and the look.
             }
           })
@@ -188,7 +192,8 @@ async function bustleOf(path: string, worked: string[]): Promise<Bustle | null> 
         { cwd: path, timeout: 5000 }
       );
       return Number(stdout.trim()) || 0;
-    } catch {
+    } catch (caught) {
+      noteCaught('sky.ts:191', caught);
       return 0;
     }
   };
@@ -199,7 +204,8 @@ async function bustleOf(path: string, worked: string[]): Promise<Bustle | null> 
       timeout: 5000,
     });
     ahead = Number(stdout.trim()) || 0;
-  } catch {
+  } catch (caught) {
+    noteCaught('sky.ts:202', caught);
     // Nowhere to push to: nothing ever goes out by boat.
   }
   const [today, week] = await Promise.all([count('1 day ago'), count('7 days ago')]);
@@ -212,7 +218,8 @@ async function fetchJson<T>(url: string): Promise<Partial<T> | null> {
     const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!response.ok) return null;
     return await response.json();
-  } catch {
+  } catch (caught) {
+    noteCaught('sky.ts:215', caught);
     return null;
   }
 }

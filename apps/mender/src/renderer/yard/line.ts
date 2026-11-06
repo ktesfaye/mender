@@ -1,3 +1,4 @@
+import { swallowed } from '../watch/caught';
 /**
  * The one place you write.
  *
@@ -703,7 +704,7 @@ function linked(text: string): DocumentFragment {
     let host: string;
     try {
       host = new URL(url).hostname.replace(/^www\./, '');
-    } catch {
+    } catch (caught) { swallowed('line.706', caught);
       continue;
     }
     if (url.length < LONG_LINK || !host) continue;

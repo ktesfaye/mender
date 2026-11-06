@@ -6,6 +6,7 @@ import { app, nativeImage, powerMonitor, type NativeImage } from 'electron';
 import type { Mood } from '@shared/agents';
 import type { Agents } from './agents';
 import { anyWorking } from './awake';
+import { noteCaught } from './ops';
 
 /**
  * The dock tile is the fire, and the fire says whether anybody is working.
@@ -58,7 +59,8 @@ export function watchDockFire(options: DockFireOptions): void {
   try {
     cold = nativeImage.createFromPath(join(dock, 'cold.png'));
     frames('smoke');
-  } catch {
+  } catch (caught) {
+    noteCaught('dock-fire.ts:61', caught);
     return;
   }
 

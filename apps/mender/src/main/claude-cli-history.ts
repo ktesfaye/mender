@@ -3,6 +3,7 @@ import { cp, open, readdir, rm, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import { createInterface } from 'node:readline';
+import { noteCaught, lost } from './ops';
 
 /**
  * One of Claude Code CLI's own past terminal sessions for a checkout, read
@@ -95,7 +96,8 @@ export function parseClaudeSessionLines(lines: readonly string[]): {
     let obj: Record<string, unknown>;
     try {
       obj = JSON.parse(trimmed) as Record<string, unknown>;
-    } catch {
+    } catch (caught) {
+      noteCaught('claude-cli-history.ts:98', caught);
       continue;
     }
     if (!sessionId && typeof obj.sessionId === 'string') sessionId = obj.sessionId;
@@ -166,7 +168,8 @@ export function lastAiTitle(lines: readonly string[]): string | null {
       if (obj.type === 'ai-title' && typeof obj.aiTitle === 'string' && obj.aiTitle.trim()) {
         return obj.aiTitle.trim();
       }
-    } catch {
+    } catch (caught) {
+      noteCaught('claude-cli-history.ts:169', caught);
       continue;
     }
   }
@@ -207,7 +210,8 @@ async function readSessionsIn(dirName: string, elsewhere: boolean): Promise<Clau
   let names: string[];
   try {
     names = await readdir(dir);
-  } catch {
+  } catch (caught) {
+    noteCaught('claude-cli-history.ts:210', caught);
     return [];
   }
   const found = await Promise.all(
@@ -218,7 +222,8 @@ async function readSessionsIn(dirName: string, elsewhere: boolean): Promise<Clau
         let stats;
         try {
           stats = await stat(path);
-        } catch {
+        } catch (caught) {
+          noteCaught('claude-cli-history.ts:221', caught);
           return null;
         }
         const meta = await readSessionMeta(path);
@@ -277,7 +282,8 @@ export async function listClaudeSessionsElsewhere(
   let dirs: string[];
   try {
     dirs = await readdir(projectsDir());
-  } catch {
+  } catch (caught) {
+    noteCaught('claude-cli-history.ts:280', caught);
     return [];
   }
   const found = await Promise.all(
@@ -304,7 +310,7 @@ export async function adoptClaudeSession(
   const from = join(projectsDir(), fromDir);
   const to = join(projectsDir(), claudeProjectDirName(projectPath));
   await cp(join(from, `${id}.jsonl`), join(to, `${id}.jsonl`), { force: false });
-  await cp(join(from, id), join(to, id), { recursive: true, force: false }).catch(() => undefined);
+  await cp(join(from, id), join(to, id), { recursive: true, force: false }).catch(lost('claude-cli-history.ts:307'));
 }
 
 /**
@@ -331,7 +337,7 @@ const AFTERWARDS_MS = [2_000, 10_000];
 async function wipeClaudeSession(id: string): Promise<void> {
   const home = join(homedir(), '.claude');
   const folders = await readdir(projectsDir(), { withFileTypes: true }).catch(() => []);
-  const gone = (path: string) => rm(path, { recursive: true, force: true }).catch(() => undefined);
+  const gone = (path: string) => rm(path, { recursive: true, force: true }).catch(lost('claude-cli-history.ts:334'));
   await Promise.all([
     ...folders
       .filter((folder) => folder.isDirectory())
@@ -371,7 +377,8 @@ export async function readClaudeStory(dirName: string, id: string): Promise<Clau
     let obj: Record<string, unknown>;
     try {
       obj = JSON.parse(line) as Record<string, unknown>;
-    } catch {
+    } catch (caught) {
+      noteCaught('claude-cli-history.ts:374', caught);
       continue;
     }
     if (user) {

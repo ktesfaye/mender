@@ -1,6 +1,7 @@
 import { createController, type Controller } from '@emdash/wire/rpc';
 import { BrowserWindow, type NativeImage } from 'electron';
 import { buildingContract, type Drew, type Look } from '@shared/building';
+import { noteCaught } from './ops';
 
 /** The size a page is drawn at, which is a laptop's window and not the yard's. */
 const PAGE = { width: 1440, height: 900 } as const;
@@ -39,7 +40,8 @@ export function drawable(url: string): boolean {
       (at.protocol === 'http:' || at.protocol === 'https:') &&
       (at.hostname === 'localhost' || at.hostname === '127.0.0.1' || at.hostname === '0.0.0.0')
     );
-  } catch {
+  } catch (caught) {
+    noteCaught('building.ts:42', caught);
     return false;
   }
 }

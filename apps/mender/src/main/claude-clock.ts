@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { noteCaught } from './ops';
 
 /** Something said in a Claude conversation, and when Claude itself wrote it down. */
 export interface Dated {
@@ -38,7 +39,8 @@ export function datedOf(lines: readonly string[]): Dated[] {
     };
     try {
       one = JSON.parse(line);
-    } catch {
+    } catch (caught) {
+      noteCaught('claude-clock.ts:41', caught);
       continue;
     }
     if ((one.type !== 'user' && one.type !== 'assistant') || one.isSidechain || one.isMeta)
@@ -101,7 +103,8 @@ export function packsTook(lines: readonly string[]): number[] {
       const one = JSON.parse(line) as { compactMetadata?: { durationMs?: unknown } };
       const ms = one.compactMetadata?.durationMs;
       if (typeof ms === 'number' && ms > 0) took.push(ms);
-    } catch {
+    } catch (caught) {
+      noteCaught('claude-clock.ts:104', caught);
       /* not a whole line */
     }
   }
@@ -118,7 +121,8 @@ async function fileOf(session: string): Promise<string | null> {
   let dirs: string[];
   try {
     dirs = await readdir(root);
-  } catch {
+  } catch (caught) {
+    noteCaught('claude-clock.ts:121', caught);
     return null;
   }
   for (const dir of dirs) {
@@ -127,7 +131,8 @@ async function fileOf(session: string): Promise<string | null> {
       await stat(path);
       found.set(session, path);
       return path;
-    } catch {
+    } catch (caught) {
+      noteCaught('claude-clock.ts:130', caught);
       /* not in this one */
     }
   }
@@ -144,7 +149,8 @@ export async function readDated(
     const { size } = await stat(path);
     const lines = (await readFile(path, 'utf8')).split('\n');
     return { size, dated: datedOf(lines), took: packsTook(lines) };
-  } catch {
+  } catch (caught) {
+    noteCaught('claude-clock.ts:147', caught);
     return null;
   }
 }
@@ -155,7 +161,8 @@ export async function sizeOf(session: string): Promise<number | null> {
   if (!path) return null;
   try {
     return (await stat(path)).size;
-  } catch {
+  } catch (caught) {
+    noteCaught('claude-clock.ts:158', caught);
     return null;
   }
 }

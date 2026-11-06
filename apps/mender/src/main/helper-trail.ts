@@ -2,6 +2,7 @@ import { closeSync, openSync, readdirSync, readFileSync, readSync, statSync } fr
 import { readdir, readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { noteCaught } from './ops';
 
 /**
  * What somebody a session sent out actually did, read off Claude's own record
@@ -42,7 +43,8 @@ async function find(session: string, call: string): Promise<string | null> {
   let places: string[];
   try {
     places = await readdir(PROJECTS);
-  } catch {
+  } catch (caught) {
+    noteCaught('helper-trail.ts:45', caught);
     return null;
   }
   for (const place of places) {
@@ -50,7 +52,8 @@ async function find(session: string, call: string): Promise<string | null> {
     let names: string[];
     try {
       names = await readdir(dir);
-    } catch {
+    } catch (caught) {
+      noteCaught('helper-trail.ts:53', caught);
       continue;
     }
     for (const name of names) {
@@ -58,7 +61,8 @@ async function find(session: string, call: string): Promise<string | null> {
       try {
         const meta = JSON.parse(await readFile(join(dir, name), 'utf8')) as { toolUseId?: unknown };
         if (meta.toolUseId === call) return join(dir, name.replace(/\.meta\.json$/, '.jsonl'));
-      } catch {
+      } catch (caught) {
+        noteCaught('helper-trail.ts:61', caught);
         continue;
       }
     }
@@ -84,7 +88,8 @@ export function read(jsonl: string, root: string | undefined): HelperTrail {
     let entry: { type?: string; message?: { content?: unknown } };
     try {
       entry = JSON.parse(line);
-    } catch {
+    } catch (caught) {
+      noteCaught('helper-trail.ts:87', caught);
       continue;
     }
     const content = entry.message?.content;
@@ -186,7 +191,8 @@ export function tokensOf(session: string | null, call: string | undefined): numb
   let size: number;
   try {
     size = statSync(file).size;
-  } catch {
+  } catch (caught) {
+    noteCaught('helper-trail.ts:189', caught);
     return undefined;
   }
   const held = counted.get(file);
@@ -204,7 +210,8 @@ export function ranOf(session: string | null, call: string | undefined): number 
   try {
     const { birthtimeMs, mtimeMs } = statSync(file);
     return mtimeMs > birthtimeMs ? Math.round(mtimeMs - birthtimeMs) : undefined;
-  } catch {
+  } catch (caught) {
+    noteCaught('helper-trail.ts:207', caught);
     return undefined;
   }
 }
@@ -223,7 +230,8 @@ function fileFor(session: string, call: string): string | undefined {
   let places: string[];
   try {
     places = readdirSync(PROJECTS);
-  } catch {
+  } catch (caught) {
+    noteCaught('helper-trail.ts:226', caught);
     return undefined;
   }
   for (const place of places) {
@@ -231,7 +239,8 @@ function fileFor(session: string, call: string): string | undefined {
     let names: string[];
     try {
       names = readdirSync(dir);
-    } catch {
+    } catch (caught) {
+      noteCaught('helper-trail.ts:234', caught);
       continue;
     }
     for (const name of names) {
@@ -240,7 +249,8 @@ function fileFor(session: string, call: string): string | undefined {
         const meta = JSON.parse(readFileSync(join(dir, name), 'utf8')) as { toolUseId?: unknown };
         if (typeof meta.toolUseId === 'string')
           files.set(meta.toolUseId, join(dir, name.replace(/\.meta\.json$/, '.jsonl')));
-      } catch {
+      } catch (caught) {
+        noteCaught('helper-trail.ts:243', caught);
         continue;
       }
     }
@@ -255,7 +265,8 @@ function lastUsage(file: string, size: number): number | undefined {
   try {
     fd = openSync(file, 'r');
     readSync(fd, buffer, 0, span, size - span);
-  } catch {
+  } catch (caught) {
+    noteCaught('helper-trail.ts:258', caught);
     return undefined;
   } finally {
     if (fd !== undefined) closeSync(fd);
@@ -279,7 +290,8 @@ function lastUsage(file: string, size: number): number | undefined {
         n('cache_read_input_tokens') +
         n('output_tokens')
       );
-    } catch {
+    } catch (caught) {
+      noteCaught('helper-trail.ts:282', caught);
       continue;
     }
   }

@@ -3,7 +3,7 @@ import type { Result } from '@emdash/shared';
 import { toSerializedError } from '@emdash/shared';
 import { acquireResourceAsResult } from '@emdash/shared/concurrency';
 import type { Scope } from '@emdash/shared/concurrency';
-import type { Logger } from '@emdash/shared/logger';
+import { describeOpError, startOp, type Logger, type Op } from '@emdash/shared/logger';
 import type {
   AcpStartError,
   ConversationNotFoundError,
@@ -59,6 +59,29 @@ export class SessionMaterializer {
     scope: Scope,
     signal: AbortSignal
   ): Promise<Result<MaterializedSession, MaterializationStartError>> {
+    const op = startOp(this.deps.logger, 'acp.materialize', {
+      program: input.providerId,
+      count: input.sessionId ? 1 : 0,
+    });
+    try {
+      const result = await this.materializeTracked(entry, input, epoch, scope, signal, op);
+      if (result.success) op.end({ stage: result.data.record.resumeOutcome ?? 'new' });
+      else op.end({ outcome: 'failed', errorKind: result.error.type });
+      return result;
+    } catch (error) {
+      op.fail(error);
+      throw error;
+    }
+  }
+
+  private async materializeTracked(
+    entry: ConversationHandle,
+    input: AcpStartInput,
+    epoch: number,
+    scope: Scope,
+    signal: AbortSignal,
+    op: Op
+  ): Promise<Result<MaterializedSession, MaterializationStartError>> {
     const binding = this.deps.agentHost.resolveAcp(input.providerId);
     if (!binding) return acpErr.providerUnsupported(input.providerId);
 
@@ -67,6 +90,7 @@ export class SessionMaterializer {
       cwd: input.cwd,
       env: input.env,
     };
+    op.stage('acquire-connection');
     const acquire = await acquireResourceAsResult(
       this.connections,
       connectionKey,
@@ -84,6 +108,7 @@ export class SessionMaterializer {
     }
 
     const connection = acquired.value;
+    op.stage('mcp-servers');
     const mcpServers = await this.resolveSessionMcpServers(
       input.providerId,
       input.cwd,
@@ -98,6 +123,7 @@ export class SessionMaterializer {
     try {
       if (input.sessionId && connection.supportsLoadSession && connection.agent.loadSession) {
         let releaseHandshake: () => void;
+        op.stage('handshake-wait');
         try {
           releaseHandshake = await this.acquireHandshake(processOwner, signal);
         } catch {
@@ -117,6 +143,7 @@ export class SessionMaterializer {
         try {
           endLoad = this.callbacks.beginLoad(processOwner, input.sessionId, input.conversationId);
           record.cell.beginReplay();
+          op.stage('load-session');
           const response = await abortable(
             connection.agent.loadSession(
               this.buildLoadSessionRequest(input.providerId, input.cwd, input.sessionId, mcpServers)
@@ -142,7 +169,10 @@ export class SessionMaterializer {
           }
           if (isAuthRequiredError(error)) throw error;
           this.deps.logger.warn('SessionMaterializer: loadSession failed, starting a new session', {
-            conversationId: input.conversationId,
+            op: 'acp.materialize',
+            opId: op.opId,
+            stage: 'load-session',
+            ...describeOpError(error),
           });
         } finally {
           endLoad();
@@ -157,6 +187,7 @@ export class SessionMaterializer {
 
       if (!record) {
         let response;
+        op.stage('new-session');
         try {
           response = await abortable(
             connection.agent.newSession(this.buildNewSessionRequest(input.providerId, input.cwd, mcpServers)),
@@ -185,6 +216,7 @@ export class SessionMaterializer {
           modes: response.modes,
           configOptions: response.configOptions,
         });
+        op.stage('configure');
         await this.applyDesiredConfiguration(record, entry, response.configOptions !== undefined);
         const queueResult = this.queueInitialPrompts(record, input);
         if (!queueResult.success) return queueResult;

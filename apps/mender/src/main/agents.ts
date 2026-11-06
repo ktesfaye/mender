@@ -112,6 +112,7 @@ type Changed =
   | { success: false; error: { kind: 'no-such-agent' } | { kind: 'refused'; because: string } };
 import type { AppSettings } from './app-settings';
 import { createKits } from './kit';
+import { noteCaught, swallow, trackOp } from './ops';
 import type { MenderRuntimes } from './runtimes';
 import type { Tasks } from './tasks';
 import { createTitler } from './titler';
@@ -807,7 +808,12 @@ export function createAgents(
               /* Every session behind the same cap lifts at the same second, so
                  each goes a different breath after or they knock it over again. */
               const go = Math.max(lifts, Date.now()) + 2_000 + Math.random() * 20_000;
-              log.info('agents: request cap, going again', { area: 'agents', task, try: n + 1, at: go });
+              log.info('agents: request cap, going again', {
+                area: 'agents',
+                task,
+                try: n + 1,
+                at: go,
+              });
               setTimeout(() => {
                 if (carryOnTimers.has(task)) return;
                 armCarryOn(task, go);
@@ -954,21 +960,26 @@ export function createAgents(
       return { success: true as const, data: already };
     }
     const conversation = crypto.randomUUID();
-    const made = await runtimes.conversations.create({
-      conversationId: conversation,
-      provider: record.agent ?? (await settings.defaultHand()),
-      type: 'acp',
-      cwd: record.path,
-      workspacePath: record.path,
-      // The agent's own CLI mints the session id; ours is only the record.
-      idRegime: 'provider-minted',
-      createdAt: Date.now(),
-      title: record.title,
-      config: { version: '1', type: 'acp' },
-    });
+    const provider = record.agent ?? (await settings.defaultHand());
+    const made = await trackOp(log, 'session create', { area: 'agents', task }, () =>
+      runtimes.conversations.create({
+        conversationId: conversation,
+        provider,
+        type: 'acp',
+        cwd: record.path,
+        workspacePath: record.path,
+        // The agent's own CLI mints the session id; ours is only the record.
+        idRegime: 'provider-minted',
+        createdAt: Date.now(),
+        title: record.title,
+        config: { version: '1', type: 'acp' },
+      })
+    );
     if (!made.success) return refusal(whatItSaid(made.error));
     await put(task, conversation);
-    await Promise.all([houseOf(task).settle(conversation), kits.settle(task, conversation)]);
+    await trackOp(log, 'session settle', { area: 'agents', task }, () =>
+      Promise.all([houseOf(task).settle(conversation), kits.settle(task, conversation)])
+    );
     return { success: true as const, data: conversation };
   };
 
@@ -1274,16 +1285,18 @@ export function createAgents(
     // waiting for it to say hello, and a prompt is open for as long as the
     // work takes.
     try {
-      const started = await runtimes.acp.launch(
-        {
-          conversationId: conversation,
-          providerId: hand,
-          cwd: record.path,
-          sessionId: sessionFor(task, conversation),
-          model: record.model ?? remembered.model,
-          effort: remembered.effort,
-        },
-        { timeoutMs: 0 }
+      const started = await trackOp(log, 'session launch', { area: 'agents', task }, () =>
+        runtimes.acp.launch(
+          {
+            conversationId: conversation,
+            providerId: hand,
+            cwd: record.path,
+            sessionId: sessionFor(task, conversation),
+            model: record.model ?? remembered.model,
+            effort: remembered.effort,
+          },
+          { timeoutMs: 0 }
+        )
       );
       if (!started.success) {
         log.error('agents: launch failed', { area: 'agents', task, error: started.error });
@@ -1393,57 +1406,63 @@ export function createAgents(
     }
   };
 
-  const wake = async (task: string): Promise<Told> => {
-    await loaded;
-    await index.ready;
-    records = index.current();
-    unlooked.delete(task);
-    const record = (await tasks.list()).find((candidate) => candidate.id === task);
-    if (!record) return { success: false, error: { kind: 'no-such-task' } };
-    /* A session nobody has spoken to yet has no conversation, and the card
+  const wake = (task: string): Promise<Told> =>
+    trackOp(log, 'session wake', { area: 'agents', task }, async (op) => {
+      await op.stage('loaded', async () => {
+        await loaded;
+        await index.ready;
+      });
+      records = index.current();
+      unlooked.delete(task);
+      const record = (await tasks.list()).find((candidate) => candidate.id === task);
+      if (!record) return { success: false, error: { kind: 'no-such-task' } };
+      /* A session nobody has spoken to yet has no conversation, and the card
        and the head are only true once an agent is up to say what it offers,
        so opening one moves somebody in rather than waiting for the first line. */
-    const fresh = !lodgers[task];
-    const moved = await moveIn(task, record);
-    if (!moved.success) return moved;
-    const conversation = moved.data;
-    const house = houseOf(task);
-    /* Waking somebody who is already up has nothing to load, so only a
+      const fresh = !lodgers[task];
+      op.set({ tier: fresh ? 'fresh' : 'resume' });
+      const moved = await op.stage('moveIn', () => moveIn(task, record));
+      if (!moved.success) return moved;
+      const conversation = moved.data;
+      const house = houseOf(task);
+      /* Waking somebody who is already up has nothing to load, so only a
        sleeping session says it is waking. */
-    const sleeping = !house.awake();
-    if (sleeping) house.waking(true);
-    try {
-      const hand = record.agent ?? (await settings.defaultHand());
-      const remembered = await settings.lastKit(hand);
-      const started = await runtimes.acp.launch(
-        {
-          conversationId: conversation,
-          providerId: hand,
-          cwd: record.path,
-          sessionId: sessionFor(task, conversation),
-          model: record.model ?? remembered.model,
-          effort: remembered.effort,
-        },
-        { timeoutMs: 0 }
-      );
-      if (!started.success) {
-        house.broke(whatItSaid(started.error));
-        return refused(whatItSaid(started.error));
-      }
-      /* The launch is back once the history has been read in, but the
+      const sleeping = !house.awake();
+      if (sleeping) house.waking(true);
+      try {
+        const hand = record.agent ?? (await settings.defaultHand());
+        const remembered = await settings.lastKit(hand);
+        const started = await op.stage('acpLaunch', () =>
+          runtimes.acp.launch(
+            {
+              conversationId: conversation,
+              providerId: hand,
+              cwd: record.path,
+              sessionId: sessionFor(task, conversation),
+              model: record.model ?? remembered.model,
+              effort: remembered.effort,
+            },
+            { timeoutMs: 0 }
+          )
+        );
+        if (!started.success) {
+          house.broke(whatItSaid(started.error));
+          return refused(whatItSaid(started.error));
+        }
+        /* The launch is back once the history has been read in, but the
          session's own word that it is ready can trail it by a beat. */
-      if (sleeping) await house.pastStarting(1500);
-      if (sleeping && !fresh) await house.readBack();
-      /* A title cut short with an ellipsis is somebody's first line, never
+        if (sleeping) await op.stage('pastStarting', () => house.pastStarting(1500));
+        if (sleeping && !fresh) await op.stage('readBack', () => house.readBack());
+        /* A title cut short with an ellipsis is somebody's first line, never
          a name: the namer's are short enough to need no cutting. One picked
          up before anything named it is named now, off what it holds. */
-      if (!record.named && record.title.endsWith('…')) nameFromHistory(task);
-      else if (sleeping && !fresh && !titledAt.has(task)) namedBefore.add(task);
-      return { success: true, data: undefined };
-    } finally {
-      if (sleeping) house.waking(false);
-    }
-  };
+        if (!record.named && record.title.endsWith('…')) nameFromHistory(task);
+        else if (sleeping && !fresh && !titledAt.has(task)) namedBefore.add(task);
+        return { success: true, data: undefined };
+      } finally {
+        if (sleeping) house.waking(false);
+      }
+    });
 
   return {
     working: (task) => houseOf(task).state,
@@ -1882,7 +1901,7 @@ export function createAgents(
             conversationId: conversation,
             toolCallId: jobOf(house, call) ?? call,
           })
-          .catch(() => undefined);
+          .catch(swallow(log, 'stop background job'));
       sendAway(call);
       log.info('agents: sent a helper away', { area: 'agents', task, call, wasOut: !!out });
       house?.again();
@@ -4018,7 +4037,8 @@ async function tailOf(file: string): Promise<string | null> {
     } finally {
       await handle.close();
     }
-  } catch {
+  } catch (caught) {
+    noteCaught('agents.ts:4035', caught);
     return null;
   }
 }

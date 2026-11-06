@@ -18,6 +18,7 @@
  * writes it down.
  */
 
+import { swallowed } from '../watch/caught';
 import type { Drew } from '@shared/building';
 import { sessionLine } from '@shared/five-hours';
 import type { Offer } from '../board/offer';
@@ -1985,7 +1986,7 @@ function beamOrder(): string[] {
   try {
     const kept = JSON.parse(localStorage.getItem(BEAM_ORDER_KEY) ?? '[]') as unknown;
     return Array.isArray(kept) ? kept.filter((id): id is string => typeof id === 'string') : [];
-  } catch {
+  } catch (caught) { swallowed('yard.1988', caught);
     return [];
   }
 }
@@ -2268,7 +2269,7 @@ function costText(cost: { amount: number; currency: string }): string {
     return new Intl.NumberFormat(undefined, { style: 'currency', currency: cost.currency }).format(
       cost.amount
     );
-  } catch {
+  } catch (caught) { swallowed('yard.2271', caught);
     return `${cost.amount.toFixed(2)} ${cost.currency}`;
   }
 }
@@ -3332,7 +3333,7 @@ function thinkingOpen(): boolean {
   if (thinkingOpenNow === undefined) {
     try {
       thinkingOpenNow = localStorage.getItem(THINKING_KEY) === '1';
-    } catch {
+    } catch (caught) { swallowed('yard.3335', caught);
       thinkingOpenNow = false;
     }
   }
@@ -3342,7 +3343,7 @@ function setThinkingOpen(open: boolean): void {
   thinkingOpenNow = open;
   try {
     localStorage.setItem(THINKING_KEY, open ? '1' : '0');
-  } catch {
+  } catch (caught) { swallowed('yard.3345', caught);
     // Only a convenience; the fold still works for this sitting.
   }
 }

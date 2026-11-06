@@ -1,3 +1,4 @@
+import { soft } from '../watch/caught';
 import './drafting.css';
 import {
   partImage,
@@ -187,14 +188,14 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
         .executeJavaScript(
           `${
             film
-              ? `(() => { let n = 0; const t = setInterval(() => { const v = document.querySelector('video'); if (!v && ++n < 50) return; clearInterval(t); if (!v) return; v.loop = true; v.muted = true; v.controls = true; v.play().catch(() => v.addEventListener('canplay', () => v.play().catch(() => {}), { once: true })); }, 100); })();`
+              ? `(() => { let n = 0; const t = setInterval(() => { const v = document.querySelector('video'); if (!v && ++n < 50) return; clearInterval(t); if (!v) return; v.loop = true; v.muted = true; v.controls = true; v.play().catch(() => v.addEventListener('canplay', () => v.play().catch(soft('surface.190', {})), { once: true })); }, 100); })();`
               : ''
           }window.addEventListener('keydown', (e) => {
             const t = e.target && e.target.closest && e.target.closest('input,textarea,[contenteditable="true"]');
             if (!t && ['Escape', 'ArrowLeft', 'ArrowRight'].includes(e.key)) console.log('mender-key:' + e.key);
           }, true);`
         )
-        .catch(() => undefined);
+        .catch(soft('surface.197', undefined));
     });
     el.addEventListener('console-message', (event) => {
       const said = (event as Event & { message?: string }).message ?? '';
@@ -214,7 +215,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
     const key = `${path}|${width}`;
     let got = pictures.get(key);
     if (!got) {
-      got = hands.picture(path, width).catch(() => null);
+      got = hands.picture(path, width).catch(soft('surface.217', null));
       pictures.set(key, got);
     }
     void got.then((src) => {
@@ -991,7 +992,7 @@ export function makeDraftingSurface(hands: DraftingHands): DraftingSurface {
   async function refresh(): Promise<void> {
     if (!where) return;
     const asked = where;
-    const got = await hands.read(asked.path, stamp).catch(() => null);
+    const got = await hands.read(asked.path, stamp).catch(soft('surface.994', null));
     if (!got || where !== asked || got.same) return;
     stamp = got.stamp;
     root = got.root;

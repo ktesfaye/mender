@@ -1,3 +1,4 @@
+import { swallowed } from '../watch/caught';
 import type { RealWeather } from '@shared/sky';
 
 /**
@@ -52,7 +53,7 @@ export function keptChoice(): SkyChoice {
       weather: weatherOf(read.weather),
       amount: typeof read.amount === 'number' ? Math.min(2, Math.max(0.3, read.amount)) : 1,
     };
-  } catch {
+  } catch (caught) { swallowed('sky.55', caught);
     return { time: 'real', weather: 'real', amount: 1 };
   }
 }
@@ -68,7 +69,7 @@ function weatherOf(kept: unknown): SkyChoice['weather'] {
 function keep(choice: SkyChoice): void {
   try {
     localStorage.setItem(KEPT, JSON.stringify(choice));
-  } catch {
+  } catch (caught) { swallowed('sky.71', caught);
     // A sky that forgets the hand on it next launch is still a sky.
   }
 }

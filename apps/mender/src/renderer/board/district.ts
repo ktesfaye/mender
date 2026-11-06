@@ -1,3 +1,4 @@
+import { swallowed } from '../watch/caught';
 import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import { shortName, type CheckoutHeadState } from '@emdash/core/runtimes/git/api';
 import { ReplicaState } from '@emdash/wire/live';
@@ -505,7 +506,7 @@ function shortAddress(url: string): string {
     const at = new URL(url);
     const path = at.pathname === '/' ? '' : at.pathname;
     return `:${at.port || (at.protocol === 'https:' ? '443' : '80')}${path}`;
-  } catch {
+  } catch (caught) { swallowed('district.508', caught);
     return url;
   }
 }

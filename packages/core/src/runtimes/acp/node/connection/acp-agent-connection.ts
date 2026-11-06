@@ -6,7 +6,7 @@ import type { Client, McpCapabilities, SessionUpdate } from '@agentclientprotoco
 import type { Result } from '@emdash/shared';
 import { ok, toSerializedError } from '@emdash/shared';
 import type { Scope } from '@emdash/shared/concurrency';
-import { noopLogger, type Logger } from '@emdash/shared/logger';
+import { describeOpError, noopLogger, startOp, type Logger } from '@emdash/shared/logger';
 import type { InitializeFailedError, NormalizedEvent, SpawnFailedError } from '#runtimes/acp/api';
 import { acpErr, decodeSessionUpdate } from '#runtimes/acp/api';
 import type { AcpProcessHandle, AcpProcessHost } from '#runtimes/acp/api/transport';
@@ -67,8 +67,10 @@ export async function createAcpAgentConnection(
   const { providerId, spawn, scope, buildClient, onClosed } = args;
   const { host, behavior, logger = noopLogger } = deps;
   const connectionScope = scope.child(`acp-connection:${providerId}`);
+  const op = startOp(logger, 'acp.connect', { program: providerId });
 
   let handle: AcpProcessHandle;
+  op.stage('spawn');
   try {
     handle = await host.spawn({
       command: spawn.command,
@@ -77,6 +79,7 @@ export async function createAcpAgentConnection(
       cwd: spawn.cwd,
     });
   } catch (e) {
+    op.fail(e);
     await connectionScope.dispose();
     return acpErr.spawnFailed(toSerializedError(e));
   }
@@ -93,10 +96,15 @@ export async function createAcpAgentConnection(
   }
 
   connectionScope.add(async () => {
+    logger.info('acp process teardown', { op: 'acp.connect', program: providerId, signal: 'SIGTERM' });
     try {
       await handle.kill('SIGTERM');
-    } catch {
-      // Ignore teardown errors; process may have already exited.
+    } catch (error) {
+      logger.debug('acp process kill failed', {
+        op: 'acp.connect',
+        program: providerId,
+        ...describeOpError(error),
+      });
     }
   });
 
@@ -113,11 +121,13 @@ export async function createAcpAgentConnection(
       buildClient(agent, normalize)
     );
   } catch (e) {
+    op.fail(e);
     await connectionScope.dispose();
     return acpErr.initializeFailed(toSerializedError(e));
   }
 
   try {
+    op.stage('initialize');
     const initialized = await Promise.race([
       initializeAgent(connection, host),
       processClosed.then(failClosedBeforeReady),
@@ -132,7 +142,14 @@ export async function createAcpAgentConnection(
       sse: initialized.agentCapabilities?.mcpCapabilities?.sse === true,
     };
     logger.debug('createAcpAgentConnection: initialized', { supportsLoadSession, mcpCapabilities });
+    op.end();
     void processClosed.then((closed) => {
+      logger.warn('acp process exited', {
+        op: 'acp.connect',
+        program: providerId,
+        exitCode: exitCodeFromClosed(closed) ?? undefined,
+        stage: connectionScope.disposed ? 'teardown' : 'unexpected',
+      });
       if (connectionScope.disposed) return;
       onClosed(exitCodeFromClosed(closed));
     });
@@ -144,9 +161,7 @@ export async function createAcpAgentConnection(
       mcpCapabilities,
     });
   } catch (e) {
-    logger.error('createAcpAgentConnection: initialize failed', {
-      error: e instanceof Error ? e.message : String(e),
-    });
+    op.fail(e);
     await connectionScope.dispose();
     return acpErr.initializeFailed(toSerializedError(e));
   }

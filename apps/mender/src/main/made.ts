@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { basename } from 'node:path';
 import type { ToolNode, TranscriptTurn } from '@emdash/core/runtimes/acp/api';
 import type { Made } from '@shared/agents';
+import { noteCaught } from './ops';
 
 /**
  * What a session made, as opposed to what it changed.
@@ -72,7 +73,8 @@ function titleOnDisk(path: string): string | undefined {
     const found = TITLE.exec(readFileSync(path, 'utf8'))?.[1]?.trim();
     if (found) titles.set(path, found);
     return found || undefined;
-  } catch {
+  } catch (caught) {
+    noteCaught('made.ts:75', caught);
     return undefined;
   }
 }
@@ -136,7 +138,8 @@ export function madeIn(
       let path = match[3]!.replace(/^file:\/\//, '');
       try {
         path = expand(decodeURI(path));
-      } catch {
+      } catch (caught) {
+        noteCaught('made.ts:139', caught);
         continue;
       }
       const before = found.length;

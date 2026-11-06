@@ -9,6 +9,7 @@
  * equally in the free-drawn transcript and in a plain row of a file board.
  */
 
+import { swallowed } from './watch/caught';
 import { renderMermaidSVG } from 'beautiful-mermaid';
 
 const COLORS = {
@@ -59,7 +60,7 @@ function drawnOnce(
   let svg: string | null;
   try {
     svg = draw();
-  } catch {
+  } catch (caught) { swallowed('diagram.62', caught);
     svg = null;
   }
   kept.set(text, svg);

@@ -9,6 +9,7 @@ import { parseNativeAbsolute } from '@emdash/core/primitives/path/api';
 import type { ActiveRootStatus } from '@emdash/core/runtimes/file-search/api';
 import { shortName } from '@emdash/core/runtimes/git/api';
 import type { WorkspaceRecord } from '@emdash/core/runtimes/workspace-registry/api';
+import { log } from '@emdash/shared/logger';
 import { ReplicaState } from '@emdash/wire/live';
 import { cell, type Cell } from '@emdash/wire/state';
 import { app } from 'electron';
@@ -21,6 +22,7 @@ import {
   forgetClaudeSession,
   type ClaudeCliSession,
 } from './claude-cli-history';
+import { lost, noteCaught, swallow, trackOp } from './ops';
 import { createPastSessions, type PastTold } from './past-sessions';
 import type { Project, Projects } from './projects';
 import type { MenderRuntimes } from './runtimes';
@@ -322,14 +324,16 @@ export function createTasks(
       .filter((each) => each.forget && each.session)
       .map((each) => each.session as string);
   const notePending = (): void =>
-    void pending.set(PENDING_KEY, pendingNow() as unknown as never).catch(() => undefined);
+    void pending
+      .set(PENDING_KEY, pendingNow() as unknown as never)
+      .catch(swallow(log, 'pending forget write'));
   /** Something held falls off without being put back: what it was holding
       back from being forgotten goes now. */
   const release = (held: Held): void => {
     if (!held.forget || !held.session) return;
     const session = held.session;
     void past.forget(session);
-    void forgetClaudeSession(session).catch(() => undefined);
+    void forgetClaudeSession(session).catch(swallow(log, 'forget transcript'));
   };
   void (async () => {
     const left = (await pending.get(PENDING_KEY).catch(() => null)) as unknown;
@@ -338,7 +342,7 @@ export function createTasks(
     for (const session of left) {
       if (typeof session !== 'string') continue;
       void past.forget(session);
-      void forgetClaudeSession(session).catch(() => undefined);
+      void forgetClaudeSession(session).catch(swallow(log, 'forget transcript at start'));
     }
   })();
   /** Told once a session's building is gone, so its lodger can be let go too. */
@@ -434,84 +438,95 @@ export function createTasks(
     name: string,
     branch: string,
     from?: string | null
-  ): Promise<{ success: true; data: Workspace } | { success: false; error: TaskError }> => {
-    const repository = await repositoryOf(runtimes, found);
-    if (!repository.success) return repository;
+  ): Promise<{ success: true; data: Workspace } | { success: false; error: TaskError }> =>
+    trackOp(log, 'workspace cut', { area: 'tasks' }, async (op) => {
+      const repository = await op.stage('repository', () => repositoryOf(runtimes, found));
+      if (!repository.success) return repository;
 
-    const parsed = parseNativeAbsolute(found.path);
-    if (!parsed.success) return fail({ kind: 'refused', because: 'that checkout has moved.' });
-    // A task starts from the branch the project calls home, not from whatever
-    // happens to be checked out. A repository made with `git init` and pushed
-    // up rather than cloned has no remote HEAD pointer to ask, so the next
-    // fallback is the branch the project's own checkout is actually on, and
-    // only a detached checkout falls all the way back to HEAD itself.
-    let baseRef = from;
-    if (!baseRef) {
-      const asked = await runtimes.git.repository.getDefaultBranch({
-        repository: parsed.data,
-        remote: 'origin',
-      });
-      baseRef =
-        (asked.success && asked.data.branch) ||
-        (await currentBranch(runtimes, parsed.data)) ||
-        'HEAD';
-    }
+      const parsed = parseNativeAbsolute(found.path);
+      if (!parsed.success) return fail({ kind: 'refused', because: 'that checkout has moved.' });
+      // A task starts from the branch the project calls home, not from whatever
+      // happens to be checked out. A repository made with `git init` and pushed
+      // up rather than cloned has no remote HEAD pointer to ask, so the next
+      // fallback is the branch the project's own checkout is actually on, and
+      // only a detached checkout falls all the way back to HEAD itself.
+      let baseRef = from;
+      if (!baseRef) {
+        const asked = await op.stage('getDefaultBranch', () =>
+          runtimes.git.repository.getDefaultBranch({
+            repository: parsed.data,
+            remote: 'origin',
+          })
+        );
+        baseRef =
+          (asked.success && asked.data.branch) ||
+          (await op.stage('currentBranch', () => currentBranch(runtimes, parsed.data))) ||
+          'HEAD';
+      }
 
-    /* Under the folder's own name, not the project's: a project renamed on
+      /* Under the folder's own name, not the project's: a project renamed on
        the island is not a reason for its next worktree to live somewhere
        else from its last. */
-    const path = join(
-      await worktreeRoot(appSettings),
-      basename(found.path),
-      branch.replaceAll('/', '-')
-    );
-    const made = await runtimes.workspaces.createWorktree(
-      {
-        workspaceId: crypto.randomUUID(),
-        repositoryId: repository.data,
+      const path = join(
+        await worktreeRoot(appSettings),
+        basename(found.path),
+        branch.replaceAll('/', '-')
+      );
+      const made = await op.stage('createWorktree', () =>
+        runtimes.workspaces.createWorktree(
+          {
+            workspaceId: crypto.randomUUID(),
+            repositoryId: repository.data,
+            branch,
+            baseRef,
+            path,
+            preservePatterns: [],
+          },
+          // Cutting a worktree copies a repository's whole working tree and then
+          // runs whatever that project does to make a checkout usable. On a big
+          // one that is minutes, not seconds.
+          { timeoutMs: 0 }
+        )
+      );
+      if (!made.success) return fail({ kind: 'refused', because: whatItSaid(made.error) });
+
+      // A project that says who its commits go out as writes that into the
+      // worktree's own git config, not the machine's — so it holds only here,
+      // and never leaks into a session cut from a different project.
+      if (found.gitName || found.gitEmail) {
+        await op.stage('identity', () =>
+          identityIn(runtimes, made.data.path, found.gitName, found.gitEmail)
+        );
+      }
+
+      // Whatever the project says runs on a fresh worktree runs now: prepare
+      // gates on completing (the registry's own session-gating point), setup
+      // and run keep going after. A script failure is a notice on the
+      // registry's own record, never a reason this session fails to start —
+      // an agent staring at a checkout that never ran `npm install` is still
+      // better than no session at all.
+      try {
+        await op.stage('activateWorkspace', () =>
+          runtimes.workspaces.activateWorkspace({ workspaceId: made.data.id }, { timeoutMs: 0 })
+        );
+      } catch (caught) {
+        noteCaught('tasks.ts:512', caught);
+        // Nothing this call can do about a registry that would not answer;
+        // the stage has already written down how it failed.
+      }
+
+      const workspace: Workspace = {
+        id: made.data.id,
+        project: found.id,
+        name,
         branch,
-        baseRef,
-        path,
-        preservePatterns: [],
-      },
-      // Cutting a worktree copies a repository's whole working tree and then
-      // runs whatever that project does to make a checkout usable. On a big
-      // one that is minutes, not seconds.
-      { timeoutMs: 0 }
-    );
-    if (!made.success) return fail({ kind: 'refused', because: whatItSaid(made.error) });
-
-    // A project that says who its commits go out as writes that into the
-    // worktree's own git config, not the machine's — so it holds only here,
-    // and never leaks into a session cut from a different project.
-    if (found.gitName || found.gitEmail) {
-      await identityIn(runtimes, made.data.path, found.gitName, found.gitEmail);
-    }
-
-    // Whatever the project says runs on a fresh worktree runs now: prepare
-    // gates on completing (the registry's own session-gating point), setup
-    // and run keep going after. A script failure is a notice on the
-    // registry's own record, never a reason this session fails to start —
-    // an agent staring at a checkout that never ran `npm install` is still
-    // better than no session at all.
-    try {
-      await runtimes.workspaces.activateWorkspace({ workspaceId: made.data.id }, { timeoutMs: 0 });
-    } catch {
-      // Nothing this call can do about a registry that would not answer.
-    }
-
-    const workspace: Workspace = {
-      id: made.data.id,
-      project: found.id,
-      name,
-      branch,
-      base: baseRef === 'HEAD' ? null : baseRef,
-      path: made.data.path,
-      startedAt: new Date().toISOString(),
-    };
-    await saveWorkspaces([...(await rawWorkspaces()), workspace]);
-    return { success: true as const, data: workspace };
-  };
+        base: baseRef === 'HEAD' ? null : baseRef,
+        path: made.data.path,
+        startedAt: new Date().toISOString(),
+      };
+      await op.stage('save', async () => saveWorkspaces([...(await rawWorkspaces()), workspace]));
+      return { success: true as const, data: workspace };
+    });
 
   /** A session standing in a workspace, beside whoever else is in there. */
   const into = (
@@ -551,7 +566,7 @@ export function createTasks(
   let writing: Promise<unknown> = Promise.resolve();
   const rewrite = (change: (tasks: Task[]) => Task[]): Promise<Task[]> => {
     const next = writing.then(async () => await save(change(await all())));
-    writing = next.catch(() => undefined);
+    writing = next.catch(lost('tasks.ts:568'));
     return next;
   };
 
@@ -593,7 +608,8 @@ export function createTasks(
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean);
-    } catch {
+    } catch (caught) {
+      noteCaught('tasks.ts:610', caught);
       return [];
     }
   };
@@ -643,7 +659,8 @@ export function createTasks(
       const count = async (args: string[], cwd: string): Promise<string> => {
         try {
           return (await ran('git', args, { cwd, env })).stdout;
-        } catch {
+        } catch (caught) {
+          noteCaught('tasks.ts:660', caught);
           return '';
         }
       };
@@ -668,42 +685,53 @@ export function createTasks(
       };
     },
 
-    async dropWorkspace(id) {
-      const workspace = (await rawWorkspaces()).find((each) => each.id === id);
-      if (!workspace) return;
-      const deleted = await runtimes.workspaces
-        .deleteWorktree({ workspaceId: id, deleteBranch: true }, { timeoutMs: 0 })
-        .catch(() => ({ success: false as const }));
-      /* A worktree the registry has lost track of is still git's, so it is
-         taken down the plain way instead. */
-      if (!deleted.success || existsSync(workspace.path)) {
-        const found = (await projects.list()).find((each) => each.id === workspace.project);
-        const env = await runtimes.env.current();
-        const cwd = found?.path ?? workspace.path;
-        await ran('git', ['worktree', 'remove', '--force', workspace.path], { cwd, env }).catch(
-          () => undefined
+    dropWorkspace: (id) =>
+      trackOp(log, 'workspace drop', { area: 'tasks' }, async (op) => {
+        const workspace = (await rawWorkspaces()).find((each) => each.id === id);
+        if (!workspace) return;
+        const deleted = await op.stage('deleteWorktree', () =>
+          runtimes.workspaces
+            .deleteWorktree({ workspaceId: id, deleteBranch: true }, { timeoutMs: 0 })
+            .catch(() => ({ success: false as const }))
         );
-        await ran('git', ['worktree', 'prune'], { cwd, env }).catch(() => undefined);
-        await ran('git', ['branch', '-D', workspace.branch], { cwd, env }).catch(() => undefined);
-      }
-      const tasks = await all();
-      const going = tasks.filter((task) => task.workspace === id);
-      const forget = await forgets(workspace.project);
-      for (const task of going) {
-        if (!forget) {
-          await remember({
-            id: task.id,
-            project: task.project,
-            title: task.title,
-            branch: task.branch,
-            endedAt: new Date().toISOString(),
-          });
+        /* A worktree the registry has lost track of is still git's, so it is
+         taken down the plain way instead. */
+        if (!deleted.success || existsSync(workspace.path)) {
+          const found = (await projects.list()).find((each) => each.id === workspace.project);
+          const env = await runtimes.env.current();
+          const cwd = found?.path ?? workspace.path;
+          await op.stage('gitWorktreeRemove', () =>
+            ran('git', ['worktree', 'remove', '--force', workspace.path], { cwd, env }).catch(
+              swallow(log, 'worktree remove')
+            )
+          );
+          await ran('git', ['worktree', 'prune'], { cwd, env }).catch(
+            swallow(log, 'worktree prune')
+          );
+          await ran('git', ['branch', '-D', workspace.branch], { cwd, env }).catch(
+            swallow(log, 'branch delete')
+          );
         }
-        letGo(task.id, forget);
-      }
-      await save(tasks.filter((task) => task.workspace !== id));
-      await saveWorkspaces((await rawWorkspaces()).filter((each) => each.id !== id));
-    },
+        const tasks = await all();
+        const going = tasks.filter((task) => task.workspace === id);
+        const forget = await forgets(workspace.project);
+        for (const task of going) {
+          if (!forget) {
+            await remember({
+              id: task.id,
+              project: task.project,
+              title: task.title,
+              branch: task.branch,
+              endedAt: new Date().toISOString(),
+            });
+          }
+          letGo(task.id, forget);
+        }
+        await op.stage('save', async () => {
+          await save(tasks.filter((task) => task.workspace !== id));
+          await saveWorkspaces((await rawWorkspaces()).filter((each) => each.id !== id));
+        });
+      }),
 
     async renameWorkspace(id, name) {
       const written = name.trim();
@@ -769,65 +797,78 @@ export function createTasks(
           { workspaceId: workspace, script, provenance: 'retry' },
           { timeoutMs: 0 }
         );
-      } catch {
+      } catch (caught) {
+        noteCaught('tasks.ts:795', caught);
         // A run that would not even start is the same as one that failed:
         // the notice stays, and the board says so next time it is read.
       }
     },
 
-    async begin(project, name, slot, kind, branch, isolated, workspace) {
-      const written = name.trim();
-      if (!written) return fail({ kind: 'nameless' });
+    begin: (project, name, slot, kind, branch, isolated, workspace) =>
+      trackOp(
+        log,
+        'task begin',
+        {
+          area: 'tasks',
+          tier: workspace ? 'workspace' : isolated || branch?.trim() ? 'isolated' : 'shared',
+        },
+        async (op) => {
+          const written = name.trim();
+          if (!written) return fail({ kind: 'nameless' });
 
-      const tasks = await all();
-      const found = (await projects.list()).find((candidate) => candidate.id === project);
-      if (!found) return fail({ kind: 'no-such-project' });
-      if (slot !== null && tasks.some((task) => task.project === project && task.slot === slot)) {
-        return fail({ kind: 'taken' });
-      }
-      const rest = {
-        name: written,
-        title: written,
-        slot,
-        ...(kind === 'terminal' || kind === 'shell' ? { kind } : {}),
-      };
+          const tasks = await all();
+          const found = (await projects.list()).find((candidate) => candidate.id === project);
+          if (!found) return fail({ kind: 'no-such-project' });
+          if (
+            slot !== null &&
+            tasks.some((task) => task.project === project && task.slot === slot)
+          ) {
+            return fail({ kind: 'taken' });
+          }
+          const rest = {
+            name: written,
+            title: written,
+            slot,
+            ...(kind === 'terminal' || kind === 'shell' ? { kind } : {}),
+          };
 
-      if (workspace) {
-        const standing = (await allWorkspaces()).find((each) => each.id === workspace);
-        if (!standing) return fail({ kind: 'refused', because: 'that workspace is gone.' });
-        const task = into(standing, rest);
-        await save([...tasks, task]);
-        return { success: true as const, data: task };
-      }
+          if (workspace) {
+            const standing = (await allWorkspaces()).find((each) => each.id === workspace);
+            if (!standing) return fail({ kind: 'refused', because: 'that workspace is gone.' });
+            const task = into(standing, rest);
+            await save([...tasks, task]);
+            return { success: true as const, data: task };
+          }
 
-      if (!isolated && !branch?.trim()) {
-        const task = await sharedIn(found, { project, ...rest });
-        if (!task) return fail({ kind: 'refused', because: 'that checkout has moved.' });
-        await save([...tasks, task]);
-        return { success: true as const, data: task };
-      }
+          if (!isolated && !branch?.trim()) {
+            const task = await sharedIn(found, { project, ...rest });
+            if (!task) return fail({ kind: 'refused', because: 'that checkout has moved.' });
+            await save([...tasks, task]);
+            return { success: true as const, data: task };
+          }
 
-      const settings = await appSettings.checkoutSettings();
-      const standingOn = branch?.trim();
-      const onto = standingOn || branchFor(written, settings);
-      /* A branch that already has a workspace standing on it is that
+          const settings = await appSettings.checkoutSettings();
+          const standingOn = branch?.trim();
+          const onto = standingOn || branchFor(written, settings);
+          /* A branch that already has a workspace standing on it is that
          workspace: starting from it walks in beside whoever is there. */
-      const already = (await allWorkspaces()).find(
-        (each) => each.project === project && each.branch === onto
-      );
-      if (already) {
-        if (!standingOn) return fail({ kind: 'already-here', name: written });
-        const task = into(already, rest);
-        await save([...tasks, task]);
-        return { success: true as const, data: task };
-      }
+          const already = (await allWorkspaces()).find(
+            (each) => each.project === project && each.branch === onto
+          );
+          if (already) {
+            if (!standingOn) return fail({ kind: 'already-here', name: written });
+            const task = into(already, rest);
+            await save([...tasks, task]);
+            return { success: true as const, data: task };
+          }
 
-      const made = await cut(found, standingOn ?? signboardFor(onto), onto);
-      if (!made.success) return made;
-      const task = into(made.data, rest);
-      await save([...(await all()), task]);
-      return { success: true as const, data: task };
-    },
+          const made = await cut(found, standingOn ?? signboardFor(onto), onto);
+          if (!made.success) return made;
+          const task = into(made.data, rest);
+          await op.stage('save', async () => save([...(await all()), task]));
+          return { success: true as const, data: task };
+        }
+      ),
 
     async files(id, like) {
       const tasks = await all();
@@ -944,7 +985,7 @@ export function createTasks(
             .kill({
               key: { workspace: { host: LOCAL_HOST_REF, path: at.data }, id: `session-${id}` },
             })
-            .catch(() => undefined);
+            .catch(swallow(log, 'kill session terminal'));
         }
       }
       // What was said goes with it, unless the project keeps it, and then
@@ -1192,7 +1233,8 @@ async function currentBranch(
   try {
     const head = await runtimes.git.checkout.model.state({ checkout: root }, 'head').snapshot();
     return head.data.kind === 'detached' ? null : shortName(head.data.ref);
-  } catch {
+  } catch (caught) {
+    noteCaught('tasks.ts:1227', caught);
     return null;
   }
 }
@@ -1266,7 +1308,8 @@ async function identityIn(
     const env = await runtimes.env.current();
     if (name) await ran('git', ['config', 'user.name', name], { cwd: path, env });
     if (email) await ran('git', ['config', 'user.email', email], { cwd: path, env });
-  } catch {
+  } catch (caught) {
+    noteCaught('tasks.ts:1301', caught);
     // A worktree that refuses a local config write still works; it just
     // commits under whatever git would have used anyway.
   }

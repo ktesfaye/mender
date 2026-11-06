@@ -8,6 +8,7 @@ import type {
   ClaudePlugin,
   ClaudeStyle,
 } from '../shared/claude-config';
+import { noteCaught } from './ops';
 
 type Json = Record<string, unknown>;
 
@@ -28,7 +29,8 @@ function read(path: string): Json {
   try {
     const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Json) : {};
-  } catch {
+  } catch (caught) {
+    noteCaught('claude-config.ts:31', caught);
     return {};
   }
 }
@@ -61,7 +63,8 @@ function styles(): ClaudeStyle[] {
       const about = /^description:\s*(.+)$/m.exec(front)?.[1]?.trim() ?? 'yours';
       mine.push({ id: name, name, about: `yours · ${about}`.slice(0, 60) });
     }
-  } catch {
+  } catch (caught) {
+    noteCaught('claude-config.ts:64', caught);
     // none of his own
   }
   return [...BUILT_IN, ...mine];

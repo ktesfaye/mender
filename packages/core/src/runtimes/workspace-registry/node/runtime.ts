@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { err, ok, type Result } from '@emdash/shared';
 import { KeyedMutex } from '@emdash/shared/concurrency';
-import { noopLogger, type Logger } from '@emdash/shared/logger';
+import { noopLogger, startOp, type Logger, type Op } from '@emdash/shared/logger';
 import { systemClock, type Clock } from '@emdash/shared/scheduling';
 import { stableStringify } from '@emdash/shared/util';
 import { type LeasedLiveModelProvider } from '@emdash/wire/rpc';
@@ -709,6 +709,23 @@ export class WorkspaceRegistryRuntime {
   async createWorktree(
     input: CreateWorktreeInput
   ): Promise<Result<WorkspaceRecord, CreateWorktreeError>> {
+    const op = startOp(this.logger, 'workspace.create', {});
+    try {
+      const result = await this.runCreateWorktree(input, op);
+      if (result.success) op.end();
+      else op.end({ outcome: 'failed', errorKind: result.error.type });
+      return result;
+    } catch (error) {
+      op.fail(error);
+      throw error;
+    }
+  }
+
+  private async runCreateWorktree(
+    input: CreateWorktreeInput,
+    op: Op
+  ): Promise<Result<WorkspaceRecord, CreateWorktreeError>> {
+    op.stage('register');
     const registration = await this.enqueue(() =>
       Promise.resolve(this.registerWorktreeCreation(input))
     );
@@ -718,6 +735,7 @@ export class WorkspaceRegistryRuntime {
     }
     const repository = registration.data.repository;
 
+    op.stage('inspect');
     const created = await this.gitContext.schedule.withRepoHold(repository.path, async () => {
       const startedAt = this.clock.now();
       const stageStarts: CreationStageTimeline = [];
@@ -735,6 +753,7 @@ export class WorkspaceRegistryRuntime {
         baseRef: input.baseRef ?? null,
         gitSetup: input.gitSetup,
         onStage: (stage) => {
+          op.stage(stage);
           stageStarts.push({ stage, at: Date.now() });
           this.updateOverlay(input.workspaceId, (overlay) => ({
             ...overlay,
@@ -743,6 +762,15 @@ export class WorkspaceRegistryRuntime {
         },
       });
       this.logStageTimings(input.workspaceId, stageStarts, result.status);
+      if (result.status === 'failed') {
+        this.logger.warn('workspace create stage failed', {
+          op: 'workspace.create',
+          opId: op.opId,
+          stage: result.stage,
+          errorMessage: result.message.slice(0, 500),
+        });
+      }
+      op.stage('finalize');
 
       return await this.enqueue(() =>
         Promise.resolve(this.finalizeWorktreeCreation(input, result, stageStarts))
@@ -751,7 +779,7 @@ export class WorkspaceRegistryRuntime {
 
     // The verb returns at agent-spawnable; artifact cloning, branch pushing, and ref
     // freshening continue as durable background steps outside the repository claim.
-    if (created.success) this.backgroundSteps.ensureRunning(input.workspaceId);
+    if (created.success) this.backgroundSteps.ensureRunning(input.workspaceId, op.opId);
     return created;
   }
 

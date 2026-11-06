@@ -1,5 +1,6 @@
 import * as https from 'node:https';
 import bundledCatalog from '@upstream/features/catalog/node/bundled-catalog.json';
+import { noteCaught } from './ops';
 
 /**
  * Emdash's own bundled catalogue of skills worth teaching an agent — the
@@ -36,7 +37,8 @@ export async function catalogueContent(id: string): Promise<string | null> {
   if (!url) return null;
   try {
     return await get(url);
-  } catch {
+  } catch (caught) {
+    noteCaught('skills-catalog.ts:39', caught);
     return null;
   }
 }

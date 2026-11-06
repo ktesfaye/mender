@@ -11,6 +11,7 @@
  * answer, because the answer is written again whenever the board changes.
  */
 
+import { soft } from '../watch/caught';
 import { h, sign } from '../glass/read';
 
 const MIN_SCALE = 1;
@@ -79,13 +80,13 @@ export function holdUp(
              if (!v) return;
              v.loop = true; v.controls = true;
              v.style.cssText = 'width:100%;height:100%;object-fit:contain;background:transparent';
-             v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+             v.play().catch(() => { v.muted = true; v.play().catch(soft('picture-view.82', {})); });
            }, 100); })();
            window.addEventListener('keydown', (e) => {
              if (['Escape', 'ArrowLeft', 'ArrowRight'].includes(e.key)) console.log('mender-key:' + e.key);
            }, true);`
         )
-        .catch(() => undefined);
+        .catch(soft('picture-view.88', undefined));
     });
     el.addEventListener('console-message', (event) => {
       const said = (event as Event & { message?: string }).message ?? '';

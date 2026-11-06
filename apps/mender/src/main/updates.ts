@@ -12,6 +12,7 @@ import { log } from '@emdash/shared/logger';
 import { createController, type Controller } from '@emdash/wire/rpc';
 import { app, net } from 'electron';
 import { newer, updatesContract, type UpdateState } from '@shared/updates';
+import { lost, swallow } from './ops';
 
 const ran = promisify(execFile);
 
@@ -175,13 +176,13 @@ export function createUpdates(env: EnvSource): Updates {
       try {
         await ran('/usr/bin/ditto', [join(mount, 'Mender.app'), target]);
       } finally {
-        await ran('/usr/bin/hdiutil', ['detach', mount, '-force']).catch(() => undefined);
+        await ran('/usr/bin/hdiutil', ['detach', mount, '-force']).catch(lost('updates.ts:179'));
       }
       const plist = await readFile(join(target, 'Contents', 'Info.plist'), 'utf8');
       if (!plist.includes(`<string>${latest}</string>`)) {
         throw new Error(`what came down does not say it is ${latest}`);
       }
-      await ran('/usr/bin/xattr', ['-dr', 'com.apple.quarantine', target]).catch(() => undefined);
+      await ran('/usr/bin/xattr', ['-dr', 'com.apple.quarantine', target]).catch(swallow(log, 'clear quarantine'));
       return target;
     } finally {
       await rm(work, { recursive: true, force: true });

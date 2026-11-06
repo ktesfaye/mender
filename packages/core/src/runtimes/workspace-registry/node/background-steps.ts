@@ -1,4 +1,4 @@
-import { noopLogger, type Logger } from '@emdash/shared/logger';
+import { noopLogger, startOp, type Logger } from '@emdash/shared/logger';
 import { systemClock, type Clock } from '@emdash/shared/scheduling';
 import type { BoundExec } from '#services/exec/api';
 import type { WorkspaceLifecycleStep, WorkspaceLifecycleStepId } from '../api/schemas';
@@ -37,6 +37,7 @@ export type BackgroundStepExecutors = {
     repositoryPath: string;
     worktreePath: string;
     preservePatterns: readonly string[];
+    parentOpId?: string;
   }): Promise<CopyArtifactsOutcome>;
   push(input: {
     repositoryPath: string;
@@ -99,6 +100,7 @@ export class BackgroundStepRunner {
    * real attempt (spec: fetch honesty).
    */
   private readonly lastFetchAt = new Map<string, number>();
+  private readonly parentOps = new Map<string, string>();
 
   constructor(deps: BackgroundStepRunnerDeps) {
     this.records = deps.records;
@@ -115,9 +117,10 @@ export class BackgroundStepRunner {
   }
 
   /** Runs every incomplete background step for one record, coalesced per workspace. */
-  ensureRunning(id: string): BackgroundRunHandle {
+  ensureRunning(id: string, parentOpId?: string): BackgroundRunHandle {
     const existing = this.runs.get(id);
     if (existing) return existing;
+    if (parentOpId) this.parentOps.set(id, parentOpId);
     return this.register(id, 'background creation steps', (copySettled) =>
       this.executeChain(id, copySettled)
     );
@@ -145,6 +148,7 @@ export class BackgroundStepRunner {
       .finally(() => {
         resolveCopy();
         this.runs.delete(id);
+        this.parentOps.delete(id);
       });
     const handle: BackgroundRunHandle = { settled, copySettled };
     this.runs.set(id, handle);
@@ -252,7 +256,12 @@ export class BackgroundStepRunner {
     try {
       await this.steps.update(id, 'copy-artifacts', { status: 'running' });
       const startedAt = this.clock.now();
-      const outcome = await this.executors.copy({ repositoryPath, worktreePath, preservePatterns });
+      const outcome = await this.executors.copy({
+        repositoryPath,
+        worktreePath,
+        preservePatterns,
+        parentOpId: this.parentOps.get(id),
+      });
       this.logger.info?.(
         `copy-artifacts for '${id}': ${outcome.status} in ${this.clock.now() - startedAt}ms`,
         {
@@ -272,6 +281,29 @@ export class BackgroundStepRunner {
     }
   }
 
+  private async trackStep(
+    id: string,
+    step: string,
+    run: () => Promise<BackgroundStepOutcome>
+  ): Promise<BackgroundStepOutcome> {
+    const op = startOp(this.logger, 'workspace.step', {
+      stage: step,
+      parentOpId: this.parentOps.get(id),
+    });
+    try {
+      const outcome = await run();
+      if (outcome.status === 'failed') {
+        op.end({ outcome: 'failed', errorKind: 'StepFailed', errorMessage: outcome.message });
+      } else {
+        op.end();
+      }
+      return outcome;
+    } catch (error) {
+      op.fail(error);
+      throw error;
+    }
+  }
+
   private async executePushStep(
     id: string,
     repositoryId: string,
@@ -283,7 +315,9 @@ export class BackgroundStepRunner {
     const release = this.scans.mute(repositoryId);
     try {
       await this.steps.update(id, 'push-branch', { status: 'running' });
-      const outcome = await this.executors.push({ repositoryPath, ...target });
+      const outcome = await this.trackStep(id, 'push-branch', () =>
+        this.executors.push({ repositoryPath, ...target })
+      );
       await this.steps.update(id, 'push-branch', toStepState(outcome));
     } finally {
       release();
@@ -312,7 +346,9 @@ export class BackgroundStepRunner {
     const release = this.scans.mute(repositoryId);
     try {
       await this.steps.update(id, 'fetch-refs', { status: 'running' });
-      const outcome = await this.executors.fetch({ repositoryPath, baseRef });
+      const outcome = await this.trackStep(id, 'fetch-refs', () =>
+        this.executors.fetch({ repositoryPath, baseRef })
+      );
       // Fetch honesty (spec: PR 3): the debounce stamp lands only on success, so the
       // skip message stays true and a failed fetch never debounces the next attempt.
       if (outcome.status === 'succeeded') {

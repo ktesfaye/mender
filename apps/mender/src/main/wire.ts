@@ -2,6 +2,8 @@ import type { Scope } from '@emdash/shared/concurrency';
 import { exposeWireToWindows, type Controller } from '@emdash/wire/rpc';
 import { ipcMain, MessageChannelMain } from 'electron';
 import { MENDER_WIRE_CHANNEL } from '@shared/channels';
+import { logger } from './logging';
+import { trackOp } from './ops';
 
 /** Serves the renderer's wire port, routing `domain.procedure` to its controller. */
 export function installWire(scope: Scope, controllers: Record<string, Controller>): void {
@@ -18,6 +20,7 @@ function createMessageChannel() {
 }
 
 function createRoutingController(controllers: Record<string, Controller>): Controller {
+  const log = logger('wire');
   const route = (path: string) => {
     const separator = path.indexOf('.');
     const domain = separator === -1 ? path : path.slice(0, separator);
@@ -29,7 +32,14 @@ function createRoutingController(controllers: Record<string, Controller>): Contr
   return {
     async call(path, input, meta) {
       const routed = route(path);
-      return await routed.controller.call(routed.path, input, meta);
+      const task = (input as { task?: unknown } | null)?.task;
+      return await trackOp(
+        log,
+        'wire call',
+        { procedure: path, ...(typeof task === 'string' ? { task } : {}) },
+        () => routed.controller.call(routed.path, input, meta),
+        { quiet: true }
+      );
     },
     resolveLive(topic) {
       const routed = route(topic);

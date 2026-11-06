@@ -108,6 +108,7 @@ export class ConversationsRuntime {
     };
     this.store.insert(record);
     this.publish(record);
+    this.logger.info('conversation created', { op: 'conversation.create', program: input.provider });
     return ok(record);
   }
 
@@ -123,6 +124,11 @@ export class ConversationsRuntime {
 
   delete(input: DeleteConversationInput): Result<void, DeleteConversationError> {
     const deleted = this.store.delete(input.conversationId);
+    this.logger.info('conversation delete', {
+      op: 'conversation.delete',
+      outcome: deleted ? 'ok' : 'failed',
+      stage: deleted ? 'deleted' : 'absent',
+    });
     if (deleted) {
       this.recordsCell.update((previous) => {
         const next = { ...previous };
@@ -139,6 +145,10 @@ export class ConversationsRuntime {
 
   reportSessionStarted(input: ReportSessionStartedInput): Result<void, ConversationMutationError> {
     const now = this.clock.now();
+    this.logger.info('conversation session started', {
+      op: 'conversation.session-started',
+      stage: input.resumeOutcome ?? 'unreported',
+    });
     return dropData(
       this.mutate(input.conversationId, (record) => ({
         ...record,
@@ -186,6 +196,11 @@ export class ConversationsRuntime {
   ): Result<ConversationRecord, ConversationMutationError> {
     const existing = this.store.get(id);
     if (!existing) {
+      this.logger.warn('conversation mutate on absent record', {
+        op: 'conversation.mutate',
+        outcome: 'failed',
+        errorKind: 'conversation-not-found',
+      });
       return err({
         type: 'conversation-not-found',
         conversationId: id,

@@ -1,13 +1,14 @@
 import { readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { setRootLogger } from '@emdash/shared/logger';
+import type { Logger } from '@emdash/shared/logger';
 import {
   createFileTransport,
   createPinoLogger,
   installAsyncLogContext,
 } from '@emdash/shared/logger/node';
 import { app, type WebContents } from 'electron';
-import type { Logger } from '@emdash/shared/logger';
+import { startTelemetry } from './telemetry';
 
 /**
  * Everything the village and its workers say about themselves, on disk.
@@ -71,10 +72,20 @@ export function startLogging(): Logger {
     maxBytes: MAX_BYTES_PER_FILE,
     retainedFiles: ROTATED_PER_DAY,
   });
+  const toFile = transport.asDestination();
+  const telemetry = startTelemetry({ local: (line) => transport.write(line) });
   root = createPinoLogger({
     envLevel: process.env.EMDASH_LOG_LEVEL,
     bindings: { proc: 'main', pid: process.pid },
-    destination: transport.asDestination(),
+    destination: telemetry
+      ? {
+          write(line: string): boolean {
+            toFile.write(line);
+            telemetry.ingest(line);
+            return true;
+          },
+        }
+      : toFile,
   });
   installAsyncLogContext();
   setRootLogger(root);

@@ -1,6 +1,7 @@
-import '../glass/slabs.css';
 import { glaze, TINT_YARD } from '../glass/glass';
+import '../glass/slabs.css';
 import { px } from '../glass/px';
+import { swallowed } from '../watch/caught';
 import { openPastSession, type PastSession, type PastTold } from './past-session';
 import { cutOf, KIT_NAMES, sprite } from './sprite';
 import { ask } from './standing';
@@ -194,7 +195,10 @@ export function openNewSession(hooks: NewSessionHooks): NewSessionSign {
         void hooks
           .adopt(session)
           .then(() => submit(session))
-          .catch(() => submit(session));
+          .catch((error: unknown) => {
+            swallowed('new-session.adopt', error);
+            submit(session);
+          });
       },
       back: () => {
         pastBoard = null;

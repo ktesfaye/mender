@@ -1,3 +1,4 @@
+import { swallowed, soft } from '../watch/caught';
 import './jira.css';
 import { adfToMarkdown } from '@shared/jira-adf';
 import { JIRA_PARTITION, type JiraLink } from '@shared/jira';
@@ -93,7 +94,7 @@ export function boardOfUrl(url: string): { site: string; key: string; board: num
     const at = new URL(url);
     const got = at.pathname.match(/\/jira\/software\/(?:c\/)?projects\/([^/]+)\/boards\/(\d+)/);
     return got ? { site: at.host, key: got[1]!, board: Number(got[2]) } : null;
-  } catch {
+  } catch (caught) { swallowed('surface.96', caught);
     return null;
   }
 }
@@ -103,7 +104,7 @@ export function onJira(url: string): boolean {
   try {
     const { protocol, host } = new URL(url);
     return protocol === 'https:' && host.endsWith('.atlassian.net') && host !== 'id.atlassian.net';
-  } catch {
+  } catch (caught) { swallowed('surface.106', caught);
     return false;
   }
 }
@@ -117,7 +118,7 @@ export function ticketOfUrl(url: string): string | null {
       at.pathname.match(/\/browse\/([A-Z][A-Z0-9_]*-\d+)/)?.[1] ??
       null
     );
-  } catch {
+  } catch (caught) { swallowed('surface.120', caught);
     return null;
   }
 }
@@ -185,7 +186,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
 
   const push = (): void => {
     if (!view || !ready) return;
-    void view.executeJavaScript(`window.__mender && window.__mender.set(${JSON.stringify({ lit })})`).catch(() => undefined);
+    void view.executeJavaScript(`window.__mender && window.__mender.set(${JSON.stringify({ lit })})`).catch(soft('surface.188', undefined));
   };
 
   const launch = async (keys: string[]): Promise<void> => {
@@ -274,7 +275,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
       let what: { launch?: string[]; picked?: string[]; go?: string; escape?: boolean };
       try {
         what = JSON.parse(message.slice(PAGE_SAYS.length));
-      } catch {
+      } catch (caught) { swallowed('surface.277', caught);
         return;
       }
       if (what.launch) void launch(what.launch);
@@ -330,7 +331,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
     open: (at) => {
       if (at.project !== project) {
         picked = [];
-        void view?.executeJavaScript('window.__mender && window.__mender.clear()').catch(() => undefined);
+        void view?.executeJavaScript('window.__mender && window.__mender.clear()').catch(soft('surface.333', undefined));
       }
       project = at.project;
       link = at.link;
@@ -363,7 +364,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
           description: adfToMarkdown(got.fields.description),
           category: categoryOf(got.fields.status?.statusCategory?.key),
         };
-      } catch {
+      } catch (caught) { swallowed('surface.366', caught);
         return null;
       }
     },
@@ -373,11 +374,11 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
         .get<{ transitions: { id: string; name?: string; to?: { name?: string; statusCategory?: { key?: string } } }[] }>(
           `/rest/api/3/issue/${enc(key)}/transitions`
         )
-        .catch(() => null);
+        .catch(soft('surface.376', null));
       const step = got?.transitions.find(
         (one) => one.to?.statusCategory?.key === 'indeterminate' && !/block|review/i.test(one.to?.name ?? '')
       );
-      if (step) await j.send('POST', `/rest/api/3/issue/${enc(key)}/transitions`, { transition: { id: step.id } }).catch(() => undefined);
+      if (step) await j.send('POST', `/rest/api/3/issue/${enc(key)}/transitions`, { transition: { id: step.id } }).catch(soft('surface.380', undefined));
     },
   };
 }

@@ -11,7 +11,7 @@ import type {
 import type { Result, Serializable } from '@emdash/shared';
 import { err, ok, toSerializedError } from '@emdash/shared';
 import type { Scope } from '@emdash/shared/concurrency';
-import type { Logger } from '@emdash/shared/logger';
+import { startOp, type Logger } from '@emdash/shared/logger';
 import { systemClock, type Clock } from '@emdash/shared/scheduling';
 import type {
   AcpCancelTurnError,
@@ -251,7 +251,16 @@ export class SessionManager {
       AcpStartError
     >
   > {
-    const started = await entry.ensure();
+    const op = startOp(this.deps.logger, 'acp.wake', { program: entry.descriptor.providerId });
+    let started: Awaited<ReturnType<ConversationHandle['ensure']>>;
+    try {
+      started = await entry.ensure();
+    } catch (error) {
+      op.fail(error);
+      throw error;
+    }
+    if (started.success) op.end();
+    else op.end({ outcome: 'failed', errorKind: started.error.type });
     if (!started.success) {
       if (started.error.type === 'conversation_not_found') {
         return acpErr.invalidState('ACP conversation was deleted while starting');
@@ -990,6 +999,10 @@ export class SessionManager {
   private async teardownRecord(record: SessionRecord): Promise<void> {
     if (record.disposed) return;
     record.disposed = true;
+    this.deps.logger.info('acp session teardown', {
+      op: 'acp.teardown',
+      program: record.input.providerId,
+    });
     record.cell.dispose();
     record.machineStateBinding.dispose();
     this.router.unregister(

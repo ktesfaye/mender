@@ -1,9 +1,11 @@
+import { swallowed } from './watch/caught';
 import {
   awaitWirePort,
   client,
   connect,
   domPortTransport,
   type ContractClient,
+  type WireInstrumentation,
   type DomPortLike,
 } from '@emdash/wire/rpc';
 import {
@@ -16,6 +18,23 @@ import {
 } from '@shared/channels';
 import { menderWireContract, type menderDomainContracts } from '@shared/contract';
 import { wireFlight } from './flight';
+import { wireWatch } from './watch';
+
+/** Both reports hear every wire event; neither can disturb the other or the wire. */
+const instrumentation: WireInstrumentation = Object.fromEntries(
+  (Object.keys({ ...wireFlight, ...wireWatch }) as Array<keyof WireInstrumentation>).map((key) => [
+    key,
+    (event: never) => {
+      for (const part of [wireFlight, wireWatch]) {
+        try {
+          (part[key] as ((one: never) => void) | undefined)?.(event);
+        } catch (caught) { swallowed('wire.30', caught);
+          // A report failing is never the wire's problem.
+        }
+      }
+    },
+  ])
+);
 
 declare global {
   interface Window {
@@ -79,7 +98,7 @@ export function wire(): Promise<MenderClient> {
     const portPromise = awaitWirePort(window, { channel: MENDER_WIRE_CHANNEL });
     await window.mender.requestWirePort();
     const connection = connect(domPortTransport((await portPromise) as DomPortLike), {
-      instrumentation: wireFlight,
+      instrumentation,
     });
     return client(menderWireContract, connection);
   })();

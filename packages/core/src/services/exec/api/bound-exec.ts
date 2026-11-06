@@ -1,5 +1,6 @@
 import { spawn as spawnProcess } from 'node:child_process';
 import type { ChildProcessWithoutNullStreams, SpawnOptionsWithoutStdio } from 'node:child_process';
+import { getCurrentLogger, startOp, type LogFields, type Op } from '@emdash/shared/logger';
 import { classifySpawnPurpose, recordSpawn } from '@emdash/shared/perf';
 import type { EnvSource } from '#primitives/exec/api';
 import {
@@ -87,13 +88,20 @@ class ProcessBoundExec implements BoundExec {
     });
     const launch = toChildProcessLaunch(plan.invocation);
     recordSpawn(classifySpawnPurpose(this.file, args), launch.executable);
-    return spawnProcess(launch.executable, launch.args, {
+    const op = startExecOp(this.file, args);
+    const child = spawnProcess(launch.executable, launch.args, {
       cwd: plan.cwd,
       env: composedEnv,
       signal: options.signal,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsVerbatimArguments: launch.windowsVerbatimArguments,
     });
+    child.once('error', (error) => op.fail(error));
+    child.once('close', (code, signal) => {
+      if (code === 0 || code === null) op.end({ exitCode: code ?? undefined, ...(signal ? { signal } : {}) });
+      else op.end({ outcome: 'failed', exitCode: code, ...(signal ? { signal } : {}) });
+    });
+    return child;
   }
 
   withCwd(cwd: string): BoundExec {
@@ -101,6 +109,35 @@ class ProcessBoundExec implements BoundExec {
   }
 
   private async run(
+    args: string[],
+    options: ExecOptions,
+    sink: StdoutSink
+  ): Promise<{ stderr: string }> {
+    const op = startExecOp(this.file, args);
+    try {
+      const result = await this.runProcess(args, options, sink);
+      op.end({ exitCode: 0 });
+      return result;
+    } catch (error) {
+      if (error instanceof ExecError) {
+        const message = firstLine(error.stderr);
+        if (error.exitCode === 1 && !message) {
+          op.end({ exitCode: 1, stage: 'exit-1' });
+        } else {
+          op.fail(error, {
+            exitCode: error.exitCode ?? undefined,
+            errorKind: 'ExecError',
+            ...(message ? { errorMessage: message } : {}),
+          });
+        }
+      } else {
+        op.fail(error);
+      }
+      throw error;
+    }
+  }
+
+  private async runProcess(
     args: string[],
     options: ExecOptions,
     sink: StdoutSink
@@ -246,6 +283,36 @@ class ProcessBoundExec implements BoundExec {
       });
     });
   }
+}
+
+function startExecOp(file: string, args: readonly string[]): Op {
+  const fields: LogFields = { program: programName(file) };
+  const subcommand = subcommandOf(args);
+  if (subcommand) fields.subcommand = subcommand;
+  return startOp(getCurrentLogger(), 'exec', fields, { quiet: true });
+}
+
+function programName(file: string): string {
+  const base = file.replace(/\\/g, '/').split('/').pop() ?? file;
+  return base.replace(/\.(exe|cmd|bat)$/i, '');
+}
+
+function subcommandOf(args: readonly string[]): string | undefined {
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i]!;
+    if (arg === '-C' || arg === '-c') {
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith('-')) continue;
+    return /^[a-z][a-z0-9-]{0,30}$/i.test(arg) ? arg : undefined;
+  }
+  return undefined;
+}
+
+function firstLine(text: string): string {
+  const line = text.trim().split('\n')[0] ?? '';
+  return line.length > 300 ? `${line.slice(0, 300)}...` : line;
 }
 
 async function resolveEnv(

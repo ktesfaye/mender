@@ -1,3 +1,4 @@
+import { noteCaught } from './ops';
 /**
  * When a limit lifts, read off what Claude itself said about it.
  *
@@ -58,7 +59,8 @@ function validZone(zone: string): boolean {
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: zone });
     return true;
-  } catch {
+  } catch (caught) {
+    noteCaught('limit-clock.ts:61', caught);
     return false;
   }
 }
