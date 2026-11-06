@@ -804,10 +804,16 @@ export function createAgents(
             const n = had && now - had.at < 10 * 60_000 ? had.n : 0;
             if (n < THROTTLE_TRIES) {
               throttles.set(task, { n: n + 1, at: now });
+              /* Every session behind the same cap lifts at the same second, so
+                 each goes a different breath after or they knock it over again. */
+              const go = Math.max(lifts, Date.now()) + 2_000 + Math.random() * 20_000;
+              log.info('agents: request cap, going again', { area: 'agents', task, try: n + 1, at: go });
               setTimeout(() => {
                 if (carryOnTimers.has(task)) return;
-                armCarryOn(task, Math.max(lifts + 2_000, Date.now() + 2_000));
+                armCarryOn(task, go);
               }, 0);
+            } else {
+              log.info('agents: request cap, out of tries', { area: 'agents', task });
             }
             return at;
           }
@@ -2965,7 +2971,7 @@ function bankable(category: SessionFailure['category']): boolean {
 }
 
 /** How many times running a request cap sends it again by itself. */
-const THROTTLE_TRIES = 5;
+const THROTTLE_TRIES = 20;
 
 /** How often a session cut off by the line out looks for it again. */
 const ONLINE_EVERY_MS = 10_000;
