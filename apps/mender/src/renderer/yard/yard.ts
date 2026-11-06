@@ -1924,6 +1924,8 @@ function signboards(
   });
   hanging.appendChild(more);
   root.appendChild(stays(hanging, 'signs'));
+  hanging.scrollLeft = signsScrolled;
+  hanging.addEventListener('scroll', () => (signsScrolled = hanging.scrollLeft));
   if (carrying) {
     hanging.scrollLeft = carrying.scrolled;
     placeCarried(hanging);
@@ -1935,15 +1937,20 @@ function signboards(
     catchGold(hanging.querySelector<HTMLElement>('.sign.here .board'));
   }
   goldWas = gold;
-  /* However many there are, the one you are standing in is on the beam. */
-  requestAnimationFrame(() => {
-    const here = hanging.querySelector<HTMLElement>('.sign.here');
-    if (!here || carrying) return;
-    const over = here.offsetLeft + here.offsetWidth - hanging.clientWidth;
-    if (over > 0 || here.offsetLeft < hanging.scrollLeft) {
-      hanging.scrollLeft = Math.max(0, over + 12);
-    }
-  });
+  /* However many there are, the one you are standing in is on the beam, once,
+     when you come to stand in it: the beam is drawn again on every change, and
+     bringing it back each time snatched the beam out from under a scroll. */
+  const broughtIn = gold !== undefined && gold !== signsShowing;
+  signsShowing = gold;
+  if (broughtIn)
+    requestAnimationFrame(() => {
+      const here = hanging.querySelector<HTMLElement>('.sign.here');
+      if (!here || carrying) return;
+      const over = here.offsetLeft + here.offsetWidth - hanging.clientWidth;
+      if (over > 0 || here.offsetLeft < hanging.scrollLeft) {
+        hanging.scrollLeft = Math.max(0, over + 12);
+      }
+    });
 }
 
 /* ── moving them along the beam ────────────────────────────────────────────
@@ -5369,6 +5376,9 @@ const PLUS_BANKED = '#b08648';
 const PLUS = `background:${PLUS_BANKED}`;
 /* Where the beam was scrolled to, so hanging a lantern doesn't throw it back to the start. */
 let railScrolled = 0;
+/* The same for the workspaces' beam, and which board it last brought into view. */
+let signsScrolled = 0;
+let signsShowing: string | undefined;
 /** How wide each lantern's stretch of beam is held, and when its words last needed all of it. */
 const railSpans = new Map<string, { span: number; roomy: number }>();
 /** What each lantern was last saying it was doing, so a change can be seen arriving. */
