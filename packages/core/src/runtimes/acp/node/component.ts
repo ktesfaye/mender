@@ -42,6 +42,7 @@ export type CreateAcpComponentOptions = {
   logger?: Logger;
   sessionMeta?: AcpRuntimeDeps['sessionMeta'];
   extraMcpServers?: AcpRuntimeDeps['extraMcpServers'];
+  keepMcpServer?: AcpRuntimeDeps['keepMcpServer'];
 };
 
 export function createAcpComponent(options: CreateAcpComponentOptions) {
@@ -96,6 +97,7 @@ export function createAcpComponent(options: CreateAcpComponentOptions) {
         lifecycle: config.lifecycle,
         sessionMeta: options.sessionMeta,
         extraMcpServers: options.extraMcpServers,
+        keepMcpServer: options.keepMcpServer,
         logger: runtimeLogger,
       } satisfies AcpRuntimeDeps);
       void acp.reconcile();

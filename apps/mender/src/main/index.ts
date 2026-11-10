@@ -16,6 +16,8 @@ import { createBuildingController } from './building';
 import { createChanges } from './changes';
 import { createChangesController } from './changes-controller';
 import { createClaudeUsage } from './claude-usage';
+import { createCrew } from './crew';
+import { createCrewController } from './crew-controller';
 import { watchDockFire } from './dock-fire';
 import { createDraftingController } from './drafting';
 import { installDragOut } from './drag';
@@ -25,7 +27,8 @@ import { createFiveHours } from './five-hours';
 import { createGitHubStatus } from './github';
 import { installGrip } from './grip';
 import { watchHungry } from './hungry';
-import { createJiraController } from './jira';
+import { createJira } from './jira';
+import { createJiraLaunch } from './jira-launch';
 import { installJiraWeb } from './jira-web';
 import { logger, logWindow } from './logging';
 import { installAppMenu } from './menu';
@@ -35,10 +38,11 @@ import { createProjects } from './projects';
 import { createProjectsController } from './projects-controller';
 import { createPromptsController } from './prompts';
 import { installQuitGuard } from './quit';
+import { rolesFile } from './roles';
 import { startRuntimes } from './runtimes';
 import { createSchedules } from './schedules';
 import { createSchedulesController } from './schedules-controller';
-import { openSessionDoor } from './session-door';
+import { doorFile, openSessionDoor } from './session-door';
 import { createSessionUsageReader } from './session-usage';
 import { createSkyController } from './sky';
 import { watchStrays } from './strays';
@@ -91,9 +95,19 @@ export async function main(): Promise<void> {
       session: one.session,
     }));
   });
-  const agents = createAgents(runtimes, tasks, appSettings, {
-    report: (limit) => fiveHours.report(limit, 'session'),
-  });
+  const agents = createAgents(
+    runtimes,
+    tasks,
+    appSettings,
+    { report: (limit) => fiveHours.report(limit, 'session') },
+    /* Which kind of session a conversation is has to be on disk before its
+       agent starts, since the worker that starts it can only read. */
+    { claim: (task, conversation) => crew.claim(task, conversation) }
+  );
+  const crew = createCrew(agents, tasks, runtimes, rolesFile(doorFile()));
+  scope.add(() => crew.dispose());
+  const jira = createJira(() => jiraLaunch);
+  const jiraLaunch = createJiraLaunch(jira.hands, tasks, agents);
   // Same reason as `projects.sweeps` just above: the two need each other, so
   // one has to be told about the other after both exist.
   tasks.onGone((task, forget) => void agents.evict(task, forget));
@@ -114,7 +128,12 @@ export async function main(): Promise<void> {
   const finding = createFinding(runtimes, projects);
   const sessionUsage = createSessionUsageReader(runtimes, tasks);
   const schedules = createSchedules(tasks, agents, projects);
-  const door = openSessionDoor(tasks, agents, projects);
+  const door = openSessionDoor(tasks, agents, projects, {
+    crew,
+    jira: jira.hands,
+    launch: jiraLaunch,
+    runtimes,
+  });
   scope.add(() => door.dispose());
   scope.add(() => agents.dispose());
   scope.add(() => tasks.dispose());
@@ -137,7 +156,10 @@ export async function main(): Promise<void> {
     drafting: createDraftingController(),
     finding: createFindingController(finding),
     github: createGitHubStatus(),
-    jira: createJiraController(),
+    crew: createCrewController(crew, runtimes, async (id) =>
+      (await tasks.list()).find((one) => one.id === id)
+    ),
+    jira: jira.controller,
     projects: createProjectsController(projects),
     prompts: createPromptsController(),
     schedules: createSchedulesController(schedules, appSettings),

@@ -17,6 +17,7 @@ import {
 } from '../shared/jira';
 import { adfToMarkdown } from '../shared/jira-adf';
 import { forgetToken, readToken, writeToken } from './jira-keychain';
+import type { JiraLaunch } from './jira-launch';
 import { boardLinkOf, hostOf } from './jira-link';
 import { noteCaught, lost } from './ops';
 
@@ -51,7 +52,20 @@ const FIELDS = 'summary,status,issuetype,priority,parent,assignee,updated';
 
 type Got<T> = { success: true; data: T } | { success: false; error: JiraError };
 
-export function createJiraController(): Controller {
+/** What the rest of the main process may ask of Jira, without a wire in between. */
+export interface JiraHands {
+  api(site: string, method: string, path: string, body?: unknown): Promise<Got<unknown>>;
+  recipe(): Promise<string>;
+  sites(): Promise<string[]>;
+  linkOf(project: string): Promise<JiraLink | null>;
+  take(taken: JiraTaken): Promise<void>;
+  taken(): Promise<JiraTaken[]>;
+}
+
+export function createJira(launch: () => JiraLaunch): {
+  controller: Controller;
+  hands: JiraHands;
+} {
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'jira.json') });
   const stored = async (): Promise<Stored> => {
     const loaded = await store.get(KEY);
@@ -417,19 +431,44 @@ export function createJiraController(): Controller {
     if (!key)
       return {
         success: false,
-        error: { kind: 'refused', said: 'that board does not read from any project Mender can see.' },
+        error: {
+          kind: 'refused',
+          said: 'that board does not read from any project Mender can see.',
+        },
       };
     return {
       success: true,
       data: {
         boards: [
-          { site, key, board: one.data.id, name: one.data.name, project: project ?? key, yours: true },
+          {
+            site,
+            key,
+            board: one.data.id,
+            name: one.data.name,
+            project: project ?? key,
+            yours: true,
+          },
         ],
       },
     };
   };
 
-  return createController(jiraContract, {
+  const hands: JiraHands = {
+    api: (site, method, path, body) =>
+      call<unknown>(site, path, { method, ...(body === undefined ? {} : { body }) }),
+    recipe: async () => (await stored()).recipe ?? DEFAULT_RECIPE,
+    sites: async () => ((await stored()).sites ?? []).map((each) => each.site),
+    linkOf: async (project) => (await stored()).links?.[project] ?? null,
+    take: async (taken) => {
+      await mutate((now) => ({
+        ...now,
+        taken: [...(now.taken ?? []).filter((each) => each.task !== taken.task), taken].slice(-500),
+      }));
+    },
+    taken: async () => (await stored()).taken ?? [],
+  };
+
+  const controller = createController(jiraContract, {
     status: async () => {
       const now = await stored();
       return {
@@ -602,9 +641,22 @@ export function createJiraController(): Controller {
       });
       return made.success ? { success: true, data: { key: made.data.key } } : made;
     },
+    look: async ({ site, key }) => {
+      const got = await launch().look(site, key);
+      return got.ok
+        ? { success: true, data: got.ticket }
+        : { success: false, error: { kind: 'refused', said: got.said } };
+    },
+    start: async ({ site, key }) => {
+      const out = await launch().start(site, key);
+      return out.said
+        ? { success: false, error: { kind: 'refused', said: out.said } }
+        : { success: true, data: { moved: out.moved, ...(out.to ? { to: out.to } : {}) } };
+    },
+    launch: ({ project, site, keys }) => launch().many(project, site, keys),
     api: async ({ site, method, path, body }) => {
       if (!path.startsWith('/rest/') || path.includes('..'))
-        return { success: false, error: { kind: 'refused', said: 'only Jira\'s own API.' } };
+        return { success: false, error: { kind: 'refused', said: "only Jira's own API." } };
       return call<unknown>(site, path, { method, ...(body === undefined ? {} : { body }) });
     },
     image: async ({ site, url }) => {
@@ -633,7 +685,10 @@ export function createJiraController(): Controller {
       try {
         const response = await fetch(at.href, { headers, signal: AbortSignal.timeout(20_000) });
         if (!response.ok)
-          return { success: false, error: { kind: 'refused', said: `Jira said ${response.status}.` } };
+          return {
+            success: false,
+            error: { kind: 'refused', said: `Jira said ${response.status}.` },
+          };
         const type = response.headers.get('content-type')?.split(';')[0] ?? 'image/png';
         const bytes = Buffer.from(await response.arrayBuffer());
         const data = `data:${type};base64,${bytes.toString('base64')}`;
@@ -645,7 +700,10 @@ export function createJiraController(): Controller {
       } catch (cause) {
         return {
           success: false,
-          error: { kind: 'unreachable', said: cause instanceof Error ? cause.message : String(cause) },
+          error: {
+            kind: 'unreachable',
+            said: cause instanceof Error ? cause.message : String(cause),
+          },
         };
       }
     },
@@ -658,6 +716,7 @@ export function createJiraController(): Controller {
     },
     taken: async () => (await stored()).taken ?? [],
   });
+  return { controller, hands };
 }
 
 interface RawBoard {

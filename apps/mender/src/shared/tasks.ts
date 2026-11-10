@@ -37,6 +37,10 @@ export const taskSchema = z.object({
   /** The isolated workspace it works in, when it is not the project's own
       folder. Every session in one shares its worktree and its branch. */
   workspace: z.string().optional(),
+  /** A lead: a session that supervises others and is kept from touching code. */
+  lead: z.boolean().optional(),
+  /** The lead this session is crew under, by its task id. */
+  under: z.string().optional(),
 });
 
 export type Task = z.infer<typeof taskSchema>;

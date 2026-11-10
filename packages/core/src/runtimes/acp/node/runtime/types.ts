@@ -50,7 +50,11 @@ export interface AcpRuntimeDeps {
    * how an embedding app tells the agent what it is being read on. Agents
    * ignore `_meta` they do not know.
    */
-  sessionMeta?: (providerId: string) => Record<string, unknown> | undefined;
+  sessionMeta?: (
+    providerId: string,
+    cwd: string,
+    conversationId: string
+  ) => Record<string, unknown> | undefined;
   /**
    * MCP servers a host adds to every session on top of the ones in the agent's
    * own config, knowing which folder the session works in. They are never
@@ -61,6 +65,13 @@ export interface AcpRuntimeDeps {
     cwd: string,
     conversationId: string
   ) => McpServerRegistration[];
+  /**
+   * Whether one of the servers in the agent's own config may reach this
+   * session. A host that must keep a kind of session from doing certain
+   * things (a supervisor that may not touch code) leaves the agent's own
+   * servers out of it, since any of them might.
+   */
+  keepMcpServer?: (providerId: string, conversationId: string, name: string) => boolean;
   logger: Logger;
 }
 

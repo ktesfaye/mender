@@ -8,6 +8,11 @@
  * A plain MCP server over stdio, no dependencies, like the screen-control one.
  * It knows which folder its session works in from MENDER_CWD and reaches the
  * app through the port and token in the door file the app writes at start.
+ *
+ * What it offers depends on MENDER_ROLE. A lead (a session that hands out work
+ * and supervises it, and is kept from touching code) sees only the tools for
+ * talking, watching and launching. Crew under a lead also get ask_lead. A
+ * session with no role sees everything but ask_lead.
  */
 import { execFile } from 'node:child_process';
 import { copyFile, mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
@@ -256,11 +261,12 @@ const TOOLS = [
         terminal: { type: 'boolean', description: 'Open it as a plain shell and run `what` as its first command, instead of a chat. Only for a real shell command; needs `show` left on.' },
         show: { type: 'boolean', description: 'Walk the person into it. Default true; false keeps them where they are. Set false when you start several, so they are not dragged from one to the next.' },
         workspace: { type: 'string', description: 'A workspace to start it in, by name or id (see list_workspaces), or "project" for the project\'s own folder. Without it, it starts where you stand.' },
+        lead: { type: 'boolean', description: 'Start it as a lead: a session that hands out work and supervises it, and is kept from touching code (it can only talk, watch and launch). It works in the project\'s own folder.' },
       },
       required: ['what'],
       additionalProperties: false,
     },
-    run: knock,
+    run: (a) => knock(a),
   },
   {
     name: 'set_model',
@@ -279,7 +285,7 @@ const TOOLS = [
   {
     name: 'list_sessions',
     description:
-      'Lists the other sessions in this project: their names, ids and what each is doing right now (working, asking, resting, hurt). Use it to find who you can tell, read or stop.',
+      'Lists the sessions in this project with exactly what each is: working, asking (a question or a permission), idle (finished, or stopped by the person), broken, waiting out a limit, or starting; whether it is a lead or crew under one; and what it is doing. Use it to find who you can tell, read or stop. For your own crew, crew_status says far more.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     run: () => knock({}, '/sessions'),
   },
@@ -333,22 +339,23 @@ const TOOLS = [
   {
     name: 'tell_session',
     description:
-      'Says something to another session in this project, as if the person had written it on its line. It is signed with your session\'s name so it knows who is asking. It queues if that session is busy. Use read_session afterwards to see what came of it; do not wait in a loop.',
+      'Says something to another session in this project, signed with your session\'s name, and tells you plainly what became of it: whether it was idle (so it is reading it now), busy (so the note is queued for its next pause between steps, which is how a nudge works without cutting it off), or broken. mode "interrupt" stops what it is doing first and tells it to drop that and do this instead; use it for a redirect, not for a nudge. It does not answer a question or permission the session is waiting on (use answer_session). Never poll for what comes of it: if you supervise it, the village tells you when it asks, breaks, hits a limit, finishes or gets stuck.',
     inputSchema: {
       type: 'object',
       properties: {
-        session: { type: 'string', description: 'The other session\'s name or id, from list_sessions.' },
+        session: { type: 'string', description: 'The other session\'s name or id, from list_sessions or crew_status.' },
         text: { type: 'string', description: 'What to tell it, plainly and self-contained.' },
+        mode: { type: 'string', enum: ['queue', 'interrupt'], description: '"queue" (default): read at its next pause, or now if idle. "interrupt": stop it first, then this replaces what it was doing.' },
       },
       required: ['session', 'text'],
       additionalProperties: false,
     },
-    run: (a) => knock({ session: a.session, text: a.text }, '/tell'),
+    run: (a) => knock({ session: a.session, text: a.text, mode: a.mode }, '/tell'),
   },
   {
     name: 'read_session',
     description:
-      'Reads another session in this project: its state, whether it is asking you something, and the last things it said.',
+      'Reads the last things another session said, and its exact state. For a session you supervise, session_report is the better look (it does not dump what it said).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -363,14 +370,17 @@ const TOOLS = [
   {
     name: 'stop_session',
     description:
-      'Stops whatever another session in this project is doing right now. It keeps its place and can be told to carry on. Does not close it or touch its files.',
+      'Stops whatever another session is doing right now and confirms it actually stopped, saying what it was doing. It keeps its place and can be told to carry on. Does not close it or touch its files. With `then`, it stops and is immediately told to do that instead (the same as tell_session in interrupt mode).',
     inputSchema: {
       type: 'object',
-      properties: { session: { type: 'string', description: 'The other session\'s name or id.' } },
+      properties: {
+        session: { type: 'string', description: 'The other session\'s name or id.' },
+        then: { type: 'string', description: 'What it should do instead, once stopped.' },
+      },
       required: ['session'],
       additionalProperties: false,
     },
-    run: (a) => knock({ session: a.session }, '/stop'),
+    run: (a) => knock({ session: a.session, then: a.then }, '/stop'),
   },
   {
     name: 'close_session',
@@ -390,7 +400,7 @@ const TOOLS = [
   {
     name: 'set_session_model',
     description:
-      'Switches the model another session in this project thinks with, by a plain name such as "opus" or "haiku".',
+      'Switches the model another session thinks with, by a plain name such as "opus" or "haiku". Says what it was on and when the change takes hold (from its next turn). Use it to move a session that is burning the usage window onto a cheaper model.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -401,6 +411,133 @@ const TOOLS = [
       additionalProperties: false,
     },
     run: (a) => knock({ session: a.session, model: a.model }, '/model-of'),
+  },
+  {
+    name: 'answer_session',
+    description:
+      'Answers, on its behalf, the question or permission another session is waiting on (see crew_status or the note the village sent you for what it asks and its options). `choice` is the option\'s number or part of its name; `choices` answers several questions in order; `text` writes your own answer where the question takes one; `talk` answers "let\'s talk it over". Says what it was asked, what you answered, and what the session is doing next. Only answer what the ticket or your instructions decide; anything else is for escalate_to_person.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session: { type: 'string', description: 'The other session\'s name or id.' },
+        choice: { type: ['string', 'number'], description: 'Option number (1-based) or part of its name.' },
+        choices: { type: 'array', items: { type: ['string', 'number'] }, description: 'One answer per question, in order, when it asks several.' },
+        text: { type: 'string', description: 'A written answer, where the question takes one.' },
+        talk: { type: 'boolean', description: 'Answer every question with "let\'s talk it over first".' },
+      },
+      required: ['session'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ session: a.session, choice: a.choice, choices: a.choices, text: a.text, talk: a.talk }, '/answer'),
+  },
+  {
+    name: 'restart_session',
+    description:
+      'Brings back a broken or stopped session and says whether it held: it sends the process home and starts it again on the same conversation, so it carries on from where it was, with an optional `note` from you. If it breaks again at once it says so (a second failure of the same kind belongs to the person: escalate_to_person). `how: "fresh"` starts a new conversation that forgets everything it was told (its files and branch stay) and needs `what` and `force`. Refuses a working session unless `force`.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session: { type: 'string', description: 'The other session\'s name or id.' },
+        how: { type: 'string', enum: ['again', 'fresh'], description: '"again" (default) keeps the conversation; "fresh" forgets it.' },
+        note: { type: 'string', description: 'Something to say as it carries on.' },
+        what: { type: 'string', description: 'For "fresh": what it is to do now, in full; it remembers nothing.' },
+        force: { type: 'boolean', description: 'Restart a working session, or confirm a fresh start.' },
+      },
+      required: ['session'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ session: a.session, how: a.how, note: a.note, what: a.what, force: a.force }, '/restart'),
+  },
+  {
+    name: 'send_home',
+    description:
+      'Sends a session home: whoever is working stops and its process ends, but its workspace, branch and whole conversation stay. Telling it anything wakes it again. Use it for a session that is finished or that you are done with for now; close_session is the one that takes it down.',
+    inputSchema: {
+      type: 'object',
+      properties: { session: { type: 'string', description: 'The other session\'s name or id.' } },
+      required: ['session'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ session: a.session }, '/home'),
+  },
+  {
+    name: 'crew_status',
+    description:
+      'Your crew at a glance, each with its stage (picked up, developing, testing on the device, opening the merge request, in review, merged), grouped by who needs whom: with the person (escalated, or broken twice), needs you (asking, stuck, broken), working (with how long and which plan step), waiting out a limit (and when it lifts), idle or finished. One line each. Read it when you wake, and when you need the whole picture; you do not need it to find out that something changed, since the village pushes that to you.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    run: () => knock({}, '/crew'),
+  },
+  {
+    name: 'session_report',
+    description:
+      'A rich look into one session you supervise, without its transcript: its stage and screenshots from its last device test, what it is on, how long, how far through its plan, whether it is going in circles (and the evidence), its branch with uncommitted and unpushed counts, its merge request (CI, review, comments to answer), what it is asking, what you have already told it, and a line of what it last said. Use it before deciding whether to nudge, interrupt, answer or call something done.',
+    inputSchema: {
+      type: 'object',
+      properties: { session: { type: 'string', description: 'The session\'s name, id or ticket key.' } },
+      required: ['session'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ session: a.session }, '/report'),
+  },
+  {
+    name: 'launch_tickets',
+    description:
+      'Launches Jira tickets as crew exactly as the Launch button in the Jira window does: for each, a workspace of its own named after the ticket, the ticket moved out of to-do, and a new session in it told whatever the windmill\'s Jira page says to tell it. They are crew under you from then on. It returns at once and does the work in the background; each ticket reports into your conversation as it comes up, so do not wait or poll. Tickets already launched under you are skipped.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        keys: { type: 'array', items: { type: 'string' }, description: 'Ticket keys, like ["INV-71924", "INV-71880"].' },
+        site: { type: 'string', description: 'The Jira site, only if the project has no board linked and more than one site is connected.' },
+      },
+      required: ['keys'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ keys: a.keys, site: a.site }, '/launch'),
+  },
+  {
+    name: 'supervise_session',
+    description:
+      'Makes an existing session crew under you (so the village pushes you its questions, breaks, limits, finishes and stuck spells), or with `release` lets it go. Sessions you start with start_session or launch_tickets are crew already.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session: { type: 'string', description: 'The other session\'s name or id.' },
+        release: { type: 'boolean', description: 'Stop supervising it.' },
+      },
+      required: ['session'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ session: a.session, release: a.release }, '/supervise'),
+  },
+  {
+    name: 'escalate_to_person',
+    description:
+      'Records that a crew session is waiting on something only the person can decide (what the ticket does not say, a second failure of the same kind, anything dear or irreversible). It marks that session as with the person on the screen. Then put the question to them yourself, plainly, with AskUserQuestion. Answering the crew session afterwards with tell_session or answer_session clears it. Escalate only what you really cannot decide.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session: { type: 'string', description: 'The crew session it is about.' },
+        question: { type: 'string', description: 'What the person has to decide, in a sentence.' },
+      },
+      required: ['session', 'question'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ session: a.session, question: a.question }, '/escalate'),
+  },
+  {
+    name: 'ask_lead',
+    description:
+      'Asks your lead a question directly, instead of stopping for the person. Use it when you need a decision the ticket does not make (a choice between ways to do it, what a rule means, whether something is in scope). It returns at once; the answer arrives as a note from your lead, and meanwhile you carry on with whatever does not depend on it or finish your turn. Your lead escalates to the person only what it cannot decide.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        question: { type: 'string', description: 'The decision you need, self-contained, with what you would do if left to yourself.' },
+        options: { type: 'array', items: { type: 'string' }, description: 'The ways forward, if there are clear ones.' },
+      },
+      required: ['question'],
+      additionalProperties: false,
+    },
+    run: (a) => knock({ question: a.question, options: a.options }, '/ask-lead'),
   },
   {
     name: 'show_on_table',
@@ -634,6 +771,22 @@ const TOOLS = [
   },
 ];
 
+const ROLE = process.env.MENDER_ROLE === 'lead' || process.env.MENDER_ROLE === 'crew' ? process.env.MENDER_ROLE : '';
+
+/** What a lead may use: talking, watching, launching. Nothing that touches code, nothing that designs. */
+const LEAD_TOOLS = new Set([
+  'start_session', 'set_model', 'list_sessions', 'list_workspaces', 'create_workspace', 'rename_workspace',
+  'delete_workspace', 'tell_session', 'read_session', 'stop_session', 'close_session', 'set_session_model',
+  'answer_session', 'restart_session', 'send_home', 'crew_status', 'session_report', 'launch_tickets',
+  'supervise_session', 'escalate_to_person',
+]);
+/** What only a lead or a plain session does with a crew. */
+const NOT_CREW = new Set(['crew_status', 'launch_tickets', 'supervise_session', 'escalate_to_person']);
+
+const offered = (name) =>
+  ROLE === 'lead' ? LEAD_TOOLS.has(name) : ROLE === 'crew' ? !NOT_CREW.has(name) : name !== 'ask_lead';
+const visible = () => TOOLS.filter((t) => offered(t.name));
+
 const send = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
 const reply = (id, result) => send({ jsonrpc: '2.0', id, result });
 
@@ -656,10 +809,10 @@ rl.on('line', async (line) => {
   if (method?.startsWith('notifications/')) return;
   if (method === 'ping') return reply(id, {});
   if (method === 'tools/list') {
-    return reply(id, { tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) });
+    return reply(id, { tools: visible().map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) });
   }
   if (method === 'tools/call') {
-    const tool = TOOLS.find((t) => t.name === params?.name);
+    const tool = visible().find((t) => t.name === params?.name);
     if (!tool) return send({ jsonrpc: '2.0', id, error: { code: -32000, message: `no such tool: ${params?.name}` } });
     try {
       reply(id, { content: [{ type: 'text', text: await tool.run(params?.arguments ?? {}) }], isError: false });

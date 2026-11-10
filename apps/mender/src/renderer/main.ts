@@ -80,7 +80,7 @@ import { note as flightNote, startFlight, trouble as flightTrouble } from './fli
 import { rackMenuPane, waterMenu } from './glass/island-menus';
 import { watchGrip } from './grip';
 import { JiraFailed } from './jira/data';
-import { briefOf, makeJiraSurface, type JiraSurface, type Lit as OnTicket } from './jira/surface';
+import { makeJiraSurface, type JiraSurface, type Lit as OnTicket } from './jira/surface';
 import { ran } from './job';
 import { drawingNow, nudge, setPace, setScenery, watched } from './pace';
 import { pageZoom } from './page-zoom';
@@ -3890,6 +3890,13 @@ async function boot(): Promise<void> {
             return got.data;
           },
         },
+        look: async (site, key) => {
+          const got = await client.jira.look({ site, key }, { timeoutMs: 45_000 });
+          return got.success ? got.data : null;
+        },
+        start: async (site, key) => {
+          await client.jira.start({ site, key }, { timeoutMs: 45_000 });
+        },
         close: () => closeJira(),
         launch: (site, keys) => launchInBackground(site, keys),
         go: (task) => {
@@ -4082,14 +4089,13 @@ async function boot(): Promise<void> {
           const { project, site, key } = next;
           settingUp[key] = { since: Date.now() };
           paintSetting();
-          const done = await launchOne(project, site, key).catch((caught: unknown) => ({
-            ok: false as const,
-            text: `${key} would not launch: ${String(caught)}`,
-          }));
+          const [done] = await client.jira
+            .launch({ project: project.id, site, keys: [key] }, { timeoutMs: 0 })
+            .catch(soft('main.launch', [] as { key: string; ok: boolean; text: string; task?: string }[]));
           delete settingUp[key];
           paintSetting();
-          if (!done.ok) {
-            const text = done.text;
+          if (!done?.ok || !done.task) {
+            const text = done?.text ?? `${key} would not launch.`;
             if (jiraSurface?.up) jiraSurface.failed(text);
             else say(text, 8000);
             continue;
@@ -4103,37 +4109,6 @@ async function boot(): Promise<void> {
       } finally {
         launchingNow = false;
       }
-    };
-
-    /** One ticket: read, moved out of to-do, its workspace cut, and its brief said. */
-    const launchOne = async (
-      project: Project,
-      site: string,
-      key: string
-    ): Promise<{ ok: true; task: string } | { ok: false; text: string }> => {
-      const view = jiraView();
-      const [status, ticket] = await Promise.all([client.jira.status({}), view.ticket(site, key)]);
-      if (!ticket) return { ok: false, text: `Jira would not hand ${key} over.` };
-      if (ticket.category === 'new') void view.start(site, key);
-      const made = await client.tasks.begin(
-        { project: project.id, name: `${key} ${ticket.summary}`.slice(0, 60), slot: null, isolated: true },
-        { timeoutMs: 0 }
-      );
-      if (!made.success) return { ok: false, text: `${key}: ${whyNot(made.error)}` };
-      void client.jira.take({ task: made.data.id, site, key });
-      void client.agents.tell(
-        {
-          task: made.data.id,
-          text: briefOf(status.recipe, {
-            key,
-            summary: ticket.summary,
-            url: `https://${site}/browse/${key}`,
-            description: ticket.description,
-          }),
-        },
-        { timeoutMs: 0 }
-      );
-      return { ok: true, task: made.data.id };
     };
 
     /**

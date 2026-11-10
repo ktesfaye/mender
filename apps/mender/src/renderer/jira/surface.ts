@@ -24,6 +24,10 @@ import { PAGE_CSS, PAGE_JS, PAGE_SAYS } from './page';
 
 export interface JiraHands {
   wire: Wire;
+  /** What launching needs to know of a ticket, read where the token is kept. */
+  look(site: string, key: string): Promise<Ticket | null>;
+  /** Out of to-do, into whichever status is under way. */
+  start(site: string, key: string): Promise<void>;
   close(): void;
   /** Each its own workspace, set up in the background while you stay on the board. */
   launch(site: string, keys: string[]): void;
@@ -423,42 +427,7 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
       saidTimer = window.setTimeout(() => said.replaceChildren(), 15_000);
     },
     failed: (text) => tell(text, true),
-    ticket: async (at, key) => {
-      try {
-        const got = await makeJira(hands.wire, at).get<RawIssue>(`/rest/api/3/issue/${enc(key)}?fields=summary,status,description`);
-        return {
-          summary: (got.fields.summary as string) ?? '',
-          description: adfToMarkdown(got.fields.description),
-          category: categoryOf(got.fields.status?.statusCategory?.key),
-        };
-      } catch (caught) { swallowed('surface.366', caught);
-        return null;
-      }
-    },
-    start: async (at, key) => {
-      const j = makeJira(hands.wire, at);
-      const got = await j
-        .get<{ transitions: { id: string; name?: string; to?: { name?: string; statusCategory?: { key?: string } } }[] }>(
-          `/rest/api/3/issue/${enc(key)}/transitions`
-        )
-        .catch(soft('surface.376', null));
-      const step = got?.transitions.find(
-        (one) => one.to?.statusCategory?.key === 'indeterminate' && !/block|review/i.test(one.to?.name ?? '')
-      );
-      if (step) await j.send('POST', `/rest/api/3/issue/${enc(key)}/transitions`, { transition: { id: step.id } }).catch(soft('surface.380', undefined));
-    },
+    ticket: (at, key) => hands.look(at, key),
+    start: (at, key) => hands.start(at, key),
   };
-}
-
-/** What a session taking a ticket on is told first, by the windmill's recipe. */
-export function briefOf(
-  recipe: string,
-  t: { key: string; summary: string; url: string; description: string }
-): string {
-  return recipe
-    .replaceAll('{key}', t.key)
-    .replaceAll('{summary}', t.summary)
-    .replaceAll('{url}', t.url)
-    .replaceAll('{description}', t.description || '(no description)')
-    .trim();
 }

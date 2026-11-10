@@ -183,6 +183,8 @@ export interface Agents {
   moods(): Cell<Record<string, Mood>>;
   /** What each lantern says beyond its mood: which work, since when, what wait. */
   glances(): Cell<Record<string, Glance>>;
+  /** Hears every change in any session's state, with the session it happened in. */
+  observe(listen: (task: string, state: WorkingState) => void): () => void;
   /** Start whoever lives in there, so they can say what they work with. */
   wake(task: string): Promise<Told>;
   tell(task: string, text: string, carrying?: readonly Carried[], hidden?: string): Promise<Told>;
@@ -330,8 +332,14 @@ export function createAgents(
   /** The windmill's own memory: who starts fresh, and what they last thought with. */
   settings: AppSettings,
   /** Where the subscription's meter goes when a session hears it in its answer. */
-  windows: { report(limit: RateLimit): void } = { report: () => {} }
+  windows: { report(limit: RateLimit): void } = { report: () => {} },
+  /** Told the moment a conversation is made, before anybody starts it, so
+      the kind of session it is can be written where its worker will look. */
+  roles: { claim(task: string, conversation: string): Promise<void> } = {
+    claim: async () => {},
+  }
 ): Agents {
+  const listeners = new Set<(task: string, state: WorkingState) => void>();
   const store = createJsonFileKeyValueStore({ path: join(userDataDir(), 'agents.json') });
   /** Which conversation lives in which building. */
   let lodgers: Record<string, string> = {};
@@ -766,6 +774,7 @@ export function createAgents(
         () => {
           reglance();
           const here = houses.get(task);
+          if (here) for (const listen of listeners) listen(task, peek(here.state));
           if (here) recapFromWork(task, here);
           if (here) retitleFromWork(task, here);
           storyFromWork(task);
@@ -960,6 +969,7 @@ export function createAgents(
       return { success: true as const, data: already };
     }
     const conversation = crypto.randomUUID();
+    await roles.claim(task, conversation);
     const provider = record.agent ?? (await settings.defaultHand());
     const made = await trackOp(log, 'session create', { area: 'agents', task }, () =>
       runtimes.conversations.create({
@@ -1692,6 +1702,11 @@ export function createAgents(
 
     async knackText(task, name, from) {
       return await kits.knackText(task, name, from);
+    },
+
+    observe(listen) {
+      listeners.add(listen);
+      return () => void listeners.delete(listen);
     },
 
     wake,

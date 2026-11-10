@@ -131,6 +131,19 @@ export const DEFAULT_RECIPE = [
   '{description}',
 ].join('\n');
 
+/** What a session taking a ticket on is told first, by the windmill's recipe. */
+export function briefOf(
+  recipe: string,
+  t: { key: string; summary: string; url: string; description: string }
+): string {
+  return recipe
+    .replaceAll('{key}', t.key)
+    .replaceAll('{summary}', t.summary)
+    .replaceAll('{url}', t.url)
+    .replaceAll('{description}', t.description || '(no description)')
+    .trim();
+}
+
 export const jiraContract = defineContract({
   status: procedure({
     input: z.object({}),
@@ -171,7 +184,39 @@ export const jiraContract = defineContract({
     output: z.object({}),
   }),
   board: fallible({ input: jiraLinkSchema, data: jiraBoardSchema, error: jiraErrorSchema }),
-  ticket: fallible({ input: z.object({ site: z.string(), key: z.string() }), data: jiraTicketSchema, error: jiraErrorSchema }),
+  ticket: fallible({
+    input: z.object({ site: z.string(), key: z.string() }),
+    data: jiraTicketSchema,
+    error: jiraErrorSchema,
+  }),
+  /** A ticket as launching it needs it: what it says and which column it is in. */
+  look: fallible({
+    input: z.object({ site: z.string(), key: z.string() }),
+    data: z.object({
+      summary: z.string(),
+      description: z.string(),
+      category: z.enum(['new', 'indeterminate', 'done']),
+    }),
+    error: jiraErrorSchema,
+  }),
+  /** Out of to-do and into the first status that is under way, when Jira has one. */
+  start: fallible({
+    input: z.object({ site: z.string(), key: z.string() }),
+    data: z.object({ moved: z.boolean(), to: z.string().optional() }),
+    error: jiraErrorSchema,
+  }),
+  /**
+   * Launches tickets the way the button on the board does: each its own
+   * isolated workspace named after it, moved out of to-do, a session in it
+   * told what the recipe says, one after another. Everyone is told about
+   * only when it is over, so this is for the board's own "launch these".
+   */
+  launch: procedure({
+    input: z.object({ project: z.string(), site: z.string(), keys: z.array(z.string()) }),
+    output: z.array(
+      z.object({ key: z.string(), ok: z.boolean(), text: z.string(), task: z.string().optional() })
+    ),
+  }),
   /** Moves it into whichever of these statuses Jira will let it reach. */
   move: fallible({
     input: z.object({ site: z.string(), key: z.string(), statuses: z.array(z.string()) }),

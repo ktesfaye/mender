@@ -83,6 +83,10 @@ export interface Task {
       worktree and its branch, and taking one of them down leaves the
       worktree standing for the rest. */
   readonly workspace?: string;
+  /** A lead: supervises other sessions and is kept from touching code. */
+  readonly lead?: boolean;
+  /** The lead this session is crew under, by its task id. */
+  readonly under?: string;
 }
 
 /**
@@ -213,6 +217,8 @@ export interface Tasks {
   retitle(id: string, title: string): Promise<void>;
   /** Somebody else works here now. */
   rehand(id: string, agent: string): Promise<Task[]>;
+  /** Make a session a lead, or crew under one (`under: null` takes it off). */
+  setRole(id: string, role: { lead?: boolean; under?: string | null }): Promise<Task[]>;
   /** Turns a session nobody has spoken to yet into its own terminal — the
       agent's raw CLI rather than a chat. A no-op once it is awake. */
   retool(id: string): Promise<Task[]>;
@@ -954,6 +960,19 @@ export function createTasks(
       // means nothing to them.
       return await save(
         tasks.map((task) => (task.id === id ? { ...task, agent, model: null } : task))
+      );
+    },
+
+    async setRole(id, role) {
+      const tasks = await all();
+      return await save(
+        tasks.map((task) => {
+          if (task.id !== id) return task;
+          const { under: _under, lead: _lead, ...rest } = task;
+          const lead = role.lead ?? task.lead;
+          const under = role.under === undefined ? task.under : (role.under ?? undefined);
+          return { ...rest, ...(lead ? { lead: true } : {}), ...(under ? { under } : {}) };
+        })
       );
     },
 

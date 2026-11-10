@@ -45,7 +45,7 @@ export class SessionMaterializer {
   private readonly handshakeTails = new Map<string, Promise<void>>();
 
   constructor(
-    private readonly deps: Pick<AcpRuntimeDeps, 'agentHost' | 'resolveAttachment' | 'sessionMeta' | 'extraMcpServers'> & {
+    private readonly deps: Pick<AcpRuntimeDeps, 'agentHost' | 'resolveAttachment' | 'sessionMeta' | 'extraMcpServers' | 'keepMcpServer'> & {
       logger: Logger;
     },
     private readonly connections: AcpConnectionSource,
@@ -146,7 +146,13 @@ export class SessionMaterializer {
           op.stage('load-session');
           const response = await abortable(
             connection.agent.loadSession(
-              this.buildLoadSessionRequest(input.providerId, input.cwd, input.sessionId, mcpServers)
+              this.buildLoadSessionRequest(
+                input.providerId,
+                input.cwd,
+                input.sessionId,
+                mcpServers,
+                input.conversationId
+              )
             ),
             signal
           );
@@ -190,7 +196,7 @@ export class SessionMaterializer {
         op.stage('new-session');
         try {
           response = await abortable(
-            connection.agent.newSession(this.buildNewSessionRequest(input.providerId, input.cwd, mcpServers)),
+            connection.agent.newSession(this.buildNewSessionRequest(input.providerId, input.cwd, mcpServers, input.conversationId)),
             signal
           );
         } catch (error) {
@@ -408,7 +414,11 @@ export class SessionMaterializer {
         return [];
       }
       return registrationsToAcpMcpServers(
-        [...result.data, ...(this.deps.extraMcpServers?.(providerId, cwd, conversationId) ?? [])],
+        [
+          ...result.data.filter(
+            (server) => this.deps.keepMcpServer?.(providerId, conversationId, server.name) ?? true
+          ),
+          ...(this.deps.extraMcpServers?.(providerId, cwd, conversationId) ?? [])],
         connection.mcpCapabilities
       );
     } catch (error) {
@@ -453,9 +463,10 @@ export class SessionMaterializer {
   private buildNewSessionRequest(
     providerId: string,
     cwd: string,
-    mcpServers: NewSessionRequest['mcpServers']
+    mcpServers: NewSessionRequest['mcpServers'],
+    conversationId: string
   ): NewSessionRequest {
-    const _meta = this.deps.sessionMeta?.(providerId);
+    const _meta = this.deps.sessionMeta?.(providerId, cwd, conversationId);
     return _meta ? { cwd, mcpServers, _meta } : { cwd, mcpServers };
   }
 
@@ -463,9 +474,10 @@ export class SessionMaterializer {
     providerId: string,
     cwd: string,
     sessionId: string,
-    mcpServers: LoadSessionRequest['mcpServers']
+    mcpServers: LoadSessionRequest['mcpServers'],
+    conversationId: string
   ): LoadSessionRequest {
-    const _meta = this.deps.sessionMeta?.(providerId);
+    const _meta = this.deps.sessionMeta?.(providerId, cwd, conversationId);
     return _meta ? { cwd, sessionId, mcpServers, _meta } : { cwd, sessionId, mcpServers };
   }
 }
