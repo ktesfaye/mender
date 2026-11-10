@@ -295,7 +295,10 @@ export function evolve(
           { type: 'state' },
           { type: 'agentEvent', phase: ev.outcome.kind === 'errored' ? 'error' : 'stop' },
           { type: 'settleAgents', scope: 'turn', status: 'completed' },
-          ...(ev.outcome.kind === 'errored' || stopReason === 'cancelled'
+          /* Interrupting a turn does not stop a background agent it launched:
+             Claude keeps it going and says so itself when it ends, so only an
+             error takes it down here. */
+          ...(ev.outcome.kind === 'errored'
             ? ([{ type: 'settleAgents', scope: 'all', status: 'failed' }] as Effect[])
             : []),
           ...queueEffects,

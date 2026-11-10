@@ -190,6 +190,32 @@ describe('SessionCell prompts', () => {
   });
 });
 
+describe('SessionCell background agents', () => {
+  it('keeps a background agent running when the turn that launched it is interrupted', async () => {
+    const { cell, agent } = makeCell();
+    let end: (value: { stopReason: 'cancelled' }) => void = () => {};
+    agent.prompt = vi.fn().mockReturnValue(new Promise((resolve) => (end = resolve)));
+
+    void cell.prompt({ text: 'go' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    cell.push({
+      kind: 'subagent',
+      toolCallId: 'tool-1',
+      agentId: 'agent-1',
+      title: 'Background agent',
+      status: 'in_progress',
+      parentToolCallId: null,
+      background: true,
+    });
+    await cell.cancel();
+    end({ stopReason: 'cancelled' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(cell.transcript.agents).toMatchObject([{ agentId: 'agent-1', status: 'running' }]);
+    expect(cell.sessionState.backgroundAgentCount).toBe(1);
+  });
+});
+
 describe('SessionCell permissions', () => {
   it('brokers permission requests through the per-cell broker', async () => {
     const { cell } = makeCell();
