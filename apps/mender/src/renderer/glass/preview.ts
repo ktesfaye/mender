@@ -8,6 +8,7 @@
  */
 
 import { soft } from '../watch/caught';
+import { holdUp } from '../yard/picture-view';
 import { figure } from '../yard/pictures';
 
 const MEDIA =
@@ -55,9 +56,19 @@ export function previewOf(text: string): HTMLElement | null {
     seen.add(path);
     const holder = document.createElement('div');
     holder.className = 'ga-prev-one';
-    if (PAGE.test(path)) holder.appendChild(inWebview(path, ''));
-    else if (PLAYED.test(path)) holder.appendChild(inWebview(path, PLAY));
-    else holder.appendChild(figure({ name: found[1] ?? '', url: path }));
+    if (PAGE.test(path) || PLAYED.test(path)) {
+      holder.appendChild(inWebview(path, PAGE.test(path) ? '' : PLAY));
+      holder.classList.add('ga-prev-held');
+      let from = { x: 0, y: 0 };
+      holder.addEventListener('pointerdown', (event) => {
+        from = { x: event.clientX, y: event.clientY };
+      });
+      holder.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (Math.hypot(event.clientX - from.x, event.clientY - from.y) > 4) return;
+        holdUp('', found[1] ?? '', undefined, [], 0, path);
+      });
+    } else holder.appendChild(figure({ name: found[1] ?? '', url: path }));
     looks.push(holder);
   }
   if (!looks.length) return null;

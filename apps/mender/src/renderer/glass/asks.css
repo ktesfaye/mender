@@ -554,6 +554,9 @@
   min-width: 0;
   position: relative;
 }
+.ga-prev-held {
+  cursor: zoom-in;
+}
 .ga-prev-web {
   display: block;
   width: 100%;
@@ -589,7 +592,6 @@
   border-radius: 10px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.35);
-  pointer-events: none;
 }
 .ga-pic .prose-picture {
   margin: 0;
