@@ -1326,17 +1326,22 @@ found, and whichever board you were last on is the one it opens on next time.
 A link that leads out of Jira opens in the machine's own browser. The page is
 made once and kept, so opening it again is instant and finds it as it was.
 What the village adds is laid into the page and is gold: on every card, under
-the pointer, a ring to pick it and "launch"; beside an open ticket's status, a
-Launch button; and on a card a session here is already working on, that
-session's lantern and name, breathing while it works, which walks into it.
-Launching one cuts an isolated workspace named after the ticket, moves the
-ticket out of to-do, starts a session in it told whatever the windmill's Jira
-page says to tell it, and stands you in it. Picking several and "launch
-these", on the strip along the window's top, does the same for each, one
-after another, while you stay on the board and their lanterns come up on the
-cards. That strip also names whichever ticket is open with "launch it" beside
-it, so a ticket can still be launched if Jira ever changes its page out from
-under the buttons laid into it.
+the pointer, a ring to pick it and "launch"; on every child work item listed
+under an epic, "launch" at the end of its row under the pointer, so a ticket
+is launched without opening it; beside an open ticket's status, a Launch
+button, and beside an epic's a pin; and on a card or row a session here is
+already working on, that session's lantern and name, breathing while it works,
+which walks into it. Launching one cuts an isolated workspace named after the
+ticket, moves the ticket out of to-do and starts a session in it told whatever
+the windmill's Jira page says to tell it, all behind the window: you stay on
+Jira, the card counts "setting up" while it is set up, launches pressed in a
+row wait their turn and go one after another, and once one is up its lantern
+comes on the card and the strip says it is ready with "walk in" beside it.
+Picking several and "launch these" queues them the same way. The strip along
+the window's top carries the epics pinned there, each one press from anywhere
+in Jira, and names whichever ticket is open with "launch it" beside it, so a
+ticket can still be launched if Jira ever changes its page out from under the
+buttons laid into it.
 
 **What gets designed is pinned up, on the drafting table.** A pinned sheet
 hangs on the rack left of Jira's diamond while you stand in a project, and

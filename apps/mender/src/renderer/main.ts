@@ -3891,8 +3891,7 @@ async function boot(): Promise<void> {
           },
         },
         close: () => closeJira(),
-        take: (site, key) => void takeOn(site, key),
-        takeMany: (site, keys, progress) => takeMany(site, keys, progress),
+        launch: (site, keys) => launchInBackground(site, keys),
         go: (task) => {
           closeJira();
           closeTheTable();
@@ -4053,92 +4052,88 @@ async function boot(): Promise<void> {
       if (quest) void litTickets().then((lit) => jiraView().lit(lit));
     }, 2000);
 
-    /** A ticket taken on: its own copy, its own branch, the ticket said first. */
-    const takeOn = async (site: string, key: string): Promise<void> => {
-      const project = quest?.project;
-      const view = jiraView();
-      if (!project || !open) return;
-      const [status, ticket] = await Promise.all([client.jira.status({}), view.ticket(site, key)]);
-      if (!ticket) {
-        say(`Jira would not hand ${key} over.`, 6000);
-        return;
-      }
-      if (ticket.category === 'new') void view.start(site, key);
-      closeJira();
-      closeTheTable();
-      home();
-      naming = {
-        district: open.district,
-        project,
-        slot: null,
-        written: `${key} ${ticket.summary}`.slice(0, 60),
-        revivable: null,
-        terminal: false,
-        isolated: true,
-        said: '',
-        brief: briefOf(status.recipe, {
-          key,
-          summary: ticket.summary,
-          url: `https://${site}/browse/${key}`,
-          description: ticket.description,
-        }),
-        jira: { site, key, to: [] },
-      };
-      void begin();
-    };
-
     /**
-     * Several tickets at once: each its own workspace named after it, told
-     * its ticket first, and moved out of to-do, one after another so no two
-     * worktrees are cut on top of each other. Nobody is walked anywhere; their
-     * lanterns come up on the board's cards as each one starts.
+     * Tickets launched off the Jira window: each its own workspace named
+     * after it, told its ticket first and moved out of to-do, set up one
+     * after another in the background so no two worktrees are cut on top of
+     * each other. Nobody is walked anywhere; each card counts while it is set
+     * up, and the strip says when one is ready to walk into.
      */
-    const takeMany = async (
-      site: string,
-      keys: string[],
-      progress: (said: string) => void
-    ): Promise<void> => {
+    const launchQueue: { project: Project; site: string; key: string }[] = [];
+    const settingUp: Record<string, { since: number | null }> = {};
+    let launchingNow = false;
+    const paintSetting = (): void => jiraSurface?.setting({ ...settingUp });
+    const launchInBackground = (site: string, keys: string[]): void => {
       const project = quest?.project;
       if (!project) return;
-      const view = jiraView();
-      const status = await client.jira.status({});
-      let n = 0;
       for (const key of keys) {
-        progress(`launching ${key}, ${++n} of ${keys.length}…`);
-        const ticket = await view.ticket(site, key);
-        if (!ticket) {
-          progress(`Jira would not hand ${key} over`);
-          continue;
-        }
-        if (ticket.category === 'new') void view.start(site, key);
-        const made = await client.tasks.begin(
-          {
-            project: project.id,
-            name: `${key} ${ticket.summary}`.slice(0, 60),
-            slot: null,
-            isolated: true,
-          },
-          { timeoutMs: 0 }
-        );
-        if (!made.success) {
-          progress(`${key}: ${whyNot(made.error)}`);
-          continue;
-        }
-        void client.jira.take({ task: made.data.id, site, key });
-        void client.agents.tell(
-          {
-            task: made.data.id,
-            text: briefOf(status.recipe, {
-              key,
-              summary: ticket.summary,
-              url: `https://${site}/browse/${key}`,
-              description: ticket.description,
-            }),
-          },
-          { timeoutMs: 0 }
-        );
-        void litTickets().then((lit) => view.lit(lit));
+        if (settingUp[key]) continue;
+        settingUp[key] = { since: null };
+        launchQueue.push({ project, site, key });
       }
+      paintSetting();
+      void drainLaunches();
+    };
+    const drainLaunches = async (): Promise<void> => {
+      if (launchingNow) return;
+      launchingNow = true;
+      try {
+        for (let next = launchQueue.shift(); next; next = launchQueue.shift()) {
+          const { project, site, key } = next;
+          settingUp[key] = { since: Date.now() };
+          paintSetting();
+          const done = await launchOne(project, site, key).catch((caught: unknown) => ({
+            ok: false as const,
+            text: `${key} would not launch: ${String(caught)}`,
+          }));
+          delete settingUp[key];
+          paintSetting();
+          if (!done.ok) {
+            const text = done.text;
+            if (jiraSurface?.up) jiraSurface.failed(text);
+            else say(text, 8000);
+            continue;
+          }
+          const lit = await litTickets();
+          jiraSurface?.lit(lit);
+          const name = lit[key]?.name ?? key;
+          if (jiraSurface?.up) jiraSurface.ready(key, done.task, name);
+          else say(`${key} is ready in its own workspace.`, 6000);
+        }
+      } finally {
+        launchingNow = false;
+      }
+    };
+
+    /** One ticket: read, moved out of to-do, its workspace cut, and its brief said. */
+    const launchOne = async (
+      project: Project,
+      site: string,
+      key: string
+    ): Promise<{ ok: true; task: string } | { ok: false; text: string }> => {
+      const view = jiraView();
+      const [status, ticket] = await Promise.all([client.jira.status({}), view.ticket(site, key)]);
+      if (!ticket) return { ok: false, text: `Jira would not hand ${key} over.` };
+      if (ticket.category === 'new') void view.start(site, key);
+      const made = await client.tasks.begin(
+        { project: project.id, name: `${key} ${ticket.summary}`.slice(0, 60), slot: null, isolated: true },
+        { timeoutMs: 0 }
+      );
+      if (!made.success) return { ok: false, text: `${key}: ${whyNot(made.error)}` };
+      void client.jira.take({ task: made.data.id, site, key });
+      void client.agents.tell(
+        {
+          task: made.data.id,
+          text: briefOf(status.recipe, {
+            key,
+            summary: ticket.summary,
+            url: `https://${site}/browse/${key}`,
+            description: ticket.description,
+          }),
+        },
+        { timeoutMs: 0 }
+      );
+      return { ok: true, task: made.data.id };
     };
 
     /**

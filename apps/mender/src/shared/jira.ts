@@ -34,6 +34,8 @@ export const jiraLinkSchema = z.object({
   name: z.string().optional(),
   /** The link it was set from, when it was pasted. */
   url: z.string().optional(),
+  /** Epics pinned along the top of the window, so their tickets are one press away. */
+  pins: z.array(z.object({ key: z.string(), summary: z.string() })).optional(),
 });
 export type JiraLink = z.infer<typeof jiraLinkSchema>;
 

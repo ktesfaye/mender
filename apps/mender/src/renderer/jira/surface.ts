@@ -12,9 +12,11 @@ import { PAGE_CSS, PAGE_JS, PAGE_SAYS } from './page';
  * windmill holds, with its own navigation taken off so all that is left is
  * the board and its tickets (see page.ts). The window is the same one a
  * project's settings open in, the village dimmed behind it, and over the page
- * runs one strip of the village's own: whose Jira it is, whichever ticket is
- * open with "launch" beside it, how many are picked with "launch these", and
- * the way out.
+ * runs one strip of the village's own: whose Jira it is, the epics pinned
+ * there, whichever ticket is open with "launch" beside it, how many are
+ * picked with "launch these", and the way out. Launching never takes the
+ * window away: each ticket is set up in the background, its card or row
+ * counting while it is, and the strip says when it is ready to walk into.
  *
  * The page is made once and kept, hidden, so opening it again is instant and
  * finds it where it was left.
@@ -23,10 +25,8 @@ import { PAGE_CSS, PAGE_JS, PAGE_SAYS } from './page';
 export interface JiraHands {
   wire: Wire;
   close(): void;
-  /** One ticket: its own workspace, and you standing in it. */
-  take(site: string, key: string): void;
-  /** Several: each its own workspace, launched one after another, while you stay on the board. */
-  takeMany(site: string, keys: string[], progress: (said: string) => void): Promise<void>;
+  /** Each its own workspace, set up in the background while you stay on the board. */
+  launch(site: string, keys: string[]): void;
   go(task: string): void;
   connect(): void;
   sites(): Promise<{ site: string; who: string }[]>;
@@ -52,6 +52,12 @@ export interface JiraSurface {
   open(at: { project: string; link: JiraLink | null }): void;
   close(): void;
   lit(map: Record<string, Lit>): void;
+  /** What is being set up in the background: since when, or null while it waits its turn. */
+  setting(map: Record<string, { since: number | null }>): void;
+  /** Says on the strip that one launched in the background is ready, with the way in. */
+  ready(key: string, task: string, name: string): void;
+  /** Says on the strip that one would not launch. */
+  failed(text: string): void;
   ticket(site: string, key: string): Promise<Ticket | null>;
   /** Out of to-do and into the first status that is under way. */
   start(site: string, key: string): Promise<void>;
@@ -148,13 +154,14 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
   document.body.append(shade);
 
   const where = h('span', 'where');
+  const pins = h('div', 'jr-strip-pins');
   const open = h('div', 'jr-strip-open');
   const picks = h('div', 'jr-strip-picks');
   const said = h('div', 'jr-strip-said');
   const x = h('button', 'jr-x', '×');
   x.title = 'put it away';
   x.addEventListener('click', () => hands.close());
-  const strip = h('div', 'jr-strip', h('div', 'jr-here', where), open, picks, said, h('div', 'jr-gap'), x);
+  const strip = h('div', 'jr-strip', h('div', 'jr-here', where), pins, open, picks, said, h('div', 'jr-gap'), x);
   const stage = h('div', 'jr-stage');
   root.append(strip, stage);
 
@@ -163,8 +170,10 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
   let link: JiraLink | null = null;
   let site = '';
   let lit: Record<string, Lit> = {};
+  let setting: Record<string, { since: number | null }> = {};
+  /** Whether the open ticket is an epic, asked of Jira once per ticket. */
+  const epics = new Map<string, { epic: boolean; summary: string }>();
   let picked: string[] = [];
-  let launching = false;
   let view: WebView | null = null;
   let ready = false;
   let saidTimer: number | undefined;
@@ -186,44 +195,82 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
 
   const push = (): void => {
     if (!view || !ready) return;
-    void view.executeJavaScript(`window.__mender && window.__mender.set(${JSON.stringify({ lit })})`).catch(soft('surface.188', undefined));
+    const key = ticketOf();
+    const kind = key ? epics.get(key) : undefined;
+    const epic = key && kind?.epic ? { key, pinned: Boolean(link?.pins?.some((one) => one.key === key)) } : null;
+    void view.executeJavaScript(`window.__mender && window.__mender.set(${JSON.stringify({ lit, setting, epic })})`).catch(soft('surface.188', undefined));
   };
 
-  const launch = async (keys: string[]): Promise<void> => {
-    if (!keys.length || launching) return;
-    if (keys.length === 1) {
-      hands.take(site, keys[0]!);
-      return;
-    }
-    launching = true;
+  const ticketOf = (): string | null => (view && ready ? ticketOfUrl(view.getURL()) : null);
+
+  /** Asks Jira whether the open ticket is an epic, so it can be pinned. */
+  const learn = (key: string | null): void => {
+    if (!key || epics.has(key) || !site) return;
+    epics.set(key, { epic: false, summary: '' });
+    void makeJira(hands.wire, site)
+      .get<RawIssue & { fields: { issuetype?: { hierarchyLevel?: number } } }>(
+        `/rest/api/3/issue/${enc(key)}?fields=summary,issuetype`
+      )
+      .then(
+        (got) => {
+          epics.set(key, {
+            epic: (got.fields.issuetype?.hierarchyLevel ?? 0) >= 1,
+            summary: (got.fields.summary as string) ?? '',
+          });
+          push();
+        },
+        () => epics.delete(key)
+      );
+  };
+
+  const pinToggle = (key: string): void => {
+    if (!link || link.site !== site) return;
+    const had = link.pins ?? [];
+    const summary = epics.get(key)?.summary ?? '';
+    const next = had.some((one) => one.key === key)
+      ? had.filter((one) => one.key !== key)
+      : [...had, { key, summary }];
+    link = { ...link, pins: next };
+    void hands.link(link);
     paintStrip();
-    try {
-      await hands.takeMany(site, keys, (text) => tell(text, false, true));
-      tell(`launched ${keys.length}, each in its own workspace`);
-    } finally {
-      launching = false;
-      /* Jira's board doesn't hear about moves made over its API until it is read again. */
-      (view as (WebView & { reload(): void }) | null)?.reload();
-      paintStrip();
-    }
+    push();
+  };
+
+  const launch = (keys: string[]): void => {
+    const fresh = keys.filter((key) => !lit[key] && !setting[key]);
+    if (!fresh.length) return;
+    hands.launch(site, fresh);
+    void view?.executeJavaScript('window.__mender && window.__mender.clear()').catch(soft('surface.launch', undefined));
   };
 
   const paintStrip = (): void => {
     where.textContent = `${project}’s jira`;
-    const current = view && ready ? view.getURL() : '';
-    const key = current ? ticketOfUrl(current) : null;
+    pins.replaceChildren();
+    const pinned = link?.site === site ? (link?.pins ?? []) : [];
+    for (const one of pinned) {
+      const to = gold(one.summary ? `${one.key} ${one.summary}` : one.key, () =>
+        void view?.loadURL(`https://${site}/browse/${enc(one.key)}`)
+      );
+      to.title = 'open this epic';
+      pins.append(to);
+    }
+    const key = ticketOf();
+    learn(key);
     open.replaceChildren();
     if (key) {
       const on = lit[key];
+      const wait = setting[key];
       open.append(
         h('span', 'k', key),
         on
           ? gold(`${on.name}, walk in`, () => hands.go(on.task))
-          : gold('launch it', () => void launch([key]))
+          : wait
+            ? h('span', 'k', 'setting up…')
+            : gold('launch it', () => void launch([key]))
       );
     }
     picks.replaceChildren();
-    if (picked.length && !launching)
+    if (picked.length)
       picks.append(
         h('span', 'k', `${picked.length} picked`),
         gold(picked.length === 1 ? 'launch it' : 'launch these', () => void launch([...picked])),
@@ -272,13 +319,14 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
     el.addEventListener('console-message', (event) => {
       const message = (event as unknown as { message: string }).message;
       if (!message.startsWith(PAGE_SAYS)) return;
-      let what: { launch?: string[]; picked?: string[]; go?: string; escape?: boolean };
+      let what: { launch?: string[]; picked?: string[]; go?: string; escape?: boolean; pin?: string };
       try {
         what = JSON.parse(message.slice(PAGE_SAYS.length));
       } catch (caught) { swallowed('surface.277', caught);
         return;
       }
-      if (what.launch) void launch(what.launch);
+      if (what.launch) launch(what.launch);
+      else if (what.pin) pinToggle(what.pin);
       else if (what.picked) {
         picked = what.picked;
         paintStrip();
@@ -356,6 +404,25 @@ export function makeJiraSurface(hands: JiraHands): JiraSurface {
       push();
       if (up) paintStrip();
     },
+    setting: (map) => {
+      if (JSON.stringify(map) === JSON.stringify(setting)) return;
+      const was = setting;
+      setting = map;
+      push();
+      if (up) paintStrip();
+      /* Jira's board doesn't hear about moves made over its API until it is
+         read again, so once the last one is through it is read again. */
+      if (Object.keys(was).length && !Object.keys(map).length && up && view && ready && boardOfUrl(view.getURL()))
+        (view as WebView & { reload(): void }).reload();
+    },
+    ready: (key, task, name) => {
+      if (!up) return;
+      window.clearTimeout(saidTimer);
+      said.classList.remove('sore');
+      said.replaceChildren(h('span', 'k', `${key} is ready`), gold(`${name}, walk in`, () => hands.go(task)));
+      saidTimer = window.setTimeout(() => said.replaceChildren(), 15_000);
+    },
+    failed: (text) => tell(text, true),
     ticket: async (at, key) => {
       try {
         const got = await makeJira(hands.wire, at).get<RawIssue>(`/rest/api/3/issue/${enc(key)}?fields=summary,status,description`);

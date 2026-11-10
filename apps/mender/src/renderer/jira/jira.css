@@ -57,6 +57,11 @@
 .jr-strip .gold { font: 600 11px 'Josefin Sans'; letter-spacing: 0.2em; text-transform: uppercase; }
 .jr-strip-said { font: 400 13px 'Courier Prime', monospace; color: #a8c469; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .jr-strip-said.sore { color: #f2665a; }
+.jr-strip-said { display: flex; align-items: baseline; gap: 12px; }
+/* Pinned epics: each one a press away from wherever the window is. */
+.jr-strip-pins { display: flex; align-items: baseline; gap: 18px; min-width: 0; overflow: hidden; }
+.jr-strip-pins:empty { display: none; }
+.jr-strip .jr-strip-pins .gold { font: 400 13px 'Courier Prime', monospace; letter-spacing: 0; text-transform: none; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jr-gap { flex: 1 1 auto; }
 .jr-x { font: 400 24px/1 'Josefin Sans' !important; color: #a89272 !important; padding: 0 6px !important; }
 .jr-x:hover { color: #e0b56a !important; }
