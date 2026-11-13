@@ -1,0 +1,7 @@
+for m in rest point many; do
+cat > lead-A2-$m.html <<H
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="lead-A2.css"></head><body>
+<div id="ground" style="position:absolute;inset:0;background-size:1480px 1020px;image-rendering:pixelated"></div><div id="world"></div><canvas id="night"></canvas><div id="lit"></div><div id="txt"></div><div class="vignette"></div>
+<script>window.MODE='$m'</script><script src="lead-A2-pos.js"></script><script src="lead-A2.js"></script></body></html>
+H
+done

@@ -1,0 +1,87 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="lead-C2.css">
+<style>
+#bg{position:absolute;inset:0;background:url(lead-C2-bgclean.png) center/1480px 1020px;filter:brightness(1.5)}
+#bg2{display:none}
+.rule{position:absolute;left:44px;right:44px;height:1px;background:rgba(242,198,109,.16)}
+.col h5{font-family:Josefin;font-weight:400;letter-spacing:3.5px;font-size:11px;color:#b9a77d;margin:0 0 14px}
+.col{position:absolute;white-space:normal}
+.note{background:#f5e8bd;color:#2a2112;border-radius:3px;box-shadow:0 6px 18px rgba(0,0,0,.45);padding:12px 16px 14px;font-family:Hand;font-size:20px;line-height:25px;transform:rotate(-.4deg)}
+.note .t{font-family:Silkscreen;font-size:8px;letter-spacing:1px;color:#b0761c;display:block;margin-bottom:5px}
+.said{font-family:Figtree;font-size:19px;line-height:30px;color:#efe3cc;letter-spacing:.3px}
+.said .m{font-family:Silkscreen;font-size:8.5px;letter-spacing:1.2px;color:#ff9a4a;display:block;margin-bottom:6px}
+.after{font-family:Fraunces;font-style:italic;font-size:21px;line-height:29px;color:#f3eadb}
+.small{font-size:12.5px;color:rgba(239,227,204,.55);font-family:Figtree}
+.step{font-size:13px;color:rgba(239,227,204,.75);line-height:20px;margin:7px 0}
+.step i{display:inline-block;width:7px;height:7px;background:#ff9a4a;margin-right:10px}
+.step.d i{background:#9bd28a}.step.d{opacity:.6}
+.step.n{opacity:.4}.step.n i{background:#8f836a}
+#strip{position:absolute;left:44px;top:118px;width:1400px;height:80px;image-rendering:pixelated}
+#back{position:absolute;left:44px;top:206px;font-family:Hand;font-size:17px;white-space:nowrap;text-shadow:0 1px 3px #000}
+#sline{position:absolute;left:560px;top:208px;font-family:Figtree;font-size:11.5px;color:rgba(239,227,204,.5);font-style:italic;white-space:nowrap}
+#rail{position:absolute;left:44px;right:44px;top:940px;height:1px;background:rgba(190,130,50,.5)}
+.ln{position:absolute;top:952px;font-family:'Courier Prime';font-size:12.5px;line-height:17px;color:#cfc3a8;white-space:nowrap}
+.ln img{position:absolute;left:-2px;top:0;height:30px;image-rendering:pixelated}
+.ln div{margin-left:26px}.ln .s{color:#8f836a;font-size:11.5px}
+</style></head><body>
+<div id="stage"><div id="bg"></div><div id="bg2"></div>
+
+<div id="head"><span class="a">INVEST-WEB</span><span class="s">/</span><span class="b">INV-71924</span><div class="m">invest-web/inv-71924 · Opus 5.5 · 22m · 3 commits</div></div>
+<canvas id="strip" width="700" height="40"></canvas>
+<div id="back"><span class="gold">Sprint 42 lead</span></div>
+<div id="sline">INV-71924 · on its road to the gate · step 4 of 6</div>
+<div class="rule" style="top:244px"></div>
+
+<div class="col" style="left:44px;top:272px;width:330px"><h5>WHAT YOU ASKED</h5>
+<div class="note"><span class="t">FROM THE LEAD · WORKING ON IT</span>Wash sale info under each loss — show a short reason line under every loss row on the Realized tab.</div></div>
+
+<div class="col" style="left:440px;top:272px;width:640px"><h5>WHAT IT SAID</h5>
+<div class="said"><span class="m">SO FAR · JUST NOW</span>Writing the reason line under each loss. The wash-sale window check passes; now laying out the second line so it never pushes the amount column.</div></div>
+
+<div class="col" style="left:1150px;top:272px;width:290px"><h5>WHAT IT'S AFTER</h5>
+<div class="after">Show why each loss was disallowed, right under it.</div>
+<div class="small" style="margin-top:6px;color:#ff9a4a">working on it</div>
+<div style="margin-top:22px"><h5 style="margin-bottom:6px">HOW IT WENT</h5>
+<div class="step d"><i></i>read the loss rows</div><div class="step d"><i></i>wash-sale window helper</div><div class="step d"><i></i>row layout</div><div class="step"><i></i>writing the reason line under each loss</div><div class="step n"><i></i>tests</div><div class="step n"><i></i>screenshots</div></div></div>
+
+<div class="rule" style="top:880px"></div><div id="cur" style="top:894px"></div>
+<div id="rail"></div>
+<div class="ln" style="left:44px"><img src="lantern.png"><div>INV-71924<br><span class="s">writing a line · 22m</span></div></div>
+<div class="ln" style="left:300px"><img src="lantern.png" style="filter:hue-rotate(-12deg)"><div style="color:#ff9a4a">Sprint 42 lead<br><span class="s">2 want you</span></div></div>
+</div>
+<script>window.MODE='crew'</script>
+<script>
+(async()=>{
+const S=2,W=700,H=32,OY=8;const c=document.getElementById('strip');const a=c.getContext('2d');a.imageSmoothingEnabled=false;
+const load=(n)=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=n});
+const person=await load('lc/folk_town-a-walk-side-1.png'), lead=await load('lc/folk_town-c-front-0.png');
+const FX=(x,y,w,h)=>a.fillRect(Math.round(x),Math.round(y),w,h);
+const BAY=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>(v+.5)/16);const bay=(x,y)=>BAY[(y&3)*4+(x&3)];
+const yc=x=>20+4*Math.sin(x*0.02)+2*Math.sin(x*0.07);
+// ground band, fading top and bottom
+const img=a.createImageData(W,H);
+for(let y=0;y<H;y++)for(let x=0;x<W;x++){const edge=Math.min(y/10,(H-1-y)/8,1);const v=Math.max(0,edge)*(0.85+0.15*Math.sin(x*.3+y));const t=bay(x,y);
+ let col=[34,52,32];if((x*7+y*13)%11==0)col=[52,76,44];const k=(y*W+x)*4;const al=edge<=0?0:(t<edge?255:0);img.data[k]=col[0];img.data[k+1]=col[1];img.data[k+2]=col[2];img.data[k+3]=al*0.9;}
+a.putImageData(img,0,OY);a.translate(0,OY);
+// road
+for(let x=20;x<W-30;x++){const y=Math.round(yc(x));for(let k=-3;k<=3;k++){const e=Math.abs(k)==3;if(e&&bay(x,y+k)<.5)continue;a.fillStyle=e?'#4c4430':((x*7+k*13)%9<3?'#8f6e42':'#a37a46');FX(x,y+k,1,1);}}
+// gate at right
+const gx=W-26;a.fillStyle='#b8b09a';FX(gx,4,12,26);a.fillStyle='#76705f';for(let y=4;y<30;y+=4)FX(gx,y,12,1);a.fillStyle='#2a2620';FX(gx+1,yc(gx)-8,10,16);a.fillStyle='#8a6438';FX(gx+3,yc(gx)-7,6,14);a.fillStyle='#ffd890';FX(gx-3,yc(gx)-11,3,3);
+// lead tower at left
+a.fillStyle='#2a1c12';FX(8,12,2,20);FX(24,12,2,20);FX(6,10,22,3);a.fillStyle='#8a6440';FX(7,11,20,1);a.fillStyle='#7a4a3a';for(let r=0;r<7;r++){const w=3+r*3;FX(17-w/2|0,2+r,w,1);}
+if(lead)a.drawImage(lead,10,-8);
+a.fillStyle='#ffd890';FX(27,10,2,2);
+// milestones
+const x0=60,x1=W-60;const P=3.5/6;
+for(let k=1;k<=5;k++){const x=x0+(x1-x0)*k/6;const y=Math.round(yc(x))-5;const lit=k/6<=P;a.fillStyle='#26211b';FX(x-2,y-6,5,8);a.fillStyle=lit?'#8a8576':'#6c675c';FX(x-1,y-5,3,6);if(lit){a.fillStyle='#ffb868';FX(x,y-5,1,2);}}
+const px=x0+(x1-x0)*P;const py=Math.round(yc(px))+3;
+if(person)a.drawImage(person,Math.round(px-7),py-27);
+a.fillStyle='#2a1c12';FX(px+6,py-14,3,1);FX(px+6,py-9,3,1);a.fillStyle='#ffc070';FX(px+6,py-13,3,4);
+// warm light around traveller + lit trail (additive dithered)
+a.globalCompositeOperation='lighter';
+function glow(cx,cy,r,col,k){for(let y=Math.max(-8,cy-r);y<Math.min(H,cy+r);y++)for(let x=cx-r;x<cx+r;x++){const d=Math.hypot(x-cx,(y-cy)*1.3)/r;if(d>=1)continue;let f=(1-d)*(1-d)*k;f=Math.floor(f*5+bay(x,y))/5;if(f<=0)continue;a.fillStyle=`rgba(${col},${f})`;a.fillRect(x,y,1,1);}}
+glow(Math.round(px+6),py-10,22,'255,170,80',.42);
+for(let k=1;k<=3;k++){const x=x0+(x1-x0)*k/6;glow(Math.round(x),Math.round(yc(x))-8,8,'255,170,80',.3);}
+glow(24,12,14,'255,190,110',.45);glow(gx-2,yc(gx)-10,12,'255,190,110',.35);
+document.body.dataset.ready='1';
+})();
+</script></body></html>

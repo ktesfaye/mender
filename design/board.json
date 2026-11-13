@@ -1081,6 +1081,164 @@
       "never": [],
       "notes": [],
       "brief": ""
+    },
+    {
+      "id": "the-lead-s-yard",
+      "name": "the lead's yard",
+      "about": "A tech-lead session's own screen: it launches a batch of Jira tickets into workspaces and supervises the crew without touching code. Standing in it, the yard becomes a different, special screen where every crew session's state reads at a glance.",
+      "state": "drawing",
+      "plan": [],
+      "questions": [
+        {
+          "ask": "three ways to see the crew",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "C2",
+              "name": "roads to the gate",
+              "image": "workspaces/kit/lead-C2-rest.png",
+              "variants": [
+                {
+                  "name": "pointing at the stuck one",
+                  "image": "workspaces/kit/lead-C2-point.png"
+                },
+                {
+                  "name": "fourteen tickets",
+                  "image": "workspaces/kit/lead-C2-many.png"
+                },
+                {
+                  "name": "inside a crew session",
+                  "image": "workspaces/kit/lead-C2-crew.png"
+                },
+                {
+                  "name": "draft before review",
+                  "image": "workspaces/kit/lead-C-rest.png"
+                }
+              ],
+              "said": "A road per ticket from camp to the town gate; how far the traveller's walked is its progress, beacons beside the ones that need you, the lead in a watchtower talking in the sky.",
+              "page": "workspaces/kit/lead-C2-rest.html",
+              "at": "2026-11-10T18:44:17.521Z"
+            },
+            {
+              "id": "A2",
+              "name": "council fire",
+              "image": "workspaces/kit/lead-A2-rest.png",
+              "variants": [
+                {
+                  "name": "pointing at the stuck one",
+                  "image": "workspaces/kit/lead-A2-point.png"
+                },
+                {
+                  "name": "fourteen tickets",
+                  "image": "workspaces/kit/lead-A2-many.png"
+                },
+                {
+                  "name": "inside a crew session",
+                  "image": "workspaces/kit/lead-A2-crew.png"
+                },
+                {
+                  "name": "draft before review",
+                  "image": "workspaces/kit/lead-A-rest.png"
+                }
+              ],
+              "said": "A clearing round the lead's fire, every ticket a camp in the ring; its fire and posture are its state, the ones that need you light the ground round them, and the lead walks over to the one it's handling.",
+              "page": "workspaces/kit/lead-A2-rest.html",
+              "at": "2026-11-10T18:47:20.598Z"
+            },
+            {
+              "id": "B2",
+              "name": "slipways",
+              "image": "workspaces/kit/lead-B2-rest.png",
+              "variants": [
+                {
+                  "name": "pointing at the stuck one",
+                  "image": "workspaces/kit/lead-B2-point.png"
+                },
+                {
+                  "name": "fourteen tickets",
+                  "image": "workspaces/kit/lead-B2-many.png"
+                },
+                {
+                  "name": "inside a crew session",
+                  "image": "workspaces/kit/lead-B2-crew.png"
+                },
+                {
+                  "name": "boats at different progress",
+                  "image": "workspaces/kit/lead-B2-crop-progress.png"
+                },
+                {
+                  "name": "draft before review",
+                  "image": "workspaces/kit/lead-B-rest.png"
+                }
+              ],
+              "said": "A shipyard at night, each ticket a boat being built on its slip, planked up as its plan lands; flares over the ones that need you, finished ones afloat with their merge request on the mast, the lead in the watch-house.",
+              "page": "workspaces/kit/lead-B2-rest.html",
+              "at": "2026-11-10T18:49:03.667Z"
+            }
+          ]
+        },
+        {
+          "ask": "how it works, start to finish",
+          "state": "open",
+          "picked": [],
+          "passes": [
+            {
+              "id": "C3",
+              "name": "the road, as his real stages",
+              "image": "workspaces/kit/lead-C3-3-flight.png",
+              "variants": [
+                {
+                  "name": "1 starting it from Jira",
+                  "image": "workspaces/kit/lead-C3-1-start.png"
+                },
+                {
+                  "name": "2 setting off",
+                  "image": "workspaces/kit/lead-C3-2-arrive.png"
+                },
+                {
+                  "name": "3 mid-sprint",
+                  "image": "workspaces/kit/lead-C3-3-flight.png"
+                },
+                {
+                  "name": "4 the lead handles it",
+                  "image": "workspaces/kit/lead-C3-4-handled.png"
+                },
+                {
+                  "name": "5 it needs you",
+                  "image": "workspaces/kit/lead-C3-5-needs-you.png"
+                },
+                {
+                  "name": "5b reaching you from elsewhere",
+                  "image": "workspaces/kit/lead-C3-5b-reach.png"
+                },
+                {
+                  "name": "6 tested on the device",
+                  "image": "workspaces/kit/lead-C3-6-tested.png"
+                },
+                {
+                  "name": "7 inside a crew session",
+                  "image": "workspaces/kit/lead-C3-7-crew.png"
+                }
+              ],
+              "said": "Walkthrough: lead these from Jira, the crew setting off, each road's places are developing / testing on the device / opening the MR / in review / merged, what the lead handles quietly, what lands when it needs you, screenshots after device testing, and a crew session's own view.",
+              "page": "workspaces/kit/lead-C3-3-flight.html",
+              "at": "2026-11-10T19:08:18.722Z"
+            }
+          ]
+        }
+      ],
+      "never": [
+        "pretty scenes with no flow: progress as abstract \"step 4 of 6\" instead of his real stages"
+      ],
+      "notes": [
+        {
+          "said": "all of these don't look practical at all. how do I trigger this mode in the first place? what does it look like when something happens and it tells me what I need to do, and the status of where they are: development? testing? creating MR? each crew runs my device pilot skill: follows our coding structures, opens the app and tests it, grabs screenshots, opens the MR. I don't understand how your designs would work",
+          "on": "three ways to see the crew",
+          "at": "2026-11-10T18:59:50.954Z"
+        }
+      ],
+      "brief": "See design/lead/BRIEF.md. Round one: three concepts from different families (council fire, slipways, roads to the gate)."
     }
   ]
 }

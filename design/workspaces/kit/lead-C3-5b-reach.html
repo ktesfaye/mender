@@ -1,0 +1,101 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="lead-C3.css">
+<style>
+#bg{position:absolute;inset:0;background:url(lead-C2-bgclean.png) center/1480px 1020px;filter:brightness(1.5)}
+#bg2{display:none}
+.rule{position:absolute;left:44px;right:44px;height:1px;background:rgba(242,198,109,.16)}
+.col h5{font-family:Josefin;font-weight:400;letter-spacing:3.5px;font-size:11px;color:#b9a77d;margin:0 0 14px}
+.col{position:absolute;white-space:normal}
+.note{background:#f5e8bd;color:#2a2112;border-radius:3px;box-shadow:0 6px 18px rgba(0,0,0,.45);padding:12px 16px 14px;font-family:Hand;font-size:20px;line-height:25px;transform:rotate(-.4deg)}
+.note .t{font-family:Silkscreen;font-size:8px;letter-spacing:1px;color:#b0761c;display:block;margin-bottom:5px}
+.said{font-family:Figtree;font-size:19px;line-height:30px;color:#efe3cc;letter-spacing:.3px}
+.said .m{font-family:Silkscreen;font-size:8.5px;letter-spacing:1.2px;color:#ff9a4a;display:block;margin-bottom:6px}
+.after{font-family:Fraunces;font-style:italic;font-size:21px;line-height:29px;color:#f3eadb}
+.small{font-size:12.5px;color:rgba(239,227,204,.55);font-family:Figtree}
+.step{font-size:13px;color:rgba(239,227,204,.75);line-height:20px;margin:7px 0}
+.step i{display:inline-block;width:7px;height:7px;background:#ff9a4a;margin-right:10px}
+.step.d i{background:#9bd28a}.step.d{opacity:.6}
+.step.n{opacity:.4}.step.n i{background:#8f836a}
+#strip{position:absolute;left:44px;top:118px;width:1400px;height:80px;image-rendering:pixelated}
+#back{position:absolute;left:44px;top:230px;font-family:Hand;font-size:17px;white-space:nowrap;text-shadow:0 1px 3px #000}
+#sline{position:absolute;left:560px;top:208px;font-family:Figtree;font-size:11.5px;color:rgba(239,227,204,.5);font-style:italic;white-space:nowrap}
+#rail{position:absolute;left:44px;right:44px;top:940px;height:1px;background:rgba(190,130,50,.5)}
+.ln{position:absolute;top:952px;font-family:'Courier Prime';font-size:12.5px;line-height:17px;color:#cfc3a8;white-space:nowrap}
+.ln img{position:absolute;left:-2px;top:0;height:30px;image-rendering:pixelated}
+.ln div{margin-left:26px}.ln .s{color:#8f836a;font-size:11.5px}
+
+.sg{position:absolute;top:232px;transform:translateX(-50%);font-family:Figtree;font-size:12.5px;letter-spacing:.6px;color:rgba(239,227,204,.5);white-space:nowrap;text-align:center}
+.sg.now{color:#f3eadb;font-size:14px}.sg b{display:block;font-weight:600;letter-spacing:.8px}.sg span{display:block;font-family:Fraunces;font-style:italic;font-size:12px;color:rgba(239,227,204,.6);margin-top:2px;letter-spacing:0}
+
+#wash{position:absolute;left:1236px;top:6px;width:120px;height:104px;background:radial-gradient(ellipse 50% 50% at 50% 52%,rgba(255,150,70,.55),rgba(255,150,70,.18) 55%,transparent 75%);mix-blend-mode:screen;pointer-events:none;z-index:7}
+#note{position:absolute;left:760px;top:16px;width:340px;border-radius:20px;padding:14px 16px 15px 66px;background:rgba(46,46,52,.86);backdrop-filter:blur(30px) saturate(1.4);-webkit-backdrop-filter:blur(30px) saturate(1.4);box-shadow:0 10px 36px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.1);z-index:8;font-family:Figtree;box-sizing:border-box;width:400px}
+#note .ic{position:absolute;left:14px;top:14px;width:40px;height:40px;border-radius:10px;background:#15110c url(campfire.png) center/30px no-repeat;image-rendering:pixelated}
+#note .a{font-size:13px;font-weight:600;color:#fff}#note .b{font-size:13px;color:rgba(255,255,255,.82);line-height:17px;margin-top:2px;white-space:normal}#note .n{position:absolute;right:16px;top:14px;font-size:11px;color:rgba(255,255,255,.5)}
+</style></head><body>
+<div id="stage"><div id="bg"></div><div id="bg2"></div>
+
+<div id="head"><span class="a">INVEST-WEB</span><span class="s">/</span><span class="b">INV-71924</span><div class="m">invest-web/inv-71924 · Opus 5.5 · 22m · 3 commits</div></div>
+<canvas id="strip" width="700" height="56"></canvas>
+<div id="back"><span class="gold">Sprint 42 lead</span></div>
+<div id="stg1" class="sg now"><b>developing</b><span>writing the reason line under each loss</span></div>
+<div id="stg2" class="sg">testing on the device</div><div id="stg3" class="sg">opening the merge request</div><div id="stg4" class="sg">in review</div><div id="stg5" class="sg">merged</div>
+<div class="rule" style="top:244px"></div>
+
+<div class="col" style="left:44px;top:306px;width:330px"><h5>WHAT YOU ASKED</h5>
+<div class="note"><span class="t">FROM THE LEAD · WORKING ON IT</span>Wash sale info under each loss — show a short reason line under every loss row on the Realized tab.</div></div>
+
+<div class="col" style="left:440px;top:306px;width:640px"><h5>WHAT IT SAID</h5>
+<div class="said"><span class="m">SO FAR · JUST NOW</span>Writing the reason line under each loss. The wash-sale window check passes; now laying out the second line so it never pushes the amount column.</div></div>
+
+<div class="col" style="left:1150px;top:306px;width:290px"><h5>WHAT IT'S AFTER</h5>
+<div class="after">Show why each loss was disallowed, right under it.</div>
+<div class="small" style="margin-top:6px;color:#ff9a4a">working on it</div>
+<div style="margin-top:22px"><h5 style="margin-bottom:6px">HOW IT WENT</h5>
+<div class="step d"><i></i>read the loss rows</div><div class="step d"><i></i>wash-sale window helper</div><div class="step d"><i></i>row layout</div><div class="step"><i></i>writing the reason line under each loss</div><div class="step n"><i></i>tests</div><div class="step n"><i></i>screenshots</div></div></div>
+
+<div class="rule" style="top:880px"></div><div id="cur" style="top:894px"></div>
+<div id="wash"></div>
+<div id="note"><div class="ic"></div><span class="n">now</span><div class="a">Sprint 42 lead</div><div class="b">INV-71880 asks which price lots bought on a split day take. The ticket does not say.</div></div>
+<div id="rail"></div>
+<div class="ln" style="left:44px"><img src="lantern.png"><div>INV-71924<br><span class="s">writing a line · 22m</span></div></div>
+<div class="ln" style="left:300px"><img src="lantern.png" style="filter:saturate(1.6) brightness(1.15)"><div style="color:#ff9a4a">Sprint 42 lead<br><span class="s" style="color:#ff9a4a">INV-71880 asks you</span></div></div>
+</div>
+<script>window.MODE='crew'</script>
+<script src="lead-C3-places.js"></script>
+<script>
+(async()=>{
+const W=700,H=56,OY=0;const c=document.getElementById('strip');const a=c.getContext('2d');a.imageSmoothingEnabled=false;
+const load=(n)=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=n});
+const person=await load('lc/folk_town-a-side-0.png'), lead=await load('lc/folk_town-c-front-0.png'), hammer=await load('lc/folk_carry-hammer.png');
+const FX=(x,y,w,h)=>a.fillRect(Math.round(x),Math.round(y),w,h);
+const BAY=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>(v+.5)/16);const bay=(x,y)=>BAY[(y&3)*4+(x&3)];
+const yc=x=>46+2*Math.sin(x*0.02);
+const img=a.createImageData(W,H);
+for(let y=0;y<H;y++)for(let x=0;x<W;x++){const edge=Math.min(y/14,(H-1-y)/8,1);let col=[34,52,32];if((x*7+y*13)%11==0)col=[52,76,44];const k=(y*W+x)*4;img.data[k]=col[0];img.data[k+1]=col[1];img.data[k+2]=col[2];img.data[k+3]=(edge<=0?0:(bay(x,y)<edge?255:0))*0.9;}
+a.putImageData(img,0,0);
+for(let x=10;x<W-10;x++){const y=Math.round(yc(x));for(let k=-3;k<=3;k++){const e=Math.abs(k)==3;if(e&&bay(x,y+k)<.5)continue;a.fillStyle=e?'#4c4430':((x*7+k*13)%9<3?'#8f6e42':'#a37a46');FX(x,y+k,1,1);}}
+const C={dev:200,test:315,mr:430,review:540,gate:648};
+const PL=window.PLACES;
+const by=(x)=>Math.round(yc(x))-6;
+PL.workshop(a,C.dev,by(C.dev),{});PL.proving(a,C.test,by(C.test),{});PL.post(a,C.mr,by(C.mr),{});PL.review(a,C.review,by(C.review),{});
+// gate
+const gx=C.gate-14;a.fillStyle='#948b72';FX(gx,10,26,44);a.fillStyle='#aa9e8a';FX(gx-2,8,30,6);a.fillStyle='#7e7560';for(let y=14;y<54;y+=4)FX(gx,y,26,1);
+a.fillStyle='#c4bda6';FX(gx+5,yc(gx)-10,16,20);a.fillStyle='#7a4e28';FX(gx+7,yc(gx)-8,12,18);a.fillStyle='#9a6a38';for(let q=0;q<4;q++)FX(gx+7+q*3,yc(gx)-8,1,18);
+// tower
+a.fillStyle='#2a1c12';FX(8,14,2,42);FX(24,14,2,42);FX(6,12,22,3);a.fillStyle='#8a6440';FX(7,13,20,1);a.fillStyle='#7a4a3a';for(let r=0;r<8;r++){const w=3+r*3;FX(17-w/2|0,3+r,w,1);}
+if(lead)a.drawImage(lead,10,-12);
+// traveller at the workshop
+const px=C.dev-16,py=Math.round(yc(px))+2;
+a.fillStyle='rgba(8,12,6,.55)';FX(px-5,py-1,10,2);
+if(person)a.drawImage(person,px-7,py-27);if(hammer)a.drawImage(hammer,px+4,py-18);
+a.fillStyle='#2a1c12';FX(px+8,py-14,3,1);FX(px+8,py-9,3,1);a.fillStyle='#ffc070';FX(px+8,py-13,3,4);
+const bayr=bay;
+a.globalCompositeOperation='lighter';
+function glow(cx,cy,r,col,k){for(let y=Math.max(0,cy-r);y<Math.min(H,cy+r);y++)for(let x=cx-r;x<cx+r;x++){const d=Math.hypot(x-cx,(y-cy)*1.3)/r;if(d>=1)continue;let f=(1-d)*(1-d)*k;f=Math.floor(f*5+bay(x,y))/5;if(f<=0)continue;a.fillStyle=`rgba(${col},${f})`;a.fillRect(x,y,1,1);}}
+glow(C.dev,by(C.dev)-10,20,'255,170,80',.55);glow(px+8,py-10,18,'255,170,80',.45);glow(24,12,14,'255,190,110',.45);
+a.globalCompositeOperation='source-over';
+PL.workshopGlow(a,C.dev,by(C.dev),{lit:true,active:true},1200);
+const lanes=[C.dev,C.test,C.mr,C.review,C.gate-6];
+document.getElementById('stg1').style.left=(44+C.dev*2)+'px';document.getElementById('stg2').style.left=(44+C.test*2)+'px';document.getElementById('stg3').style.left=(44+C.mr*2)+'px';document.getElementById('stg4').style.left=(44+C.review*2)+'px';document.getElementById('stg5').style.left=(44+(C.gate+8)*2)+'px';
+document.body.dataset.ready='1';
+})();
+</script></body></html>

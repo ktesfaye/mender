@@ -1,0 +1,75 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="lead-A.css">
+<style>
+body { background: #0b0907 url(A/bg-crew2.png) 0 0/1480px 1020px }
+.col-h { position:absolute; font: 400 10.5px 'Josefin Sans'; letter-spacing:.3em; color: rgba(246,236,219,.5); text-transform: uppercase }
+.hr { position:absolute; height:1px; background: rgba(190,140,70,.22) }
+.vr { position:absolute; width:1px; background: rgba(190,140,70,.16) }
+.paper { position:absolute; left:40px; top:200px; width:300px; padding:16px 18px 20px; background:#f7ecc3; color:#3b2a14; transform: rotate(-.8deg); box-shadow: 0 6px 22px rgba(0,0,0,.5), 0 0 40px rgba(255,170,70,.1); font: 400 19px/1.25 'Mender Hand' }
+.paper .t { font: 9.5px 'Silkscreen'; letter-spacing:.1em; color:#b06a1a; margin-bottom:6px }
+.said { position:absolute; left:470px; top:196px; width:640px }
+.said .t { font: 9.5px 'Silkscreen'; letter-spacing:.12em; color: var(--ember); margin-bottom:12px }
+.said .a { font: 400 22px/1.5 'Courier Prime'; color: #f3e7cd; letter-spacing: .01em; text-shadow: 0 1px 3px #000 }
+.said .d { font: 400 13px 'Courier Prime'; color: rgba(246,236,219,.55); margin: 4px 0 16px 0 }
+.right { position:absolute; left:1170px; top:196px; width:270px }
+.right .aft { font: italic 400 21px/1.28 'Fraunces'; font-variation-settings:'SOFT' 100,'opsz' 24; color:#f3e7cd }
+.right .stt { font: 600 12px 'Figtree'; color: var(--ember); margin: 8px 0 22px }
+.step { font: 400 13px/1.4 'Courier Prime'; color: rgba(246,236,219,.6); margin: 7px 0 0 20px; position: relative }
+.step.done { color: rgba(246,236,219,.38); text-decoration: line-through } .step.now { color:#fff1d8 }
+.step i { position:absolute; left:-18px; top:5px; width:7px; height:7px; background: rgba(246,236,219,.3) } .step.now i { background: var(--ember) } .step.done i { background: var(--moss); opacity:.6 }
+.fire { position:absolute; left:830px; top:482px; }
+.rail { position:absolute; left:40px; right:40px; top:903px; height:2px; background: rgba(160,116,56,.55) }
+.lt { position:absolute; top:904px }
+.lt .cord { position:absolute; left:10px; top:0; width:1px; height:14px; background: rgba(160,116,56,.65) }
+.lt img { position:absolute; left:0; top:14px; image-rendering: pixelated }
+.lt .nm { position:absolute; left:36px; top:18px; font: 12.5px 'Courier Prime'; color: #f6ecdb; white-space:nowrap }
+.lt .sub { position:absolute; left:36px; top:36px; font: 11.5px 'Courier Prime'; white-space:nowrap }
+.gl { position:absolute; border-radius:50%; mix-blend-mode: screen }
+</style></head><body>
+<div class="vignette" style="opacity:.6"></div>
+<canvas id="night" style="display:none"></canvas>
+<!-- the lead's council fire, back in the corner it came from -->
+<div id="corner"></div>
+<div class="abs" style="left:150px;top:36px"><div style="font:400 17px 'Josefin Sans';letter-spacing:.3em;color:rgba(246,236,219,.42)">INVEST-WEB <span style="letter-spacing:0;margin:0 4px">/</span> <b style="font:700 15px 'Courier Prime';letter-spacing:0;color:#f6ecdb">INV-71924</b></div>
+<div style="font:400 24px 'Fraunces';font-variation-settings:'SOFT' 100,'opsz' 48;color:#fbefd6;margin-top:7px;white-space:nowrap">Wash sale info under each loss</div>
+<div style="font:12px 'Courier Prime';color:rgba(246,236,219,.5);margin-top:8px">Opus 5.5 · 22m · step 4 of 6 · 3 commits</div></div>
+<div class="hr" style="left:40px;right:40px;top:150px"></div>
+
+<div class="col-h" style="left:40px;top:176px">what the lead asked</div>
+<div class="paper"><div class="t">SENT BY THE LEAD · 22M AGO</div>INV-71924, wash sale info under each loss. Put the reason under every loss line that was disallowed. Ask me if the ticket is unclear.</div>
+<div class="vr" style="left:440px;top:176px;height:640px"></div>
+<div class="col-h" style="left:470px;top:176px">what it said</div>
+<div class="said"><div class="t" style="margin-top:18px">SO FAR · JUST NOW</div>
+<div class="a">Writing the reason line under each loss now. The wash sale window is thirty days either side, so I am reading the lot dates before I print the line.</div></div>
+<div class="vr" style="left:1140px;top:176px;height:640px"></div>
+<div class="col-h" style="left:1170px;top:176px">what it's after</div>
+<div class="right" style="top:206px"><div class="aft">Every disallowed loss says why, in plain words, right under it.</div><div class="stt">working on it</div>
+<div class="step done"><i></i>read the ticket</div><div class="step done"><i></i>find the loss rows</div><div class="step done"><i></i>compute the wash window</div><div class="step now"><i></i>writing the reason line under each loss</div><div class="step"><i></i>check the export</div><div class="step"><i></i>open the merge request</div></div>
+
+<div class="hr" style="left:40px;right:40px;top:834px"></div>
+<div class="caret" style="left:44px;top:858px"></div>
+<div class="rail"></div>
+<!-- rail: the lead's lantern first, then this crew's -->
+<div class="lt" style="left:40px"><div class="cord"></div><div class="gl" style="left:-34px;top:-8px;width:240px;height:84px;background:radial-gradient(closest-side,rgba(205,225,255,.28),transparent)"></div><img src="sprites/props-tx-village-props-lantern-01-on-png-x1.png" style="width:22px;height:38px;filter:grayscale(.7) brightness(1.5)"><div class="nm">Sprint 42 lead</div><div class="sub" style="color:#ff9a4a">2 need you</div></div>
+<div class="lt" style="left:290px"><div class="cord"></div><div class="gl" style="left:-34px;top:-8px;width:250px;height:84px;background:radial-gradient(closest-side,rgba(255,150,60,.34),transparent)"></div><img src="sprites/props-tx-village-props-lantern-01-on-png-x1.png" style="width:22px;height:38px"><div class="nm">INV-71924</div><div class="sub" style="color:#f0a65a">writing the reason line · 22m</div></div>
+<div class="lt" style="left:560px"><div class="cord"></div><img src="sprites/props-tx-village-props-lantern-01-off-png-x1.png" style="width:22px;height:38px;opacity:.7"></div>
+<img class="rack" src="A/rack2.png">
+<div id="lit"></div><div id="txt"></div>
+<script>
+const lit=document.getElementById('lit');
+function img(src,w,h,x,y,s,o){const e=document.createElement('img');e.src=src;e.className='px';e.style.cssText=`width:${w*s}px;height:${h*s}px;left:${x}px;top:${y}px;`+(o||'');lit.appendChild(e);return e}
+// corner: council fire + the lead sitting by it
+const c=document.getElementById('corner');
+c.innerHTML=`<div class="gl" style="left:-30px;top:-20px;width:300px;height:200px;background:radial-gradient(closest-side,rgba(255,150,60,.42),transparent)"></div>`;
+c.style.cssText='position:absolute;left:0;top:0';
+img('sprites/props-tx-village-props-campfire-01-lit-png-x1.png',46,32,40,52,2);
+const fl=[img('A/flame-0.png',10,12,70,36,2.0)];
+img('A/sit-0.png',14,23,22,82,2,'transform:scaleX(-1)');
+img('sprites/props-tx-village-props-lantern-02-on-png-x1.png',9,17,128,92,1.5,'filter:grayscale(.7) brightness(1.5)');
+const g=document.createElement('div');g.className='log';g.style.cssText='position:absolute;left:34px;top:120px;font:400 15px "Mender Hand";color:#f2c66d;text-shadow:0 1px 3px #000';g.textContent='back to the lead';document.body.appendChild(g);
+const sub=document.createElement('div');sub.style.cssText='position:absolute;left:34px;top:140px;font:600 11px Figtree;color:#ff9a4a;text-shadow:0 1px 3px #000';sub.textContent='';document.body.appendChild(sub);
+// pennant by the title: this camp belongs to the lead's crew
+img('A/packed.png',34,30,0,0,0,'display:none');
+const pole=document.createElement('div');
+setInterval(()=>{fl[0].src='A/flame-'+Math.floor(Math.random()*4)+'.png'},150);
+document.fonts.ready.then(()=>setTimeout(()=>document.body.dataset.ready=1,700));
+</script></body></html>

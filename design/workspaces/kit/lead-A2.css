@@ -1,0 +1,58 @@
+@font-face { font-family: 'Fraunces'; src: url(fonts/fraunces-variable-normal.woff2); font-weight: 100 900; font-style: normal; }
+@font-face { font-family: 'Fraunces'; src: url(fonts/fraunces-variable-italic.woff2); font-weight: 100 900; font-style: italic; }
+@font-face { font-family: 'Figtree'; src: url(fonts/figtree.ttf); font-weight: 300 900; }
+@font-face { font-family: 'Silkscreen'; src: url(fonts/silkscreen-400-normal.woff2); }
+@font-face { font-family: 'Mender Hand'; src: url(fonts/pretty-neat-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'Mender Hand'; src: url(fonts/pretty-neat-700-normal.woff2); font-weight: 700; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-400-normal.woff2); font-weight: 400; }
+@font-face { font-family: 'Courier Prime'; src: url(fonts/courier-prime-700-normal.woff2); font-weight: 700; }
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-400-normal.woff2); font-weight: 400; }
+:root { --gold:#f2c66d; --ember:#ff9a4a; --moss:#9bd28a; --sore:#f08a72; --blue:#7aaaff; --ink:#f6ecdb; --ink2:rgba(246,236,219,.72); --ink3:rgba(246,236,219,.45) }
+* { box-sizing: border-box; margin: 0; padding: 0 }
+html, body { width: 1480px; height: 1020px; background: #070a08; overflow: hidden }
+body { position: relative; font-family: 'Figtree', sans-serif; color: var(--ink) }
+.abs { position: absolute }
+img.px { position: absolute; image-rendering: pixelated; display: block }
+canvas { position: absolute; left: 0; top: 0; width: 1480px; height: 1020px; image-rendering: pixelated }
+#ground { image-rendering: pixelated }
+.lab { position: absolute; text-align: center; pointer-events: none; transition: opacity .3s }
+.lab .key { font: 9px 'Silkscreen'; letter-spacing: .12em; color: rgba(246,236,219,.62); text-shadow: 0 1px 2px #000, 0 0 6px #000 }
+.lab .ttl { font: 400 16px/1.12 'Mender Hand'; color: rgba(246,236,219,.9); margin-top: 3px; text-shadow: 0 1px 2px #000, 0 0 8px rgba(0,0,0,.9) }
+.lab .st { font: 600 11.5px 'Figtree'; letter-spacing: .02em; margin-top: 3px; text-shadow: 0 1px 2px #000, 0 0 6px #000; color: var(--ink3) }
+.lab.s2 .ttl { font-size: 14px } .lab.s2 .st { font-size: 10.5px }
+.lab.hot .key { color: var(--ember) } .lab.hot .ttl { color: #fff3dc; font-size: 18px }
+.lab.sore .key { color: var(--sore) } .lab.sore .ttl { color: #ffd9cf }
+.lab.dim .key, .lab.dim .ttl, .lab.dim .st { opacity: .55 }
+.lab.moss .key { color: var(--moss) }
+.st.e { color: var(--ember) } .st.m { color: var(--moss) } .st.s { color: var(--sore) } .st.g { color: rgba(246,236,219,.55) }
+.vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 47%, transparent 45%, rgba(3,5,5,.75) 100%) }
+.head { position: absolute; left: 40px; top: 34px }
+.head .a { font: 400 21px 'Josefin Sans'; letter-spacing: .3em; color: var(--gold) }
+.head .a i { font-style: normal; color: rgba(246,236,219,.35); letter-spacing: 0; margin: 0 6px }
+.head .a b { font: 700 16px 'Courier Prime'; letter-spacing: 0; color: var(--ink) }
+.head .m { font: 12px 'Courier Prime'; color: rgba(246,236,219,.5); margin-top: 8px }
+.voice { position: absolute; text-align: left }
+.voice .big { font: 500 33px/1.05 'Fraunces'; font-variation-settings: 'SOFT' 100, 'opsz' 72; color: #fbefd6; text-shadow: 0 0 22px rgba(255,150,60,.35), 0 2px 3px #000 }
+.voice p { font: italic 400 18.5px/1.5 'Fraunces'; font-variation-settings: 'SOFT' 100, 'opsz' 18; color: rgba(246,232,208,.88); margin-top: 9px; text-shadow: 0 1px 3px #000, 0 0 12px rgba(0,0,0,.8) }
+.voice p.old { opacity: .55 }
+.voice .e { color: var(--ember); font-style: normal; font-family: 'Courier Prime'; font-size: 16px } .voice .s { color: var(--sore); font-style: normal; font-family: 'Courier Prime'; font-size: 16px }
+.ask { position: absolute }
+.ask .q { font: 400 21px/1.28 'Mender Hand'; color: #fff1d8; text-shadow: 0 0 14px rgba(255,150,60,.35), 0 1px 3px #000 }
+.ask .q em { font-style: normal; color: var(--ember); font-family: 'Silkscreen'; font-size: 10px; letter-spacing: .12em; display: block; margin-bottom: 4px }
+.ask .opts { display: flex; gap: 26px; margin-top: 12px }
+.ask .o { font: 700 19px 'Mender Hand'; color: var(--gold); text-shadow: 0 0 10px rgba(242,198,109,.35), 0 1px 3px #000 }
+.gold { color: var(--gold) }
+.log { position: absolute; font: 400 16px 'Mender Hand'; color: var(--gold); text-shadow: 0 1px 3px #000, 0 0 8px #000 }
+.wl { position: absolute; left: 40px; right: 40px; top: 934px; height: 1px; background: rgba(190,140,70,.28) }
+.wl-t { position: absolute; left: 40px; top: 954px; font: 400 17px 'Mender Hand'; color: rgba(246,236,219,.4); letter-spacing: .02em }
+.caret { position: absolute; left: 132px; top: 952px; width: 2px; height: 26px; background: var(--gold); animation: none }
+@keyframes blink { 50% { opacity: 0 } }
+.rack { position: absolute; right: 8px; top: 0; width: 291px; height: 76px; image-rendering: auto; mix-blend-mode: lighten; z-index: 20 }
+.reveal { position: absolute; text-shadow: 0 1px 3px #000, 0 0 10px #000 }
+.reveal .h { font: 400 20px/1.2 'Mender Hand'; color: #fff1d8 }
+.reveal .l { font: 400 17px/1.3 'Mender Hand'; color: rgba(246,236,219,.82) }
+.reveal .t { font: 9px 'Silkscreen'; letter-spacing: .14em; color: var(--ember) }
+
+@keyframes breathe { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
+.lab.q .key { opacity: .8 } .lab.q .ttl { color: rgba(246,236,219,.74) } .lab.q .st { opacity: .85 }
+.vignette { background: radial-gradient(ellipse 80% 75% at 50% 47%, transparent 55%, rgba(2,4,5,.7) 100%) !important }

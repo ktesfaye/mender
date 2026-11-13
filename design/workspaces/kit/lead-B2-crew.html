@@ -1,0 +1,102 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face { font-family: 'Fraunces'; src: url(fonts/fraunces.ttf); font-weight: 100 900; }
+@font-face { font-family: 'Fraunces'; src: url(fonts/fraunces-variable-italic.woff2); font-weight: 100 900; font-style: italic; }
+@font-face { font-family: 'Figtree'; src: url(fonts/figtree.ttf); font-weight: 300 900; }
+@font-face { font-family: 'Silkscreen'; src: url(fonts/silkscreen-400-normal.woff2); }
+@font-face { font-family: 'Hand'; src: url(fonts/pretty-neat-400-normal.woff2); }
+@font-face { font-family: 'Josefin'; src: url(fonts/josefin-sans-400-normal.woff2); }
+@font-face { font-family: 'Courier'; src: url(fonts/courier-prime-400-normal.woff2); }
+@font-face { font-family: 'Courier'; src: url(fonts/courier-prime-700-normal.woff2); font-weight: 700; }
+:root { --ink:#f6ecdb; --ink2:rgba(246,236,219,.66); --ink3:rgba(246,236,219,.42); --gold:#f2c66d; --ember:#ff9a4a; --moss:#9bd28a; --sore:#f08a72; --blue:#7aaaff; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1480px; height: 1020px; overflow: hidden; background: #000; }
+body { font-family: 'Figtree', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; position: relative; }
+.scene { position: absolute; left: 0; top: 0; width: 1480px; height: 1020px; image-rendering: pixelated; }
+.rack { position: absolute; right: 0; top: 0; width: 304px; height: 86px; image-rendering: pixelated; }
+.abs { position: absolute; }
+.head { left: 40px; top: 34px; }
+.head .t { font: 400 21px 'Josefin'; letter-spacing: .32em; color: var(--gold); text-transform: uppercase; }
+.head .t i { font-style: normal; color: rgba(242,198,109,.5); margin: 0 10px 0 8px; letter-spacing: 0; }
+.head .t b { font: 700 19px 'Courier'; letter-spacing: 0; color: #fff; text-transform: none; }
+.head .m { margin-top: 5px; font: 400 12px 'Courier'; color: var(--gold); opacity: .85; }
+.lead { font-family: 'Fraunces', serif; font-style: italic; font-variation-settings: 'SOFT' 100, 'opsz' 40; font-size: 19px; line-height: 27px; color: #f3e6c9; text-shadow: 0 1px 6px #000, 0 0 18px rgba(0,0,0,.9); }
+.lead p + p { margin-top: 0; }
+.gold { color: var(--gold); font: 600 14px 'Figtree'; text-shadow: 0 1px 4px #000; }
+.lab { width: 300px; text-shadow: 0 1px 3px #000, 0 0 10px rgba(0,0,0,.95); }
+.lab .k { font: 400 9px 'Silkscreen'; letter-spacing: .1em; color: rgba(246,236,219,.55); }
+.lab .k s { text-decoration: none; opacity: .75; margin-left: 8px; }
+.lab .ti { font: 500 13px/1.25 'Figtree'; color: rgba(246,236,219,.86); margin-top: 3px; }
+.lab .ph { font: italic 400 12.5px/1.25 'Fraunces', serif; margin-top: 3px; }
+.lab.many { width: 192px; }
+.lab.many .ti { font-size: 11.5px; }
+.lab.many .ph { font-size: 11.5px; }
+.lab .ph.ember { color: var(--ember); } .lab .ph.moss { color: var(--moss); } .lab .ph.sore { color: var(--sore); }
+.lab .ph.warm { color: #ffe3a8; } .lab .ph.dim { color: rgba(246,236,219,.5); } .lab .ph.red { color: #d97a62; } .lab .ph.blue { color: var(--blue); }
+.line { left: 40px; width: 1400px; top: 948px; height: 1px; background: rgba(242,198,109,.22); }
+.caret { left: 52px; top: 968px; width: 2px; height: 24px; background: #f6ecdb; }
+.ph2 { left: 70px; top: 970px; font: 400 19px 'Hand'; color: rgba(246,236,219,.35); }
+.hand { font-family: 'Hand'; }
+.sub { font: 400 9px 'Silkscreen'; letter-spacing: .12em; text-transform: uppercase; color: rgba(246,236,219,.45); }
+.pt { text-shadow: 0 1px 4px #000, 0 0 14px #000; }
+.pt .a { font: 400 9px 'Silkscreen'; letter-spacing: .12em; text-transform: uppercase; color: var(--ember); }
+.pt .b { font: 500 22px 'Fraunces'; margin-top: 6px; color: #fff3da; font-variation-settings: 'SOFT' 100, 'opsz' 40; }
+.pt .c { font: 400 13.5px/1.45 'Figtree'; color: rgba(246,236,219,.8); margin-top: 8px; }
+.pt .c em { font: italic 400 14.5px 'Fraunces'; color: #f3e6c9; }
+.pt .d { font: 600 14px 'Figtree'; color: var(--gold); margin-top: 10px; }
+.veil { position: absolute; pointer-events: none; }
+body[data-ready] .z { }
+
+.bg { position:absolute; left:0; top:0; width:1480px; height:1020px; image-rendering:pixelated; }
+.col h { display:block; font: 400 11px 'Josefin'; letter-spacing:.3em; text-transform:uppercase; color: rgba(246,236,219,.55); }
+.note { position:absolute; left:48px; top:272px; width:236px; padding:16px 18px 18px; background:#f3e8b8; color:#3b2a14; transform:rotate(-.6deg); box-shadow:0 8px 24px rgba(0,0,0,.5); }
+.note .a { font:400 9px 'Silkscreen'; letter-spacing:.1em; color:#b4591b; text-transform:uppercase; }
+.note p { font:400 19px/24px 'Hand'; margin-top:7px; }
+.post { position:absolute; left:40px; top:262px; width:5px; height:420px; background:#6b4a22; }
+.pen { position:absolute; left:44px; top:104px; width:92px; image-rendering:pixelated; }
+.under { position:absolute; left:140px; top:136px; font: italic 400 16px Fraunces; color: rgba(246,236,219,.8); }
+.tw { position:absolute; left:905px; top:24px; width:236px; image-rendering:pixelated; }
+.bk { position:absolute; left:928px; top:312px; width:190px; text-align:center; }
+.bk small { display:block; margin-top:3px; font: italic 400 12px Fraunces; color: rgba(246,236,219,.55); }
+.railn { position:absolute; left:74px; top:926px; font: 400 12px Courier; color: rgba(246,236,219,.85); line-height:16px; }
+.railn i { display:block; font-style:normal; color: rgba(246,236,219,.5); }
+.mid { position:absolute; left:470px; top:222px; width:410px; }
+.mid .so { font:400 9px 'Silkscreen'; letter-spacing:.12em; color: var(--ember); text-transform:uppercase; }
+.mid p { font: 400 19px/29px 'Figtree'; color:#f6ecdb; margin-top:10px; }
+.mid .old { font: 400 15px/22px 'Figtree'; color: rgba(246,236,219,.5); margin-bottom:14px; }
+.mid .fire { margin-top:30px; display:flex; align-items:center; gap:14px; font:400 12px 'Silkscreen'; letter-spacing:.14em; color: rgba(246,236,219,.8); text-transform:uppercase; }
+.mid .fire img { width:46px; image-rendering:pixelated; }
+.right { position:absolute; left:1180px; top:360px; width:260px; }
+.right .it { font: italic 400 21px/27px 'Fraunces'; color:#f3e6c9; margin-top:12px; font-variation-settings:'SOFT' 100,'opsz' 40; }
+.right .st { font: 400 12px 'Figtree'; color: var(--ember); margin-top:8px; }
+.right .went { margin-top:32px; }
+.right .row { display:flex; gap:10px; font:400 13px/18px 'Figtree'; color: rgba(246,236,219,.8); margin-top:12px; }
+.right .row i { width:8px; height:8px; margin-top:5px; background: rgba(246,236,219,.45); flex:none; }
+.right .row i.on { background: var(--ember); }
+.tower { position:absolute; left:1000px; top:24px; width:220px; image-rendering:pixelated; }
+.back { position:absolute; left:1040px; top:262px; width:150px; text-align:center; }
+.rule { position:absolute; left:40px; width:1400px; top:196px; height:1px; background: rgba(242,198,109,.18); }
+.meta2 { position:absolute; right:40px; top:104px; text-align:right; font:400 12px 'Courier'; color: var(--gold); opacity:.8; }
+.meta2 b { display:block; font:400 11px 'Silkscreen'; letter-spacing:.14em; color: var(--ember); opacity:1; margin-bottom:4px; }
+</style></head><body>
+<img class="bg" src="lead-B2-yardbg.png">
+
+<div class="abs head"><div class="t">Invest-web<i>/</i><b>Wash sale info under each loss</b></div><div class="m">invest-web/inv-71924 · Claude Code · 22m · 6 turns</div></div>
+<div class="post"></div>
+<img class="pen" src="lead-B2-pennant.png"><div class="under">sent out by Sprint 42 lead</div>
+<img class="tw" src="lead-B2-tower.png"><div class="bk"><span class="gold">back to the lead</span><small>two need you</small></div>
+<div class="railn">Wash sale info<i>working · 22m</i></div>
+<div class="note"><div class="a">from the lead · working on it</div><p>INV-71924. Show why a wash sale disallowed a loss, in a line right under that loss. The repurchase date comes from the matching lot.</p></div>
+<div class="col abs" style="left:40px;top:222px"><h>What you asked</h></div>
+<div class="col abs" style="left:340px;top:200px;display:none"></div>
+<div class="mid col"><h style="margin-bottom:26px">What it said</h>
+<div class="old">Found where each realized loss is drawn, and which lots a wash sale touches.</div>
+<div class="so">So far · just now</div>
+<p>Writing the reason line under each loss. The repurchase date is read off the matching lot rather than worked out again.</p>
+<div class="fire"><img src="sprites/props-tx-village-props-campfire-01-lit-png-x1.png"><span>Writing the reason line &nbsp; 22m</span></div></div>
+<div class="right col"><h>What it's after</h>
+<div class="it">Show why a loss was disallowed, right under it.</div><div class="st">working on it</div>
+<div class="went"><h>How it went</h>
+<div class="row"><i></i><span>Found the loss row</span></div>
+<div class="row"><i></i><span>Read the wash sale lots</span></div>
+<div class="row"><i class="on"></i><span>Writing the reason line</span></div></div></div>
+<script>document.body.dataset.ready=1</script></body></html>

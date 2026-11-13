@@ -1,0 +1,96 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="lead-A2.css">
+<style>
+@font-face { font-family: 'Josefin Sans'; src: url(fonts/josefin-sans-600-normal.woff2); font-weight: 600; }
+@font-face { font-family: 'Cormorant Garamond'; src: url(fonts/cormorant-garamond-500-italic.woff2); font-weight: 500; font-style: italic; }
+@font-face { font-family: 'Cormorant Garamond'; src: url(fonts/cormorant-garamond-600-normal.woff2); font-weight: 600; font-style: normal; }
+body { background: #0b0907 url(A/bg-crew3.png) 0 0/1480px 1020px }
+.J { font-family: 'Josefin Sans', sans-serif }
+.ch { position:absolute; font: 400 10px 'Josefin Sans'; letter-spacing:.32em; color: rgba(246,236,219,.5); text-transform: uppercase }
+.hr { position:absolute; height:1px; background: rgba(190,140,70,.22) } .vr { position:absolute; width:1px; background: rgba(190,140,70,.16) }
+.post { position:absolute; left:42px; top:206px; width:9px; height:440px; background: linear-gradient(90deg,#6a4318,#4a2c0f); box-shadow: 0 0 12px rgba(0,0,0,.5) }
+.paper { position:absolute; left:62px; top:208px; width:292px; padding:14px 16px 18px; background:#f7ecc3; color:#3b2a14; transform: rotate(-.8deg); box-shadow: 0 6px 22px rgba(0,0,0,.5), 0 0 40px rgba(255,170,70,.1); font: 400 19px/1.25 'Mender Hand' }
+.paper .t { font: 9.5px 'Silkscreen'; letter-spacing:.1em; color:#b06a1a; margin-bottom:6px }
+.said { position:absolute; left:471px; top:226px; width:650px; font-family:'Josefin Sans' }
+.sl { display:flex; align-items:center; gap:10px; font: 400 13px 'Josefin Sans'; letter-spacing:.03em; color: #f3e7cd; margin: 0 0 10px }
+.sl.q { color: rgba(246,236,219,.5); margin-left: 24px; font-size: 12.5px }
+.sg { width: 12px; height: 12px; flex:none; position: relative; background: rgba(246,236,219,.8); border-radius: 3px }
+.sg.eye { background: none; border: 1.5px solid rgba(246,236,219,.45); border-radius: 50% / 70%; height: 8px }
+.so { display:flex; align-items:center; gap:8px; font: 400 10.5px 'Josefin Sans'; letter-spacing:.2em; color: var(--ember); margin: 22px 0 10px }
+.so i { width:9px; height:9px; background: var(--ember); display:block }
+.ans { font: 400 18px/1.55 'Josefin Sans'; letter-spacing:.045em; color:#f6ecdb; text-shadow: 0 1px 3px #000 }
+.fl { display:flex; align-items:center; gap:12px; margin-top: 26px; font: 400 13px 'Josefin Sans'; letter-spacing:.2em; color: #cfa458 }
+.fl b { font-weight:400; font-size: 11px; letter-spacing:.1em; color: rgba(207,164,88,.8) }
+.right { position:absolute; left:1171px; width:272px }
+.aft { font: italic 500 25px/1.18 'Cormorant Garamond'; color:#f6ecdb }
+.wk { font: 400 13px 'Josefin Sans'; letter-spacing:.04em; color: #ff9a1a; margin: 10px 0 20px }
+.pc { display:flex; gap:12px; font: 400 16px/1.3 'Josefin Sans'; letter-spacing:.03em; color:#ffe3a8; margin-top:16px }
+.pc i { width:12px; height:12px; flex:none; background: var(--ember); box-shadow: 0 0 0 2px rgba(255,150,60,.25); margin-top: 3px }
+.jn { font: 400 10px 'Josefin Sans'; letter-spacing:.24em; color: rgba(246,236,219,.4); margin: 14px 0 6px 24px }
+.th { position:relative; margin-left: 24px; padding-left: 20px; border-left: 1px solid rgba(246,236,219,.16) }
+.st { font: 400 13.5px/1.3 'Josefin Sans'; letter-spacing:.02em; color: #f3e7cd; margin: 0 0 11px; position:relative }
+.st.q { color: rgba(246,236,219,.45) }
+.st i { position:absolute; left:-27px; top:2px; width:11px; height:11px; border-radius:3px; background: rgba(246,236,219,.78) }
+.st.now i { background: var(--ember); border-radius:0; box-shadow: 0 0 0 2px rgba(255,150,60,.25) }
+.st.q i { background:none; border:1.5px solid rgba(246,236,219,.4); height:8px; top:5px; border-radius: 50%/70% }
+.cl { position:absolute; left:40px; top:676px; font-family:'Josefin Sans' }
+.cl .v { font: 400 12.5px 'Josefin Sans'; color:#f3e7cd; letter-spacing:.03em; margin-top: 12px; display:flex; gap:10px; align-items:center } .cl .v i { width:8px; height:8px; background:#cfc3a8 }
+.cl .b { font: 400 12px/1.4 'Josefin Sans'; letter-spacing:.03em; color: rgba(246,236,219,.65); margin: 6px 0 0 18px; width: 330px }
+.rail { position:absolute; left:40px; right:40px; top:903px; height:2px; background: rgba(160,116,56,.55) }
+.lt { position:absolute; top:904px } .lt .cord { position:absolute; left:10px; top:0; width:1px; height:14px; background: rgba(160,116,56,.65) }
+.lt img { position:absolute; left:0; top:14px; image-rendering: pixelated }
+.lt .nm { position:absolute; left:36px; top:18px; font: 12.5px 'Courier Prime'; color:#f6ecdb; white-space:nowrap } .lt .sub { position:absolute; left:36px; top:36px; font: 11.5px 'Courier Prime'; white-space:nowrap }
+.gl { position:absolute; border-radius:50%; mix-blend-mode: screen }
+</style></head><body>
+<div class="vignette" style="opacity:.5"></div>
+<div id="corner" style="position:absolute;left:0;top:0"></div>
+<div class="abs" style="left:178px;top:36px"><div style="font:400 21px 'Josefin Sans';letter-spacing:.3em;color:#f2c66d">INVEST-WEB <span style="color:rgba(246,236,219,.35);letter-spacing:0;margin:0 6px">/</span><b style="font:700 16px 'Courier Prime';letter-spacing:0;color:#f6ecdb">Wash sale info under each loss</b></div>
+<div style="font:12px 'Courier Prime';color:rgba(246,236,219,.5);margin-top:9px">inv-71924 · 3 ahead · Opus 5.5 · 22m · crew of Sprint 42 lead</div></div>
+<div class="hr" style="left:40px;right:40px;top:150px"></div>
+
+<div class="ch" style="left:40px;top:176px">what the lead asked</div>
+<div class="post"></div>
+<div class="paper"><div class="t">FROM THE LEAD · 22M AGO · WORKING ON IT</div>INV-71924, wash sale info under each loss. Put the reason under every disallowed loss line. Ask me if the ticket is unclear.</div>
+<div class="cl"><div class="ch" style="position:static">changelog</div><div class="v"><i></i>v2.8.1</div><div class="b">Statement downloads retry once before failing</div><div class="v"><i style="background:#8a8070"></i>v2.8.0</div><div class="b">Cost basis export carries split-day lots</div></div>
+<div class="vr" style="left:440px;top:176px;height:640px"></div>
+<div class="ch" style="left:471px;top:176px">what it said</div>
+<div class="said">
+ <div class="sl"><span class="sg"></span>Read the ticket and the loss rows</div>
+ <div class="sl q"><span class="sg eye"></span>searched twice and ran a check ▸</div>
+ <div class="sl"><span class="sg"></span>Worked out the wash window</div>
+ <div class="so"><i></i>SO FAR · JUST NOW</div>
+ <div class="ans">The wash sale window is thirty days either side, so I am reading the lot dates before I print the reason line under each loss.</div>
+ <div class="fl"><span id="mf" style="width:40px;height:30px;display:block;position:relative"></span>WRITING THE REASON LINE <b>22m</b></div>
+</div>
+<div class="vr" style="left:1140px;top:176px;height:640px"></div>
+<div class="ch" style="left:1171px;top:176px">what it's after</div>
+<div class="right" style="top:206px"><div class="aft">Every disallowed loss says why, in plain words, right under it.</div><div class="wk">working on it</div>
+ <div style="height:1px;background:rgba(190,140,70,.2);margin-bottom:22px"></div>
+ <div class="ch" style="position:static">how it went</div>
+ <div class="pc"><i></i><span>Reason line under each loss</span></div>
+ <div class="jn">JUST NOW</div>
+ <div class="th"><div class="st"><i></i>Read the ticket</div><div class="st q"><i></i>searched twice and ran a check ▸</div><div class="st"><i></i>Worked out the wash window</div><div class="st now"><i></i>Writing the reason line</div></div>
+</div>
+
+<div class="hr" style="left:40px;right:40px;top:834px"></div>
+<div class="caret" style="left:44px;top:858px"></div>
+<div class="rail"></div>
+<div class="lt" style="left:40px"><div class="cord"></div><div class="gl" style="left:-34px;top:-8px;width:240px;height:84px;background:radial-gradient(closest-side,rgba(205,225,255,.28),transparent)"></div><img src="sprites/props-tx-village-props-lantern-01-on-png-x1.png" style="width:22px;height:38px;filter:grayscale(.7) brightness(1.5)"><div class="nm">Sprint 42 lead</div><div class="sub" style="color:#ff9a4a">2 need you</div></div>
+<div class="lt" style="left:290px"><div class="cord"></div><div class="gl" style="left:-34px;top:-8px;width:250px;height:84px;background:radial-gradient(closest-side,rgba(255,150,60,.34),transparent)"></div><img src="sprites/props-tx-village-props-lantern-01-on-png-x1.png" style="width:22px;height:38px"><div class="nm">INV-71924</div><div class="sub" style="color:#f0a65a">running something · 22m</div></div>
+<div class="lt" style="left:560px"><div class="cord"></div><img src="sprites/props-tx-village-props-lantern-01-off-png-x1.png" style="width:22px;height:38px;opacity:.7"></div>
+<img class="rack" src="A/rack2.png">
+<div id="lit"></div><div id="txt"></div>
+<script>
+const lit=document.getElementById('lit');
+function img(src,w,h,x,y,s,o,parent){const e=document.createElement('img');e.src=src;e.className='px';e.style.cssText=`width:${w*s}px;height:${h*s}px;left:${x}px;top:${y}px;`+(o||'');(parent||lit).appendChild(e);return e}
+const c=document.getElementById('corner');
+c.innerHTML=`<div class="gl" style="left:-40px;top:-30px;width:320px;height:230px;background:radial-gradient(closest-side,rgba(255,150,60,.4),transparent)"></div>`;
+img('sprites/props-tx-village-props-campfire-01-lit-png-x1.png',46,32,38,66,2);
+const fl=img('A/flame-0.png',10,12,78,48,2);
+img('A/sit-0.png',14,23,18,100,2,'transform:scaleX(-1)');
+img('sprites/props-tx-village-props-lantern-02-on-png-x1.png',9,17,128,106,1.5,'filter:grayscale(.7) brightness(1.5)');
+const g=document.createElement('div');g.style.cssText='position:absolute;left:30px;top:138px;font:400 15px "Mender Hand";color:#f2c66d;text-shadow:0 1px 3px #000;white-space:nowrap;z-index:5';g.textContent='back to the lead';document.body.appendChild(g);
+const mf=document.getElementById('mf'); const f2=img('sprites/props-tx-village-props-campfire-01-lit-png-x1.png',46,32,0,0,1,'position:absolute',mf);
+const f3=img('A/flame-1.png',10,12,15,-10,1,'position:absolute',mf);
+setInterval(()=>{fl.src='A/flame-'+Math.floor(Math.random()*4)+'.png';f3.src=fl.src},150);
+document.fonts.ready.then(()=>setTimeout(()=>document.body.dataset.ready=1,700));
+</script></body></html>

@@ -1,0 +1,69 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face { font-family: 'Fraunces'; src: url(fonts/fraunces.ttf); font-weight: 100 900; }
+@font-face { font-family: 'Fraunces'; src: url(fonts/fraunces-variable-italic.woff2); font-weight: 100 900; font-style: italic; }
+@font-face { font-family: 'Figtree'; src: url(fonts/figtree.ttf); font-weight: 300 900; }
+@font-face { font-family: 'Silkscreen'; src: url(fonts/silkscreen-400-normal.woff2); }
+@font-face { font-family: 'Hand'; src: url(fonts/pretty-neat-400-normal.woff2); }
+@font-face { font-family: 'Josefin'; src: url(fonts/josefin-sans-400-normal.woff2); }
+@font-face { font-family: 'Courier'; src: url(fonts/courier-prime-400-normal.woff2); }
+@font-face { font-family: 'Courier'; src: url(fonts/courier-prime-700-normal.woff2); font-weight: 700; }
+:root { --ink:#f6ecdb; --ink2:rgba(246,236,219,.66); --ink3:rgba(246,236,219,.42); --gold:#f2c66d; --ember:#ff9a4a; --moss:#9bd28a; --sore:#f08a72; --blue:#7aaaff; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1480px; height: 1020px; overflow: hidden; background: #000; }
+body { font-family: 'Figtree', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; position: relative; }
+.scene { position: absolute; left: 0; top: 0; width: 1480px; height: 1020px; image-rendering: pixelated; }
+.rack { position: absolute; right: 0; top: 0; width: 304px; height: 86px; image-rendering: pixelated; }
+.abs { position: absolute; }
+.head { left: 40px; top: 34px; }
+.head .t { font: 400 21px 'Josefin'; letter-spacing: .32em; color: var(--gold); text-transform: uppercase; }
+.head .t i { font-style: normal; color: rgba(242,198,109,.5); margin: 0 10px 0 8px; letter-spacing: 0; }
+.head .t b { font: 700 19px 'Courier'; letter-spacing: 0; color: #fff; text-transform: none; }
+.head .m { margin-top: 5px; font: 400 12px 'Courier'; color: var(--gold); opacity: .85; }
+.lead { font-family: 'Fraunces', serif; font-style: italic; font-variation-settings: 'SOFT' 100, 'opsz' 40; font-size: 19px; line-height: 27px; color: #f3e6c9; text-shadow: 0 1px 6px #000, 0 0 18px rgba(0,0,0,.9); }
+.lead p + p { margin-top: 0; }
+.gold { color: var(--gold); font: 600 14px 'Figtree'; text-shadow: 0 1px 4px #000; }
+.lab { width: 300px; text-shadow: 0 1px 3px #000, 0 0 10px rgba(0,0,0,.95); }
+.lab .k { font: 400 9px 'Silkscreen'; letter-spacing: .1em; color: rgba(246,236,219,.55); }
+.lab .k s { text-decoration: none; opacity: .75; margin-left: 8px; }
+.lab .ti { font: 500 13px/1.25 'Figtree'; color: rgba(246,236,219,.86); margin-top: 3px; }
+.lab .ph { font: italic 400 12.5px/1.25 'Fraunces', serif; margin-top: 3px; }
+.lab.many { width: 192px; }
+.lab.many .ti { font-size: 11.5px; }
+.lab.many .ph { font-size: 11.5px; }
+.lab .ph.ember { color: var(--ember); } .lab .ph.moss { color: var(--moss); } .lab .ph.sore { color: var(--sore); }
+.lab .ph.warm { color: #ffe3a8; } .lab .ph.dim { color: rgba(246,236,219,.5); } .lab .ph.red { color: #d97a62; } .lab .ph.blue { color: var(--blue); }
+.line { left: 40px; width: 1400px; top: 948px; height: 1px; background: rgba(242,198,109,.22); }
+.caret { left: 52px; top: 968px; width: 2px; height: 24px; background: #f6ecdb; }
+.ph2 { left: 70px; top: 970px; font: 400 19px 'Hand'; color: rgba(246,236,219,.35); }
+.hand { font-family: 'Hand'; }
+.sub { font: 400 9px 'Silkscreen'; letter-spacing: .12em; text-transform: uppercase; color: rgba(246,236,219,.45); }
+.pt { text-shadow: 0 1px 4px #000, 0 0 14px #000; }
+.pt .a { font: 400 9px 'Silkscreen'; letter-spacing: .12em; text-transform: uppercase; color: var(--ember); }
+.pt .b { font: 500 22px 'Fraunces'; margin-top: 6px; color: #fff3da; font-variation-settings: 'SOFT' 100, 'opsz' 40; }
+.pt .c { font: 400 13.5px/1.45 'Figtree'; color: rgba(246,236,219,.8); margin-top: 8px; }
+.pt .c em { font: italic 400 14.5px 'Fraunces'; color: #f3e6c9; }
+.pt .d { font: 600 14px 'Figtree'; color: var(--gold); margin-top: 10px; }
+.veil { position: absolute; pointer-events: none; }
+body[data-ready] .z { }
+</style></head><body>
+<img class="scene" src="lead-B2-scene-many.png">
+<img class="rack" src="lead-rack.png">
+<div class="abs head"><div class="t">Invest-web<i>/</i><b>Sprint 42 lead</b></div><div class="m">Sonnet 5.5 · low · 1h 12m · 14 tickets</div></div>
+<div class="abs lead" style="left:240px;top:92px;width:800px"><p>Two need you. 71880 wants to know which price split-day lots take, the ticket doesn&#x27;t say. 71702 has fallen over twice on the same setup error; I&#x27;ve stopped retrying it. Everything else is moving. I told 71990 to stop rerunning its test and read the failure.</p></div>
+<div class="abs" style="left:560px;top:186px;display:flex;gap:10px 22px;align-items:baseline;width:520px;flex-wrap:wrap"><span class="sub" style="color:rgba(246,236,219,.5)">for 71880</span><span class="gold">the price it was bought at</span><span class="gold">the price after the split</span><span style="width:26px"></span><span class="gold" style="opacity:.8;font-weight:500">what I have done so far</span><span class="gold" style="opacity:.8;font-weight:500">hand it more tickets</span></div>
+<div class="abs lab many" style="left:48px;top:440px"><div class="k">INV-71924<s>22m</s></div><div class="ti">Wash sale info under each loss</div><div class="ph ember">writing the reason line</div></div>
+<div class="abs lab many" style="left:248px;top:440px"><div class="k">INV-71880</div><div class="ti">Cost basis export drops split-day lots</div><div class="ph warm">needs you</div></div>
+<div class="abs lab many" style="left:448px;top:872px"><div class="k">INV-72011</div><div class="ti">Q4 tax doc banner copy</div><div class="ph blue">1 of 2 approvals · 2 to answer</div></div>
+<div class="abs lab many" style="left:648px;top:440px"><div class="k">INV-71990<s>41m</s></div><div class="ti">Dividend reinvest toggle</div><div class="ph ember">same test, six times</div></div>
+<div class="abs lab many" style="left:848px;top:440px"><div class="k">INV-71955<s>9m</s></div><div class="ti">Unify tax lot sort order</div><div class="ph ember">sorting by acquired date</div></div>
+<div class="abs lab many" style="left:1048px;top:440px"><div class="k">INV-72002<s>3m</s></div><div class="ti">Currency label on realized total</div><div class="ph warm">asked the lead</div></div>
+<div class="abs lab many" style="left:1248px;top:872px"><div class="k">INV-71866</div><div class="ti">Statements PDF footer year</div><div class="ph sore">CI failed · 0 of 2 approvals</div></div>
+<div class="abs lab many" style="left:48px;top:656px"><div class="k">INV-72050<s>4m</s></div><div class="ti">Import mapping for Schwab lots</div><div class="ph ember">reading the sample file</div></div>
+<div class="abs lab many" style="left:248px;top:656px"><div class="k">INV-72033</div><div class="ti">Holdings CSV column order</div><div class="ph red">limit · back 2:40pm</div></div>
+<div class="abs lab many" style="left:448px;top:656px"><div class="k">INV-71702</div><div class="ti">Flaky e2e on statements download</div><div class="ph sore">fell over twice</div></div>
+<div class="abs lab many" style="left:648px;top:656px"><div class="k">INV-72040<s>14s</s></div><div class="ti">Gift lot holding period</div><div class="ph dim">cutting its workspace</div></div>
+<div class="abs lab many" style="left:848px;top:872px"><div class="k">INV-71650</div><div class="ti">Rename Realized tab</div><div class="ph dim">landed an hour ago</div></div>
+<div class="abs lab many" style="left:1048px;top:872px"><div class="k">INV-71611</div><div class="ti">Remove legacy export flag</div><div class="ph dim">landed 3h ago</div></div>
+<div class="abs lab many" style="left:1248px;top:656px"><div class="k">INV-71977</div><div class="ti">Short-term gain tooltip</div><div class="ph red">limit · back 3:15pm</div></div>
+<div class="abs line"></div><div class="abs caret"></div><div class="abs ph2">tell the lead</div>
+<script>document.body.dataset.ready=1</script></body></html>

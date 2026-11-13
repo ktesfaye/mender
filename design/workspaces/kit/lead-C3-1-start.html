@@ -1,0 +1,56 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="lead-C3.css">
+<style>
+#bg{position:absolute;inset:0;background:url(lead-C-bgclean.png) center/1480px 1020px;filter:brightness(1.15) saturate(1.1) blur(5px)}
+#win{position:absolute;left:120px;top:150px;width:1240px;height:668px;border-radius:30px;background:rgba(12,14,22,.5);backdrop-filter:blur(28px) saturate(1.15);-webkit-backdrop-filter:blur(28px) saturate(1.15);box-shadow:inset 1.5px 1.5px 1px -1px rgba(255,255,255,.55),inset -1.5px -1.5px 1px -1px rgba(255,255,255,.3),0 24px 70px rgba(0,0,0,.5);overflow:hidden}
+#strip{position:absolute;left:0;right:0;top:0;height:78px;display:flex;align-items:center;padding:0 34px;gap:18px;border-bottom:1px solid rgba(239,227,204,.08)}
+#strip .t{font-family:Fraunces;font-weight:500;font-size:21px;color:#f3eadb}
+#strip .t small{font-family:Silkscreen;font-size:8.5px;letter-spacing:1.4px;color:rgba(239,227,204,.5);margin-left:12px}
+#strip .sp{flex:1}
+#strip .n{font-family:Figtree;font-size:14px;color:rgba(239,227,204,.8);margin-right:8px}
+#strip .n b{color:#f3eadb;font-weight:600}
+.pill{font-family:Figtree;font-weight:600;font-size:14.5px;border-radius:999px;padding:10px 20px;color:#f2c66d;border:1.5px solid rgba(242,198,109,.55);background:transparent}
+.pill.fill{background:#f2c66d;color:#1c1608;border-color:#f2c66d}
+.x{font-family:Figtree;font-size:22px;color:#f2c66d;margin-left:10px}
+#cols{position:absolute;left:34px;right:34px;top:108px;bottom:34px;display:flex;gap:26px}
+.col{flex:1}
+.col h5{font-family:Josefin;font-weight:400;letter-spacing:3.5px;font-size:11px;color:#b9a77d;margin:0 0 16px 4px}
+.card{position:relative;margin-bottom:12px;padding:14px 16px 14px 48px;border-radius:16px;background:rgba(255,240,215,.045);border:1px solid rgba(255,240,215,.07);white-space:normal;box-shadow:none;backdrop-filter:none}
+.card .k{font-family:Silkscreen;font-size:8.5px;letter-spacing:1.2px;color:rgba(239,227,204,.5);display:block;margin-bottom:5px}
+.card .tt{font-family:Figtree;font-size:15px;color:#efe3cc;line-height:20px}
+.card .ty{position:absolute;right:14px;top:13px;font-family:Silkscreen;font-size:8px;letter-spacing:1px;color:rgba(239,227,204,.35)}
+.ring{position:absolute;left:15px;top:50%;margin-top:-10px;width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(242,198,109,.0)}
+.card.hov .ring{border-color:rgba(242,198,109,.7)}
+.card.pk{background:rgba(242,198,109,.09);border-color:rgba(242,198,109,.3)}
+.card.pk .ring{background:#f2c66d;border-color:#f2c66d}
+.card.pk .ring:after{content:'';position:absolute;left:5px;top:2px;width:5px;height:9px;border:solid #1c1608;border-width:0 2px 2px 0;transform:rotate(40deg)}
+.card.dim{opacity:.55}
+#pop{position:absolute;z-index:4;left:990px;top:238px;width:290px;border-radius:22px;padding:16px 20px 18px;background:rgba(14,15,18,.7);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);box-shadow:inset 1.5px 1.5px 1px -1px rgba(255,255,255,.5),inset -1.5px -1.5px 1px -1px rgba(255,255,255,.3),0 14px 40px rgba(0,0,0,.5)}
+#pop h4{margin:0 0 6px;font-family:Fraunces;font-weight:500;font-size:18px;color:#f3eadb}
+#pop p{margin:0;font-family:Figtree;font-size:13.5px;line-height:19px;color:rgba(239,227,204,.8)}
+#pop p b{color:#f2c66d;font-weight:500}
+</style></head><body>
+<div id="stage"><div id="bg"></div>
+<div id="win">
+ <div id="strip"><span class="t">invest-web board<small>JIRA · INV</small></span><span class="sp"></span><span class="n"><b>5</b> picked</span><span class="pill">launch these</span><span class="pill fill">lead these</span><span class="x">×</span></div>
+ <div id="cols">
+  <div class="col"><h5>TO DO</h5>
+   <div class="card pk"><span class="ring"></span><span class="k">INV-71924</span><span class="tt">Wash sale info under each loss</span><span class="ty">STORY</span></div>
+   <div class="card pk"><span class="ring"></span><span class="k">INV-71880</span><span class="tt">Cost basis export drops split-day lots</span><span class="ty">BUG</span></div>
+   <div class="card pk"><span class="ring"></span><span class="k">INV-71990</span><span class="tt">Dividend reinvest toggle</span><span class="ty">STORY</span></div>
+   <div class="card pk"><span class="ring"></span><span class="k">INV-72033</span><span class="tt">Holdings CSV column order</span><span class="ty">TASK</span></div>
+   <div class="card pk"><span class="ring"></span><span class="k">INV-72040</span><span class="tt">Gift lot holding period</span><span class="ty">STORY</span></div>
+   <div class="card hov"><span class="ring"></span><span class="k">INV-71702</span><span class="tt">Flaky e2e on statements download</span><span class="ty">BUG</span></div>
+  </div>
+  <div class="col"><h5>IN PROGRESS</h5>
+   <div class="card dim"><span class="ring"></span><span class="k">INV-72011</span><span class="tt">Q4 tax doc banner copy</span><span class="ty">TASK</span></div>
+  </div>
+  <div class="col"><h5>IN REVIEW</h5>
+   <div class="card dim"><span class="ring"></span><span class="k">INV-71650</span><span class="tt">Rename Realized tab</span><span class="ty">TASK</span></div>
+  </div>
+ </div>
+ </div>
+<div id="pop"><h4>Lead these</h4><p>One lead session cuts a workspace for each of the five, sends a crew into every one, and comes to you only for what the tickets <b>cannot answer</b>.</p></div>
+<img id="rack" src="rack-C.png" style="z-index:9;mix-blend-mode:lighten">
+</div>
+<script>document.body.dataset.ready='1'</script>
+</body></html>
