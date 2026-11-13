@@ -1689,6 +1689,9 @@ function head(root: HTMLElement, yard: Yard, edge: number, does: Doings): void {
   if (yard.session?.permissions) {
     const flag = box({ right: edge, top: HEAD.aside }, FLAG);
     flag.textContent = yard.session.permissions;
+    flag.style.cursor = 'pointer';
+    flag.style.pointerEvents = 'auto';
+    flag.addEventListener('click', () => does.press('mode'));
     root.appendChild(flag);
   }
 

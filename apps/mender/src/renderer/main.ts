@@ -5772,6 +5772,10 @@ async function boot(): Promise<void> {
         void openHead();
         return;
       }
+      if (pick === 'mode') {
+        said('/mode ');
+        return;
+      }
       if (pick === 'hunt') {
         hunted(false);
         return;
